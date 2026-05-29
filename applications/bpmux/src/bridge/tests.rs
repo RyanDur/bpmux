@@ -499,6 +499,7 @@ mod ingest_poll_loop_tests {
             &self,
             _title: String,
             _body: String,
+            _initial_labels: Vec<String>,
         ) -> BoxedFuture<'_, Result<u64, SyncError>> {
             Box::pin(async { Ok(0) })
         }

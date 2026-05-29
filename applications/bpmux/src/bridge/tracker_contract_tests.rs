@@ -134,7 +134,7 @@ async fn create_story_posts_to_issues_with_title_and_body() {
             .body(issue(501, "new story", "open", vec![]).to_string());
     });
     let tracker = mock_tracker(&server);
-    let result = tracker.create_story("new story", "body-text").await;
+    let result = tracker.create_story("new story", "body-text", &[]).await;
     m.assert();
     let value = result.expect("create_story should succeed");
     assert_eq!(value["number"].as_u64(), Some(501));

@@ -50,6 +50,7 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         &self,
         title: &str,
         body: &str,
+        initial_labels: &[&str],
     ) -> impl std::future::Future<Output = Result<serde_json::Value, String>> + Send;
     fn update_body(
         &self,

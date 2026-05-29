@@ -51,11 +51,24 @@ impl StoryTracker for OctocrabStoryTracker {
         }
     }
 
-    async fn create_story(&self, title: &str, body: &str) -> Result<serde_json::Value, String> {
+    async fn create_story(
+        &self,
+        title: &str,
+        body: &str,
+        initial_labels: &[&str],
+    ) -> Result<serde_json::Value, String> {
         let issues = self.client.issues(&self.owner, &self.repo);
         let mut builder = issues.create(title);
         if !body.is_empty() {
             builder = builder.body(body);
+        }
+        if !initial_labels.is_empty() {
+            builder = builder.labels(
+                initial_labels
+                    .iter()
+                    .map(|l| l.to_string())
+                    .collect::<Vec<_>>(),
+            );
         }
         builder
             .send()

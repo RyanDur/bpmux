@@ -77,7 +77,7 @@ pub(crate) async fn handle_create_story(
             }
         }
         let number = r
-            .create_story(title.to_string(), composed_body.clone())
+            .create_story(title.to_string(), composed_body.clone(), Vec::new())
             .await
             .map_err(|e| format!("create_story failed: {e}"))?;
         let meta = crate::board::events::EventMeta {
@@ -154,7 +154,7 @@ pub(crate) async fn handle_create_iteration(
     let title = format!("Iteration {theme_name}");
     let body = compose_iteration_body(theme_name);
     let number = r
-        .create_story(title.clone(), body.clone())
+        .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
         .await
         .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
     let meta = crate::board::events::EventMeta {

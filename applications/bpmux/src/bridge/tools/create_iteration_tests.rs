@@ -132,6 +132,44 @@ async fn create_iteration_body_reserves_member_stories_section() {
 }
 
 #[tokio::test]
+async fn create_iteration_attaches_iteration_label_atomically_at_source() {
+    let refresh = build_empty_refresh().await;
+    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
+    handle_create_iteration(&args("Aquila"), "pm:claude-code", &ws_tx, Some(&refresh))
+        .await
+        .expect("create_iteration succeeds");
+    let number = refresh
+        .all_stories()
+        .iter()
+        .find(|s| s.title == "Iteration Aquila")
+        .expect("iteration persisted")
+        .number;
+    refresh
+        .refresh_story(number)
+        .await
+        .expect("refetch from source succeeds");
+    let refetched = refresh
+        .story(number)
+        .expect("iteration present after source refetch");
+    assert!(
+        refetched
+            .raw_labels
+            .iter()
+            .any(|l| l.eq_ignore_ascii_case("iteration")),
+        "freshly-created iteration carries the 'iteration' label at the SOURCE atomically (not only in the synchronous local StoryCreated event), so a refetch before any TagAdded drain cannot type it as non-Iteration: {:?}",
+        refetched.raw_labels
+    );
+    assert_eq!(
+        crate::board::domain::story_type_from_labels_or_title(
+            &refetched.raw_labels,
+            &refetched.title
+        ),
+        StoryType::Iteration,
+        "story_type re-derived from the source-of-truth labels stays Iteration (no async window where it reads as Feature)"
+    );
+}
+
+#[tokio::test]
 async fn create_iteration_rejects_non_pm_role() {
     let refresh = build_empty_refresh().await;
     let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);

@@ -259,8 +259,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
-    pub async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {
-        match self.adapter.create_story(title, body).await {
+    pub async fn create_story(
+        &self,
+        title: &str,
+        body: &str,
+        initial_labels: &[&str],
+    ) -> Result<u64, SyncError> {
+        match self.adapter.create_story(title, body, initial_labels).await {
             Ok(number) => {
                 record_push_success(&self.status);
                 Ok(number)

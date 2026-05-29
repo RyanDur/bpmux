@@ -339,10 +339,15 @@ impl SourceAdapter for GitHubSourceAdapter {
         }
     }
 
-    async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {
+    async fn create_story(
+        &self,
+        title: &str,
+        body: &str,
+        initial_labels: &[&str],
+    ) -> Result<u64, SyncError> {
         let issue = self
             .inner
-            .create_story(title, body)
+            .create_story(title, body, initial_labels)
             .await
             .map_err(SyncError::Other)?;
         issue.get("number").and_then(|v| v.as_u64()).ok_or_else(|| {

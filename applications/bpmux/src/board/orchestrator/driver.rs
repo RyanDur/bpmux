@@ -49,7 +49,12 @@ pub trait RefreshDriver: Send + Sync {
         &self,
         number: u64,
     ) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>>;
-    fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>>;
+    fn create_story(
+        &self,
+        title: String,
+        body: String,
+        initial_labels: Vec<String>,
+    ) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, number: u64) -> Option<Story>;
     fn all_stories(&self) -> Vec<Story>;
     fn store(&self) -> Arc<BoardStore>;
@@ -153,8 +158,16 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(self.fetch_gate_comments(number))
     }
 
-    fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>> {
-        Box::pin(async move { self.create_story(&title, &body).await })
+    fn create_story(
+        &self,
+        title: String,
+        body: String,
+        initial_labels: Vec<String>,
+    ) -> BoxedFuture<'_, Result<u64, SyncError>> {
+        Box::pin(async move {
+            let label_refs: Vec<&str> = initial_labels.iter().map(|s| s.as_str()).collect();
+            self.create_story(&title, &body, &label_refs).await
+        })
     }
 
     fn story(&self, number: u64) -> Option<Story> {

@@ -177,13 +177,13 @@ export const startMockGhServer = async (): Promise<MockGhServer> => {
         return
       }
       if (method === 'POST' && url === issuesPath) {
-        // Body has title + body; assign next number, default labels=[icebox].
         const parsed = body ? (JSON.parse(body) as Record<string, unknown>) : {}
         const nextNumber = issues.length + 1
+        const requestedLabels = Array.isArray(parsed.labels) ? (parsed.labels as string[]) : []
         const issue = issueJson(
           nextNumber,
           (parsed.title as string) ?? `[Feature] mock-${nextNumber}`,
-          ['icebox'],
+          ['icebox', ...requestedLabels],
           (parsed.body as string) ?? null
         )
         issues.push(issue)
