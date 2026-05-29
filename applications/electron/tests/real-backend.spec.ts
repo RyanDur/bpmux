@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron as launchWithIsolatedSession } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 // Real-backend test harness — launches Electron without `win.route`
 // stubs, so the renderer exercises the actual network layer:
@@ -845,7 +846,6 @@ test.describe('real-backend', () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
 
-    // Mock board + drill-in story + empty initial comments.
     const story = {
       number: 356,
       title: 'Test story',
@@ -853,13 +853,17 @@ test.describe('real-backend', () => {
       labels: ['Feature'],
       assignees: [],
       created_at: '2026-04-22T18:00:00Z',
-      body: 'body'
+      body: 'body',
+      ...inMockCurrentIteration(1)
     }
     await win.route('**/api/board', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ fetched_at: '2026-04-22T18:00:00Z', stories: [story] })
+        body: JSON.stringify({
+          fetched_at: '2026-04-22T18:00:00Z',
+          stories: [mockCurrentIteration('RealBackendCmdEnter', '2026-04-22T18:00:00Z'), story]
+        })
       })
     })
     // Track POST /api/stories/:n/comments calls so the test can
@@ -884,7 +888,9 @@ test.describe('real-backend', () => {
 
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     // Open drill-in via board row click.
-    await win.locator('[data-test="board-story-356"] .board-story-navigate').click()
+    await win
+      .locator('[data-test="board-tabpanel-now"] [data-test="board-story-356"] .board-story-navigate')
+      .click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
     // Type a comment + Cmd+Enter. Playwright's 'Meta+Enter' maps to
