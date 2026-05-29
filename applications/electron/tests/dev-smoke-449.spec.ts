@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { launchIsolatedWithWindow, launchIsolatedElectron } from './helpers/launch'
+import { seedCurrentIterationViaTestApi } from './helpers/iteration-fixture'
 
 test.describe('#449 board collapse-state persists across refresh — dev smoke', () => {
   test('ready column collapsed state survives app restart', async () => {
     const first = await launchIsolatedWithWindow({ preserveTempPaths: true })
+    await seedCurrentIterationViaTestApi(first.backendPort, first.authToken, 'DevSmoke449-1a')
+    await first.win.reload()
     const readyToggle = first.win.locator('[data-test="board-group-ready"]')
     await expect(readyToggle).toHaveAttribute('aria-expanded', 'true')
     await readyToggle.click()
@@ -14,6 +17,8 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
 
     const second = await launchIsolatedElectron({ userDataDir, sessionBase })
     const win = await second.app.firstWindow()
+    await seedCurrentIterationViaTestApi(second.backendPort, second.authToken, 'DevSmoke449-1b')
+    await win.reload()
     const readyToggleAfter = win.locator('[data-test="board-group-ready"]')
     await expect(readyToggleAfter).toBeVisible()
     await expect(readyToggleAfter).toHaveAttribute('aria-expanded', 'false')
@@ -22,6 +27,8 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
 
   test('per-column state is preserved independently across restart', async () => {
     const first = await launchIsolatedWithWindow({ preserveTempPaths: true })
+    await seedCurrentIterationViaTestApi(first.backendPort, first.authToken, 'DevSmoke449-2a')
+    await first.win.reload()
     const ready = first.win.locator('[data-test="board-group-ready"]')
     const inProgress = first.win.locator('[data-test="board-group-in-progress"]')
     const delivered = first.win.locator('[data-test="board-group-delivered"]')
@@ -36,6 +43,8 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
 
     const second = await launchIsolatedElectron({ userDataDir, sessionBase })
     const win = await second.app.firstWindow()
+    await seedCurrentIterationViaTestApi(second.backendPort, second.authToken, 'DevSmoke449-2b')
+    await win.reload()
     await expect(win.locator('[data-test="board-group-ready"]')).toHaveAttribute(
       'aria-expanded',
       'false'
@@ -52,7 +61,9 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
   })
 
   test('fresh userDataDir starts with GROUP_ORDER defaults (accepted collapsed; icebox open)', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
+    await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke449-3')
+    await win.reload()
     await expect(win.locator('[data-test="board-group-ready"]')).toHaveAttribute(
       'aria-expanded',
       'true'

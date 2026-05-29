@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
+import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 // #1127 sub-slice 3: drill-in family — reject form gating. Setup
 // chain: create→start→deliver→pass_desk_check lands story in
@@ -37,6 +38,8 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       )
       expect(createResp.status).toBe(200)
 
+      await setupCurrentIterationViaRpc(rpc, 1, 'RejectFormGate')
+
       const startResp = await rpc('start_story', {
         number: 1,
         pickup_paraphrase: 'Driving the chain so reject form is reachable.',
@@ -61,7 +64,9 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      const storyRow = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
+      const storyRow = win.locator(
+        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
+      )
       await expect(storyRow).toContainText('reject-form-target')
 
       consoleErrors.length = 0
@@ -117,6 +122,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
         },
         'pm'
       )
+      await setupCurrentIterationViaRpc(rpc, 1, 'RejectFormDialog')
       await rpc('start_story', {
         number: 1,
         pickup_paraphrase: 'Driving the chain so reject form is reachable.',
@@ -134,7 +140,9 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const storyRow = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
+      const storyRow = win.locator(
+        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
+      )
       await storyRow.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
       await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 

@@ -1,10 +1,14 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { seedCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
   test('column renders between IN PROGRESS and DELIVERED', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
+      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-1')
+      await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
       const expectedColumnOrder = [
@@ -31,8 +35,11 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
   })
 
   test('DESK-CHECK column renders empty-state with (0) count when no stories present', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
+      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-2')
+      await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
       const deskCheckSummary = win.locator('[data-test="board-group-desk-check"]')
@@ -48,8 +55,11 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
   })
 
   test('DESK-CHECK column header has matching styling to other columns', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
+      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-3')
+      await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
       const deskCheck = win.locator('[data-test="board-group-desk-check"]')
@@ -69,7 +79,7 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
   })
 
   test('no console errors when DESK-CHECK column renders empty', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -78,6 +88,9 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
+      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-4')
+      await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
       await expect(win.locator('[data-test="board-group-desk-check"]')).toBeVisible()
 

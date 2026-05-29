@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
+import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 // #1127 sub-slice 3: owner-specific actions visible on a story that
 // reached DELIVERED column. Setup: create→start→deliver→pass_desk_check.
@@ -37,6 +38,8 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       )
       expect(createResp.status).toBe(200)
 
+      await setupCurrentIterationViaRpc(rpc, 1, 'OwnerActions')
+
       const startResp = await rpc('start_story', {
         number: 1,
         pickup_paraphrase: 'Picking up to drive deliver before owner-walk.',
@@ -61,7 +64,9 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      const storyRow = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
+      const storyRow = win.locator(
+        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
+      )
       await expect(storyRow).toContainText('owner-actions-target')
 
       consoleErrors.length = 0

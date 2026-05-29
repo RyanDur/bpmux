@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { launchWithMockGhAndSeededIteration } from './helpers/iteration-fixture'
 
 test.describe('#467 board panel — bounded scroll + sticky headers + native <details>', () => {
   test('section toggling uses native <details>/<summary> primitives', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
+      themeName: 'ScrollStickyDetails'
+    })
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -11,8 +14,6 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
         if (m.type() === 'error') consoleErrors.push(m.text())
       })
       win.on('pageerror', (e) => pageErrors.push(e))
-
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
       const detailsCount = await win.locator('details.board-group').count()
       expect(detailsCount).toBeGreaterThan(0)
@@ -31,10 +32,10 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
   })
 
   test('default browser disclosure-triangle is suppressed', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
+      themeName: 'ScrollStickyDisclosure'
+    })
     try {
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-
       const summary = win.locator('[data-test="board-group-ready"]')
       const listStyle = await summary.evaluate((el) => getComputedStyle(el).listStyleType)
       expect(listStyle).toBe('none')
@@ -45,10 +46,10 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
   })
 
   test('multi-expand: opening one section does not auto-collapse others', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
+      themeName: 'ScrollStickyMultiExpand'
+    })
     try {
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-
       const ready = win.locator('[data-test="board-group-ready"]')
       const inProgress = win.locator('[data-test="board-group-in-progress"]')
       const accepted = win.locator('[data-test="board-group-accepted"]')
@@ -89,10 +90,10 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
   })
 
   test('section headers are sticky-positioned with opaque background', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
+      themeName: 'ScrollStickySticky'
+    })
     try {
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-
       const summary = win.locator('[data-test="board-group-ready"]')
       const position = await summary.evaluate((el) => getComputedStyle(el).position)
       expect(position).toBe('sticky')
@@ -110,10 +111,10 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
   })
 
   test('chevron rotates between collapsed and expanded via [open] selector', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
+      themeName: 'ScrollStickyChevron'
+    })
     try {
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-
       const summary = win.locator('[data-test="board-group-ready"]')
       const chevron = summary.locator('.board-group-chevron')
       const before = (): Promise<string> =>
@@ -129,7 +130,9 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
   })
 
   test('no console errors or hydration warnings on expand/collapse cycle', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
+      themeName: 'ScrollStickyNoErrors'
+    })
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -137,8 +140,6 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
         if (m.type() === 'error') consoleErrors.push(m.text())
       })
       win.on('pageerror', (e) => pageErrors.push(e))
-
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0

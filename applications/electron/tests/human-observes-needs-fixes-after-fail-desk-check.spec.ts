@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 // #1127 sub-slice 2: replicate human-observes-* migration onto the
 // fail_desk_check sibling. Setup walks create→start→deliver to land
@@ -41,6 +42,8 @@ test.describe('human-side E2E #476 — observation-class — fail_desk_check', (
       )
       expect(createResp.status).toBe(200)
 
+      await setupCurrentIterationViaRpc(rpc, 1, 'NeedsFixesObserve')
+
       const startResp = await rpc('start_story', {
         number: 1,
         pickup_paraphrase: 'Picking up to verify the fail-desk-check rework return.',
@@ -69,13 +72,14 @@ test.describe('human-side E2E #476 — observation-class — fail_desk_check', (
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      const storyInProgress = win.locator(
+      const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
+      const storyInProgress = nowPanel.locator(
         '#board-group-in-progress-content [data-test="board-story-1"]'
       )
       await expect(storyInProgress).toContainText('human-observes-needs-fixes')
 
-      for (const otherState of ['ready', 'desk-check', 'delivered', 'icebox', 'accepted']) {
-        const storyElsewhere = win.locator(
+      for (const otherState of ['ready', 'desk-check', 'delivered']) {
+        const storyElsewhere = nowPanel.locator(
           `#board-group-${otherState}-content [data-test="board-story-1"]`
         )
         await expect(storyElsewhere).toHaveCount(0)

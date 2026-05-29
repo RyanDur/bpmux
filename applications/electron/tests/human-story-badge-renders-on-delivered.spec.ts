@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
+import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 // #1127 sub-slice 3: story-badge rendering on a story that reached
 // DELIVERED column (post-pass_desk_check; the awaiting-owner badge
@@ -38,6 +39,8 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       )
       expect(createResp.status).toBe(200)
 
+      await setupCurrentIterationViaRpc(rpc, 1, 'BadgeRenderDelivered')
+
       const startResp = await rpc('start_story', {
         number: 1,
         pickup_paraphrase: 'Picking up to drive the badge-render assertion.',
@@ -62,7 +65,9 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      const storyRow = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
+      const storyRow = win.locator(
+        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
+      )
       await expect(storyRow).toContainText('badge-render-target')
 
       consoleErrors.length = 0

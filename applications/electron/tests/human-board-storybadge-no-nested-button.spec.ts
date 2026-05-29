@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
+import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 // #1127 sub-slice 3 + #499 substrate: StoryBadge with a click handler
 // renders as <button>; pre-#499 StoryRow's outer element was also
@@ -43,6 +44,8 @@ test.describe('human-side E2E #499 — StoryBadge no nested-button', () => {
       )
       expect(createResp.status).toBe(200)
 
+      await setupCurrentIterationViaRpc(rpc, 1, 'StoryBadgeNesting')
+
       const startResp = await rpc('start_story', {
         number: 1,
         pickup_paraphrase: 'Driving to deliver so badge surfaces with handler.',
@@ -67,7 +70,9 @@ test.describe('human-side E2E #499 — StoryBadge no nested-button', () => {
       await win.reload()
       await waitForBoardLoaded(win)
 
-      const row = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
+      const row = win.locator(
+        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
+      )
       await expect(row).toContainText('storybadge-nesting-target')
 
       const badge = row.locator('[data-test="story-badge"]').first()

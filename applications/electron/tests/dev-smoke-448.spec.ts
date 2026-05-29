@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { launchIsolatedWithWindow } from './helpers/launch'
+import { seedCurrentIterationViaTestApi } from './helpers/iteration-fixture'
 
 test.describe('#448 board column collapse affordance — dev smoke', () => {
   test('each board column renders a toggle button (across NOW/DONE/PLAN tabs)', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
+    await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-1')
+    await win.reload()
     for (const state of ['ready', 'in-progress', 'delivered']) {
       await expect(win.locator(`[data-test="board-group-${state}"]`)).toBeVisible()
     }
@@ -15,7 +18,9 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
   })
 
   test('ready column click toggles aria-expanded', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
+    await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-2')
+    await win.reload()
     const toggle = win.locator('[data-test="board-group-ready"]')
     await expect(toggle).toBeVisible()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
@@ -42,7 +47,9 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
   })
 
   test('board column toggle is keyboard-activatable', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
+    await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-4')
+    await win.reload()
     const toggle = win.locator('[data-test="board-group-ready"]')
     await toggle.focus()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
@@ -54,7 +61,9 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
   })
 
   test('collapsed column hides its story content', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
+    await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-5')
+    await win.reload()
     const toggle = win.locator('[data-test="board-group-ready"]')
     const content = win.locator('#board-group-ready-content')
     await expect(content).toBeVisible()
@@ -64,7 +73,9 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
   })
 
   test('chevron glyph swaps between expanded and collapsed', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
+    await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-6')
+    await win.reload()
     const chevron = win.locator('[data-test="board-group-ready"]').locator('.board-group-chevron')
     const before = (): Promise<string> =>
       chevron.evaluate((el) => getComputedStyle(el, '::before').content)

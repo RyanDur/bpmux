@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { seedCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 test.describe('human-side E2E #476 — persistence-class — board collapse state', () => {
   test('user-toggled icebox collapse survives window reload', async () => {
@@ -41,7 +42,7 @@ test.describe('human-side E2E #476 — persistence-class — board collapse stat
   })
 
   test('user-toggled in-progress collapse survives window reload', async () => {
-    const { app, win, mockGh } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -54,6 +55,10 @@ test.describe('human-side E2E #476 — persistence-class — board collapse stat
 
       consoleErrors.length = 0
       pageErrors.length = 0
+
+      await seedCurrentIterationViaRpc(rpc, 'HumanBoardCollapseInProgress')
+      await win.reload()
+      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
       const inProgressToggle = win.locator('[data-test="board-group-in-progress"]')
       await expect(inProgressToggle).toHaveAttribute('aria-expanded', 'true')
