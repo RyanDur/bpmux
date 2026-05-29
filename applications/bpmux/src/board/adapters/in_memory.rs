@@ -223,6 +223,10 @@ impl SourceAdapter for InMemorySourceAdapter {
                 s.bodies.insert(*number, body.clone());
             }
             BoardEvent::TagAdded { number, label, .. } => {
+                let labels = s.labels.entry(*number).or_default();
+                if !labels.iter().any(|l| l.eq_ignore_ascii_case(label)) {
+                    labels.push(label.clone());
+                }
                 if label.eq_ignore_ascii_case("blocked")
                     && let Some(story) = s.stories.get_mut(number)
                     && !story.tags.contains(&crate::board::domain::Tag::Blocked)
@@ -231,6 +235,9 @@ impl SourceAdapter for InMemorySourceAdapter {
                 }
             }
             BoardEvent::TagRemoved { number, label, .. } => {
+                if let Some(labels) = s.labels.get_mut(number) {
+                    labels.retain(|l| !l.eq_ignore_ascii_case(label));
+                }
                 if label.eq_ignore_ascii_case("blocked")
                     && let Some(story) = s.stories.get_mut(number)
                 {

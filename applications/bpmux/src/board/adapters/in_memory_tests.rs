@@ -179,3 +179,50 @@ async fn push_event_accepts_story_created_variant() {
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
 }
+
+#[tokio::test]
+async fn tag_added_surfaces_label_in_ingested_raw_labels() {
+    let adapter = InMemorySourceAdapter::new();
+    adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
+    adapter
+        .push_event(&BoardEvent::TagAdded {
+            meta: meta(),
+            number: 42,
+            label: "iteration-Unscheduled.300".to_string(),
+        })
+        .await
+        .unwrap();
+    let stories = adapter.ingest_metadata().await.unwrap();
+    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    assert!(
+        story
+            .raw_labels
+            .iter()
+            .any(|l| l == "iteration-Unscheduled.300"),
+        "TagAdded must surface the ordering label in raw_labels so reorder round-trips survive drain"
+    );
+}
+
+#[tokio::test]
+async fn tag_removed_drops_label_from_ingested_raw_labels() {
+    let adapter = InMemorySourceAdapter::new();
+    adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
+    adapter.seed_labels(42, vec!["iteration-Unscheduled.300".to_string()]);
+    adapter
+        .push_event(&BoardEvent::TagRemoved {
+            meta: meta(),
+            number: 42,
+            label: "iteration-Unscheduled.300".to_string(),
+        })
+        .await
+        .unwrap();
+    let stories = adapter.ingest_metadata().await.unwrap();
+    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    assert!(
+        !story
+            .raw_labels
+            .iter()
+            .any(|l| l == "iteration-Unscheduled.300"),
+        "TagRemoved must drop the label from raw_labels"
+    );
+}

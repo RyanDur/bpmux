@@ -46,6 +46,17 @@ const parseCreatedIterationNumber = (msg: unknown): number => {
   return Number(match![1])
 }
 
+const parseCreatedStoryNumber = (msg: unknown): number => {
+  const match = String(msg ?? '').match(/#(\d+)/)
+  expect(match, 'create_story must return a numbered confirmation').not.toBeNull()
+  return Number(match![1])
+}
+
+const unscheduledOrder = async (win: Page): Promise<string[]> =>
+  win
+    .locator('[data-test="board-iteration-unscheduled"] [data-test^="board-story-"]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-test') ?? ''))
+
 test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle drive+capture', () => {
   test.setTimeout(90_000)
   test('designate → reorder → rename → close, each step capturable + visually featured', async () => {
@@ -80,7 +91,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         agent: 'pm:test'
       })
       expect(createC.ok, JSON.stringify(createC.json)).toBe(true)
-      const numberC = parseCreatedIterationNumber(createC.json.message)
+      parseCreatedIterationNumber(createC.json.message)
 
       await switchToTab(win, 'plan')
       await expect(win.locator(`text=Iteration ${themeA}`).first()).toBeAttached({
@@ -102,19 +113,52 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       })
       await capture(win, 'lifecycle-02-designated')
 
+      const createX = await postTest(backendPort, token, 'create_story', {
+        title: `ReorderWalkX-${stamp}`,
+        user_job: 'reorder-step backlog item X',
+        observation_falsifier: 'reject if X cannot be reordered',
+        agent: 'pm:test'
+      })
+      expect(createX.ok, JSON.stringify(createX.json)).toBe(true)
+      const numberX = parseCreatedStoryNumber(createX.json.message)
+
+      const createY = await postTest(backendPort, token, 'create_story', {
+        title: `ReorderWalkY-${stamp}`,
+        user_job: 'reorder-step backlog item Y',
+        observation_falsifier: 'reject if Y cannot be reordered',
+        agent: 'pm:test'
+      })
+      expect(createY.ok, JSON.stringify(createY.json)).toBe(true)
+      const numberY = parseCreatedStoryNumber(createY.json.message)
+
+      await switchToTab(win, 'plan')
+      const rowX = `board-story-${numberX}`
+      const rowY = `board-story-${numberY}`
+      await expect
+        .poll(() => unscheduledOrder(win), { timeout: 15_000 })
+        .toEqual(expect.arrayContaining([rowX, rowY]))
+      const orderBefore = await unscheduledOrder(win)
+      expect(orderBefore.indexOf(rowX)).toBeLessThan(orderBefore.indexOf(rowY))
+
       const reorder = await postTest(backendPort, token, 'move_story', {
-        number: numberC,
+        number: numberY,
         target_state: 'icebox',
         position: 1,
-        rationale: 'live-walk slice 2/2 reorder-step — promote C to top of icebox',
+        rationale: 'live-walk slice 2/2 reorder-step — promote Y above X in the backlog',
         agent: 'pm:test'
       })
       expect(reorder.ok, JSON.stringify(reorder.json)).toBe(true)
+
       await switchToTab(win, 'plan')
-      const cardC = win.locator(`[data-iteration-name="${themeC}"]`).first()
-      const cardB = win.locator(`[data-iteration-name="${themeB}"]`).first()
-      await expect(cardC).toBeAttached({ timeout: 15_000 })
-      await expect(cardB).toBeAttached({ timeout: 15_000 })
+      await expect
+        .poll(
+          async () => {
+            const order = await unscheduledOrder(win)
+            return order.indexOf(rowY) < order.indexOf(rowX)
+          },
+          { timeout: 15_000 }
+        )
+        .toBe(true)
       await capture(win, 'lifecycle-03-reordered')
 
       const renameTitle = `Iteration ${themeA}-RENAMED`
