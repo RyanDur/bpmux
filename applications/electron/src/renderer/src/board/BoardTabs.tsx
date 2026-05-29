@@ -5,8 +5,8 @@ import BoardGroup from './BoardGroup'
 import Tabs, { type TabDef } from './Tabs'
 import { useTabStorage } from '../lib/useTabStorage'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
-import { epicNumbersInIteration, findCurrentIteration } from './currentIteration'
-import { isIterationStory, positionInParentIteration } from './iterationMembers'
+import { epicNumbersInIteration } from './currentIteration'
+import { deriveNowView } from './deriveNowView'
 import { themeNameFromTitle } from './labelSchema'
 import {
   GROUP_ORDER,
@@ -73,7 +73,8 @@ const BoardTabs = ({
     'now'
   )
 
-  const currentIteration = useMemo(() => findCurrentIteration(stories), [stories])
+  const nowView = useMemo(() => deriveNowView(stories), [stories])
+  const currentIteration = nowView.kind === 'current' ? nowView.iteration : null
   const currentIterationEpicNumbers = useMemo(() => {
     if (currentIteration === null) return []
     return epicNumbersInIteration(stories, currentIteration)
@@ -83,15 +84,10 @@ const BoardTabs = ({
     const inIter = new Set(currentIterationEpicNumbers)
     return stories.filter((s) => isActiveEpic(s) && inIter.has(s.number))
   }, [stories, currentIteration, currentIterationEpicNumbers])
-  const currentIterationMemberNumbers = useMemo<Set<number>>(() => {
-    if (currentIteration === null) return new Set()
-    const out = new Set<number>()
-    for (const s of stories) {
-      if (isIterationStory(s)) continue
-      if (positionInParentIteration(s, currentIteration.number) !== null) out.add(s.number)
-    }
-    return out
-  }, [stories, currentIteration])
+  const currentIterationMemberNumbers = useMemo<Set<number>>(
+    () => new Set(nowView.kind === 'current' ? nowView.members.map((m) => m.story.number) : []),
+    [nowView]
+  )
 
   const tabDefs: ReadonlyArray<TabDef<BoardTabId>> = useMemo(
     () => [
