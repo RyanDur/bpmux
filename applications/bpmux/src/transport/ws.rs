@@ -304,7 +304,7 @@ pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> boo
     if peer_short == sender_short {
         return true;
     }
-    recipients.iter().any(|r| r == peer_short)
+    recipients.iter().any(|r| short_name(r) == peer_short)
 }
 
 pub(crate) fn message_size_ok(text: &str) -> bool {

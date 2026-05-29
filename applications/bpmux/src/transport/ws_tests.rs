@@ -42,6 +42,19 @@ fn addressed_not_delivered_to_non_recipient() {
 }
 
 #[test]
+fn full_identity_recipient_delivers_to_matching_peer() {
+    let m = msg("dev:claude-code", Some(vec!["pm:claude-code"]));
+    assert!(
+        should_deliver(&m, "pm:claude-code"),
+        "#1568: a full-identity `to:` recipient must match its peer, like sender/peer are already normalized"
+    );
+    assert!(
+        !should_deliver(&m, "designer:claude-code"),
+        "#1568: recipient-form normalization must not over-deliver to a non-recipient"
+    );
+}
+
+#[test]
 fn group_addressed_delivered_to_all_named() {
     let m = msg("dev:claude-code", Some(vec!["pm", "designer"]));
     assert!(should_deliver(&m, "pm:claude-code"));

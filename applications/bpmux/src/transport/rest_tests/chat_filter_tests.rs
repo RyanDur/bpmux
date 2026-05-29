@@ -335,6 +335,45 @@ async fn issue_1319_scenario_3_owner_view_sees_all_messages_including_to_scoped(
 }
 
 #[tokio::test]
+async fn issue_1568_full_identity_to_recipient_delivers_on_reload() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
+    let full_identity_dm = session::Message {
+        from: "dev:claude-code".to_string(),
+        text: "full-identity recipient dm".to_string(),
+        ts: chrono::Utc::now(),
+        to: Some(vec!["pm:claude-code".to_string()]),
+        explicit_privacy: true,
+        ..session::Message::default()
+    };
+    session.broadcast(&full_identity_dm).expect("broadcast");
+    let router = axum::Router::new()
+        .route("/api/messages", axum::routing::get(get_messages))
+        .with_state(session);
+    let request = Request::builder()
+        .method("GET")
+        .uri("/api/messages?as=pm&limit=50")
+        .body(Body::empty())
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("read body");
+    let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+    let texts: Vec<&str> = msgs.iter().filter_map(|m| m["text"].as_str()).collect();
+    assert!(
+        texts.contains(&"full-identity recipient dm"),
+        "#1568: a full-identity `to:` recipient (pm:claude-code) must deliver to peer pm on reload; got {texts:?}"
+    );
+}
+
+#[tokio::test]
 async fn post_message_accepts_default_message_type() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
