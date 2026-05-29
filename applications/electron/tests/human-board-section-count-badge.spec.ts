@@ -62,11 +62,15 @@ test.describe('#468 board panel B2 — section-count badges', () => {
       }
       await win.locator('[data-test="board-tab-done"]').click()
       await expect(
-        win.locator('[data-test="board-tabpanel-done-content"] [data-test="board-group-accepted-count"]')
+        win.locator(
+          '[data-test="board-tabpanel-done-content"] [data-test="board-group-accepted-count"]'
+        )
       ).toHaveText(/^\(\d+\)$/)
       await win.locator('[data-test="board-tab-plan"]').click()
       await expect(
-        win.locator('[data-test="board-tabpanel-plan-content"] [data-test="board-group-icebox-count"]')
+        win.locator(
+          '[data-test="board-tabpanel-plan-content"] [data-test="board-group-icebox-count"]'
+        )
       ).toHaveText(/^\(\d+\)$/)
     } finally {
       await app.close()
@@ -82,13 +86,12 @@ test.describe('#468 board panel B2 — section-count badges', () => {
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      const readyContent = win.locator('#board-group-ready-content')
-      const rows = readyContent.locator('[data-test^="board-story-"]')
-      const visible = await rows.count()
-
-      const countText = await win.locator('[data-test="board-group-ready-count"]').innerText()
+      const readyCount = win.locator('[data-test="board-group-ready-count"]')
+      await expect(readyCount).toHaveText(/^\(\d+\)$/)
+      const countText = await readyCount.innerText()
       const n = Number.parseInt(countText.replace(/[()]/g, ''), 10)
-      expect(n).toBe(visible)
+      const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
+      await expect(rows).toHaveCount(n)
     } finally {
       await app.close()
       await mockGh.close()
@@ -153,11 +156,9 @@ test.describe('#468 board panel B2 — section-count badges', () => {
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      const order = await win.evaluate(() => {
-        const summary = document.querySelector<HTMLElement>('[data-test="board-group-ready"]')
-        if (!summary) return [] as string[]
-        return Array.from(summary.children).map((el) => el.className)
-      })
+      const summary = win.locator('[data-test="board-group-ready"]')
+      await expect(summary).toBeVisible()
+      const order = await summary.evaluate((el) => Array.from(el.children).map((c) => c.className))
       expect(order[0]).toContain('board-group-chevron')
       expect(order[1]).toContain('board-group-count')
       expect(order[2]).toContain('board-group-label')

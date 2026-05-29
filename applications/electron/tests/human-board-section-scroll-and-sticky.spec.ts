@@ -15,13 +15,14 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const detailsCount = await win.locator('details.board-group').count()
-      expect(detailsCount).toBeGreaterThan(0)
-
-      const summaryCount = await win
-        .locator('details.board-group > summary.board-group-summary')
-        .count()
-      expect(summaryCount).toBe(detailsCount)
+      await expect(async () => {
+        const detailsCount = await win.locator('details.board-group').count()
+        expect(detailsCount).toBeGreaterThan(0)
+        const summaryCount = await win
+          .locator('details.board-group > summary.board-group-summary')
+          .count()
+        expect(summaryCount).toBe(detailsCount)
+      }).toPass()
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
