@@ -12,7 +12,7 @@
 // feedback_falsifier_load_bearing_test_at_e2e_layer: each falsifier
 // names a SCENARIO; tests drive THAT scenario at e2e layer.
 
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { launchIsolatedWithWindow } from '../helpers/launch'
 
 interface NotificationCall {
@@ -43,6 +43,25 @@ const stubFocusFalse = `
   Object.defineProperty(document, 'hasFocus', { value: () => false, configurable: true });
   Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
 `
+
+const awaitLiveWsChannel = async (win: Page, apiBase: string, authToken: string): Promise<void> => {
+  await expect(async () => {
+    const probe = `ws-live-probe-${Math.random().toString(36).slice(2)}`
+    await win.evaluate(
+      async ([base, token, text]) => {
+        await fetch(`${base}/api/messages`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({ from: 'pm', text })
+        })
+      },
+      [apiBase, authToken, probe] as const
+    )
+    await expect(win.locator('[data-test="message-list"]')).toContainText(probe, {
+      timeout: 1500
+    })
+  }).toPass({ timeout: 20000 })
+}
 
 test.describe('#382 notification gating — real-backend matrix', () => {
   test('focused + DM arrival → ZERO OS notifications fired (AC1)', async () => {
@@ -93,6 +112,7 @@ test.describe('#382 notification gating — real-backend matrix', () => {
       expect(focused).toBe(false)
       const bridge = await win.evaluate(() => window.bpmux)
       expect(bridge).toBeDefined()
+      await awaitLiveWsChannel(win, bridge!.apiBase, bridge!.authToken)
       await win.evaluate(
         async ([apiBase, token]) => {
           await fetch(`${apiBase}/api/messages`, {
@@ -110,10 +130,15 @@ test.describe('#382 notification gating — real-backend matrix', () => {
         },
         [bridge!.apiBase, bridge!.authToken]
       )
-      await win.waitForTimeout(1500)
-      const calls = await win.evaluate(() => window.__bpmuxTestNotifications ?? [])
-      expect(calls.length).toBeGreaterThanOrEqual(1)
-      expect(calls.some((c) => c.body.includes('unfocused-DM-target'))).toBe(true)
+      await expect
+        .poll(async () =>
+          win.evaluate(() =>
+            (window.__bpmuxTestNotifications ?? []).some((c) =>
+              c.body.includes('unfocused-DM-target')
+            )
+          )
+        )
+        .toBe(true)
     } finally {
       await app.close()
     }
