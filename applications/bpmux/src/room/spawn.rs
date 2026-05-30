@@ -39,6 +39,10 @@ impl LivePty {
     pub fn reader(&self) -> std::io::Result<Box<dyn std::io::Read + Send>> {
         self.master.try_clone_reader().map_err(io_other)
     }
+
+    pub fn writer(&self) -> std::io::Result<Box<dyn std::io::Write + Send>> {
+        self.master.take_writer().map_err(io_other)
+    }
 }
 
 pub fn spawn_pty_retained(command: &str, args: &[String]) -> std::io::Result<LivePty> {

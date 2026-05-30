@@ -88,8 +88,8 @@ const Chat = ({
 
   const scopeLabel = allView
     ? 'ALL CONVERSATIONS'
-    : recipient && recipient.length > 0
-      ? `${recipient.length === 1 ? 'DM' : 'GROUP'} → ${recipient.join(' + ')}`
+    : recipient && recipient.length > 1
+      ? `GROUP → ${recipient.join(' + ')}`
       : null
 
   const terminalRole = !allView && recipient && recipient.length === 1 ? recipient[0] : null

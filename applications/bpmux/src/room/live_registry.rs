@@ -34,6 +34,17 @@ impl LivePtyRegistry {
             .get(role)
             .map(|live| live.reader())
     }
+
+    pub fn writer_for(
+        &self,
+        role: &str,
+    ) -> Option<std::io::Result<Box<dyn std::io::Write + Send>>> {
+        self.rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(role)
+            .map(|live| live.writer())
+    }
 }
 
 #[cfg(test)]
@@ -84,5 +95,50 @@ mod tests {
     fn reader_for_absent_role_is_none() {
         let registry = LivePtyRegistry::new();
         assert!(registry.reader_for("nobody").is_none());
+    }
+
+    #[test]
+    fn registry_write_reaches_the_same_live_session_stdin() {
+        use std::io::Write;
+        let registry = LivePtyRegistry::new();
+        let live = spawn_pty_retained(
+            "/bin/sh",
+            &["-c".into(), "read line; printf 'GOT:%s' \"$line\"".into()],
+        )
+        .unwrap();
+        registry.insert("dev".to_string(), live);
+
+        let mut writer = registry
+            .writer_for("dev")
+            .expect("dev room present")
+            .unwrap();
+        writer.write_all(b"ping-stdin\n").unwrap();
+        writer.flush().unwrap();
+
+        let mut reader = registry.reader_for("dev").expect("dev present").unwrap();
+        let mut collected = String::new();
+        let mut buf = [0u8; 1024];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
+                    if collected.contains("GOT:ping-stdin") {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        assert!(
+            collected.contains("GOT:ping-stdin"),
+            "writing to the room write-half must reach the SAME live session's stdin (the child reads it and echoes GOT:<line> on the same master); got {collected:?}"
+        );
+    }
+
+    #[test]
+    fn writer_for_absent_role_is_none() {
+        let registry = LivePtyRegistry::new();
+        assert!(registry.writer_for("nobody").is_none());
     }
 }

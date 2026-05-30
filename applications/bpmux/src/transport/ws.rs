@@ -414,6 +414,13 @@ async fn handle_client_message(
                 });
             }
         }
+        Ok(ClientMessage::PtyInput { role, data }) => {
+            if let Some(Ok(mut writer)) = pty_registry.writer_for(&role)
+                && let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data)
+            {
+                let _ = writer.write_all(&bytes).and_then(|()| writer.flush());
+            }
+        }
         Err(e) => {
             send_json(
                 tx,

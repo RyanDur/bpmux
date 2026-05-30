@@ -53,6 +53,19 @@ fn deserializes_pty_subscribe() {
 }
 
 #[test]
+fn deserializes_pty_input_with_role_and_data() {
+    let json = r#"{"type": "pty_input", "role": "dev", "data": "Aw=="}"#;
+    let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+    match msg {
+        ClientMessage::PtyInput { role, data } => {
+            assert_eq!(role, "dev");
+            assert_eq!(data, "Aw==");
+        }
+        other => panic!("expected PtyInput, got {other:?}"),
+    }
+}
+
+#[test]
 fn pty_output_serializes_with_distinct_type_role_and_data() {
     let msg = ServerMessage::PtyOutput {
         role: "dev".to_string(),

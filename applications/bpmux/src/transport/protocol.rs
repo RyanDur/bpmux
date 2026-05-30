@@ -27,6 +27,8 @@ pub enum ClientMessage {
     Rename { name: String },
     #[serde(rename = "pty_subscribe")]
     PtySubscribe { role: String },
+    #[serde(rename = "pty_input")]
+    PtyInput { role: String, data: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

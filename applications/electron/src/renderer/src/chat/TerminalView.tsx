@@ -2,20 +2,16 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
-import { sendPtySubscribe, subscribeWsPtyOutput } from '../transport/wsService'
+import {
+  decodePtyData,
+  sendPtyInput,
+  sendPtySubscribe,
+  subscribeWsPtyOutput
+} from '../transport/wsService'
 import './TerminalView.css'
 
 interface TerminalViewProps {
   role: string
-}
-
-const decodePtyData = (b64: string): Uint8Array => {
-  const binary = atob(b64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
-  }
-  return bytes
 }
 
 const readToken = (name: string, fallback: string): string => {
@@ -56,6 +52,7 @@ export const TerminalView = ({ role }: TerminalViewProps): React.JSX.Element => 
     const unsubscribe = subscribeWsPtyOutput(role, (data) => {
       term.write(decodePtyData(data))
     })
+    term.onData((keystroke) => sendPtyInput(role, keystroke))
     void ensureRoomSpawned(role).then(() => sendPtySubscribe(role))
 
     const onResize = (): void => fit.fit()

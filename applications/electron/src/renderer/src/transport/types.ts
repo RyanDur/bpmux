@@ -112,7 +112,18 @@ export interface ClientPtySubscribe {
   role: string
 }
 
-export type ClientMessage = ClientIdentify | ClientSend | ClientPing | ClientPtySubscribe
+export interface ClientPtyInput {
+  type: 'pty_input'
+  role: string
+  data: string
+}
+
+export type ClientMessage =
+  | ClientIdentify
+  | ClientSend
+  | ClientPing
+  | ClientPtySubscribe
+  | ClientPtyInput
 
 export interface ChatMessage {
   id: string

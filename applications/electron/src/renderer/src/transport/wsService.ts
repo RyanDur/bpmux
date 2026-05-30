@@ -96,6 +96,8 @@ const freshState = (): ServiceState => ({
 
 let state: ServiceState = freshState()
 
+let sentFramesForTest: ClientMessage[] | null = null
+
 const patch = (changes: Partial<WsSnapshot>): void => {
   state.snapshot = { ...state.snapshot, ...changes }
   for (const listener of state.listeners) listener()
@@ -112,6 +114,7 @@ const emitPtyOutput = (role: string, data: string): void => {
 }
 
 const sendJson = (msg: ClientMessage): void => {
+  if (sentFramesForTest) sentFramesForTest.push(msg)
   const sock = state.socket
   if (!sock || sock.readyState !== WebSocket.OPEN) {
     console.error('bpmux ws: send dropped, socket not open', msg)
@@ -393,11 +396,37 @@ export const sendPtySubscribe = (role: string): void => {
   sendJson({ type: 'pty_subscribe', role })
 }
 
+export const encodeKeystroke = (data: string): string => {
+  const bytes = new TextEncoder().encode(data)
+  let binary = ''
+  for (const b of bytes) binary += String.fromCharCode(b)
+  return btoa(binary)
+}
+
+export const decodePtyData = (b64: string): Uint8Array => {
+  const binary = atob(b64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
+}
+
+export const sendPtyInput = (role: string, keystroke: string): void => {
+  sendJson({ type: 'pty_input', role, data: encodeKeystroke(keystroke) })
+}
+
 export const getWsSnapshot = (): WsSnapshot => state.snapshot
 
 export const __resetWsForTest = (): void => {
   teardownSocket()
+  sentFramesForTest = null
   state = freshState()
+}
+
+export const __captureSentFramesForTest = (): ClientMessage[] => {
+  sentFramesForTest = []
+  return sentFramesForTest
 }
 
 export const __deliverServerFrameForTest = (raw: string): void => {
