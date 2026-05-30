@@ -163,4 +163,59 @@ mod tests {
             "a role with no room has no terminal-state"
         );
     }
+
+    fn drain_room_until(
+        reader: Option<std::io::Result<Box<dyn std::io::Read + Send>>>,
+        marker: &str,
+    ) -> String {
+        use std::io::Read;
+        let mut reader = reader.expect("room present").unwrap();
+        let mut collected = String::new();
+        let mut buf = [0u8; 1024];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
+                    if collected.contains(marker) {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        collected
+    }
+
+    #[test]
+    fn two_rooms_are_isolated_no_cross_bleed_and_both_coexist() {
+        let registry = LivePtyRegistry::new();
+        let dev = spawn_pty_retained("/bin/sh", &["-c".into(), "printf 'DEV-ROOM-OUTPUT'".into()])
+            .unwrap();
+        let pm = spawn_pty_retained("/bin/sh", &["-c".into(), "printf 'PM-ROOM-OUTPUT'".into()])
+            .unwrap();
+        registry.insert("dev".to_string(), dev);
+        registry.insert("pm".to_string(), pm);
+
+        assert_eq!(
+            registry.liveness("dev"),
+            Some(true),
+            "spawning the pm room must not destabilize the dev room — both coexist"
+        );
+        assert_eq!(registry.liveness("pm"), Some(true));
+
+        let dev_out = drain_room_until(registry.reader_for("dev"), "DEV-ROOM-OUTPUT");
+        let pm_out = drain_room_until(registry.reader_for("pm"), "PM-ROOM-OUTPUT");
+
+        assert!(dev_out.contains("DEV-ROOM-OUTPUT"));
+        assert!(
+            !dev_out.contains("PM-ROOM-OUTPUT"),
+            "EXERCISED bleed-vector: pm's output must NOT reach the dev room; got {dev_out:?}"
+        );
+        assert!(pm_out.contains("PM-ROOM-OUTPUT"));
+        assert!(
+            !pm_out.contains("DEV-ROOM-OUTPUT"),
+            "EXERCISED bleed-vector: dev's output must NOT reach the pm room; got {pm_out:?}"
+        );
+    }
 }
