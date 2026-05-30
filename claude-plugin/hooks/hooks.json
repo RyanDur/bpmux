@@ -53,6 +53,11 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/filing-premise-reminder.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/filing-diagnosis-as-fix-gate.sh",
+            "timeout": 5
           }
         ]
       },
