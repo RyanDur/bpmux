@@ -93,12 +93,14 @@ pub async fn run_server(
     let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
+    let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
     let mut orchestrator_inner = crate::orchestrator::Orchestrator::new(
         session.clone(),
         tracker.as_ref().cloned(),
         ci_state_store.clone(),
         ct.clone(),
-    );
+    )
+    .with_pty_registry(pty_registry.clone());
     if let Some(refresh) = test_refresh.as_ref().cloned() {
         orchestrator_inner = orchestrator_inner.with_refresh(
             refresh,
@@ -107,7 +109,6 @@ pub async fn run_server(
         );
     }
     let orchestrator = std::sync::Arc::new(orchestrator_inner);
-    let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
     orchestrator.spawn_action_drainer(action_rx);
     orchestrator.add_ci_listener(std::sync::Arc::new(
         crate::orchestrator::CiStateStoreWriter::new(ci_state_store.clone()),
@@ -119,7 +120,7 @@ pub async fn run_server(
         crate::orchestrator::ReactionsSessionBroadcaster::new(session.clone()),
     ));
     orchestrator.add_roster_listener(std::sync::Arc::new(
-        crate::orchestrator::RosterSessionBroadcaster::new(session.clone()),
+        crate::orchestrator::RosterSessionBroadcaster::new(session.clone(), pty_registry.clone()),
     ));
     for identity in session.roster_snapshot() {
         crate::transport::ws::dispatch_roster_join(&orchestrator, &identity).await;

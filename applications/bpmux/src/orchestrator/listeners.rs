@@ -114,7 +114,10 @@ fn ci_to_wire(snap: &CiSnapshot) -> CiSnapshotWire {
     }
 }
 
-fn roster_to_wire(members: &[RosterMember]) -> Vec<RosterMemberWire> {
+fn roster_to_wire(
+    members: &[RosterMember],
+    pty_registry: Option<&crate::room::LivePtyRegistry>,
+) -> Vec<RosterMemberWire> {
     members
         .iter()
         .map(|m| RosterMemberWire {
@@ -122,6 +125,15 @@ fn roster_to_wire(members: &[RosterMember]) -> Vec<RosterMemberWire> {
             identity: m.identity.clone(),
             role: m.role,
             presence: m.presence,
+            terminal_state: pty_registry
+                .and_then(|r| r.liveness(crate::transport::ws::short_name(&m.identity)))
+                .map(|alive| {
+                    if alive {
+                        crate::session::message::TerminalState::Alive
+                    } else {
+                        crate::session::message::TerminalState::Dead
+                    }
+                }),
         })
         .collect()
 }
@@ -151,11 +163,18 @@ impl ReactionsBroadcastListener for ReactionsSessionBroadcaster {
 
 pub struct RosterSessionBroadcaster {
     session: Arc<session::Session>,
+    pty_registry: Arc<crate::room::LivePtyRegistry>,
 }
 
 impl RosterSessionBroadcaster {
-    pub fn new(session: Arc<session::Session>) -> Self {
-        Self { session }
+    pub fn new(
+        session: Arc<session::Session>,
+        pty_registry: Arc<crate::room::LivePtyRegistry>,
+    ) -> Self {
+        Self {
+            session,
+            pty_registry,
+        }
     }
 }
 
@@ -164,7 +183,7 @@ impl RosterBroadcastListener for RosterSessionBroadcaster {
         broadcast_state_delta(
             &self.session,
             StateDeltaPayload::Roster {
-                members: roster_to_wire(members),
+                members: roster_to_wire(members, Some(&self.pty_registry)),
             },
             "roster_listener",
         );

@@ -369,3 +369,79 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
     expect(html).toMatch(/data-test="presence-dot-pm"/)
   })
 })
+
+describe('#1581 — per-room terminal-state on the existing presence dot', () => {
+  const renderWith = (devOverrides: Partial<RosterMemberWire>): string =>
+    renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={[
+          wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+          wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', ...devOverrides })
+        ]}
+      />
+    )
+
+  test('a dead room dims the dot and overrides presence (no new widget)', () => {
+    const html = renderWith({ terminal_state: 'dead' })
+    expect(html).toContain('presence-dot--dead" data-test="presence-dot-dev"')
+    expect(html).toContain('data-terminal-state="dead"')
+  })
+
+  test('a live room keeps the normal presence dot (alive = normal)', () => {
+    const html = renderWith({ terminal_state: 'alive' })
+    expect(html).toContain('presence-dot--offline" data-test="presence-dot-dev"')
+    expect(html).toContain('data-terminal-state="alive"')
+    expect(html).not.toContain('presence-dot--dead" data-test="presence-dot-dev"')
+  })
+
+  test('a member with no room carries no terminal-state and its normal dot', () => {
+    const html = renderWith({})
+    expect(html).toContain('presence-dot--offline" data-test="presence-dot-dev"')
+    expect(html).not.toMatch(/data-terminal-state="[^"]+"[^>]*data-test="presence-dot-dev"/)
+  })
+
+  const DEV_HELP_MESSAGES: ChatMessage[] = [
+    {
+      id: 'a1',
+      from: 'dev:claude-code',
+      text: 'help',
+      ts: '2026-04-23T12:00:00Z',
+      to: null,
+      addressee: null,
+      messageType: 'activity'
+    }
+  ]
+
+  const renderHelp = (devOverrides: Partial<RosterMemberWire>): string =>
+    renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={DEV_HELP_MESSAGES}
+        filter={filter}
+        mirrorRoster={[
+          wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+          wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', ...devOverrides })
+        ]}
+      />
+    )
+
+  test('a live agent that self-reports help shows needs-input (amber)', () => {
+    const html = renderHelp({ terminal_state: 'alive' })
+    expect(html).toContain('presence-dot--needs-input" data-test="presence-dot-dev"')
+  })
+
+  test('dead overrides needs-input — a dead room is dim even if it last self-reported help', () => {
+    const html = renderHelp({ terminal_state: 'dead' })
+    expect(html).toContain('presence-dot--dead" data-test="presence-dot-dev"')
+    expect(html).not.toContain('presence-dot--needs-input" data-test="presence-dot-dev"')
+  })
+})

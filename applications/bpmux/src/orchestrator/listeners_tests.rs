@@ -94,7 +94,10 @@ async fn reactions_listener_emits_typed_state_delta() {
 #[tokio::test]
 async fn roster_listener_emits_typed_state_delta() {
     let (session, mut rx, _dir) = fresh_session();
-    let listener = RosterSessionBroadcaster::new(session);
+    let listener = RosterSessionBroadcaster::new(
+        session,
+        std::sync::Arc::new(crate::room::LivePtyRegistry::new()),
+    );
     let members = vec![RosterMember {
         name: "ryan".to_string(),
         identity: "ryan:electron".to_string(),
@@ -109,6 +112,55 @@ async fn roster_listener_emits_typed_state_delta() {
             assert_eq!(members[0].name, "ryan");
             assert_eq!(members[0].role, RosterRole::Owner);
             assert_eq!(members[0].presence, Presence::Online);
+            assert_eq!(members[0].terminal_state, None);
+        }
+        _ => panic!("expected Roster variant"),
+    }
+}
+
+#[tokio::test]
+async fn roster_member_with_a_live_room_carries_terminal_state_alive() {
+    let (session, mut rx, _dir) = fresh_session();
+    let registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
+    let live =
+        crate::room::spawn_pty_retained("/bin/sh", &["-c".into(), "sleep 2".into()]).unwrap();
+    registry.insert("dev".to_string(), live);
+    let listener = RosterSessionBroadcaster::new(session, registry);
+    let members = vec![
+        RosterMember {
+            name: "dev".to_string(),
+            identity: "dev:claude-code".to_string(),
+            role: RosterRole::Dev,
+            presence: Presence::Online,
+        },
+        RosterMember {
+            name: "ryan".to_string(),
+            identity: "ryan:electron".to_string(),
+            role: RosterRole::Owner,
+            presence: Presence::Online,
+        },
+    ];
+    listener.on_changed(&members);
+    let payload = drain_state_delta(&mut rx);
+    match payload {
+        StateDeltaPayload::Roster { members } => {
+            let dev = members
+                .iter()
+                .find(|m| m.name == "dev")
+                .expect("dev member");
+            assert_eq!(
+                dev.terminal_state,
+                Some(crate::session::message::TerminalState::Alive),
+                "a member whose room PTY is running shows terminal_state=alive"
+            );
+            let ryan = members
+                .iter()
+                .find(|m| m.name == "ryan")
+                .expect("ryan member");
+            assert_eq!(
+                ryan.terminal_state, None,
+                "a member with no room has no terminal_state (the dot keeps its normal presence)"
+            );
         }
         _ => panic!("expected Roster variant"),
     }

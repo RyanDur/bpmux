@@ -30,6 +30,11 @@ const PRESENCE_LABEL: Record<Presence, string> = {
   offline: 'offline'
 }
 
+const DOT_LABEL: Record<string, string> = {
+  dead: 'terminal exited',
+  'needs-input': 'needs input'
+}
+
 const groupKey = (names: readonly string[]): string => [...names].sort().join('+')
 
 const isAllMembersGroup = (names: readonly string[], combinableRoles: readonly string[]): boolean =>
@@ -108,6 +113,12 @@ const Sidebar = ({
             !allView && recipient !== null && recipient.length === 1 && recipient[0] === role
           const status = presence.get(role) ?? 'offline'
           const statusLabel = PRESENCE_LABEL[status]
+          const terminalState = mirrorRoster?.find(
+            (m) => m.name === role || m.identity.split(':')[0] === role
+          )?.terminal_state
+          const needsInput = status === 'help' || status === 'blocked'
+          const dotState = terminalState === 'dead' ? 'dead' : needsInput ? 'needs-input' : status
+          const dotLabel = DOT_LABEL[dotState] ?? statusLabel
           return (
             <button
               key={role}
@@ -118,11 +129,12 @@ const Sidebar = ({
               onClick={() => goDirect(role)}
             >
               <i
-                className={`presence-dot presence-dot--${status}`}
+                className={`presence-dot presence-dot--${dotState}`}
                 data-test={`presence-dot-${role}`}
                 data-presence={status}
-                aria-label={`${role} ${statusLabel}`}
-                title={`${role} — ${statusLabel}`}
+                data-terminal-state={terminalState ?? undefined}
+                aria-label={`${role} ${dotLabel}`}
+                title={`${role} — ${dotLabel}`}
               />
               {role}
               {status !== 'offline' && status !== 'available' && (

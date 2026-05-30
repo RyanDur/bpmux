@@ -43,6 +43,14 @@ impl LivePtyRegistry {
             .map(|live| live.write_input(bytes).is_ok())
             .unwrap_or(false)
     }
+
+    pub fn liveness(&self, role: &str) -> Option<bool> {
+        self.rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(role)
+            .map(|live| super::spawn::process_alive(live.pid()))
+    }
 }
 
 #[cfg(test)]
@@ -136,5 +144,23 @@ mod tests {
     fn write_to_absent_role_is_false() {
         let registry = LivePtyRegistry::new();
         assert!(!registry.write_to("nobody", b"x"));
+    }
+
+    #[test]
+    fn liveness_is_some_alive_for_a_running_room_and_none_for_absent() {
+        let registry = LivePtyRegistry::new();
+        let live = spawn_pty_retained("/bin/sh", &["-c".into(), "sleep 2".into()]).unwrap();
+        registry.insert("dev".to_string(), live);
+
+        assert_eq!(
+            registry.liveness("dev"),
+            Some(true),
+            "a running room's process is alive"
+        );
+        assert_eq!(
+            registry.liveness("nobody"),
+            None,
+            "a role with no room has no terminal-state"
+        );
     }
 }
