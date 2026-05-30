@@ -76,6 +76,7 @@ interface ServiceState {
   historyAbort: AbortController | null
   listeners: Set<() => void>
   liveMessageListeners: Set<(m: ChatMessage) => void>
+  ptyOutputListeners: Map<string, Set<(data: string) => void>>
 }
 
 const freshState = (): ServiceState => ({
@@ -89,7 +90,8 @@ const freshState = (): ServiceState => ({
   awaitingReconnect: false,
   historyAbort: null,
   listeners: new Set(),
-  liveMessageListeners: new Set()
+  liveMessageListeners: new Set(),
+  ptyOutputListeners: new Map()
 })
 
 let state: ServiceState = freshState()
@@ -101,6 +103,12 @@ const patch = (changes: Partial<WsSnapshot>): void => {
 
 const emitLiveMessage = (msg: ChatMessage): void => {
   for (const handler of state.liveMessageListeners) handler(msg)
+}
+
+const emitPtyOutput = (role: string, data: string): void => {
+  const handlers = state.ptyOutputListeners.get(role)
+  if (!handlers) return
+  for (const handler of handlers) handler(data)
 }
 
 const sendJson = (msg: ClientMessage): void => {
@@ -161,6 +169,9 @@ const handleServerMessage = (raw: string): void => {
     }
     case 'error':
       console.error('bpmux ws: server error', parsed.reason)
+      break
+    case 'pty_output':
+      emitPtyOutput(parsed.role, parsed.data)
       break
     case 'pong':
       break
@@ -363,9 +374,32 @@ export const subscribeWsLiveMessages = (handler: (m: ChatMessage) => void): (() 
   }
 }
 
+export const subscribeWsPtyOutput = (
+  role: string,
+  handler: (data: string) => void
+): (() => void) => {
+  let handlers = state.ptyOutputListeners.get(role)
+  if (!handlers) {
+    handlers = new Set()
+    state.ptyOutputListeners.set(role, handlers)
+  }
+  handlers.add(handler)
+  return () => {
+    handlers.delete(handler)
+  }
+}
+
+export const sendPtySubscribe = (role: string): void => {
+  sendJson({ type: 'pty_subscribe', role })
+}
+
 export const getWsSnapshot = (): WsSnapshot => state.snapshot
 
 export const __resetWsForTest = (): void => {
   teardownSocket()
   state = freshState()
+}
+
+export const __deliverServerFrameForTest = (raw: string): void => {
+  handleServerMessage(raw)
 }

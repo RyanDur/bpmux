@@ -107,6 +107,7 @@ pub async fn run_server(
         );
     }
     let orchestrator = std::sync::Arc::new(orchestrator_inner);
+    let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
     orchestrator.spawn_action_drainer(action_rx);
     orchestrator.add_ci_listener(std::sync::Arc::new(
         crate::orchestrator::CiStateStoreWriter::new(ci_state_store.clone()),
@@ -201,6 +202,10 @@ pub async fn run_server(
         .route(
             "/api/roster",
             axum::routing::get(transport::rest::get_roster),
+        )
+        .route(
+            "/api/rooms/{role}/spawn",
+            axum::routing::post(transport::rest::post_room_spawn),
         )
         .route(
             "/api/reactions",
@@ -341,6 +346,7 @@ pub async fn run_server(
         .layer(axum::Extension(electron_capture_lock))
         .layer(axum::Extension(test_refresh))
         .layer(axum::Extension(orchestrator.clone()))
+        .layer(axum::Extension(pty_registry.clone()))
         .layer(
             tower_http::cors::CorsLayer::new()
                 .allow_origin(tower_http::cors::Any)

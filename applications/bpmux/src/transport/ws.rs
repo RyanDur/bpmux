@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::extract::State;
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::response::Response;
+use base64::Engine;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
@@ -45,8 +46,9 @@ pub async fn ws_handler(
     axum::Extension(orchestrator): axum::Extension<
         Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
     >,
+    axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
 ) -> Response {
-    ws.on_upgrade(move |socket| handle_ws(socket, session, orchestrator))
+    ws.on_upgrade(move |socket| handle_ws(socket, session, orchestrator, pty_registry))
 }
 
 async fn handle_ws(
@@ -55,9 +57,10 @@ async fn handle_ws(
     orchestrator: Arc<
         crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
     >,
+    pty_registry: Arc<crate::room::LivePtyRegistry>,
 ) {
     let (tx, rx) = socket.split();
-    if let Err(e) = run_ws_session(tx, rx, session, orchestrator).await {
+    if let Err(e) = run_ws_session(tx, rx, session, orchestrator, pty_registry).await {
         crate::session::diag::log_diag(&format!("ws: session error: {e}"));
     }
 }
@@ -69,6 +72,7 @@ async fn run_ws_session(
     orchestrator: Arc<
         crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
     >,
+    pty_registry: Arc<crate::room::LivePtyRegistry>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut identity = wait_for_identify(&mut tx, &mut rx).await?;
     session.peer_connected();
@@ -88,6 +92,8 @@ async fn run_ws_session(
     send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;
+    let (pty_tx, mut pty_rx) = tokio::sync::mpsc::unbounded_channel::<(String, Vec<u8>)>();
+    let mut pty_stop: Option<Arc<std::sync::atomic::AtomicBool>> = None;
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
         loop {
             tokio::select! {
@@ -125,10 +131,16 @@ async fn run_ws_session(
                         break;
                     }
                 }
+                pty_chunk = pty_rx.recv() => {
+                    if let Some((role, bytes)) = pty_chunk {
+                        let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
+                        send_json(&mut tx, &ServerMessage::PtyOutput { role, data }).await?;
+                    }
+                }
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
-                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx).await? {
+                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx, &pty_registry, &pty_tx, &mut pty_stop).await? {
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
                                 session.roster_leave(&identity);
                                 dispatch_roster_leave(&orchestrator, &identity).await;
@@ -316,6 +328,9 @@ async fn handle_client_message(
     identity: &str,
     session: &session::Session,
     tx: &mut SplitSink<WebSocket, WsMessage>,
+    pty_registry: &crate::room::LivePtyRegistry,
+    pty_tx: &tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
+    pty_stop: &mut Option<Arc<std::sync::atomic::AtomicBool>>,
 ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
     if !message_size_ok(text) {
         crate::session::diag::log_diag(&format!(
@@ -369,6 +384,35 @@ async fn handle_client_message(
                 },
             )
             .await?;
+        }
+        Ok(ClientMessage::PtySubscribe { role }) => {
+            if let Some(prev) = pty_stop.take() {
+                prev.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+            if let Some(Ok(reader)) = pty_registry.reader_for(&role) {
+                let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+                *pty_stop = Some(stop.clone());
+                let sink = pty_tx.clone();
+                std::thread::spawn(move || {
+                    use std::io::Read;
+                    let mut reader = reader;
+                    let mut buf = [0u8; 4096];
+                    loop {
+                        if stop.load(std::sync::atomic::Ordering::Relaxed) {
+                            break;
+                        }
+                        match reader.read(&mut buf) {
+                            Ok(0) => break,
+                            Ok(n) => {
+                                if sink.send((role.clone(), buf[..n].to_vec())).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(_) => break,
+                        }
+                    }
+                });
+            }
         }
         Err(e) => {
             send_json(

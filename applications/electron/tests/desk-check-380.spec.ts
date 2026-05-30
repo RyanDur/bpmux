@@ -105,11 +105,7 @@ test.describe('desk-check #380 inline @mention pills', () => {
     await app.close()
   })
 
-  test('clicking a mention pill shifts chat scope to DM with that role', async () => {
-    // Falsifier (c): clicking the pill doesn't scope chat. The
-    // onMention handler routes through MessageList → Chat →
-    // setRecipient, same path as sidebar click (#332). After the
-    // click, the chat-scope banner ("DM → dev") must appear.
+  test('clicking a mention pill opens that role terminal', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
@@ -117,9 +113,7 @@ test.describe('desk-check #380 inline @mention pills', () => {
     const devMention = win.locator('[data-test="message-mention"][data-role="dev"]').first()
     await devMention.click()
 
-    const scopeBanner = win.locator('.chat-scope')
-    await expect(scopeBanner).toBeVisible({ timeout: 3_000 })
-    await expect(scopeBanner).toContainText('dev')
+    await expect(win.locator('[data-test="terminal-dev"]')).toBeVisible({ timeout: 10_000 })
 
     await app.close()
   })

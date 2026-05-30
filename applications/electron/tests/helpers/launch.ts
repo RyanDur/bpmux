@@ -189,6 +189,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       BPMUX_BOARD_OUTBOX_PATH: defaultBoardOutboxPath,
       BPMUX_LOG: defaultLogPath,
       BPMUX_BINARY_WATCH_PATH: defaultInstalledBinaryPath,
+      BPMUX_ROOM_AGENT: '/bin/echo',
       // #1290 Part B: enable the test-seed endpoints
       // (/api/test/seed_messages, /api/test/seed_pins,
       // /api/test/seed_reactions). Structural gate — without this var

@@ -14,3 +14,16 @@ class BrowserCompatWebSocket extends RealWebSocket {
 
 const w = globalThis as unknown as { WebSocket: typeof RealWebSocket }
 w.WebSocket = BrowserCompatWebSocket as unknown as typeof RealWebSocket
+
+const mediaHost = globalThis as unknown as { matchMedia?: (query: string) => MediaQueryList }
+mediaHost.matchMedia = (query: string): MediaQueryList =>
+  ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false
+  }) as unknown as MediaQueryList

@@ -1,0 +1,15 @@
+.terminal-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+  padding: 0.5rem;
+  background: var(--bg-base);
+}
+
+.terminal-view .xterm {
+  flex: 1 1 auto;
+  height: 100%;
+  width: 100%;
+}

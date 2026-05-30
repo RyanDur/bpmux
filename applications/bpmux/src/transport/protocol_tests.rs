@@ -43,6 +43,34 @@ fn deserializes_send() {
 }
 
 #[test]
+fn deserializes_pty_subscribe() {
+    let json = r#"{"type": "pty_subscribe", "role": "dev"}"#;
+    let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+    match msg {
+        ClientMessage::PtySubscribe { role } => assert_eq!(role, "dev"),
+        other => panic!("expected PtySubscribe, got {other:?}"),
+    }
+}
+
+#[test]
+fn pty_output_serializes_with_distinct_type_role_and_data() {
+    let msg = ServerMessage::PtyOutput {
+        role: "dev".to_string(),
+        data: "G1szMW1yZWQ=".to_string(),
+    };
+    let json = serde_json::to_string(&msg).expect("serialize");
+    assert!(
+        json.contains(r#""type":"pty_output""#),
+        "distinct frame type: {json}"
+    );
+    assert!(json.contains(r#""role":"dev""#), "carries role: {json}");
+    assert!(
+        json.contains(r#""data":"G1szMW1yZWQ=""#),
+        "carries data: {json}"
+    );
+}
+
+#[test]
 fn deserializes_send_with_to() {
     let json = r#"{"type": "send", "text": "hey", "to": ["pm", "designer"]}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");

@@ -25,6 +25,46 @@ pub fn spawn_pty(command: &str, args: &[String], env: &[(&str, &str)]) -> std::i
     Ok(pid)
 }
 
+pub struct LivePty {
+    pid: u32,
+    master: Box<dyn portable_pty::MasterPty + Send>,
+    _child: Box<dyn portable_pty::Child + Send + Sync>,
+}
+
+impl LivePty {
+    pub fn pid(&self) -> u32 {
+        self.pid
+    }
+
+    pub fn reader(&self) -> std::io::Result<Box<dyn std::io::Read + Send>> {
+        self.master.try_clone_reader().map_err(io_other)
+    }
+}
+
+pub fn spawn_pty_retained(command: &str, args: &[String]) -> std::io::Result<LivePty> {
+    let system = native_pty_system();
+    let pair = system
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(io_other)?;
+    let mut cmd = CommandBuilder::new(command);
+    for a in args {
+        cmd.arg(a);
+    }
+    let child = pair.slave.spawn_command(cmd).map_err(io_other)?;
+    drop(pair.slave);
+    let pid = child.process_id().unwrap_or(0);
+    Ok(LivePty {
+        pid,
+        master: pair.master,
+        _child: child,
+    })
+}
+
 pub fn spawn_captured(
     command: &str,
     args: &[String],
@@ -140,6 +180,36 @@ mod tests {
         assert!(
             contents.contains("BPMUX_ROLE=pm"),
             "the room-role must reach the spawned child via BPMUX_ROLE so its bridge adopts the room-identity; got {contents:?}"
+        );
+    }
+
+    #[test]
+    fn spawn_pty_retained_reads_child_output_through_the_kept_master() {
+        use std::io::Read;
+        let live = spawn_pty_retained(
+            "/bin/sh",
+            &["-c".into(), "printf 'hello-retained-pty'".into()],
+        )
+        .unwrap();
+        assert!(live.pid() > 0, "retained-pty spawn must report a child PID");
+        let mut reader = live.reader().unwrap();
+        let mut collected = String::new();
+        let mut buf = [0u8; 1024];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
+                    if collected.contains("hello-retained-pty") {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        assert!(
+            collected.contains("hello-retained-pty"),
+            "the RETAINED master must yield the child's live PTY output (not dropped like spawn_pty); got {collected:?}"
         );
     }
 }

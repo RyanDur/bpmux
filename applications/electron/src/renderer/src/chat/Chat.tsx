@@ -7,6 +7,7 @@ import type { ChatMessage, ConnectionStatus, ReactionAggregateWire } from '../tr
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
+import { TerminalView } from './TerminalView'
 import './Chat.css'
 
 interface Props {
@@ -91,6 +92,8 @@ const Chat = ({
       ? `${recipient.length === 1 ? 'DM' : 'GROUP'} → ${recipient.join(' + ')}`
       : null
 
+  const terminalRole = !allView && recipient && recipient.length === 1 ? recipient[0] : null
+
   return (
     <section className="chat" data-test="chat-region">
       {showReconnect && (
@@ -98,45 +101,51 @@ const Chat = ({
           {status === 'connecting' ? 'connecting…' : 'reconnecting…'}
         </output>
       )}
-      {scopeLabel && (
-        <aside className="chat-scope" aria-live="polite">
-          <small>{scopeLabel}</small>
-        </aside>
+      {terminalRole ? (
+        <TerminalView role={terminalRole} />
+      ) : (
+        <>
+          {scopeLabel && (
+            <aside className="chat-scope" aria-live="polite">
+              <small>{scopeLabel}</small>
+            </aside>
+          )}
+          <FilterPills filter={filter} hiddenCounts={hiddenCounts} visibleCounts={visibleCounts} />
+          <MessageList
+            messages={messages}
+            visibleClasses={filter.visible}
+            reactionsByMessage={reactions.byMessage}
+            onToggleReaction={(key, emoji) => {
+              void reactions.toggle(key, emoji, RENDERER_IDENTITY)
+            }}
+            viewer={RENDERER_IDENTITY}
+            recipient={recipient}
+            allView={allView}
+            onSelectRecipient={onSelectRecipient}
+            apiBase={apiBase}
+            authToken={authToken}
+            loadOlder={loadOlder}
+            isLoadingOlder={isLoadingOlder}
+            hasMoreOlder={hasMoreOlder}
+            hasError={hasError}
+            onAtBottomChange={onAtBottomChange}
+          />
+          <Metrics
+            apiBase={apiBase}
+            authToken={authToken}
+            onClose={onCloseMetrics}
+            open={metricsOpen}
+          />
+          <Input
+            key={allView ? 'all' : reactionsChannel}
+            onSend={handleSend}
+            channelKey={allView ? 'all' : reactionsChannel}
+            placeholder={
+              recipient && recipient.length > 0 ? `message ${recipient.join(' + ')}` : undefined
+            }
+          />
+        </>
       )}
-      <FilterPills filter={filter} hiddenCounts={hiddenCounts} visibleCounts={visibleCounts} />
-      <MessageList
-        messages={messages}
-        visibleClasses={filter.visible}
-        reactionsByMessage={reactions.byMessage}
-        onToggleReaction={(key, emoji) => {
-          void reactions.toggle(key, emoji, RENDERER_IDENTITY)
-        }}
-        viewer={RENDERER_IDENTITY}
-        recipient={recipient}
-        allView={allView}
-        onSelectRecipient={onSelectRecipient}
-        apiBase={apiBase}
-        authToken={authToken}
-        loadOlder={loadOlder}
-        isLoadingOlder={isLoadingOlder}
-        hasMoreOlder={hasMoreOlder}
-        hasError={hasError}
-        onAtBottomChange={onAtBottomChange}
-      />
-      <Metrics
-        apiBase={apiBase}
-        authToken={authToken}
-        onClose={onCloseMetrics}
-        open={metricsOpen}
-      />
-      <Input
-        key={allView ? 'all' : reactionsChannel}
-        onSend={handleSend}
-        channelKey={allView ? 'all' : reactionsChannel}
-        placeholder={
-          recipient && recipient.length > 0 ? `message ${recipient.join(' + ')}` : undefined
-        }
-      />
     </section>
   )
 }

@@ -3,10 +3,12 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 pub mod file_storage;
+pub mod live_registry;
 pub mod spawn;
 
 pub use file_storage::FileRoomStorage;
-pub use spawn::{spawn_captured, spawn_pty, terminate};
+pub use live_registry::LivePtyRegistry;
+pub use spawn::{LivePty, spawn_captured, spawn_pty, spawn_pty_retained, terminate};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Room {

@@ -102,6 +102,7 @@ export default defineConfig(
     files: [
       'src/renderer/src/chat/Reactions.tsx', // pickerRef/addButtonRef/buttonRef — DOM .contains + getBoundingClientRect (click-outside + popover anchor); no declarative API
       'src/renderer/src/chat/Input.tsx', // textareaRef — DOM .focus + .setSelectionRange (caret); no declarative API
+      'src/renderer/src/chat/TerminalView.tsx', // containerRef — xterm.open() mounts the terminal into a DOM element; no declarative API
       'src/renderer/src/board/DrillIn.tsx', // articleRef — DOM .focus on mount; no declarative API
       'src/renderer/src/board/DrillInActions.tsx', // textareaRef .focus + rejectDialogRef .showModal/.close (modal — Ryan's exemplar); no declarative API
       'src/renderer/src/board/Timeline.tsx', // detailsRef — DOM .open + .scrollIntoView; no declarative API

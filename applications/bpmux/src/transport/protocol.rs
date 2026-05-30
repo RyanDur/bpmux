@@ -25,6 +25,8 @@ pub enum ClientMessage {
     Ping,
     #[serde(rename = "rename")]
     Rename { name: String },
+    #[serde(rename = "pty_subscribe")]
+    PtySubscribe { role: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,6 +56,8 @@ pub enum ServerMessage {
     Error { reason: String },
     #[serde(rename = "pong")]
     Pong,
+    #[serde(rename = "pty_output")]
+    PtyOutput { role: String, data: String },
 }
 
 impl From<Message> for ServerMessage {

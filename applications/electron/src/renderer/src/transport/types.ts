@@ -76,7 +76,18 @@ export interface ServerPong {
   type: 'pong'
 }
 
-export type ServerMessage = ServerWelcome | ServerChatMessage | ServerError | ServerPong
+export interface ServerPtyOutput {
+  type: 'pty_output'
+  role: string
+  data: string
+}
+
+export type ServerMessage =
+  | ServerWelcome
+  | ServerChatMessage
+  | ServerError
+  | ServerPong
+  | ServerPtyOutput
 
 export interface ClientIdentify {
   type: 'identify'
@@ -96,7 +107,12 @@ export interface ClientPing {
   type: 'ping'
 }
 
-export type ClientMessage = ClientIdentify | ClientSend | ClientPing
+export interface ClientPtySubscribe {
+  type: 'pty_subscribe'
+  role: string
+}
+
+export type ClientMessage = ClientIdentify | ClientSend | ClientPing | ClientPtySubscribe
 
 export interface ChatMessage {
   id: string

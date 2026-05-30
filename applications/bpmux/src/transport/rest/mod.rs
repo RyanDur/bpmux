@@ -7,6 +7,7 @@ mod lessons;
 mod messages;
 mod metrics;
 mod reactions;
+mod room;
 mod roster;
 mod search;
 mod shared;
@@ -34,6 +35,7 @@ pub use reactions::{ReactionToggle, ReactionsChannelQuery, get_reactions, post_r
 pub(crate) use reactions::{
     build_reaction_event_text_with_excerpt, find_message_excerpt, truncate_excerpt,
 };
+pub use room::post_room_spawn;
 pub use roster::{
     RosterEntry, get_roster, get_sync_status, post_acknowledge_dropped, post_force_sync,
 };
