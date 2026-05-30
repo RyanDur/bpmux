@@ -415,10 +415,8 @@ async fn handle_client_message(
             }
         }
         Ok(ClientMessage::PtyInput { role, data }) => {
-            if let Some(Ok(mut writer)) = pty_registry.writer_for(&role)
-                && let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data)
-            {
-                let _ = writer.write_all(&bytes).and_then(|()| writer.flush());
+            if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data) {
+                pty_registry.write_to(&role, &bytes);
             }
         }
         Err(e) => {

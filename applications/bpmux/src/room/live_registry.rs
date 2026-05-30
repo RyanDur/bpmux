@@ -35,15 +35,13 @@ impl LivePtyRegistry {
             .map(|live| live.reader())
     }
 
-    pub fn writer_for(
-        &self,
-        role: &str,
-    ) -> Option<std::io::Result<Box<dyn std::io::Write + Send>>> {
+    pub fn write_to(&self, role: &str, bytes: &[u8]) -> bool {
         self.rooms
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .get(role)
-            .map(|live| live.writer())
+            .map(|live| live.write_input(bytes).is_ok())
+            .unwrap_or(false)
     }
 }
 
@@ -98,8 +96,7 @@ mod tests {
     }
 
     #[test]
-    fn registry_write_reaches_the_same_live_session_stdin() {
-        use std::io::Write;
+    fn registry_write_reaches_the_same_live_session_stdin_across_multiple_writes() {
         let registry = LivePtyRegistry::new();
         let live = spawn_pty_retained(
             "/bin/sh",
@@ -108,12 +105,11 @@ mod tests {
         .unwrap();
         registry.insert("dev".to_string(), live);
 
-        let mut writer = registry
-            .writer_for("dev")
-            .expect("dev room present")
-            .unwrap();
-        writer.write_all(b"ping-stdin\n").unwrap();
-        writer.flush().unwrap();
+        assert!(registry.write_to("dev", b"ping"));
+        assert!(
+            registry.write_to("dev", b"-stdin\n"),
+            "the SECOND write must also reach stdin — the writer is taken once at spawn and reused, not re-taken per write"
+        );
 
         let mut reader = registry.reader_for("dev").expect("dev present").unwrap();
         let mut collected = String::new();
@@ -137,8 +133,8 @@ mod tests {
     }
 
     #[test]
-    fn writer_for_absent_role_is_none() {
+    fn write_to_absent_role_is_false() {
         let registry = LivePtyRegistry::new();
-        assert!(registry.writer_for("nobody").is_none());
+        assert!(!registry.write_to("nobody", b"x"));
     }
 }

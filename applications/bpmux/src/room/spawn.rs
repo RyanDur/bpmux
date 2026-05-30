@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
 pub fn spawn_pty(command: &str, args: &[String], env: &[(&str, &str)]) -> std::io::Result<u32> {
@@ -28,6 +30,7 @@ pub fn spawn_pty(command: &str, args: &[String], env: &[(&str, &str)]) -> std::i
 pub struct LivePty {
     pid: u32,
     master: Box<dyn portable_pty::MasterPty + Send>,
+    writer: Mutex<Box<dyn std::io::Write + Send>>,
     _child: Box<dyn portable_pty::Child + Send + Sync>,
 }
 
@@ -40,8 +43,11 @@ impl LivePty {
         self.master.try_clone_reader().map_err(io_other)
     }
 
-    pub fn writer(&self) -> std::io::Result<Box<dyn std::io::Write + Send>> {
-        self.master.take_writer().map_err(io_other)
+    pub fn write_input(&self, bytes: &[u8]) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut writer = self.writer.lock().unwrap_or_else(|e| e.into_inner());
+        writer.write_all(bytes)?;
+        writer.flush()
     }
 }
 
@@ -62,9 +68,11 @@ pub fn spawn_pty_retained(command: &str, args: &[String]) -> std::io::Result<Liv
     let child = pair.slave.spawn_command(cmd).map_err(io_other)?;
     drop(pair.slave);
     let pid = child.process_id().unwrap_or(0);
+    let writer = pair.master.take_writer().map_err(io_other)?;
     Ok(LivePty {
         pid,
         master: pair.master,
+        writer: Mutex::new(writer),
         _child: child,
     })
 }
