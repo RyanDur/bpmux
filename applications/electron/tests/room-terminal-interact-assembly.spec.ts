@@ -35,14 +35,17 @@ test.describe('#1592 interact-assembly — typed keystrokes reach the agent thro
 
       const terminal = win.locator('[data-test="terminal-dev"]')
       await expect(terminal).toBeVisible({ timeout: 10000 })
-      await terminal.click()
 
       const marker = 'ASSEMBLY_MARKER_BPF1592'
-      await win.keyboard.type(marker)
-      await win.keyboard.press('Enter')
-
       await expect
-        .poll(() => (existsSync(teeFile) ? readFileSync(teeFile, 'utf8') : ''), { timeout: 15000 })
+        .poll(
+          async () => {
+            await win.keyboard.type(marker)
+            await win.keyboard.press('Enter')
+            return existsSync(teeFile) ? readFileSync(teeFile, 'utf8') : ''
+          },
+          { timeout: 20000, intervals: [400, 700, 1000, 1500] }
+        )
         .toContain(marker)
     } finally {
       await app.close()

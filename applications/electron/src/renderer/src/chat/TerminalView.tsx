@@ -48,6 +48,7 @@ export const TerminalView = ({ role }: TerminalViewProps): React.JSX.Element => 
     term.loadAddon(fit)
     term.open(container)
     fit.fit()
+    term.focus()
 
     const unsubscribe = subscribeWsPtyOutput(role, (data) => {
       term.write(decodePtyData(data))
