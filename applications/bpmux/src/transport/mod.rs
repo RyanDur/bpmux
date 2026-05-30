@@ -32,6 +32,8 @@ mod protocol_tests;
 #[cfg(test)]
 mod rest_tests;
 #[cfg(test)]
+mod room_to_broadcast_routing_tests;
+#[cfg(test)]
 mod test_routes_mock_octocrab_tests;
 #[cfg(test)]
 mod test_routes_tests;

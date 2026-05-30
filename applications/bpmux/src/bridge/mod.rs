@@ -70,8 +70,16 @@ pub struct BridgeServer {
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
+    let role_env = std::env::var("BPMUX_ROLE").ok();
+    resolve_bridge_name_with_role(raw, role_env.as_deref())
+}
+
+pub(crate) fn resolve_bridge_name_with_role(raw: &str, role_env: Option<&str>) -> String {
     let is_placeholder = raw.starts_with("${") && raw.ends_with('}');
     if raw.is_empty() || raw == "claude-code" || is_placeholder {
+        if let Some(role) = role_env.filter(|r| !r.is_empty()) {
+            return role.to_string();
+        }
         let suffix: String = uuid::Uuid::new_v4().to_string()[..4].to_string();
         format!("agent-{suffix}")
     } else {
