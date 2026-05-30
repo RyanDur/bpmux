@@ -95,7 +95,7 @@
     }
 
     &.presence-dot--needs-input {
-      background: var(--accent-warning);
+      background: var(--accent-info);
     }
 
     &.presence-dot--dead {

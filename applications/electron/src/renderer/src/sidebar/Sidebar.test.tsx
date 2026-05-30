@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs'
 import { describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Sidebar from './Sidebar'
@@ -443,5 +444,23 @@ describe('#1581 — per-room terminal-state on the existing presence dot', () =>
     const html = renderHelp({ terminal_state: 'dead' })
     expect(html).toContain('presence-dot--dead" data-test="presence-dot-dev"')
     expect(html).not.toContain('presence-dot--needs-input" data-test="presence-dot-dev"')
+  })
+
+  test('needs-input resolves to a color-token DISTINCT from every normal presence dot', () => {
+    const css = readFileSync('src/renderer/src/sidebar/Sidebar.css', 'utf8')
+    const tokenFor = (cls: string): string => {
+      const match = css.match(
+        new RegExp(`presence-dot--${cls}\\s*\\{[^}]*?background:\\s*var\\((--[a-z-]+)\\)`)
+      )
+      if (!match) throw new Error(`no background token found for presence-dot--${cls}`)
+      return match[1]
+    }
+    const needsInput = tokenFor('needs-input')
+    for (const normal of ['available', 'busy', 'idle', 'offline']) {
+      expect(
+        needsInput,
+        `needs-input must NOT share a color-token with the normal "${normal}" dot — a blocked agent has to be scannable against the common dots`
+      ).not.toBe(tokenFor(normal))
+    }
   })
 })
