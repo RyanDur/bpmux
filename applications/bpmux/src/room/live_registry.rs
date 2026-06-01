@@ -66,6 +66,8 @@ mod tests {
         let live = spawn_pty_retained(
             "/bin/sh",
             &["-c".into(), "printf 'registry-stream-marker'".into()],
+            None,
+            &[],
         )
         .unwrap();
         registry.insert("dev".to_string(), live);
@@ -109,6 +111,8 @@ mod tests {
         let live = spawn_pty_retained(
             "/bin/sh",
             &["-c".into(), "read line; printf 'GOT:%s' \"$line\"".into()],
+            None,
+            &[],
         )
         .unwrap();
         registry.insert("dev".to_string(), live);
@@ -149,7 +153,8 @@ mod tests {
     #[test]
     fn liveness_is_some_alive_for_a_running_room_and_none_for_absent() {
         let registry = LivePtyRegistry::new();
-        let live = spawn_pty_retained("/bin/sh", &["-c".into(), "sleep 2".into()]).unwrap();
+        let live =
+            spawn_pty_retained("/bin/sh", &["-c".into(), "sleep 2".into()], None, &[]).unwrap();
         registry.insert("dev".to_string(), live);
 
         assert_eq!(
@@ -190,10 +195,20 @@ mod tests {
     #[test]
     fn two_rooms_are_isolated_no_cross_bleed_and_both_coexist() {
         let registry = LivePtyRegistry::new();
-        let dev = spawn_pty_retained("/bin/sh", &["-c".into(), "printf 'DEV-ROOM-OUTPUT'".into()])
-            .unwrap();
-        let pm = spawn_pty_retained("/bin/sh", &["-c".into(), "printf 'PM-ROOM-OUTPUT'".into()])
-            .unwrap();
+        let dev = spawn_pty_retained(
+            "/bin/sh",
+            &["-c".into(), "printf 'DEV-ROOM-OUTPUT'".into()],
+            None,
+            &[],
+        )
+        .unwrap();
+        let pm = spawn_pty_retained(
+            "/bin/sh",
+            &["-c".into(), "printf 'PM-ROOM-OUTPUT'".into()],
+            None,
+            &[],
+        )
+        .unwrap();
         registry.insert("dev".to_string(), dev);
         registry.insert("pm".to_string(), pm);
 

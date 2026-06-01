@@ -123,7 +123,8 @@ async fn roster_member_with_a_live_room_carries_terminal_state_alive() {
     let (session, mut rx, _dir) = fresh_session();
     let registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
     let live =
-        crate::room::spawn_pty_retained("/bin/sh", &["-c".into(), "sleep 2".into()]).unwrap();
+        crate::room::spawn_pty_retained("/bin/sh", &["-c".into(), "sleep 2".into()], None, &[])
+            .unwrap();
     registry.insert("dev".to_string(), live);
     let listener = RosterSessionBroadcaster::new(session, registry);
     let members = vec![

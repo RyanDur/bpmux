@@ -18,8 +18,17 @@ pub async fn post_room_spawn(
             r#"{"spawned":false,"already":true}"#.to_string(),
         );
     }
-    let agent = std::env::var("BPMUX_ROOM_AGENT").unwrap_or_else(|_| "claude-code".to_string());
-    match crate::room::spawn_pty_retained(&agent, &[]) {
+    let room_agent = std::env::var("BPMUX_ROOM_AGENT").ok();
+    let shell = std::env::var("SHELL").ok();
+    let (command, args) =
+        crate::room::resolve_terminal_spawn(room_agent.as_deref(), shell.as_deref());
+    let home = std::env::var("HOME").ok();
+    match crate::room::spawn_pty_retained(
+        &command,
+        &args,
+        home.as_deref().map(std::path::Path::new),
+        &[("TERM", "xterm-256color")],
+    ) {
         Ok(live) => {
             let pid = live.pid();
             pty_registry.insert(role, live);

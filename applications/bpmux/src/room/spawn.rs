@@ -51,7 +51,25 @@ impl LivePty {
     }
 }
 
-pub fn spawn_pty_retained(command: &str, args: &[String]) -> std::io::Result<LivePty> {
+pub fn resolve_terminal_spawn(
+    room_agent: Option<&str>,
+    shell: Option<&str>,
+) -> (String, Vec<String>) {
+    if let Some(agent) = room_agent.filter(|s| !s.is_empty()) {
+        return (agent.to_string(), Vec::new());
+    }
+    if let Some(sh) = shell.filter(|s| !s.is_empty()) {
+        return (sh.to_string(), vec!["-l".to_string()]);
+    }
+    ("/bin/sh".to_string(), Vec::new())
+}
+
+pub fn spawn_pty_retained(
+    command: &str,
+    args: &[String],
+    cwd: Option<&std::path::Path>,
+    env: &[(&str, &str)],
+) -> std::io::Result<LivePty> {
     let system = native_pty_system();
     let pair = system
         .openpty(PtySize {
@@ -64,6 +82,12 @@ pub fn spawn_pty_retained(command: &str, args: &[String]) -> std::io::Result<Liv
     let mut cmd = CommandBuilder::new(command);
     for a in args {
         cmd.arg(a);
+    }
+    if let Some(dir) = cwd {
+        cmd.cwd(dir);
+    }
+    for (key, value) in env {
+        cmd.env(key, value);
     }
     let child = pair.slave.spawn_command(cmd).map_err(io_other)?;
     drop(pair.slave);
@@ -201,6 +225,8 @@ mod tests {
         let live = spawn_pty_retained(
             "/bin/sh",
             &["-c".into(), "printf 'hello-retained-pty'".into()],
+            None,
+            &[],
         )
         .unwrap();
         assert!(live.pid() > 0, "retained-pty spawn must report a child PID");
@@ -223,5 +249,85 @@ mod tests {
             collected.contains("hello-retained-pty"),
             "the RETAINED master must yield the child's live PTY output (not dropped like spawn_pty); got {collected:?}"
         );
+    }
+
+    #[test]
+    fn spawn_pty_retained_runs_a_real_shell_in_the_given_cwd_with_term() {
+        use std::io::Read;
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        let cwd =
+            std::env::temp_dir().join(format!("bpmux-shell-cwd-{}-{}", std::process::id(), "s1"));
+        std::fs::create_dir_all(&cwd).unwrap();
+        let marker = cwd.file_name().unwrap().to_string_lossy().to_string();
+        let live = spawn_pty_retained(
+            &shell,
+            &[],
+            Some(cwd.as_path()),
+            &[("TERM", "xterm-256color")],
+        )
+        .unwrap();
+        live.write_input(b"echo TERM=$TERM PWD=$PWD\n").unwrap();
+        let mut reader = live.reader().unwrap();
+        let mut collected = String::new();
+        let mut buf = [0u8; 1024];
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
+                    if collected.contains("TERM=xterm-256color") && collected.contains(&marker) {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        let _ = std::fs::remove_dir_all(&cwd);
+        assert!(
+            collected.contains("TERM=xterm-256color"),
+            "the spawned shell must run with TERM=xterm-256color (interpolated by a REAL shell, not the literal echo); got {collected:?}"
+        );
+        assert!(
+            collected.contains(&marker),
+            "the spawned shell must start in the given cwd (PWD must contain the spawn dir, not the backend's cwd); got {collected:?}"
+        );
+    }
+
+    #[test]
+    fn resolve_terminal_spawn_defaults_to_a_login_shell_when_no_override() {
+        let (command, args) = resolve_terminal_spawn(None, Some("/bin/zsh"));
+        assert_eq!(
+            command, "/bin/zsh",
+            "with no override the terminal spawns the user's $SHELL"
+        );
+        assert_eq!(
+            args,
+            vec!["-l".to_string()],
+            "the $SHELL spawns as a LOGIN shell so it loads the user's environment"
+        );
+    }
+
+    #[test]
+    fn resolve_terminal_spawn_honours_an_override_without_login_args() {
+        let (command, args) = resolve_terminal_spawn(Some("/bin/echo"), Some("/bin/zsh"));
+        assert_eq!(
+            command, "/bin/echo",
+            "an explicit BPMUX_ROOM_AGENT override wins over $SHELL"
+        );
+        assert!(
+            args.is_empty(),
+            "an override spawns as-is (no login args injected into an arbitrary target)"
+        );
+    }
+
+    #[test]
+    fn resolve_terminal_spawn_treats_empty_env_as_unset() {
+        let (command, args) = resolve_terminal_spawn(Some(""), Some(""));
+        assert_eq!(
+            command, "/bin/sh",
+            "empty env vars fall back to /bin/sh, never spawn \"\""
+        );
+        assert!(args.is_empty());
     }
 }
