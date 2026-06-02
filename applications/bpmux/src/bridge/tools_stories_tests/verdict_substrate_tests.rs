@@ -68,6 +68,24 @@ mod verdict_substrate_integration_1407 {
                 verdict: "verified".to_string(),
                 substrate_grounding: "src/foo.rs cite".to_string(),
                 ts: Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
+                grounded_head: None,
+            },
+        );
+        save(&session.dir, &store).unwrap();
+    }
+
+    fn seed_verdict_grounded_on(session: &Arc<Session>, number: u64, role: &str, head: &str) {
+        use crate::session::verdicts::{Verdict, add_or_replace_verdict, save};
+        let mut store = load(&session.dir);
+        add_or_replace_verdict(
+            &mut store,
+            Verdict {
+                story_number: number,
+                from_role: role.to_string(),
+                verdict: "verified".to_string(),
+                substrate_grounding: "src/foo.rs cite".to_string(),
+                ts: Utc::now(),
+                grounded_head: Some(head.to_string()),
             },
         );
         save(&session.dir, &store).unwrap();
@@ -167,6 +185,69 @@ mod verdict_substrate_integration_1407 {
         assert!(
             combined.contains("designer") && combined.contains("dev"),
             "both expired roles are addressed by name; got {combined}"
+        );
+    }
+
+    #[tokio::test]
+    async fn view_verdicts_marks_verdict_expired_when_grounded_head_moved() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        seed_verdict_grounded_on(
+            &session,
+            42,
+            "designer",
+            "a-frozen-sha-that-is-not-current-head",
+        );
+
+        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
+        let response =
+            crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, Some(&orch))
+                .await
+                .expect("view_verdicts succeeds");
+        let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
+        let records = parsed.as_array().expect("response is array");
+        assert_eq!(records.len(), 1);
+        assert_eq!(
+            records[0]["substrate_changed"],
+            serde_json::json!(true),
+            "a verdict grounded on a head that is no longer current reads substrate_changed; got {records:?}"
+        );
+        assert_eq!(
+            records[0]["fresh"],
+            serde_json::json!(false),
+            "head-moved expiry is visible at the read-axis, not only enforced at the gate; got {records:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn accept_blocks_and_reprompts_when_a_grounded_head_has_moved() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        seed_verdict_grounded_on(&session, 42, "designer", "stale-sha-x");
+        seed_verdict_grounded_on(&session, 42, "dev", "stale-sha-x");
+
+        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
+        let (ws_tx, captured) = connected_ws_sink_with_capture().await;
+        let err = handle_accept_story(&accept_args(42), "pm", &ws_tx, Some(&orch), Some(&session))
+            .await
+            .expect_err(
+                "a moved grounded-head must block accept even though the verdicts are time-fresh",
+            );
+        assert!(
+            err.contains("verdict-expired"),
+            "substrate-change expiry routes through the same expired path; got {err}"
+        );
+
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let messages = captured.lock().await;
+        let reprompts = messages
+            .iter()
+            .filter(|m| m.contains("submit_verdict"))
+            .count();
+        assert_eq!(
+            reprompts, 2,
+            "both head-stale roles are reprompted to re-cast against the new head; got {:?}",
+            *messages
         );
     }
 

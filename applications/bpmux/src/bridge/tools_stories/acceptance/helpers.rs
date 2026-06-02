@@ -52,6 +52,7 @@ pub(crate) fn recent_evidence_for_story(
         .map(|v| EvidenceMessage {
             from_role: v.from_role,
             ts: v.ts,
+            grounded_head: v.grounded_head,
         })
         .collect())
 }

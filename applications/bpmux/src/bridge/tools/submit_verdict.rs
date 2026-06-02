@@ -44,6 +44,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         verdict: verdict_value.clone(),
         substrate_grounding,
         ts,
+        grounded_head: crate::bridge::tools::git_repo::current_head_sha(),
     };
 
     let mut store = load(&session.dir);

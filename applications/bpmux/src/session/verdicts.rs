@@ -10,6 +10,8 @@ pub struct Verdict {
     pub verdict: String,
     pub substrate_grounding: String,
     pub ts: DateTime<Utc>,
+    #[serde(default)]
+    pub grounded_head: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -75,6 +77,7 @@ mod tests {
             verdict: "verified".to_string(),
             substrate_grounding: format!("grep-cited line at src/foo.rs:{story_number}"),
             ts: Utc::now(),
+            grounded_head: None,
         }
     }
 

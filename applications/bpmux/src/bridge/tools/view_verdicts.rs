@@ -11,6 +11,8 @@ struct VerdictView {
     fresh: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expires_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    substrate_changed: Option<bool>,
 }
 
 fn resolve_accept_window_secs(
@@ -39,15 +41,24 @@ pub(in crate::bridge) async fn handle_view_verdicts(
     let store = load(&session.dir);
     let records = verdicts_for_story(&store, story_number);
     let window_secs = resolve_accept_window_secs(refresh, story_number);
+    let current_head = crate::bridge::tools::git_repo::current_head_sha();
     let now = chrono::Utc::now();
     let views: Vec<VerdictView> = records
         .into_iter()
         .map(|verdict| {
-            let state =
-                window_secs.map(|w| crate::workflow::verdict_freshness(Some(verdict.ts), w, now));
+            let state = window_secs.map(|w| {
+                crate::workflow::verdict_freshness(
+                    Some(verdict.ts),
+                    w,
+                    now,
+                    verdict.grounded_head.as_deref(),
+                    current_head.as_deref(),
+                )
+            });
             VerdictView {
                 fresh: state.as_ref().map(|s| s.is_fresh()),
-                expires_at: state.and_then(|s| s.expired_at),
+                expires_at: state.as_ref().and_then(|s| s.expired_at),
+                substrate_changed: state.as_ref().map(|s| s.substrate_changed),
                 verdict,
             }
         })

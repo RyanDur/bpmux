@@ -183,6 +183,15 @@ fn msg(from_role: &str, seconds_ago: i64) -> EvidenceMessage {
     EvidenceMessage {
         from_role: from_role.into(),
         ts: Utc::now() - chrono::Duration::seconds(seconds_ago),
+        grounded_head: None,
+    }
+}
+
+fn msg_grounded(from_role: &str, seconds_ago: i64, head: &str) -> EvidenceMessage {
+    EvidenceMessage {
+        from_role: from_role.into(),
+        ts: Utc::now() - chrono::Duration::seconds(seconds_ago),
+        grounded_head: Some(head.to_string()),
     }
 }
 
@@ -190,14 +199,56 @@ fn msg(from_role: &str, seconds_ago: i64) -> EvidenceMessage {
 fn evidence_check_passes_when_all_required_roles_broadcast_within_window() {
     let now = Utc::now();
     let messages = vec![msg("designer", 60), msg("dev", 120)];
-    assert!(check_evidence_present(&accept_team_verifiable(), "pm", &messages, now).is_ok());
+    assert!(check_evidence_present(&accept_team_verifiable(), "pm", &messages, now, None).is_ok());
+}
+
+#[test]
+fn evidence_check_expires_role_whose_grounded_head_has_moved() {
+    let now = Utc::now();
+    let messages = vec![
+        msg_grounded("designer", 10, "sha-old"),
+        msg_grounded("dev", 10, "sha-old"),
+    ];
+    let err = check_evidence_present(
+        &accept_team_verifiable(),
+        "pm",
+        &messages,
+        now,
+        Some("sha-new"),
+    )
+    .expect_err("a moved head expires both verdicts even well within the time window");
+    let json = err.as_json_string();
+    assert!(
+        json.contains("designer-verdict-expired") && json.contains("dev-verdict-expired"),
+        "substrate-change marks the verdict expired (not missing), so the accept-gate reprompt fires; got {json}"
+    );
+}
+
+#[test]
+fn evidence_check_passes_when_grounded_head_matches_current() {
+    let now = Utc::now();
+    let messages = vec![
+        msg_grounded("designer", 10, "sha-x"),
+        msg_grounded("dev", 10, "sha-x"),
+    ];
+    assert!(
+        check_evidence_present(
+            &accept_team_verifiable(),
+            "pm",
+            &messages,
+            now,
+            Some("sha-x")
+        )
+        .is_ok(),
+        "a verdict grounded on the still-current head, within window, passes"
+    );
 }
 
 #[test]
 fn evidence_check_fails_when_designer_verdict_missing() {
     let now = Utc::now();
     let messages = vec![msg("dev", 60)];
-    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now, None)
         .expect_err("missing");
     match err {
         GateError::GateMismatch {
@@ -219,7 +270,7 @@ fn evidence_check_fails_when_designer_verdict_missing() {
 fn evidence_check_fails_when_dev_verdict_missing() {
     let now = Utc::now();
     let messages = vec![msg("designer", 60)];
-    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now, None)
         .expect_err("missing");
     if let GateError::GateMismatch {
         missing_evidence, ..
@@ -234,8 +285,8 @@ fn evidence_check_fails_when_dev_verdict_missing() {
 #[test]
 fn evidence_check_fails_when_both_verdicts_missing() {
     let now = Utc::now();
-    let err =
-        check_evidence_present(&accept_team_verifiable(), "pm", &[], now).expect_err("missing");
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &[], now, None)
+        .expect_err("missing");
     if let GateError::GateMismatch {
         missing_evidence, ..
     } = err
@@ -256,7 +307,7 @@ fn evidence_check_fails_when_both_verdicts_missing() {
 fn evidence_check_fails_when_designer_verdict_is_stale_beyond_window() {
     let now = Utc::now();
     let messages = vec![msg("designer", 601), msg("dev", 60)];
-    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now, None)
         .expect_err("stale designer");
     if let GateError::GateMismatch {
         missing_evidence, ..
@@ -275,7 +326,7 @@ fn evidence_check_fails_when_designer_verdict_is_stale_beyond_window() {
 fn owner_walk_accept_passes_with_no_team_evidence() {
     let now = Utc::now();
     let owner_walk = accept_owner_walk();
-    assert!(check_evidence_present(&owner_walk, "ryan", &[], now).is_ok());
+    assert!(check_evidence_present(&owner_walk, "ryan", &[], now, None).is_ok());
 }
 
 #[test]
@@ -299,7 +350,7 @@ fn gate_mismatch_json_includes_class_and_missing_evidence_fields() {
 fn evidence_check_surfaces_verdict_state_per_role_when_missing_or_stale_1461() {
     let now = Utc::now();
     let messages = vec![msg("designer", 60), msg("dev", 800)];
-    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now, None)
         .expect_err("dev stale");
     match err {
         GateError::GateMismatch {
@@ -331,7 +382,7 @@ fn evidence_check_surfaces_verdict_state_per_role_when_missing_or_stale_1461() {
 fn evidence_check_distinguishes_missing_from_stale_in_verdict_state_1461() {
     let now = Utc::now();
     let messages = vec![msg("designer", 9999)];
-    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now, None)
         .expect_err("designer stale + dev missing");
     match err {
         GateError::GateMismatch {
@@ -359,7 +410,7 @@ fn evidence_check_distinguishes_missing_from_stale_in_verdict_state_1461() {
 fn evidence_check_no_verdict_state_when_class_is_none_or_no_required_roles_1461() {
     let now = Utc::now();
     let owner_walk = accept_owner_walk();
-    let result = check_evidence_present(&owner_walk, "ryan", &[], now);
+    let result = check_evidence_present(&owner_walk, "ryan", &[], now, None);
     assert!(result.is_ok());
 }
 
@@ -591,7 +642,7 @@ fn expired_evidence_roles_empty_for_non_gate_mismatch() {
 fn verdict_freshness_within_window_is_fresh_with_expiry() {
     let cast = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
     let now = cast + chrono::Duration::seconds(120);
-    let state = verdict_freshness(Some(cast), 600, now);
+    let state = verdict_freshness(Some(cast), 600, now, None, None);
     assert!(state.is_fresh(), "120s into a 600s window is still fresh");
     assert_eq!(
         state.expired_at,
@@ -605,7 +656,7 @@ fn verdict_freshness_within_window_is_fresh_with_expiry() {
 fn verdict_freshness_past_window_is_stale_with_age() {
     let cast = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
     let now = cast + chrono::Duration::seconds(660);
-    let state = verdict_freshness(Some(cast), 600, now);
+    let state = verdict_freshness(Some(cast), 600, now, None, None);
     assert!(!state.is_fresh(), "660s past a 600s window is expired");
     assert_eq!(
         state.stale_age_secs,
@@ -617,10 +668,35 @@ fn verdict_freshness_past_window_is_stale_with_age() {
 #[test]
 fn verdict_freshness_uncast_is_not_fresh() {
     let now = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
-    let state = verdict_freshness(None, 600, now);
+    let state = verdict_freshness(None, 600, now, None, None);
     assert!(!state.is_fresh(), "no cast verdict is never fresh");
     assert_eq!(state.expired_at, None);
     assert_eq!(state.stale_age_secs, None);
+}
+
+#[test]
+fn verdict_freshness_expires_when_grounded_head_moves_within_window() {
+    let cast = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
+    let now = cast + chrono::Duration::seconds(60);
+    let state = verdict_freshness(Some(cast), 600, now, Some("sha-old"), Some("sha-new"));
+    assert!(
+        !state.is_fresh(),
+        "a verdict grounded on a head that has since moved is stale even well within the wall-clock window"
+    );
+    assert!(state.substrate_changed);
+    assert_eq!(
+        state.stale_age_secs, None,
+        "substrate-change expiry is a distinct axis from wall-clock — it does not invent a time-overage"
+    );
+}
+
+#[test]
+fn verdict_freshness_stays_fresh_when_grounded_head_matches() {
+    let cast = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
+    let now = cast + chrono::Duration::seconds(60);
+    let state = verdict_freshness(Some(cast), 600, now, Some("sha-same"), Some("sha-same"));
+    assert!(state.is_fresh(), "matching head + within window is fresh");
+    assert!(!state.substrate_changed);
 }
 
 #[test]

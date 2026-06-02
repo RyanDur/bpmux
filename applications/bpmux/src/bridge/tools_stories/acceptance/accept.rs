@@ -42,11 +42,13 @@ pub(crate) async fn handle_accept_story(
     crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
         let evidence = recent_evidence_for_story(s, number)?;
+        let current_head = crate::bridge::tools::git_repo::current_head_sha();
         if let Err(e) = crate::workflow::check_evidence_present(
             transition,
             actor_role,
             &evidence,
             chrono::Utc::now(),
+            current_head.as_deref(),
         ) {
             for role in e.expired_evidence_roles() {
                 let signal = serde_json::to_string(&build_verdict_reprompt_signal(number, &role))

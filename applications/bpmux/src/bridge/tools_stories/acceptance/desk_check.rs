@@ -107,6 +107,7 @@ pub(crate) async fn handle_pass_desk_check(
             actor_role,
             &evidence,
             chrono::Utc::now(),
+            None,
         )
         .map_err(|e| e.as_json_string())?;
     }

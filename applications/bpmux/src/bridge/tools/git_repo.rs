@@ -19,6 +19,13 @@ pub fn resolve_repo_root() -> Option<PathBuf> {
     None
 }
 
+pub fn current_head_sha() -> Option<String> {
+    run_git(&["rev-parse", "HEAD"])
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
 pub fn run_git(args: &[&str]) -> Result<String, String> {
     if let Ok(stub_dir) = std::env::var("BPMUX_GIT_STUB_DIR") {
         let subcmd = args.first().copied().unwrap_or("");
