@@ -49,6 +49,17 @@ impl LivePty {
         writer.write_all(bytes)?;
         writer.flush()
     }
+
+    pub fn resize(&self, rows: u16, cols: u16) -> std::io::Result<()> {
+        self.master
+            .resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(io_other)
+    }
 }
 
 pub fn resolve_terminal_spawn(
@@ -291,6 +302,35 @@ mod tests {
         assert!(
             collected.contains(&marker),
             "the spawned shell must start in the given cwd (PWD must contain the spawn dir, not the backend's cwd); got {collected:?}"
+        );
+    }
+
+    #[test]
+    fn live_pty_resize_propagates_the_winsize_to_the_shell_tty() {
+        use std::io::Read;
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        let live = spawn_pty_retained(&shell, &[], None, &[("TERM", "xterm-256color")]).unwrap();
+        live.resize(40, 120).unwrap();
+        live.write_input(b"stty size\n").unwrap();
+        let mut reader = live.reader().unwrap();
+        let mut collected = String::new();
+        let mut buf = [0u8; 1024];
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
+                    if collected.contains("40 120") {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        assert!(
+            collected.contains("40 120"),
+            "stty size must report the RESIZED winsize (rows cols), proving master.resize propagated to the slave tty — not the spawn default 24 80; got {collected:?}"
         );
     }
 

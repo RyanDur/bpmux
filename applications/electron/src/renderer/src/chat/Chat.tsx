@@ -111,7 +111,7 @@ const Chat = ({
             data-active={activeTerminalId === t.id}
             data-test={`terminal-slot-${t.id}`}
           >
-            <TerminalView terminalId={t.id} isActive={activeTerminalId === t.id} />
+            <TerminalView terminalId={t.id} cwd={t.cwd} isActive={activeTerminalId === t.id} />
           </section>
         ))}
         <section className="chat-layer" data-active={activeTerminalId === null}>

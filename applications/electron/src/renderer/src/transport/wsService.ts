@@ -416,6 +416,10 @@ export const sendPtyInput = (terminalId: string, keystroke: string): void => {
   sendJson({ type: 'pty_input', terminal_id: terminalId, data: encodeKeystroke(keystroke) })
 }
 
+export const sendPtyResize = (terminalId: string, cols: number, rows: number): void => {
+  sendJson({ type: 'pty_resize', terminal_id: terminalId, cols, rows })
+}
+
 export const getWsSnapshot = (): WsSnapshot => state.snapshot
 
 export const __resetWsForTest = (): void => {

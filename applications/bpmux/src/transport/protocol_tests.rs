@@ -87,6 +87,24 @@ fn pty_output_serializes_with_distinct_type_terminal_id_and_data() {
 }
 
 #[test]
+fn deserializes_pty_resize_with_terminal_id_cols_and_rows() {
+    let json = r#"{"type": "pty_resize", "terminal_id": "term-1", "cols": 120, "rows": 40}"#;
+    let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+    match msg {
+        ClientMessage::PtyResize {
+            terminal_id,
+            cols,
+            rows,
+        } => {
+            assert_eq!(terminal_id, "term-1");
+            assert_eq!(cols, 120);
+            assert_eq!(rows, 40);
+        }
+        other => panic!("expected PtyResize, got {other:?}"),
+    }
+}
+
+#[test]
 fn deserializes_send_with_to() {
     let json = r#"{"type": "send", "text": "hey", "to": ["pm", "designer"]}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");

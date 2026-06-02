@@ -29,6 +29,12 @@ pub enum ClientMessage {
     PtySubscribe { terminal_id: String },
     #[serde(rename = "pty_input")]
     PtyInput { terminal_id: String, data: String },
+    #[serde(rename = "pty_resize")]
+    PtyResize {
+        terminal_id: String,
+        cols: u16,
+        rows: u16,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -51,6 +51,15 @@ impl LivePtyRegistry {
             .get(role)
             .map(|live| super::spawn::process_alive(live.pid()))
     }
+
+    pub fn resize(&self, terminal_id: &str, rows: u16, cols: u16) -> bool {
+        self.rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(terminal_id)
+            .map(|live| live.resize(rows, cols).is_ok())
+            .unwrap_or(false)
+    }
 }
 
 #[cfg(test)]

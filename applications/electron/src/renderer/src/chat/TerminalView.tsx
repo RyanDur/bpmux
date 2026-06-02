@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import {
   decodePtyData,
   sendPtyInput,
+  sendPtyResize,
   sendPtySubscribe,
   subscribeWsPtyOutput
 } from '../transport/wsService'
@@ -12,21 +13,29 @@ import './TerminalView.css'
 
 interface TerminalViewProps {
   terminalId: string
+  cwd: string
   isActive: boolean
 }
+
+const TERM_NAME = 'xterm-256color'
 
 const readToken = (name: string, fallback: string): string => {
   const value = getComputedStyle(document.body).getPropertyValue(name).trim()
   return value.length > 0 ? value : fallback
 }
 
-export const TerminalView = ({ terminalId, isActive }: TerminalViewProps): React.JSX.Element => {
-  const containerRef = useRef<HTMLDivElement>(null)
+export const TerminalView = ({
+  terminalId,
+  cwd,
+  isActive
+}: TerminalViewProps): React.JSX.Element => {
+  const screenRef = useRef<HTMLElement>(null)
   const termRef = useRef<Terminal | null>(null)
+  const [dims, setDims] = useState<{ cols: number; rows: number }>({ cols: 0, rows: 0 })
 
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return undefined
+    const screen = screenRef.current
+    if (!screen) return undefined
 
     const term = new Terminal({
       cursorBlink: true,
@@ -40,8 +49,14 @@ export const TerminalView = ({ terminalId, isActive }: TerminalViewProps): React
     termRef.current = term
     const fit = new FitAddon()
     term.loadAddon(fit)
-    term.open(container)
-    fit.fit()
+    term.open(screen)
+
+    const syncSize = (): void => {
+      fit.fit()
+      setDims({ cols: term.cols, rows: term.rows })
+      sendPtyResize(terminalId, term.cols, term.rows)
+    }
+    syncSize()
     term.focus()
 
     const unsubscribe = subscribeWsPtyOutput(terminalId, (data) => {
@@ -50,11 +65,10 @@ export const TerminalView = ({ terminalId, isActive }: TerminalViewProps): React
     term.onData((keystroke) => sendPtyInput(terminalId, keystroke))
     sendPtySubscribe(terminalId)
 
-    const onResize = (): void => fit.fit()
-    window.addEventListener('resize', onResize)
+    window.addEventListener('resize', syncSize)
 
     return () => {
-      window.removeEventListener('resize', onResize)
+      window.removeEventListener('resize', syncSize)
       unsubscribe()
       term.dispose()
       termRef.current = null
@@ -69,10 +83,14 @@ export const TerminalView = ({ terminalId, isActive }: TerminalViewProps): React
 
   return (
     <section
-      ref={containerRef}
       className="terminal-view"
       data-test={`terminal-${terminalId}`}
       aria-label={`terminal ${terminalId}`}
-    />
+    >
+      <header className="terminal-header" data-test="terminal-header">
+        {cwd} · {dims.cols}×{dims.rows} · {TERM_NAME}
+      </header>
+      <section ref={screenRef} className="terminal-screen" aria-label="terminal output" />
+    </section>
   )
 }

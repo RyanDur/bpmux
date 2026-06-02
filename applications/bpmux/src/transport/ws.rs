@@ -419,6 +419,13 @@ async fn handle_client_message(
                 pty_registry.write_to(&terminal_id, &bytes);
             }
         }
+        Ok(ClientMessage::PtyResize {
+            terminal_id,
+            cols,
+            rows,
+        }) => {
+            pty_registry.resize(&terminal_id, rows, cols);
+        }
         Err(e) => {
             send_json(
                 tx,

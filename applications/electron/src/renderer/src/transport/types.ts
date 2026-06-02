@@ -121,12 +121,20 @@ export interface ClientPtyInput {
   data: string
 }
 
+export interface ClientPtyResize {
+  type: 'pty_resize'
+  terminal_id: string
+  cols: number
+  rows: number
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
   | ClientPing
   | ClientPtySubscribe
   | ClientPtyInput
+  | ClientPtyResize
 
 export interface ChatMessage {
   id: string
