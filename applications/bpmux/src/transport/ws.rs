@@ -135,6 +135,7 @@ async fn run_ws_session(
                 pty_chunk = pty_rx.recv() => {
                     if let Some((terminal_id, bytes)) = pty_chunk {
                         if bytes.is_empty() {
+                            pty_readers.remove(&terminal_id);
                             send_json(&mut tx, &ServerMessage::PtyExit { terminal_id }).await?;
                         } else {
                             let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
