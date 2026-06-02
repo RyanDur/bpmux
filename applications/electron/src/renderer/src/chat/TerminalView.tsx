@@ -24,6 +24,15 @@ const readToken = (name: string, fallback: string): string => {
   return value.length > 0 ? value : fallback
 }
 
+const cwdFromOsc7 = (payload: string): string | null => {
+  try {
+    const { pathname } = new URL(payload)
+    return pathname.length > 0 ? decodeURIComponent(pathname) : null
+  } catch {
+    return null
+  }
+}
+
 export const TerminalView = ({
   terminalId,
   cwd,
@@ -32,6 +41,7 @@ export const TerminalView = ({
   const screenRef = useRef<HTMLElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const [dims, setDims] = useState<{ cols: number; rows: number }>({ cols: 0, rows: 0 })
+  const [liveCwd, setLiveCwd] = useState(cwd)
 
   useEffect(() => {
     const screen = screenRef.current
@@ -62,6 +72,11 @@ export const TerminalView = ({
     const unsubscribe = subscribeWsPtyOutput(terminalId, (data) => {
       term.write(decodePtyData(data))
     })
+    const osc7 = term.parser.registerOscHandler(7, (payload) => {
+      const next = cwdFromOsc7(payload)
+      if (next) setLiveCwd(next)
+      return true
+    })
     term.onData((keystroke) => sendPtyInput(terminalId, keystroke))
     sendPtySubscribe(terminalId)
 
@@ -70,6 +85,7 @@ export const TerminalView = ({
     return () => {
       window.removeEventListener('resize', syncSize)
       unsubscribe()
+      osc7.dispose()
       term.dispose()
       termRef.current = null
     }
@@ -88,7 +104,7 @@ export const TerminalView = ({
       aria-label={`terminal ${terminalId}`}
     >
       <header className="terminal-header" data-test="terminal-header">
-        {cwd} · {dims.cols}×{dims.rows} · {TERM_NAME}
+        {liveCwd} · {dims.cols}×{dims.rows} · {TERM_NAME}
       </header>
       <section ref={screenRef} className="terminal-screen" aria-label="terminal output" />
     </section>

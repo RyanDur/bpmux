@@ -32,11 +32,16 @@ pub struct LivePty {
     master: Box<dyn portable_pty::MasterPty + Send>,
     writer: Mutex<Box<dyn std::io::Write + Send>>,
     _child: Box<dyn portable_pty::Child + Send + Sync>,
+    _retained_tempdir: Option<tempfile::TempDir>,
 }
 
 impl LivePty {
     pub fn pid(&self) -> u32 {
         self.pid
+    }
+
+    pub fn attach_tempdir(&mut self, dir: tempfile::TempDir) {
+        self._retained_tempdir = Some(dir);
     }
 
     pub fn reader(&self) -> std::io::Result<Box<dyn std::io::Read + Send>> {
@@ -109,7 +114,69 @@ pub fn spawn_pty_retained(
         master: pair.master,
         writer: Mutex::new(writer),
         _child: child,
+        _retained_tempdir: None,
     })
+}
+
+#[derive(Default)]
+pub struct Osc7Integration {
+    pub env: Vec<(String, String)>,
+    pub zdotdir: Option<tempfile::TempDir>,
+}
+
+pub fn osc7_shell_integration(command: &str) -> std::io::Result<Osc7Integration> {
+    let family = std::path::Path::new(command)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default();
+    match family {
+        "zsh" => zsh_osc7_integration(),
+        "bash" => Ok(bash_osc7_integration()),
+        _ => Ok(Osc7Integration::default()),
+    }
+}
+
+fn bash_osc7_integration() -> Osc7Integration {
+    Osc7Integration {
+        env: vec![(
+            "PROMPT_COMMAND".to_string(),
+            "printf '\\033]7;file://%s%s\\007' \"${HOSTNAME}\" \"${PWD}\"".to_string(),
+        )],
+        zdotdir: None,
+    }
+}
+
+fn zsh_osc7_integration() -> std::io::Result<Osc7Integration> {
+    let real = std::env::var("ZDOTDIR")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| std::env::var("HOME").ok())
+        .unwrap_or_else(|| "/".to_string());
+    let dir = tempfile::tempdir()?;
+    let path = dir.path();
+    std::fs::write(path.join(".zshenv"), zsh_source_line(&real, ".zshenv"))?;
+    std::fs::write(path.join(".zprofile"), zsh_source_line(&real, ".zprofile"))?;
+    std::fs::write(path.join(".zlogin"), zsh_source_line(&real, ".zlogin"))?;
+    std::fs::write(path.join(".zshrc"), zsh_rc(&real))?;
+    Ok(Osc7Integration {
+        env: vec![("ZDOTDIR".to_string(), path.to_string_lossy().to_string())],
+        zdotdir: Some(dir),
+    })
+}
+
+fn zsh_source_line(real_zdotdir: &str, file: &str) -> String {
+    format!("[ -f \"{real_zdotdir}/{file}\" ] && source \"{real_zdotdir}/{file}\"\n")
+}
+
+fn zsh_rc(real_zdotdir: &str) -> String {
+    let mut rc = zsh_source_line(real_zdotdir, ".zshrc");
+    rc.push_str("autoload -Uz add-zsh-hook\n");
+    rc.push_str(
+        "_bpmux_emit_osc7() { printf '\\033]7;file://%s%s\\007' \"${HOST}\" \"${PWD}\"; }\n",
+    );
+    rc.push_str("add-zsh-hook chpwd _bpmux_emit_osc7\n");
+    rc.push_str("_bpmux_emit_osc7\n");
+    rc
 }
 
 pub fn spawn_captured(
@@ -369,5 +436,47 @@ mod tests {
             "empty env vars fall back to /bin/sh, never spawn \"\""
         );
         assert!(args.is_empty());
+    }
+
+    #[test]
+    fn spawned_shell_emits_osc7_carrying_the_new_cwd_after_cd() {
+        use std::io::Read;
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        let integration = osc7_shell_integration(&shell).unwrap();
+        let target =
+            std::env::temp_dir().join(format!("bpmux-osc7-{}-{}", std::process::id(), "livecwd"));
+        std::fs::create_dir_all(&target).unwrap();
+        let marker = target.file_name().unwrap().to_string_lossy().to_string();
+        let mut env: Vec<(&str, &str)> = vec![("TERM", "xterm-256color")];
+        for (key, value) in &integration.env {
+            env.push((key.as_str(), value.as_str()));
+        }
+        let mut live = spawn_pty_retained(&shell, &[], None, &env).unwrap();
+        if let Some(dir) = integration.zdotdir {
+            live.attach_tempdir(dir);
+        }
+        live.write_input(format!("cd {}\n", target.display()).as_bytes())
+            .unwrap();
+        let mut reader = live.reader().unwrap();
+        let mut collected = String::new();
+        let mut buf = [0u8; 1024];
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
+        while std::time::Instant::now() < deadline {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
+                    if collected.contains("]7;file://") && collected.contains(&marker) {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        let _ = std::fs::remove_dir_all(&target);
+        assert!(
+            collected.contains("]7;file://") && collected.contains(&marker),
+            "the spawned $SHELL must emit OSC-7 (ESC]7;file://…<newdir>) on cd — the native mechanism the terminal header reads to follow cwd; got {collected:?}"
+        );
     }
 }
