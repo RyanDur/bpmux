@@ -34,6 +34,17 @@ const cwdFromOsc7 = (payload: string): string | null => {
   }
 }
 
+const copyOnCmdC = (term: Terminal, event: KeyboardEvent): boolean => {
+  if (event.type === 'keydown' && event.metaKey && !event.ctrlKey && event.key === 'c') {
+    const selection = term.getSelection()
+    if (selection.length > 0) {
+      void navigator.clipboard.writeText(selection)
+      return false
+    }
+  }
+  return true
+}
+
 export const TerminalView = ({
   terminalId,
   cwd,
@@ -62,6 +73,7 @@ export const TerminalView = ({
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(screen)
+    term.attachCustomKeyEventHandler((event) => copyOnCmdC(term, event))
 
     const syncSize = (): void => {
       fit.fit()
