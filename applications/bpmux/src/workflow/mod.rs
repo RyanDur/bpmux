@@ -13,8 +13,9 @@ pub use config::{
     gate_class_from_labels_and_story_type,
 };
 pub use gate::{
-    CiSnapshot, EvidenceMessage, GateError, PriorFire, check_ci_green, check_evidence_present,
-    check_role_allowed, check_self_mutation_refused, check_target_state_valid, resolve_transition,
+    CiSnapshot, EvidenceMessage, GateError, PriorFire, VerdictState, check_ci_green,
+    check_evidence_present, check_role_allowed, check_self_mutation_refused,
+    check_target_state_valid, resolve_transition, verdict_freshness,
 };
 pub use loader::{
     CANONICAL_SECTIONS, WorkflowLoadError, current_workflow, install_workflow,

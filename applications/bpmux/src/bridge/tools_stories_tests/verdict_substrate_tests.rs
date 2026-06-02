@@ -322,7 +322,7 @@ mod verdict_substrate_integration_1407 {
         )
         .await
         .expect("designer submit_verdict");
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
             .await
             .expect("view_verdicts succeeds after write");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
@@ -339,9 +339,10 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_returns_empty_for_unknown_story() {
         let dir = TempDir::new().unwrap();
         let session = make_session(dir.path().to_path_buf());
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(99999), &session)
-            .await
-            .expect("view_verdicts succeeds for empty store");
+        let response =
+            crate::bridge::tools::handle_view_verdicts(&view_args(99999), &session, None)
+                .await
+                .expect("view_verdicts succeeds for empty store");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
         let records = parsed.as_array().expect("response is array");
         assert!(
@@ -372,7 +373,7 @@ mod verdict_substrate_integration_1407 {
         .await
         .unwrap();
 
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), &session)
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), &session, None)
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
@@ -396,7 +397,7 @@ mod verdict_substrate_integration_1407 {
         crate::bridge::tools::handle_submit_verdict(&verdict_args(42), "dev:claude-code", &session)
             .await
             .unwrap();
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
@@ -424,13 +425,13 @@ mod verdict_substrate_integration_1407 {
         let before = load(&session.dir);
         let count_before = verdicts_for_story(&before, 42).len();
 
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
             .await
             .unwrap();
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
             .await
             .unwrap();
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
             .await
             .unwrap();
 
@@ -447,9 +448,39 @@ mod verdict_substrate_integration_1407 {
         let dir = TempDir::new().unwrap();
         let session = make_session(dir.path().to_path_buf());
         let empty_args = serde_json::Map::new();
-        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, &session)
+        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, &session, None)
             .await
             .expect_err("missing story_number must refuse");
         assert!(err.contains("story_number"));
+    }
+
+    #[tokio::test]
+    async fn view_verdicts_surfaces_freshness_state_at_the_read_axis() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
+        crate::bridge::tools::handle_submit_verdict(
+            &verdict_args(42),
+            "designer:claude-code",
+            &session,
+        )
+        .await
+        .expect("designer submit_verdict");
+        let response =
+            crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, Some(&orch))
+                .await
+                .expect("view_verdicts succeeds with the board store");
+        let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
+        let records = parsed.as_array().expect("response is array");
+        assert_eq!(records.len(), 1);
+        assert_eq!(
+            records[0]["fresh"],
+            serde_json::json!(true),
+            "a just-cast verdict is within the accept-window → fresh shown at the read-axis (not just presence); got {records:?}"
+        );
+        assert!(
+            records[0]["expires_at"].is_string(),
+            "freshness must surface expires_at (cast_at + accept-window) in view_verdicts; got {records:?}"
+        );
     }
 }

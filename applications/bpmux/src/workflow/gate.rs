@@ -12,6 +12,12 @@ pub struct VerdictState {
     pub stale_age_secs: Option<i64>,
 }
 
+impl VerdictState {
+    pub fn is_fresh(&self) -> bool {
+        self.cast_at.is_some() && self.stale_age_secs.is_none()
+    }
+}
+
 pub fn verdict_freshness(
     cast_at: Option<DateTime<Utc>>,
     window_secs: u64,

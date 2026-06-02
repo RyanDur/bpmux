@@ -181,7 +181,7 @@ async fn dispatch(
         "view_comments" => bridge::dispatch_test_view_comments(args, refresh_ref).await,
         "view_backlog" => bridge::dispatch_test_view_backlog(refresh_ref).await,
         "submit_verdict" => bridge::dispatch_test_submit_verdict(args, agent, session).await,
-        "view_verdicts" => bridge::dispatch_test_view_verdicts(args, session).await,
+        "view_verdicts" => bridge::dispatch_test_view_verdicts(args, session, refresh_ref).await,
         _ => Err(format!(
             "rpc: unknown tool '{tool}'; expected one of {:?}",
             known_tools()

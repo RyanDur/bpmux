@@ -1,9 +1,35 @@
-use crate::session::verdicts::{load, verdicts_for_story};
+use crate::session::verdicts::{Verdict, load, verdicts_for_story};
+use chrono::{DateTime, Utc};
+use serde::Serialize;
 use std::sync::Arc;
+
+#[derive(Serialize)]
+struct VerdictView {
+    #[serde(flatten)]
+    verdict: Verdict,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fresh: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expires_at: Option<DateTime<Utc>>,
+}
+
+fn resolve_accept_window_secs(
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    story_number: u64,
+) -> Option<u64> {
+    let story = refresh?.store().story(story_number)?;
+    let class =
+        crate::workflow::gate_class_from_labels_and_story_type(&story.raw_labels, story.story_type);
+    let transition =
+        crate::workflow::resolve_transition(crate::workflow::current_workflow(), "accept", class)
+            .ok()?;
+    Some(transition.evidence_window_seconds)
+}
 
 pub(in crate::bridge) async fn handle_view_verdicts(
     args: &serde_json::Map<String, serde_json::Value>,
     session: &Arc<crate::session::Session>,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let story_number = args
         .get("story_number")
@@ -12,7 +38,21 @@ pub(in crate::bridge) async fn handle_view_verdicts(
 
     let store = load(&session.dir);
     let records = verdicts_for_story(&store, story_number);
-    serde_json::to_string(&records).map_err(|e| format!("serialize verdicts: {e}"))
+    let window_secs = resolve_accept_window_secs(refresh, story_number);
+    let now = chrono::Utc::now();
+    let views: Vec<VerdictView> = records
+        .into_iter()
+        .map(|verdict| {
+            let state =
+                window_secs.map(|w| crate::workflow::verdict_freshness(Some(verdict.ts), w, now));
+            VerdictView {
+                fresh: state.as_ref().map(|s| s.is_fresh()),
+                expires_at: state.and_then(|s| s.expired_at),
+                verdict,
+            }
+        })
+        .collect();
+    serde_json::to_string(&views).map_err(|e| format!("serialize verdicts: {e}"))
 }
 
 #[cfg(test)]
@@ -62,7 +102,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let response = handle_view_verdicts(&view_args(42), &session)
+        let response = handle_view_verdicts(&view_args(42), &session, None)
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();

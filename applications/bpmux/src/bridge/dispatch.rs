@@ -355,6 +355,7 @@ pub(crate) async fn dispatch_test_submit_verdict(
 pub(crate) async fn dispatch_test_view_verdicts(
     args: serde_json::Map<String, serde_json::Value>,
     session: &Arc<crate::session::Session>,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    tools::handle_view_verdicts(&args, session).await
+    tools::handle_view_verdicts(&args, session, refresh).await
 }

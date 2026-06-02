@@ -1,12 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 
 use super::bundled_default::bundled_default;
 use super::config::{GateClass, Transition, WorkflowConfig};
 use super::gate::{
     CiSnapshot, EvidenceMessage, GateError, PriorFire, check_ci_green, check_evidence_present,
     check_role_allowed, check_self_mutation_refused, check_target_state_valid, resolve_transition,
+    verdict_freshness,
 };
 
 fn accept_team_verifiable() -> Transition {
@@ -555,6 +556,42 @@ fn ci_green_refuses_when_snapshot_absent() {
     assert!(
         matches!(err, GateError::CiNotGreen { ci_conclusion, head_sha, .. } if ci_conclusion == "unknown" && head_sha.is_empty())
     );
+}
+
+#[test]
+fn verdict_freshness_within_window_is_fresh_with_expiry() {
+    let cast = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
+    let now = cast + chrono::Duration::seconds(120);
+    let state = verdict_freshness(Some(cast), 600, now);
+    assert!(state.is_fresh(), "120s into a 600s window is still fresh");
+    assert_eq!(
+        state.expired_at,
+        Some(cast + chrono::Duration::seconds(600)),
+        "expires_at is cast_at + window — the read-axis can show when freshness lapses"
+    );
+    assert_eq!(state.stale_age_secs, None);
+}
+
+#[test]
+fn verdict_freshness_past_window_is_stale_with_age() {
+    let cast = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
+    let now = cast + chrono::Duration::seconds(660);
+    let state = verdict_freshness(Some(cast), 600, now);
+    assert!(!state.is_fresh(), "660s past a 600s window is expired");
+    assert_eq!(
+        state.stale_age_secs,
+        Some(60),
+        "stale_age_secs measures how long past expiry, not since cast"
+    );
+}
+
+#[test]
+fn verdict_freshness_uncast_is_not_fresh() {
+    let now = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
+    let state = verdict_freshness(None, 600, now);
+    assert!(!state.is_fresh(), "no cast verdict is never fresh");
+    assert_eq!(state.expired_at, None);
+    assert_eq!(state.stale_age_secs, None);
 }
 
 #[test]
