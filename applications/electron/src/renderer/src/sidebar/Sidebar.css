@@ -162,5 +162,21 @@
     &:focus-within .sidebar-terminal-close {
       opacity: 1;
     }
+
+    & .sidebar-terminal-rename {
+      gap: 0;
+      cursor: text;
+
+      & .sidebar-terminal-rename-input {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--fg-primary);
+        font: inherit;
+        outline: none;
+      }
+    }
   }
 }

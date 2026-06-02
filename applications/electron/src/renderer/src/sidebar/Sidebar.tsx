@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
 import { type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
@@ -10,6 +10,7 @@ import {
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import type { TerminalEntry } from '../AppShell'
+import { resolveTerminalName } from '../lib/terminalNames'
 import './Sidebar.css'
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
   onAddTerminal?: () => void
   onSelectTerminal?: (key: string) => void
   onCloseTerminal?: (key: string) => void
+  terminalNames?: Record<string, string>
+  onRenameTerminal?: (id: string, name: string) => void
   messages: ChatMessage[]
   filter: MessageFilter
   mirrorRoster?: readonly RosterMemberWire[]
@@ -57,10 +60,22 @@ const Sidebar = ({
   onAddTerminal = () => {},
   onSelectTerminal = () => {},
   onCloseTerminal = () => {},
+  terminalNames = {},
+  onRenameTerminal = () => {},
   messages,
   filter,
   mirrorRoster
 }: Props): React.JSX.Element => {
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const beginRename = (key: string, currentName: string): void => {
+    setDraft(currentName)
+    setEditingKey(key)
+  }
+  const commitRename = (id: string): void => {
+    onRenameTerminal(id, draft)
+    setEditingKey(null)
+  }
   const roster = useTeamRoster({ mirrorRoster })
   const directRoles = useMemo(
     () => deriveDirectRolesFromRoster(roster, RENDERER_IDENTITY),
@@ -204,9 +219,12 @@ const Sidebar = ({
             {terminals.map((t, i) => {
               const active = activeTerminalKey === t.key
               const dir = (t.cwd ?? '').split('/').filter(Boolean).pop() ?? '/'
+              const id = t.id
+              const custom = id !== undefined ? terminalNames[id] : undefined
+              const renamable = t.state === 'ready' && id !== undefined
               const label =
                 t.state === 'ready'
-                  ? `${i + 1} · ${dir}`
+                  ? `${i + 1} · ${resolveTerminalName(custom, dir)}`
                   : t.state === 'spawning'
                     ? `${i + 1} · spawning…`
                     : t.state === 'spawn-failed'
@@ -214,18 +232,45 @@ const Sidebar = ({
                       : `${i + 1} · exited`
               return (
                 <li key={t.key} className="sidebar-terminal-row">
-                  <button
-                    className={`sidebar-item${active ? ' sidebar-item--active' : ''}`}
-                    type="button"
-                    aria-current={active || undefined}
-                    data-test="sidebar-terminal-item"
-                    data-terminal-key={t.key}
-                    data-state={t.state}
-                    title={t.cwd ?? t.state}
-                    onClick={() => onSelectTerminal(t.key)}
-                  >
-                    {label}
-                  </button>
+                  {editingKey === t.key && id !== undefined ? (
+                    <label className="sidebar-item sidebar-terminal-rename">
+                      {`${i + 1} · `}
+                      <input
+                        className="sidebar-terminal-rename-input"
+                        data-test="sidebar-terminal-rename-input"
+                        data-terminal-key={t.key}
+                        aria-label={`rename terminal ${i + 1}`}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            commitRename(id)
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault()
+                            setEditingKey(null)
+                          }
+                        }}
+                        onBlur={() => commitRename(id)}
+                      />
+                    </label>
+                  ) : (
+                    <button
+                      className={`sidebar-item${active ? ' sidebar-item--active' : ''}`}
+                      type="button"
+                      aria-current={active || undefined}
+                      data-test="sidebar-terminal-item"
+                      data-terminal-key={t.key}
+                      data-state={t.state}
+                      title={t.cwd ?? t.state}
+                      onClick={() => onSelectTerminal(t.key)}
+                      onDoubleClick={() => {
+                        if (renamable) beginRename(t.key, custom ?? '')
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )}
                   <button
                     className="sidebar-terminal-close"
                     type="button"

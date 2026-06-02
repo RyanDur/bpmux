@@ -27,6 +27,7 @@ import {
   restoreTerminalLayout,
   writeTerminalLayout
 } from './lib/terminalLayout'
+import { readTerminalNames, writeTerminalNames } from './lib/terminalNames'
 import './AppShell.css'
 
 type PersistedScope = { kind: 'all' } | { kind: 'broadcast' } | { kind: 'scoped'; value: string[] }
@@ -134,6 +135,9 @@ const AppShell = ({
   const [terminals, setTerminals] = useState<TerminalEntry[]>([])
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [restored, setRestored] = useState<boolean>(false)
+  const [terminalNames, setTerminalNames] = useState<Record<string, string>>(() =>
+    readTerminalNames(RENDERER_IDENTITY)
+  )
   const [confirmClose, setConfirmClose] = useState<{ key: string; id: string } | null>(null)
   const confirmDialogRef = useRef<HTMLDialogElement>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
@@ -214,6 +218,20 @@ const AppShell = ({
 
   const selectTerminal = (key: string): void => {
     setActiveKey(key)
+  }
+
+  const renameTerminal = (id: string, name: string): void => {
+    setTerminalNames((prev) => {
+      const next = { ...prev }
+      const trimmed = name.trim()
+      if (trimmed.length > 0) {
+        next[id] = trimmed
+      } else {
+        delete next[id]
+      }
+      writeTerminalNames(RENDERER_IDENTITY, next)
+      return next
+    })
   }
 
   const removePane = (key: string): void => {
@@ -386,6 +404,8 @@ const AppShell = ({
           onAddTerminal={spawnTerminal}
           onSelectTerminal={selectTerminal}
           onCloseTerminal={closeTerminal}
+          terminalNames={terminalNames}
+          onRenameTerminal={renameTerminal}
           messages={messages}
           filter={filter}
           mirrorRoster={mirrorRoster}
