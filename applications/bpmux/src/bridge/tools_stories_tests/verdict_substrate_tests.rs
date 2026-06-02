@@ -18,6 +18,7 @@ mod verdict_substrate_integration_1407 {
     use crate::board::domain::{Story, StoryState};
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
+    use crate::bridge::tools_stories_tests::connected_ws_sink_with_capture;
     use crate::session::log::Session;
     use crate::session::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};
@@ -54,6 +55,22 @@ mod verdict_substrate_integration_1407 {
         );
         story.raw_labels = vec!["delivered".to_string(), "awaiting team".to_string()];
         story
+    }
+
+    fn seed_expired_verdict(session: &Arc<Session>, number: u64, role: &str) {
+        use crate::session::verdicts::{Verdict, add_or_replace_verdict, save};
+        let mut store = load(&session.dir);
+        add_or_replace_verdict(
+            &mut store,
+            Verdict {
+                story_number: number,
+                from_role: role.to_string(),
+                verdict: "verified".to_string(),
+                substrate_grounding: "src/foo.rs cite".to_string(),
+                ts: Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
+            },
+        );
+        save(&session.dir, &store).unwrap();
     }
 
     fn verdict_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
@@ -116,6 +133,40 @@ mod verdict_substrate_integration_1407 {
         assert!(
             result.is_ok(),
             "accept_story must succeed when both verdicts present for target story; got {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn accept_reprompts_each_role_whose_verdict_has_expired() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        seed_expired_verdict(&session, 42, "designer");
+        seed_expired_verdict(&session, 42, "dev");
+
+        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
+        let (ws_tx, captured) = connected_ws_sink_with_capture().await;
+        let err = handle_accept_story(&accept_args(42), "pm", &ws_tx, Some(&orch), Some(&session))
+            .await
+            .expect_err("expired verdicts must still block the accept");
+        assert!(
+            err.contains("verdict-expired"),
+            "block still cites expiry — the reprompt is additive, never a bypass; got {err}"
+        );
+
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let messages = captured.lock().await;
+        let combined = messages.join("\n");
+        let reprompts = messages
+            .iter()
+            .filter(|m| m.contains("submit_verdict"))
+            .count();
+        assert_eq!(
+            reprompts, 2,
+            "each expired role (designer + dev) is reprompted to re-cast; got {combined}"
+        );
+        assert!(
+            combined.contains("designer") && combined.contains("dev"),
+            "both expired roles are addressed by name; got {combined}"
         );
     }
 

@@ -559,6 +559,35 @@ fn ci_green_refuses_when_snapshot_absent() {
 }
 
 #[test]
+fn expired_evidence_roles_extracts_expired_excludes_missing() {
+    let err = GateError::GateMismatch {
+        actor_role: "pm".into(),
+        attempted_transition: "accept".into(),
+        class: GateClass::TeamVerifiable,
+        missing_evidence: vec![
+            "designer-verdict-expired".into(),
+            "dev-verdict-missing".into(),
+        ],
+        verdict_state: None,
+    };
+    assert_eq!(
+        err.expired_evidence_roles(),
+        vec!["designer".to_string()],
+        "only a lapsed (expired) verdict is re-castable; a never-cast (missing) role is not reprompted"
+    );
+}
+
+#[test]
+fn expired_evidence_roles_empty_for_non_gate_mismatch() {
+    let err = GateError::RoleNotAllowed {
+        actor_role: "dev".into(),
+        attempted_transition: "accept".into(),
+        allowed_roles: vec!["pm".into()],
+    };
+    assert!(err.expired_evidence_roles().is_empty());
+}
+
+#[test]
 fn verdict_freshness_within_window_is_fresh_with_expiry() {
     let cast = Utc.with_ymd_and_hms(2026, 6, 1, 12, 0, 0).unwrap();
     let now = cast + chrono::Duration::seconds(120);

@@ -8,7 +8,9 @@ use crate::bridge::tools::{WsSink, ws_send};
 use crate::bridge::tools_stories::helpers::{
     ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
-use crate::bridge::tools_stories::signals::{broadcast_board_invalidate, build_accept_signal};
+use crate::bridge::tools_stories::{
+    broadcast_board_invalidate, build_accept_signal, build_verdict_reprompt_signal,
+};
 
 pub(crate) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -40,13 +42,23 @@ pub(crate) async fn handle_accept_story(
     crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
         let evidence = recent_evidence_for_story(s, number)?;
-        crate::workflow::check_evidence_present(
+        if let Err(e) = crate::workflow::check_evidence_present(
             transition,
             actor_role,
             &evidence,
             chrono::Utc::now(),
-        )
-        .map_err(|e| e.as_json_string())?;
+        ) {
+            for role in e.expired_evidence_roles() {
+                let signal = serde_json::to_string(&build_verdict_reprompt_signal(number, &role))
+                    .map_err(|err| format!("reprompt signal: {err}"))?;
+                if let Err(err) = ws_send(ws_tx, signal).await {
+                    crate::session::diag::log_diag(&format!(
+                        "bridge: verdict-reprompt send failed: {err}"
+                    ));
+                }
+            }
+            return Err(e.as_json_string());
+        }
     }
     if let Some(story) = story_opt.as_ref() {
         crate::workflow::check_target_state_valid(transition, story.state.as_str())

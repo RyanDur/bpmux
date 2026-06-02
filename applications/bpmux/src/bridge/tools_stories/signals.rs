@@ -77,6 +77,18 @@ pub(crate) fn build_accept_signal(number: u64, accepted_by: &str) -> ClientMessa
     }
 }
 
+pub(crate) fn build_verdict_reprompt_signal(number: u64, role: &str) -> ClientMessage {
+    let target = role_id_for_purpose(role);
+    ClientMessage::Send {
+        text: format!(
+            "Your verdict for #{number} has expired (past the accept window). Re-cast it with submit_verdict so the accept can proceed."
+        ),
+        to: Some(vec![target.clone()]),
+        addressee: Some(target),
+        message_type: Some("system".to_string()),
+    }
+}
+
 pub(crate) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
     let dev = role_id_for_purpose("dev");
     ClientMessage::Send {

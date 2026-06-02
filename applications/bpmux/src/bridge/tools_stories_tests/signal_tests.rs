@@ -76,6 +76,31 @@ fn accept_signal_broadcasts_with_role_attribution() {
 }
 
 #[test]
+fn verdict_reprompt_signal_addresses_expired_role_as_system() {
+    if let ClientMessage::Send {
+        to,
+        addressee,
+        message_type,
+        text,
+    } = build_verdict_reprompt_signal(1599, "designer")
+    {
+        assert_eq!(to.as_ref().unwrap(), &["designer"]);
+        assert_eq!(addressee.as_deref(), Some("designer"));
+        assert_eq!(
+            message_type.as_deref(),
+            Some("system"),
+            "a reprompt is a system nudge, not a chat line"
+        );
+        assert!(
+            text.contains("#1599") && text.contains("submit_verdict"),
+            "reprompt must name the story and the recovery action; got {text}"
+        );
+    } else {
+        panic!("expected ClientMessage::Send");
+    }
+}
+
+#[test]
 fn reject_signal_targets_dev_only() {
     if let ClientMessage::Send { to, addressee, .. } = build_reject_signal(100, "needs fix") {
         assert_eq!(to.as_ref().unwrap(), &["dev"]);

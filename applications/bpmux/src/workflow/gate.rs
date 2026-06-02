@@ -240,4 +240,18 @@ impl GateError {
     pub fn as_json_string(&self) -> String {
         serde_json::to_string(self).unwrap_or_else(|_| self.to_string())
     }
+
+    pub fn expired_evidence_roles(&self) -> Vec<String> {
+        const SUFFIX: &str = "-verdict-expired";
+        match self {
+            GateError::GateMismatch {
+                missing_evidence, ..
+            } => missing_evidence
+                .iter()
+                .filter_map(|m| m.strip_suffix(SUFFIX))
+                .map(str::to_string)
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
 }
