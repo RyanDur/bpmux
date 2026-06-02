@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
-pub fn spawn_pty(command: &str, args: &[String], env: &[(&str, &str)]) -> std::io::Result<u32> {
+pub fn spawn_pty(command: &str, args: &[String]) -> std::io::Result<u32> {
     let system = native_pty_system();
     let pair = system
         .openpty(PtySize {
@@ -15,9 +15,6 @@ pub fn spawn_pty(command: &str, args: &[String], env: &[(&str, &str)]) -> std::i
     let mut cmd = CommandBuilder::new(command);
     for a in args {
         cmd.arg(a);
-    }
-    for (key, value) in env {
-        cmd.env(key, value);
     }
     let child = pair.slave.spawn_command(cmd).map_err(io_other)?;
     drop(pair.slave);
@@ -200,7 +197,6 @@ pub fn spawn_captured(
     command: &str,
     args: &[String],
     log_path: &std::path::Path,
-    env: &[(&str, &str)],
 ) -> std::io::Result<u32> {
     if let Some(parent) = log_path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -209,7 +205,6 @@ pub fn spawn_captured(
     let log_err = log.try_clone()?;
     let child = std::process::Command::new(command)
         .args(args)
-        .envs(env.iter().copied())
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::from(log))
         .stderr(std::process::Stdio::from(log_err))
@@ -264,7 +259,7 @@ mod tests {
 
     #[test]
     fn spawn_pty_returns_positive_pid_for_running_child() {
-        let pid = spawn_pty("/bin/sh", &["-c".into(), "sleep 1".into()], &[]).unwrap();
+        let pid = spawn_pty("/bin/sh", &["-c".into(), "sleep 1".into()]).unwrap();
         assert!(pid > 0, "spawn must return a child PID; got {pid}");
         assert!(
             process_alive(pid),
@@ -274,43 +269,11 @@ mod tests {
 
     #[test]
     fn spawn_pty_survives_parent_handle_drop() {
-        let pid = spawn_pty("/bin/sh", &["-c".into(), "sleep 2".into()], &[]).unwrap();
+        let pid = spawn_pty("/bin/sh", &["-c".into(), "sleep 2".into()]).unwrap();
         std::thread::sleep(std::time::Duration::from_millis(150));
         assert!(
             process_alive(pid),
             "child {pid} must outlive the spawn handles being dropped"
-        );
-    }
-
-    #[test]
-    fn spawn_captured_propagates_room_role_to_the_child_environment() {
-        let log_path = std::env::temp_dir().join(format!(
-            "bpmux-room-role-env-{}-{}.log",
-            std::process::id(),
-            "captured"
-        ));
-        let _ = std::fs::remove_file(&log_path);
-        let pid = spawn_captured(
-            "/bin/sh",
-            &["-c".into(), "printf 'BPMUX_ROLE=%s' \"$BPMUX_ROLE\"".into()],
-            &log_path,
-            &[("BPMUX_ROLE", "pm")],
-        )
-        .unwrap();
-        assert!(pid > 0, "captured spawn must report a child PID");
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
-        let mut contents = String::new();
-        while std::time::Instant::now() < deadline {
-            contents = std::fs::read_to_string(&log_path).unwrap_or_default();
-            if contents.contains("BPMUX_ROLE=pm") {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(25));
-        }
-        let _ = std::fs::remove_file(&log_path);
-        assert!(
-            contents.contains("BPMUX_ROLE=pm"),
-            "the room-role must reach the spawned child via BPMUX_ROLE so its bridge adopts the room-identity; got {contents:?}"
         );
     }
 

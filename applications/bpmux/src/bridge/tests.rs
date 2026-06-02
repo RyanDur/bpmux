@@ -11,7 +11,7 @@ fn resolve_bridge_name_uses_given_name_when_provided() {
 
 #[test]
 fn resolve_bridge_name_generates_agent_suffix_for_default() {
-    let name = resolve_bridge_name_with_role("claude-code", None);
+    let name = resolve_bridge_name("claude-code");
     assert!(
         name.starts_with("agent-"),
         "expected agent-XXXX, got: {name}"
@@ -21,7 +21,7 @@ fn resolve_bridge_name_generates_agent_suffix_for_default() {
 
 #[test]
 fn resolve_bridge_name_generates_agent_suffix_when_empty() {
-    let name = resolve_bridge_name_with_role("", None);
+    let name = resolve_bridge_name("");
     assert!(
         name.starts_with("agent-"),
         "empty name should auto-generate, got: {name}"
@@ -30,7 +30,7 @@ fn resolve_bridge_name_generates_agent_suffix_when_empty() {
 
 #[test]
 fn resolve_bridge_name_generates_agent_suffix_for_unexpanded_placeholder() {
-    let name = resolve_bridge_name_with_role("${BPMUX_ROLE}", None);
+    let name = resolve_bridge_name("${BPMUX_ROLE}");
     assert!(
         name.starts_with("agent-"),
         "unexpanded placeholder should auto-generate, got: {name}"

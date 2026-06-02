@@ -114,11 +114,10 @@ enum RoomAction {
 
 fn run_room_spawn(role: &str, agent: &str, headless: bool) -> anyhow::Result<()> {
     let storage = room::FileRoomStorage::from_env();
-    let env = [("BPMUX_ROLE", role)];
     let pid = if headless {
-        room::spawn_captured(agent, &[], &storage.output_path(role), &env)?
+        room::spawn_captured(agent, &[], &storage.output_path(role))?
     } else {
-        room::spawn_pty(agent, &[], &env)?
+        room::spawn_pty(agent, &[])?
     };
     let entry = room::Room {
         role: role.to_string(),
