@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Board from './board/Board'
 import BoardResizeHandle from './board/BoardResizeHandle'
 import {
@@ -129,6 +129,7 @@ const AppShell = ({
   const [terminals, setTerminals] = useState<TerminalEntry[]>([])
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState<{ key: string; id: string } | null>(null)
+  const confirmDialogRef = useRef<HTMLDialogElement>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const channelKey = allView
@@ -175,9 +176,17 @@ const AppShell = ({
           return
         }
         const id = body.terminal_id
-        setTerminals((prev) =>
-          prev.map((t) => (t.key === key ? { ...t, state: 'ready', id, cwd: body.cwd ?? '' } : t))
-        )
+        setTerminals((prev) => {
+          if (!prev.some((t) => t.key === key)) {
+            void postClose(id, true).catch((err: unknown) =>
+              console.error('bpmux: orphaned terminal reap failed', err)
+            )
+            return prev
+          }
+          return prev.map((t) =>
+            t.key === key ? { ...t, state: 'ready', id, cwd: body.cwd ?? '' } : t
+          )
+        })
       })
       .catch((e: unknown) => markFailed(String(e)))
   }
@@ -255,6 +264,10 @@ const AppShell = ({
       setTerminals((prev) => prev.map((t) => (t.id === terminalId ? { ...t, state: 'exited' } : t)))
     })
   }, [])
+
+  useEffect(() => {
+    if (confirmClose) confirmDialogRef.current?.showModal()
+  }, [confirmClose])
 
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
@@ -367,7 +380,12 @@ const AppShell = ({
         />
       </section>
       {confirmClose && (
-        <dialog className="confirm-close" open data-test="confirm-close-dialog">
+        <dialog
+          ref={confirmDialogRef}
+          className="confirm-close"
+          data-test="confirm-close-dialog"
+          onCancel={() => setConfirmClose(null)}
+        >
           <p className="confirm-close-message">
             A process is running in this terminal. Close it anyway?
           </p>
