@@ -66,6 +66,10 @@ impl LivePty {
             .map_err(io_other)
     }
 
+    pub fn has_foreground_job(&self) -> bool {
+        matches!(self.master.process_group_leader(), Some(pgid) if pgid != self.pid as i32)
+    }
+
     pub fn close_and_reap(mut self) {
         let _ = signal(self.pid, "TERM");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
@@ -511,5 +515,16 @@ mod tests {
             !process_alive(pid),
             "close_and_reap must terminate the spawned process (SIGTERM→grace→SIGKILL→reap) — pid {pid} still alive is the orphan leak this slice closes"
         );
+    }
+
+    #[test]
+    fn has_foreground_job_is_false_for_a_bare_spawned_process() {
+        let live = spawn_pty_retained("/bin/sh", &["-c".into(), "exec sleep 30".into()], None, &[])
+            .unwrap();
+        assert!(
+            !live.has_foreground_job(),
+            "a bare spawned process with no forked foreground command must report no foreground job — closing it needs no confirm-before-close"
+        );
+        live.close_and_reap();
     }
 }

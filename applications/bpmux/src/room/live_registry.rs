@@ -59,6 +59,14 @@ impl LivePtyRegistry {
             .unwrap_or_else(|e| e.into_inner())
             .remove(terminal_id)
     }
+
+    pub fn has_foreground_job(&self, terminal_id: &str) -> Option<bool> {
+        self.rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(terminal_id)
+            .map(|live| live.has_foreground_job())
+    }
 }
 
 #[cfg(test)]

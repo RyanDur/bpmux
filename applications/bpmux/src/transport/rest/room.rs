@@ -10,6 +10,8 @@ use crate::room::LivePtyRegistry;
 #[derive(serde::Deserialize)]
 pub struct TerminalCloseRequest {
     pub terminal_id: String,
+    #[serde(default)]
+    pub force: bool,
 }
 
 pub async fn post_terminal_spawn(
@@ -55,6 +57,13 @@ pub async fn post_terminal_close(
     Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
     axum::Json(req): axum::Json<TerminalCloseRequest>,
 ) -> impl IntoResponse {
+    if !req.force && pty_registry.has_foreground_job(&req.terminal_id) == Some(true) {
+        return (
+            StatusCode::CONFLICT,
+            json_headers(),
+            serde_json::json!({ "needs_confirm": true }).to_string(),
+        );
+    }
     match pty_registry.remove(&req.terminal_id) {
         Some(live) => {
             live.close_and_reap();

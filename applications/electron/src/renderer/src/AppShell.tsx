@@ -128,6 +128,7 @@ const AppShell = ({
   const [allView, setAllView] = useState<boolean>(initialScope?.kind !== 'scoped')
   const [terminals, setTerminals] = useState<TerminalEntry[]>([])
   const [activeKey, setActiveKey] = useState<string | null>(null)
+  const [confirmClose, setConfirmClose] = useState<{ key: string; id: string } | null>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const channelKey = allView
@@ -200,23 +201,53 @@ const AppShell = ({
     setActiveKey(key)
   }
 
-  const closeTerminal = (key: string): void => {
-    const closing = terminals.find((t) => t.key === key)
-    if (closing?.id && bridge) {
-      void fetch(`${bridge.apiBase}/api/terminals/close`, {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${bridge.authToken}`,
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({ terminal_id: closing.id })
-      }).catch((e: unknown) => console.error('bpmux: terminal close failed', e))
-    }
+  const removePane = (key: string): void => {
     const remaining = terminals.filter((t) => t.key !== key)
     setTerminals(remaining)
     if (activeKey === key) {
       setActiveKey(remaining.length > 0 ? remaining[remaining.length - 1].key : null)
     }
+  }
+
+  const postClose = (id: string, force: boolean): Promise<Response> =>
+    fetch(`${bridge?.apiBase}/api/terminals/close`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${bridge?.authToken}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ terminal_id: id, force })
+    })
+
+  const closeTerminal = (key: string): void => {
+    const closing = terminals.find((t) => t.key === key)
+    if (!closing?.id || !bridge) {
+      removePane(key)
+      return
+    }
+    const id = closing.id
+    void postClose(id, false)
+      .then((res) => {
+        if (res.status === 409) {
+          setConfirmClose({ key, id })
+          return
+        }
+        removePane(key)
+      })
+      .catch((e: unknown) => {
+        console.error('bpmux: terminal close failed', e)
+        removePane(key)
+      })
+  }
+
+  const confirmCloseTerminal = (): void => {
+    if (!confirmClose) return
+    const { key, id } = confirmClose
+    setConfirmClose(null)
+    void postClose(id, true).catch((e: unknown) =>
+      console.error('bpmux: terminal force-close failed', e)
+    )
+    removePane(key)
   }
 
   useEffect(() => {
@@ -335,6 +366,31 @@ const AppShell = ({
           width={boardWidthStorage.width}
         />
       </section>
+      {confirmClose && (
+        <dialog className="confirm-close" open data-test="confirm-close-dialog">
+          <p className="confirm-close-message">
+            A process is running in this terminal. Close it anyway?
+          </p>
+          <form method="dialog" className="confirm-close-actions">
+            <button
+              type="button"
+              className="confirm-close-action"
+              data-test="confirm-close-cancel"
+              onClick={() => setConfirmClose(null)}
+            >
+              cancel
+            </button>
+            <button
+              type="button"
+              className="confirm-close-action confirm-close-confirm"
+              data-test="confirm-close-confirm"
+              onClick={confirmCloseTerminal}
+            >
+              close anyway
+            </button>
+          </form>
+        </dialog>
+      )}
     </main>
   )
 }
