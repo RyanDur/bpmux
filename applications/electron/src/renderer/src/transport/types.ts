@@ -85,12 +85,18 @@ export interface ServerPtyOutput {
   data: string
 }
 
+export interface ServerPtyExit {
+  type: 'pty_exit'
+  terminal_id: string
+}
+
 export type ServerMessage =
   | ServerWelcome
   | ServerChatMessage
   | ServerError
   | ServerPong
   | ServerPtyOutput
+  | ServerPtyExit
 
 export interface ClientIdentify {
   type: 'identify'

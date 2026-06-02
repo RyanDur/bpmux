@@ -77,6 +77,7 @@ interface ServiceState {
   listeners: Set<() => void>
   liveMessageListeners: Set<(m: ChatMessage) => void>
   ptyOutputListeners: Map<string, Set<(data: string) => void>>
+  ptyExitListeners: Set<(terminalId: string) => void>
 }
 
 const freshState = (): ServiceState => ({
@@ -91,7 +92,8 @@ const freshState = (): ServiceState => ({
   historyAbort: null,
   listeners: new Set(),
   liveMessageListeners: new Set(),
-  ptyOutputListeners: new Map()
+  ptyOutputListeners: new Map(),
+  ptyExitListeners: new Set()
 })
 
 let state: ServiceState = freshState()
@@ -111,6 +113,10 @@ const emitPtyOutput = (terminalId: string, data: string): void => {
   const handlers = state.ptyOutputListeners.get(terminalId)
   if (!handlers) return
   for (const handler of handlers) handler(data)
+}
+
+const emitPtyExit = (terminalId: string): void => {
+  for (const handler of state.ptyExitListeners) handler(terminalId)
 }
 
 const sendJson = (msg: ClientMessage): void => {
@@ -175,6 +181,9 @@ const handleServerMessage = (raw: string): void => {
       break
     case 'pty_output':
       emitPtyOutput(parsed.terminal_id, parsed.data)
+      break
+    case 'pty_exit':
+      emitPtyExit(parsed.terminal_id)
       break
     case 'pong':
       break
@@ -389,6 +398,13 @@ export const subscribeWsPtyOutput = (
   handlers.add(handler)
   return () => {
     handlers.delete(handler)
+  }
+}
+
+export const subscribeWsPtyExit = (handler: (terminalId: string) => void): (() => void) => {
+  state.ptyExitListeners.add(handler)
+  return () => {
+    state.ptyExitListeners.delete(handler)
   }
 }
 

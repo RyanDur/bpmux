@@ -9,17 +9,18 @@ import {
   deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import type { TerminalEntry } from '../AppShell'
 import './Sidebar.css'
 
 interface Props {
   recipient: string[] | null
   allView: boolean
-  activeTerminalId?: string | null
-  terminals?: { id: string; cwd: string }[]
+  activeTerminalKey?: string | null
+  terminals?: TerminalEntry[]
   onSelectRecipient: (r: string[] | null) => void
   onSelectAllView: () => void
   onAddTerminal?: () => void
-  onSelectTerminal?: (id: string) => void
+  onSelectTerminal?: (key: string) => void
   messages: ChatMessage[]
   filter: MessageFilter
   mirrorRoster?: readonly RosterMemberWire[]
@@ -53,7 +54,7 @@ const recipientMatches = (recipient: string[] | null, names: readonly string[]):
 const Sidebar = ({
   recipient,
   allView,
-  activeTerminalId = null,
+  activeTerminalKey = null,
   terminals = [],
   onSelectRecipient,
   onSelectAllView,
@@ -81,7 +82,7 @@ const Sidebar = ({
   )
   const presence = usePresence(messages, directRoles)
 
-  const noTerminalActive = activeTerminalId === null
+  const noTerminalActive = activeTerminalKey === null
   const allMembersGroupSelected = !allView && recipient === null && noTerminalActive
   const allActive = allView && noTerminalActive
 
@@ -210,18 +211,27 @@ const Sidebar = ({
           </p>
         ) : (
           terminals.map((t, i) => {
-            const active = activeTerminalId === t.id
-            const label = `${i + 1} · ${t.cwd.split('/').filter(Boolean).pop() ?? '/'}`
+            const active = activeTerminalKey === t.key
+            const dir = (t.cwd ?? '').split('/').filter(Boolean).pop() ?? '/'
+            const label =
+              t.state === 'ready'
+                ? `${i + 1} · ${dir}`
+                : t.state === 'spawning'
+                  ? `${i + 1} · spawning…`
+                  : t.state === 'spawn-failed'
+                    ? `${i + 1} · failed`
+                    : `${i + 1} · exited`
             return (
               <button
-                key={t.id}
+                key={t.key}
                 className={`sidebar-item${active ? ' sidebar-item--active' : ''}`}
                 type="button"
                 aria-current={active || undefined}
                 data-test="sidebar-terminal-item"
-                data-terminal-id={t.id}
-                title={t.cwd}
-                onClick={() => onSelectTerminal(t.id)}
+                data-terminal-key={t.key}
+                data-state={t.state}
+                title={t.cwd ?? t.state}
+                onClick={() => onSelectTerminal(t.key)}
               >
                 {label}
               </button>

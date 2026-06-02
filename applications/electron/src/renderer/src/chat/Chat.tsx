@@ -8,6 +8,7 @@ import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
 import { TerminalView } from './TerminalView'
+import type { TerminalEntry } from '../AppShell'
 import './Chat.css'
 
 interface Props {
@@ -15,8 +16,8 @@ interface Props {
   status: ConnectionStatus
   recipient: string[] | null
   allView: boolean
-  activeTerminalId: string | null
-  terminals: { id: string; cwd: string }[]
+  activeKey: string | null
+  terminals: TerminalEntry[]
   onSelectRecipient?: (r: string[] | null) => void
   filter: ReturnType<typeof useMessageFilter>
   metricsOpen: boolean
@@ -42,7 +43,7 @@ const Chat = ({
   status,
   recipient,
   allView,
-  activeTerminalId,
+  activeKey,
   terminals,
   onSelectRecipient,
   filter,
@@ -106,15 +107,29 @@ const Chat = ({
       <section className="chat-center">
         {terminals.map((t) => (
           <section
-            key={t.id}
+            key={t.key}
             className="terminal-layer"
-            data-active={activeTerminalId === t.id}
-            data-test={`terminal-slot-${t.id}`}
+            data-active={activeKey === t.key}
+            data-test={`terminal-slot-${t.key}`}
           >
-            <TerminalView terminalId={t.id} cwd={t.cwd} isActive={activeTerminalId === t.id} />
+            {t.state === 'ready' && t.id ? (
+              <TerminalView terminalId={t.id} cwd={t.cwd ?? ''} isActive={activeKey === t.key} />
+            ) : (
+              <section
+                className="terminal-state"
+                data-test={`terminal-state-${t.key}`}
+                data-state={t.state}
+              >
+                {t.state === 'spawning'
+                  ? 'spawning…'
+                  : t.state === 'spawn-failed'
+                    ? `spawn-failed: ${t.error ?? ''}`
+                    : 'exited'}
+              </section>
+            )}
           </section>
         ))}
-        <section className="chat-layer" data-active={activeTerminalId === null}>
+        <section className="chat-layer" data-active={activeKey === null}>
           {scopeLabel && (
             <aside className="chat-scope" aria-live="polite">
               <small>{scopeLabel}</small>

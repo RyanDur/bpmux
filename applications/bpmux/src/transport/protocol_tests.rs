@@ -105,6 +105,22 @@ fn deserializes_pty_resize_with_terminal_id_cols_and_rows() {
 }
 
 #[test]
+fn pty_exit_serializes_with_distinct_type_and_terminal_id() {
+    let msg = ServerMessage::PtyExit {
+        terminal_id: "term-1".to_string(),
+    };
+    let json = serde_json::to_string(&msg).expect("serialize");
+    assert!(
+        json.contains(r#""type":"pty_exit""#),
+        "distinct frame type: {json}"
+    );
+    assert!(
+        json.contains(r#""terminal_id":"term-1""#),
+        "carries terminal_id: {json}"
+    );
+}
+
+#[test]
 fn deserializes_send_with_to() {
     let json = r#"{"type": "send", "text": "hey", "to": ["pm", "designer"]}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");

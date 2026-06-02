@@ -133,8 +133,12 @@ async fn run_ws_session(
                 }
                 pty_chunk = pty_rx.recv() => {
                     if let Some((terminal_id, bytes)) = pty_chunk {
-                        let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
-                        send_json(&mut tx, &ServerMessage::PtyOutput { terminal_id, data }).await?;
+                        if bytes.is_empty() {
+                            send_json(&mut tx, &ServerMessage::PtyExit { terminal_id }).await?;
+                        } else {
+                            let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
+                            send_json(&mut tx, &ServerMessage::PtyOutput { terminal_id, data }).await?;
+                        }
                     }
                 }
                 ws_result = rx.next() => {
@@ -402,13 +406,19 @@ async fn handle_client_message(
                             break;
                         }
                         match reader.read(&mut buf) {
-                            Ok(0) => break,
+                            Ok(0) => {
+                                let _ = sink.send((terminal_id.clone(), Vec::new()));
+                                break;
+                            }
                             Ok(n) => {
                                 if sink.send((terminal_id.clone(), buf[..n].to_vec())).is_err() {
                                     break;
                                 }
                             }
-                            Err(_) => break,
+                            Err(_) => {
+                                let _ = sink.send((terminal_id.clone(), Vec::new()));
+                                break;
+                            }
                         }
                     }
                 });

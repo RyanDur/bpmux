@@ -66,6 +66,8 @@ pub enum ServerMessage {
     Pong,
     #[serde(rename = "pty_output")]
     PtyOutput { terminal_id: String, data: String },
+    #[serde(rename = "pty_exit")]
+    PtyExit { terminal_id: String },
 }
 
 impl From<Message> for ServerMessage {

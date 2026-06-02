@@ -21,9 +21,20 @@ import type {
   RosterMemberWire
 } from './transport/types'
 import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
+import { subscribeWsPtyExit } from './transport/wsService'
 import './AppShell.css'
 
 type PersistedScope = { kind: 'all' } | { kind: 'broadcast' } | { kind: 'scoped'; value: string[] }
+
+export type TerminalState = 'spawning' | 'ready' | 'spawn-failed' | 'exited'
+
+export interface TerminalEntry {
+  key: string
+  state: TerminalState
+  id?: string
+  cwd?: string
+  error?: string
+}
 
 const SCOPE_STORAGE_KEY = `bpmux-scope:${RENDERER_IDENTITY}`
 
@@ -115,8 +126,8 @@ const AppShell = ({
     initialScope?.kind === 'scoped' ? initialScope.value : null
   )
   const [allView, setAllView] = useState<boolean>(initialScope?.kind !== 'scoped')
-  const [terminals, setTerminals] = useState<{ id: string; cwd: string }[]>([])
-  const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null)
+  const [terminals, setTerminals] = useState<TerminalEntry[]>([])
+  const [activeKey, setActiveKey] = useState<string | null>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const channelKey = allView
@@ -128,14 +139,14 @@ const AppShell = ({
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
   const selectRecipient = (r: string[] | null): void => {
-    setActiveTerminalId(null)
+    setActiveKey(null)
     setAllView(false)
     setRecipient(r)
     writeScope(r && r.length > 0 ? { kind: 'scoped', value: r } : { kind: 'broadcast' })
   }
 
   const selectAllView = (): void => {
-    setActiveTerminalId(null)
+    setActiveKey(null)
     setAllView(true)
     setRecipient(null)
     writeScope({ kind: 'all' })
@@ -143,23 +154,45 @@ const AppShell = ({
 
   const spawnTerminal = (): void => {
     if (!bridge) return
+    const key = crypto.randomUUID()
+    setTerminals((prev) => [...prev, { key, state: 'spawning' }])
+    setActiveKey(key)
+    const markFailed = (error: string): void =>
+      setTerminals((prev) =>
+        prev.map((t) => (t.key === key ? { ...t, state: 'spawn-failed', error } : t))
+      )
     void fetch(`${bridge.apiBase}/api/terminals/spawn`, {
       method: 'POST',
       headers: { authorization: `Bearer ${bridge.authToken}` }
     })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body: { terminal_id?: string; cwd?: string } | null) => {
-        if (!body?.terminal_id) return
+      .then(async (res) => {
+        if (!res.ok) {
+          const detail = await res.text().catch(() => '')
+          markFailed(detail.length > 0 ? detail : `spawn failed (${res.status})`)
+          return
+        }
+        const body = (await res.json()) as { terminal_id?: string; cwd?: string }
+        if (!body.terminal_id) {
+          markFailed('spawn response missing terminal_id')
+          return
+        }
         const id = body.terminal_id
-        setTerminals((prev) => [...prev, { id, cwd: body.cwd ?? '' }])
-        setActiveTerminalId(id)
+        setTerminals((prev) =>
+          prev.map((t) => (t.key === key ? { ...t, state: 'ready', id, cwd: body.cwd ?? '' } : t))
+        )
       })
-      .catch(() => undefined)
+      .catch((e: unknown) => markFailed(String(e)))
   }
 
-  const selectTerminal = (id: string): void => {
-    setActiveTerminalId(id)
+  const selectTerminal = (key: string): void => {
+    setActiveKey(key)
   }
+
+  useEffect(() => {
+    return subscribeWsPtyExit((terminalId) => {
+      setTerminals((prev) => prev.map((t) => (t.id === terminalId ? { ...t, state: 'exited' } : t)))
+    })
+  }, [])
 
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
@@ -222,7 +255,7 @@ const AppShell = ({
         <Sidebar
           recipient={recipient}
           allView={allView}
-          activeTerminalId={activeTerminalId}
+          activeTerminalKey={activeKey}
           terminals={terminals}
           onSelectRecipient={selectRecipient}
           onSelectAllView={selectAllView}
@@ -237,7 +270,7 @@ const AppShell = ({
           status={status}
           recipient={recipient}
           allView={allView}
-          activeTerminalId={activeTerminalId}
+          activeKey={activeKey}
           terminals={terminals}
           onSelectRecipient={selectRecipient}
           filter={filter}
