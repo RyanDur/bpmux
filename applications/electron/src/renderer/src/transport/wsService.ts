@@ -107,8 +107,8 @@ const emitLiveMessage = (msg: ChatMessage): void => {
   for (const handler of state.liveMessageListeners) handler(msg)
 }
 
-const emitPtyOutput = (role: string, data: string): void => {
-  const handlers = state.ptyOutputListeners.get(role)
+const emitPtyOutput = (terminalId: string, data: string): void => {
+  const handlers = state.ptyOutputListeners.get(terminalId)
   if (!handlers) return
   for (const handler of handlers) handler(data)
 }
@@ -174,7 +174,7 @@ const handleServerMessage = (raw: string): void => {
       console.error('bpmux ws: server error', parsed.reason)
       break
     case 'pty_output':
-      emitPtyOutput(parsed.role, parsed.data)
+      emitPtyOutput(parsed.terminal_id, parsed.data)
       break
     case 'pong':
       break
@@ -378,13 +378,13 @@ export const subscribeWsLiveMessages = (handler: (m: ChatMessage) => void): (() 
 }
 
 export const subscribeWsPtyOutput = (
-  role: string,
+  terminalId: string,
   handler: (data: string) => void
 ): (() => void) => {
-  let handlers = state.ptyOutputListeners.get(role)
+  let handlers = state.ptyOutputListeners.get(terminalId)
   if (!handlers) {
     handlers = new Set()
-    state.ptyOutputListeners.set(role, handlers)
+    state.ptyOutputListeners.set(terminalId, handlers)
   }
   handlers.add(handler)
   return () => {
@@ -392,8 +392,8 @@ export const subscribeWsPtyOutput = (
   }
 }
 
-export const sendPtySubscribe = (role: string): void => {
-  sendJson({ type: 'pty_subscribe', role })
+export const sendPtySubscribe = (terminalId: string): void => {
+  sendJson({ type: 'pty_subscribe', terminal_id: terminalId })
 }
 
 export const encodeKeystroke = (data: string): string => {
@@ -412,8 +412,8 @@ export const decodePtyData = (b64: string): Uint8Array => {
   return bytes
 }
 
-export const sendPtyInput = (role: string, keystroke: string): void => {
-  sendJson({ type: 'pty_input', role, data: encodeKeystroke(keystroke) })
+export const sendPtyInput = (terminalId: string, keystroke: string): void => {
+  sendJson({ type: 'pty_input', terminal_id: terminalId, data: encodeKeystroke(keystroke) })
 }
 
 export const getWsSnapshot = (): WsSnapshot => state.snapshot

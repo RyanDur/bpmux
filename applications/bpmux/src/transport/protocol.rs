@@ -26,9 +26,9 @@ pub enum ClientMessage {
     #[serde(rename = "rename")]
     Rename { name: String },
     #[serde(rename = "pty_subscribe")]
-    PtySubscribe { role: String },
+    PtySubscribe { terminal_id: String },
     #[serde(rename = "pty_input")]
-    PtyInput { role: String, data: String },
+    PtyInput { terminal_id: String, data: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -59,7 +59,7 @@ pub enum ServerMessage {
     #[serde(rename = "pong")]
     Pong,
     #[serde(rename = "pty_output")]
-    PtyOutput { role: String, data: String },
+    PtyOutput { terminal_id: String, data: String },
 }
 
 impl From<Message> for ServerMessage {

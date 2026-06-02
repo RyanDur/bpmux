@@ -81,7 +81,7 @@ export interface ServerPong {
 
 export interface ServerPtyOutput {
   type: 'pty_output'
-  role: string
+  terminal_id: string
   data: string
 }
 
@@ -112,12 +112,12 @@ export interface ClientPing {
 
 export interface ClientPtySubscribe {
   type: 'pty_subscribe'
-  role: string
+  terminal_id: string
 }
 
 export interface ClientPtyInput {
   type: 'pty_input'
-  role: string
+  terminal_id: string
   data: string
 }
 

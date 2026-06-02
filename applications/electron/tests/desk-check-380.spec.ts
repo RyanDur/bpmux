@@ -105,7 +105,7 @@ test.describe('desk-check #380 inline @mention pills', () => {
     await app.close()
   })
 
-  test('clicking a mention pill opens that role terminal', async () => {
+  test('clicking a mention pill shifts chat scope to that role (chat, not a terminal)', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
@@ -113,7 +113,8 @@ test.describe('desk-check #380 inline @mention pills', () => {
     const devMention = win.locator('[data-test="message-mention"][data-role="dev"]').first()
     await devMention.click()
 
-    await expect(win.locator('[data-test="terminal-dev"]')).toBeVisible({ timeout: 10_000 })
+    await expect(win.locator('[data-test="message-list"]')).toBeVisible({ timeout: 10_000 })
+    await expect(win.locator('[data-test="terminal-dev"]')).toHaveCount(0)
 
     await app.close()
   })

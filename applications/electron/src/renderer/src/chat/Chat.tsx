@@ -15,6 +15,8 @@ interface Props {
   status: ConnectionStatus
   recipient: string[] | null
   allView: boolean
+  activeTerminalId: string | null
+  terminals: { id: string; cwd: string }[]
   onSelectRecipient?: (r: string[] | null) => void
   filter: ReturnType<typeof useMessageFilter>
   metricsOpen: boolean
@@ -40,6 +42,8 @@ const Chat = ({
   status,
   recipient,
   allView,
+  activeTerminalId,
+  terminals,
   onSelectRecipient,
   filter,
   metricsOpen,
@@ -92,8 +96,6 @@ const Chat = ({
       ? `GROUP → ${recipient.join(' + ')}`
       : null
 
-  const terminalRole = !allView && recipient && recipient.length === 1 ? recipient[0] : null
-
   return (
     <section className="chat" data-test="chat-region">
       {showReconnect && (
@@ -101,10 +103,18 @@ const Chat = ({
           {status === 'connecting' ? 'connecting…' : 'reconnecting…'}
         </output>
       )}
-      {terminalRole ? (
-        <TerminalView role={terminalRole} />
-      ) : (
-        <>
+      <section className="chat-center">
+        {terminals.map((t) => (
+          <section
+            key={t.id}
+            className="terminal-layer"
+            data-active={activeTerminalId === t.id}
+            data-test={`terminal-slot-${t.id}`}
+          >
+            <TerminalView terminalId={t.id} isActive={activeTerminalId === t.id} />
+          </section>
+        ))}
+        <section className="chat-layer" data-active={activeTerminalId === null}>
           {scopeLabel && (
             <aside className="chat-scope" aria-live="polite">
               <small>{scopeLabel}</small>
@@ -144,8 +154,8 @@ const Chat = ({
               recipient && recipient.length > 0 ? `message ${recipient.join(' + ')}` : undefined
             }
           />
-        </>
-      )}
+        </section>
+      </section>
     </section>
   )
 }

@@ -132,9 +132,9 @@ async fn run_ws_session(
                     }
                 }
                 pty_chunk = pty_rx.recv() => {
-                    if let Some((role, bytes)) = pty_chunk {
+                    if let Some((terminal_id, bytes)) = pty_chunk {
                         let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
-                        send_json(&mut tx, &ServerMessage::PtyOutput { role, data }).await?;
+                        send_json(&mut tx, &ServerMessage::PtyOutput { terminal_id, data }).await?;
                     }
                 }
                 ws_result = rx.next() => {
@@ -385,11 +385,11 @@ async fn handle_client_message(
             )
             .await?;
         }
-        Ok(ClientMessage::PtySubscribe { role }) => {
+        Ok(ClientMessage::PtySubscribe { terminal_id }) => {
             if let Some(prev) = pty_stop.take() {
                 prev.store(true, std::sync::atomic::Ordering::Relaxed);
             }
-            if let Some(Ok(reader)) = pty_registry.reader_for(&role) {
+            if let Some(Ok(reader)) = pty_registry.reader_for(&terminal_id) {
                 let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
                 *pty_stop = Some(stop.clone());
                 let sink = pty_tx.clone();
@@ -404,7 +404,7 @@ async fn handle_client_message(
                         match reader.read(&mut buf) {
                             Ok(0) => break,
                             Ok(n) => {
-                                if sink.send((role.clone(), buf[..n].to_vec())).is_err() {
+                                if sink.send((terminal_id.clone(), buf[..n].to_vec())).is_err() {
                                     break;
                                 }
                             }
@@ -414,9 +414,9 @@ async fn handle_client_message(
                 });
             }
         }
-        Ok(ClientMessage::PtyInput { role, data }) => {
+        Ok(ClientMessage::PtyInput { terminal_id, data }) => {
             if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data) {
-                pty_registry.write_to(&role, &bytes);
+                pty_registry.write_to(&terminal_id, &bytes);
             }
         }
         Err(e) => {

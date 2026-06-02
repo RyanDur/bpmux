@@ -14,8 +14,12 @@ import './Sidebar.css'
 interface Props {
   recipient: string[] | null
   allView: boolean
+  activeTerminalId?: string | null
+  terminals?: { id: string; cwd: string }[]
   onSelectRecipient: (r: string[] | null) => void
   onSelectAllView: () => void
+  onAddTerminal?: () => void
+  onSelectTerminal?: (id: string) => void
   messages: ChatMessage[]
   filter: MessageFilter
   mirrorRoster?: readonly RosterMemberWire[]
@@ -49,8 +53,12 @@ const recipientMatches = (recipient: string[] | null, names: readonly string[]):
 const Sidebar = ({
   recipient,
   allView,
+  activeTerminalId = null,
+  terminals = [],
   onSelectRecipient,
   onSelectAllView,
+  onAddTerminal = () => {},
+  onSelectTerminal = () => {},
   messages,
   filter,
   mirrorRoster
@@ -73,7 +81,9 @@ const Sidebar = ({
   )
   const presence = usePresence(messages, directRoles)
 
-  const allMembersGroupSelected = !allView && recipient === null
+  const noTerminalActive = activeTerminalId === null
+  const allMembersGroupSelected = !allView && recipient === null && noTerminalActive
+  const allActive = allView && noTerminalActive
 
   const goAll = (): void => {
     onSelectAllView()
@@ -96,9 +106,9 @@ const Sidebar = ({
     <nav className="sidebar" data-test="sidebar" aria-label="Channels">
       <section className="sidebar-section">
         <button
-          className={`sidebar-item${allView ? ' sidebar-item--active' : ''}`}
+          className={`sidebar-item${allActive ? ' sidebar-item--active' : ''}`}
           type="button"
-          aria-current={allView || undefined}
+          aria-current={allActive || undefined}
           data-test="sidebar-all"
           title="meta-view of every channel"
           onClick={goAll}
@@ -110,7 +120,11 @@ const Sidebar = ({
         <h3 className="sidebar-heading">direct</h3>
         {directRoles.map((role) => {
           const active =
-            !allView && recipient !== null && recipient.length === 1 && recipient[0] === role
+            noTerminalActive &&
+            !allView &&
+            recipient !== null &&
+            recipient.length === 1 &&
+            recipient[0] === role
           const status = presence.get(role) ?? 'offline'
           const statusLabel = PRESENCE_LABEL[status]
           const terminalState = mirrorRoster?.find(
@@ -158,7 +172,7 @@ const Sidebar = ({
             const isAllMembers = isAllMembersGroup(names, combinableRoles)
             const active = isAllMembers
               ? allMembersGroupSelected
-              : !allView && recipientMatches(recipient, names)
+              : noTerminalActive && !allView && recipientMatches(recipient, names)
             return (
               <button
                 key={key}
@@ -171,6 +185,45 @@ const Sidebar = ({
                 title={names.join(' + ')}
               >
                 {names.join(' + ')}
+              </button>
+            )
+          })
+        )}
+      </section>
+      <section className="sidebar-section">
+        <h3 className="sidebar-heading sidebar-heading--terminals">
+          terminals
+          <button
+            className="sidebar-add-terminal"
+            type="button"
+            aria-label="spawn a new terminal"
+            title="spawn a new terminal"
+            data-test="sidebar-add-terminal"
+            onClick={onAddTerminal}
+          >
+            ＋
+          </button>
+        </h3>
+        {terminals.length === 0 ? (
+          <p className="sidebar-empty" data-test="sidebar-terminals-empty">
+            none yet
+          </p>
+        ) : (
+          terminals.map((t, i) => {
+            const active = activeTerminalId === t.id
+            const label = `${i + 1} · ${t.cwd.split('/').filter(Boolean).pop() ?? '/'}`
+            return (
+              <button
+                key={t.id}
+                className={`sidebar-item${active ? ' sidebar-item--active' : ''}`}
+                type="button"
+                aria-current={active || undefined}
+                data-test="sidebar-terminal-item"
+                data-terminal-id={t.id}
+                title={t.cwd}
+                onClick={() => onSelectTerminal(t.id)}
+              >
+                {label}
               </button>
             )
           })

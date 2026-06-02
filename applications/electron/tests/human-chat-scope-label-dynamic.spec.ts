@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
 
 test.describe('human-side E2E #476 — read-class — chat scope label', () => {
-  test('a direct role swaps the conversation-scope label for that role terminal', async () => {
+  test('a direct role opens its scoped chat (not a terminal) and clears the all-conversations label', async () => {
     const { app, win, mockGh } = await launchWithMockGh({
       seedMessages: [
         {
@@ -35,7 +35,8 @@ test.describe('human-side E2E #476 — read-class — chat scope label', () => {
       const devButton = win.locator('[data-test="sidebar-direct-dev"]')
       await expect(devButton).toBeVisible({ timeout: 20000 })
       await devButton.click()
-      await expect(win.locator('[data-test="terminal-dev"]')).toBeVisible({ timeout: 10000 })
+      await expect(win.locator('[data-test="message-list"]')).toBeVisible({ timeout: 10000 })
+      await expect(win.locator('[data-test="terminal-dev"]')).toHaveCount(0)
       await expect(scope).toHaveCount(0)
 
       await win.locator('[data-test="sidebar-all"]').click()

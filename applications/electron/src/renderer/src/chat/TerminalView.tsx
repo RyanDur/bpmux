@@ -11,7 +11,8 @@ import {
 import './TerminalView.css'
 
 interface TerminalViewProps {
-  role: string
+  terminalId: string
+  isActive: boolean
 }
 
 const readToken = (name: string, fallback: string): string => {
@@ -19,17 +20,9 @@ const readToken = (name: string, fallback: string): string => {
   return value.length > 0 ? value : fallback
 }
 
-const ensureRoomSpawned = async (role: string): Promise<void> => {
-  const bridge = window.bpmux
-  if (!bridge) return
-  await fetch(`${bridge.apiBase}/api/rooms/${encodeURIComponent(role)}/spawn`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${bridge.authToken}` }
-  })
-}
-
-export const TerminalView = ({ role }: TerminalViewProps): React.JSX.Element => {
+export const TerminalView = ({ terminalId, isActive }: TerminalViewProps): React.JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
+  const termRef = useRef<Terminal | null>(null)
 
   useEffect(() => {
     const container = containerRef.current
@@ -44,17 +37,18 @@ export const TerminalView = ({ role }: TerminalViewProps): React.JSX.Element => 
         foreground: readToken('--fg-base', '#d4d4d4')
       }
     })
+    termRef.current = term
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(container)
     fit.fit()
     term.focus()
 
-    const unsubscribe = subscribeWsPtyOutput(role, (data) => {
+    const unsubscribe = subscribeWsPtyOutput(terminalId, (data) => {
       term.write(decodePtyData(data))
     })
-    term.onData((keystroke) => sendPtyInput(role, keystroke))
-    void ensureRoomSpawned(role).then(() => sendPtySubscribe(role))
+    term.onData((keystroke) => sendPtyInput(terminalId, keystroke))
+    sendPtySubscribe(terminalId)
 
     const onResize = (): void => fit.fit()
     window.addEventListener('resize', onResize)
@@ -63,15 +57,22 @@ export const TerminalView = ({ role }: TerminalViewProps): React.JSX.Element => 
       window.removeEventListener('resize', onResize)
       unsubscribe()
       term.dispose()
+      termRef.current = null
     }
-  }, [role])
+  }, [terminalId])
+
+  useEffect(() => {
+    if (!isActive) return undefined
+    const raf = requestAnimationFrame(() => termRef.current?.focus())
+    return () => cancelAnimationFrame(raf)
+  }, [isActive])
 
   return (
     <section
       ref={containerRef}
       className="terminal-view"
-      data-test={`terminal-${role}`}
-      aria-label={`${role} terminal`}
+      data-test={`terminal-${terminalId}`}
+      aria-label={`terminal ${terminalId}`}
     />
   )
 }

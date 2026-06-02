@@ -24,9 +24,9 @@ const SEED_DIRECT_ROLES = [
 
 const roomCases = [{ target: 'pm' }, { target: 'designer' }, { target: 'dev' }] as const
 
-test.describe('human-side E2E #476 — room=terminal — selecting a direct role opens its terminal', () => {
+test.describe('human-side #1595 — selecting a direct role opens its scoped CHAT (terminals are now ＋-spawned, not role-derived)', () => {
   for (const { target } of roomCases) {
-    test(`selecting ${target} opens the ${target} terminal-room (not a message thread)`, async () => {
+    test(`selecting ${target} opens the ${target} chat, not a terminal`, async () => {
       const { app, win, mockGh } = await launchWithMockGh({
         seedMessages: SEED_DIRECT_ROLES,
         seedRoster: ['pm:claude-code', 'dev:claude-code', 'designer:claude-code']
@@ -40,11 +40,8 @@ test.describe('human-side E2E #476 — room=terminal — selecting a direct role
         await expect(directButton).toBeVisible({ timeout: 20000 })
         await directButton.click()
 
-        const terminal = win.locator(`[data-test="terminal-${target}"]`)
-        await expect(terminal).toBeVisible({ timeout: 10000 })
-
-        await expect(win.locator('[data-test="message-list"]')).toHaveCount(0)
-        await expect(win.locator('[data-test="chat-input-textarea"]')).toHaveCount(0)
+        await expect(win.locator('[data-test="message-list"]')).toBeVisible({ timeout: 10000 })
+        await expect(win.locator(`[data-test="terminal-${target}"]`)).toHaveCount(0)
       } finally {
         await app.close()
         await mockGh.close()

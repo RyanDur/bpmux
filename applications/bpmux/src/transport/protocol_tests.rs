@@ -44,21 +44,21 @@ fn deserializes_send() {
 
 #[test]
 fn deserializes_pty_subscribe() {
-    let json = r#"{"type": "pty_subscribe", "role": "dev"}"#;
+    let json = r#"{"type": "pty_subscribe", "terminal_id": "term-1"}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");
     match msg {
-        ClientMessage::PtySubscribe { role } => assert_eq!(role, "dev"),
+        ClientMessage::PtySubscribe { terminal_id } => assert_eq!(terminal_id, "term-1"),
         other => panic!("expected PtySubscribe, got {other:?}"),
     }
 }
 
 #[test]
-fn deserializes_pty_input_with_role_and_data() {
-    let json = r#"{"type": "pty_input", "role": "dev", "data": "Aw=="}"#;
+fn deserializes_pty_input_with_terminal_id_and_data() {
+    let json = r#"{"type": "pty_input", "terminal_id": "term-1", "data": "Aw=="}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");
     match msg {
-        ClientMessage::PtyInput { role, data } => {
-            assert_eq!(role, "dev");
+        ClientMessage::PtyInput { terminal_id, data } => {
+            assert_eq!(terminal_id, "term-1");
             assert_eq!(data, "Aw==");
         }
         other => panic!("expected PtyInput, got {other:?}"),
@@ -66,9 +66,9 @@ fn deserializes_pty_input_with_role_and_data() {
 }
 
 #[test]
-fn pty_output_serializes_with_distinct_type_role_and_data() {
+fn pty_output_serializes_with_distinct_type_terminal_id_and_data() {
     let msg = ServerMessage::PtyOutput {
-        role: "dev".to_string(),
+        terminal_id: "term-1".to_string(),
         data: "G1szMW1yZWQ=".to_string(),
     };
     let json = serde_json::to_string(&msg).expect("serialize");
@@ -76,7 +76,10 @@ fn pty_output_serializes_with_distinct_type_role_and_data() {
         json.contains(r#""type":"pty_output""#),
         "distinct frame type: {json}"
     );
-    assert!(json.contains(r#""role":"dev""#), "carries role: {json}");
+    assert!(
+        json.contains(r#""terminal_id":"term-1""#),
+        "carries terminal_id: {json}"
+    );
     assert!(
         json.contains(r#""data":"G1szMW1yZWQ=""#),
         "carries data: {json}"

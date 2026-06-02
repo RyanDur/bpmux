@@ -115,6 +115,8 @@ const AppShell = ({
     initialScope?.kind === 'scoped' ? initialScope.value : null
   )
   const [allView, setAllView] = useState<boolean>(initialScope?.kind !== 'scoped')
+  const [terminals, setTerminals] = useState<{ id: string; cwd: string }[]>([])
+  const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const channelKey = allView
@@ -126,15 +128,37 @@ const AppShell = ({
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
   const selectRecipient = (r: string[] | null): void => {
+    setActiveTerminalId(null)
     setAllView(false)
     setRecipient(r)
     writeScope(r && r.length > 0 ? { kind: 'scoped', value: r } : { kind: 'broadcast' })
   }
 
   const selectAllView = (): void => {
+    setActiveTerminalId(null)
     setAllView(true)
     setRecipient(null)
     writeScope({ kind: 'all' })
+  }
+
+  const spawnTerminal = (): void => {
+    if (!bridge) return
+    void fetch(`${bridge.apiBase}/api/terminals/spawn`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${bridge.authToken}` }
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { terminal_id?: string; cwd?: string } | null) => {
+        if (!body?.terminal_id) return
+        const id = body.terminal_id
+        setTerminals((prev) => [...prev, { id, cwd: body.cwd ?? '' }])
+        setActiveTerminalId(id)
+      })
+      .catch(() => undefined)
+  }
+
+  const selectTerminal = (id: string): void => {
+    setActiveTerminalId(id)
   }
 
   useEffect(() => {
@@ -198,8 +222,12 @@ const AppShell = ({
         <Sidebar
           recipient={recipient}
           allView={allView}
+          activeTerminalId={activeTerminalId}
+          terminals={terminals}
           onSelectRecipient={selectRecipient}
           onSelectAllView={selectAllView}
+          onAddTerminal={spawnTerminal}
+          onSelectTerminal={selectTerminal}
           messages={messages}
           filter={filter}
           mirrorRoster={mirrorRoster}
@@ -209,6 +237,8 @@ const AppShell = ({
           status={status}
           recipient={recipient}
           allView={allView}
+          activeTerminalId={activeTerminalId}
+          terminals={terminals}
           onSelectRecipient={selectRecipient}
           filter={filter}
           metricsOpen={metricsOpen}
