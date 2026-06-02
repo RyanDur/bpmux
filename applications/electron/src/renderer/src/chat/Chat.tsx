@@ -18,6 +18,8 @@ interface Props {
   allView: boolean
   activeKey: string | null
   terminals: TerminalEntry[]
+  onCloseTerminal?: (key: string) => void
+  onRestartTerminal?: (key: string) => void
   onSelectRecipient?: (r: string[] | null) => void
   filter: ReturnType<typeof useMessageFilter>
   metricsOpen: boolean
@@ -45,6 +47,8 @@ const Chat = ({
   allView,
   activeKey,
   terminals,
+  onCloseTerminal = () => {},
+  onRestartTerminal = () => {},
   onSelectRecipient,
   filter,
   metricsOpen,
@@ -113,18 +117,45 @@ const Chat = ({
             data-test={`terminal-slot-${t.key}`}
           >
             {t.state === 'ready' && t.id ? (
-              <TerminalView terminalId={t.id} cwd={t.cwd ?? ''} isActive={activeKey === t.key} />
+              <TerminalView
+                terminalId={t.id}
+                cwd={t.cwd ?? ''}
+                isActive={activeKey === t.key}
+                onClose={() => onCloseTerminal(t.key)}
+              />
             ) : (
               <section
                 className="terminal-state"
                 data-test={`terminal-state-${t.key}`}
                 data-state={t.state}
               >
-                {t.state === 'spawning'
-                  ? 'spawning…'
-                  : t.state === 'spawn-failed'
-                    ? `spawn-failed: ${t.error ?? ''}`
-                    : 'exited'}
+                <p className="terminal-state-label">
+                  {t.state === 'spawning'
+                    ? 'spawning…'
+                    : t.state === 'spawn-failed'
+                      ? `spawn-failed: ${t.error ?? ''}`
+                      : 'exited'}
+                </p>
+                {(t.state === 'exited' || t.state === 'spawn-failed') && (
+                  <footer className="terminal-state-actions">
+                    <button
+                      type="button"
+                      className="terminal-state-action"
+                      data-test={`terminal-restart-${t.key}`}
+                      onClick={() => onRestartTerminal(t.key)}
+                    >
+                      {t.state === 'exited' ? 'restart' : 'retry'}
+                    </button>
+                    <button
+                      type="button"
+                      className="terminal-state-action terminal-state-action--close"
+                      data-test={`terminal-pane-close-${t.key}`}
+                      onClick={() => onCloseTerminal(t.key)}
+                    >
+                      close
+                    </button>
+                  </footer>
+                )}
               </section>
             )}
           </section>

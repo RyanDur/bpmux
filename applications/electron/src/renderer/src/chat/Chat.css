@@ -77,14 +77,37 @@
   & .terminal-state {
     flex: 1 1 auto;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: var(--space-8);
     padding: var(--space-16);
     color: var(--fg-dim);
     font-size: 0.875rem;
   }
 
+  & .terminal-state-label {
+    margin: 0;
+  }
+
+  & .terminal-state-actions {
+    display: flex;
+    gap: var(--space-8);
+  }
+
+  & .terminal-state-action {
+    padding: var(--space-4) var(--space-8);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    color: var(--fg-primary);
+    font-size: 0.8125rem;
+  }
+
   & .terminal-state[data-state='spawn-failed'] {
     color: var(--accent-warning);
+  }
+
+  & .terminal-state-action:hover {
+    background: var(--bg-highlighted);
   }
 }

@@ -15,6 +15,7 @@ interface TerminalViewProps {
   terminalId: string
   cwd: string
   isActive: boolean
+  onClose?: () => void
 }
 
 const TERM_NAME = 'xterm-256color'
@@ -36,7 +37,8 @@ const cwdFromOsc7 = (payload: string): string | null => {
 export const TerminalView = ({
   terminalId,
   cwd,
-  isActive
+  isActive,
+  onClose
 }: TerminalViewProps): React.JSX.Element => {
   const screenRef = useRef<HTMLElement>(null)
   const termRef = useRef<Terminal | null>(null)
@@ -104,7 +106,17 @@ export const TerminalView = ({
       aria-label={`terminal ${terminalId}`}
     >
       <header className="terminal-header" data-test="terminal-header">
-        {liveCwd} · {dims.cols}×{dims.rows} · {TERM_NAME}
+        <small className="terminal-header-meta">{`${liveCwd} · ${dims.cols}×${dims.rows} · ${TERM_NAME}`}</small>
+        <button
+          type="button"
+          className="terminal-header-close"
+          aria-label="close terminal"
+          title="close terminal"
+          data-test="terminal-header-close"
+          onClick={onClose}
+        >
+          ✕
+        </button>
       </header>
       <section ref={screenRef} className="terminal-screen" aria-label="terminal output" />
     </section>

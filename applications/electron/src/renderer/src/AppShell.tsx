@@ -152,11 +152,8 @@ const AppShell = ({
     writeScope({ kind: 'all' })
   }
 
-  const spawnTerminal = (): void => {
+  const requestSpawn = (key: string): void => {
     if (!bridge) return
-    const key = crypto.randomUUID()
-    setTerminals((prev) => [...prev, { key, state: 'spawning' }])
-    setActiveKey(key)
     const markFailed = (error: string): void =>
       setTerminals((prev) =>
         prev.map((t) => (t.key === key ? { ...t, state: 'spawn-failed', error } : t))
@@ -182,6 +179,21 @@ const AppShell = ({
         )
       })
       .catch((e: unknown) => markFailed(String(e)))
+  }
+
+  const spawnTerminal = (): void => {
+    if (!bridge) return
+    const key = crypto.randomUUID()
+    setTerminals((prev) => [...prev, { key, state: 'spawning' }])
+    setActiveKey(key)
+    requestSpawn(key)
+  }
+
+  const restartTerminal = (key: string): void => {
+    if (!bridge) return
+    setTerminals((prev) => prev.map((t) => (t.key === key ? { key, state: 'spawning' } : t)))
+    setActiveKey(key)
+    requestSpawn(key)
   }
 
   const selectTerminal = (key: string): void => {
@@ -293,6 +305,8 @@ const AppShell = ({
           activeKey={activeKey}
           terminals={terminals}
           onSelectRecipient={selectRecipient}
+          onCloseTerminal={closeTerminal}
+          onRestartTerminal={restartTerminal}
           filter={filter}
           metricsOpen={metricsOpen}
           onCloseMetrics={() => setMetricsOpen(false)}
