@@ -127,4 +127,67 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       await mockGh.close()
     }
   })
+
+  test('with multiple terminals surviving a reload, the previously-active NON-first terminal is restored as the active one', async () => {
+    const { app, win, mockGh } = await launchWithMockGh({
+      extraEnv: { BPMUX_ROOM_AGENT: realShell() }
+    })
+    try {
+      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
+      await expect(addTerminal).toBeVisible({ timeout: 20000 })
+
+      await addTerminal.click()
+      const firstSpawned = win.locator(activeSlot)
+      await expect(firstSpawned).toBeVisible({ timeout: 10000 })
+      await firstSpawned.click()
+      await win.keyboard.type(
+        'cd /tmp && mkdir -p bpmux-1608-first && cd bpmux-1608-first && echo FIRST_READY_1608'
+      )
+      await win.keyboard.press('Enter')
+      await expect
+        .poll(async () => (await firstSpawned.textContent()) ?? '', {
+          timeout: 15000,
+          intervals: [300, 600, 1000]
+        })
+        .toContain('FIRST_READY_1608')
+
+      await addTerminal.click()
+      await expect(win.locator(sidebarItems)).toHaveCount(2)
+      const secondSpawned = win.locator(activeSlot)
+      await expect(secondSpawned).toBeVisible()
+      await secondSpawned.click()
+      await win.keyboard.type(
+        'cd /tmp && mkdir -p bpmux-1608-second && cd bpmux-1608-second && echo SECOND_READY_1608'
+      )
+      await win.keyboard.press('Enter')
+      await expect
+        .poll(async () => (await secondSpawned.textContent()) ?? '', {
+          timeout: 15000,
+          intervals: [300, 600, 1000]
+        })
+        .toContain('SECOND_READY_1608')
+
+      await expect(win.locator(slots).first()).toHaveAttribute('data-active', 'false')
+
+      await win.reload()
+
+      await expect(win.locator(sidebarItems)).toHaveCount(2, { timeout: 20000 })
+      const restoredActive = win.locator(activeSlot)
+      await expect(restoredActive).toBeVisible({ timeout: 20000 })
+      await expect(win.locator(slots).first()).toHaveAttribute('data-active', 'false')
+
+      await restoredActive.click()
+      await win.keyboard.type('pwd')
+      await win.keyboard.press('Enter')
+      await expect
+        .poll(async () => (await restoredActive.textContent()) ?? '', {
+          timeout: 15000,
+          intervals: [300, 600, 1000]
+        })
+        .toContain('bpmux-1608-second')
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
+  })
 })
