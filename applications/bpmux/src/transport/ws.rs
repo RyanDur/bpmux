@@ -93,7 +93,8 @@ async fn run_ws_session(
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;
     let (pty_tx, mut pty_rx) = tokio::sync::mpsc::unbounded_channel::<(String, Vec<u8>)>();
-    let mut pty_stop: Option<Arc<std::sync::atomic::AtomicBool>> = None;
+    let mut pty_readers: std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>> =
+        std::collections::HashMap::new();
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
         loop {
             tokio::select! {
@@ -144,7 +145,7 @@ async fn run_ws_session(
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
-                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx, &pty_registry, &pty_tx, &mut pty_stop).await? {
+                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx, &pty_registry, &pty_tx, &mut pty_readers).await? {
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
                                 session.roster_leave(&identity);
                                 dispatch_roster_leave(&orchestrator, &identity).await;
@@ -334,7 +335,7 @@ async fn handle_client_message(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     pty_registry: &crate::room::LivePtyRegistry,
     pty_tx: &tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
-    pty_stop: &mut Option<Arc<std::sync::atomic::AtomicBool>>,
+    pty_readers: &mut std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
 ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
     if !message_size_ok(text) {
         crate::session::diag::log_diag(&format!(
@@ -390,12 +391,12 @@ async fn handle_client_message(
             .await?;
         }
         Ok(ClientMessage::PtySubscribe { terminal_id }) => {
-            if let Some(prev) = pty_stop.take() {
-                prev.store(true, std::sync::atomic::Ordering::Relaxed);
-            }
-            if let Some(Ok(reader)) = pty_registry.reader_for(&terminal_id) {
+            let already_streaming = pty_readers
+                .get(&terminal_id)
+                .is_some_and(|stop| !stop.load(std::sync::atomic::Ordering::Relaxed));
+            if !already_streaming && let Some(Ok(reader)) = pty_registry.reader_for(&terminal_id) {
                 let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
-                *pty_stop = Some(stop.clone());
+                pty_readers.insert(terminal_id.clone(), stop.clone());
                 let sink = pty_tx.clone();
                 std::thread::spawn(move || {
                     use std::io::Read;
