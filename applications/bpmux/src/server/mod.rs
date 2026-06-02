@@ -99,8 +99,7 @@ pub async fn run_server(
         tracker.as_ref().cloned(),
         ci_state_store.clone(),
         ct.clone(),
-    )
-    .with_pty_registry(pty_registry.clone());
+    );
     if let Some(refresh) = test_refresh.as_ref().cloned() {
         orchestrator_inner = orchestrator_inner.with_refresh(
             refresh,
@@ -120,7 +119,7 @@ pub async fn run_server(
         crate::orchestrator::ReactionsSessionBroadcaster::new(session.clone()),
     ));
     orchestrator.add_roster_listener(std::sync::Arc::new(
-        crate::orchestrator::RosterSessionBroadcaster::new(session.clone(), pty_registry.clone()),
+        crate::orchestrator::RosterSessionBroadcaster::new(session.clone()),
     ));
     for identity in session.roster_snapshot() {
         crate::transport::ws::dispatch_roster_join(&orchestrator, &identity).await;

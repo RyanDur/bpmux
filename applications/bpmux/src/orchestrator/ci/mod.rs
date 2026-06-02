@@ -142,7 +142,6 @@ pub struct Orchestrator<T: CiPollFetch> {
     session: Arc<session::Session>,
     tracker: Option<Arc<T>>,
     refresh: Option<Arc<dyn RefreshDriver>>,
-    pty_registry: Option<Arc<crate::room::LivePtyRegistry>>,
     ingest_interval: Duration,
     hydration_interval: Duration,
     ci_state_store: CiStateStore,
@@ -173,7 +172,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
             session,
             tracker,
             refresh: None,
-            pty_registry: None,
             ingest_interval: Duration::from_secs(60),
             hydration_interval: Duration::from_secs(15),
             ci_state_store,
@@ -235,25 +233,11 @@ impl<T: CiPollFetch> Orchestrator<T> {
             .roster_store
             .members()
             .into_iter()
-            .map(|m| {
-                let terminal_state = self
-                    .pty_registry
-                    .as_ref()
-                    .and_then(|r| r.liveness(crate::transport::ws::short_name(&m.identity)))
-                    .map(|alive| {
-                        if alive {
-                            crate::session::message::TerminalState::Alive
-                        } else {
-                            crate::session::message::TerminalState::Dead
-                        }
-                    });
-                RosterMemberWire {
-                    name: m.name,
-                    identity: m.identity,
-                    role: m.role,
-                    presence: m.presence,
-                    terminal_state,
-                }
+            .map(|m| RosterMemberWire {
+                name: m.name,
+                identity: m.identity,
+                role: m.role,
+                presence: m.presence,
             })
             .collect();
         StateSnapshotPayload {
@@ -288,11 +272,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
         self.refresh = Some(refresh);
         self.ingest_interval = ingest_interval;
         self.hydration_interval = hydration_interval;
-        self
-    }
-
-    pub fn with_pty_registry(mut self, pty_registry: Arc<crate::room::LivePtyRegistry>) -> Self {
-        self.pty_registry = Some(pty_registry);
         self
     }
 

@@ -134,21 +134,12 @@ pub struct CiSnapshotWire {
     pub display_title: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum TerminalState {
-    Alive,
-    Dead,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RosterMemberWire {
     pub name: String,
     pub identity: String,
     pub role: crate::orchestrator::stores::RosterRole,
     pub presence: crate::orchestrator::stores::Presence,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub terminal_state: Option<TerminalState>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

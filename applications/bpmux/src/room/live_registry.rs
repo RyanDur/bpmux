@@ -44,14 +44,6 @@ impl LivePtyRegistry {
             .unwrap_or(false)
     }
 
-    pub fn liveness(&self, role: &str) -> Option<bool> {
-        self.rooms
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(role)
-            .map(|live| super::spawn::process_alive(live.pid()))
-    }
-
     pub fn resize(&self, terminal_id: &str, rows: u16, cols: u16) -> bool {
         self.rooms
             .lock()
@@ -159,25 +151,6 @@ mod tests {
         assert!(!registry.write_to("nobody", b"x"));
     }
 
-    #[test]
-    fn liveness_is_some_alive_for_a_running_room_and_none_for_absent() {
-        let registry = LivePtyRegistry::new();
-        let live =
-            spawn_pty_retained("/bin/sh", &["-c".into(), "sleep 2".into()], None, &[]).unwrap();
-        registry.insert("dev".to_string(), live);
-
-        assert_eq!(
-            registry.liveness("dev"),
-            Some(true),
-            "a running room's process is alive"
-        );
-        assert_eq!(
-            registry.liveness("nobody"),
-            None,
-            "a role with no room has no terminal-state"
-        );
-    }
-
     fn drain_room_until(
         reader: Option<std::io::Result<Box<dyn std::io::Read + Send>>>,
         marker: &str,
@@ -221,12 +194,10 @@ mod tests {
         registry.insert("dev".to_string(), dev);
         registry.insert("pm".to_string(), pm);
 
-        assert_eq!(
-            registry.liveness("dev"),
-            Some(true),
+        assert!(
+            registry.contains("dev") && registry.contains("pm"),
             "spawning the pm room must not destabilize the dev room — both coexist"
         );
-        assert_eq!(registry.liveness("pm"), Some(true));
 
         let dev_out = drain_room_until(registry.reader_for("dev"), "DEV-ROOM-OUTPUT");
         let pm_out = drain_room_until(registry.reader_for("pm"), "PM-ROOM-OUTPUT");

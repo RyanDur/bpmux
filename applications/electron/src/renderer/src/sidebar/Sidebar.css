@@ -117,14 +117,5 @@
     &.presence-dot--offline {
       background: var(--fg-dimmer);
     }
-
-    &.presence-dot--needs-input {
-      background: var(--accent-info);
-    }
-
-    &.presence-dot--dead {
-      background: var(--fg-dimmer);
-      opacity: 0.45;
-    }
   }
 }

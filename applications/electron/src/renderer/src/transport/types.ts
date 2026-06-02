@@ -35,14 +35,11 @@ export type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
 
 export type PresenceWire = 'Online' | 'Busy' | 'Away' | 'Offline'
 
-export type TerminalStateWire = 'alive' | 'dead'
-
 export interface RosterMemberWire {
   name: string
   identity: string
   role: RosterRoleWire
   presence: PresenceWire
-  terminal_state?: TerminalStateWire
 }
 
 export type StateDeltaPayload =
