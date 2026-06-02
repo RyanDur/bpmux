@@ -12,6 +12,23 @@ pub struct VerdictState {
     pub stale_age_secs: Option<i64>,
 }
 
+pub fn verdict_freshness(
+    cast_at: Option<DateTime<Utc>>,
+    window_secs: u64,
+    now: DateTime<Utc>,
+) -> VerdictState {
+    let window = chrono::Duration::seconds(window_secs as i64);
+    let expired_at = cast_at.map(|ts| ts + window);
+    let stale_age_secs = expired_at
+        .filter(|exp| *exp < now)
+        .map(|exp| (now - exp).num_seconds());
+    VerdictState {
+        cast_at,
+        expired_at,
+        stale_age_secs,
+    }
+}
+
 #[derive(Debug, Error, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum GateError {
@@ -133,17 +150,9 @@ pub fn check_evidence_present(
                 Some(_) => missing.push(format!("{required}-verdict-expired")),
             }
         }
-        let expired_at = latest_for_role.map(|ts| ts + window);
-        let stale_age_secs = expired_at
-            .filter(|exp| *exp < now)
-            .map(|exp| (now - exp).num_seconds());
         verdict_state.insert(
             required.clone(),
-            VerdictState {
-                cast_at: latest_for_role,
-                expired_at,
-                stale_age_secs,
-            },
+            verdict_freshness(latest_for_role, transition.evidence_window_seconds, now),
         );
     }
     if missing.is_empty() {
