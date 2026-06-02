@@ -67,6 +67,20 @@ impl LivePtyRegistry {
             .get(terminal_id)
             .map(|live| live.has_foreground_job())
     }
+
+    pub fn reap_dead_and_list_live(&self) -> Vec<String> {
+        let mut rooms = self.rooms.lock().unwrap_or_else(|e| e.into_inner());
+        let mut live = Vec::new();
+        rooms.retain(|terminal_id, pty| {
+            if pty.is_alive() {
+                live.push(terminal_id.clone());
+                true
+            } else {
+                false
+            }
+        });
+        live
+    }
 }
 
 #[cfg(test)]
@@ -226,6 +240,44 @@ mod tests {
         assert!(
             !pm_out.contains("DEV-ROOM-OUTPUT"),
             "EXERCISED bleed-vector: dev's output must NOT reach the pm room; got {pm_out:?}"
+        );
+    }
+
+    #[test]
+    fn reap_dead_and_list_live_returns_only_living_ids_and_reaps_the_exited_out_of_the_registry() {
+        let registry = LivePtyRegistry::new();
+        let living =
+            spawn_pty_retained("/bin/sh", &["-c".into(), "exec sleep 30".into()], None, &[])
+                .unwrap();
+        let exiting =
+            spawn_pty_retained("/bin/sh", &["-c".into(), "exit 0".into()], None, &[]).unwrap();
+        registry.insert("living-terminal".to_string(), living);
+        registry.insert("exited-terminal".to_string(), exiting);
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        let live = loop {
+            let live = registry.reap_dead_and_list_live();
+            if !live.iter().any(|id| id == "exited-terminal") {
+                break live;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the exited terminal never dropped out of the live set"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        };
+
+        assert!(
+            live.iter().any(|id| id == "living-terminal"),
+            "the still-running terminal must remain in the live set; got {live:?}"
+        );
+        assert!(
+            registry.contains("living-terminal"),
+            "reconciling must not evict a live terminal from the registry"
+        );
+        assert!(
+            !registry.contains("exited-terminal"),
+            "the exited terminal must be reaped OUT of the registry — that single pass closes the orphan-PTY leak (d) AND prevents the exited terminal resurrecting on the next refresh's re-attach (e)"
         );
     }
 }

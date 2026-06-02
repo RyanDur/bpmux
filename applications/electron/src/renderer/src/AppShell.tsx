@@ -22,6 +22,11 @@ import type {
 } from './transport/types'
 import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
 import { subscribeWsPtyExit } from './transport/wsService'
+import {
+  readTerminalLayout,
+  restoreTerminalLayout,
+  writeTerminalLayout
+} from './lib/terminalLayout'
 import './AppShell.css'
 
 type PersistedScope = { kind: 'all' } | { kind: 'broadcast' } | { kind: 'scoped'; value: string[] }
@@ -128,6 +133,7 @@ const AppShell = ({
   const [allView, setAllView] = useState<boolean>(initialScope?.kind !== 'scoped')
   const [terminals, setTerminals] = useState<TerminalEntry[]>([])
   const [activeKey, setActiveKey] = useState<string | null>(null)
+  const [restored, setRestored] = useState<boolean>(false)
   const [confirmClose, setConfirmClose] = useState<{ key: string; id: string } | null>(null)
   const confirmDialogRef = useRef<HTMLDialogElement>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
@@ -264,6 +270,49 @@ const AppShell = ({
       setTerminals((prev) => prev.map((t) => (t.id === terminalId ? { ...t, state: 'exited' } : t)))
     })
   }, [])
+
+  useEffect(() => {
+    if (restored || status !== 'connected' || !bridge) return
+    let cancelled = false
+    void fetch(`${bridge.apiBase}/api/terminals`, {
+      headers: { authorization: `Bearer ${bridge.authToken}` }
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`terminals list failed (${res.status})`)
+        const body = (await res.json()) as {
+          terminals?: { terminal_id: string; cwd?: string }[]
+        }
+        if (cancelled) return
+        const live = body.terminals ?? []
+        const cwdById = new Map(live.map((t) => [t.terminal_id, t.cwd ?? '']))
+        const { orderedIds, activeId } = restoreTerminalLayout(
+          live.map((t) => t.terminal_id),
+          readTerminalLayout(RENDERER_IDENTITY)
+        )
+        const entries: TerminalEntry[] = orderedIds.map((id) => ({
+          key: crypto.randomUUID(),
+          id,
+          state: 'ready',
+          cwd: cwdById.get(id) ?? ''
+        }))
+        if (entries.length > 0) {
+          setTerminals(entries)
+          setActiveKey(entries.find((e) => e.id === activeId)?.key ?? null)
+        }
+        setRestored(true)
+      })
+      .catch((e: unknown) => console.error('bpmux: terminal restore failed', e))
+    return () => {
+      cancelled = true
+    }
+  }, [status, restored, bridge])
+
+  useEffect(() => {
+    if (!restored) return
+    const order = terminals.filter((t) => t.id).map((t) => t.id as string)
+    const active = terminals.find((t) => t.key === activeKey)
+    writeTerminalLayout(RENDERER_IDENTITY, { order, activeId: active?.id ?? null })
+  }, [terminals, activeKey, restored])
 
   useEffect(() => {
     if (confirmClose) confirmDialogRef.current?.showModal()

@@ -28,7 +28,7 @@ pub struct LivePty {
     pid: u32,
     master: Box<dyn portable_pty::MasterPty + Send>,
     writer: Mutex<Box<dyn std::io::Write + Send>>,
-    _child: Box<dyn portable_pty::Child + Send + Sync>,
+    child: Box<dyn portable_pty::Child + Send + Sync>,
     _retained_tempdir: Option<tempfile::TempDir>,
 }
 
@@ -67,17 +67,21 @@ impl LivePty {
         matches!(self.master.process_group_leader(), Some(pgid) if pgid != self.pid as i32)
     }
 
+    pub fn is_alive(&mut self) -> bool {
+        matches!(self.child.try_wait(), Ok(None))
+    }
+
     pub fn close_and_reap(mut self) {
         let _ = signal(self.pid, "TERM");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
         while std::time::Instant::now() < deadline {
-            if matches!(self._child.try_wait(), Ok(Some(_))) {
+            if matches!(self.child.try_wait(), Ok(Some(_))) {
                 return;
             }
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
-        let _ = self._child.kill();
-        let _ = self._child.wait();
+        let _ = self.child.kill();
+        let _ = self.child.wait();
     }
 }
 
@@ -127,7 +131,7 @@ pub fn spawn_pty_retained(
         pid,
         master: pair.master,
         writer: Mutex::new(writer),
-        _child: child,
+        child,
         _retained_tempdir: None,
     })
 }
@@ -489,5 +493,28 @@ mod tests {
             "a bare spawned process with no forked foreground command must report no foreground job — closing it needs no confirm-before-close"
         );
         live.close_and_reap();
+    }
+
+    #[test]
+    fn is_alive_reports_true_while_running_and_false_after_the_child_exits() {
+        let mut running =
+            spawn_pty_retained("/bin/sh", &["-c".into(), "exec sleep 30".into()], None, &[])
+                .unwrap();
+        assert!(
+            running.is_alive(),
+            "a still-running child must report is_alive=true"
+        );
+        running.close_and_reap();
+
+        let mut exiting =
+            spawn_pty_retained("/bin/sh", &["-c".into(), "exit 0".into()], None, &[]).unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while exiting.is_alive() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        }
+        assert!(
+            !exiting.is_alive(),
+            "after the child exits, is_alive must report false — try_wait() observes the exit and reaps the zombie, where a kill -0 pid-probe would false-positive on the lingering zombie pid that refresh-resurrection (e) depends on excluding"
+        );
     }
 }

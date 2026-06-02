@@ -53,6 +53,22 @@ pub async fn post_terminal_spawn(
     }
 }
 
+pub async fn get_terminals(
+    Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
+) -> impl IntoResponse {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+    let terminals: Vec<serde_json::Value> = pty_registry
+        .reap_dead_and_list_live()
+        .into_iter()
+        .map(|terminal_id| serde_json::json!({ "terminal_id": terminal_id, "cwd": home }))
+        .collect();
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::json!({ "terminals": terminals }).to_string(),
+    )
+}
+
 pub async fn post_terminal_close(
     Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
     axum::Json(req): axum::Json<TerminalCloseRequest>,

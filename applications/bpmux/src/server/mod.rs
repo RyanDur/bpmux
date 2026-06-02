@@ -204,6 +204,10 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_roster),
         )
         .route(
+            "/api/terminals",
+            axum::routing::get(transport::rest::get_terminals),
+        )
+        .route(
             "/api/terminals/spawn",
             axum::routing::post(transport::rest::post_terminal_spawn),
         )
