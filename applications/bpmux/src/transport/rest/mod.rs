@@ -35,7 +35,7 @@ pub use reactions::{ReactionToggle, ReactionsChannelQuery, get_reactions, post_r
 pub(crate) use reactions::{
     build_reaction_event_text_with_excerpt, find_message_excerpt, truncate_excerpt,
 };
-pub use room::post_terminal_spawn;
+pub use room::{post_terminal_close, post_terminal_spawn};
 pub use roster::{
     RosterEntry, get_roster, get_sync_status, post_acknowledge_dropped, post_force_sync,
 };

@@ -7,6 +7,11 @@ use axum::response::IntoResponse;
 use super::shared::json_headers;
 use crate::room::LivePtyRegistry;
 
+#[derive(serde::Deserialize)]
+pub struct TerminalCloseRequest {
+    pub terminal_id: String,
+}
+
 pub async fn post_terminal_spawn(
     Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
 ) -> impl IntoResponse {
@@ -42,6 +47,27 @@ pub async fn post_terminal_spawn(
             StatusCode::INTERNAL_SERVER_ERROR,
             json_headers(),
             serde_json::json!({ "error": format!("spawn failed: {e}") }).to_string(),
+        ),
+    }
+}
+
+pub async fn post_terminal_close(
+    Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
+    axum::Json(req): axum::Json<TerminalCloseRequest>,
+) -> impl IntoResponse {
+    match pty_registry.remove(&req.terminal_id) {
+        Some(live) => {
+            live.close_and_reap();
+            (
+                StatusCode::OK,
+                json_headers(),
+                serde_json::json!({ "closed": req.terminal_id }).to_string(),
+            )
+        }
+        None => (
+            StatusCode::NOT_FOUND,
+            json_headers(),
+            serde_json::json!({ "error": "no such terminal" }).to_string(),
         ),
     }
 }

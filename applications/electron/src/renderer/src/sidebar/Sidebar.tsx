@@ -21,6 +21,7 @@ interface Props {
   onSelectAllView: () => void
   onAddTerminal?: () => void
   onSelectTerminal?: (key: string) => void
+  onCloseTerminal?: (key: string) => void
   messages: ChatMessage[]
   filter: MessageFilter
   mirrorRoster?: readonly RosterMemberWire[]
@@ -55,6 +56,7 @@ const Sidebar = ({
   onSelectAllView,
   onAddTerminal = () => {},
   onSelectTerminal = () => {},
+  onCloseTerminal = () => {},
   messages,
   filter,
   mirrorRoster
@@ -198,33 +200,47 @@ const Sidebar = ({
             none yet
           </p>
         ) : (
-          terminals.map((t, i) => {
-            const active = activeTerminalKey === t.key
-            const dir = (t.cwd ?? '').split('/').filter(Boolean).pop() ?? '/'
-            const label =
-              t.state === 'ready'
-                ? `${i + 1} · ${dir}`
-                : t.state === 'spawning'
-                  ? `${i + 1} · spawning…`
-                  : t.state === 'spawn-failed'
-                    ? `${i + 1} · failed`
-                    : `${i + 1} · exited`
-            return (
-              <button
-                key={t.key}
-                className={`sidebar-item${active ? ' sidebar-item--active' : ''}`}
-                type="button"
-                aria-current={active || undefined}
-                data-test="sidebar-terminal-item"
-                data-terminal-key={t.key}
-                data-state={t.state}
-                title={t.cwd ?? t.state}
-                onClick={() => onSelectTerminal(t.key)}
-              >
-                {label}
-              </button>
-            )
-          })
+          <ul className="sidebar-terminal-list">
+            {terminals.map((t, i) => {
+              const active = activeTerminalKey === t.key
+              const dir = (t.cwd ?? '').split('/').filter(Boolean).pop() ?? '/'
+              const label =
+                t.state === 'ready'
+                  ? `${i + 1} · ${dir}`
+                  : t.state === 'spawning'
+                    ? `${i + 1} · spawning…`
+                    : t.state === 'spawn-failed'
+                      ? `${i + 1} · failed`
+                      : `${i + 1} · exited`
+              return (
+                <li key={t.key} className="sidebar-terminal-row">
+                  <button
+                    className={`sidebar-item${active ? ' sidebar-item--active' : ''}`}
+                    type="button"
+                    aria-current={active || undefined}
+                    data-test="sidebar-terminal-item"
+                    data-terminal-key={t.key}
+                    data-state={t.state}
+                    title={t.cwd ?? t.state}
+                    onClick={() => onSelectTerminal(t.key)}
+                  >
+                    {label}
+                  </button>
+                  <button
+                    className="sidebar-terminal-close"
+                    type="button"
+                    aria-label={`close terminal ${i + 1}`}
+                    title="close terminal"
+                    data-test="sidebar-terminal-close"
+                    data-terminal-key={t.key}
+                    onClick={() => onCloseTerminal(t.key)}
+                  >
+                    ✕
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
         )}
       </section>
     </nav>

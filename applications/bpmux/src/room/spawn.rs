@@ -65,6 +65,19 @@ impl LivePty {
             })
             .map_err(io_other)
     }
+
+    pub fn close_and_reap(mut self) {
+        let _ = signal(self.pid, "TERM");
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        while std::time::Instant::now() < deadline {
+            if matches!(self._child.try_wait(), Ok(Some(_))) {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let _ = self._child.kill();
+        let _ = self._child.wait();
+    }
 }
 
 pub fn resolve_terminal_spawn(
@@ -477,6 +490,26 @@ mod tests {
         assert!(
             collected.contains("]7;file://") && collected.contains(&marker),
             "the spawned $SHELL must emit OSC-7 (ESC]7;file://…<newdir>) on cd — the native mechanism the terminal header reads to follow cwd; got {collected:?}"
+        );
+    }
+
+    #[test]
+    fn close_and_reap_terminates_a_running_process_no_orphan() {
+        let live = spawn_pty_retained("/bin/sh", &["-c".into(), "exec sleep 30".into()], None, &[])
+            .unwrap();
+        let pid = live.pid();
+        assert!(
+            process_alive(pid),
+            "the spawned process must be alive before close; pid {pid}"
+        );
+        live.close_and_reap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while process_alive(pid) && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        }
+        assert!(
+            !process_alive(pid),
+            "close_and_reap must terminate the spawned process (SIGTERM→grace→SIGKILL→reap) — pid {pid} still alive is the orphan leak this slice closes"
         );
     }
 }

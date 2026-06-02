@@ -52,6 +52,13 @@ impl LivePtyRegistry {
             .map(|live| live.resize(rows, cols).is_ok())
             .unwrap_or(false)
     }
+
+    pub fn remove(&self, terminal_id: &str) -> Option<LivePty> {
+        self.rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(terminal_id)
+    }
 }
 
 #[cfg(test)]

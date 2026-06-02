@@ -188,6 +188,25 @@ const AppShell = ({
     setActiveKey(key)
   }
 
+  const closeTerminal = (key: string): void => {
+    const closing = terminals.find((t) => t.key === key)
+    if (closing?.id && bridge) {
+      void fetch(`${bridge.apiBase}/api/terminals/close`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${bridge.authToken}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ terminal_id: closing.id })
+      }).catch((e: unknown) => console.error('bpmux: terminal close failed', e))
+    }
+    const remaining = terminals.filter((t) => t.key !== key)
+    setTerminals(remaining)
+    if (activeKey === key) {
+      setActiveKey(remaining.length > 0 ? remaining[remaining.length - 1].key : null)
+    }
+  }
+
   useEffect(() => {
     return subscribeWsPtyExit((terminalId) => {
       setTerminals((prev) => prev.map((t) => (t.id === terminalId ? { ...t, state: 'exited' } : t)))
@@ -261,6 +280,7 @@ const AppShell = ({
           onSelectAllView={selectAllView}
           onAddTerminal={spawnTerminal}
           onSelectTerminal={selectTerminal}
+          onCloseTerminal={closeTerminal}
           messages={messages}
           filter={filter}
           mirrorRoster={mirrorRoster}
