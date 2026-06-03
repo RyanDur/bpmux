@@ -426,4 +426,21 @@ describe('#1605 Sidebar — coordination overview: addressed who↔whom edges di
     expect(html).not.toMatch(/data-coordination="active"/)
     expect(html).not.toContain('data-test="coordination-dot-dev+pm"')
   })
+
+  test('a SELECTED idle pair shows the selection-highlight, not the idle-dim (selection wins over idle)', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={['designer', 'pm']}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={[]}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toMatch(/sidebar-item--active[^>]*data-test="sidebar-group-designer\+pm"/)
+    expect(html).not.toMatch(/sidebar-item--idle[^>]*data-test="sidebar-group-designer\+pm"/)
+    expect(html).toMatch(/sidebar-item--idle[^>]*data-test="sidebar-group-dev\+pm"/)
+  })
 })

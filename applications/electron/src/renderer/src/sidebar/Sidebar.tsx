@@ -107,7 +107,10 @@ const Sidebar = ({
     [messages, mirrorRoster]
   )
   const nowMs = useNow(RECENCY_TICK_MS)
-  const orderedGroups = orderGroupsByActivity(partialGroups, coordinationPairs, nowMs)
+  const orderedGroups = useMemo(
+    () => orderGroupsByActivity(partialGroups, coordinationPairs, nowMs),
+    [partialGroups, coordinationPairs, nowMs]
+  )
   const presence = usePresence(messages, directRoles)
 
   const noTerminalActive = activeTerminalKey === null
@@ -202,7 +205,7 @@ const Sidebar = ({
             return (
               <button
                 key={key}
-                className={`sidebar-item sidebar-item--group${selected ? ' sidebar-item--active' : ''}${active ? '' : ' sidebar-item--idle'}`}
+                className={`sidebar-item sidebar-item--group${selected ? ' sidebar-item--active' : ''}${!active && !selected ? ' sidebar-item--idle' : ''}`}
                 type="button"
                 aria-current={selected || undefined}
                 aria-label={`scope chat to ${names.join(' + ')}${recencyLabel}`}
