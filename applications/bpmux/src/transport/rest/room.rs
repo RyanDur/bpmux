@@ -16,13 +16,24 @@ pub struct TerminalCloseRequest {
 
 pub async fn post_terminal_spawn(
     Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
+    Extension(port): Extension<u16>,
 ) -> impl IntoResponse {
     let room_agent = std::env::var("BPMUX_ROOM_AGENT").ok();
     let shell = std::env::var("SHELL").ok();
     let (command, args) =
         crate::room::resolve_terminal_spawn(room_agent.as_deref(), shell.as_deref());
     let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
-    let integration = crate::room::osc7_shell_integration(&command).unwrap_or_default();
+    let terminal_id = uuid::Uuid::new_v4().to_string();
+    let binary = std::env::current_exe()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| "bpmux".to_string());
+    let bridge = crate::room::BridgeWiring {
+        binary,
+        port,
+        agent_name: format!("agent-{}", &terminal_id[..8]),
+    };
+    let integration =
+        crate::room::terminal_provisioning(&command, Some(&bridge)).unwrap_or_default();
     let mut env: Vec<(&str, &str)> = vec![("TERM", "xterm-256color")];
     for (key, value) in &integration.env {
         env.push((key.as_str(), value.as_str()));
@@ -45,7 +56,6 @@ pub async fn post_terminal_spawn(
                 live.attach_tempdir(dir);
             }
             let pid = live.pid();
-            let terminal_id = uuid::Uuid::new_v4().to_string();
             pty_registry.insert(terminal_id.clone(), live);
             (
                 StatusCode::OK,

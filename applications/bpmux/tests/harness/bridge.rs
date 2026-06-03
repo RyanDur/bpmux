@@ -70,6 +70,56 @@ impl TestBridge {
         Self::connect_inner(bpmux, name, env, TrackerMode::RealAgainstMockGh).await
     }
 
+    pub async fn connect_from_spawned_config(
+        bpmux: &TestBpmux,
+        program: &str,
+        config_args: &[String],
+        wait_name: &str,
+    ) -> Self {
+        let env_owned: Vec<(String, String)> = vec![
+            (
+                "BPMUX_AUTH_TOKEN_PATH".to_string(),
+                bpmux.auth_token_path().to_string_lossy().into_owned(),
+            ),
+            (
+                "BPMUX_SESSIONS_BASE".to_string(),
+                bpmux.sessions_base_path().to_string_lossy().into_owned(),
+            ),
+            (
+                "BPMUX_LOG".to_string(),
+                std::env::temp_dir()
+                    .join("bpmux-test-diag.log")
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+            (
+                "BPMUX_BRIEFINGS_DIR".to_string(),
+                bpmux.briefings_dir_path().to_string_lossy().into_owned(),
+            ),
+        ];
+        let args: Vec<String> = config_args.to_vec();
+        let process =
+            TokioChildProcess::new(tokio::process::Command::new(program).configure(|cmd| {
+                for a in &args {
+                    cmd.arg(a);
+                }
+                cmd.arg("--fake-tracker");
+                for (k, v) in &env_owned {
+                    cmd.env(k, v);
+                }
+            }))
+            .expect("spawn bridge from the spawn-produced config");
+        let capture = NotificationCapture::default();
+        let client = capture
+            .clone()
+            .serve(process)
+            .await
+            .expect("MCP handshake with bridge from produced config");
+        let bridge = Self { client, capture };
+        bridge.wait_until_ws_ready(wait_name).await;
+        bridge
+    }
+
     async fn connect_inner(
         bpmux: &TestBpmux,
         name: &str,

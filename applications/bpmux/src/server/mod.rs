@@ -355,6 +355,7 @@ pub async fn run_server(
         .layer(axum::Extension(test_refresh))
         .layer(axum::Extension(orchestrator.clone()))
         .layer(axum::Extension(pty_registry.clone()))
+        .layer(axum::Extension(port))
         .layer(
             tower_http::cors::CorsLayer::new()
                 .allow_origin(tower_http::cors::Any)
