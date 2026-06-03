@@ -12,33 +12,16 @@ use crate::session;
 use crate::session::MessageType;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
+mod client;
+mod peer_lag;
+mod roster;
+
+pub(crate) use client::*;
+pub use peer_lag::*;
+pub(crate) use roster::*;
+
 const MAX_MESSAGE_SIZE: usize = 65536;
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
-
-pub const PEER_LAG_MARKER: &str = "__BPMUX_PEER_LAG__";
-
-pub fn build_peer_lag_message(
-    peer: &str,
-    count: u64,
-    ts: chrono::DateTime<chrono::Utc>,
-) -> session::Message {
-    let payload = serde_json::json!({ "peer": peer, "count": count });
-    session::Message {
-        from: "bpmux".to_string(),
-        text: format!("{PEER_LAG_MARKER}:{payload}"),
-        ts,
-        message_type: MessageType::System,
-        ..session::Message::default()
-    }
-}
-
-pub fn parse_peer_lag_payload(text: &str) -> Option<(String, u64)> {
-    let rest = text.strip_prefix(PEER_LAG_MARKER)?.strip_prefix(':')?;
-    let value: serde_json::Value = serde_json::from_str(rest).ok()?;
-    let peer = value.get("peer")?.as_str()?.to_string();
-    let count = value.get("count")?.as_u64()?;
-    Some((peer, count))
-}
 
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
@@ -179,61 +162,6 @@ async fn run_ws_session(
     result
 }
 
-pub(crate) fn role_from_short_name(short: &str) -> crate::orchestrator::stores::RosterRole {
-    use crate::orchestrator::stores::RosterRole;
-    let workflow = crate::workflow::current_workflow();
-    let purpose = workflow
-        .role
-        .iter()
-        .find(|r| r.id == short)
-        .and_then(|r| r.purposes.first().map(String::as_str));
-    match purpose {
-        Some("designer") => RosterRole::Designer,
-        Some("dev") => RosterRole::Dev,
-        Some("pm") => RosterRole::Pm,
-        Some("owner") => RosterRole::Owner,
-        _ => RosterRole::Other,
-    }
-}
-
-pub(crate) async fn dispatch_roster_join(
-    orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
-    >,
-    identity: &str,
-) {
-    use crate::orchestrator::OrchestratorAction;
-    use crate::orchestrator::stores::{Presence, RosterAction};
-    let short = short_name(identity).to_string();
-    let role = role_from_short_name(&short);
-    orchestrator
-        .dispatch(OrchestratorAction::Roster(
-            RosterAction::RosterMemberUpserted {
-                name: short,
-                identity: identity.to_string(),
-                role,
-                presence: Presence::Online,
-            },
-        ))
-        .await;
-}
-
-pub(crate) async fn dispatch_roster_leave(
-    orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
-    >,
-    identity: &str,
-) {
-    use crate::orchestrator::OrchestratorAction;
-    use crate::orchestrator::stores::RosterAction;
-    let short = short_name(identity).to_string();
-    orchestrator
-        .dispatch(OrchestratorAction::Roster(
-            RosterAction::RosterMemberRemoved { name: short },
-        ))
-        .await;
-}
-
 async fn wait_for_identify(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     rx: &mut SplitStream<WebSocket>,
@@ -327,170 +255,6 @@ pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> boo
 
 pub(crate) fn message_size_ok(text: &str) -> bool {
     text.len() <= MAX_MESSAGE_SIZE
-}
-
-async fn handle_client_message(
-    text: &str,
-    identity: &str,
-    session: &session::Session,
-    tx: &mut SplitSink<WebSocket, WsMessage>,
-    pty_registry: &crate::room::LivePtyRegistry,
-    pty_tx: &tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
-    pty_readers: &mut std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
-) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
-    if !message_size_ok(text) {
-        crate::session::diag::log_diag(&format!(
-            "ws: rejected oversized message from {identity}: {} bytes (max {MAX_MESSAGE_SIZE})",
-            text.len()
-        ));
-        send_json(
-            tx,
-            &ServerMessage::Error {
-                reason: format!(
-                    "message too large: {} bytes exceeds limit of {MAX_MESSAGE_SIZE}",
-                    text.len()
-                ),
-            },
-        )
-        .await?;
-        return Ok(None);
-    }
-    match serde_json::from_str::<ClientMessage>(text) {
-        Ok(ClientMessage::Send {
-            text: msg_text,
-            to,
-            addressee,
-            message_type,
-        }) => {
-            let explicit_privacy = to.is_some();
-            let is_board_invalidate = msg_text == crate::bridge::BOARD_INVALIDATE_MARKER;
-            let msg = session::Message {
-                from: identity.to_string(),
-                text: msg_text,
-                ts: chrono::Utc::now(),
-                message_type: MessageType::from(message_type.as_deref()),
-                to,
-                addressee,
-                explicit_privacy,
-                ..session::Message::default()
-            };
-            session.broadcast(&msg)?;
-            if is_board_invalidate {
-                session.broadcast(&board_invalidated_state_delta())?;
-            }
-        }
-        Ok(ClientMessage::Ping) => {
-            send_json(tx, &ServerMessage::Pong).await?;
-        }
-        Ok(ClientMessage::Rename { name }) => {
-            let tool = identity.split(':').nth(1).unwrap_or("ws");
-            return Ok(Some(format!("{name}:{tool}")));
-        }
-        Ok(ClientMessage::Identify { .. }) => {
-            send_json(
-                tx,
-                &ServerMessage::Error {
-                    reason: "already identified".to_string(),
-                },
-            )
-            .await?;
-        }
-        Ok(ClientMessage::PtySubscribe { terminal_id }) => {
-            let already_streaming = pty_readers
-                .get(&terminal_id)
-                .is_some_and(|stop| !stop.load(std::sync::atomic::Ordering::Relaxed));
-            if !already_streaming && let Some(Ok(reader)) = pty_registry.reader_for(&terminal_id) {
-                let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
-                pty_readers.insert(terminal_id.clone(), stop.clone());
-                let sink = pty_tx.clone();
-                std::thread::spawn(move || {
-                    use std::io::Read;
-                    let mut reader = reader;
-                    let mut buf = [0u8; 4096];
-                    loop {
-                        if stop.load(std::sync::atomic::Ordering::Relaxed) {
-                            break;
-                        }
-                        match reader.read(&mut buf) {
-                            Ok(0) => {
-                                let _ = sink.send((terminal_id.clone(), Vec::new()));
-                                break;
-                            }
-                            Ok(n) => {
-                                if sink.send((terminal_id.clone(), buf[..n].to_vec())).is_err() {
-                                    break;
-                                }
-                            }
-                            Err(_) => {
-                                let _ = sink.send((terminal_id.clone(), Vec::new()));
-                                break;
-                            }
-                        }
-                    }
-                });
-            }
-        }
-        Ok(ClientMessage::PtyInput { terminal_id, data }) => {
-            if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data) {
-                pty_registry.write_to(&terminal_id, &bytes);
-            }
-        }
-        Ok(ClientMessage::PtyResize {
-            terminal_id,
-            cols,
-            rows,
-        }) => {
-            pty_registry.resize(&terminal_id, rows, cols);
-        }
-        Ok(ClientMessage::MarkReceipt { message_id, status }) => {
-            let recipient = short_name(identity).to_string();
-            session.broadcast(&message_status_state_delta(message_id, recipient, status))?;
-        }
-        Err(e) => {
-            send_json(
-                tx,
-                &ServerMessage::Error {
-                    reason: format!("invalid message: {e}"),
-                },
-            )
-            .await?;
-        }
-    }
-    Ok(None)
-}
-
-fn message_status_state_delta(
-    message_id: String,
-    recipient: String,
-    status: crate::session::message::DeliveryStatus,
-) -> session::Message {
-    session::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: MessageType::StateDelta,
-        state_delta: Some(crate::session::message::StateDeltaPayload::MessageStatus {
-            message_id,
-            recipient,
-            status,
-        }),
-        ..session::Message::default()
-    }
-}
-
-fn board_invalidated_state_delta() -> session::Message {
-    session::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: MessageType::StateDelta,
-        state_delta: Some(
-            crate::session::message::StateDeltaPayload::BoardInvalidated {
-                reason: "board changed".to_string(),
-            },
-        ),
-        ..session::Message::default()
-    }
 }
 
 async fn send_json(
