@@ -68,13 +68,18 @@ const Sidebar = ({
 }: Props): React.JSX.Element => {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [returnFocusKey, setReturnFocusKey] = useState<string | null>(null)
   const beginRename = (key: string, currentName: string): void => {
     setDraft(currentName)
     setEditingKey(key)
   }
-  const commitRename = (id: string): void => {
-    onRenameTerminal(id, draft)
+  const closeEdit = (returnFocus: boolean): void => {
+    if (returnFocus) setReturnFocusKey(editingKey)
     setEditingKey(null)
+  }
+  const commitRename = (id: string, returnFocus: boolean): void => {
+    onRenameTerminal(id, draft)
+    closeEdit(returnFocus)
   }
   const roster = useTeamRoster({ mirrorRoster })
   const directRoles = useMemo(
@@ -241,31 +246,42 @@ const Sidebar = ({
                         data-terminal-key={t.key}
                         aria-label={`rename terminal ${i + 1}`}
                         value={draft}
+                        autoFocus
                         onChange={(e) => setDraft(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault()
-                            commitRename(id)
+                            commitRename(id, true)
                           } else if (e.key === 'Escape') {
                             e.preventDefault()
-                            setEditingKey(null)
+                            closeEdit(true)
                           }
                         }}
-                        onBlur={() => commitRename(id)}
+                        onBlur={() => commitRename(id, false)}
                       />
                     </label>
                   ) : (
                     <button
                       className={`sidebar-item${active ? ' sidebar-item--active' : ''}`}
                       type="button"
+                      autoFocus={returnFocusKey === t.key}
                       aria-current={active || undefined}
                       data-test="sidebar-terminal-item"
                       data-terminal-key={t.key}
                       data-state={t.state}
                       title={t.cwd ?? t.state}
+                      onFocus={() => {
+                        if (returnFocusKey === t.key) setReturnFocusKey(null)
+                      }}
                       onClick={() => onSelectTerminal(t.key)}
                       onDoubleClick={() => {
                         if (renamable) beginRename(t.key, custom ?? '')
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'F2' && renamable) {
+                          e.preventDefault()
+                          beginRename(t.key, custom ?? '')
+                        }
                       }}
                     >
                       {label}

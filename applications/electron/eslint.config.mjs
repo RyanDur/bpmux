@@ -113,6 +113,19 @@ export default defineConfig(
     ],
     rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
   },
+  // jsx-a11y/no-autofocus waiver — Sidebar terminal-rename focus lifecycle only. Two
+  // autoFocus uses, both gated on an explicit user edit-action (F2 / double-click): the
+  // rename <input> autoFocuses on OPEN (focus lands in the field), and the terminal
+  // <button> autoFocuses on its re-mount on SUBMIT (focus RETURNS to the item, so a
+  // keyboard user is not orphaned on <body>). The rule guards page-LOAD autofocus-steal;
+  // focus FOLLOWING an explicit edit-action is the accessible behaviour, so the rule is a
+  // false-positive here. This is the obvious NO-REF solution for the whole lifecycle — no
+  // ref, no no-refs exception spent (Ryan-canon: never spend the no-refs exception when an
+  // obvious different solution exists; waive the lesser misfiring lint instead).
+  {
+    files: ['src/renderer/src/sidebar/Sidebar.tsx'],
+    rules: { 'jsx-a11y/no-autofocus': 'off' }
+  },
   {
     files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
     plugins: {

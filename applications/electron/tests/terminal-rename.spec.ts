@@ -76,4 +76,33 @@ test.describe('#1609 rename a terminal — inline-edit the label, persist by ter
       await mockGh.close()
     }
   })
+
+  test('keyboard: F2 opens rename with focus in the field (type immediately), Enter commits and returns focus to the terminal item', async () => {
+    const { app, win, mockGh } = await launchWithMockGh({
+      extraEnv: { BPMUX_ROOM_AGENT: realShell() }
+    })
+    try {
+      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
+      await expect(addTerminal).toBeVisible({ timeout: 20000 })
+      await addTerminal.click()
+
+      const item = win.locator(sidebarItems).first()
+      await expect(item).toBeVisible({ timeout: 10000 })
+      await expect(item).toHaveAttribute('data-state', 'ready', { timeout: 15000 })
+
+      await item.press('F2')
+      const input = win.locator(renameInput)
+      await expect(input).toBeFocused()
+
+      await win.keyboard.type('keebs')
+      await win.keyboard.press('Enter')
+
+      const renamed = win.locator(sidebarItems).first()
+      await expect(renamed).toHaveText('1 · keebs')
+      await expect(renamed).toBeFocused()
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
+  })
 })
