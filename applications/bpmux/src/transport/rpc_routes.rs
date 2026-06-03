@@ -106,6 +106,23 @@ fn fire_board_invalidate(session: &Arc<session::Session>) {
     if let Err(e) = session.broadcast(&msg) {
         crate::session::diag::log_diag(&format!("rpc: BOARD_INVALIDATE broadcast failed: {e}"));
     }
+    let delta = Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: Utc::now(),
+        message_type: MessageType::StateDelta,
+        state_delta: Some(
+            crate::session::message::StateDeltaPayload::BoardInvalidated {
+                reason: "board changed".to_string(),
+            },
+        ),
+        ..Default::default()
+    };
+    if let Err(e) = session.broadcast(&delta) {
+        crate::session::diag::log_diag(&format!(
+            "rpc: board_invalidated state-delta broadcast failed: {e}"
+        ));
+    }
 }
 
 fn args_from_value(body: Value) -> Result<serde_json::Map<String, Value>, String> {

@@ -7,6 +7,15 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
             "Propagate a message to a wider scope with provenance marking. Two forms: (1) call with `scope` only to re-share your most recent visible chat message (adds `[Shared by <you> from <source> thread]` prefix); (2) call with `scope` and `text` to send fresh text with `[Shared by <you>]` prefix. Scope is `\"all\"` for broadcast or a comma-separated role list (e.g. `\"dev,pm\"`). Privacy gate: explicit-privacy messages (DMs) cannot be re-shared — paraphrase in your own words if they need wider visibility.",
         ),
         crate::mcp::tools::read_messages_tool("Read recent messages from the bpmux session."),
+        crate::mcp::tools::subscribe_tool(
+            "Subscribe to a structured event class so you receive events instead of polling. event_class \"board_invalidated\" fires whenever the board changes (story moves, labels, accept/retire) — pair with wait_for_event. Returns { subscription_id }.",
+        ),
+        crate::mcp::tools::unsubscribe_tool(
+            "Cancel a subscription created by subscribe. Pass its subscription_id. Returns { unsubscribed }.",
+        ),
+        crate::mcp::tools::wait_for_event_tool(
+            "Block until the next event on a subscription arrives (or timeout_ms elapses). Returns { event_class, payload } on an event, or { timed_out: true } if the window passes with no event — never blocks without recourse.",
+        ),
         crate::mcp::tools::search_log_tool(
             "Search the session log by keyword. Returns message clusters with context. Use to find team experiences, decisions, and discussion arcs.",
         ),
@@ -211,6 +220,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
 pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "send_message",
     "share_message",
+    "subscribe",
+    "unsubscribe",
+    "wait_for_event",
     "set_name",
     "set_status",
     "read_messages",

@@ -65,6 +65,8 @@ mod dev_in_flight_e2e;
 mod diag_routing;
 #[path = "integration_main_modules/edit_story.rs"]
 mod edit_story;
+#[path = "integration_main_modules/event_subscription_board_invalidated_e2e.rs"]
+mod event_subscription_board_invalidated_e2e;
 #[path = "integration_main_modules/fail_desk_check_e2e.rs"]
 mod fail_desk_check_e2e;
 #[path = "integration_main_modules/fail_desk_check_substrate_enforce_e2e.rs"]

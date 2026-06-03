@@ -30,13 +30,21 @@ impl ServerHandler for BridgeServer {
         let name = self.name.clone();
         let peer_store = self.peer.clone();
         let ws_tx_store = self.ws_tx.clone();
+        let subscriptions = self.subscriptions.clone();
 
         async move {
             *peer_store.lock().await = Some(peer.clone());
 
             tokio::spawn(async move {
                 loop {
-                    run_ws_connection(port, name.clone(), peer.clone(), ws_tx_store.clone()).await;
+                    run_ws_connection(
+                        port,
+                        name.clone(),
+                        peer.clone(),
+                        ws_tx_store.clone(),
+                        subscriptions.clone(),
+                    )
+                    .await;
                     eprintln!("Bridge: reconnecting in 3 seconds...");
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                 }
@@ -62,6 +70,7 @@ impl ServerHandler for BridgeServer {
         let port = self.port;
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
+        let subscriptions = self.subscriptions.clone();
 
         async move {
             let args = request.arguments.unwrap_or_default();
@@ -73,6 +82,15 @@ impl ServerHandler for BridgeServer {
                 "send_message" => {
                     let current_name = name.lock().await.clone();
                     tools::handle_send(&args, &current_name, &ws_tx).await
+                }
+                "subscribe" => {
+                    super::event_subscription::handle_subscribe(&args, &subscriptions).await
+                }
+                "unsubscribe" => {
+                    super::event_subscription::handle_unsubscribe(&args, &subscriptions).await
+                }
+                "wait_for_event" => {
+                    super::event_subscription::handle_wait_for_event(&args, &subscriptions).await
                 }
                 "share_message" => {
                     let current_name = name.lock().await;

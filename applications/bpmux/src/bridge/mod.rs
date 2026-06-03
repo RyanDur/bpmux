@@ -11,6 +11,7 @@ use tokio_tungstenite::tungstenite;
 pub(crate) mod atp_substantive_gate;
 pub(crate) mod deliver_story_body_diff_gate;
 pub(crate) mod dispatch;
+pub(crate) mod event_subscription;
 pub(crate) mod mcp_handler;
 pub(crate) mod move_story;
 pub(crate) mod polling;
@@ -67,6 +68,7 @@ pub struct BridgeServer {
     name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
+    subscriptions: event_subscription::SubscriptionRegistry,
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -86,6 +88,7 @@ impl BridgeServer {
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
+            subscriptions: event_subscription::SubscriptionRegistry::new(),
         }
     }
 }
@@ -133,6 +136,7 @@ async fn run_ws_connection(
     name: Arc<Mutex<String>>,
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
+    subscriptions: event_subscription::SubscriptionRegistry,
 ) {
     let ws_url = crate::transport::local_url::ws_url(port, "/ws");
     let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
@@ -218,10 +222,18 @@ async fn run_ws_connection(
             addressee,
             message_type,
             multi_depth: _,
-            state_delta: _,
+            state_delta,
             state_snapshot: _,
         } = msg
         {
+            if let Some(crate::session::message::StateDeltaPayload::BoardInvalidated { reason }) =
+                state_delta.as_deref()
+            {
+                subscriptions
+                    .dispatch("board_invalidated", json!({ "reason": reason }))
+                    .await;
+                continue;
+            }
             let from_short = from.split(':').next().unwrap_or(&from);
             let current_name = name.lock().await;
             if from_short == *current_name {

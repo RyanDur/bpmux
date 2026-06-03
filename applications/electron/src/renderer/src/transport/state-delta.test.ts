@@ -126,4 +126,22 @@ describe('applyStateDelta', () => {
     })
     expect(next.reactions).toBe(seeded.reactions)
   })
+
+  test('returns prev (never undefined) for board_invalidated and any unknown future domain', () => {
+    const seeded = applyStateSnapshot(emptyMirrorState(), {
+      reactions: [],
+      ci: { state: 'green' },
+      roster: []
+    })
+    const boardInvalidated = applyStateDelta(seeded, {
+      domain: 'board_invalidated',
+      reason: 'board changed'
+    })
+    expect(boardInvalidated).toBe(seeded)
+    const unknownFuture = applyStateDelta(seeded, {
+      domain: 'some_future_event'
+    } as unknown as StateDeltaPayload)
+    expect(unknownFuture).toBe(seeded)
+    expect(unknownFuture.ci?.state).toBe('green')
+  })
 })

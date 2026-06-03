@@ -45,9 +45,7 @@ export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): Mi
       return { ...prev, ci: delta.snapshot }
     case 'roster':
       return { ...prev, roster: delta.members }
-    case 'iteration_close':
-      return prev
-    case 'iteration_close_blocked':
+    default:
       return prev
   }
 }

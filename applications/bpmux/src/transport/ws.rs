@@ -363,6 +363,7 @@ async fn handle_client_message(
             message_type,
         }) => {
             let explicit_privacy = to.is_some();
+            let is_board_invalidate = msg_text == crate::bridge::BOARD_INVALIDATE_MARKER;
             let msg = session::Message {
                 from: identity.to_string(),
                 text: msg_text,
@@ -374,6 +375,9 @@ async fn handle_client_message(
                 ..session::Message::default()
             };
             session.broadcast(&msg)?;
+            if is_board_invalidate {
+                session.broadcast(&board_invalidated_state_delta())?;
+            }
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;
@@ -449,6 +453,21 @@ async fn handle_client_message(
         }
     }
     Ok(None)
+}
+
+fn board_invalidated_state_delta() -> session::Message {
+    session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::StateDelta,
+        state_delta: Some(
+            crate::session::message::StateDeltaPayload::BoardInvalidated {
+                reason: "board changed".to_string(),
+            },
+        ),
+        ..session::Message::default()
+    }
 }
 
 async fn send_json(

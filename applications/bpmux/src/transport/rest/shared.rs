@@ -30,4 +30,19 @@ pub(super) fn broadcast_board_invalidate(session: &session::Session) {
     if let Err(e) = session.broadcast(&msg) {
         session::diag::log_diag(&format!("rest: board-invalidate broadcast failed: {e}"));
     }
+    let delta = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(session::message::StateDeltaPayload::BoardInvalidated {
+            reason: "board changed".to_string(),
+        }),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&delta) {
+        session::diag::log_diag(&format!(
+            "rest: board-invalidated state-delta broadcast failed: {e}"
+        ));
+    }
 }

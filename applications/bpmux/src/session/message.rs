@@ -93,6 +93,8 @@ pub enum StateDeltaPayload {
     IterationCloseBlocked {
         blockers: Vec<IterationCloseBlockerPayload>,
     },
+    #[serde(rename = "board_invalidated")]
+    BoardInvalidated { reason: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
