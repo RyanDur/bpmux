@@ -289,6 +289,14 @@ pub async fn post_rpc_tool(
         }
     };
     let transition_number = args.get("number").and_then(|v| v.as_u64());
+    let declared_target_state = if tool == "move_story" {
+        args.get("target_state")
+            .and_then(|v| v.as_str())
+            .and_then(crate::board::domain::StoryState::parse)
+            .map(|s| s.as_str())
+    } else {
+        None
+    };
     let prior_state = transition_number
         .filter(|_| !is_read_only_tool(&tool))
         .and_then(|number| story_state_label(&refresh, number));
@@ -299,7 +307,8 @@ pub async fn post_rpc_tool(
             } else if !is_read_only_tool(&tool) {
                 fire_board_invalidate(&session);
                 if let (Some(number), Some(from_state)) = (transition_number, prior_state)
-                    && let Some(target_state) = story_state_label(&refresh, number)
+                    && let Some(target_state) =
+                        declared_target_state.or_else(|| story_state_label(&refresh, number))
                     && target_state != from_state
                 {
                     fire_story_transition(&session, number, from_state, target_state, &agent);

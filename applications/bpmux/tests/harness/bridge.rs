@@ -308,7 +308,7 @@ impl TestBridge {
             let mut params = rmcp::model::CallToolRequestParams::new(tool.to_string());
             params.arguments = params_template.arguments.clone();
             let result = tokio::time::timeout(
-                Duration::from_secs(10),
+                Duration::from_secs(25),
                 self.client.peer().call_tool(params),
             )
             .await

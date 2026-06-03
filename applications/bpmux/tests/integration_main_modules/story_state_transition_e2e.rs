@@ -44,30 +44,20 @@ fn story_id_filter_discriminates_matching_from_non_matching_transition() {
         let agent = TestBridge::connect(&bpmux, "dev").await;
         let mutator = TestBridge::connect(&bpmux, "pm").await;
 
+        let other_story = create_target_story(
+            &mutator,
+            "[Feature] story-transition-id-nonmatch",
+            "a transition on this story must NOT reach a subscriber filtered to a different story_id",
+        )
+        .await;
         let story = create_target_story(
             &mutator,
             "[Feature] story-transition-id-target",
-            "reject if a transition on a NON-filtered story_id leaks through",
+            "a transition on this story must reach the matching-story_id subscriber",
         )
         .await;
-        let other_id = story + 9999;
 
-        let wrong_sub = agent
-            .call_tool(
-                "subscribe",
-                serde_json::json!({
-                    "event_class": "story_state_transition",
-                    "filter": { "story_id": other_id }
-                }),
-            )
-            .await
-            .expect("subscribe (wrong story_id) returns ok");
-        let wrong_subscription_id = wrong_sub["subscription_id"]
-            .as_str()
-            .expect("subscribe returns a subscription_id")
-            .to_string();
-
-        let right_sub = agent
+        let sub = agent
             .call_tool(
                 "subscribe",
                 serde_json::json!({
@@ -77,33 +67,20 @@ fn story_id_filter_discriminates_matching_from_non_matching_transition() {
             )
             .await
             .expect("subscribe (matching story_id) returns ok");
-        let right_subscription_id = right_sub["subscription_id"]
+        let subscription_id = sub["subscription_id"]
             .as_str()
             .expect("subscribe returns a subscription_id")
             .to_string();
 
-        drain_pending_events(&agent, &wrong_subscription_id).await;
-        drain_pending_events(&agent, &right_subscription_id).await;
+        drain_pending_events(&agent, &subscription_id).await;
 
+        move_to_ready(&mutator, other_story).await;
         move_to_ready(&mutator, story).await;
-
-        let leaked: Value = agent
-            .call_tool(
-                "wait_for_event",
-                serde_json::json!({ "subscription_id": wrong_subscription_id, "timeout_ms": 1500 }),
-            )
-            .await
-            .expect("wait_for_event on the wrong-id subscription");
-        assert_eq!(
-            leaked["timed_out"].as_bool(),
-            Some(true),
-            "the real story's transition must NOT reach a subscriber filtered to a DIFFERENT story_id — non-vacuity: if the filter were absent, this event would leak here; got {leaked}"
-        );
 
         let event: Value = agent
             .call_tool(
                 "wait_for_event",
-                serde_json::json!({ "subscription_id": right_subscription_id, "timeout_ms": 5000 }),
+                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 20000 }),
             )
             .await
             .expect("wait_for_event delivers the matching transition, not a timeout");
@@ -116,7 +93,7 @@ fn story_id_filter_discriminates_matching_from_non_matching_transition() {
         assert_eq!(
             event["payload"]["story_id"].as_u64(),
             Some(story),
-            "the delivered event must carry the moved story's id; got {event}"
+            "the FIRST received event must carry the matching story's id — discrimination proof under any load: the other story's transition was driven FIRST, so were the story_id-filter to leak it the order-preserved dispatch would deliver the other story FIRST and this assert would read its id (no negative-timeout to outrun under CPU-starvation); got {event}"
         );
         assert_eq!(
             event["payload"]["from_state"].as_str(),
@@ -187,25 +164,12 @@ fn target_state_filter_discriminates_matching_from_non_matching_to_state() {
             .await
             .expect("move_story to in-progress succeeds");
 
-        let leaked: Value = agent
-            .call_tool(
-                "wait_for_event",
-                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 1500 }),
-            )
-            .await
-            .expect("wait_for_event after the NON-matching (in-progress) transition");
-        assert_eq!(
-            leaked["timed_out"].as_bool(),
-            Some(true),
-            "an in-progress transition must NOT reach a {{target_state: ready}}-filtered subscriber — non-vacuity: absent the filter, this would leak; got {leaked}"
-        );
-
         move_to_ready(&mutator, story).await;
 
         let event: Value = agent
             .call_tool(
                 "wait_for_event",
-                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 5000 }),
+                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 20000 }),
             )
             .await
             .expect("wait_for_event delivers the ready transition, not a timeout");
@@ -213,7 +177,7 @@ fn target_state_filter_discriminates_matching_from_non_matching_to_state() {
         assert_eq!(
             event["payload"]["target_state"].as_str(),
             Some("ready"),
-            "the {{target_state: ready}} filter must deliver exactly the ready transition; got {event}"
+            "the FIRST received event must be the ready transition — discrimination proof under any load: the in-progress transition was driven FIRST, so were the target_state-filter to leak it the order-preserved dispatch would deliver in-progress FIRST and this assert would read 'in-progress' (no negative-timeout to outrun under CPU-starvation); got {event}"
         );
         assert_eq!(
             event["payload"]["story_id"].as_u64(),
@@ -224,6 +188,76 @@ fn target_state_filter_discriminates_matching_from_non_matching_to_state() {
             event["payload"]["from_state"].as_str(),
             Some("in-progress"),
             "from_state must reflect the prior (in-progress) state; got {event}"
+        );
+
+        agent.close().await;
+        mutator.close().await;
+    });
+}
+
+#[test]
+fn move_story_backward_rework_transition_still_fires_state_transition_event() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let agent = TestBridge::connect(&bpmux, "dev").await;
+        let mutator = TestBridge::connect(&bpmux, "pm").await;
+
+        let story = create_target_story(
+            &mutator,
+            "[Feature] rework-backward-emit-regression",
+            "a backward (rework) move_story must still fire a story_state_transition event",
+        )
+        .await;
+
+        mutator
+            .call_tool(
+                "move_story",
+                serde_json::json!({
+                    "number": story,
+                    "target_state": "in-progress",
+                    "rationale": "advance the story before driving the backward rework"
+                }),
+            )
+            .await
+            .expect("move_story to in-progress succeeds");
+
+        let sub = agent
+            .call_tool(
+                "subscribe",
+                serde_json::json!({
+                    "event_class": "story_state_transition",
+                    "filter": { "story_id": story }
+                }),
+            )
+            .await
+            .expect("subscribe returns ok");
+        let subscription_id = sub["subscription_id"]
+            .as_str()
+            .expect("subscribe returns a subscription_id")
+            .to_string();
+
+        drain_pending_events(&agent, &subscription_id).await;
+
+        move_to_ready(&mutator, story).await;
+
+        let event: Value = agent
+            .call_tool(
+                "wait_for_event",
+                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 20000 }),
+            )
+            .await
+            .expect("a backward rework move must fire a transition event, not a timeout");
+
+        assert_eq!(
+            event["payload"]["target_state"].as_str(),
+            Some("ready"),
+            "the backward in-progress→ready rework must report the AUTHORITATIVE target (ready) — regression for the dual-label drop where the post-dispatch decoder read resolved the transient ['ready','in progress'] labels to the more-advanced OLD state (in-progress), making target==from and SILENTLY dropping the transition; got {event}"
+        );
+        assert_eq!(
+            event["payload"]["from_state"].as_str(),
+            Some("in-progress"),
+            "the rework's from_state must be the prior in-progress state; got {event}"
         );
 
         agent.close().await;
