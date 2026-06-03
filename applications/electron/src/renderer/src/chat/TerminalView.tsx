@@ -131,7 +131,9 @@ export const TerminalView = ({
           ✕
         </button>
       </header>
-      <section ref={screenRef} className="terminal-screen" aria-label="terminal output" />
+      <section className="terminal-screen" aria-label="terminal output">
+        <section ref={screenRef} className="terminal-screen-canvas" />
+      </section>
     </section>
   )
 }
