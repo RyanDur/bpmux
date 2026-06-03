@@ -6,7 +6,21 @@ use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
 use serde_json::Value;
-use std::time::Duration;
+
+async fn drain_pending_events(agent: &TestBridge, subscription_id: &str) {
+    loop {
+        let drained = agent
+            .call_tool(
+                "wait_for_event",
+                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 500 }),
+            )
+            .await
+            .expect("drain wait_for_event");
+        if drained["timed_out"].as_bool() == Some(true) {
+            break;
+        }
+    }
+}
 
 #[test]
 fn subscribe_then_non_create_board_mutation_delivers_board_invalidated() {
@@ -15,7 +29,6 @@ fn subscribe_then_non_create_board_mutation_delivers_board_invalidated() {
     rt.block_on(async {
         let agent = TestBridge::connect(&bpmux, "dev").await;
         let mutator = TestBridge::connect(&bpmux, "pm").await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
 
         let target = create_target_story(
             &mutator,
@@ -23,7 +36,6 @@ fn subscribe_then_non_create_board_mutation_delivers_board_invalidated() {
             "reject if the subscriber misses board_invalidated on a NON-create mutation",
         )
         .await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
 
         let sub = agent
             .call_tool(
@@ -36,7 +48,8 @@ fn subscribe_then_non_create_board_mutation_delivers_board_invalidated() {
             .as_str()
             .expect("subscribe returns a subscription_id")
             .to_string();
-        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        drain_pending_events(&agent, &subscription_id).await;
 
         mutator
             .call_tool(
@@ -79,7 +92,6 @@ fn wait_for_event_returns_a_timeout_signal_when_no_event_arrives() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let agent = TestBridge::connect(&bpmux, "dev").await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
 
         let sub = agent
             .call_tool(
