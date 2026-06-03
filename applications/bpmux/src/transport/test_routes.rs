@@ -618,6 +618,55 @@ pub async fn post_test_fire_ci_state(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct FireSyncStatusReq {
+    pub status: String,
+    pub count: Option<usize>,
+}
+
+pub async fn post_test_fire_sync_status(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    Json(req): Json<FireSyncStatusReq>,
+) -> impl IntoResponse {
+    let Some(refresh) = refresh else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+            })),
+        );
+    };
+    let count = req.count.unwrap_or(1).max(1);
+    let handle = refresh.status_handle();
+    {
+        let mut status = handle.lock().unwrap_or_else(|e| e.into_inner());
+        *status = crate::board::SyncStatus::default();
+        match req.status.as_str() {
+            "conflict" => status.conflicts_pending = count,
+            "stale" => status.stale = true,
+            "drain" => status.pending_events = count,
+            _ => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({
+                        "error": format!("unknown sync status '{}'", req.status)
+                    })),
+                );
+            }
+        }
+    }
+    let snapshot = {
+        let status = handle.lock().unwrap_or_else(|e| e.into_inner());
+        status.clone()
+    };
+    crate::bridge::polling::broadcast_sync_status_update(&session, &snapshot);
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({ "dispatched": true })),
+    )
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ViewVelocityReq {
     pub messages: Vec<Message>,
 }

@@ -27,7 +27,8 @@ pub use domain::{FreeComment, Gate, GateComment, Story, StoryState};
 pub use events::BoardEvent;
 pub use orchestrator::{
     DrainOneOutcome, MutationId, QueuedEvent, RaceWindowBarrier, RefreshDriver, SyncOrchestrator,
-    SyncStatus, acknowledge_dropped, default_outbox_path, mark_recovering_from_corruption,
+    SyncStatus, SyncTransition, acknowledge_dropped, default_outbox_path,
+    mark_recovering_from_corruption, sync_transition,
 };
 pub use peer::PeerId;
 pub use store::{BoardStore, PersistError, default_store_path};

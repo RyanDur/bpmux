@@ -468,6 +468,9 @@ mod ingest_poll_loop_tests {
         fn snapshot_status(&self) -> SyncStatus {
             SyncStatus::default()
         }
+        fn status_handle(&self) -> std::sync::Arc<std::sync::Mutex<SyncStatus>> {
+            std::sync::Arc::new(std::sync::Mutex::new(SyncStatus::default()))
+        }
         fn acknowledge_dropped(&self) -> usize {
             0
         }

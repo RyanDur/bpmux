@@ -230,6 +230,20 @@ async fn run_ws_connection(
                         .await;
                     continue;
                 }
+                Some(crate::session::message::StateDeltaPayload::Sync { transition }) => {
+                    subscriptions
+                        .dispatch(
+                            "sync_status_changed",
+                            json!({
+                                "status": transition.status,
+                                "why": transition.why,
+                                "pending_events": transition.pending_events,
+                                "conflicts_pending": transition.conflicts_pending,
+                            }),
+                        )
+                        .await;
+                    continue;
+                }
                 Some(crate::session::message::StateDeltaPayload::MessageStatus { .. }) => {
                     continue;
                 }

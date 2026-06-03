@@ -262,6 +262,10 @@ pub async fn run_server(
                 "/api/test/fire_ci_state",
                 axum::routing::post(transport::test_routes::post_test_fire_ci_state),
             )
+            .route(
+                "/api/test/fire_sync_status",
+                axum::routing::post(transport::test_routes::post_test_fire_sync_status),
+            )
     } else {
         axum::Router::new()
     };

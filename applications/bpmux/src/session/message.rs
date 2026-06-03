@@ -84,6 +84,8 @@ pub enum StateDeltaPayload {
     },
     #[serde(rename = "ci")]
     Ci { snapshot: CiSnapshotWire },
+    #[serde(rename = "sync")]
+    Sync { transition: SyncTransitionWire },
     #[serde(rename = "roster")]
     Roster { members: Vec<RosterMemberWire> },
     #[serde(rename = "iteration_close")]
@@ -141,6 +143,14 @@ pub struct ReactionAggregateWire {
     pub emoji: String,
     pub count: usize,
     pub users: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SyncTransitionWire {
+    pub status: String,
+    pub why: String,
+    pub pending_events: usize,
+    pub conflicts_pending: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

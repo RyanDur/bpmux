@@ -218,12 +218,15 @@ pub(crate) async fn run_drain_loop(
             }
         };
         if state_changed {
-            broadcast_sync_status_update(&session);
+            broadcast_sync_status_update(&session, &refresh.snapshot_status());
         }
     }
 }
 
-fn broadcast_sync_status_update(session: &crate::session::Session) {
+pub(crate) fn broadcast_sync_status_update(
+    session: &crate::session::Session,
+    snapshot: &crate::board::SyncStatus,
+) {
     let msg = crate::session::Message {
         from: "bpmux".to_string(),
         text: super::SYNC_STATUS_UPDATE_MARKER.to_string(),
@@ -235,6 +238,28 @@ fn broadcast_sync_status_update(session: &crate::session::Session) {
         crate::session::diag::log_diag(&format!(
             "run_drain_loop: sync-status marker broadcast failed: {e}"
         ));
+    }
+    if let Some(transition) = crate::board::sync_transition(snapshot) {
+        let delta = crate::session::Message {
+            from: "bpmux".to_string(),
+            text: String::new(),
+            ts: chrono::Utc::now(),
+            message_type: crate::session::MessageType::StateDelta,
+            state_delta: Some(crate::session::message::StateDeltaPayload::Sync {
+                transition: crate::session::message::SyncTransitionWire {
+                    status: transition.status.to_string(),
+                    why: transition.why,
+                    pending_events: transition.pending_events,
+                    conflicts_pending: transition.conflicts_pending,
+                },
+            }),
+            ..crate::session::Message::default()
+        };
+        if let Err(e) = session.broadcast(&delta) {
+            crate::session::diag::log_diag(&format!(
+                "run_drain_loop: sync-status state-delta broadcast failed: {e}"
+            ));
+        }
     }
 }
 

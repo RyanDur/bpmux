@@ -177,6 +177,8 @@ mod state_field_rederive;
 mod story59_acceptance;
 #[path = "integration_main_modules/story87_acceptance.rs"]
 mod story87_acceptance;
+#[path = "integration_main_modules/sync_status_changed_e2e.rs"]
+mod sync_status_changed_e2e;
 #[path = "integration_main_modules/terminal_bridge_provision_e2e.rs"]
 mod terminal_bridge_provision_e2e;
 #[path = "integration_main_modules/test_seed_e2e.rs"]

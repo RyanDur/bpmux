@@ -25,6 +25,7 @@ pub trait RefreshDriver: Send + Sync {
     fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64>;
     fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>>;
     fn snapshot_status(&self) -> SyncStatus;
+    fn status_handle(&self) -> Arc<std::sync::Mutex<SyncStatus>>;
     fn acknowledge_dropped(&self) -> usize;
     fn mark_recovering_from_corruption(&self);
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
@@ -114,6 +115,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn snapshot_status(&self) -> SyncStatus {
         self.snapshot_status()
+    }
+
+    fn status_handle(&self) -> Arc<std::sync::Mutex<SyncStatus>> {
+        self.status_handle()
     }
 
     fn acknowledge_dropped(&self) -> usize {
