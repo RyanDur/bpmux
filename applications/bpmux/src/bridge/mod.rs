@@ -333,6 +333,24 @@ async fn run_ws_connection(
                 )
                 .await;
             }
+
+            if let Some(directed) = addressee
+                .as_deref()
+                .filter(|a| *a != crate::session::message::BROADCAST_ALL)
+            {
+                subscriptions
+                    .dispatch(
+                        "addressed_to_me",
+                        json!({
+                            "from": from_short,
+                            "text": text,
+                            "ts": ts,
+                            "channel": channel,
+                            "addressee": directed,
+                        }),
+                    )
+                    .await;
+            }
         }
     }
 
