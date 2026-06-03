@@ -244,6 +244,23 @@ async fn run_ws_connection(
                         .await;
                     continue;
                 }
+                Some(crate::session::message::StateDeltaPayload::StoryTransition {
+                    transition,
+                }) => {
+                    subscriptions
+                        .dispatch(
+                            "story_state_transition",
+                            json!({
+                                "story_id": transition.story_id,
+                                "from_state": transition.from_state,
+                                "target_state": transition.target_state,
+                                "actor": transition.actor,
+                                "ts": ts,
+                            }),
+                        )
+                        .await;
+                    continue;
+                }
                 Some(crate::session::message::StateDeltaPayload::MessageStatus { .. }) => {
                     continue;
                 }

@@ -86,6 +86,8 @@ pub enum StateDeltaPayload {
     Ci { snapshot: CiSnapshotWire },
     #[serde(rename = "sync")]
     Sync { transition: SyncTransitionWire },
+    #[serde(rename = "story_transition")]
+    StoryTransition { transition: StoryTransitionWire },
     #[serde(rename = "roster")]
     Roster { members: Vec<RosterMemberWire> },
     #[serde(rename = "iteration_close")]
@@ -151,6 +153,14 @@ pub struct SyncTransitionWire {
     pub why: String,
     pub pending_events: usize,
     pub conflicts_pending: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StoryTransitionWire {
+    pub story_id: u64,
+    pub from_state: String,
+    pub target_state: String,
+    pub actor: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
