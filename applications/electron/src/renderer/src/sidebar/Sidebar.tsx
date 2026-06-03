@@ -8,6 +8,9 @@ import {
   deriveCombinatorialGroups,
   deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
+import { deriveCoordinationPairs } from '../chat/coordinationPairs'
+import { orderGroupsByActivity, relativeTime } from '../chat/coordinationActivity'
+import { useNow } from '../hooks/useNow'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import type { TerminalEntry } from '../AppShell'
 import { resolveTerminalName } from '../lib/terminalNames'
@@ -38,6 +41,8 @@ const PRESENCE_LABEL: Record<Presence, string> = {
   help: 'needs help',
   offline: 'offline'
 }
+
+const RECENCY_TICK_MS = 30_000
 
 const groupKey = (names: readonly string[]): string => [...names].sort().join('+')
 
@@ -97,6 +102,12 @@ const Sidebar = ({
       ),
     [combinableRoles]
   )
+  const coordinationPairs = useMemo(
+    () => deriveCoordinationPairs(messages, mirrorRoster ?? []),
+    [messages, mirrorRoster]
+  )
+  const nowMs = useNow(RECENCY_TICK_MS)
+  const orderedGroups = orderGroupsByActivity(partialGroups, coordinationPairs, nowMs)
   const presence = usePresence(messages, directRoles)
 
   const noTerminalActive = activeTerminalKey === null
@@ -173,29 +184,46 @@ const Sidebar = ({
       </section>
       <section className="sidebar-section">
         <h3 className="sidebar-heading">groups</h3>
-        {partialGroups.length === 0 ? (
+        {orderedGroups.length === 0 ? (
           <p className="sidebar-empty" data-test="sidebar-groups-empty">
             none yet
           </p>
         ) : (
-          partialGroups.map((names) => {
+          orderedGroups.map(({ names, activity }) => {
             const key = groupKey(names)
             const isAllMembers = isAllMembersGroup(names, combinableRoles)
-            const active = isAllMembers
+            const selected = isAllMembers
               ? allMembersGroupSelected
               : noTerminalActive && !allView && recipientMatches(recipient, names)
+            const active = activity?.recent ? activity : null
+            const recencyLabel = active
+              ? `, active ${relativeTime(active.lastTs, nowMs)}`
+              : ', idle'
             return (
               <button
                 key={key}
-                className={`sidebar-item sidebar-item--group${active ? ' sidebar-item--active' : ''}`}
+                className={`sidebar-item sidebar-item--group${selected ? ' sidebar-item--active' : ''}${active ? '' : ' sidebar-item--idle'}`}
                 type="button"
-                aria-current={active || undefined}
-                aria-label={`scope chat to ${names.join(' + ')}`}
+                aria-current={selected || undefined}
+                aria-label={`scope chat to ${names.join(' + ')}${recencyLabel}`}
                 data-test={`sidebar-group-${key}`}
-                onClick={() => goGroup(names)}
+                data-coordination={active ? 'active' : 'idle'}
+                onClick={() => goGroup([...names])}
                 title={names.join(' + ')}
               >
+                {active && (
+                  <i
+                    className="coordination-dot"
+                    data-test={`coordination-dot-${key}`}
+                    aria-hidden="true"
+                  />
+                )}
                 {names.join(' + ')}
+                {active && (
+                  <small className="coordination-recency" data-test={`coordination-recency-${key}`}>
+                    {relativeTime(active.lastTs, nowMs)}
+                  </small>
+                )}
               </button>
             )
           })

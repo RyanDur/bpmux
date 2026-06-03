@@ -369,3 +369,61 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
     expect(html).toMatch(/data-test="presence-dot-pm"/)
   })
 })
+
+describe('#1605 Sidebar — coordination overview: addressed who↔whom edges discriminate active from idle', () => {
+  const at = (msAgo: number): string => new Date(Date.now() - msAgo).toISOString()
+  const chat = (over: Partial<ChatMessage>): ChatMessage => ({
+    id: 'c',
+    from: 'dev:claude-code',
+    text: 'coordinate',
+    ts: at(30_000),
+    to: null,
+    addressee: null,
+    messageType: 'chat',
+    ...over
+  })
+  const render = (messages: ChatMessage[]): string =>
+    renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={messages}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+
+  test('a recently @-addressed pair is ACTIVE (recency-dot) while an un-coordinated pair is IDLE (dimmed) — discrimination, not pair-existence', () => {
+    const html = render([chat({ id: '1', addressee: 'pm', ts: at(30_000) })])
+    expect(html).toMatch(/data-test="sidebar-group-dev\+pm"[^>]*data-coordination="active"/)
+    expect(html).toContain('data-test="coordination-dot-dev+pm"')
+    expect(html).toMatch(/data-test="sidebar-group-designer\+pm"[^>]*data-coordination="idle"/)
+    expect(html).not.toContain('data-test="coordination-dot-designer+pm"')
+    expect(html).toContain('sidebar-item--idle')
+  })
+
+  test('the active pair sorts ABOVE the idle pairs (active-now rises to the top of GROUPS)', () => {
+    const html = render([chat({ id: '1', addressee: 'pm', ts: at(30_000) })])
+    expect(html.indexOf('sidebar-group-dev+pm')).toBeLessThan(
+      html.indexOf('sidebar-group-designer+pm')
+    )
+  })
+
+  test('two active pairs sort most-recent-first', () => {
+    const html = render([
+      chat({ id: '1', from: 'dev:claude-code', addressee: 'pm', ts: at(4 * 60_000) }),
+      chat({ id: '2', from: 'designer:claude-code', addressee: 'dev', ts: at(20_000) })
+    ])
+    expect(html.indexOf('sidebar-group-designer+dev')).toBeLessThan(
+      html.indexOf('sidebar-group-dev+pm')
+    )
+  })
+
+  test('an un-addressed broadcast does NOT activate any pair (the broadcast noise is correctly no-edge)', () => {
+    const html = render([chat({ id: '1', addressee: null, to: null, ts: at(10_000) })])
+    expect(html).not.toMatch(/data-coordination="active"/)
+    expect(html).not.toContain('data-test="coordination-dot-dev+pm"')
+  })
+})
