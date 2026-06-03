@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::session::Message;
+use crate::session::message::DeliveryStatus;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -35,6 +36,11 @@ pub enum ClientMessage {
         cols: u16,
         rows: u16,
     },
+    #[serde(rename = "mark_receipt")]
+    MarkReceipt {
+        message_id: String,
+        status: DeliveryStatus,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,6 +50,8 @@ pub enum ServerMessage {
     Welcome { session_id: String },
     #[serde(rename = "message")]
     Message {
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        id: String,
         from: String,
         text: String,
         ts: String,
@@ -73,6 +81,7 @@ pub enum ServerMessage {
 impl From<Message> for ServerMessage {
     fn from(msg: Message) -> Self {
         ServerMessage::Message {
+            id: msg.id,
             from: msg.from,
             text: msg.text,
             ts: msg.ts.to_rfc3339(),

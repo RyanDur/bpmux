@@ -103,6 +103,7 @@ pub async fn post_message(
     }
     let explicit_privacy = payload.to.is_some();
     let msg = session::Message {
+        id: String::new(),
         from: payload.from,
         text: payload.text,
         ts: chrono::Utc::now(),

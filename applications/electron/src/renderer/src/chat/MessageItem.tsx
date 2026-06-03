@@ -137,6 +137,25 @@ const MessageItem = ({
               return <ReactionAddButton onToggle={(emoji) => onToggleReaction(mKey, emoji)} />
             })()}
         </section>
+        {m.deliveryStatus && Object.keys(m.deliveryStatus).length > 0 && (
+          <footer className="message-receipts" data-test="message-receipts">
+            {Object.entries(m.deliveryStatus).map(([recipient, status]) => (
+              <small
+                key={recipient}
+                className={`message-receipt message-receipt--${status}`}
+                data-test="message-receipt"
+                data-recipient={recipient}
+                data-status={status}
+                title={status === 'seen' ? `seen by ${recipient}` : `delivered to ${recipient}`}
+              >
+                <b aria-hidden="true">{status === 'seen' ? '✓✓' : '✓'}</b>
+                <i className="sr-only">
+                  {status === 'seen' ? `seen by ${recipient}` : `delivered to ${recipient}`}
+                </i>
+              </small>
+            ))}
+          </footer>
+        )}
       </article>
     </li>
   )

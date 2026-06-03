@@ -54,7 +54,8 @@ pub use tools_stories::BOARD_INVALIDATE_MARKER;
 pub use tools_stories::SYNC_STATUS_UPDATE_MARKER;
 pub use tools_stories::parse_acceptance_test_path;
 
-use crate::transport::protocol::ServerMessage;
+use crate::session::message::DeliveryStatus;
+use crate::transport::protocol::{ClientMessage, ServerMessage};
 
 type McpError = ErrorData;
 type WsSink = futures::stream::SplitSink<
@@ -69,6 +70,17 @@ pub struct BridgeServer {
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
+    delivered_pending: Arc<Mutex<Vec<String>>>,
+}
+
+pub(crate) async fn ws_send_client(ws_tx: &Mutex<Option<WsSink>>, msg: &ClientMessage) {
+    let Ok(json) = serde_json::to_string(msg) else {
+        return;
+    };
+    let mut tx = ws_tx.lock().await;
+    if let Some(ref mut tx) = *tx {
+        let _ = tx.send(tungstenite::Message::Text(json.into())).await;
+    }
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -89,6 +101,7 @@ impl BridgeServer {
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             subscriptions: event_subscription::SubscriptionRegistry::new(),
+            delivered_pending: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -137,6 +150,7 @@ async fn run_ws_connection(
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
+    delivered_pending: Arc<Mutex<Vec<String>>>,
 ) {
     let ws_url = crate::transport::local_url::ws_url(port, "/ws");
     let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
@@ -215,6 +229,7 @@ async fn run_ws_connection(
             continue;
         }
         if let ServerMessage::Message {
+            id,
             from,
             text,
             ts,
@@ -226,13 +241,17 @@ async fn run_ws_connection(
             state_snapshot: _,
         } = msg
         {
-            if let Some(crate::session::message::StateDeltaPayload::BoardInvalidated { reason }) =
-                state_delta.as_deref()
-            {
-                subscriptions
-                    .dispatch("board_invalidated", json!({ "reason": reason }))
-                    .await;
-                continue;
+            match state_delta.as_deref() {
+                Some(crate::session::message::StateDeltaPayload::BoardInvalidated { reason }) => {
+                    subscriptions
+                        .dispatch("board_invalidated", json!({ "reason": reason }))
+                        .await;
+                    continue;
+                }
+                Some(crate::session::message::StateDeltaPayload::MessageStatus { .. }) => {
+                    continue;
+                }
+                _ => {}
             }
             let from_short = from.split(':').next().unwrap_or(&from);
             let current_name = name.lock().await;
@@ -257,6 +276,14 @@ async fn run_ws_connection(
                 }
                 Some(recipients) => recipients.iter().any(|r| r == current_name.as_str()),
             };
+            let specifically_addressed = matches!(
+                &to,
+                Some(recipients)
+                    if !recipients
+                        .iter()
+                        .any(|r| r == crate::session::message::BROADCAST_ALL)
+                        && recipients.iter().any(|r| r == current_name.as_str())
+            );
             let channel = match &to {
                 None => "broadcast".to_string(),
                 Some(recipients)
@@ -298,6 +325,17 @@ async fn run_ws_connection(
             {
                 eprintln!("Bridge: failed to send channel notification: {e}");
                 break;
+            }
+            if specifically_addressed && !id.is_empty() {
+                delivered_pending.lock().await.push(id.clone());
+                ws_send_client(
+                    &ws_tx_store,
+                    &ClientMessage::MarkReceipt {
+                        message_id: id,
+                        status: DeliveryStatus::Delivered,
+                    },
+                )
+                .await;
             }
         }
     }

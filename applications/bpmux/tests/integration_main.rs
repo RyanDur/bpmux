@@ -59,6 +59,8 @@ mod cross_bridge_mutation_propagation;
 mod deliver_story_e2e;
 #[path = "integration_main_modules/deliver_story_substrate_enforce_e2e.rs"]
 mod deliver_story_substrate_enforce_e2e;
+#[path = "integration_main_modules/delivered_seen_receipts_e2e.rs"]
+mod delivered_seen_receipts_e2e;
 #[path = "integration_main_modules/dev_in_flight_e2e.rs"]
 mod dev_in_flight_e2e;
 #[path = "integration_main_modules/diag_routing.rs"]

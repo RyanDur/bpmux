@@ -107,8 +107,12 @@ impl Session {
     }
 
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {
-        self.storage.append_message(msg)?;
-        let _ = self.wake_tx.send(msg.clone());
+        let mut msg = msg.clone();
+        if msg.id.is_empty() {
+            msg.id = uuid::Uuid::new_v4().to_string();
+        }
+        self.storage.append_message(&msg)?;
+        let _ = self.wake_tx.send(msg);
         Ok(())
     }
 

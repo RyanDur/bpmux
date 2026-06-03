@@ -138,6 +138,13 @@ describe('applyStateDelta', () => {
       reason: 'board changed'
     })
     expect(boardInvalidated).toBe(seeded)
+    const messageStatus = applyStateDelta(seeded, {
+      domain: 'message_status',
+      message_id: 'm-1',
+      recipient: 'dev',
+      status: 'seen'
+    })
+    expect(messageStatus).toBe(seeded)
     const unknownFuture = applyStateDelta(seeded, {
       domain: 'some_future_event'
     } as unknown as StateDeltaPayload)

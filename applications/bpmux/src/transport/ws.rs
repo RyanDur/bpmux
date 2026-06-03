@@ -442,6 +442,10 @@ async fn handle_client_message(
         }) => {
             pty_registry.resize(&terminal_id, rows, cols);
         }
+        Ok(ClientMessage::MarkReceipt { message_id, status }) => {
+            let recipient = short_name(identity).to_string();
+            session.broadcast(&message_status_state_delta(message_id, recipient, status))?;
+        }
         Err(e) => {
             send_json(
                 tx,
@@ -453,6 +457,25 @@ async fn handle_client_message(
         }
     }
     Ok(None)
+}
+
+fn message_status_state_delta(
+    message_id: String,
+    recipient: String,
+    status: crate::session::message::DeliveryStatus,
+) -> session::Message {
+    session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::StateDelta,
+        state_delta: Some(crate::session::message::StateDeltaPayload::MessageStatus {
+            message_id,
+            recipient,
+            status,
+        }),
+        ..session::Message::default()
+    }
 }
 
 fn board_invalidated_state_delta() -> session::Message {

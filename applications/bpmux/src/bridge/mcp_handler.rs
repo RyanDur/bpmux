@@ -31,6 +31,7 @@ impl ServerHandler for BridgeServer {
         let peer_store = self.peer.clone();
         let ws_tx_store = self.ws_tx.clone();
         let subscriptions = self.subscriptions.clone();
+        let delivered_pending = self.delivered_pending.clone();
 
         async move {
             *peer_store.lock().await = Some(peer.clone());
@@ -43,6 +44,7 @@ impl ServerHandler for BridgeServer {
                         peer.clone(),
                         ws_tx_store.clone(),
                         subscriptions.clone(),
+                        delivered_pending.clone(),
                     )
                     .await;
                     eprintln!("Bridge: reconnecting in 3 seconds...");
@@ -71,8 +73,20 @@ impl ServerHandler for BridgeServer {
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
         let subscriptions = self.subscriptions.clone();
+        let delivered_pending = self.delivered_pending.clone();
 
         async move {
+            let newly_seen = std::mem::take(&mut *delivered_pending.lock().await);
+            for message_id in newly_seen {
+                super::ws_send_client(
+                    &ws_tx,
+                    &crate::transport::protocol::ClientMessage::MarkReceipt {
+                        message_id,
+                        status: crate::session::message::DeliveryStatus::Seen,
+                    },
+                )
+                .await;
+            }
             let args = request.arguments.unwrap_or_default();
             crate::session::usage::record(
                 crate::session::usage::Source::Mcp,
