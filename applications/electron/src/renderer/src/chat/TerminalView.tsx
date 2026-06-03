@@ -9,6 +9,7 @@ import {
   sendPtySubscribe,
   subscribeWsPtyOutput
 } from '../transport/wsService'
+import { composeTerminalFontFamily } from '../lib/terminalFont'
 import './TerminalView.css'
 
 interface TerminalViewProps {
@@ -63,7 +64,7 @@ export const TerminalView = ({
     const term = new Terminal({
       cursorBlink: true,
       convertEol: false,
-      fontFamily: readToken('--font-mono', 'ui-monospace, SFMono-Regular, Menlo, monospace'),
+      fontFamily: composeTerminalFontFamily(readToken('--font-mono', '')),
       theme: {
         background: readToken('--bg-base', '#1e1e1e'),
         foreground: readToken('--fg-base', '#d4d4d4')
