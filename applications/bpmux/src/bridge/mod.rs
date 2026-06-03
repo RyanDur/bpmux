@@ -214,6 +214,22 @@ async fn run_ws_connection(
                         .await;
                     continue;
                 }
+                Some(crate::session::message::StateDeltaPayload::Ci { snapshot }) => {
+                    subscriptions
+                        .dispatch(
+                            "ci_state_changed",
+                            json!({
+                                "conclusion": serde_json::to_value(snapshot.state)
+                                    .unwrap_or(serde_json::Value::Null),
+                                "run_id": snapshot.run_id,
+                                "head_sha": snapshot.head_sha,
+                                "display_title": snapshot.display_title,
+                                "url": crate::ci::github_actions_url(),
+                            }),
+                        )
+                        .await;
+                    continue;
+                }
                 Some(crate::session::message::StateDeltaPayload::MessageStatus { .. }) => {
                     continue;
                 }

@@ -573,6 +573,51 @@ pub async fn post_test_close_story(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct FireCiStateReq {
+    pub run_id: u64,
+    pub head_sha: String,
+    pub conclusion: String,
+}
+
+fn ci_state_for_conclusion(conclusion: &str) -> crate::ci::CiState {
+    match conclusion {
+        "success" => crate::ci::CiState::Green,
+        "failure" => crate::ci::CiState::Red,
+        "in_progress" => crate::ci::CiState::Running,
+        _ => crate::ci::CiState::Unknown,
+    }
+}
+
+pub async fn post_test_fire_ci_state(
+    axum::Extension(orchestrator): axum::Extension<
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    >,
+    Json(req): Json<FireCiStateReq>,
+) -> impl IntoResponse {
+    let conclusion: &'static str = match req.conclusion.as_str() {
+        "success" => "success",
+        "failure" => "failure",
+        "in_progress" => "in_progress",
+        _ => "unknown",
+    };
+    let snapshot = crate::orchestrator::CiSnapshot {
+        state: ci_state_for_conclusion(conclusion),
+        run_id: Some(req.run_id),
+        head_sha: Some(req.head_sha),
+        display_title: Some("test ci transition".to_string()),
+        conclusion,
+        workflows: Vec::new(),
+    };
+    orchestrator
+        .dispatch(crate::orchestrator::OrchestratorAction::CiUpdated(snapshot))
+        .await;
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({ "dispatched": true })),
+    )
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ViewVelocityReq {
     pub messages: Vec<Message>,
 }

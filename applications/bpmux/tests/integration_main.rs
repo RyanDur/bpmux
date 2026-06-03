@@ -41,6 +41,8 @@ mod canonical_store_mutation_parity_e2e;
 mod capture_electron_window_e2e;
 #[path = "integration_main_modules/ci_canonical.rs"]
 mod ci_canonical;
+#[path = "integration_main_modules/ci_state_changed_e2e.rs"]
+mod ci_state_changed_e2e;
 #[path = "integration_main_modules/classifier_misfire_e2e.rs"]
 mod classifier_misfire_e2e;
 #[path = "integration_main_modules/close_iteration_e2e.rs"]
