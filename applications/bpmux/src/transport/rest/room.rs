@@ -27,8 +27,17 @@ pub async fn post_terminal_spawn(
     for (key, value) in &integration.env {
         env.push((key.as_str(), value.as_str()));
     }
-    let spawned =
-        crate::room::spawn_pty_retained(&command, &args, Some(std::path::Path::new(&home)), &env);
+    let spawn_args: &[String] = if integration.args.is_empty() {
+        &args
+    } else {
+        &integration.args
+    };
+    let spawned = crate::room::spawn_pty_retained(
+        &command,
+        spawn_args,
+        Some(std::path::Path::new(&home)),
+        &env,
+    );
     drop(env);
     match spawned {
         Ok(mut live) => {

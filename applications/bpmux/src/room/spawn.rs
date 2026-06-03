@@ -139,6 +139,7 @@ pub fn spawn_pty_retained(
 #[derive(Default)]
 pub struct Osc7Integration {
     pub env: Vec<(String, String)>,
+    pub args: Vec<String>,
     pub zdotdir: Option<tempfile::TempDir>,
 }
 
@@ -149,19 +150,31 @@ pub fn osc7_shell_integration(command: &str) -> std::io::Result<Osc7Integration>
         .unwrap_or_default();
     match family {
         "zsh" => zsh_osc7_integration(),
-        "bash" => Ok(bash_osc7_integration()),
+        "bash" => bash_osc7_integration(),
         _ => Ok(Osc7Integration::default()),
     }
 }
 
-fn bash_osc7_integration() -> Osc7Integration {
-    Osc7Integration {
-        env: vec![(
-            "PROMPT_COMMAND".to_string(),
-            "printf '\\033]7;file://%s%s\\007' \"${HOSTNAME}\" \"${PWD}\"".to_string(),
-        )],
-        zdotdir: None,
-    }
+fn bash_osc7_integration() -> std::io::Result<Osc7Integration> {
+    let dir = tempfile::tempdir()?;
+    let rcfile = dir.path().join("bpmux-bashrc");
+    std::fs::write(&rcfile, bash_rc())?;
+    Ok(Osc7Integration {
+        env: Vec::new(),
+        args: vec!["--rcfile".to_string(), rcfile.to_string_lossy().to_string()],
+        zdotdir: Some(dir),
+    })
+}
+
+fn bash_rc() -> String {
+    let mut rc = String::new();
+    rc.push_str(
+        "if [ -f \"$HOME/.bash_profile\" ]; then . \"$HOME/.bash_profile\"; elif [ -f \"$HOME/.bashrc\" ]; then . \"$HOME/.bashrc\"; fi\n",
+    );
+    rc.push_str(
+        "PROMPT_COMMAND=\"${PROMPT_COMMAND:+$PROMPT_COMMAND; }printf '\\033]7;file://%s%s\\007' \\\"\\${HOSTNAME}\\\" \\\"\\${PWD}\\\"\"\n",
+    );
+    rc
 }
 
 fn zsh_osc7_integration() -> std::io::Result<Osc7Integration> {
@@ -178,6 +191,7 @@ fn zsh_osc7_integration() -> std::io::Result<Osc7Integration> {
     std::fs::write(path.join(".zshrc"), zsh_rc(&real))?;
     Ok(Osc7Integration {
         env: vec![("ZDOTDIR".to_string(), path.to_string_lossy().to_string())],
+        args: Vec::new(),
         zdotdir: Some(dir),
     })
 }
@@ -435,7 +449,7 @@ mod tests {
         for (key, value) in &integration.env {
             env.push((key.as_str(), value.as_str()));
         }
-        let mut live = spawn_pty_retained(&shell, &[], None, &env).unwrap();
+        let mut live = spawn_pty_retained(&shell, &integration.args, None, &env).unwrap();
         if let Some(dir) = integration.zdotdir {
             live.attach_tempdir(dir);
         }
@@ -461,6 +475,79 @@ mod tests {
         assert!(
             collected.contains("]7;file://") && collected.contains(&marker),
             "the spawned $SHELL must emit OSC-7 (ESC]7;file://…<newdir>) on cd — the native mechanism the terminal header reads to follow cwd; got {collected:?}"
+        );
+    }
+
+    #[test]
+    fn bash_osc7_appends_to_a_user_prompt_command_without_clobbering_it() {
+        use std::io::Read;
+        let bash = "/bin/bash";
+        if !std::path::Path::new(bash).exists() {
+            return;
+        }
+        let home = tempfile::tempdir().unwrap();
+        std::fs::write(
+            home.path().join(".bashrc"),
+            "PROMPT_COMMAND='echo BPMUX_USER_PC_MARKER'\n",
+        )
+        .unwrap();
+        let integration = osc7_shell_integration(bash).unwrap();
+        let target = home.path().join("livecwd-target");
+        std::fs::create_dir_all(&target).unwrap();
+        let marker = target.file_name().unwrap().to_string_lossy().to_string();
+        let home_str = home.path().to_string_lossy().to_string();
+        let mut env: Vec<(&str, &str)> =
+            vec![("TERM", "xterm-256color"), ("HOME", home_str.as_str())];
+        for (key, value) in &integration.env {
+            env.push((key.as_str(), value.as_str()));
+        }
+        let mut live = spawn_pty_retained(bash, &integration.args, None, &env).unwrap();
+        if let Some(dir) = integration.zdotdir {
+            live.attach_tempdir(dir);
+        }
+        live.write_input(format!("cd {}\n", target.display()).as_bytes())
+            .unwrap();
+        let reader = live.reader().unwrap();
+        let (tx, rx) = std::sync::mpsc::channel::<Vec<u8>>();
+        let reader_handle = std::thread::spawn(move || {
+            let mut reader = reader;
+            let mut buf = [0u8; 1024];
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        if tx.send(buf[..n].to_vec()).is_err() {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        let mut collected = String::new();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
+        while std::time::Instant::now() < deadline {
+            match rx.recv_timeout(std::time::Duration::from_millis(200)) {
+                Ok(chunk) => {
+                    collected.push_str(&String::from_utf8_lossy(&chunk));
+                    let osc7_ok = collected.contains("]7;file://") && collected.contains(&marker);
+                    if osc7_ok && collected.contains("BPMUX_USER_PC_MARKER") {
+                        break;
+                    }
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+        live.close_and_reap();
+        drop(rx);
+        let _ = reader_handle.join();
+        assert!(
+            collected.contains("]7;file://") && collected.contains(&marker),
+            "bash must STILL emit OSC-7 live-cwd on cd when the user's .bashrc set its own PROMPT_COMMAND — our append must survive the user's rc, not be clobbered; got {collected:?}"
+        );
+        assert!(
+            collected.contains("BPMUX_USER_PC_MARKER"),
+            "the user's PROMPT_COMMAND must STILL run — our OSC-7 append must not clobber it (non-destructive, both directions); got {collected:?}"
         );
     }
 
