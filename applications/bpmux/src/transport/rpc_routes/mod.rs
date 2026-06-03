@@ -4,13 +4,17 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use chrono::Utc;
 use serde_json::Value;
 
 use crate::board::RefreshDriver;
 use crate::bridge;
 use crate::server::TestRefreshHandle;
-use crate::session::{self, Message, MessageType};
+use crate::session;
+
+mod state_delta;
+use state_delta::{
+    fire_board_invalidate, fire_story_transition, fire_view_backlog_marker, story_state_label,
+};
 
 pub const AGENT_HEADER: &str = "X-BPMUX-Agent";
 
@@ -63,19 +67,6 @@ fn is_read_only_tool(tool: &str) -> bool {
     )
 }
 
-fn fire_view_backlog_marker(session: &Arc<session::Session>) {
-    let msg = Message {
-        from: "bpmux:rpc".to_string(),
-        text: crate::bridge::VIEW_BACKLOG_MARKER.to_string(),
-        ts: Utc::now(),
-        message_type: MessageType::System,
-        ..Default::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        crate::session::diag::log_diag(&format!("rpc: VIEW_BACKLOG_MARKER broadcast failed: {e}"));
-    }
-}
-
 pub fn agent_from_headers(headers: &HeaderMap) -> Result<String, String> {
     let raw = headers
         .get(AGENT_HEADER)
@@ -93,85 +84,6 @@ pub fn agent_from_headers(headers: &HeaderMap) -> Result<String, String> {
         ));
     }
     Ok(raw)
-}
-
-fn fire_board_invalidate(session: &Arc<session::Session>) {
-    let msg = Message {
-        from: "bpmux:rpc".to_string(),
-        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
-        ts: Utc::now(),
-        message_type: MessageType::System,
-        ..Default::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        crate::session::diag::log_diag(&format!("rpc: BOARD_INVALIDATE broadcast failed: {e}"));
-    }
-    let delta = Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: Utc::now(),
-        message_type: MessageType::StateDelta,
-        state_delta: Some(
-            crate::session::message::StateDeltaPayload::BoardInvalidated {
-                reason: "board changed".to_string(),
-            },
-        ),
-        ..Default::default()
-    };
-    if let Err(e) = session.broadcast(&delta) {
-        crate::session::diag::log_diag(&format!(
-            "rpc: board_invalidated state-delta broadcast failed: {e}"
-        ));
-    }
-}
-
-fn effective_state_label(story: &crate::board::domain::Story) -> &'static str {
-    if story.is_closed {
-        if story
-            .raw_labels
-            .iter()
-            .any(|l| l.eq_ignore_ascii_case("retired"))
-        {
-            return crate::board::domain::StoryState::Retired.as_str();
-        }
-        return crate::board::domain::StoryState::Accepted.as_str();
-    }
-    story.state.as_str()
-}
-
-fn story_state_label(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Option<&'static str> {
-    refresh.story(number).as_ref().map(effective_state_label)
-}
-
-fn fire_story_transition(
-    session: &Arc<session::Session>,
-    number: u64,
-    from_state: &str,
-    target_state: &str,
-    actor: &str,
-) {
-    let delta = Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: Utc::now(),
-        message_type: MessageType::StateDelta,
-        state_delta: Some(
-            crate::session::message::StateDeltaPayload::StoryTransition {
-                transition: crate::session::message::StoryTransitionWire {
-                    story_id: number,
-                    from_state: from_state.to_string(),
-                    target_state: target_state.to_string(),
-                    actor: actor.to_string(),
-                },
-            },
-        ),
-        ..Default::default()
-    };
-    if let Err(e) = session.broadcast(&delta) {
-        crate::session::diag::log_diag(&format!(
-            "rpc: story_state_transition state-delta broadcast failed: {e}"
-        ));
-    }
 }
 
 fn args_from_value(body: Value) -> Result<serde_json::Map<String, Value>, String> {
