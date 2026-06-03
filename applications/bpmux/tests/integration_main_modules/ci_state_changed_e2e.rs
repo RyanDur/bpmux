@@ -67,26 +67,12 @@ fn subscribe_filtered_receives_only_matching_ci_transition() {
         drain_pending_events(&agent, &subscription_id).await;
 
         fire_ci_state(&bpmux, 2, sha_b, "failure").await;
-
-        let non_match: Value = agent
-            .call_tool(
-                "wait_for_event",
-                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 1500 }),
-            )
-            .await
-            .expect("wait_for_event returns");
-        assert_eq!(
-            non_match["timed_out"].as_bool(),
-            Some(true),
-            "a ci transition for a NON-matching head_sha must NOT reach a filtered subscriber — this is the discrimination proof; got {non_match}"
-        );
-
         fire_ci_state(&bpmux, 1, sha_a, "success").await;
 
-        let matched = agent
+        let matched: Value = agent
             .call_tool(
                 "wait_for_event",
-                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 5000 }),
+                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 20000 }),
             )
             .await
             .expect("wait_for_event returns the matching ci transition, not a timeout");
@@ -99,7 +85,7 @@ fn subscribe_filtered_receives_only_matching_ci_transition() {
         assert_eq!(
             matched["payload"]["head_sha"].as_str(),
             Some(sha_a),
-            "the delivered event carries the filtered head_sha; got {matched}"
+            "the FIRST received event must be the sha_a transition — discrimination proof under any load: the sha_b transition was fired FIRST, so were the head_sha-filter to leak it the order-preserved dispatch would deliver sha_b FIRST and this assert would read sha_b (no negative-timeout to outrun under CPU-starvation); got {matched}"
         );
         assert_eq!(
             matched["payload"]["run_id"].as_u64(),

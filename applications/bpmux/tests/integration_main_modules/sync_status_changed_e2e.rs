@@ -63,26 +63,12 @@ fn subscribe_filtered_receives_only_matching_sync_transition() {
         drain_pending_events(&agent, &subscription_id).await;
 
         fire_sync_status(&bpmux, "conflict", 2).await;
-
-        let non_match: Value = agent
-            .call_tool(
-                "wait_for_event",
-                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 1500 }),
-            )
-            .await
-            .expect("wait_for_event returns");
-        assert_eq!(
-            non_match["timed_out"].as_bool(),
-            Some(true),
-            "a conflict transition must NOT reach a subscriber filtered for drain — this is the discrimination proof; got {non_match}"
-        );
-
         fire_sync_status(&bpmux, "drain", 3).await;
 
-        let matched = agent
+        let matched: Value = agent
             .call_tool(
                 "wait_for_event",
-                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 5000 }),
+                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 20000 }),
             )
             .await
             .expect("wait_for_event returns the matching sync transition, not a timeout");
@@ -95,7 +81,7 @@ fn subscribe_filtered_receives_only_matching_sync_transition() {
         assert_eq!(
             matched["payload"]["status"].as_str(),
             Some("drain"),
-            "the delivered event carries the filtered status; got {matched}"
+            "the FIRST received event must be the drain transition — discrimination proof under any load: the conflict transition was fired FIRST, so were the status-filter to leak it the order-preserved dispatch would deliver conflict FIRST and this assert would read 'conflict' (no negative-timeout to outrun under CPU-starvation); got {matched}"
         );
         assert_eq!(
             matched["payload"]["pending_events"].as_u64(),

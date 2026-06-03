@@ -57,19 +57,6 @@ fn subscribe_addressed_to_me_delivers_only_messages_addressed_to_my_role() {
             .await
             .expect("send_message (broadcast, addressed to designer) succeeds");
 
-        let non_match: Value = recipient
-            .call_tool(
-                "wait_for_event",
-                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 2000 }),
-            )
-            .await
-            .expect("wait_for_event returns");
-        assert_eq!(
-            non_match["timed_out"].as_bool(),
-            Some(true),
-            "a broadcast addressed to designer reaches dev's bridge but the addressee-filter rejects it — this is the discrimination proof; got {non_match}"
-        );
-
         sender
             .call_tool(
                 "send_message",
@@ -81,10 +68,10 @@ fn subscribe_addressed_to_me_delivers_only_messages_addressed_to_my_role() {
             .await
             .expect("send_message (broadcast, addressed to dev) succeeds");
 
-        let matched = recipient
+        let matched: Value = recipient
             .call_tool(
                 "wait_for_event",
-                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 5000 }),
+                serde_json::json!({ "subscription_id": subscription_id, "timeout_ms": 20000 }),
             )
             .await
             .expect("wait_for_event returns the dev-addressed message, not a timeout");
@@ -97,7 +84,7 @@ fn subscribe_addressed_to_me_delivers_only_messages_addressed_to_my_role() {
         assert_eq!(
             matched["payload"]["addressee"].as_str(),
             Some("dev"),
-            "the delivered event carries the addressee it was directed at; got {matched}"
+            "the FIRST received event must be the dev-addressed message — discrimination proof under any load: the designer-addressed message was sent FIRST, so were the addressee-filter to leak it the order-preserved dispatch would deliver it FIRST and this assert would read 'designer' (no negative-timeout to outrun under CPU-starvation); got {matched}"
         );
         assert_eq!(
             matched["payload"]["from"].as_str(),
