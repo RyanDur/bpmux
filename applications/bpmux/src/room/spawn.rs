@@ -751,7 +751,8 @@ mod tests {
         );
     }
 
-    fn spawn_provisioned_bash_with_stub(
+    fn spawn_provisioned_shell_with_stub(
+        shell: &str,
         bridge: Option<&BridgeWiring>,
     ) -> (LivePty, tempfile::TempDir) {
         use std::os::unix::fs::PermissionsExt;
@@ -761,7 +762,7 @@ mod tests {
         let stub = bindir.join("claude");
         std::fs::write(&stub, "#!/bin/sh\nprintf 'STUBCLAUDE[%s]\\n' \"$*\"\n").unwrap();
         std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
-        let integration = terminal_provisioning("/bin/bash", bridge).unwrap();
+        let integration = terminal_provisioning(shell, bridge).unwrap();
         let home_str = home.path().to_string_lossy().to_string();
         let base_path = std::env::var("PATH").unwrap_or_default();
         let path_str = format!("{}:{base_path}", bindir.to_string_lossy());
@@ -773,14 +774,19 @@ mod tests {
         for (key, value) in &integration.env {
             env.push((key.as_str(), value.as_str()));
         }
-        let mut live = spawn_pty_retained("/bin/bash", &integration.args, None, &env).unwrap();
+        let mut live = spawn_pty_retained(shell, &integration.args, None, &env).unwrap();
         if let Some(dir) = integration.zdotdir {
             live.attach_tempdir(dir);
         }
         (live, home)
     }
 
-    fn collect_until(live: LivePty, input: &[u8], until: &str, secs: u64) -> String {
+    fn collect_matching(
+        live: LivePty,
+        input: &[u8],
+        secs: u64,
+        mut done: impl FnMut(&str) -> bool,
+    ) -> String {
         use std::io::Read;
         live.write_input(input).unwrap();
         let reader = live.reader().unwrap();
@@ -805,7 +811,7 @@ mod tests {
             match rx.recv_timeout(std::time::Duration::from_millis(200)) {
                 Ok(chunk) => {
                     collected.push_str(&String::from_utf8_lossy(&chunk));
-                    if collected.contains(until) {
+                    if done(&collected) {
                         break;
                     }
                 }
@@ -819,12 +825,17 @@ mod tests {
         collected
     }
 
+    fn collect_until(live: LivePty, input: &[u8], until: &str, secs: u64) -> String {
+        let until = until.to_string();
+        collect_matching(live, input, secs, move |seen| seen.contains(&until))
+    }
+
     #[test]
     fn unprovisioned_bash_gives_claude_no_bridge() {
         if !std::path::Path::new("/bin/bash").exists() {
             return;
         }
-        let (live, _home) = spawn_provisioned_bash_with_stub(None);
+        let (live, _home) = spawn_provisioned_shell_with_stub("/bin/bash", None);
         let collected = collect_until(live, b"claude probe\n", "STUBCLAUDE[", 8);
         assert!(
             collected.contains("STUBCLAUDE["),
@@ -846,7 +857,7 @@ mod tests {
             port: 4117,
             agent_name: "agent-term1".to_string(),
         };
-        let (live, _home) = spawn_provisioned_bash_with_stub(Some(&bridge));
+        let (live, _home) = spawn_provisioned_shell_with_stub("/bin/bash", Some(&bridge));
         let collected = collect_until(live, b"echo PLAINMARKER_4731\n", "PLAINMARKER_4731", 8);
         assert!(
             collected.contains("PLAINMARKER_4731"),
@@ -873,5 +884,29 @@ mod tests {
             "the bridge args carry the session port + a legible per-terminal --name (else identity collides across N terminals)"
         );
         assert_eq!(server["type"], "stdio");
+    }
+
+    #[test]
+    fn provisioned_zsh_wraps_claude_with_mcp_config_and_preserves_user_args() {
+        if !std::path::Path::new("/bin/zsh").exists() {
+            return;
+        }
+        let bridge = BridgeWiring {
+            binary: "/opt/bin/bpmux".to_string(),
+            port: 4117,
+            agent_name: "agent-term1".to_string(),
+        };
+        let (live, _home) = spawn_provisioned_shell_with_stub("/bin/zsh", Some(&bridge));
+        let collected = collect_matching(live, b"claude hello world\n", 8, |seen| {
+            seen.contains("STUBCLAUDE[") && seen.contains("hello world")
+        });
+        assert!(
+            collected.contains("--mcp-config="),
+            "the provisioned ZSH (the owner's actual shell, sourced via ZDOTDIR/.zshrc — a DIFFERENT path than bash's --rcfile) must fire the claude wrapper with --mcp-config=; measured not reasoned because the owner walks zsh; got {collected:?}"
+        );
+        assert!(
+            collected.contains("hello world"),
+            "the zsh wrapper must preserve the user's args end-to-end; got {collected:?}"
+        );
     }
 }
