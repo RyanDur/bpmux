@@ -73,6 +73,8 @@ mod edit_story;
 mod event_subscription_board_invalidated_e2e;
 #[path = "integration_main_modules/event_subscription_persist_restart_e2e.rs"]
 mod event_subscription_persist_restart_e2e;
+#[path = "integration_main_modules/event_subscription_provisioned_live_e2e.rs"]
+mod event_subscription_provisioned_live_e2e;
 #[path = "integration_main_modules/event_subscription_replay_e2e.rs"]
 mod event_subscription_replay_e2e;
 #[path = "integration_main_modules/fail_desk_check_e2e.rs"]
