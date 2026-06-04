@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import StoryRow from './StoryRow'
+import { dropIndexForRowDrag } from './boardDropIndex'
 import { DRAG_MIMETYPE_REGISTRY, useStoryDrag } from './useStoryDrag'
 import { isClosedIterationMarker, type BoardStory, type ColumnState, type GroupSpec } from './types'
 
@@ -62,8 +63,17 @@ const BoardGroup = ({
       if (!draggable) return
       event.preventDefault()
       const rect = event.currentTarget.getBoundingClientRect()
-      const mid = rect.top + rect.height / 2
-      setDropAt(event.clientY < mid ? index : index + 1)
+      const sourceIndex =
+        draggingNumber === null ? null : stories.findIndex((s) => s.number === draggingNumber)
+      setDropAt(
+        dropIndexForRowDrag({
+          fromIndex: sourceIndex === -1 ? null : sourceIndex,
+          hoveredIndex: index,
+          clientY: event.clientY,
+          rectTop: rect.top,
+          rectHeight: rect.height
+        })
+      )
     }
 
   const handleDrop = (event: React.DragEvent<HTMLElement>): void => {

@@ -176,4 +176,69 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
 
     await app.close()
   })
+
+  test('#1524 a single drag onto the immediate-below row swaps them (near-half, not "more than one row")', async () => {
+    const adjacentDownBoard = {
+      fetched_at: '2026-04-23T03:00:05Z',
+      stories: [
+        ITERATION_STORY,
+        { ...MOCK_BOARD_BEFORE.stories[2] },
+        { ...MOCK_BOARD_BEFORE.stories[1] },
+        { ...MOCK_BOARD_BEFORE.stories[3] }
+      ]
+    }
+    const { app } = await launchWithFixture({ postReorderBody: adjacentDownBoard })
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
+    await expect(rows).toHaveCount(3)
+    expect(await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))).toEqual([
+      'board-story-701',
+      'board-story-702',
+      'board-story-703'
+    ])
+
+    const grip = win.locator(
+      '#board-group-ready-content [data-test="board-story-701"] [data-test="story-grip"]'
+    )
+    await grip.evaluate((el) => {
+      el.dispatchEvent(
+        new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() })
+      )
+    })
+    await expect(
+      win.locator('#board-group-ready-content [data-test="board-story-701"]')
+    ).toHaveAttribute('data-dragging', 'true')
+
+    await win.locator('#board-group-ready-content [data-test="board-story-702"]').evaluate((li) => {
+      const dt = new DataTransfer()
+      dt.setData('text/bpmux-story', '701')
+      const rect = li.getBoundingClientRect()
+      const nearHalfClientY = rect.top + rect.height * 0.25
+      li.dispatchEvent(
+        new DragEvent('dragover', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: dt,
+          clientY: nearHalfClientY
+        })
+      )
+    })
+    await win.waitForTimeout(50)
+    await win.locator('#board-group-ready-content [data-test="board-story-702"]').evaluate((li) => {
+      const ul = li.closest('ul')
+      if (ul === null) throw new Error('story list <ul> not found')
+      const dt = new DataTransfer()
+      dt.setData('text/bpmux-story', '701')
+      ul.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
+    })
+
+    await expect(async () => {
+      expect(
+        await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
+      ).toEqual(['board-story-702', 'board-story-701', 'board-story-703'])
+    }).toPass({ timeout: 5_000 })
+
+    await app.close()
+  })
 })
