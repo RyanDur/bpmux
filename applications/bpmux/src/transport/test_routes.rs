@@ -32,6 +32,50 @@ fn fire_board_invalidate(session: &Arc<session::Session>) {
     }
 }
 
+fn test_route_unavailable() -> (StatusCode, Json<serde_json::Value>) {
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(serde_json::json!({
+            "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+        })),
+    )
+}
+
+fn put_str(args: &mut serde_json::Map<String, serde_json::Value>, key: &str, val: String) {
+    args.insert(key.to_string(), serde_json::Value::String(val));
+}
+
+fn put_num(args: &mut serde_json::Map<String, serde_json::Value>, key: &str, val: u64) {
+    args.insert(key.to_string(), serde_json::Value::Number(val.into()));
+}
+
+async fn run_test_route<F, Fut>(
+    session: Arc<session::Session>,
+    refresh: TestRefreshHandle,
+    dispatch: F,
+) -> (StatusCode, Json<serde_json::Value>)
+where
+    F: FnOnce(Arc<dyn RefreshDriver>, Arc<session::Session>) -> Fut,
+    Fut: std::future::Future<Output = Result<String, String>>,
+{
+    let Some(refresh) = refresh else {
+        return test_route_unavailable();
+    };
+    match dispatch(refresh, session.clone()).await {
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateStoryReq {
     pub title: String,
@@ -48,55 +92,29 @@ pub async fn post_test_create_story(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<CreateStoryReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
+    run_test_route(session, refresh, |refresh, _session| async move {
+        let mut args = serde_json::Map::new();
+        put_str(&mut args, "title", req.title);
+        put_str(&mut args, "user_job", req.user_job);
+        put_str(
+            &mut args,
+            "observation_falsifier",
+            req.observation_falsifier,
         );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert("title".to_string(), serde_json::Value::String(req.title));
-    args.insert(
-        "user_job".to_string(),
-        serde_json::Value::String(req.user_job),
-    );
-    args.insert(
-        "observation_falsifier".to_string(),
-        serde_json::Value::String(req.observation_falsifier),
-    );
-    if let Some(body) = req.body {
-        args.insert("body".to_string(), serde_json::Value::String(body));
-    }
-    if let Some(epic) = req.parent_epic {
-        args.insert(
-            "parent_epic".to_string(),
-            serde_json::Value::Number(epic.into()),
-        );
-    }
-    let path = req
-        .acceptance_test_path
-        .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml").to_string());
-    args.insert(
-        "acceptance_test_path".to_string(),
-        serde_json::Value::String(path),
-    );
-    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_create_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
+        if let Some(body) = req.body {
+            put_str(&mut args, "body", body);
         }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+        if let Some(epic) = req.parent_epic {
+            put_num(&mut args, "parent_epic", epic);
+        }
+        let path = req
+            .acceptance_test_path
+            .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml").to_string());
+        put_str(&mut args, "acceptance_test_path", path);
+        let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+        bridge::dispatch_test_create_story(args, &agent, Some(&refresh)).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -110,34 +128,13 @@ pub async fn post_test_create_iteration(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<CreateIterationReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "theme_name".to_string(),
-        serde_json::Value::String(req.theme_name),
-    );
-    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_create_iteration(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+    run_test_route(session, refresh, |refresh, _session| async move {
+        let mut args = serde_json::Map::new();
+        put_str(&mut args, "theme_name", req.theme_name);
+        let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+        bridge::dispatch_test_create_iteration(args, &agent, Some(&refresh)).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -152,12 +149,7 @@ pub async fn post_test_designate_current_iteration(
     Json(req): Json<DesignateCurrentIterationReq>,
 ) -> impl IntoResponse {
     let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
+        return test_route_unavailable();
     };
     let mut args = serde_json::Map::new();
     args.insert(
@@ -203,45 +195,18 @@ pub async fn post_test_move_story(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<MoveStoryReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(req.number.into()),
-    );
-    args.insert(
-        "target_state".to_string(),
-        serde_json::Value::String(req.target_state),
-    );
-    args.insert(
-        "rationale".to_string(),
-        serde_json::Value::String(req.rationale),
-    );
-    if let Some(p) = req.position {
-        args.insert("position".to_string(), serde_json::Value::Number(p.into()));
-    }
-    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_move_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
+    run_test_route(session, refresh, |refresh, _session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "number", req.number);
+        put_str(&mut args, "target_state", req.target_state);
+        put_str(&mut args, "rationale", req.rationale);
+        if let Some(p) = req.position {
+            put_num(&mut args, "position", p);
         }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+        let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+        bridge::dispatch_test_move_story(args, &agent, Some(&refresh)).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -257,40 +222,19 @@ pub async fn post_test_edit_story(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<EditStoryReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(req.number.into()),
-    );
-    if let Some(t) = req.title {
-        args.insert("title".to_string(), serde_json::Value::String(t));
-    }
-    if let Some(b) = req.body {
-        args.insert("body".to_string(), serde_json::Value::String(b));
-    }
-    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_edit_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
+    run_test_route(session, refresh, |refresh, _session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "number", req.number);
+        if let Some(t) = req.title {
+            put_str(&mut args, "title", t);
         }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+        if let Some(b) = req.body {
+            put_str(&mut args, "body", b);
+        }
+        let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+        bridge::dispatch_test_edit_story(args, &agent, Some(&refresh)).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -305,35 +249,14 @@ pub async fn post_test_comment_on_story(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<CommentOnStoryReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(req.number.into()),
-    );
-    args.insert("body".to_string(), serde_json::Value::String(req.body));
-    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_comment_on_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+    run_test_route(session, refresh, |refresh, _session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "number", req.number);
+        put_str(&mut args, "body", req.body);
+        let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+        bridge::dispatch_test_comment_on_story(args, &agent, Some(&refresh)).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -349,42 +272,15 @@ pub async fn post_test_start_story(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<StartStoryReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(req.number.into()),
-    );
-    args.insert(
-        "pickup_paraphrase".to_string(),
-        serde_json::Value::String(req.pickup_paraphrase),
-    );
-    args.insert(
-        "falsifier_reframing".to_string(),
-        serde_json::Value::String(req.falsifier_reframing),
-    );
-    let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_start_story(args, &agent, Some(refresh_ref), &session).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+    run_test_route(session, refresh, |refresh, session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "number", req.number);
+        put_str(&mut args, "pickup_paraphrase", req.pickup_paraphrase);
+        put_str(&mut args, "falsifier_reframing", req.falsifier_reframing);
+        let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
+        bridge::dispatch_test_start_story(args, &agent, Some(&refresh), &session).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -399,35 +295,14 @@ pub async fn post_test_fail_desk_check(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<FailDeskCheckReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(req.number.into()),
-    );
-    args.insert("reason".to_string(), serde_json::Value::String(req.reason));
-    let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_fail_desk_check(args, &agent, Some(refresh_ref), &session).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+    run_test_route(session, refresh, |refresh, session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "number", req.number);
+        put_str(&mut args, "reason", req.reason);
+        let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
+        bridge::dispatch_test_fail_desk_check(args, &agent, Some(&refresh), &session).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -441,34 +316,13 @@ pub async fn post_test_accept_story(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<AcceptStoryReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(req.number.into()),
-    );
-    let agent = req.agent.unwrap_or_else(|| "ryan:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_accept_story(args, &agent, Some(refresh_ref), &session).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+    run_test_route(session, refresh, |refresh, session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "number", req.number);
+        let agent = req.agent.unwrap_or_else(|| "ryan:test".to_string());
+        bridge::dispatch_test_accept_story(args, &agent, Some(&refresh), &session).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -483,38 +337,14 @@ pub async fn post_test_deliver_story(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<DeliverStoryReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(req.number.into()),
-    );
-    args.insert(
-        "verified_observation".to_string(),
-        serde_json::Value::String(req.verified_observation),
-    );
-    let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_deliver_story(args, &agent, Some(refresh_ref), &session).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+    run_test_route(session, refresh, |refresh, session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "number", req.number);
+        put_str(&mut args, "verified_observation", req.verified_observation);
+        let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
+        bridge::dispatch_test_deliver_story(args, &agent, Some(&refresh), &session).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -530,41 +360,17 @@ pub async fn post_test_close_story(
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<CloseStoryReq>,
 ) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
-    };
-    let mut args = serde_json::Map::new();
-    args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(req.number.into()),
-    );
-    args.insert("reason".to_string(), serde_json::Value::String(req.reason));
-    if let Some(disposition) = req.disposition {
-        args.insert(
-            "disposition".to_string(),
-            serde_json::Value::String(disposition),
-        );
-    }
-    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_close_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => {
-            fire_board_invalidate(&session);
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "message": message })),
-            )
+    run_test_route(session, refresh, |refresh, _session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "number", req.number);
+        put_str(&mut args, "reason", req.reason);
+        if let Some(disposition) = req.disposition {
+            put_str(&mut args, "disposition", disposition);
         }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+        let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+        bridge::dispatch_test_close_story(args, &agent, Some(&refresh)).await
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize)]
@@ -624,12 +430,7 @@ pub async fn post_test_fire_sync_status(
     Json(req): Json<FireSyncStatusReq>,
 ) -> impl IntoResponse {
     let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
+        return test_route_unavailable();
     };
     let count = req.count.unwrap_or(1).max(1);
     let handle = refresh.status_handle();
@@ -671,12 +472,7 @@ pub async fn post_test_view_velocity(
     Json(req): Json<ViewVelocityReq>,
 ) -> impl IntoResponse {
     let Some(refresh) = refresh else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
-            })),
-        );
+        return test_route_unavailable();
     };
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_view_velocity(req.messages, Some(refresh_ref)).await {
