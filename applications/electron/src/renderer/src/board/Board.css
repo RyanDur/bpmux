@@ -398,7 +398,7 @@
   & .board-iteration-card {
     background: transparent;
     border: none;
-    margin: var(--space-8, 8px) 0 0 0;
+    margin: var(--space-8) 0 0 0;
   }
 
   & .board-iteration-card[open] {
@@ -409,8 +409,8 @@
   & .board-iteration-summary {
     display: flex;
     align-items: center;
-    gap: var(--space-2, 4px);
-    padding: var(--space-2, 4px) var(--space-8, 8px);
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-8);
     border-top: 1px solid var(--border-subtle);
     background: var(--bg-base);
     cursor: pointer;
@@ -1057,7 +1057,7 @@
   border: 0;
   background: transparent;
   cursor: grab;
-  color: var(--fg-muted, rgb(136 136 136));
+  color: var(--fg-dimmer);
   padding: 0 2px;
 }
 
