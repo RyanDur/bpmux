@@ -7,6 +7,9 @@ import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 // chain: create→start→deliver→pass_desk_check lands story in
 // DELIVERED column where the reject button surfaces.
 
+const CENTER_TOLERANCE_PX = 8
+const MIN_DIMMED_BACKDROP_ALPHA = 0.3
+
 test.describe('human-side E2E #476 — direct-action — drill-in reject form', () => {
   test('reject button opens textarea + send is gated on non-empty trimmed note', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
@@ -133,7 +136,11 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
         verified_observation: 'Drove deliver so designer can pass desk-check next.'
       })
       await seedTeamVerdicts(rpc, 1, ['designer'])
-      await rpc('pass_desk_check', { number: 1, acceptor: 'owner', would_file_bug: false }, 'designer')
+      await rpc(
+        'pass_desk_check',
+        { number: 1, acceptor: 'owner', would_file_bug: false },
+        'designer'
+      )
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
@@ -160,6 +167,32 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
         (el) => el instanceof HTMLDialogElement && el.matches(':modal')
       )
       expect(isModal).toBe(true)
+
+      const geometry = await dialog.evaluate((el) => {
+        const rect = el.getBoundingClientRect()
+        const backdrop = getComputedStyle(el, '::backdrop').backgroundColor
+        const channels = backdrop.match(/[\d.]+/g)
+        const backdropAlpha = channels === null ? 0 : channels.length >= 4 ? Number(channels[3]) : 1
+        return {
+          dialogCenterX: rect.left + rect.width / 2,
+          dialogCenterY: rect.top + rect.height / 2,
+          viewportCenterX: window.innerWidth / 2,
+          viewportCenterY: window.innerHeight / 2,
+          backdropAlpha
+        }
+      })
+      expect(
+        Math.abs(geometry.dialogCenterX - geometry.viewportCenterX),
+        'reject dialog must be horizontally centered in the viewport (#1518)'
+      ).toBeLessThanOrEqual(CENTER_TOLERANCE_PX)
+      expect(
+        Math.abs(geometry.dialogCenterY - geometry.viewportCenterY),
+        'reject dialog must be vertically centered in the viewport (#1518)'
+      ).toBeLessThanOrEqual(CENTER_TOLERANCE_PX)
+      expect(
+        geometry.backdropAlpha,
+        'reject dialog must have an authored dimmed backdrop (#1518)'
+      ).toBeGreaterThanOrEqual(MIN_DIMMED_BACKDROP_ALPHA)
 
       await noteInput.fill('cancel-path test note')
       await win.locator('dialog.drill-in-reject-form button:has-text("Cancel")').click()

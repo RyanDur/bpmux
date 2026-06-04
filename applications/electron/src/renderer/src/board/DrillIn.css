@@ -260,9 +260,13 @@
     border: 1px solid var(--border-subtle);
     background: var(--bg-base);
     padding: var(--space-12);
-    margin: 0;
+    margin: auto;
     max-width: 32rem;
     max-height: none;
+  }
+
+  & .drill-in-reject-form::backdrop {
+    background: rgb(0 0 0 / 50%);
   }
 
   & .drill-in-reject-form[open] {
