@@ -196,7 +196,13 @@ lane-specific verification:
 4. **Desk-check gate** (`pass_desk_check` / `fail_desk_check`,
    designer-lane) — pre-walk source-grounding then live-verify;
    local-vs-global verification ladder (substrate emission ≠ proof;
-   walk the full cascade); CI green precondition.
+   walk the full cascade). This is the **promotion-to-acceptance** fire:
+   the team-review runs in PARALLEL with CI, but the PASS fires only on
+   **CI-green at the deliver-head SHA** (or in the ancestry of a green
+   head — descendant-of-green ≠ automatically covered, per #1576; the
+   designer's desk-check-gate skill holds that ancestry nuance). The
+   designer holds the fire until CI greens; `fail_desk_check` on a
+   review failure is independent of CI.
 5. **Acceptance gate** (`accept_story` / `reject_story`) — quality
    audit + user-story-satisfied check + CI green. Routing per
    user-class (above): **owner-user-class stories → Ryan accepts**
@@ -208,12 +214,24 @@ lane-specific verification:
 
 These apply across every transition, not at any one specific gate:
 
-- **CI green is a gate precondition** (rule) — pre-deliver, pre-desk-check,
-  pre-accept all call `get_ci_state`; red CI blocks regardless of
-  root cause. **Bridge-stale-deliver-with-citation** (exception below)
-  applies only when live-verify is empirically *unreachable*
-  (rate-limit-blocked, network-unavailable), not when CI is *red*.
+- **CI green gates promotion-to-acceptance, NOT delivery** (rule,
+  owner-clarified 2026-06-04) — `deliver_story` is **optimistic**: dev
+  fires it post-push WITHOUT waiting for CI, so the desk-check review
+  runs in PARALLEL with CI. The CI-green precondition lives DOWNSTREAM:
+  `pass_desk_check` (the promotion-to-acceptance fire) and `accept_story`
+  both call `get_ci_state` on the deliver-head; red CI blocks THOSE
+  regardless of root cause. The designer completes the desk-check
+  team-review while CI runs and holds the PASS fire until CI greens.
+  **Bridge-stale-deliver-with-citation** (exception below) applies only
+  when live-verify is empirically *unreachable* (rate-limit-blocked,
+  network-unavailable), not when CI is *red*.
 - **WIP-1 strict** — one InProgress per dev role; no parallel pickup.
+- **Next-pickup timing is dev's discretion** (owner-clarified 2026-06-04)
+  — after `deliver_story`, dev MAY pull the next ready story, but the
+  SUGGESTED default is to wait until the delivered story's desk-check
+  PASSES before starting the next. Case-by-case judgment, NOT a hard
+  rule — weigh per situation (queue-drain pressure vs. a risky delivery
+  likely to need rework). WIP-1 remains strict (one InProgress).
 - **Story-scope = commit-scope** — one commit, one story (or one
   sub-slice of a multi-commit story); honest-bundled fails desk-check.
 - **External catch over self-catch** — structural / typed / peer
