@@ -29,6 +29,10 @@ pub(crate) async fn handle_close_story(
         .get("reason")
         .and_then(|v| v.as_str())
         .ok_or("missing 'reason' argument")?;
+    let disposition = args
+        .get("disposition")
+        .and_then(|v| v.as_str())
+        .unwrap_or("accept");
     let trimmed_reason = reason.trim();
     if trimmed_reason.len() < REASON_CITE_MIN_CHARS {
         let err = serde_json::json!({
@@ -48,7 +52,7 @@ pub(crate) async fn handle_close_story(
             peer_id: crate::board::PeerId::local(),
         };
         reap_workflow_labels(r.as_ref(), number, &meta, KEEP_NONE)?;
-        if is_retire_reason(reason) {
+        if disposition == "retire" || disposition == "wontfix" {
             r.mutate_sync(crate::board::BoardEvent::TagAdded {
                 meta: meta.clone(),
                 number,
@@ -78,18 +82,6 @@ pub(crate) async fn handle_close_story(
         "close_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
             .into(),
     )
-}
-
-pub(crate) fn is_retire_reason(reason: &str) -> bool {
-    let lower = reason.to_ascii_lowercase();
-    lower.starts_with("superseded")
-        || lower.starts_with("supersede")
-        || lower.starts_with("duplicate")
-        || lower.starts_with("won't-fix")
-        || lower.starts_with("won't fix")
-        || lower.starts_with("wont-fix")
-        || lower.starts_with("wontfix")
-        || lower.starts_with("retired")
 }
 
 pub(crate) async fn handle_close_iteration(
@@ -135,38 +127,4 @@ async fn post_close_iteration(port: u16, iteration_number: Option<u64>) -> Resul
         return Err(format!("close_iteration: {status} — {text}"));
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::is_retire_reason;
-
-    #[test]
-    fn classifies_canonical_retire_reasons() {
-        assert!(is_retire_reason("superseded"));
-        assert!(is_retire_reason("duplicate"));
-        assert!(is_retire_reason("won't-fix"));
-        assert!(is_retire_reason("wont-fix"));
-        assert!(is_retire_reason("retired"));
-    }
-
-    #[test]
-    fn classifies_pm_prose_starting_with_retire_keyword() {
-        assert!(is_retire_reason("superseded — fold-into-touch pattern"));
-        assert!(is_retire_reason("duplicate of #1283"));
-        assert!(is_retire_reason("Won't fix — out of scope"));
-    }
-
-    #[test]
-    fn rejects_ship_chain_reasons() {
-        assert!(!is_retire_reason("shipped clean"));
-        assert!(!is_retire_reason("accepted via desk-check"));
-        assert!(!is_retire_reason("done"));
-    }
-
-    #[test]
-    fn rejects_unrelated_prose() {
-        assert!(!is_retire_reason("the feature looks great"));
-        assert!(!is_retire_reason(""));
-    }
 }

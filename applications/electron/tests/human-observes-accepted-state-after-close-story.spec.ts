@@ -48,7 +48,8 @@ test.describe('human-side E2E #476/#1377 — observation-class — close_story',
         'close_story',
         {
           number: 1,
-          reason: 'superseded by a sister filing — closing without accept-walk'
+          reason: 'superseded by a sister filing — closing without accept-walk',
+          disposition: 'retire'
         },
         'pm'
       )

@@ -180,6 +180,88 @@ fn close_story_view_board_shows_closed_state() {
 }
 
 #[test]
+fn close_with_disposition_retire_lands_retired_regardless_of_reason_phrasing() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] disposition-retire-target",
+            "reject if disposition=retire with a non-keyword reason mis-files as accepted",
+        )
+        .await;
+
+        pm.call_tool(
+            "close_story",
+            serde_json::json!({
+                "number": target_number,
+                "reason": "Split into #9999",
+                "disposition": "retire"
+            }),
+        )
+        .await
+        .expect("close_story with disposition=retire should succeed");
+
+        let story = pm
+            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .await
+            .expect("get_story should succeed");
+
+        assert_eq!(
+            story["workflow_state"].as_str(),
+            Some("retired"),
+            "disposition=retire must land the story Retired regardless of reason phrasing — the reason carried NO retire-keyword, so the old is_retire_reason string-match would mis-file it accepted; got {story}"
+        );
+
+        pm.close().await;
+    });
+}
+
+#[test]
+fn close_with_disposition_accept_does_not_retire_even_with_retire_keyword_reason() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] disposition-accept-target",
+            "reject if a retire-keyword reason forces retire when disposition=accept",
+        )
+        .await;
+
+        pm.call_tool(
+            "close_story",
+            serde_json::json!({
+                "number": target_number,
+                "reason": "superseded wording but accept disposition",
+                "disposition": "accept"
+            }),
+        )
+        .await
+        .expect("close_story with disposition=accept should succeed");
+
+        let story = pm
+            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .await
+            .expect("get_story should succeed");
+
+        assert_ne!(
+            story["workflow_state"].as_str(),
+            Some("retired"),
+            "disposition=accept must NOT retire even when the reason contains a retire-keyword — disposition is the determinant, not the reason string; got {story}"
+        );
+
+        pm.close().await;
+    });
+}
+
+#[test]
 fn close_story_does_not_fire_post_mutation_get_issue_round_trip() {
     // #1151: close_story handler used to follow its mutate_sync with
     // r.refresh_story(N).await — a redundant GET round-trip to GH

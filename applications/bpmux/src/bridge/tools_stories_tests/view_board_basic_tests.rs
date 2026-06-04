@@ -294,6 +294,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         "reason".into(),
         serde_json::json!("superseded by #999 — won't ship"),
     );
+    args.insert("disposition".into(), serde_json::json!("retire"));
     let result = handle_close_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
@@ -302,7 +303,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     assert_eq!(
         story.state,
         StoryState::Retired,
-        "post-#1377: retire-class reason transitions state to Retired"
+        "#1570: disposition=retire transitions state to Retired"
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -314,7 +315,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     assert_eq!(
         pushed.len(),
         4,
-        "post-#1377: 1 TagRemoved 'delivered' + 1 TagAdded 'retired' + 1 StateTransitioned + 1 StoryClosed (reason='superseded …' classifies retire-class): {pushed:?}"
+        "#1570: 1 TagRemoved 'delivered' + 1 TagAdded 'retired' + 1 StateTransitioned + 1 StoryClosed (disposition=retire → retire-class): {pushed:?}"
     );
     assert!(
         pushed.iter().any(|e| matches!(
