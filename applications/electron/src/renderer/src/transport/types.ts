@@ -152,6 +152,4 @@ export interface ChatMessage {
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 
-export const BOARD_INVALIDATE_MARKER = '__BPMUX_BOARD_INVALIDATE__'
-
 export const SYNC_STATUS_UPDATE_MARKER = '__BPMUX_SYNC_STATUS_UPDATE__'

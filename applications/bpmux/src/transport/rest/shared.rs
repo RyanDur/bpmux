@@ -20,16 +20,6 @@ pub(crate) fn json_headers() -> [(axum::http::HeaderName, &'static str); 1] {
 }
 
 pub(super) fn broadcast_board_invalidate(session: &session::Session) {
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::System,
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!("rest: board-invalidate broadcast failed: {e}"));
-    }
     let delta = session::Message {
         from: "bpmux".to_string(),
         text: String::new(),

@@ -13,18 +13,6 @@ use crate::server::TestRefreshHandle;
 use crate::session::{self, Message, MessageType};
 
 fn fire_board_invalidate(session: &Arc<session::Session>) {
-    let msg = Message {
-        from: "bpmux:test".to_string(),
-        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
-        ts: Utc::now(),
-        message_type: MessageType::System,
-        ..Default::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        crate::session::diag::log_diag(&format!(
-            "test-route: BOARD_INVALIDATE broadcast failed: {e}"
-        ));
-    }
     let delta = Message {
         from: "bpmux".to_string(),
         text: String::new(),

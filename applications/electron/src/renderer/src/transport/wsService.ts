@@ -4,7 +4,6 @@ import { tryCatch } from '../lib/result'
 import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-delta'
 import type { MirrorState } from './state-delta'
 import {
-  BOARD_INVALIDATE_MARKER,
   SYNC_STATUS_UPDATE_MARKER,
   type ChatMessage,
   type ClientMessage,
@@ -157,10 +156,6 @@ const handleServerMessage = (raw: string): void => {
           next.boardInvalidateTick = state.snapshot.boardInvalidateTick + 1
         }
         patch(next)
-        break
-      }
-      if (parsed.text === BOARD_INVALIDATE_MARKER) {
-        patch({ boardInvalidateTick: state.snapshot.boardInvalidateTick + 1 })
         break
       }
       if (parsed.text === SYNC_STATUS_UPDATE_MARKER) {

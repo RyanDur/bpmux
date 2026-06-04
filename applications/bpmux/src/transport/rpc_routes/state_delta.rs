@@ -21,16 +21,6 @@ pub(crate) fn fire_view_backlog_marker(session: &Arc<session::Session>) {
 }
 
 pub(crate) fn fire_board_invalidate(session: &Arc<session::Session>) {
-    let msg = Message {
-        from: "bpmux:rpc".to_string(),
-        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
-        ts: Utc::now(),
-        message_type: MessageType::System,
-        ..Default::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        crate::session::diag::log_diag(&format!("rpc: BOARD_INVALIDATE broadcast failed: {e}"));
-    }
     let delta = Message {
         from: "bpmux".to_string(),
         text: String::new(),

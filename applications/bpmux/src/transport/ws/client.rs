@@ -43,7 +43,6 @@ pub(crate) async fn handle_client_message(
             message_type,
         }) => {
             let explicit_privacy = to.is_some();
-            let is_board_invalidate = msg_text == crate::bridge::BOARD_INVALIDATE_MARKER;
             let msg = session::Message {
                 from: identity.to_string(),
                 text: msg_text,
@@ -55,9 +54,9 @@ pub(crate) async fn handle_client_message(
                 ..session::Message::default()
             };
             session.broadcast(&msg)?;
-            if is_board_invalidate {
-                session.broadcast(&board_invalidated_state_delta())?;
-            }
+        }
+        Ok(ClientMessage::BoardInvalidate) => {
+            session.broadcast(&board_invalidated_state_delta())?;
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;

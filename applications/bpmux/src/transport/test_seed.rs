@@ -185,15 +185,19 @@ pub async fn post_seed_stories(
             }
         }
     }
-    let invalidate_msg = session::Message {
+    let invalidate_delta = session::Message {
         from: "bpmux".to_string(),
-        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
+        text: String::new(),
         ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(session::message::StateDeltaPayload::BoardInvalidated {
+            reason: "board changed".to_string(),
+        }),
         ..session::Message::default()
     };
-    if let Err(e) = session.broadcast(&invalidate_msg) {
+    if let Err(e) = session.broadcast(&invalidate_delta) {
         crate::session::diag::log_diag(&format!(
-            "post_seed_stories: BOARD_INVALIDATE broadcast failed: {e}"
+            "post_seed_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
     (

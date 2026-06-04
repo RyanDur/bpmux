@@ -143,7 +143,6 @@ fn peer_lag_roundtrip_parses_peer_and_count() {
 #[test]
 fn peer_lag_parse_rejects_non_marker_text() {
     assert!(parse_peer_lag_payload("some other system message").is_none());
-    assert!(parse_peer_lag_payload("__BPMUX_BOARD_INVALIDATE__").is_none());
 }
 
 #[test]

@@ -112,33 +112,12 @@ fn build_iteration_close_signal_broadcasts_to_all() {
 }
 
 #[test]
-fn build_board_invalidate_signal_is_system_typed_broadcast() {
+fn build_board_invalidate_signal_is_the_structured_board_invalidate_variant() {
     let signal = build_board_invalidate_signal();
-    let ClientMessage::Send {
-        to,
-        addressee,
-        text,
-        message_type,
-    } = signal
-    else {
-        panic!("expected Send variant");
-    };
     assert!(
-        to.is_none(),
-        "to must be None so every connected TUI refreshes, not just one"
-    );
-    assert!(
-        addressee.is_none(),
-        "addressee must be None — not an attention signal, just a state-change nudge"
-    );
-    assert_eq!(
-        text, BOARD_INVALIDATE_MARKER,
-        "text must be the exact marker constant so event.rs can structurally match it"
-    );
-    assert_eq!(
-        message_type.as_deref(),
-        Some("system"),
-        "message_type must be 'system' so the TUI suppresses chat rendering"
+        matches!(signal, ClientMessage::BoardInvalidate),
+        "board-invalidate must be the structured ClientMessage::BoardInvalidate variant, not a \
+         text-marker — the server translates it into a board_invalidated state-delta"
     );
 }
 

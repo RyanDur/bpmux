@@ -29,7 +29,7 @@ pub(crate) use metadata::{
     handle_edit_story, handle_label_story, handle_set_parent_epic, handle_unset_parent_epic,
 };
 pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
-pub use signals::{BOARD_INVALIDATE_MARKER, SYNC_STATUS_UPDATE_MARKER};
+pub use signals::SYNC_STATUS_UPDATE_MARKER;
 #[cfg(test)]
 pub(crate) use signals::{
     addressee_for_pass_desk_check, build_board_invalidate_signal, build_iteration_close_signal,

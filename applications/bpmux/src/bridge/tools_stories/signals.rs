@@ -10,17 +10,10 @@ fn role_id_for_purpose(purpose: &str) -> String {
         .unwrap_or_else(|| purpose.to_string())
 }
 
-pub const BOARD_INVALIDATE_MARKER: &str = "__BPMUX_BOARD_INVALIDATE__";
-
 pub const SYNC_STATUS_UPDATE_MARKER: &str = "__BPMUX_SYNC_STATUS_UPDATE__";
 
 pub(crate) fn build_board_invalidate_signal() -> ClientMessage {
-    ClientMessage::Send {
-        text: BOARD_INVALIDATE_MARKER.to_string(),
-        to: None,
-        addressee: None,
-        message_type: Some("system".to_string()),
-    }
+    ClientMessage::BoardInvalidate
 }
 
 pub(crate) async fn broadcast_board_invalidate(ws_tx: &Mutex<Option<WsSink>>) {
