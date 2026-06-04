@@ -187,4 +187,3 @@ kill %1; wait %1 2>/dev/null
 - Commit `5258141` — original headless staging (#132), later broken by #141's event-loop change
 - Commit `81c41a9` — headless panic fix (#132 reopen)
 - `docs/diag-logging-convention.md` — companion convention about avoiding stderr writes during TUI work
-- `src/terminal/event.rs` — the `next_terminal_event` helper that makes the headless path possible (`std::future::pending().await` on None stream)

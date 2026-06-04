@@ -131,7 +131,7 @@ Continuum's v3-v5 range is the load-bearing window for this product.
 ## Storage layer: Strategy-pattern DI (#1289)
 
 bpmux's persistence is abstracted behind two traits, both at
-`applications/bpmux/src/session/storage.rs`:
+`applications/bpmux/src/session/storage/mod.rs`:
 
 - **`Storage`** — session-scoped persistence. Owns reads/writes for
   state that lives under a session directory: messages
@@ -168,7 +168,7 @@ fallback). Production constructs with None; tests construct with
 explicit per-test tempdirs to avoid sharing `~/.bpmux/*` files.
 
 **Contract-test pattern at
-`applications/bpmux/src/session/storage_tests.rs`** — `contract!`
+`applications/bpmux/src/session/storage_tests/`** — `contract!`
 macro runs the same assertion against both `FileStorage` and
 `MemoryStorage` (sister `global_contract!` for the GlobalStore
 pair). Behavioral parity is verified at test-write time; divergence

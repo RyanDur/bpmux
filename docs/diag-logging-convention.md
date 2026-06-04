@@ -40,7 +40,7 @@ After #144 was fixed, a grep found five more `eprintln!` sites that would corrup
 
 - `src/transport/ws.rs` — session-error branch, lagged-broadcast handler, read-error branch
 - `src/lib.rs` — `server::run_server` spawned-task error
-- `src/terminal/event.rs` — broadcast-recv lagged recovery
+- `src/terminal/event.rs` (the TUI was since retired, Epic #1247) — broadcast-recv lagged recovery
 
 Each was a rare path (fires only on error) but would corrupt the frame when it fired. All were replaced with calls to `session::diag::log_diag(...)`.
 

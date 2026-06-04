@@ -41,7 +41,7 @@ Honest enforcement-status of the edges above — where a boundary is substrate-G
 
 - PM owns board-MUTATIONS → **GATED** PM-only (dev-src-verified): move_story (#1548), close_iteration, add_story_to_iteration, label_story, set/unset_parent_epic, move-with-position.
 - create_story → **GATED, typed carveout** (dev-src-verified, `tools_stories/creation.rs:25`): PM creates any type; **dev creates [Chore]-class only** (enforced via story-type check — gate, not mere convention); designer/others rejected. Reconciles chore-ownership canon: dev authors chores directly, PM files Features/Bugs.
-- open / designate → **NO gate yet** (#1540 builds it; PM opens via manual-promote stopgap today).
+- open / designate → **GATED** PM-only (dev-src-verified, `tools_stories/metadata.rs:203` — `require_purpose(&["pm"])`): #1540 shipped explicit current-designation (`designate_current_iteration`; Iteration-only; replaces any prior current; cleared at close). The manual-promote stopgap is retired.
 - PM story-shape (use-case format + domain-purity) → **GATED at create**: pre-filing-audit Check 0.
 - Dev positive work-shape (TDD / vertical-slice / outside-in) → **SKILL-enforced**, not hard-gated (test-before-impl ordering — realistic ceiling) — _[dev]_.
 - Designer desk-check FIRING → **GATED** (designer-src-verified): `pass-desk-check` is designer-only across all 3 gate-classes (`workflow/bundled_default.rs:87/96/105`) + fires a 4-part stack at `tools_stories/acceptance/desk_check.rs:102-119` (role-allowed + designer-verdict-fresh ≤600s + CI-green `check_ci_green` + ATP-substantive); `fail-desk-check` = designer-or-PM (`bundled_default.rs:114`). The TRANSITION can't drift — only designer fires it, only on a fresh verdict + green CI.
