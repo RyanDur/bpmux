@@ -9,15 +9,18 @@ export interface TimelineEvent {
   body?: string
 }
 
-export type TimelineGate =
-  | 'filed'
-  | 'started'
-  | 'delivered'
-  | 'desk-check-fail'
-  | 'accepted'
-  | 'rejected'
-  | 'closed'
-  | 'reopened'
+export const TIMELINE_GATE = {
+  Filed: 'filed',
+  Started: 'started',
+  Delivered: 'delivered',
+  DeskCheckFail: 'desk-check-fail',
+  Accepted: 'accepted',
+  Rejected: 'rejected',
+  Closed: 'closed',
+  Reopened: 'reopened'
+} as const
+
+export type TimelineGate = (typeof TIMELINE_GATE)[keyof typeof TIMELINE_GATE]
 
 export interface ClassifiedEvent {
   raw: TimelineEvent
@@ -40,21 +43,21 @@ export interface UseTimelineResult {
 }
 
 export const classifyEvent = (e: TimelineEvent): TimelineGate | null => {
-  if (e.event === 'filed') return 'filed'
-  if (e.event === 'closed') return 'closed'
-  if (e.event === 'reopened') return 'reopened'
+  if (e.event === 'filed') return TIMELINE_GATE.Filed
+  if (e.event === 'closed') return TIMELINE_GATE.Closed
+  if (e.event === 'reopened') return TIMELINE_GATE.Reopened
   if (e.event === 'labeled') {
     switch (e.label) {
       case 'in progress':
-        return 'started'
+        return TIMELINE_GATE.Started
       case 'delivered':
-        return 'delivered'
+        return TIMELINE_GATE.Delivered
       case 'desk-check-fail':
-        return 'desk-check-fail'
+        return TIMELINE_GATE.DeskCheckFail
       case 'accepted':
-        return 'accepted'
+        return TIMELINE_GATE.Accepted
       case 'rejected':
-        return 'rejected'
+        return TIMELINE_GATE.Rejected
       default:
         return null
     }
@@ -67,7 +70,7 @@ const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
   let cycle = 0
   let inCycle = false
   for (const e of out) {
-    if (!inCycle && e.gate === 'desk-check-fail') {
+    if (!inCycle && e.gate === TIMELINE_GATE.DeskCheckFail) {
       cycle += 1
       inCycle = true
       e.reworkGroup = cycle
@@ -75,7 +78,11 @@ const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
     }
     if (inCycle) {
       e.reworkGroup = cycle
-      if (e.gate === 'accepted' || e.gate === 'closed' || e.gate === 'rejected') {
+      if (
+        e.gate === TIMELINE_GATE.Accepted ||
+        e.gate === TIMELINE_GATE.Closed ||
+        e.gate === TIMELINE_GATE.Rejected
+      ) {
         inCycle = false
       }
     }

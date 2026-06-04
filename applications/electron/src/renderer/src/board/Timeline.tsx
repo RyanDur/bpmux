@@ -1,6 +1,11 @@
 import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
-import { useTimeline, type ClassifiedEvent, type TimelineGate } from '../hooks/useTimeline'
+import {
+  TIMELINE_GATE,
+  useTimeline,
+  type ClassifiedEvent,
+  type TimelineGate
+} from '../hooks/useTimeline'
 import type { BoardStory } from './types'
 
 const GATE_LABEL: Record<TimelineGate, string> = {
@@ -14,16 +19,7 @@ const GATE_LABEL: Record<TimelineGate, string> = {
   reopened: 'Reopened'
 }
 
-const MAJOR_GATES: ReadonlySet<TimelineGate> = new Set([
-  'filed',
-  'started',
-  'delivered',
-  'desk-check-fail',
-  'accepted',
-  'rejected',
-  'closed',
-  'reopened'
-])
+const MAJOR_GATES: ReadonlySet<TimelineGate> = new Set(Object.values(TIMELINE_GATE))
 
 const EVENT_LOG_START = Date.parse('2026-04-01T00:00:00Z')
 
