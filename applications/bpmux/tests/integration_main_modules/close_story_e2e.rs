@@ -262,6 +262,46 @@ fn close_with_disposition_accept_does_not_retire_even_with_retire_keyword_reason
 }
 
 #[test]
+fn close_without_disposition_defaults_to_retire() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] disposition-default-target",
+            "reject if an omitted disposition does not default to retire",
+        )
+        .await;
+
+        pm.call_tool(
+            "close_story",
+            serde_json::json!({
+                "number": target_number,
+                "reason": "closing this mid-pipeline filing"
+            }),
+        )
+        .await
+        .expect("close_story without an explicit disposition should succeed");
+
+        let story = pm
+            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .await
+            .expect("get_story should succeed");
+
+        assert_eq!(
+            story["workflow_state"].as_str(),
+            Some("retired"),
+            "an OMITTED disposition must DEFAULT to retire — close_story is the retire-class tool; if the default regresses to accept, an omitted-disposition supersede silently mis-files as accepted (the bug this fixes); got {story}"
+        );
+
+        pm.close().await;
+    });
+}
+
+#[test]
 fn close_with_disposition_wontfix_lands_retired() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
