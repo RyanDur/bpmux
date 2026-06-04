@@ -208,6 +208,26 @@ pub(crate) async fn run_ws_connection(
                 continue;
             }
 
+            let current_name = name.lock().await;
+            let addressed_to_me = addressee.as_deref() == Some(current_name.as_str())
+                || to.as_ref().is_some_and(|recipients| {
+                    recipients.iter().any(|r| {
+                        r != crate::session::message::BROADCAST_ALL && r == current_name.as_str()
+                    })
+                });
+            drop(current_name);
+            let sender_is_owner = crate::transport::ws::role_from_short_name(from_short)
+                == crate::orchestrator::stores::RosterRole::Owner;
+            let declared = subscriptions.declared_chat_classes().await;
+            if !crate::bridge::chat_relevance::chat_class_reaches_live_stream(
+                message_type.as_deref().unwrap_or("chat"),
+                addressed_to_me,
+                sender_is_owner,
+                &declared,
+            ) {
+                continue;
+            }
+
             let meta = build_notification_meta(
                 &from,
                 &ts,

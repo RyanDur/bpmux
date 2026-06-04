@@ -41,6 +41,8 @@ mod briefing_e2e;
 mod canonical_store_mutation_parity_e2e;
 #[path = "integration_main_modules/capture_electron_window_e2e.rs"]
 mod capture_electron_window_e2e;
+#[path = "integration_main_modules/chat_relevance_filter_e2e.rs"]
+mod chat_relevance_filter_e2e;
 #[path = "integration_main_modules/ci_canonical.rs"]
 mod ci_canonical;
 #[path = "integration_main_modules/ci_state_changed_e2e.rs"]

@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
 pub(crate) mod atp_substantive_gate;
+pub(crate) mod chat_relevance;
 pub(crate) mod connection;
 pub(crate) mod deliver_story_body_diff_gate;
 pub(crate) mod dispatch;

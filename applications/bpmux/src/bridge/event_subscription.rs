@@ -223,6 +223,14 @@ impl SubscriptionRegistry {
             }
         }
     }
+
+    pub(crate) async fn declared_chat_classes(&self) -> Vec<String> {
+        let subs = self.subs.lock().await;
+        subs.values()
+            .map(|s| s.event_class.clone())
+            .filter(|c| crate::bridge::chat_relevance::CHAT_RELEVANCE_CLASSES.contains(&c.as_str()))
+            .collect()
+    }
 }
 
 pub(in crate::bridge) async fn handle_subscribe(
