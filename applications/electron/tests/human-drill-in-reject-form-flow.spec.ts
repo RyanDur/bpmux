@@ -194,6 +194,24 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
         'reject dialog must have an authored dimmed backdrop (#1518)'
       ).toBeGreaterThanOrEqual(MIN_DIMMED_BACKDROP_ALPHA)
 
+      await win.keyboard.press('Tab')
+      await win.keyboard.press('Tab')
+      await win.keyboard.press('Tab')
+      await win.keyboard.press('Tab')
+      const focusTrappedInDialog = await dialog.evaluate(
+        (el) => el.contains(document.activeElement) && document.activeElement !== document.body
+      )
+      expect(
+        focusTrappedInDialog,
+        'focus must stay trapped within the modal dialog (#1518 clause-3, free via showModal)'
+      ).toBe(true)
+
+      await win.mouse.click(5, 5)
+      await expect(
+        dialog,
+        'click-outside must NOT dismiss the reject form — protects the typed note (#1518 clause-4b)'
+      ).toHaveAttribute('open', '')
+
       await noteInput.fill('cancel-path test note')
       await win.locator('dialog.drill-in-reject-form button:has-text("Cancel")').click()
       await expect(dialog).not.toHaveAttribute('open', '')
