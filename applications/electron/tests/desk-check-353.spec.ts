@@ -64,7 +64,7 @@ test.describe('desk-check #353 WS board invalidate', () => {
     await app.close()
   })
 
-  test('subscription code: messages prop reaches Board (indirect — BOARD_INVALIDATE_MARKER is the trigger)', async () => {
+  test('subscription code: messages prop reaches Board (indirect — the board_invalidated state-delta is the trigger)', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
