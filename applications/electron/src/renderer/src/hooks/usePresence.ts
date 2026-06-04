@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage } from '../transport/types'
 
 export type Presence = 'available' | 'busy' | 'blocked' | 'idle' | 'help' | 'offline'
@@ -25,7 +26,7 @@ export const usePresence = (
 
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i]
-      if (m.messageType !== 'activity') continue
+      if (m.messageType !== MESSAGE_TYPE.Activity) continue
       const role = shortName(m.from)
       if (!roles.includes(role)) continue
       if (out.get(role) !== 'offline') continue

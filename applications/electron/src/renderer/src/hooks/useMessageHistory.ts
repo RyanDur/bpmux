@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { http } from '../api/http'
+import { asMessageType } from '../transport/messageType'
 import type { ChatMessage } from '../transport/types'
 
 const DEFAULT_PAGE_SIZE = 200
@@ -49,7 +50,7 @@ export const mergeOlderHistory = (
       ts: h.ts,
       to: h.to ?? null,
       addressee: h.addressee ?? null,
-      messageType: h.message_type ?? null
+      messageType: asMessageType(h.message_type)
     }
     const k = messageKey(chat)
     if (seen.has(k) || liveKeys.has(k)) continue

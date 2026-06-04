@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { tryCatch } from '../lib/result'
+import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { subscribeWsLiveMessages } from '../transport/wsService'
@@ -11,7 +12,8 @@ const shortName = (identity: string): string => {
 
 export const isRelevant = (msg: ChatMessage, self: string): boolean => {
   if (shortName(msg.from) === self) return false
-  if (msg.messageType === 'activity' || msg.messageType === 'system') return false
+  if (msg.messageType === MESSAGE_TYPE.Activity || msg.messageType === MESSAGE_TYPE.System)
+    return false
   if (msg.addressee === self) return true
   if (msg.to && msg.to.length > 0 && !msg.to.includes('all') && msg.to.includes(self)) return true
   return false

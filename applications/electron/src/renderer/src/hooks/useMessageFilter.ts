@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { MESSAGE_TYPE } from '../transport/messageType'
 
 export const MESSAGE_CLASSES = ['chat', 'events', 'bpmux'] as const
 export type MessageClass = (typeof MESSAGE_CLASSES)[number]
@@ -38,12 +39,12 @@ export interface MessageFilter {
 }
 
 const LEGACY_TYPE_REMAP: Record<string, MessageClass> = {
-  system: 'bpmux',
-  activity: 'events',
-  insight: 'events',
-  'state-delta': 'events',
-  'state-snapshot': 'events',
-  nudge: 'events'
+  [MESSAGE_TYPE.System]: 'bpmux',
+  [MESSAGE_TYPE.Activity]: 'events',
+  [MESSAGE_TYPE.Insight]: 'events',
+  [MESSAGE_TYPE.StateDelta]: 'events',
+  [MESSAGE_TYPE.StateSnapshot]: 'events',
+  [MESSAGE_TYPE.Nudge]: 'events'
 }
 
 export const classOf = (messageType: string | null | undefined): MessageClass => {

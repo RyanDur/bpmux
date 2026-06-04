@@ -1,3 +1,5 @@
+import type { MessageType } from './messageType'
+
 export interface ServerWelcome {
   type: 'welcome'
   session_id: string
@@ -147,7 +149,7 @@ export interface ChatMessage {
   ts: string
   to?: string[] | null
   addressee?: string | null
-  messageType?: string | null
+  messageType?: MessageType | null
 }
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'

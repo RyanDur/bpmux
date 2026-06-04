@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
+import { MESSAGE_TYPE } from '../transport/messageType'
 import { useMentionScoping } from '../hooks/useMentionScoping'
 import { usePresence } from '../hooks/usePresence'
 import { useScrollGutter } from '../hooks/useScrollGutter'
@@ -34,7 +35,8 @@ const GROUP_THRESHOLD_MS = 5 * 60 * 1000
 const isGroupedWithPrev = (curr: ChatMessage, prev: ChatMessage | null): boolean => {
   if (!prev) return false
   if (shortName(curr.from) !== shortName(prev.from)) return false
-  if ((curr.messageType ?? 'chat') !== (prev.messageType ?? 'chat')) return false
+  if ((curr.messageType ?? MESSAGE_TYPE.Chat) !== (prev.messageType ?? MESSAGE_TYPE.Chat))
+    return false
   if ((curr.addressee ?? null) !== (prev.addressee ?? null)) return false
   const currMs = new Date(curr.ts).getTime()
   const prevMs = new Date(prev.ts).getTime()

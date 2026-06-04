@@ -3,6 +3,7 @@ import { asyncTryCatch } from '../lib/asyncResult'
 import { tryCatch } from '../lib/result'
 import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-delta'
 import type { MirrorState } from './state-delta'
+import { MESSAGE_TYPE, asMessageType } from './messageType'
 import {
   SYNC_STATUS_UPDATE_MARKER,
   type ChatMessage,
@@ -143,11 +144,11 @@ const handleServerMessage = (raw: string): void => {
       patch({ sessionId: parsed.session_id })
       break
     case 'message': {
-      if (parsed.message_type === 'state-snapshot' && parsed.state_snapshot) {
+      if (parsed.message_type === MESSAGE_TYPE.StateSnapshot && parsed.state_snapshot) {
         patch({ mirror: applyStateSnapshot(state.snapshot.mirror, parsed.state_snapshot) })
         break
       }
-      if (parsed.message_type === 'state-delta' && parsed.state_delta) {
+      if (parsed.message_type === MESSAGE_TYPE.StateDelta && parsed.state_delta) {
         const delta = parsed.state_delta
         const next: Partial<WsSnapshot> = {
           mirror: applyStateDelta(state.snapshot.mirror, delta)
@@ -170,7 +171,7 @@ const handleServerMessage = (raw: string): void => {
         ts: parsed.ts,
         to: parsed.to ?? null,
         addressee: parsed.addressee ?? null,
-        messageType: parsed.message_type ?? null
+        messageType: asMessageType(parsed.message_type)
       }
       const key = messageKey(chat)
       if (state.snapshot.messages.some((m) => messageKey(m) === key)) break
@@ -205,7 +206,7 @@ const mergeHistory = (combined: HistoryMessage[]): void => {
       ts: h.ts,
       to: h.to ?? null,
       addressee: h.addressee ?? null,
-      messageType: h.message_type ?? null
+      messageType: asMessageType(h.message_type)
     }
     const k = messageKey(chat)
     if (seen.has(k)) continue
@@ -250,7 +251,9 @@ const loadHistory = (apiBase: string, authToken: string): void => {
   void asyncTryCatch(() =>
     Promise.all([
       fetchHistoryWithRetry(`/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`),
-      fetchHistoryWithRetry(`/api/messages?message_type=activity&limit=${HISTORY_ACTIVITY_LIMIT}`)
+      fetchHistoryWithRetry(
+        `/api/messages?message_type=${MESSAGE_TYPE.Activity}&limit=${HISTORY_ACTIVITY_LIMIT}`
+      )
     ])
   )
     .onSuccess(([chat, activity]) => {
