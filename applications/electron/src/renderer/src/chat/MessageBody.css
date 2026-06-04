@@ -24,7 +24,7 @@
 
 .markdown-body code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.875rem;
+  font-size: var(--font-size-14);
   background: var(--bg-elevated);
   padding: 0.1em var(--space-4);
   border-radius: 3px;

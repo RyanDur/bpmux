@@ -32,7 +32,7 @@
   &.unfurl-card--loading {
     grid-template-columns: 1fr;
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
   }
 }
 
@@ -67,12 +67,12 @@
 }
 
 .unfurl-card-site {
-  font-size: 0.75rem;
+  font-size: var(--font-size-12);
   color: var(--fg-dim);
 }
 
 .unfurl-card-title {
-  font-size: 0.875rem;
+  font-size: var(--font-size-14);
   font-weight: 600;
   color: var(--fg-primary);
   overflow: hidden;
@@ -82,7 +82,7 @@
 
 .unfurl-card-description {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--font-size-12);
   line-height: 1.4;
   color: var(--fg-secondary);
   display: -webkit-box;
@@ -94,7 +94,7 @@
 
 .unfurl-card-url {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.75rem;
+  font-size: var(--font-size-12);
   color: var(--fg-dim);
   overflow: hidden;
   text-overflow: ellipsis;

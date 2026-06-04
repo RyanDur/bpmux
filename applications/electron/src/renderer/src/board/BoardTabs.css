@@ -24,14 +24,14 @@
 
   & .board-now-anchor-label {
     color: var(--fg-dim);
-    font-size: 0.6875rem;
+    font-size: var(--font-size-11);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
 
   & .board-now-anchor-title {
     color: var(--fg-primary);
-    font-size: 0.9375rem;
+    font-size: var(--font-size-15);
     font-weight: 600;
   }
 

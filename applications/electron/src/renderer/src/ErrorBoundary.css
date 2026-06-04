@@ -16,12 +16,12 @@
 
   & .error-boundary-title {
     color: var(--accent-error);
-    font-size: 1.125rem;
+    font-size: var(--font-size-18);
   }
 
   & .error-boundary-message {
     margin: 0;
-    font-size: 0.9375rem;
+    font-size: var(--font-size-15);
     line-height: 1.4;
   }
 
@@ -33,7 +33,7 @@
 
     & summary {
       cursor: pointer;
-      font-size: 0.875rem;
+      font-size: var(--font-size-14);
       color: var(--fg-dim);
     }
 
@@ -43,7 +43,7 @@
       background: var(--bg-highlighted);
       border-radius: 4px;
       font-family: ui-monospace, Menlo, Consolas, monospace;
-      font-size: 0.8125rem;
+      font-size: var(--font-size-13);
       overflow-x: auto;
       white-space: pre-wrap;
       overflow-wrap: break-word;
@@ -82,7 +82,7 @@
   background: var(--bg-elevated);
   color: var(--accent-error);
   font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 0.875rem;
+  font-size: var(--font-size-14);
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }

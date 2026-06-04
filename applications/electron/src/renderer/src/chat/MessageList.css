@@ -16,7 +16,7 @@
   background: var(--bg-elevated);
   color: var(--fg-dim);
   border: 1px solid var(--border-subtle);
-  font-size: 0.75rem;
+  font-size: var(--font-size-12);
   z-index: 5;
 }
 
@@ -39,7 +39,7 @@
   border-radius: 999px;
   background: var(--accent-brand);
   color: var(--bg-base);
-  font-size: 0.75rem;
+  font-size: var(--font-size-12);
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
@@ -95,7 +95,7 @@
 
   & .message-empty {
     color: var(--fg-dim);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
   }
 
   & .message-avatar-wrap {
@@ -113,12 +113,12 @@
     display: flex;
     gap: var(--space-8);
     align-items: baseline;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
   }
 
   & .message-body {
     color: var(--fg-primary);
-    font-size: 0.875rem;
+    font-size: var(--font-size-14);
     line-height: 1.5;
 
     /* keep+flag(layout-edge, interim): overflow-wrap anywhere NOT word-wrap break-word so wrap
@@ -151,7 +151,7 @@
 
     & code {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.8125rem;
+      font-size: var(--font-size-13);
       background: var(--bg-elevated);
       padding: 0 var(--space-4);
       border-radius: 3px;
@@ -163,7 +163,7 @@
       border-radius: 4px;
       padding: var(--space-8) var(--space-16);
       overflow-x: auto;
-      font-size: 0.8125rem;
+      font-size: var(--font-size-13);
       line-height: 1.4;
 
       & code {
@@ -198,20 +198,20 @@
     }
 
     & h1 {
-      font-size: 1.25rem;
+      font-size: var(--font-size-20);
     }
 
     & h2 {
-      font-size: 1.125rem;
+      font-size: var(--font-size-18);
     }
 
     & h3 {
-      font-size: 1rem;
+      font-size: var(--font-size-16);
     }
 
     & table {
       border-collapse: collapse;
-      font-size: 0.8125rem;
+      font-size: var(--font-size-13);
 
       & th,
       & td {
@@ -301,7 +301,7 @@
     justify-content: center;
     width: var(--chat-avatar-size);
     height: var(--chat-avatar-size);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     font-weight: 700;
     color: var(--bg-base);
     user-select: none;
@@ -354,7 +354,7 @@
     border: 1px solid var(--border-subtle);
     color: var(--fg-primary);
     box-shadow: 0 4px 16px color-mix(in srgb, rgb(0 0 0) 35%, transparent);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -395,7 +395,7 @@
 
   & .avatar-tooltip-status {
     color: var(--fg-dim);
-    font-size: 0.6875rem;
+    font-size: var(--font-size-11);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 
@@ -426,13 +426,13 @@
 
   & .message-channel {
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     font-family: ui-monospace, Menlo, Consolas, monospace;
   }
 
   & .message-addressee {
     color: var(--accent-brand);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     font-weight: 600;
     padding: 0 var(--space-4);
     border-radius: 4px;

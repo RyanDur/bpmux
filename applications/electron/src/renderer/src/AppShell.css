@@ -7,7 +7,7 @@
   padding-left: 80px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-base);
-  font-size: 0.8125rem;
+  font-size: var(--font-size-13);
   font-weight: 600;
   line-height: 1;
   -webkit-app-region: drag;
@@ -15,7 +15,7 @@
   & .titlebar-app-state {
     color: var(--fg-dim);
     font-weight: 400;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     transition: color var(--motion-duration-fast) var(--motion-ease-out);
   }
 

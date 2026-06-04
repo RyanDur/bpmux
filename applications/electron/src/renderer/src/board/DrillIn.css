@@ -53,7 +53,7 @@
   }
 
   & .drill-in-crumb {
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     letter-spacing: 0.02em;
   }
 
@@ -69,7 +69,7 @@
     display: flex;
     align-items: baseline;
     gap: var(--space-8);
-    font-size: 0.9375rem;
+    font-size: var(--font-size-15);
     font-weight: 600;
     color: var(--fg-primary);
     line-height: 1.35;
@@ -95,7 +95,7 @@
     border-radius: 12px;
     background: var(--bg-base);
     color: var(--fg-secondary);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     line-height: 1.4;
   }
 
@@ -126,14 +126,14 @@
   }
 
   & .drill-in-bug-question h3 {
-    font-size: 0.9375rem;
+    font-size: var(--font-size-15);
     font-weight: 600;
     margin: 0;
     color: var(--fg-primary);
   }
 
   & .drill-in-bug-question p {
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     line-height: 1.5;
     color: var(--fg-dim);
     margin: 0;
@@ -145,7 +145,7 @@
 
   & .drill-in-body {
     padding: var(--space-16);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     line-height: 1.6;
     color: var(--fg-primary);
 
@@ -163,15 +163,15 @@
     }
 
     & h1 {
-      font-size: 1.25rem;
+      font-size: var(--font-size-20);
     }
 
     & h2 {
-      font-size: 1.125rem;
+      font-size: var(--font-size-18);
     }
 
     & h3 {
-      font-size: 1rem;
+      font-size: var(--font-size-16);
     }
 
     & ul,
@@ -188,7 +188,7 @@
       background: var(--bg-elevated);
       padding: 0 var(--space-4);
       border-radius: 3px;
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
     }
 
     & pre {
@@ -289,7 +289,7 @@
 
     & summary {
       cursor: pointer;
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
       color: var(--fg-dim);
       text-transform: uppercase;
       letter-spacing: 0.04em;
@@ -310,7 +310,7 @@
 
     & small {
       color: var(--fg-dim);
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
@@ -323,7 +323,7 @@
       border: 1px solid var(--border-subtle);
       border-radius: 4px;
       padding: var(--space-6) var(--space-8);
-      font-size: 0.8125rem;
+      font-size: var(--font-size-13);
       line-height: 1.5;
       color: var(--fg-primary);
       outline: none;
@@ -337,7 +337,7 @@
   & .drill-in-btn {
     padding: var(--space-6) var(--space-16);
     border-radius: 4px;
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     font-weight: 500;
     border: 1px solid transparent;
     cursor: pointer;
@@ -393,7 +393,7 @@
     color: var(--accent-error);
     border: 1px solid var(--accent-error);
     border-radius: 4px;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
   }
 
@@ -407,7 +407,7 @@
 
   & .drill-in-comments-header h4 {
     margin: 0;
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     font-weight: 600;
     color: var(--fg-secondary);
   }
@@ -415,7 +415,7 @@
   & .drill-in-comments-empty {
     margin: 0;
     color: var(--fg-dim);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     font-style: italic;
   }
 
@@ -445,7 +445,7 @@
     display: flex;
     gap: var(--space-8);
     align-items: baseline;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     margin-bottom: var(--space-4);
   }
 
@@ -460,7 +460,7 @@
   }
 
   & .drill-in-comment-body {
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     color: var(--fg-primary);
   }
 
@@ -477,7 +477,7 @@
 
     & small {
       color: var(--fg-secondary);
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
     }
 
     & textarea {
@@ -487,7 +487,7 @@
       padding: var(--space-6) var(--space-8);
       color: var(--fg-primary);
       font-family: inherit;
-      font-size: 0.8125rem;
+      font-size: var(--font-size-13);
       resize: vertical;
 
       &:focus-visible {
@@ -514,7 +514,7 @@
 
       & h4 {
         margin: 0;
-        font-size: 0.8125rem;
+        font-size: var(--font-size-13);
         font-weight: 600;
         color: var(--fg-primary);
       }
@@ -535,7 +535,7 @@
 
   & .drill-in-timeline-empty {
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     padding: var(--space-8) 0;
   }
 
@@ -550,7 +550,7 @@
     border-radius: 4px;
     color: var(--fg-secondary);
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     padding: var(--space-2) var(--space-8);
 
     &:hover {
@@ -580,7 +580,7 @@
     align-items: baseline;
     padding: var(--space-4) var(--space-8);
     border-left: 2px solid var(--border-subtle);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     color: var(--fg-secondary);
 
     & .drill-in-timeline-kind {
@@ -601,7 +601,7 @@
 
     & .drill-in-timeline-note {
       color: var(--fg-dim);
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
       grid-column: 1 / span 2;
     }
 
@@ -627,7 +627,7 @@
   & .drill-in-timeline-footer {
     margin-top: var(--space-8);
     padding: var(--space-4) var(--space-8);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     color: var(--fg-dim);
     font-style: italic;
     border-top: 1px dashed var(--border-subtle);

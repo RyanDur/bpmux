@@ -11,7 +11,7 @@
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-2) var(--space-6);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     color: var(--fg-secondary);
     background: var(--bg-elevated);
     border: 1px solid var(--border-subtle);
@@ -43,7 +43,7 @@
 
   & .reaction-add {
     padding: var(--space-2) var(--space-6);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     color: var(--fg-dim);
     border: 1px solid var(--border-subtle);
     border-radius: 999px;
@@ -61,7 +61,7 @@
 
   & .reaction-picker-item {
     padding: var(--space-2) var(--space-4);
-    font-size: 1rem;
+    font-size: var(--font-size-16);
     border-radius: 4px;
 
     &:hover {
@@ -83,7 +83,7 @@
 
   & .reaction-add {
     padding: 0 var(--space-4);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     color: var(--fg-dim);
     border: none;
 
@@ -99,7 +99,7 @@
 
   & .reaction-picker-item {
     padding: var(--space-2) var(--space-4);
-    font-size: 1rem;
+    font-size: var(--font-size-16);
     border-radius: 4px;
 
     &:hover {

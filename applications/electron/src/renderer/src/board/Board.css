@@ -10,7 +10,7 @@
   background: var(--bg-elevated);
   display: flex;
   flex-direction: column;
-  font-size: 0.8125rem;
+  font-size: var(--font-size-13);
   container-type: inline-size;
   outline: none;
 
@@ -42,14 +42,14 @@
   & .board-title {
     color: var(--fg-dim);
     text-transform: uppercase;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     letter-spacing: 0.05em;
     font-weight: 600;
   }
 
   & .board-mock-flag {
     color: var(--accent-warning);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     padding: var(--space-2) var(--space-6);
     border: 1px solid var(--accent-warning);
     border-radius: 4px;
@@ -68,7 +68,7 @@
     & .board-error-text {
       flex: 1 1 auto;
       color: var(--accent-warning);
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
     }
 
     & .board-error-retry {
@@ -76,7 +76,7 @@
       border: 1px solid var(--accent-warning);
       padding: var(--space-2) var(--space-8);
       border-radius: 4px;
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
 
       &:hover {
         background: rgb(212 161 60 / 15%);
@@ -142,7 +142,7 @@
   & .board-group-chevron {
     flex: 0 0 auto;
     width: 0.75rem;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     display: inline-block;
 
     &::before {
@@ -156,13 +156,13 @@
 
   & .board-group-label {
     font-weight: 600;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
 
   & .board-group-count {
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     color: var(--fg-dim);
   }
 
@@ -180,7 +180,7 @@
     padding: var(--space-6) var(--space-24);
     color: var(--fg-dim);
     font-style: italic;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
   }
 
   & .board-story-list {
@@ -196,7 +196,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     color: var(--fg-primary);
   }
 
@@ -231,7 +231,7 @@
         top: -0.5em;
         left: var(--space-8);
         color: var(--accent-brand);
-        font-size: 0.75rem;
+        font-size: var(--font-size-12);
         line-height: 1;
         background: var(--bg-elevated);
         padding: 0 var(--space-2);
@@ -249,7 +249,7 @@
         bottom: -0.5em;
         left: var(--space-8);
         color: var(--accent-brand);
-        font-size: 0.75rem;
+        font-size: var(--font-size-12);
         line-height: 1;
         background: var(--bg-elevated);
         padding: 0 var(--space-2);
@@ -279,7 +279,7 @@
   & .board-story-number {
     color: var(--fg-dim);
     font-variant-numeric: tabular-nums;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
   }
 
   & .board-story-row--blocked .board-story-title,
@@ -324,7 +324,7 @@
     border: none;
     padding: 0 var(--space-2);
     font-variant-numeric: tabular-nums;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     margin-left: var(--space-4);
     cursor: pointer;
     border-radius: 2px;
@@ -342,7 +342,7 @@
   & .board-story-rework-glyph {
     flex: 0 0 auto;
     color: var(--fg-dim);
-    font-size: 1rem;
+    font-size: var(--font-size-16);
     margin-left: var(--space-4);
     cursor: help;
   }
@@ -366,7 +366,7 @@
   & .board-iteration-member-state {
     flex: 0 0 auto;
     color: var(--fg-dim);
-    font-size: 0.6875rem;
+    font-size: var(--font-size-11);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 0 var(--space-4);
@@ -422,13 +422,13 @@
 
     & .board-iteration-title {
       font-weight: 600;
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
 
     & .board-iteration-count {
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
       color: var(--fg-dim);
       font-variant-numeric: tabular-nums;
     }
@@ -496,7 +496,7 @@
     background: var(--bg-base);
     cursor: pointer;
     color: var(--fg-secondary);
-    font-size: 0.6875rem;
+    font-size: var(--font-size-11);
     text-transform: uppercase;
     letter-spacing: 0.06em;
 
@@ -575,7 +575,7 @@
 
   & .board-iteration-marker-count {
     flex: 0 0 auto;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     color: var(--fg-dim);
     margin-left: var(--space-8);
   }
@@ -604,12 +604,12 @@
   & .board-iteration-marker-theme {
     flex: 1 1 auto;
     font-weight: 600;
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
   }
 
   & .board-iteration-marker-label {
     flex: 0 0 auto;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     color: var(--fg-dim);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -653,7 +653,7 @@
     &::before {
       content: '▸';
       color: var(--fg-dim);
-      font-size: 0.75rem;
+      font-size: var(--font-size-12);
       flex: 0 0 auto;
     }
 
@@ -674,7 +674,7 @@
   & .board-epic-summary-progress {
     flex: 0 0 auto;
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     font-variant-numeric: tabular-nums;
     margin-left: auto;
   }
@@ -695,7 +695,7 @@
     padding: 0 var(--space-6);
     color: var(--fg-dim);
     font: inherit;
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     cursor: pointer;
 
     &:hover {
@@ -716,7 +716,7 @@
     padding: 0 var(--space-4);
     color: var(--accent-info);
     font: inherit;
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     cursor: pointer;
     border-radius: 2px;
 
@@ -733,7 +733,7 @@
   & .board-epic-state {
     flex: 0 0 auto;
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 0 var(--space-4);
@@ -767,7 +767,7 @@
 
   & .board-epic-description {
     color: var(--fg-dim);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-13);
     line-height: 1.4;
     margin: 0;
     padding: 0 var(--space-4);
@@ -833,7 +833,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    font-size: 0.75rem;
+    font-size: var(--font-size-12);
   }
 
   & .board-epic-miniboard-column {
@@ -870,7 +870,7 @@
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    font-size: 0.6875rem;
+    font-size: var(--font-size-11);
   }
 
   & .board-epic-miniboard-column-count {
@@ -970,7 +970,7 @@
   flex: 0 0 auto;
   padding: 0 var(--space-6);
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: var(--font-size-12);
   line-height: 1.4;
   font-weight: 600;
   color: var(--fg-primary);
