@@ -1,6 +1,11 @@
 {
   "extends": ["stylelint-config-standard"],
+  "plugins": ["stylelint-value-no-unknown-custom-properties"],
   "rules": {
+    "csstools/value-no-unknown-custom-properties": [
+      true,
+      { "importFrom": ["src/renderer/src/styles/tokens.css"] }
+    ],
     "declaration-property-unit-allowed-list": {
       "font-size": ["rem"],
       "/^border(-(top|right|bottom|left|inline|block))?(-width)?$/": ["px"],

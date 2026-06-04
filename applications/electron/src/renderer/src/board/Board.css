@@ -319,7 +319,7 @@
     position: relative;
     z-index: 1;
     flex: 0 0 auto;
-    color: var(--fg);
+    color: var(--fg-primary);
     background: none;
     border: none;
     padding: 0 var(--space-2);
@@ -452,7 +452,7 @@
   }
 
   & .board-iteration-closed-badge {
-    color: var(--color-muted, rgb(136 136 136));
+    color: var(--fg-dimmer);
     font-weight: normal;
     font-style: italic;
     text-decoration: none;
@@ -460,13 +460,13 @@
 
   & .board-iteration-card[data-iteration-kind='unscheduled'] {
     background: transparent;
-    border: 1px dashed var(--color-muted, rgb(136 136 136));
-    border-radius: var(--radius-2, 4px);
+    border: 1px dashed var(--fg-dimmer);
+    border-radius: 4px;
   }
 
   & .board-iteration-card[data-iteration-kind='unscheduled'] .story-glyph,
   & .board-iteration-card[data-iteration-kind='unscheduled'] .board-iteration-title {
-    color: var(--color-muted, rgb(136 136 136));
+    color: var(--fg-dimmer);
   }
 
   & .board-iteration-card[data-drag-rejected='true'] {
@@ -587,7 +587,7 @@
   }
 
   & .board-iteration-marker--next {
-    background: var(--accent-info-bg, rgb(0 191 255 / 12%));
+    background: var(--accent-info-bg);
     border-left: 3px solid var(--accent-info);
   }
 
@@ -700,7 +700,7 @@
 
     &:hover {
       color: var(--fg-secondary);
-      border-color: var(--fg-muted);
+      border-color: var(--border-strong);
     }
 
     &:focus-visible {

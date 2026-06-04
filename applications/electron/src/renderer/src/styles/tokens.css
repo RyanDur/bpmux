@@ -16,6 +16,7 @@
   --accent-warning: rgb(212 161 60);
   --accent-error: rgb(255 107 107);
   --accent-info: rgb(79 195 247);
+  --accent-info-bg: color-mix(in srgb, var(--accent-info) 12%, transparent);
   --border-subtle: rgb(51 51 51);
   --border-strong: rgb(85 85 85);
   --role-ryan: rgb(255 213 79);
@@ -26,6 +27,7 @@
   --space-4: 4px;
   --space-6: 6px;
   --space-8: 8px;
+  --space-12: 12px;
   --space-16: 16px;
   --space-24: 24px;
   --space-32: 32px;

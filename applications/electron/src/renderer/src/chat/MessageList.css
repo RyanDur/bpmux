@@ -14,7 +14,7 @@
   padding: var(--space-6) var(--space-12);
   border-radius: 999px;
   background: var(--bg-elevated);
-  color: var(--text-muted);
+  color: var(--fg-dim);
   border: 1px solid var(--border-subtle);
   font-size: 0.75rem;
   z-index: 5;
@@ -22,8 +22,8 @@
 
 .loading-older-pill--error {
   cursor: pointer;
-  color: var(--text-base);
-  border-color: var(--accent-warn, var(--border-subtle));
+  color: var(--fg-primary);
+  border-color: var(--accent-warning);
 }
 
 .loading-older-pill--error:hover {
