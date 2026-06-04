@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
 import { type MessageFilter } from '../hooks/useMessageFilter'
-import { usePresence, type Presence } from '../hooks/usePresence'
+import { PRESENCE, usePresence, type Presence } from '../hooks/usePresence'
 import { useTeamRoster } from '../hooks/useTeamRoster'
 import {
   deriveCombinableRolesFromRoster,
@@ -143,7 +143,7 @@ const Sidebar = ({
             recipient !== null &&
             recipient.length === 1 &&
             recipient[0] === role
-          const status = presence.get(role) ?? 'offline'
+          const status = presence.get(role) ?? PRESENCE.Offline
           const statusLabel = PRESENCE_LABEL[status]
           return (
             <button
@@ -162,7 +162,7 @@ const Sidebar = ({
                 title={`${role} — ${statusLabel}`}
               />
               {role}
-              {status !== 'offline' && status !== 'available' && (
+              {status !== PRESENCE.Offline && status !== PRESENCE.Available && (
                 <small className="sidebar-item-status" data-test={`presence-label-${role}`}>
                   {statusLabel}
                 </small>

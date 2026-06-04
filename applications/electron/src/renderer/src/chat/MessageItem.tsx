@@ -1,5 +1,6 @@
 import type { ChatMessage } from '../transport/types'
 import { classOf } from '../hooks/useMessageFilter'
+import { PRESENCE } from '../hooks/usePresence'
 import type { AggregatedReaction } from '../hooks/useReactions'
 import { roleColorFor } from '../roles/roleColor'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -59,7 +60,7 @@ const MessageItem = ({
         {!grouped &&
           (() => {
             const label = sender.charAt(0).toUpperCase() + sender.slice(1)
-            const status = presence.get(sender) ?? 'offline'
+            const status = presence.get(sender) ?? PRESENCE.Offline
             const tooltipId = `avatar-info-${m.id}`
             const roleColor = roleColorFor(sender)
             return (

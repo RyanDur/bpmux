@@ -2,9 +2,18 @@ import { useMemo } from 'react'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage } from '../transport/types'
 
-export type Presence = 'available' | 'busy' | 'blocked' | 'idle' | 'help' | 'offline'
+export const PRESENCE = {
+  Available: 'available',
+  Busy: 'busy',
+  Blocked: 'blocked',
+  Idle: 'idle',
+  Help: 'help',
+  Offline: 'offline'
+} as const
 
-const KNOWN: readonly Presence[] = ['available', 'busy', 'blocked', 'idle', 'help', 'offline']
+export type Presence = (typeof PRESENCE)[keyof typeof PRESENCE]
+
+const KNOWN: readonly string[] = Object.values(PRESENCE)
 
 const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
@@ -13,7 +22,7 @@ const shortName = (identity: string): string => {
 
 const asPresence = (text: string): Presence | null => {
   const t = text.trim().toLowerCase()
-  return (KNOWN as readonly string[]).includes(t) ? (t as Presence) : null
+  return KNOWN.includes(t) ? (t as Presence) : null
 }
 
 export const usePresence = (
@@ -22,17 +31,17 @@ export const usePresence = (
 ): Map<string, Presence> =>
   useMemo(() => {
     const out = new Map<string, Presence>()
-    for (const role of roles) out.set(role, 'offline')
+    for (const role of roles) out.set(role, PRESENCE.Offline)
 
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i]
       if (m.messageType !== MESSAGE_TYPE.Activity) continue
       const role = shortName(m.from)
       if (!roles.includes(role)) continue
-      if (out.get(role) !== 'offline') continue
+      if (out.get(role) !== PRESENCE.Offline) continue
       const p = asPresence(m.text)
       if (p) out.set(role, p)
-      if ([...out.values()].every((v) => v !== 'offline')) break
+      if ([...out.values()].every((v) => v !== PRESENCE.Offline)) break
     }
     return out
   }, [messages, roles])
