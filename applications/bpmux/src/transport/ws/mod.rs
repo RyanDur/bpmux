@@ -246,6 +246,14 @@ pub(crate) fn short_name(identity: &str) -> &str {
 }
 
 pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> bool {
+    if msg.message_type == MessageType::Nudge
+        && matches!(
+            role_from_short_name(short_name(peer_identity)),
+            crate::orchestrator::stores::RosterRole::Owner
+        )
+    {
+        return false;
+    }
     let recipients = match &msg.to {
         None => return true,
         Some(r) => r,

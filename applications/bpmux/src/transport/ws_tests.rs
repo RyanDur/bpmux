@@ -14,6 +14,17 @@ fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
     }
 }
 
+fn nudge(to: Option<Vec<&str>>) -> session::Message {
+    session::Message {
+        from: "bpmux".to_string(),
+        text: "📝 candidate moment — save_lesson".to_string(),
+        ts: Utc::now(),
+        message_type: session::MessageType::Nudge,
+        to: to.map(|v| v.into_iter().map(String::from).collect()),
+        ..session::Message::default()
+    }
+}
+
 #[test]
 fn broadcast_delivered_to_everyone() {
     assert!(should_deliver(
@@ -69,6 +80,46 @@ fn to_all_is_broadcast() {
     assert!(should_deliver(&m, "pm:claude-code"));
     assert!(should_deliver(&m, "ryan:human"));
     assert!(should_deliver(&m, "designer:claude-code"));
+}
+
+#[test]
+fn nudge_never_delivered_to_owner_even_when_addressed_to_owner() {
+    assert!(
+        !should_deliver(&nudge(Some(vec!["ryan"])), "ryan:human"),
+        "#1525: a Nudge addressed to the owner must NEVER reach the owner-role peer (recall/handoff can address it to: owner)"
+    );
+}
+
+#[test]
+fn nudge_never_delivered_to_owner_on_broadcast_or_all_paths() {
+    assert!(
+        !should_deliver(&nudge(None), "ryan:human"),
+        "#1525: a broadcast Nudge (to:None) must not slip through to the owner"
+    );
+    assert!(
+        !should_deliver(&nudge(Some(vec!["all"])), "ryan:human"),
+        "#1525: a to:all Nudge must not slip through to the owner"
+    );
+}
+
+#[test]
+fn nudge_still_delivered_to_every_agent_role() {
+    assert!(
+        should_deliver(&nudge(Some(vec!["dev"])), "dev:claude-code"),
+        "#1525: dev must still receive Nudges (valid agent-internal coordination)"
+    );
+    assert!(
+        should_deliver(&nudge(Some(vec!["pm"])), "pm:claude-code"),
+        "#1525: pm must still receive Nudges"
+    );
+    assert!(
+        should_deliver(&nudge(Some(vec!["designer"])), "designer:claude-code"),
+        "#1525: designer must still receive Nudges"
+    );
+    assert!(
+        should_deliver(&nudge(Some(vec!["all"])), "dev:claude-code"),
+        "#1525: a to:all Nudge must still reach agents (only the owner is excluded)"
+    );
 }
 
 #[test]
