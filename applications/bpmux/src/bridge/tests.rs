@@ -531,7 +531,7 @@ mod ingest_poll_loop_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn refresh_all_fires_on_each_interval_tick() {
         let driver = Arc::new(CountingDriver::new());
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
@@ -544,11 +544,14 @@ mod ingest_poll_loop_tests {
         assert_eq!(driver.refresh_all.load(Ordering::SeqCst), 0);
         tokio::time::sleep(Duration::from_millis(250)).await;
         let count = driver.refresh_all.load(Ordering::SeqCst);
-        assert!(count >= 3, "expected >=3 ticks in ~275ms, saw {count}");
+        assert_eq!(
+            count, 5,
+            "exactly 5 ticks fire in a 275ms window at 50ms interval under the virtual clock, saw {count}"
+        );
         handle.abort();
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn loop_survives_refresh_errors() {
         let driver = Arc::new(CountingDriver::failing_after(1));
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
@@ -559,15 +562,15 @@ mod ingest_poll_loop_tests {
         ));
         tokio::time::sleep(Duration::from_millis(200)).await;
         let count = driver.refresh_all.load(Ordering::SeqCst);
-        assert!(
-            count >= 3,
-            "loop must keep ticking across errors, saw {count}"
+        assert_eq!(
+            count, 6,
+            "loop keeps ticking across errors — exactly 6 ticks in a 200ms window at 30ms interval, saw {count}"
         );
         assert!(!handle.is_finished(), "task must not terminate on error");
         handle.abort();
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn ingest_loop_first_tick_passes_none_then_subsequent_ticks_pass_prior_start_time() {
         let driver = Arc::new(CountingDriver::new());
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
@@ -583,10 +586,10 @@ mod ingest_poll_loop_tests {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
-        assert!(
-            captured.len() >= 3,
-            "expected >=3 ticks, saw {} since args: {captured:?}",
-            captured.len()
+        assert_eq!(
+            captured.len(),
+            4,
+            "exactly 4 ticks fire in a 220ms window at 50ms interval under the virtual clock; since args: {captured:?}"
         );
         assert!(
             captured[0].is_none(),
@@ -608,7 +611,7 @@ mod ingest_poll_loop_tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn ingest_loop_does_not_advance_since_on_failure() {
         let driver = Arc::new(CountingDriver::failing_after(1));
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
@@ -625,9 +628,10 @@ mod ingest_poll_loop_tests {
             .unwrap_or_else(|e| e.into_inner())
             .clone();
         let with_some: Vec<_> = captured.iter().filter(|s| s.is_some()).collect();
-        assert!(
-            with_some.len() >= 2,
-            "test setup must produce >=2 since-bearing ticks (1 success advances since, then failures preserve it); saw {captured:?}"
+        assert_eq!(
+            with_some.len(),
+            4,
+            "exactly 4 since-bearing ticks (tick 1 passes None, ticks 2-5 pass Some) in a 220ms window at 40ms interval; saw {captured:?}"
         );
         assert_eq!(
             with_some[0], with_some[1],
@@ -635,7 +639,7 @@ mod ingest_poll_loop_tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn drain_loop_fires_drain_pending_on_each_tick() {
         use crate::bridge::run_drain_loop;
         use tempfile::TempDir;
@@ -657,14 +661,14 @@ mod ingest_poll_loop_tests {
         assert_eq!(driver.drain_pending.load(Ordering::SeqCst), 0);
         tokio::time::sleep(Duration::from_millis(250)).await;
         let count = driver.drain_pending.load(Ordering::SeqCst);
-        assert!(
-            count >= 3,
-            "expected >=3 drain ticks in ~275ms, saw {count}"
+        assert_eq!(
+            count, 5,
+            "exactly 5 drain ticks in a 275ms window at 50ms interval under the virtual clock, saw {count}"
         );
         handle.abort();
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn drain_loop_broadcasts_sync_status_marker_when_drain_changes_state() {
         use crate::bridge::{SYNC_STATUS_UPDATE_MARKER, run_drain_loop};
         use tempfile::TempDir;
@@ -699,7 +703,7 @@ mod ingest_poll_loop_tests {
         assert_eq!(received.from, "bpmux");
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn drain_loop_does_not_broadcast_when_drain_returns_zero() {
         use crate::bridge::run_drain_loop;
         use tempfile::TempDir;
