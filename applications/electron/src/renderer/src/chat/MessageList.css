@@ -32,8 +32,9 @@
 
 .new-messages-pill {
   position: absolute;
-  right: var(--space-12);
+  left: 50%;
   bottom: var(--space-12);
+  transform: translateX(-50%);
   padding: var(--space-6) var(--space-12);
   border: 1px solid var(--accent-brand);
   border-radius: 999px;
@@ -59,12 +60,12 @@
 @keyframes new-messages-pill-enter {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translate(-50%, 4px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
   }
 }
 
