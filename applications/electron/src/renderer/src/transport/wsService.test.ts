@@ -248,3 +248,35 @@ describe('#1319 wsService — reconnect re-fetches history to recover the discon
     expect(preGapCount).toBe(1)
   })
 })
+
+describe('#1618 wsService — board-refresh migrates from the text-marker to the board_invalidated state-delta', () => {
+  test('a board_invalidated state-delta bumps boardInvalidateTick (the structured board-refresh trigger)', () => {
+    ensureWsStarted({ url: 'ws://test' })
+    MockWebSocket.latest().open()
+    expect(getWsSnapshot().boardInvalidateTick).toBe(0)
+    MockWebSocket.latest().receive(
+      serverMessage({
+        from: 'bpmux',
+        text: '',
+        message_type: 'state-delta',
+        state_delta: { domain: 'board_invalidated', reason: 'board changed' }
+      })
+    )
+    expect(getWsSnapshot().boardInvalidateTick).toBe(1)
+  })
+
+  test('a board_invalidated state-delta leaves the mirror reactions/ci/roster untouched', () => {
+    ensureWsStarted({ url: 'ws://test' })
+    MockWebSocket.latest().open()
+    const before = getWsSnapshot().mirror
+    MockWebSocket.latest().receive(
+      serverMessage({
+        from: 'bpmux',
+        text: '',
+        message_type: 'state-delta',
+        state_delta: { domain: 'board_invalidated', reason: 'board changed' }
+      })
+    )
+    expect(getWsSnapshot().mirror).toBe(before)
+  })
+})

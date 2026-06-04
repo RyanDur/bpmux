@@ -149,7 +149,14 @@ const handleServerMessage = (raw: string): void => {
         break
       }
       if (parsed.message_type === 'state-delta' && parsed.state_delta) {
-        patch({ mirror: applyStateDelta(state.snapshot.mirror, parsed.state_delta) })
+        const delta = parsed.state_delta
+        const next: Partial<WsSnapshot> = {
+          mirror: applyStateDelta(state.snapshot.mirror, delta)
+        }
+        if (delta.domain === 'board_invalidated') {
+          next.boardInvalidateTick = state.snapshot.boardInvalidateTick + 1
+        }
+        patch(next)
         break
       }
       if (parsed.text === BOARD_INVALIDATE_MARKER) {
