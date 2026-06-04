@@ -25,33 +25,10 @@ const render = (m: ChatMessage): string =>
     />
   )
 
-describe('#1604 MessageItem — delivered/seen receipt', () => {
-  test('renders no receipt when the message carries no delivery status', () => {
-    expect(render(baseMsg())).not.toContain('data-test="message-receipt"')
-  })
-
-  test('delivered renders a receipt that names the recipient and labels it for screen readers', () => {
-    const html = render(baseMsg({ deliveryStatus: { dev: 'delivered' } }))
-    expect(html).toContain('data-status="delivered"')
-    expect(html).toContain('data-recipient="dev"')
-    expect(html).toContain('message-receipt--delivered')
-    expect(html).toContain('delivered to dev')
-  })
-
-  test('seen renders a glanceably DISTINCT receipt from delivered', () => {
-    const delivered = render(baseMsg({ deliveryStatus: { dev: 'delivered' } }))
-    const seen = render(baseMsg({ deliveryStatus: { dev: 'seen' } }))
-    expect(seen).toContain('data-status="seen"')
-    expect(seen).toContain('message-receipt--seen')
-    expect(seen).toContain('seen by dev')
-    expect(seen).not.toBe(delivered)
-  })
-
-  test('each recipient of a multi-addressed message gets its own receipt', () => {
-    const html = render(
-      baseMsg({ to: ['dev', 'pm'], deliveryStatus: { dev: 'seen', pm: 'delivered' } })
-    )
-    expect(html).toContain('data-recipient="dev"')
-    expect(html).toContain('data-recipient="pm"')
+describe('MessageItem — message render', () => {
+  test('renders the message text and sender', () => {
+    const html = render(baseMsg())
+    expect(html).toContain('pick up #1604')
+    expect(html).toContain('data-test="message-row"')
   })
 })

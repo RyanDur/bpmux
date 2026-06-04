@@ -9,7 +9,6 @@ import {
   type ChatMessage,
   type ClientMessage,
   type ConnectionStatus,
-  type DeliveryStatusWire,
   type ServerMessage
 } from './types'
 
@@ -130,20 +129,6 @@ const sendJson = (msg: ClientMessage): void => {
   sock.send(JSON.stringify(msg))
 }
 
-const applyMessageStatus = (
-  messageId: string,
-  recipient: string,
-  status: DeliveryStatusWire
-): void => {
-  let changed = false
-  const messages = state.snapshot.messages.map((m) => {
-    if (m.id !== messageId) return m
-    changed = true
-    return { ...m, deliveryStatus: { ...(m.deliveryStatus ?? {}), [recipient]: status } }
-  })
-  if (changed) patch({ messages })
-}
-
 const handleServerMessage = (raw: string): void => {
   const parseResult = tryCatch(
     () => JSON.parse(raw) as ServerMessage,
@@ -164,14 +149,6 @@ const handleServerMessage = (raw: string): void => {
         break
       }
       if (parsed.message_type === 'state-delta' && parsed.state_delta) {
-        if (parsed.state_delta.domain === 'message_status') {
-          applyMessageStatus(
-            parsed.state_delta.message_id,
-            parsed.state_delta.recipient,
-            parsed.state_delta.status
-          )
-          break
-        }
         patch({ mirror: applyStateDelta(state.snapshot.mirror, parsed.state_delta) })
         break
       }
@@ -185,7 +162,7 @@ const handleServerMessage = (raw: string): void => {
       }
       state.msgCounter += 1
       const chat: ChatMessage = {
-        id: parsed.id ?? `${parsed.ts}-${state.msgCounter}`,
+        id: `${parsed.ts}-${state.msgCounter}`,
         from: parsed.from,
         text: parsed.text,
         ts: parsed.ts,

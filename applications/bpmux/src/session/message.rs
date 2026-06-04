@@ -18,8 +18,6 @@ pub enum MessageType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Message {
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub id: String,
     pub from: String,
     pub text: String,
     pub ts: DateTime<Utc>,
@@ -101,19 +99,6 @@ pub enum StateDeltaPayload {
     },
     #[serde(rename = "board_invalidated")]
     BoardInvalidated { reason: String },
-    #[serde(rename = "message_status")]
-    MessageStatus {
-        message_id: String,
-        recipient: String,
-        status: DeliveryStatus,
-    },
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum DeliveryStatus {
-    Delivered,
-    Seen,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

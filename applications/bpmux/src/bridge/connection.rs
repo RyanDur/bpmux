@@ -10,10 +10,9 @@ use tokio_tungstenite::tungstenite;
 
 use super::{
     WsSink, build_notification_meta, event_subscription, message_type_reaches_llm_stream,
-    validate_meta, ws_send_client,
+    validate_meta,
 };
-use crate::session::message::DeliveryStatus;
-use crate::transport::protocol::{ClientMessage, ServerMessage};
+use crate::transport::protocol::ServerMessage;
 
 pub(crate) async fn run_ws_connection(
     port: u16,
@@ -21,7 +20,6 @@ pub(crate) async fn run_ws_connection(
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
-    delivered_pending: Arc<Mutex<Vec<String>>>,
 ) {
     let ws_url = crate::transport::local_url::ws_url(port, "/ws");
     let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
@@ -100,7 +98,6 @@ pub(crate) async fn run_ws_connection(
             continue;
         }
         if let ServerMessage::Message {
-            id,
             from,
             text,
             ts,
@@ -166,9 +163,6 @@ pub(crate) async fn run_ws_connection(
                         .await;
                     continue;
                 }
-                Some(crate::session::message::StateDeltaPayload::MessageStatus { .. }) => {
-                    continue;
-                }
                 _ => {}
             }
             let from_short = from.split(':').next().unwrap_or(&from);
@@ -194,14 +188,6 @@ pub(crate) async fn run_ws_connection(
                 }
                 Some(recipients) => recipients.iter().any(|r| r == current_name.as_str()),
             };
-            let specifically_addressed = matches!(
-                &to,
-                Some(recipients)
-                    if !recipients
-                        .iter()
-                        .any(|r| r == crate::session::message::BROADCAST_ALL)
-                        && recipients.iter().any(|r| r == current_name.as_str())
-            );
             let channel = match &to {
                 None => "broadcast".to_string(),
                 Some(recipients)
@@ -244,18 +230,6 @@ pub(crate) async fn run_ws_connection(
                 eprintln!("Bridge: failed to send channel notification: {e}");
                 break;
             }
-            if specifically_addressed && !id.is_empty() {
-                delivered_pending.lock().await.push(id.clone());
-                ws_send_client(
-                    &ws_tx_store,
-                    &ClientMessage::MarkReceipt {
-                        message_id: id,
-                        status: DeliveryStatus::Delivered,
-                    },
-                )
-                .await;
-            }
-
             if let Some(directed) = addressee
                 .as_deref()
                 .filter(|a| *a != crate::session::message::BROADCAST_ALL)

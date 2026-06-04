@@ -147,66 +147,6 @@ describe('#1537 wsService — message dedup + live-append subscription', () => {
   })
 })
 
-describe('#1604 wsService — delivered/seen receipts correlate to a message by server id', () => {
-  const statusFrame = (over: Record<string, unknown>): string =>
-    JSON.stringify({
-      type: 'message',
-      from: 'bpmux',
-      text: '',
-      ts: '2026-06-03T00:00:01.000Z',
-      message_type: 'state-delta',
-      state_delta: { domain: 'message_status', ...over }
-    })
-
-  test('a live message adopts its server-assigned id (so receipts can correlate)', () => {
-    ensureWsStarted({ url: 'ws://test' })
-    MockWebSocket.latest().open()
-    MockWebSocket.latest().receive(serverMessage({ id: 'srv-1', to: ['dev'] }))
-    expect(getWsSnapshot().messages[0].id).toBe('srv-1')
-  })
-
-  test('message_status transitions the matched message delivered -> seen, keyed by recipient', () => {
-    ensureWsStarted({ url: 'ws://test' })
-    MockWebSocket.latest().open()
-    MockWebSocket.latest().receive(
-      serverMessage({ id: 'srv-1', text: 'pick up #1604', to: ['dev'] })
-    )
-
-    expect(getWsSnapshot().messages[0].deliveryStatus).toBeUndefined()
-
-    MockWebSocket.latest().receive(
-      statusFrame({ message_id: 'srv-1', recipient: 'dev', status: 'delivered' })
-    )
-    expect(getWsSnapshot().messages[0].deliveryStatus).toEqual({ dev: 'delivered' })
-
-    MockWebSocket.latest().receive(
-      statusFrame({ message_id: 'srv-1', recipient: 'dev', status: 'seen' })
-    )
-    expect(getWsSnapshot().messages[0].deliveryStatus).toEqual({ dev: 'seen' })
-  })
-
-  test('a status delta is NOT itself appended as a chat message', () => {
-    ensureWsStarted({ url: 'ws://test' })
-    MockWebSocket.latest().open()
-    MockWebSocket.latest().receive(serverMessage({ id: 'srv-1', to: ['dev'] }))
-    MockWebSocket.latest().receive(
-      statusFrame({ message_id: 'srv-1', recipient: 'dev', status: 'delivered' })
-    )
-    expect(getWsSnapshot().messages.length).toBe(1)
-  })
-
-  test('a status delta for an unknown message id is a no-op (no crash, no phantom row)', () => {
-    ensureWsStarted({ url: 'ws://test' })
-    MockWebSocket.latest().open()
-    MockWebSocket.latest().receive(serverMessage({ id: 'srv-1', to: ['dev'] }))
-    MockWebSocket.latest().receive(
-      statusFrame({ message_id: 'does-not-exist', recipient: 'dev', status: 'seen' })
-    )
-    expect(getWsSnapshot().messages.length).toBe(1)
-    expect(getWsSnapshot().messages[0].deliveryStatus).toBeUndefined()
-  })
-})
-
 describe('#1537 wsService — history load-once + merge (no live-notify on history)', () => {
   test('history is fetched once at init and merged into messages; a duplicate start does NOT refetch', async () => {
     historyResponse = [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }]

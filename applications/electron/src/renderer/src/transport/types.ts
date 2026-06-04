@@ -5,7 +5,6 @@ export interface ServerWelcome {
 
 export interface ServerChatMessage {
   type: 'message'
-  id?: string
   from: string
   text: string
   ts: string
@@ -15,8 +14,6 @@ export interface ServerChatMessage {
   state_delta?: StateDeltaPayload | null
   state_snapshot?: StateSnapshotPayload | null
 }
-
-export type DeliveryStatusWire = 'delivered' | 'seen'
 
 export interface ReactionAggregateWire {
   message_key: string
@@ -59,12 +56,6 @@ export type StateDeltaPayload =
       blockers: { number: number; title: string; state: string }[]
     }
   | { domain: 'board_invalidated'; reason: string }
-  | {
-      domain: 'message_status'
-      message_id: string
-      recipient: string
-      status: DeliveryStatusWire
-    }
 
 export interface ReactionsChannelSnapshot {
   channel: string
@@ -157,7 +148,6 @@ export interface ChatMessage {
   to?: string[] | null
   addressee?: string | null
   messageType?: string | null
-  deliveryStatus?: Record<string, DeliveryStatusWire>
 }
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'

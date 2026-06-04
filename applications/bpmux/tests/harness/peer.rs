@@ -5,7 +5,6 @@
 
 use std::time::Duration;
 
-use bpmux::session::message::{DeliveryStatus, StateDeltaPayload};
 use bpmux::transport::protocol::ServerMessage;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
@@ -156,50 +155,6 @@ impl WsPeer {
         })
         .await
         .unwrap_or(None)
-    }
-
-    pub async fn recv_message_status(
-        &mut self,
-        timeout: Duration,
-    ) -> Option<MessageStatusObserved> {
-        tokio::time::timeout(timeout, async {
-            loop {
-                let raw = self.next_text().await?;
-                if let Some(observed) = extract_message_status(&raw) {
-                    return Some(observed);
-                }
-            }
-        })
-        .await
-        .unwrap_or(None)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MessageStatusObserved {
-    pub message_id: String,
-    pub recipient: String,
-    pub status: DeliveryStatus,
-}
-
-fn extract_message_status(raw: &str) -> Option<MessageStatusObserved> {
-    match serde_json::from_str::<ServerMessage>(raw).ok()? {
-        ServerMessage::Message {
-            state_delta: Some(delta),
-            ..
-        } => match *delta {
-            StateDeltaPayload::MessageStatus {
-                message_id,
-                recipient,
-                status,
-            } => Some(MessageStatusObserved {
-                message_id,
-                recipient,
-                status,
-            }),
-            _ => None,
-        },
-        _ => None,
     }
 }
 

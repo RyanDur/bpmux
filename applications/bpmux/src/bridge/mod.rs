@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use futures::SinkExt;
 use rmcp::service::Peer;
 use rmcp::{ErrorData, RoleServer, ServiceExt};
 use tokio::sync::Mutex;
@@ -59,8 +58,6 @@ pub use tools_stories::BOARD_INVALIDATE_MARKER;
 pub use tools_stories::SYNC_STATUS_UPDATE_MARKER;
 pub use tools_stories::parse_acceptance_test_path;
 
-use crate::transport::protocol::ClientMessage;
-
 type McpError = ErrorData;
 type WsSink = futures::stream::SplitSink<
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
@@ -74,17 +71,6 @@ pub struct BridgeServer {
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
-    delivered_pending: Arc<Mutex<Vec<String>>>,
-}
-
-pub(crate) async fn ws_send_client(ws_tx: &Mutex<Option<WsSink>>, msg: &ClientMessage) {
-    let Ok(json) = serde_json::to_string(msg) else {
-        return;
-    };
-    let mut tx = ws_tx.lock().await;
-    if let Some(ref mut tx) = *tx {
-        let _ = tx.send(tungstenite::Message::Text(json.into())).await;
-    }
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -105,7 +91,6 @@ impl BridgeServer {
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             subscriptions: event_subscription::SubscriptionRegistry::new(),
-            delivered_pending: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
