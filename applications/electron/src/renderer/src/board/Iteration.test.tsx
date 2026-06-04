@@ -349,3 +349,44 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     expect(closedCardChunk).not.toContain('data-test="iteration-grip"')
   })
 })
+
+describe('#1517 iteration-row redesign — summary toggle-only + grip-sibling-right + navigate-in-body', () => {
+  const summaryOf = (html: string): string => {
+    const start = html.indexOf('<summary class="board-iteration-summary"')
+    const end = html.indexOf('</summary>', start)
+    return html.slice(start, end)
+  }
+
+  test('summary is toggle-only — no nested interactive element (grip + navigate moved out)', () => {
+    const lyra = iterationStory({ number: 9000, title: 'Iteration Lyra', gh_state: 'open' })
+    const html = renderToStaticMarkup(<Iteration stories={[lyra]} onOpen={() => {}} />)
+    expect(summaryOf(html)).not.toContain('<button')
+  })
+
+  test('grip is a SIBLING of <details> (outside the summary), within the iteration-row parent', () => {
+    const lyra = iterationStory({ number: 9000, title: 'Iteration Lyra', gh_state: 'open' })
+    const html = renderToStaticMarkup(<Iteration stories={[lyra]} onOpen={() => {}} />)
+    expect(html).toContain('class="board-iteration-row"')
+    expect(summaryOf(html)).not.toContain('data-test="iteration-grip"')
+    const gripIdx = html.indexOf('data-test="iteration-grip"')
+    const detailsCloseIdx = html.indexOf('</details>')
+    expect(gripIdx).toBeGreaterThan(detailsCloseIdx)
+  })
+
+  test('navigate (view iteration details) lives in the body, not the summary', () => {
+    const lyra = iterationStory({ number: 9000, title: 'Iteration Lyra', gh_state: 'open' })
+    const html = renderToStaticMarkup(<Iteration stories={[lyra]} onOpen={() => {}} />)
+    expect(html).toContain('view iteration details')
+    expect(summaryOf(html)).not.toContain('view iteration details')
+  })
+
+  test('grip is a keyboard-operable reorder control (tabindex=0 + aria-keyshortcuts)', () => {
+    const lyra = iterationStory({ number: 9000, title: 'Iteration Lyra', gh_state: 'open' })
+    const html = renderToStaticMarkup(<Iteration stories={[lyra]} onOpen={() => {}} />)
+    const gripIdx = html.indexOf('data-test="iteration-grip"')
+    const gripTagStart = html.lastIndexOf('<button', gripIdx)
+    const gripTag = html.slice(gripTagStart, html.indexOf('>', gripIdx))
+    expect(gripTag).toContain('tabindex="0"')
+    expect(gripTag).toContain('aria-keyshortcuts="Control+Shift+ArrowUp Control+Shift+ArrowDown"')
+  })
+})

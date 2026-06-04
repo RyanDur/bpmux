@@ -64,13 +64,12 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
     const dracoCard = await rendered.findByTestId('board-iteration-8402', undefined, {
       timeout: 15_000
     })
-    const dracoOpenButton = within(dracoCard).getByTestId(
-      'board-iteration-open-button'
-    ) as HTMLButtonElement
-    expect(dracoOpenButton).toBeTruthy()
+    const dracoRow = dracoCard.closest('.board-iteration-row') as HTMLElement
+    const dracoGrip = within(dracoRow).getByTestId('iteration-grip') as HTMLButtonElement
+    expect(dracoGrip).toBeTruthy()
 
     const user = userEvent.setup()
-    await pressReorderShortcut(user, dracoOpenButton, 'ArrowUp')
+    await pressReorderShortcut(user, dracoGrip, 'ArrowUp')
 
     await waitFor(
       async () => {

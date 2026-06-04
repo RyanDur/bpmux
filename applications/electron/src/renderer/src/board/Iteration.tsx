@@ -68,116 +68,129 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     const isCurrent = iteration.number === currentIterationNumber
     return (
       <li key={iteration.number} className="board-iteration-item">
-        <details
-          className="board-iteration-card"
-          data-test={boardIterationTestId(iteration.number)}
-          data-iteration-kind="named"
-          data-iteration-name={themeName}
-          data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
-          data-current-iteration={isCurrent ? 'true' : undefined}
-          data-dragging={draggedIterationNumber === iteration.number ? 'true' : undefined}
-          data-drag-rejected={dragRejectedIterationNumber === iteration.number ? 'true' : undefined}
-          open={open}
-          onDragOver={(event) => {
-            if (iteration.gh_state === 'closed') {
-              if (
-                event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER) ||
-                event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
-              ) {
-                event.dataTransfer.dropEffect = 'none'
-                setDragRejectedIterationNumber(iteration.number)
+        <article className="board-iteration-row">
+          <details
+            className="board-iteration-card"
+            data-test={boardIterationTestId(iteration.number)}
+            data-iteration-kind="named"
+            data-iteration-name={themeName}
+            data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
+            data-current-iteration={isCurrent ? 'true' : undefined}
+            data-dragging={draggedIterationNumber === iteration.number ? 'true' : undefined}
+            data-drag-rejected={
+              dragRejectedIterationNumber === iteration.number ? 'true' : undefined
+            }
+            open={open}
+            onDragOver={(event) => {
+              if (iteration.gh_state === 'closed') {
+                if (
+                  event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER) ||
+                  event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
+                ) {
+                  event.dataTransfer.dropEffect = 'none'
+                  setDragRejectedIterationNumber(iteration.number)
+                }
+                return
               }
-              return
-            }
-            if (event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)) {
+              if (event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)) {
+                event.preventDefault()
+                event.dataTransfer.dropEffect = 'move'
+              }
+            }}
+            onDragLeave={() => {
+              if (dragRejectedIterationNumber === iteration.number) {
+                setDragRejectedIterationNumber(null)
+              }
+            }}
+            onDrop={(event) => {
+              const raw = event.dataTransfer.getData(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
+              if (!raw) return
               event.preventDefault()
-              event.dataTransfer.dropEffect = 'move'
-            }
-          }}
-          onDragLeave={() => {
-            if (dragRejectedIterationNumber === iteration.number) {
-              setDragRejectedIterationNumber(null)
-            }
-          }}
-          onDrop={(event) => {
-            const raw = event.dataTransfer.getData(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
-            if (!raw) return
-            event.preventDefault()
-            const payload = JSON.parse(raw) as IterationDragPayload
-            if (payload.iterationNumber === iteration.number) return
-            const targetOrder = positionInIterationOrder(iteration)
-            if (targetOrder === null) return
-            const allOrders = sortedIterations
-              .map((it) => positionInIterationOrder(it))
-              .filter((p): p is number => p !== null)
-            const targetIdx = allOrders.indexOf(targetOrder)
-            if (targetIdx === -1) return
-            const draggedOldOrder = payload.oldOrder
-            if (draggedOldOrder === null) return
-            const mutation = computeIterationOrderMutation({
-              draggedOldPosition: draggedOldOrder,
-              targetMemberPositions: allOrders,
-              targetMemberIndex: targetIdx,
-              targetMembersIncludeDragged: true
-            })
-            if (!mutation) return
-            postLabelMutation(payload.iterationNumber, mutation.add, mutation.remove)
-          }}
-          onToggle={(event) => {
-            collapse.setOpen(key, event.currentTarget.open)
-          }}
-        >
-          <summary className="board-iteration-summary" data-test="board-iteration-summary">
-            {iteration.gh_state !== 'closed' ? (
+              const payload = JSON.parse(raw) as IterationDragPayload
+              if (payload.iterationNumber === iteration.number) return
+              const targetOrder = positionInIterationOrder(iteration)
+              if (targetOrder === null) return
+              const allOrders = sortedIterations
+                .map((it) => positionInIterationOrder(it))
+                .filter((p): p is number => p !== null)
+              const targetIdx = allOrders.indexOf(targetOrder)
+              if (targetIdx === -1) return
+              const draggedOldOrder = payload.oldOrder
+              if (draggedOldOrder === null) return
+              const mutation = computeIterationOrderMutation({
+                draggedOldPosition: draggedOldOrder,
+                targetMemberPositions: allOrders,
+                targetMemberIndex: targetIdx,
+                targetMembersIncludeDragged: true
+              })
+              if (!mutation) return
+              postLabelMutation(payload.iterationNumber, mutation.add, mutation.remove)
+            }}
+            onToggle={(event) => {
+              collapse.setOpen(key, event.currentTarget.open)
+            }}
+          >
+            <summary className="board-iteration-summary" data-test="board-iteration-summary">
+              <StoryTypeGlyph type="iteration" />
+              <small className="board-story-number">#{iteration.number}</small>
+              <b className="board-iteration-title">{iteration.title}</b>
+              {iteration.gh_state === 'closed' && (
+                <small className="board-iteration-closed-badge">(closed)</small>
+              )}
+              <small className="board-iteration-count">({members.length})</small>
+            </summary>
+            <section className="board-iteration-body">
+              <MemberList
+                iteration={iteration}
+                members={members}
+                setPending={setPending}
+                onOpen={onOpen}
+                onReorderAnnounce={onReorderAnnounce}
+              />
               <button
                 type="button"
-                className="board-iteration-grip"
-                data-test={ITERATION_GRIP_TEST_ID}
-                draggable={true}
-                aria-label={`Drag to reorder iteration ${iteration.title}`}
-                tabIndex={-1}
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                }}
-                onDragStart={(event) => {
-                  const payload: IterationDragPayload = {
-                    iterationNumber: iteration.number,
-                    oldOrder: positionInIterationOrder(iteration)
-                  }
-                  event.dataTransfer.setData(
-                    DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF,
-                    JSON.stringify(payload)
-                  )
-                  event.dataTransfer.effectAllowed = 'move'
-                  const details = (event.currentTarget as HTMLElement).closest('details')
-                  if (details && typeof event.dataTransfer.setDragImage === 'function') {
-                    const rect = details.getBoundingClientRect()
-                    event.dataTransfer.setDragImage(
-                      details,
-                      event.clientX - rect.left,
-                      event.clientY - rect.top
-                    )
-                  }
-                  setDraggedIterationNumber(iteration.number)
-                }}
-                onDragEnd={() => setDraggedIterationNumber(null)}
+                className="board-iteration-view-details"
+                data-test={`board-iteration-view-details-${iteration.number}`}
+                onClick={() => onOpen(iteration.number)}
+                aria-label={`view iteration details: #${iteration.number} ${iteration.title}`}
               >
-                <GripIcon />
+                view iteration details →
               </button>
-            ) : null}
+            </section>
+          </details>
+          {iteration.gh_state !== 'closed' ? (
             <button
               type="button"
-              className="board-iteration-open-button"
-              data-test="board-iteration-open-button"
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onOpen(iteration.number)
+              className="board-iteration-grip"
+              data-test={ITERATION_GRIP_TEST_ID}
+              draggable={true}
+              tabIndex={0}
+              aria-label={`Reorder iteration #${iteration.number} ${iteration.title} — drag, or Ctrl+Shift+Up/Down`}
+              aria-keyshortcuts="Control+Shift+ArrowUp Control+Shift+ArrowDown"
+              onDragStart={(event) => {
+                const payload: IterationDragPayload = {
+                  iterationNumber: iteration.number,
+                  oldOrder: positionInIterationOrder(iteration)
+                }
+                event.dataTransfer.setData(
+                  DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF,
+                  JSON.stringify(payload)
+                )
+                event.dataTransfer.effectAllowed = 'move'
+                const row = (event.currentTarget as HTMLElement).closest('.board-iteration-row')
+                if (row && typeof event.dataTransfer.setDragImage === 'function') {
+                  const rect = row.getBoundingClientRect()
+                  event.dataTransfer.setDragImage(
+                    row,
+                    event.clientX - rect.left,
+                    event.clientY - rect.top
+                  )
+                }
+                setDraggedIterationNumber(iteration.number)
               }}
+              onDragEnd={() => setDraggedIterationNumber(null)}
               onKeyDown={(event) => {
                 if (!event.ctrlKey || !event.shiftKey) return
-                if (iteration.gh_state === 'closed') return
                 const direction =
                   event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : null
                 if (direction === null) return
@@ -217,26 +230,11 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   `Moved ${iteration.title} to position ${newIdx + 1} of ${sortedIterations.length} among iterations`
                 )
               }}
-              title={iteration.title}
-              aria-label={`open iteration #${iteration.number} ${iteration.title}`}
             >
-              <StoryTypeGlyph type="iteration" />
-              <small className="board-story-number">#{iteration.number}</small>
-              <b className="board-iteration-title">{iteration.title}</b>
-              {iteration.gh_state === 'closed' && (
-                <small className="board-iteration-closed-badge">(closed)</small>
-              )}
-              <small className="board-iteration-count">({members.length})</small>
+              <GripIcon />
             </button>
-          </summary>
-          <MemberList
-            iteration={iteration}
-            members={members}
-            setPending={setPending}
-            onOpen={onOpen}
-            onReorderAnnounce={onReorderAnnounce}
-          />
-        </details>
+          ) : null}
+        </article>
       </li>
     )
   }

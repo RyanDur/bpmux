@@ -53,7 +53,8 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
     const sirius = await rendered.findByTestId('board-iteration-8101', undefined, {
       timeout: 15_000
     })
-    const siriusGrip = sirius.querySelector('[data-test="iteration-grip"]') as HTMLElement
+    const siriusRow = sirius.closest('.board-iteration-row') as HTMLElement
+    const siriusGrip = siriusRow.querySelector('[data-test="iteration-grip"]') as HTMLElement
     expect(siriusGrip).toBeTruthy()
     const vega = await rendered.findByTestId('board-iteration-8102', undefined, {
       timeout: 15_000
