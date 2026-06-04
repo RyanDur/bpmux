@@ -32,7 +32,7 @@ pub(crate) async fn handle_close_story(
     let disposition = args
         .get("disposition")
         .and_then(|v| v.as_str())
-        .unwrap_or("accept");
+        .unwrap_or("retire");
     let trimmed_reason = reason.trim();
     if trimmed_reason.len() < REASON_CITE_MIN_CHARS {
         let err = serde_json::json!({

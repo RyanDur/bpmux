@@ -534,7 +534,8 @@ async fn close_story_roundtrip_api_board_reflects_closed_state() {
     let close = format!(
         r#"{{
             "number":{target_number},
-            "reason":"close-roundtrip-marker"
+            "reason":"close-roundtrip-marker",
+            "disposition":"accept"
         }}"#
     );
     let resp = post_close_story(router.clone(), &close).await;

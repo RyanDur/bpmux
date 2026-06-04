@@ -522,6 +522,7 @@ pub struct CloseStoryReq {
     pub number: u64,
     pub reason: String,
     pub agent: Option<String>,
+    pub disposition: Option<String>,
 }
 
 pub async fn post_test_close_story(
@@ -543,6 +544,12 @@ pub async fn post_test_close_story(
         serde_json::Value::Number(req.number.into()),
     );
     args.insert("reason".to_string(), serde_json::Value::String(req.reason));
+    if let Some(disposition) = req.disposition {
+        args.insert(
+            "disposition".to_string(),
+            serde_json::Value::String(disposition),
+        );
+    }
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_close_story(args, &agent, Some(refresh_ref)).await {
