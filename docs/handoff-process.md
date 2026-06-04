@@ -40,7 +40,7 @@ Every handoff names four things:
 Honest enforcement-status of the edges above — where a boundary is substrate-GATED (can't drift), SKILL-enforced (invoked), or doc-only (recall-vulnerable → a substrate-enforce candidate). Roles VERIFY their own rows (src-cited, not recalled — a drift here defeats the purpose).
 
 - PM owns board-MUTATIONS → **GATED** PM-only (dev-src-verified): move_story (#1548), close_iteration, add_story_to_iteration, label_story, set/unset_parent_epic, move-with-position.
-- create_story → **GATED, typed carveout** (dev-src-verified, `tools_stories/creation.rs:25`): PM creates any type; **dev creates [Chore]-class only** (enforced via story-type check — gate, not mere convention); designer/others rejected. Reconciles chore-ownership canon: dev authors chores directly, PM files Features/Bugs.
+- create_story → **GATED, typed carveout** (dev-src-verified, `tools_stories/creation.rs` `validate_actor_role_can_create`): PM creates any type; **dev creates [Chore]-class only** (enforced via story-type check — gate, not mere convention); designer/others rejected. Reconciles chore-ownership canon: dev authors chores directly, PM files Features/Bugs.
 - open / designate → **GATED** PM-only (dev-src-verified, `tools_stories/metadata.rs:203` — `require_purpose(&["pm"])`): #1540 shipped explicit current-designation (`designate_current_iteration`; Iteration-only; replaces any prior current; cleared at close). The manual-promote stopgap is retired.
 - PM story-shape (use-case format + domain-purity) → **GATED at create**: pre-filing-audit Check 0.
 - Dev positive work-shape (TDD / vertical-slice / outside-in) → **SKILL-enforced**, not hard-gated (test-before-impl ordering — realistic ceiling) — _[dev]_.

@@ -12,24 +12,12 @@ pub(crate) async fn handle_create_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let workflow = crate::workflow::current_workflow();
-    let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
-    let dev = workflow.role_id_for_purpose("dev").unwrap_or("dev");
-    let actor_role = role_from_name(agent_name);
     let title = args
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
-    let is_chore = crate::board::domain::story_type_from_labels_or_title(&[], title)
-        == crate::board::domain::StoryType::Chore;
-    if actor_role != pm && !(actor_role == dev && is_chore) {
-        return Err(
-            "create_story is pm-lane (dev may author [Chore]-class stories per chore-ownership \
-             canon). If you have a pain to file, surface it in broadcast chat and pm will file \
-             the story."
-                .to_string(),
-        );
-    }
+    let story_type = crate::board::domain::story_type_from_labels_or_title(&[], title);
+    validate_actor_role_can_create(agent_name, story_type)?;
     let user_job = require_nonempty_string(
         args,
         "user_job",
@@ -52,9 +40,7 @@ pub(crate) async fn handle_create_story(
         acceptance_test_path,
         author_body,
     );
-    if crate::board::domain::story_type_from_labels_or_title(&[], title)
-        != crate::board::domain::StoryType::Chore
-    {
+    if story_type != crate::board::domain::StoryType::Chore {
         crate::bridge::atp_substantive_gate::verify_atp_pre_filing(
             &composed_body,
             acceptance_test_path,
@@ -62,59 +48,106 @@ pub(crate) async fn handle_create_story(
         .map_err(|e| e.as_json_string())?;
     }
     let parent_epic = args.get("parent_epic").and_then(|v| v.as_u64());
-    if let Some(r) = refresh {
-        if let Some(epic_number) = parent_epic {
-            let parent = r.story(epic_number).ok_or_else(|| {
-                format!(
-                    "epic #{epic_number} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
-                )
-            })?;
-            if parent.story_type != crate::board::domain::StoryType::Epic {
-                return Err(format!(
-                    "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
-                    parent.story_type
-                ));
-            }
-        }
-        let number = r
-            .create_story(title.to_string(), composed_body.clone(), Vec::new())
-            .await
-            .map_err(|e| format!("create_story failed: {e}"))?;
-        let meta = crate::board::events::EventMeta {
-            actor: crate::transport::ws::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-            peer_id: crate::board::PeerId::local(),
-        };
-        let story_type = crate::board::domain::story_type_from_labels_or_title(&[], title);
-        r.mutate_sync(crate::board::BoardEvent::StoryCreated {
-            meta: meta.clone(),
-            number,
-            title: title.to_string(),
-            body: composed_body,
-            initial_state: crate::board::domain::StoryState::Icebox,
-            story_type,
-        })
-        .map_err(|e| format!("#{number} created but enqueue failed: {e}"))?;
-        if let Some(epic_number) = parent_epic {
-            r.mutate_sync(crate::board::BoardEvent::ParentEpicSet {
-                meta,
-                number,
-                epic_number,
-            })
-            .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
-        }
-        broadcast_board_invalidate(ws_tx).await;
-        return match parent_epic {
-            Some(epic_number) => Ok(format!(
-                "story created: #{number} {title} (under epic #{epic_number})"
-            )),
-            None => Ok(format!("story created: #{number} {title}")),
-        };
-    }
-    Err(
-        "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
-            .into(),
+    let r = refresh.ok_or(
+        "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
+    )?;
+    validate_parent_epic(r, parent_epic)?;
+    let number = create_and_broadcast_story_events(
+        r,
+        agent_name,
+        title,
+        composed_body,
+        story_type,
+        parent_epic,
+        ws_tx,
     )
+    .await?;
+    Ok(match parent_epic {
+        Some(epic_number) => {
+            format!("story created: #{number} {title} (under epic #{epic_number})")
+        }
+        None => format!("story created: #{number} {title}"),
+    })
+}
+
+fn validate_actor_role_can_create(
+    agent_name: &str,
+    story_type: crate::board::domain::StoryType,
+) -> Result<(), String> {
+    let workflow = crate::workflow::current_workflow();
+    let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
+    let dev = workflow.role_id_for_purpose("dev").unwrap_or("dev");
+    let actor_role = role_from_name(agent_name);
+    let is_chore = story_type == crate::board::domain::StoryType::Chore;
+    if actor_role != pm && !(actor_role == dev && is_chore) {
+        return Err(
+            "create_story is pm-lane (dev may author [Chore]-class stories per chore-ownership \
+             canon). If you have a pain to file, surface it in broadcast chat and pm will file \
+             the story."
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn validate_parent_epic(
+    r: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    parent_epic: Option<u64>,
+) -> Result<(), String> {
+    let Some(epic_number) = parent_epic else {
+        return Ok(());
+    };
+    let parent = r.story(epic_number).ok_or_else(|| {
+        format!(
+            "epic #{epic_number} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
+        )
+    })?;
+    if parent.story_type != crate::board::domain::StoryType::Epic {
+        return Err(format!(
+            "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
+            parent.story_type
+        ));
+    }
+    Ok(())
+}
+
+async fn create_and_broadcast_story_events(
+    r: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    agent_name: &str,
+    title: &str,
+    composed_body: String,
+    story_type: crate::board::domain::StoryType,
+    parent_epic: Option<u64>,
+    ws_tx: &Mutex<Option<WsSink>>,
+) -> Result<u64, String> {
+    let number = r
+        .create_story(title.to_string(), composed_body.clone(), Vec::new())
+        .await
+        .map_err(|e| format!("create_story failed: {e}"))?;
+    let meta = crate::board::events::EventMeta {
+        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    r.mutate_sync(crate::board::BoardEvent::StoryCreated {
+        meta: meta.clone(),
+        number,
+        title: title.to_string(),
+        body: composed_body,
+        initial_state: crate::board::domain::StoryState::Icebox,
+        story_type,
+    })
+    .map_err(|e| format!("#{number} created but enqueue failed: {e}"))?;
+    if let Some(epic_number) = parent_epic {
+        r.mutate_sync(crate::board::BoardEvent::ParentEpicSet {
+            meta,
+            number,
+            epic_number,
+        })
+        .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
+    }
+    broadcast_board_invalidate(ws_tx).await;
+    Ok(number)
 }
 
 pub(crate) async fn handle_create_iteration(
