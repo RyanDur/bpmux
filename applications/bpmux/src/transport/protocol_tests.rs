@@ -8,9 +8,10 @@ fn deserializes_identify_without_tool() {
     let json = r#"{"type": "identify", "name": "claude"}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");
     match msg {
-        ClientMessage::Identify { name, tool } => {
+        ClientMessage::Identify { name, tool, cursor } => {
             assert_eq!(name, "claude");
             assert_eq!(tool, None);
+            assert_eq!(cursor, None);
         }
         other => panic!("expected Identify, got {other:?}"),
     }
@@ -21,9 +22,23 @@ fn deserializes_identify_with_tool() {
     let json = r#"{"type": "identify", "name": "claude", "tool": "claude-code"}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");
     match msg {
-        ClientMessage::Identify { name, tool } => {
+        ClientMessage::Identify { name, tool, cursor } => {
             assert_eq!(name, "claude");
             assert_eq!(tool, Some("claude-code".to_string()));
+            assert_eq!(cursor, None);
+        }
+        other => panic!("expected Identify, got {other:?}"),
+    }
+}
+
+#[test]
+fn deserializes_identify_with_cursor() {
+    let json = r#"{"type": "identify", "name": "claude", "cursor": "2026-06-04T06:00:00+00:00"}"#;
+    let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+    match msg {
+        ClientMessage::Identify { name, cursor, .. } => {
+            assert_eq!(name, "claude");
+            assert_eq!(cursor, Some("2026-06-04T06:00:00+00:00".to_string()));
         }
         other => panic!("expected Identify, got {other:?}"),
     }

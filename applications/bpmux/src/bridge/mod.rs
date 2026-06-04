@@ -85,9 +85,7 @@ pub(crate) fn resolve_bridge_name(raw: &str) -> String {
 impl BridgeServer {
     fn new(port: u16, name: String) -> Self {
         let resolved = resolve_bridge_name(&name);
-        let subscriptions = event_subscription::SubscriptionRegistry::with_persistence(
-            event_subscription::subscriptions_path(&resolved),
-        );
+        let subscriptions = event_subscription::SubscriptionRegistry::with_persistence(&resolved);
         Self {
             port,
             name: Arc::new(Mutex::new(resolved)),

@@ -35,9 +35,10 @@ pub(crate) async fn run_ws_connection(
 
     {
         let current_name = name.lock().await.clone();
+        let cursor = subscriptions.cursor().await;
         let mut tx = ws_tx_store.lock().await;
         if let Some(ref mut tx) = *tx {
-            let identify = json!({"type": "identify", "name": current_name, "tool": "claude-code"})
+            let identify = json!({"type": "identify", "name": current_name, "tool": "claude-code", "cursor": cursor})
                 .to_string();
             if let Err(e) = tx.send(tungstenite::Message::Text(identify.into())).await {
                 eprintln!("Bridge: failed to identify: {e}");
@@ -109,6 +110,9 @@ pub(crate) async fn run_ws_connection(
             state_snapshot: _,
         } = msg
         {
+            if state_delta.is_some() {
+                subscriptions.advance_cursor(&ts).await;
+            }
             match state_delta.as_deref() {
                 Some(crate::session::message::StateDeltaPayload::BoardInvalidated { reason }) => {
                     subscriptions

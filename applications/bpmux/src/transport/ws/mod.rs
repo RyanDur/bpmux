@@ -57,7 +57,7 @@ async fn run_ws_session(
     >,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let mut identity = wait_for_identify(&mut tx, &mut rx).await?;
+    let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
     session.peer_connected();
     session.roster_join(&identity);
     dispatch_roster_join(&orchestrator, &identity).await;
@@ -75,6 +75,17 @@ async fn run_ws_session(
     send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;
+    if let Some(cursor) = replay_cursor
+        && let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(&cursor)
+        && let Ok(messages) = session.read_messages()
+    {
+        let cursor_ts = parsed.with_timezone(&chrono::Utc);
+        for msg in messages {
+            if msg.state_delta.is_some() && msg.ts > cursor_ts && should_deliver(&msg, &identity) {
+                send_json(&mut tx, &ServerMessage::from(msg)).await?;
+            }
+        }
+    }
     let (pty_tx, mut pty_rx) = tokio::sync::mpsc::unbounded_channel::<(String, Vec<u8>)>();
     let mut pty_readers: std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>> =
         std::collections::HashMap::new();
@@ -165,14 +176,14 @@ async fn run_ws_session(
 async fn wait_for_identify(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     rx: &mut SplitStream<WebSocket>,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(String, Option<String>), Box<dyn std::error::Error + Send + Sync>> {
     let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         while let Some(Ok(msg)) = rx.next().await {
             if let WsMessage::Text(text) = msg {
                 match serde_json::from_str::<ClientMessage>(&text) {
-                    Ok(ClientMessage::Identify { name, tool }) => {
+                    Ok(ClientMessage::Identify { name, tool, cursor }) => {
                         let tool_name = tool.unwrap_or_else(|| "ws".to_string());
-                        return Ok(format!("{name}:{tool_name}"));
+                        return Ok((format!("{name}:{tool_name}"), cursor));
                     }
                     Ok(_) => {
                         send_json(

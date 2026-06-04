@@ -40,6 +40,31 @@ pub(crate) fn subscriptions_path(name: &str) -> Option<PathBuf> {
     Some(dir.join(format!("{}.json", sanitize_name(name))))
 }
 
+fn cursor_path(name: &str) -> Option<PathBuf> {
+    let dir = crate::session::log::default_sessions_base()
+        .ok()?
+        .join("bridge-subscriptions");
+    Some(dir.join(format!("{}.cursor", sanitize_name(name))))
+}
+
+fn load_cursor(path: &Path) -> Option<String> {
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+fn write_cursor(path: &Path, cursor: &str) {
+    let Some(parent) = path.parent() else { return };
+    if std::fs::create_dir_all(parent).is_err() {
+        return;
+    }
+    let tmp = path.with_extension("cursor.tmp");
+    if std::fs::write(&tmp, cursor).is_ok() {
+        let _ = std::fs::rename(&tmp, path);
+    }
+}
+
 fn load_persisted(path: &Path) -> Vec<PersistedSubscription> {
     match std::fs::read_to_string(path) {
         Ok(body) => serde_json::from_str(&body).unwrap_or_default(),
@@ -84,29 +109,60 @@ fn snapshot(subs: &HashMap<String, Subscription>) -> Vec<PersistedSubscription> 
 pub(crate) struct SubscriptionRegistry {
     subs: Arc<Mutex<HashMap<String, Subscription>>>,
     persist_path: Option<PathBuf>,
+    cursor: Arc<Mutex<Option<String>>>,
+    cursor_path: Option<PathBuf>,
 }
 
 impl SubscriptionRegistry {
-    pub(crate) fn with_persistence(path: Option<PathBuf>) -> Self {
-        let Some(path) = path else {
-            return Self::default();
-        };
+    pub(crate) fn with_persistence(name: &str) -> Self {
+        let subs_path = subscriptions_path(name);
+        let cursor_path = cursor_path(name);
         let mut map = HashMap::new();
-        for persisted in load_persisted(&path) {
-            let (tx, rx) = unbounded_channel();
-            map.insert(
-                persisted.id,
-                Subscription {
-                    event_class: persisted.event_class,
-                    filter: persisted.filter,
-                    tx,
-                    rx: Arc::new(Mutex::new(rx)),
-                },
-            );
+        if let Some(path) = &subs_path {
+            for persisted in load_persisted(path) {
+                let (tx, rx) = unbounded_channel();
+                map.insert(
+                    persisted.id,
+                    Subscription {
+                        event_class: persisted.event_class,
+                        filter: persisted.filter,
+                        tx,
+                        rx: Arc::new(Mutex::new(rx)),
+                    },
+                );
+            }
         }
+        let cursor = cursor_path.as_ref().and_then(|p| load_cursor(p));
         Self {
             subs: Arc::new(Mutex::new(map)),
-            persist_path: Some(path),
+            persist_path: subs_path,
+            cursor: Arc::new(Mutex::new(cursor)),
+            cursor_path,
+        }
+    }
+
+    pub(crate) async fn cursor(&self) -> Option<String> {
+        self.cursor.lock().await.clone()
+    }
+
+    pub(crate) async fn advance_cursor(&self, ts: &str) {
+        {
+            let mut cursor = self.cursor.lock().await;
+            *cursor = Some(ts.to_string());
+        }
+        if let Some(path) = &self.cursor_path {
+            write_cursor(path, ts);
+        }
+    }
+
+    async fn init_cursor_floor(&self) {
+        let mut cursor = self.cursor.lock().await;
+        if cursor.is_none() {
+            let now = chrono::Utc::now().to_rfc3339();
+            if let Some(path) = &self.cursor_path {
+                write_cursor(path, &now);
+            }
+            *cursor = Some(now);
         }
     }
 
@@ -129,6 +185,7 @@ impl SubscriptionRegistry {
         if let (Some(path), Some(records)) = (&self.persist_path, records) {
             write_persisted(path, &records);
         }
+        self.init_cursor_floor().await;
         id
     }
 
