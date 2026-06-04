@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
@@ -12,6 +14,53 @@ struct Subscription {
     rx: Arc<Mutex<UnboundedReceiver<Value>>>,
 }
 
+#[derive(Serialize, Deserialize)]
+struct PersistedSubscription {
+    id: String,
+    event_class: String,
+    filter: Option<Map<String, Value>>,
+}
+
+fn sanitize_name(name: &str) -> String {
+    name.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn subscriptions_path(name: &str) -> Option<PathBuf> {
+    let dir = crate::session::log::default_sessions_base()
+        .ok()?
+        .join("bridge-subscriptions");
+    Some(dir.join(format!("{}.json", sanitize_name(name))))
+}
+
+fn load_persisted(path: &Path) -> Vec<PersistedSubscription> {
+    match std::fs::read_to_string(path) {
+        Ok(body) => serde_json::from_str(&body).unwrap_or_default(),
+        Err(_) => Vec::new(),
+    }
+}
+
+fn write_persisted(path: &Path, records: &[PersistedSubscription]) {
+    let Some(parent) = path.parent() else { return };
+    if std::fs::create_dir_all(parent).is_err() {
+        return;
+    }
+    let Ok(body) = serde_json::to_string_pretty(records) else {
+        return;
+    };
+    let tmp = path.with_extension("json.tmp");
+    if std::fs::write(&tmp, body).is_ok() {
+        let _ = std::fs::rename(&tmp, path);
+    }
+}
+
 fn filter_matches(filter: &Option<Map<String, Value>>, payload: &Value) -> bool {
     match filter {
         None => true,
@@ -21,33 +70,80 @@ fn filter_matches(filter: &Option<Map<String, Value>>, payload: &Value) -> bool 
     }
 }
 
+fn snapshot(subs: &HashMap<String, Subscription>) -> Vec<PersistedSubscription> {
+    subs.iter()
+        .map(|(id, sub)| PersistedSubscription {
+            id: id.clone(),
+            event_class: sub.event_class.clone(),
+            filter: sub.filter.clone(),
+        })
+        .collect()
+}
+
 #[derive(Clone, Default)]
 pub(crate) struct SubscriptionRegistry {
     subs: Arc<Mutex<HashMap<String, Subscription>>>,
+    persist_path: Option<PathBuf>,
 }
 
 impl SubscriptionRegistry {
-    pub(crate) fn new() -> Self {
-        Self::default()
+    pub(crate) fn with_persistence(path: Option<PathBuf>) -> Self {
+        let Some(path) = path else {
+            return Self::default();
+        };
+        let mut map = HashMap::new();
+        for persisted in load_persisted(&path) {
+            let (tx, rx) = unbounded_channel();
+            map.insert(
+                persisted.id,
+                Subscription {
+                    event_class: persisted.event_class,
+                    filter: persisted.filter,
+                    tx,
+                    rx: Arc::new(Mutex::new(rx)),
+                },
+            );
+        }
+        Self {
+            subs: Arc::new(Mutex::new(map)),
+            persist_path: Some(path),
+        }
     }
 
     async fn subscribe(&self, event_class: &str, filter: Option<Map<String, Value>>) -> String {
         let id = uuid::Uuid::new_v4().to_string();
         let (tx, rx) = unbounded_channel();
-        self.subs.lock().await.insert(
-            id.clone(),
-            Subscription {
-                event_class: event_class.to_string(),
-                filter,
-                tx,
-                rx: Arc::new(Mutex::new(rx)),
-            },
-        );
+        let records = {
+            let mut subs = self.subs.lock().await;
+            subs.insert(
+                id.clone(),
+                Subscription {
+                    event_class: event_class.to_string(),
+                    filter,
+                    tx,
+                    rx: Arc::new(Mutex::new(rx)),
+                },
+            );
+            self.persist_path.is_some().then(|| snapshot(&subs))
+        };
+        if let (Some(path), Some(records)) = (&self.persist_path, records) {
+            write_persisted(path, &records);
+        }
         id
     }
 
     async fn unsubscribe(&self, subscription_id: &str) -> bool {
-        self.subs.lock().await.remove(subscription_id).is_some()
+        let records = {
+            let mut subs = self.subs.lock().await;
+            if subs.remove(subscription_id).is_none() {
+                return false;
+            }
+            self.persist_path.is_some().then(|| snapshot(&subs))
+        };
+        if let (Some(path), Some(records)) = (&self.persist_path, records) {
+            write_persisted(path, &records);
+        }
+        true
     }
 
     async fn receiver(
