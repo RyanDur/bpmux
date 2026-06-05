@@ -1,10 +1,8 @@
 import type { ChatMessage } from '../transport/types'
-import { classOf } from '../hooks/useMessageFilter'
 import { PRESENCE } from '../hooks/usePresence'
 import type { AggregatedReaction } from '../hooks/useReactions'
 import { roleColorFor } from '../roles/roleColor'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
-import ClassGlyph from './ClassGlyph'
 import MessageBody from './MessageBody'
 import Reactions, { ReactionAddButton } from './Reactions'
 import UnfurlCards from './UnfurlCards'
@@ -120,7 +118,6 @@ const MessageItem = ({
           </time>
         )}
         <section className="message-body">
-          <ClassGlyph cls={classOf(m.messageType)} />
           <MessageBody text={m.text} knownRoles={mentionRoles} onMention={onMention} />
           <UnfurlCards text={m.text} apiBase={apiBase} authToken={authToken} />
           {onToggleReaction &&

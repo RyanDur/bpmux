@@ -96,7 +96,7 @@ test.describe('desk-check #349 richer filter', () => {
     await app.close()
   })
 
-  test('toggle bpmux ON: pill becomes active + bpmux glyph renders on system message', async () => {
+  test('toggle bpmux ON: pill becomes active', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
@@ -106,12 +106,8 @@ test.describe('desk-check #349 richer filter', () => {
     await bpmuxPill.click()
     await expect(bpmuxPill).toHaveAttribute('data-state', 'on')
 
-    await expect(
-      win.locator('[data-test="message-class-glyph"][data-class="bpmux"]').first()
-    ).toBeVisible()
-
     await win.locator('[data-test="chat-region"]').screenshot({
-      path: join(EVIDENCE_DIR, '11-filter-bpmux-on-glyph.png')
+      path: join(EVIDENCE_DIR, '11-filter-bpmux-on.png')
     })
 
     await app.close()

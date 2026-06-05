@@ -41,7 +41,6 @@ Captured 2026-05-20 23:43 UTC as Slice 1 of Epic #1477 (story #1478). Establishe
 | `board/BoardResizeHandle.tsx` | 1 | Caelum Slice 4 |
 | `board/ReworkGlyph.tsx` | 1 | Caelum Slice 4 / 6 |
 | `board/UnscheduledList.tsx` | 1 | Caelum Slice 4 |
-| `chat/ClassGlyph.tsx` | 1 | Caelum #1456-rework |
 | `chat/Input.tsx` | 1 | Caelum Slice 3 / 8 |
 | `chat/MessageBody.tsx` | 1 | Caelum Slice 3 |
 | `chat/MessageList.tsx` | 1 | Caelum Slice 3 |

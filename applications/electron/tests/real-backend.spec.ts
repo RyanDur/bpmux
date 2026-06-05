@@ -248,12 +248,6 @@ test.describe('real-backend', () => {
         'on'
       )
 
-      const eventsGlyph = win
-        .locator('[data-test="message-class-glyph"][data-class="events"]')
-        .first()
-      await expect(eventsGlyph).toHaveAttribute('aria-label', 'events')
-      expect(await eventsGlyph.evaluate((el) => el.tagName.toLowerCase())).toBe('svg')
-
       await app.close()
     }
 
