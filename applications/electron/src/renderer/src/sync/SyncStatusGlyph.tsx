@@ -9,31 +9,16 @@ import {
   subscribeSyncStatus,
   type SyncStatusReport
 } from './syncStatusService'
-
-type SyncState =
-  | 'connected'
-  | 'syncing'
-  | 'offline-queued'
-  | 'drained-permanent-failure'
-  | 'recovering'
-  | 'stale'
-  | 'startup-fail'
-
-const deriveState = (report: SyncStatusReport | null): SyncState => {
-  if (!report) return 'connected'
-  if (report.dropped_events.length > 0) return 'drained-permanent-failure'
-  if (report.recovering_from_corruption) return 'recovering'
-  if (report.startup_fail) return 'startup-fail'
-  if (report.pending_events > 0 && report.last_error !== null) return 'offline-queued'
-  if (report.pending_events > 0) return 'syncing'
-  if (report.stale) return 'stale'
-  return 'connected'
-}
+import { type SyncState, deriveState } from './syncState'
 
 const stateGlyph = (state: SyncState): string => {
   switch (state) {
     case 'connected':
       return '●'
+    case 'loading':
+      return '○'
+    case 'unreachable':
+      return '?'
     case 'syncing':
       return '◌'
     case 'offline-queued':
@@ -53,6 +38,10 @@ const stateAriaLabel = (state: SyncState, count: number): string => {
   switch (state) {
     case 'connected':
       return 'Sync state: connected'
+    case 'loading':
+      return 'Sync state: loading — awaiting first report'
+    case 'unreachable':
+      return 'Sync state: unknown — sync status unreachable'
     case 'syncing':
       return `Sync state: syncing ${count} pending`
     case 'offline-queued':
@@ -134,7 +123,7 @@ const SyncStatusGlyph = ({ apiBase, authToken, syncStatusTick }: Props): React.J
   const report = snapshot.report
   const error = apiBase ? snapshot.error : 'no backend'
 
-  const state = deriveState(report)
+  const state = deriveState(report, error)
   const count =
     state === 'drained-permanent-failure'
       ? (report?.dropped_events.length ?? 0)

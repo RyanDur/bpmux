@@ -25,6 +25,14 @@
     color: var(--accent-success);
   }
 
+  &.sync-status-glyph--loading {
+    color: var(--fg-dim);
+  }
+
+  &.sync-status-glyph--unreachable {
+    color: var(--accent-warning);
+  }
+
   &.sync-status-glyph--syncing {
     color: var(--fg-secondary);
   }
