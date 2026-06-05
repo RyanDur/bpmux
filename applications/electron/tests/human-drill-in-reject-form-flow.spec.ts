@@ -82,6 +82,11 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
 
       const noteInput = win.locator('[data-test="drill-in-reject-note"]')
       await expect(noteInput).toBeVisible()
+      await expect(win.locator('#drill-in-reject-title')).toHaveText('Reject story')
+      await expect(win.locator('dialog.drill-in-reject-form')).toHaveAttribute(
+        'aria-labelledby',
+        'drill-in-reject-title'
+      )
       const sendButton = win.locator('[data-test="drill-in-reject-send"]')
       await expect(sendButton).toBeDisabled()
 

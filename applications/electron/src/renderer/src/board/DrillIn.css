@@ -258,11 +258,20 @@
 
   & .drill-in-reject-form {
     border: 1px solid var(--border-subtle);
-    background: var(--bg-base);
-    padding: var(--space-12);
+    border-radius: 8px;
+    background: var(--bg-elevated);
+    box-shadow: 0 8px 32px rgb(0 0 0 / 45%);
+    padding: var(--space-16);
     margin: auto;
     max-width: 32rem;
     max-height: none;
+  }
+
+  & .drill-in-reject-title {
+    margin: 0;
+    font-size: var(--font-size-15);
+    font-weight: 600;
+    color: var(--fg-primary);
   }
 
   & .drill-in-reject-form::backdrop {
@@ -272,7 +281,7 @@
   & .drill-in-reject-form[open] {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-12);
     opacity: 1;
     transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
 
@@ -285,7 +294,6 @@
     opacity: 0;
     transition: opacity var(--motion-duration-fast) var(--motion-ease-in);
   }
-
 
   & .drill-in-bypass {
     border-top: 1px solid var(--border-subtle);
@@ -313,19 +321,17 @@
     gap: var(--space-4);
 
     & small {
-      color: var(--fg-dim);
+      color: var(--fg-secondary);
       font-size: var(--font-size-12);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
     }
 
     & textarea {
       resize: vertical;
-      min-height: 64px;
+      min-height: 80px;
       max-height: 160px;
       background: var(--bg-highlighted);
       border: 1px solid var(--border-subtle);
-      border-radius: 4px;
+      border-radius: 6px;
       padding: var(--space-6) var(--space-8);
       font-size: var(--font-size-13);
       line-height: 1.5;
@@ -333,9 +339,14 @@
       outline: none;
 
       &:focus {
-        border-color: var(--border-strong);
+        border-color: var(--accent-brand);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-brand) 30%, transparent);
       }
     }
+  }
+
+  & .drill-in-reject-actions {
+    justify-content: flex-end;
   }
 
   & .drill-in-btn {
@@ -345,7 +356,10 @@
     font-weight: 500;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+    transition:
+      background 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease;
 
     &:disabled {
       opacity: 0.5;

@@ -185,7 +185,7 @@ const DrillInActions = ({
       <dialog
         ref={rejectDialogRef}
         className="drill-in-reject-form"
-        aria-label="Reject story"
+        aria-labelledby="drill-in-reject-title"
         onClose={() => {
           if (mode === 'rejecting') setMode('idle')
         }}
@@ -196,8 +196,11 @@ const DrillInActions = ({
             void handleRejectSend()
           }}
         >
+          <h2 id="drill-in-reject-title" className="drill-in-reject-title">
+            Reject story
+          </h2>
           <label className="drill-in-reject-label">
-            <small>Rejection note (required)</small>
+            <small>Reason (sent to the team)</small>
             <textarea
               ref={textareaRef}
               value={note}
@@ -208,7 +211,7 @@ const DrillInActions = ({
               data-test="drill-in-reject-note"
             />
           </label>
-          <menu className="drill-in-action-row">
+          <menu className="drill-in-action-row drill-in-reject-actions">
             <li>
               <button
                 type="submit"
