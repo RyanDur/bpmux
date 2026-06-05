@@ -306,12 +306,6 @@
     font-weight: 700;
     color: var(--bg-base);
     user-select: none;
-    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
-    opacity: 1;
-
-    @starting-style {
-      opacity: 0;
-    }
   }
 
   & .message-avatar--square {
