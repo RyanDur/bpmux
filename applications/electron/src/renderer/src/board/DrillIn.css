@@ -320,12 +320,12 @@
     flex-direction: column;
     gap: var(--space-4);
 
-    & small {
+    & .drill-in-reject-field-label {
       color: var(--fg-secondary);
       font-size: var(--font-size-12);
     }
 
-    & textarea {
+    & .drill-in-reject-textarea {
       resize: vertical;
       min-height: 80px;
       max-height: 160px;

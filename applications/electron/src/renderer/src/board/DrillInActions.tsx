@@ -200,9 +200,10 @@ const DrillInActions = ({
             Reject story
           </h2>
           <label className="drill-in-reject-label">
-            <small>Reason (sent to the team)</small>
+            <small className="drill-in-reject-field-label">Reason (sent to the team)</small>
             <textarea
               ref={textareaRef}
+              className="drill-in-reject-textarea"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               onKeyDown={handleTextareaKeyDown}
@@ -214,22 +215,22 @@ const DrillInActions = ({
           <menu className="drill-in-action-row drill-in-reject-actions">
             <li>
               <button
-                type="submit"
-                className="drill-in-btn drill-in-btn--primary"
-                disabled={busy !== null || note.trim().length === 0}
-                data-test="drill-in-reject-send"
-              >
-                {busy === 'reject' ? 'Sending…' : 'Send'}
-              </button>
-            </li>
-            <li>
-              <button
                 type="button"
                 className="drill-in-btn drill-in-btn--ghost"
                 disabled={busy !== null}
                 onClick={() => setMode('idle')}
               >
                 Cancel
+              </button>
+            </li>
+            <li>
+              <button
+                type="submit"
+                className="drill-in-btn drill-in-btn--primary"
+                disabled={busy !== null || note.trim().length === 0}
+                data-test="drill-in-reject-send"
+              >
+                {busy === 'reject' ? 'Sending…' : 'Send'}
               </button>
             </li>
           </menu>
