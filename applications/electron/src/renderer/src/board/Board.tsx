@@ -7,6 +7,8 @@ import BoardTabs from './BoardTabs'
 import { useBoardData } from './useBoardData'
 import { useBoardFetch } from './useBoardFetch'
 import { useBoardReorder } from './useBoardReorder'
+import { findCurrentIteration } from './currentIteration'
+import { themeNameFromTitle } from './labelSchema'
 import { GROUP_ORDER, type BoardStory, type ColumnState } from './types'
 import './Board.css'
 
@@ -62,6 +64,10 @@ const Board = ({
 
   const { stories, epics, epicTitleByNumber, iterationContainerStories, grouped, navOrder } =
     useBoardData(data)
+
+  const currentIteration = findCurrentIteration(stories)
+  const currentIterationName =
+    currentIteration !== null ? themeNameFromTitle(currentIteration.title) : null
 
   const effectiveSelected =
     selectedNumber !== null && navOrder.includes(selectedNumber)
@@ -176,12 +182,17 @@ const Board = ({
       inert={hidden ? true : undefined}
     >
       <header className="board-header">
+        {currentIterationName !== null && (
+          <h2 className="board-iteration-name" data-test="board-header-iteration">
+            {currentIterationName}
+          </h2>
+        )}
+        <small className="board-title">Board</small>
         <SyncStatusGlyph
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
           syncStatusTick={syncStatusTick}
         />
-        <h2 className="board-title">Board</h2>
         {usingMock ? (
           <small
             className="board-mock-flag"

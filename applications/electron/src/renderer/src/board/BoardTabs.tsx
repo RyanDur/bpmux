@@ -7,7 +7,6 @@ import { useTabStorage } from '../lib/useTabStorage'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { epicNumbersInIteration } from './currentIteration'
 import { deriveNowView } from './deriveNowView'
-import { themeNameFromTitle } from './labelSchema'
 import {
   GROUP_ORDER,
   isActiveEpic,
@@ -141,10 +140,6 @@ const BoardTabs = ({
     }
     return (
       <section className="board-tabpanel-content" data-test="board-tabpanel-now-content">
-        <header className="board-now-anchor" data-test="board-now-iteration-anchor">
-          <small className="board-now-anchor-label">Iteration</small>
-          <b className="board-now-anchor-title">{themeNameFromTitle(currentIteration.title)}</b>
-        </header>
         <Epic epics={currentIterationEpics} stories={stories} onOpen={onOpen} />
         {groupsFor(NOW_STATES).map((group) =>
           renderGroup(

@@ -39,6 +39,13 @@
     border-bottom: 1px solid var(--border-subtle);
   }
 
+  & .board-iteration-name {
+    flex: 1;
+    color: var(--fg-primary);
+    font-size: var(--font-size-15);
+    font-weight: 600;
+  }
+
   & .board-title {
     color: var(--fg-dim);
     text-transform: uppercase;

@@ -106,9 +106,9 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       expect(designate.ok, JSON.stringify(designate.json)).toBe(true)
 
       await switchToTab(win, 'now')
-      const nowAnchor = win.locator('[data-test="board-now-iteration-anchor"]')
-      await expect(nowAnchor).toBeVisible({ timeout: 15_000 })
-      await expect(nowAnchor.locator('.board-now-anchor-title')).toContainText(themeA, {
+      const headerIteration = win.locator('[data-test="board-header-iteration"]')
+      await expect(headerIteration).toBeVisible({ timeout: 15_000 })
+      await expect(headerIteration).toContainText(themeA, {
         timeout: 15_000
       })
       await capture(win, 'lifecycle-02-designated')
@@ -169,11 +169,10 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       })
       expect(rename.ok, JSON.stringify(rename.json)).toBe(true)
       await switchToTab(win, 'now')
-      await expect(nowAnchor).toBeVisible({ timeout: 30_000 })
-      await expect(nowAnchor.locator('.board-now-anchor-title')).toContainText(
-        `${themeA}-RENAMED`,
-        { timeout: 15_000 }
-      )
+      await expect(headerIteration).toBeVisible({ timeout: 30_000 })
+      await expect(headerIteration).toContainText(`${themeA}-RENAMED`, {
+        timeout: 15_000
+      })
       await capture(win, 'lifecycle-04-renamed')
 
       const close = await postTest(backendPort, token, 'close_story', {
@@ -183,7 +182,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       })
       expect(close.ok, JSON.stringify(close.json)).toBe(true)
       await switchToTab(win, 'now')
-      await expect(nowAnchor).toBeHidden({ timeout: 15_000 })
+      await expect(headerIteration).toBeHidden({ timeout: 15_000 })
       await capture(win, 'lifecycle-05-closed')
 
       expect(backendPort).not.toBe(4117)

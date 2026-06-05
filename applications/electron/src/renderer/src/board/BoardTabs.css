@@ -12,29 +12,6 @@
     gap: var(--space-8);
   }
 
-  & .board-now-anchor {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-8);
-    border: 1px solid var(--border-subtle);
-    border-radius: 4px;
-    background: var(--bg-base);
-  }
-
-  & .board-now-anchor-label {
-    color: var(--fg-dim);
-    font-size: var(--font-size-11);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  & .board-now-anchor-title {
-    color: var(--fg-primary);
-    font-size: var(--font-size-15);
-    font-weight: 600;
-  }
-
   & .board-now-empty {
     padding: var(--space-8);
     text-align: center;
