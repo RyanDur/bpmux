@@ -45,7 +45,7 @@ interface BoardTabsProps {
   onOpen: (n: number) => void
   onOpenTimeline: (n: number) => void
   onSelect: (n: number) => void
-  onReorder: (state: ColumnState, moved: number, insertAt: number) => void
+  onReorder: (state: ColumnState, moved: number, targetNumber: number) => void
   onReorderAnnounce: (text: string) => void
 }
 

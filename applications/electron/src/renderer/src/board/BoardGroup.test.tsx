@@ -1,7 +1,26 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import BoardGroup from './BoardGroup'
 import type { BoardStory, GroupSpec } from './types'
+
+const makeDataTransfer = (): DataTransfer => {
+  const store: Record<string, string> = {}
+  const types: string[] = []
+  return {
+    setData: (type: string, value: string) => {
+      store[type] = value
+      if (!types.includes(type)) types.push(type)
+    },
+    getData: (type: string) => store[type] ?? '',
+    setDragImage: () => {},
+    get types() {
+      return types
+    },
+    effectAllowed: 'move',
+    dropEffect: 'move'
+  } as unknown as DataTransfer
+}
 
 const featureLabels = ['Feature']
 
@@ -99,5 +118,49 @@ describe('#1357 BoardGroup independence', () => {
     )
     expect(html).toContain('data-test="board-group-accepted"')
     expect(html).toContain('shipped')
+  })
+})
+
+describe('#1524 ready-queue real per-row drop fires onReorder(state, moved, targetNumber)', () => {
+  afterEach(cleanup)
+
+  test('dragging a grip and dropping onto a sibling row reorders (not the dropAt/ul path)', () => {
+    const onReorder = vi.fn()
+    const stories = [
+      story({ number: 701, title: 'first' }),
+      story({ number: 702, title: 'second' }),
+      story({ number: 703, title: 'third' })
+    ]
+    render(<BoardGroup {...baseProps} stories={stories} onReorder={onReorder} />)
+
+    const grip = screen.getByLabelText('Drag to reorder #701')
+    const dataTransfer = makeDataTransfer()
+    fireEvent.dragStart(grip, { dataTransfer })
+
+    const targetRow = document.querySelector('[data-test="board-story-702"]') as HTMLElement
+    fireEvent.dragOver(targetRow, { dataTransfer })
+    fireEvent.drop(targetRow, { dataTransfer })
+
+    expect(onReorder).toHaveBeenCalledWith('ready', 701, 702)
+  })
+
+  test('dropping onto a non-adjacent row targets that row', () => {
+    const onReorder = vi.fn()
+    const stories = [
+      story({ number: 701, title: 'first' }),
+      story({ number: 702, title: 'second' }),
+      story({ number: 703, title: 'third' })
+    ]
+    render(<BoardGroup {...baseProps} stories={stories} onReorder={onReorder} />)
+
+    const grip = screen.getByLabelText('Drag to reorder #701')
+    const dataTransfer = makeDataTransfer()
+    fireEvent.dragStart(grip, { dataTransfer })
+
+    const targetRow = document.querySelector('[data-test="board-story-703"]') as HTMLElement
+    fireEvent.dragOver(targetRow, { dataTransfer })
+    fireEvent.drop(targetRow, { dataTransfer })
+
+    expect(onReorder).toHaveBeenCalledWith('ready', 701, 703)
   })
 })

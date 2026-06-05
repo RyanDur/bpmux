@@ -157,7 +157,9 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     // Simulate keyboard reorder — the same handleReorder path fires
     // the POST. Ctrl+Shift+Down on the first row bumps it past the
     // second, matching the existing keyboard-reorder contract (#357).
-    const firstRow = win.locator('#board-group-ready-content [data-test="board-story-701"] .board-story-navigate')
+    const firstRow = win.locator(
+      '#board-group-ready-content [data-test="board-story-701"] .board-story-navigate'
+    )
     await firstRow.focus()
     await firstRow.press('Control+Shift+ArrowDown')
 
@@ -177,7 +179,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     await app.close()
   })
 
-  test('#1524 a single drag onto the immediate-below row swaps them (near-half, not "more than one row")', async () => {
+  test('#1524 a single real drag dropped ON the immediate-below row swaps them', async () => {
     const adjacentDownBoard = {
       fetched_at: '2026-04-23T03:00:05Z',
       stories: [
@@ -213,24 +215,15 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     await win.locator('#board-group-ready-content [data-test="board-story-702"]').evaluate((li) => {
       const dt = new DataTransfer()
       dt.setData('text/bpmux-story', '701')
-      const rect = li.getBoundingClientRect()
-      const nearHalfClientY = rect.top + rect.height * 0.25
       li.dispatchEvent(
-        new DragEvent('dragover', {
-          bubbles: true,
-          cancelable: true,
-          dataTransfer: dt,
-          clientY: nearHalfClientY
-        })
+        new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt })
       )
     })
     await win.waitForTimeout(50)
     await win.locator('#board-group-ready-content [data-test="board-story-702"]').evaluate((li) => {
-      const ul = li.closest('ul')
-      if (ul === null) throw new Error('story list <ul> not found')
       const dt = new DataTransfer()
       dt.setData('text/bpmux-story', '701')
-      ul.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
+      li.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
     })
 
     await expect(async () => {

@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import StoryRow from './StoryRow'
-import { dropIndexForRowDrag } from './boardDropIndex'
-import { DRAG_MIMETYPE_REGISTRY, useStoryDrag } from './useStoryDrag'
+import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
+import { useDragReorder } from './useDragReorder'
 import { isClosedIterationMarker, type BoardStory, type ColumnState, type GroupSpec } from './types'
 
 const decodeStoryNumber = (raw: string): number | null => {
@@ -18,7 +17,7 @@ export interface BoardGroupProps {
   onOpen: (n: number) => void
   onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
-  onReorder?: (state: ColumnState, moved: number, insertAt: number) => void
+  onReorder?: (state: ColumnState, moved: number, targetNumber: number) => void
   collapsed: boolean
   onToggleCollapse: () => void
   children?: React.ReactNode
@@ -39,56 +38,21 @@ const BoardGroup = ({
   children
 }: BoardGroupProps): React.JSX.Element => {
   const draggable = (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
-  const [dropAt, setDropAt] = useState<number | null>(null)
-  const {
-    draggedNumber: draggingNumber,
-    startDrag,
-    endDrag,
-    decode
-  } = useStoryDrag<number>({
+
+  const { orderedItems, draggedNumber, rowProps, gripProps } = useDragReorder<number, BoardStory>({
+    items: stories,
+    keyOf: (s) => s.number,
     mimeType: DRAG_MIMETYPE_REGISTRY.STORY_ROW,
     encode: String,
-    decode: decodeStoryNumber
+    decode: decodeStoryNumber,
+    payloadKey: (p) => p,
+    buildPayload: (s) => s.number,
+    disabled: !draggable,
+    onReorder: (moved, targetNumber) => {
+      if (onReorder === undefined) return
+      onReorder(group.state, moved, targetNumber)
+    }
   })
-
-  const handleListDragOver = (event: React.DragEvent<HTMLElement>): void => {
-    if (!draggable) return
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
-  }
-
-  const handleRowDragOver =
-    (index: number) =>
-    (event: React.DragEvent<HTMLLIElement>): void => {
-      if (!draggable) return
-      event.preventDefault()
-      const rect = event.currentTarget.getBoundingClientRect()
-      const sourceIndex =
-        draggingNumber === null ? null : stories.findIndex((s) => s.number === draggingNumber)
-      setDropAt(
-        dropIndexForRowDrag({
-          fromIndex: sourceIndex === -1 ? null : sourceIndex,
-          hoveredIndex: index,
-          clientY: event.clientY,
-          rectTop: rect.top,
-          rectHeight: rect.height
-        })
-      )
-    }
-
-  const handleDrop = (event: React.DragEvent<HTMLElement>): void => {
-    if (!draggable || onReorder === undefined) return
-    event.preventDefault()
-    const moved = decode(event)
-    if (moved === null || dropAt === null) {
-      setDropAt(null)
-      endDrag()
-      return
-    }
-    onReorder(group.state, moved, dropAt)
-    setDropAt(null)
-    endDrag()
-  }
 
   const contentId = `board-group-${group.state}-content`
   return (
@@ -130,13 +94,8 @@ const BoardGroup = ({
         ) : stories.length === 0 ? (
           <p className="board-group-empty">none</p>
         ) : (
-          <ul
-            className="board-story-list"
-            onDragOver={handleListDragOver}
-            onDrop={handleDrop}
-            onDragLeave={() => setDropAt(null)}
-          >
-            {stories.map((story, i) => {
+          <ul className="board-story-list">
+            {orderedItems.map((story, i) => {
               const rowDraggable = draggable && !isClosedIterationMarker(story)
               return (
                 <StoryRow
@@ -149,33 +108,25 @@ const BoardGroup = ({
                   }
                   selected={story.number === selectedNumber}
                   draggable={rowDraggable}
-                  dragging={draggingNumber === story.number}
-                  dropBefore={dropAt === i}
-                  dropAfterLast={dropAt === stories.length && i === stories.length - 1}
+                  dragging={draggedNumber === story.number}
                   position={i + 1}
-                  total={stories.length}
+                  total={orderedItems.length}
                   onKeyboardReorder={
                     rowDraggable && onReorder !== undefined
                       ? (direction) => {
                           if (direction === 'up' && i === 0) return
-                          if (direction === 'down' && i === stories.length - 1) return
-                          const insertAt =
-                            direction === 'up'
-                              ? Math.max(0, i - 1)
-                              : Math.min(stories.length, i + 2)
-                          onReorder(group.state, story.number, insertAt)
+                          if (direction === 'down' && i === orderedItems.length - 1) return
+                          const target =
+                            direction === 'up' ? orderedItems[i - 1] : orderedItems[i + 1]
+                          onReorder(group.state, story.number, target.number)
                         }
                       : undefined
                   }
                   onOpen={onOpen}
                   onOpenTimeline={onOpenTimeline}
                   onSelect={onSelect}
-                  onRowDragOver={handleRowDragOver(i)}
-                  onDragStartRow={(event) => startDrag(event, story.number, story.number)}
-                  onDragEndRow={() => {
-                    endDrag()
-                    setDropAt(null)
-                  }}
+                  rowDragProps={rowDraggable ? rowProps(story) : undefined}
+                  gripDragProps={rowDraggable ? gripProps(story) : undefined}
                 />
               )
             })}

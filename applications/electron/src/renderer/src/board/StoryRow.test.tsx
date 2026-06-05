@@ -20,13 +20,10 @@ const baseProps = {
   selected: false,
   draggable: false,
   dragging: false,
-  dropBefore: false,
-  dropAfterLast: false,
   position: 1,
   total: 1,
   onOpen: () => {},
-  onSelect: () => {},
-  onRowDragOver: () => {}
+  onSelect: () => {}
 }
 
 describe('#1260 story-row hierarchy + color', () => {

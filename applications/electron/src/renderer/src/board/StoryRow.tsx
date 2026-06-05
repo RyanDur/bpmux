@@ -4,6 +4,7 @@ import StoryBadge from './StoryBadge'
 import { deriveBadge } from './StoryBadge.utils'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { STORY_GRIP_TEST_ID } from './testIds'
+import { type GripDragProps, type RowDragProps } from './useDragReorder'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
 export interface StoryRowProps {
@@ -12,17 +13,14 @@ export interface StoryRowProps {
   selected: boolean
   draggable: boolean
   dragging: boolean
-  dropBefore: boolean
-  dropAfterLast: boolean
   position: number
   total: number
   onKeyboardReorder?: (direction: 'up' | 'down') => void
   onOpen: (n: number) => void
   onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
-  onRowDragOver: (event: React.DragEvent<HTMLLIElement>) => void
-  onDragStartRow?: (event: React.DragEvent<HTMLElement>) => void
-  onDragEndRow?: () => void
+  rowDragProps?: RowDragProps
+  gripDragProps?: GripDragProps
 }
 
 const StoryRow = ({
@@ -31,22 +29,17 @@ const StoryRow = ({
   selected,
   draggable,
   dragging,
-  dropBefore,
-  dropAfterLast,
   position,
   total,
   onKeyboardReorder,
   onOpen,
   onOpenTimeline,
   onSelect,
-  onRowDragOver,
-  onDragStartRow,
-  onDragEndRow
+  rowDragProps,
+  gripDragProps
 }: StoryRowProps): React.JSX.Element => {
   const type = storyTypeFromLabels(story.labels)
   const classes = ['board-story-row']
-  if (dropBefore) classes.push('board-story-row--drop-before')
-  if (dropAfterLast) classes.push('board-story-row--drop-after')
   if (deriveBadge(story) === 'blocked') classes.push('board-story-row--blocked')
   const reorderHint =
     onKeyboardReorder !== undefined
@@ -66,7 +59,7 @@ const StoryRow = ({
       data-story-type={type}
       data-closed={story.gh_state === 'closed' ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
-      onDragOver={onRowDragOver}
+      {...rowDragProps}
     >
       <button
         type="button"
@@ -97,11 +90,9 @@ const StoryRow = ({
           type="button"
           className="board-story-grip"
           data-test={STORY_GRIP_TEST_ID}
-          draggable={true}
           aria-label={`Drag to reorder #${story.number}`}
           tabIndex={-1}
-          onDragStart={(event) => onDragStartRow?.(event)}
-          onDragEnd={() => onDragEndRow?.()}
+          {...gripDragProps}
         >
           <GripIcon />
         </button>
