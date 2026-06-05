@@ -101,7 +101,7 @@ const BoardGroup = ({
       }}
     >
       <summary
-        className="board-group-summary"
+        className="board-group-summary disclosure-summary"
         data-test={`board-group-${group.state}`}
         aria-expanded={!collapsed}
         aria-controls={contentId}

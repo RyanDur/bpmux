@@ -23,7 +23,7 @@ const UnscheduledList = ({ stories, open, onToggle, onOpen }: Props): React.JSX.
           onToggle(event.currentTarget.open)
         }}
       >
-        <summary className="board-iteration-summary">
+        <summary className="board-iteration-summary disclosure-summary">
           <b className="board-iteration-title">Unscheduled</b>
           <small className="board-iteration-count">({stories.length})</small>
         </summary>

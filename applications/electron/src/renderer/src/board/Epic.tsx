@@ -118,7 +118,7 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                   collapse.setOpen(epic.number, event.currentTarget.open)
                 }}
               >
-                <summary className="board-epic-summary">
+                <summary className="board-epic-summary disclosure-summary">
                   <StoryTypeGlyph type="epic" />
                   <small className="board-story-number">#{epic.number}</small>
                   <output

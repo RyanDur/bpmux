@@ -130,7 +130,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
               collapse.setOpen(key, event.currentTarget.open)
             }}
           >
-            <summary className="board-iteration-summary" data-test="board-iteration-summary">
+            <summary className="board-iteration-summary disclosure-summary" data-test="board-iteration-summary">
               <StoryTypeGlyph type="iteration" />
               <small className="board-story-number">#{iteration.number}</small>
               <b className="board-iteration-title">{iteration.title}</b>
@@ -248,7 +248,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
         onToggle={(event) => toggleSection('active-planned', event.currentTarget.open)}
       >
         <summary
-          className="board-iterations-section-summary"
+          className="board-iterations-section-summary disclosure-summary"
           data-test="board-iterations-section-active-planned-summary"
         >
           <i className="board-iterations-section-chevron" aria-hidden="true" />
@@ -269,7 +269,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
         onToggle={(event) => toggleSection('closed', event.currentTarget.open)}
       >
         <summary
-          className="board-iterations-section-summary"
+          className="board-iterations-section-summary disclosure-summary"
           data-test="board-iterations-section-closed-summary"
         >
           <i className="board-iterations-section-chevron" aria-hidden="true" />
