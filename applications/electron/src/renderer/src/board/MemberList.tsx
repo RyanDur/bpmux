@@ -6,9 +6,10 @@ import { computeMemberDropMutation } from './iterationPosition'
 import { parseParentIterationLabel } from './labelSchema'
 import { STORY_GRIP_TEST_ID } from './testIds'
 import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
-import { type DragPayload, eagerReorder, postLabelMutation } from './iterationMembers'
+import { type DragPayload, postLabelMutation } from './iterationMembers'
 import type { IterationMember } from './useIterationMembers'
-import { DRAG_MIMETYPE_REGISTRY, useStoryDrag } from './useStoryDrag'
+import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
+import { useDragReorder } from './useDragReorder'
 
 const decodeDragPayload = (raw: string): DragPayload | null => {
   try {
@@ -44,13 +45,44 @@ const MemberList = ({
   onOpen,
   onReorderAnnounce
 }: Props): React.JSX.Element => {
-  const { draggedNumber, hoveredNumber, startDrag, endDrag, hover, decode, hasType } =
-    useStoryDrag<DragPayload>({
-      mimeType: DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER,
-      encode: JSON.stringify,
-      decode: decodeDragPayload
-    })
-  const orderedMembers = eagerReorder(members, (m) => m.story.number, draggedNumber, hoveredNumber)
+  const {
+    orderedItems: orderedMembers,
+    draggedNumber,
+    rowProps,
+    gripProps
+  } = useDragReorder<DragPayload, IterationMember>({
+    items: members,
+    keyOf: (m) => m.story.number,
+    mimeType: DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER,
+    encode: JSON.stringify,
+    decode: decodeDragPayload,
+    payloadKey: (p) => p.storyNumber,
+    buildPayload: (m) => ({
+      storyNumber: m.story.number,
+      iterationNumber: iteration.number,
+      oldPosition: m.position
+    }),
+    disabled: iteration.gh_state === 'closed',
+    onReorder: (payload, targetKey) => {
+      const originalIdx = members.findIndex((m) => m.story.number === targetKey)
+      if (originalIdx === -1) return
+      const mutation = computeMemberDropMutation({
+        draggedIterationNumber: payload.iterationNumber,
+        draggedOldPosition: payload.oldPosition,
+        targetIterationNumber: iteration.number,
+        targetMemberPositions: members.map((m) => m.position),
+        targetMemberIndex: originalIdx,
+        targetMembersIncludeDragged: payload.iterationNumber === iteration.number
+      })
+      if (!mutation) return
+      postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
+      const addedLabel = mutation.add[0]
+      const parsed = addedLabel ? parseParentIterationLabel(addedLabel) : null
+      if (parsed) {
+        setPending(payload.storyNumber, parsed.iterationNumber, parsed.position)
+      }
+    }
+  })
   return (
     <ul className="board-iteration-body">
       {orderedMembers.map(({ story, position }) => (
@@ -60,44 +92,7 @@ const MemberList = ({
           data-test={`board-story-${story.number}`}
           data-iteration-member={story.number}
           data-dragging={draggedNumber === story.number ? 'true' : undefined}
-          onDragOver={(event) => {
-            if (hasType(event)) {
-              event.preventDefault()
-              event.dataTransfer.dropEffect = 'move'
-              if (draggedNumber !== null && draggedNumber !== story.number) {
-                hover(story.number)
-              }
-            }
-          }}
-          onDrop={(event) => {
-            const payload = decode(event)
-            if (payload === null) return
-            event.preventDefault()
-            if (iteration.gh_state === 'closed') return
-            const targetNumber =
-              payload.storyNumber === story.number && hoveredNumber !== null
-                ? hoveredNumber
-                : story.number
-            if (payload.storyNumber === targetNumber) return
-            const originalIdx = members.findIndex((m) => m.story.number === targetNumber)
-            if (originalIdx === -1) return
-            const mutation = computeMemberDropMutation({
-              draggedIterationNumber: payload.iterationNumber,
-              draggedOldPosition: payload.oldPosition,
-              targetIterationNumber: iteration.number,
-              targetMemberPositions: members.map((m) => m.position),
-              targetMemberIndex: originalIdx,
-              targetMembersIncludeDragged: payload.iterationNumber === iteration.number
-            })
-            if (!mutation) return
-            postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
-            const addedLabel = mutation.add[0]
-            const parsed = addedLabel ? parseParentIterationLabel(addedLabel) : null
-            if (parsed) {
-              setPending(payload.storyNumber, parsed.iterationNumber, parsed.position)
-            }
-            endDrag()
-          }}
+          {...rowProps({ story, position })}
         >
           <button
             type="button"
@@ -151,18 +146,9 @@ const MemberList = ({
               type="button"
               className="board-story-grip"
               data-test={STORY_GRIP_TEST_ID}
-              draggable={true}
               aria-label={`Drag to reorder #${story.number}`}
               tabIndex={-1}
-              onDragStart={(event) => {
-                const payload: DragPayload = {
-                  storyNumber: story.number,
-                  iterationNumber: iteration.number,
-                  oldPosition: position
-                }
-                startDrag(event, story.number, payload)
-              }}
-              onDragEnd={endDrag}
+              {...gripProps({ story, position })}
             >
               <GripIcon />
             </button>
