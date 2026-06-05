@@ -96,9 +96,11 @@ const MessageList = ({
     setEntrySnapshot({ channelKey, newestTs: currentMaxTs, enteringIds: new Set() })
   } else if (currentMaxTs > entrySnapshot.newestTs) {
     const fresh = new Set<string>()
-    for (const m of visible) {
-      const ts = new Date(m.ts).getTime()
-      if (!Number.isNaN(ts) && ts > entrySnapshot.newestTs) fresh.add(m.id)
+    if (entrySnapshot.newestTs > 0) {
+      for (const m of visible) {
+        const ts = new Date(m.ts).getTime()
+        if (!Number.isNaN(ts) && ts > entrySnapshot.newestTs) fresh.add(m.id)
+      }
     }
     setEntrySnapshot({ channelKey, newestTs: currentMaxTs, enteringIds: fresh })
   }
