@@ -37,9 +37,11 @@ afterEach(() => {
 describe('#1456 SyncStatusGlyph — refresh survives the ingest-strip (tick replaces marker-scan)', () => {
   const props = { apiBase: 'http://127.0.0.1:9', authToken: 'tok', syncStatusTick: 0 }
 
-  test('renders the sync-status glyph', () => {
+  test('renders the sync-status glyph with a real sync-state label + glyph', () => {
     render(<SyncStatusGlyph {...props} />)
-    expect(screen.getByTestId('sync-status-glyph')).toBeTruthy()
+    const button = screen.getByTestId('sync-status-glyph')
+    expect(button.getAttribute('aria-label')).toMatch(/^Sync state: /)
+    expect(button.querySelector('i')?.textContent ?? '').not.toBe('')
   })
 
   test('a sync-status tick increment triggers a sync-status refresh (silent-regression guard)', async () => {
@@ -111,5 +113,36 @@ describe('#1636 deriveState — full-state coverage (null report never false-gre
     const glyph = screen.getByTestId('sync-status-glyph')
     expect(glyph.getAttribute('data-state')).toBe('unreachable')
     expect(glyph.getAttribute('data-state')).not.toBe('connected')
+  })
+})
+
+describe('#1636 SyncStatusGlyph render surface — the SR string + glyph the glance/screen-reader expose', () => {
+  test('loading (null report, no error): announces loading + ○, never connected/●', () => {
+    fetchSpy.mockReturnValue(new Promise<Response>(() => {}))
+    render(<SyncStatusGlyph apiBase="http://127.0.0.1:9" authToken="tok" syncStatusTick={0} />)
+    const button = screen.getByTestId('sync-status-glyph')
+    expect(button.getAttribute('aria-label')).toBe('Sync state: loading — awaiting first report')
+    expect(button.querySelector('i')?.textContent).toBe('○')
+    expect(button.getAttribute('aria-label')).not.toBe('Sync state: connected')
+    expect(button.querySelector('i')?.textContent).not.toBe('●')
+  })
+
+  test('unreachable (no backend): announces unknown/unreachable + ?, never connected/●', () => {
+    render(<SyncStatusGlyph apiBase={undefined} authToken={undefined} syncStatusTick={0} />)
+    const button = screen.getByTestId('sync-status-glyph')
+    expect(button.getAttribute('aria-label')).toBe('Sync state: unknown — sync status unreachable')
+    expect(button.querySelector('i')?.textContent).toBe('?')
+    expect(button.getAttribute('aria-label')).not.toBe('Sync state: connected')
+    expect(button.querySelector('i')?.textContent).not.toBe('●')
+  })
+
+  test('connected (healthy report): announces connected + ●', async () => {
+    render(<SyncStatusGlyph apiBase="http://127.0.0.1:9" authToken="tok" syncStatusTick={0} />)
+    await waitFor(() => {
+      expect(screen.getByTestId('sync-status-glyph').getAttribute('aria-label')).toBe(
+        'Sync state: connected'
+      )
+    })
+    expect(screen.getByTestId('sync-status-glyph').querySelector('i')?.textContent).toBe('●')
   })
 })

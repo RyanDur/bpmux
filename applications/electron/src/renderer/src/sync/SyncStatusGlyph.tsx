@@ -9,53 +9,7 @@ import {
   subscribeSyncStatus,
   type SyncStatusReport
 } from './syncStatusService'
-import { type SyncState, deriveState } from './syncState'
-
-const stateGlyph = (state: SyncState): string => {
-  switch (state) {
-    case 'connected':
-      return '●'
-    case 'loading':
-      return '○'
-    case 'unreachable':
-      return '?'
-    case 'syncing':
-      return '◌'
-    case 'offline-queued':
-      return '⚠'
-    case 'drained-permanent-failure':
-      return '✗'
-    case 'recovering':
-      return '↻'
-    case 'stale':
-      return '◔'
-    case 'startup-fail':
-      return '⊘'
-  }
-}
-
-const stateAriaLabel = (state: SyncState, count: number): string => {
-  switch (state) {
-    case 'connected':
-      return 'Sync state: connected'
-    case 'loading':
-      return 'Sync state: loading — awaiting first report'
-    case 'unreachable':
-      return 'Sync state: unknown — sync status unreachable'
-    case 'syncing':
-      return `Sync state: syncing ${count} pending`
-    case 'offline-queued':
-      return `Sync state: offline, ${count} mutations queued`
-    case 'drained-permanent-failure':
-      return `Sync state: ${count} mutations dropped on permanent failure`
-    case 'recovering':
-      return 'Sync state: recovering from local-cache corruption; rehydrating from GitHub'
-    case 'stale':
-      return 'Sync state: stale; last successful sync exceeded the staleness threshold'
-    case 'startup-fail':
-      return 'Sync state: startup pull failed; canonical store reflects last persisted snapshot only'
-  }
-}
+import { type SyncState, deriveState, stateAriaLabel, stateGlyph } from './syncState'
 
 const buildTooltip = (state: SyncState, report: SyncStatusReport | null): string => {
   if (!report) return 'Sync status loading…'
