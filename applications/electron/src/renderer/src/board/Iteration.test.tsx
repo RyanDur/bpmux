@@ -1,8 +1,34 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import Iteration from './Iteration'
-import { iterationLabel } from './labelSchema'
+import { iterationLabel, iterationOrderLabel } from './labelSchema'
 import type { BoardStory } from './types'
+
+const { postLabelMutationMock } = vi.hoisted(() => ({ postLabelMutationMock: vi.fn() }))
+
+vi.mock('./iterationMembers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./iterationMembers')>()
+  return { ...actual, postLabelMutation: postLabelMutationMock }
+})
+
+const makeDataTransfer = (): DataTransfer => {
+  const store: Record<string, string> = {}
+  const types: string[] = []
+  return {
+    setData: (type: string, value: string) => {
+      store[type] = value
+      if (!types.includes(type)) types.push(type)
+    },
+    getData: (type: string) => store[type] ?? '',
+    setDragImage: () => {},
+    get types() {
+      return types
+    },
+    effectAllowed: 'move',
+    dropEffect: 'move'
+  } as unknown as DataTransfer
+}
 
 const iterationStory = (overrides: Partial<BoardStory>): BoardStory => ({
   number: 9000,
@@ -388,5 +414,60 @@ describe('#1517 iteration-row redesign — summary toggle-only + grip-sibling-ri
     const gripTag = html.slice(gripTagStart, html.indexOf('>', gripIdx))
     expect(gripTag).toContain('tabindex="0"')
     expect(gripTag).toContain('aria-keyshortcuts="Control+Shift+ArrowUp Control+Shift+ArrowDown"')
+  })
+})
+
+describe('#1517 iteration-row drag-sort adopts the shared useDragReorder (real per-row drop)', () => {
+  afterEach(() => {
+    cleanup()
+    postLabelMutationMock.mockClear()
+  })
+
+  test('dragging an iteration grip and dropping on another iteration fires the order mutation', () => {
+    const a = iterationStory({
+      number: 9001,
+      title: 'Iteration A',
+      gh_state: 'open',
+      labels: ['Iteration', iterationOrderLabel(100)]
+    })
+    const b = iterationStory({
+      number: 9002,
+      title: 'Iteration B',
+      gh_state: 'open',
+      labels: ['Iteration', iterationOrderLabel(200)]
+    })
+    render(<Iteration stories={[a, b]} onOpen={() => {}} />)
+
+    const grips = screen.getAllByTestId('iteration-grip')
+    const dataTransfer = makeDataTransfer()
+    fireEvent.dragStart(grips[0], { dataTransfer })
+
+    const rows = document.querySelectorAll('.board-iteration-row')
+    fireEvent.dragOver(rows[1] as HTMLElement, { dataTransfer })
+    fireEvent.drop(rows[1] as HTMLElement, { dataTransfer })
+
+    expect(postLabelMutationMock).toHaveBeenCalledTimes(1)
+    const [movedNumber, addLabels, removeLabels] = postLabelMutationMock.mock.calls[0]
+    expect(movedNumber).toBe(9001)
+    expect(removeLabels).toEqual([iterationOrderLabel(100)])
+    const newPos = Number(String(addLabels[0]).replace('iteration-order.', ''))
+    expect(newPos).toBeGreaterThan(200)
+  })
+
+  test('closed iterations are not drag sources (no grip) — drag-sort is active-planned only', () => {
+    const open = iterationStory({
+      number: 9003,
+      title: 'Open Iteration',
+      gh_state: 'open',
+      labels: ['Iteration', iterationOrderLabel(100)]
+    })
+    const closed = iterationStory({
+      number: 9004,
+      title: 'Closed Iteration',
+      gh_state: 'closed',
+      labels: ['Iteration', iterationOrderLabel(200)]
+    })
+    render(<Iteration stories={[open, closed]} onOpen={() => {}} />)
+    expect(screen.getAllByTestId('iteration-grip')).toHaveLength(1)
   })
 })

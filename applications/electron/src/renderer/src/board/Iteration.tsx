@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { GripIcon } from './GripIcon'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
@@ -14,8 +15,8 @@ import {
   postLabelMutation
 } from './iterationMembers'
 import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
+import { useDragReorder } from './useDragReorder'
 import { useIterationMembers } from './useIterationMembers'
-import { useIterationDragState } from './useIterationDragState'
 import MemberList from './MemberList'
 import UnscheduledList from './UnscheduledList'
 
@@ -35,31 +36,114 @@ const ITERATION_SECTION_DEFAULTS: Record<IterationSectionId, boolean> = {
   closed: false
 }
 
+const decodeIterationPayload = (raw: string): IterationDragPayload | null => {
+  try {
+    return JSON.parse(raw) as IterationDragPayload
+  } catch {
+    return null
+  }
+}
+
 const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
-  const {
-    draggedIterationNumber,
-    setDraggedIterationNumber,
-    dragRejectedIterationNumber,
-    setDragRejectedIterationNumber
-  } = useIterationDragState()
+  const [dragRejectedIterationNumber, setDragRejectedIterationNumber] = useState<number | null>(
+    null
+  )
   const { sortedIterations, sortedLoose, getMembersFor, setPending } = useIterationMembers(stories)
   const sectionStorage = useCollapsibleSectionsStorage<IterationSectionId>(
     ITERATION_SECTIONS_STORAGE_PREFIX,
     RENDERER_IDENTITY,
     ITERATION_SECTION_DEFAULTS
   )
+
+  const activePlannedIterations = sortedIterations.filter((it) => it.gh_state !== 'closed')
+  const closedIterations = sortedIterations.filter((it) => it.gh_state === 'closed')
+
+  const {
+    orderedItems: orderedActiveIterations,
+    draggedNumber,
+    rowProps,
+    gripProps
+  } = useDragReorder<IterationDragPayload, BoardStory>({
+    items: activePlannedIterations,
+    keyOf: (it) => it.number,
+    mimeType: DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF,
+    encode: JSON.stringify,
+    decode: decodeIterationPayload,
+    payloadKey: (p) => p.iterationNumber,
+    buildPayload: (it) => ({
+      iterationNumber: it.number,
+      oldOrder: positionInIterationOrder(it)
+    }),
+    onReorder: (payload, targetKey) => {
+      if (payload.oldOrder === null) return
+      const targetIndex = sortedIterations.findIndex((it) => it.number === targetKey)
+      if (targetIndex === -1) return
+      const allOrders = sortedIterations
+        .map((it) => positionInIterationOrder(it))
+        .filter((p): p is number => p !== null)
+      const mutation = computeIterationOrderMutation({
+        draggedOldPosition: payload.oldOrder,
+        targetMemberPositions: allOrders,
+        targetMemberIndex: targetIndex,
+        targetMembersIncludeDragged: true
+      })
+      if (!mutation) return
+      postLabelMutation(payload.iterationNumber, mutation.add, mutation.remove)
+    }
+  })
+
   const sectionOpen = sectionStorage.state
   const toggleSection = (id: IterationSectionId, next: boolean): void => {
     if (sectionOpen[id] === next) return
     sectionStorage.setState({ ...sectionOpen, [id]: next })
   }
   if (sortedIterations.length === 0 && sortedLoose.length === 0) return null
-  const activePlannedIterations = sortedIterations.filter((it) => it.gh_state !== 'closed')
-  const closedIterations = sortedIterations.filter((it) => it.gh_state === 'closed')
   const currentIterationNumber = findCurrentIteration(stories)?.number ?? null
 
-  const renderIterationRow = (iteration: BoardStory): React.JSX.Element => {
+  const rejectClosedDrop =
+    (iteration: BoardStory) =>
+    (event: React.DragEvent<HTMLElement>): void => {
+      if (
+        event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER) ||
+        event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
+      ) {
+        event.dataTransfer.dropEffect = 'none'
+        setDragRejectedIterationNumber(iteration.number)
+      }
+    }
+
+  const reorderIterationByKeyboard = (iteration: BoardStory, direction: 'up' | 'down'): void => {
+    const iterationIdx = sortedIterations.findIndex((it) => it.number === iteration.number)
+    if (iterationIdx === -1) return
+    const myOrder = positionInIterationOrder(iteration)
+    if (myOrder === null) return
+    if (direction === 'up' && iterationIdx === 0) {
+      onReorderAnnounce?.(`${iteration.title} is already at position 1 among iterations`)
+      return
+    }
+    if (direction === 'down' && iterationIdx === sortedIterations.length - 1) {
+      onReorderAnnounce?.(`${iteration.title} is already at last position among iterations`)
+      return
+    }
+    const allOrders = sortedIterations
+      .map((it) => positionInIterationOrder(it))
+      .filter((p): p is number => p !== null)
+    const targetMemberIndex = direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
+    const mutation = computeIterationOrderMutation({
+      draggedOldPosition: myOrder,
+      targetMemberPositions: allOrders,
+      targetMemberIndex,
+      targetMembersIncludeDragged: true
+    })
+    if (!mutation) return
+    postLabelMutation(iteration.number, mutation.add, mutation.remove)
+    onReorderAnnounce?.(
+      `Moved ${iteration.title} to position ${targetMemberIndex + 1} of ${sortedIterations.length} among iterations`
+    )
+  }
+
+  const renderIterationRow = (iteration: BoardStory, draggable: boolean): React.JSX.Element => {
     const key = String(iteration.number)
     const themeName = themeNameFromTitle(iteration.title)
     const members = getMembersFor(iteration.number)
@@ -68,7 +152,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     const isCurrent = iteration.number === currentIterationNumber
     return (
       <li key={iteration.number} className="board-iteration-item">
-        <article className="board-iteration-row">
+        <article className="board-iteration-row" {...(draggable ? rowProps(iteration) : {})}>
           <details
             className="board-iteration-card"
             data-test={boardIterationTestId(iteration.number)}
@@ -76,61 +160,29 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             data-iteration-name={themeName}
             data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
             data-current-iteration={isCurrent ? 'true' : undefined}
-            data-dragging={draggedIterationNumber === iteration.number ? 'true' : undefined}
+            data-dragging={draggable && draggedNumber === iteration.number ? 'true' : undefined}
             data-drag-rejected={
               dragRejectedIterationNumber === iteration.number ? 'true' : undefined
             }
             open={open}
-            onDragOver={(event) => {
-              if (iteration.gh_state === 'closed') {
-                if (
-                  event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER) ||
-                  event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
-                ) {
-                  event.dataTransfer.dropEffect = 'none'
-                  setDragRejectedIterationNumber(iteration.number)
-                }
-                return
-              }
-              if (event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)) {
-                event.preventDefault()
-                event.dataTransfer.dropEffect = 'move'
-              }
-            }}
-            onDragLeave={() => {
-              if (dragRejectedIterationNumber === iteration.number) {
-                setDragRejectedIterationNumber(null)
-              }
-            }}
-            onDrop={(event) => {
-              const raw = event.dataTransfer.getData(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
-              if (!raw) return
-              event.preventDefault()
-              const payload = JSON.parse(raw) as IterationDragPayload
-              if (payload.iterationNumber === iteration.number) return
-              const targetOrder = positionInIterationOrder(iteration)
-              if (targetOrder === null) return
-              const allOrders = sortedIterations
-                .map((it) => positionInIterationOrder(it))
-                .filter((p): p is number => p !== null)
-              const targetIdx = allOrders.indexOf(targetOrder)
-              if (targetIdx === -1) return
-              const draggedOldOrder = payload.oldOrder
-              if (draggedOldOrder === null) return
-              const mutation = computeIterationOrderMutation({
-                draggedOldPosition: draggedOldOrder,
-                targetMemberPositions: allOrders,
-                targetMemberIndex: targetIdx,
-                targetMembersIncludeDragged: true
-              })
-              if (!mutation) return
-              postLabelMutation(payload.iterationNumber, mutation.add, mutation.remove)
-            }}
+            onDragOver={draggable ? undefined : rejectClosedDrop(iteration)}
+            onDragLeave={
+              draggable
+                ? undefined
+                : () => {
+                    if (dragRejectedIterationNumber === iteration.number) {
+                      setDragRejectedIterationNumber(null)
+                    }
+                  }
+            }
             onToggle={(event) => {
               collapse.setOpen(key, event.currentTarget.open)
             }}
           >
-            <summary className="board-iteration-summary disclosure-summary" data-test="board-iteration-summary">
+            <summary
+              className="board-iteration-summary disclosure-summary"
+              data-test="board-iteration-summary"
+            >
               <StoryTypeGlyph type="iteration" />
               <small className="board-story-number">#{iteration.number}</small>
               <b className="board-iteration-title">{iteration.title}</b>
@@ -158,77 +210,22 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
               </button>
             </section>
           </details>
-          {iteration.gh_state !== 'closed' ? (
+          {draggable ? (
             <button
               type="button"
               className="board-iteration-grip"
               data-test={ITERATION_GRIP_TEST_ID}
-              draggable={true}
               tabIndex={0}
               aria-label={`Reorder iteration #${iteration.number} ${iteration.title} — drag, or Ctrl+Shift+Up/Down`}
               aria-keyshortcuts="Control+Shift+ArrowUp Control+Shift+ArrowDown"
-              onDragStart={(event) => {
-                const payload: IterationDragPayload = {
-                  iterationNumber: iteration.number,
-                  oldOrder: positionInIterationOrder(iteration)
-                }
-                event.dataTransfer.setData(
-                  DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF,
-                  JSON.stringify(payload)
-                )
-                event.dataTransfer.effectAllowed = 'move'
-                const row = (event.currentTarget as HTMLElement).closest('.board-iteration-row')
-                if (row && typeof event.dataTransfer.setDragImage === 'function') {
-                  const rect = row.getBoundingClientRect()
-                  event.dataTransfer.setDragImage(
-                    row,
-                    event.clientX - rect.left,
-                    event.clientY - rect.top
-                  )
-                }
-                setDraggedIterationNumber(iteration.number)
-              }}
-              onDragEnd={() => setDraggedIterationNumber(null)}
+              {...gripProps(iteration)}
               onKeyDown={(event) => {
                 if (!event.ctrlKey || !event.shiftKey) return
                 const direction =
                   event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : null
                 if (direction === null) return
                 event.preventDefault()
-                const iterationIdx = sortedIterations.findIndex(
-                  (it) => it.number === iteration.number
-                )
-                if (iterationIdx === -1) return
-                const myOrder = positionInIterationOrder(iteration)
-                if (myOrder === null) return
-                if (direction === 'up' && iterationIdx === 0) {
-                  onReorderAnnounce?.(
-                    `${iteration.title} is already at position 1 among iterations`
-                  )
-                  return
-                }
-                if (direction === 'down' && iterationIdx === sortedIterations.length - 1) {
-                  onReorderAnnounce?.(
-                    `${iteration.title} is already at last position among iterations`
-                  )
-                  return
-                }
-                const allOrders = sortedIterations
-                  .map((it) => positionInIterationOrder(it))
-                  .filter((p): p is number => p !== null)
-                const targetMemberIndex = direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
-                const mutation = computeIterationOrderMutation({
-                  draggedOldPosition: myOrder,
-                  targetMemberPositions: allOrders,
-                  targetMemberIndex,
-                  targetMembersIncludeDragged: true
-                })
-                if (!mutation) return
-                postLabelMutation(iteration.number, mutation.add, mutation.remove)
-                const newIdx = direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
-                onReorderAnnounce?.(
-                  `Moved ${iteration.title} to position ${newIdx + 1} of ${sortedIterations.length} among iterations`
-                )
+                reorderIterationByKeyboard(iteration, direction)
               }}
             >
               <GripIcon />
@@ -239,6 +236,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     )
   }
 
+  const activePlannedCount = orderedActiveIterations.length
   return (
     <section className="board-iterations" data-test="board-iterations">
       <details
@@ -257,10 +255,12 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             className="board-iterations-section-count"
             data-test="board-iterations-section-active-planned-count"
           >
-            ({activePlannedIterations.length})
+            ({activePlannedCount})
           </small>
         </summary>
-        <ul className="board-iterations-list">{activePlannedIterations.map(renderIterationRow)}</ul>
+        <ul className="board-iterations-list">
+          {orderedActiveIterations.map((it) => renderIterationRow(it, true))}
+        </ul>
       </details>
       <details
         className="board-iterations-section board-iterations-section--closed"
@@ -281,7 +281,9 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             ({closedIterations.length})
           </small>
         </summary>
-        <ul className="board-iterations-list">{closedIterations.map(renderIterationRow)}</ul>
+        <ul className="board-iterations-list">
+          {closedIterations.map((it) => renderIterationRow(it, false))}
+        </ul>
       </details>
       <UnscheduledList
         stories={sortedLoose}
