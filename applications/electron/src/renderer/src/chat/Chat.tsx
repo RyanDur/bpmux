@@ -95,12 +95,6 @@ const Chat = ({
     onSend(text, opts)
   }
 
-  const scopeLabel = allView
-    ? 'ALL CONVERSATIONS'
-    : recipient && recipient.length > 1
-      ? `GROUP → ${recipient.join(' + ')}`
-      : null
-
   return (
     <section className="chat" data-test="chat-region">
       {showReconnect && (
@@ -161,11 +155,6 @@ const Chat = ({
           </section>
         ))}
         <section className="chat-layer" data-active={activeKey === null}>
-          {scopeLabel && (
-            <aside className="chat-scope" aria-live="polite">
-              <small>{scopeLabel}</small>
-            </aside>
-          )}
           <FilterPills filter={filter} hiddenCounts={hiddenCounts} visibleCounts={visibleCounts} />
           <MessageList
             messages={messages}

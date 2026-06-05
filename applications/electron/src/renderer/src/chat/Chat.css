@@ -5,19 +5,12 @@
   min-width: 0;
   min-height: 0;
   background: var(--bg-base);
+  border-top: 2px solid var(--accent-brand);
 
   & .chat-warning {
     padding: var(--space-6) var(--space-8);
     background: rgb(58 47 26);
     color: var(--accent-warning);
-    font-size: var(--font-size-12);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  & .chat-scope {
-    padding: var(--space-4) var(--space-16);
-    background: color-mix(in srgb, var(--accent-brand) 12%, transparent);
-    color: var(--accent-brand);
     font-size: var(--font-size-12);
     border-bottom: 1px solid var(--border-subtle);
   }

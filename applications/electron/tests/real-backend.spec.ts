@@ -333,8 +333,7 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="sidebar-system"]')).toHaveCount(0)
 
     await group1.click()
-    const scopeBar = win.locator('.chat-scope small')
-    await expect(scopeBar).toContainText('GROUP → designer + dev')
+    await expect(group1).toHaveAttribute('aria-current', 'true')
 
     await app.close()
   })
