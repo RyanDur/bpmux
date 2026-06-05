@@ -13,6 +13,7 @@
   --msg-fg-muted: rgb(187 187 187);
   --accent-brand: rgb(106 160 255);
   --accent-success: rgb(63 185 80);
+  --accent-success-text: rgb(63 185 80);
   --accent-warning: rgb(212 161 60);
   --accent-error: rgb(255 107 107);
   --accent-info: rgb(79 195 247);
@@ -88,6 +89,7 @@
   --msg-fg-muted: rgb(107 114 128);
   --accent-brand: rgb(37 99 235);
   --accent-success: rgb(22 163 74);
+  --accent-success-text: rgb(21 128 61);
   --accent-warning: rgb(180 83 9);
   --accent-error: rgb(220 38 38);
   --accent-info: rgb(2 132 199);

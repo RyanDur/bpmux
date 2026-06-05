@@ -28,7 +28,7 @@
     transition: color var(--motion-duration-fast) var(--motion-ease-out);
 
     &.titlebar-app--connected .titlebar-app-state {
-      color: var(--accent-success);
+      color: var(--accent-success-text);
     }
 
     &.titlebar-app--connecting .titlebar-app-state {
