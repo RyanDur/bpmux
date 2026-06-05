@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { MESSAGE_TYPE } from '../transport/messageType'
@@ -80,6 +80,32 @@ const MessageList = ({
     onAtBottomChange
   })
 
+  const channelKey = allView ? '__all__' : recipient ? recipient.join(',') : '__none__'
+  let currentMaxTs = 0
+  for (const m of visible) {
+    const ts = new Date(m.ts).getTime()
+    if (!Number.isNaN(ts) && ts > currentMaxTs) currentMaxTs = ts
+  }
+  const [entrySnapshot, setEntrySnapshot] = useState<{
+    channelKey: string | null
+    newestTs: number
+    enteringIds: ReadonlySet<string>
+  }>({ channelKey: null, newestTs: 0, enteringIds: new Set() })
+
+  if (entrySnapshot.channelKey !== channelKey) {
+    setEntrySnapshot({ channelKey, newestTs: currentMaxTs, enteringIds: new Set() })
+  } else if (currentMaxTs > entrySnapshot.newestTs) {
+    const fresh = new Set<string>()
+    for (const m of visible) {
+      const ts = new Date(m.ts).getTime()
+      if (!Number.isNaN(ts) && ts > entrySnapshot.newestTs) fresh.add(m.id)
+    }
+    setEntrySnapshot({ channelKey, newestTs: currentMaxTs, enteringIds: fresh })
+  }
+
+  const enteringIds =
+    entrySnapshot.channelKey === channelKey ? entrySnapshot.enteringIds : new Set<string>()
+
   const listProps = {
     className: 'message-list',
     'data-test': 'message-list'
@@ -111,6 +137,7 @@ const MessageList = ({
         key={m.id}
         m={m}
         grouped={grouped}
+        isNew={enteringIds.has(m.id)}
         viewer={viewer}
         apiBase={apiBase}
         authToken={authToken}

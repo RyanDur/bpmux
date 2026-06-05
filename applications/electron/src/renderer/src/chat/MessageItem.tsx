@@ -12,6 +12,7 @@ import { avatarClasses, formatTime, messageKey, shortName } from './MessageItem.
 interface Props {
   m: ChatMessage
   grouped: boolean
+  isNew?: boolean
   viewer?: string
   apiBase?: string
   authToken?: string
@@ -25,6 +26,7 @@ interface Props {
 const MessageItem = ({
   m,
   grouped,
+  isNew = false,
   viewer,
   apiBase,
   authToken,
@@ -52,7 +54,12 @@ const MessageItem = ({
   const mKey = messageKey(m)
 
   return (
-    <li key={m.id} className={rowClasses} data-test="message-row">
+    <li
+      key={m.id}
+      className={rowClasses}
+      data-test="message-row"
+      data-entering={isNew ? 'true' : undefined}
+    >
       <article>
         <i className="sr-only">{sender}:</i>
         {!grouped &&

@@ -73,6 +73,11 @@
   .new-messages-pill {
     animation: none;
   }
+
+  .message-row,
+  .message-row > article {
+    transition: none;
+  }
 }
 
 .message-log-region {
@@ -246,6 +251,13 @@
     & > article {
       overflow: hidden;
       min-height: 0;
+      transition: transform var(--motion-duration-medium) var(--motion-ease-out);
+    }
+
+    &[data-entering='true'] > article {
+      @starting-style {
+        transform: translateY(10px);
+      }
     }
 
     &.message-row--to-me {
