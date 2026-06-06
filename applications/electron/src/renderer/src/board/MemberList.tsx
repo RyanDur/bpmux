@@ -1,22 +1,14 @@
 import { DragGrip } from './DragGrip'
 import { ReworkGlyph } from './ReworkGlyph'
+import { SortableList } from './SortableList'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { computeMemberDropMutation } from './iterationPosition'
 import { parseParentIterationLabel } from './labelSchema'
 import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
 import { type DragPayload, postLabelMutation } from './iterationMembers'
+import { ITERATION_MEMBER_DRAG } from './sortableDragConfigs'
 import type { IterationMember } from './useIterationMembers'
-import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
-import { useDragReorder } from './useDragReorder'
-
-const decodeDragPayload = (raw: string): DragPayload | null => {
-  try {
-    return JSON.parse(raw) as DragPayload
-  } catch {
-    return null
-  }
-}
 
 const activeStateLabel = (story: BoardStory): string | null => {
   if (story.state === 'icebox') return null
@@ -44,54 +36,45 @@ const MemberList = ({
   onOpen,
   onReorderAnnounce
 }: Props): React.JSX.Element => {
-  const {
-    orderedItems: orderedMembers,
-    draggedNumber,
-    rowProps,
-    gripProps
-  } = useDragReorder<DragPayload, IterationMember>({
-    items: members,
-    keyOf: (m) => m.story.number,
-    mimeType: DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER,
-    encode: JSON.stringify,
-    decode: decodeDragPayload,
-    payloadKey: (p) => p.storyNumber,
-    buildPayload: (m) => ({
-      storyNumber: m.story.number,
-      iterationNumber: iteration.number,
-      oldPosition: m.position
-    }),
-    disabled: iteration.gh_state === 'closed',
-    onReorder: (payload, targetKey) => {
-      const originalIdx = members.findIndex((m) => m.story.number === targetKey)
-      if (originalIdx === -1) return
-      const mutation = computeMemberDropMutation({
-        draggedIterationNumber: payload.iterationNumber,
-        draggedOldPosition: payload.oldPosition,
-        targetIterationNumber: iteration.number,
-        targetMemberPositions: members.map((m) => m.position),
-        targetMemberIndex: originalIdx,
-        targetMembersIncludeDragged: payload.iterationNumber === iteration.number
-      })
-      if (!mutation) return
-      postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
-      const addedLabel = mutation.add[0]
-      const parsed = addedLabel ? parseParentIterationLabel(addedLabel) : null
-      if (parsed) {
-        setPending(payload.storyNumber, parsed.iterationNumber, parsed.position)
-      }
-    }
-  })
   return (
-    <ul className="board-iteration-body">
-      {orderedMembers.map(({ story, position }) => (
+    <SortableList<DragPayload, IterationMember>
+      items={members}
+      keyOf={(m) => m.story.number}
+      rowKey={(m) => m.story.number}
+      config={ITERATION_MEMBER_DRAG}
+      buildPayload={(m) => ({
+        storyNumber: m.story.number,
+        iterationNumber: iteration.number,
+        oldPosition: m.position
+      })}
+      disabled={iteration.gh_state === 'closed'}
+      onReorder={(payload, targetKey) => {
+        const originalIdx = members.findIndex((m) => m.story.number === targetKey)
+        if (originalIdx === -1) return
+        const mutation = computeMemberDropMutation({
+          draggedIterationNumber: payload.iterationNumber,
+          draggedOldPosition: payload.oldPosition,
+          targetIterationNumber: iteration.number,
+          targetMemberPositions: members.map((m) => m.position),
+          targetMemberIndex: originalIdx,
+          targetMembersIncludeDragged: payload.iterationNumber === iteration.number
+        })
+        if (!mutation) return
+        postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
+        const addedLabel = mutation.add[0]
+        const parsed = addedLabel ? parseParentIterationLabel(addedLabel) : null
+        if (parsed) {
+          setPending(payload.storyNumber, parsed.iterationNumber, parsed.position)
+        }
+      }}
+      ulClassName="board-iteration-body"
+      renderRow={({ story, position }, { rowDragProps, gripDragProps, dragging }) => (
         <li
-          key={story.number}
           className="board-iteration-member"
           data-test={`board-story-${story.number}`}
           data-iteration-member={story.number}
-          data-dragging={draggedNumber === story.number ? 'true' : undefined}
-          {...rowProps({ story, position })}
+          data-dragging={dragging ? 'true' : undefined}
+          {...rowDragProps}
         >
           <button
             type="button"
@@ -141,7 +124,7 @@ const MemberList = ({
             }}
           />
           {iteration.gh_state !== 'closed' ? (
-            <DragGrip storyNumber={story.number} gripDragProps={gripProps({ story, position })} />
+            <DragGrip storyNumber={story.number} gripDragProps={gripDragProps} />
           ) : null}
           <small className="board-story-number">#{story.number}</small>
           <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
@@ -171,8 +154,8 @@ const MemberList = ({
             </button>
           ) : null}
         </li>
-      ))}
-    </ul>
+      )}
+    />
   )
 }
 
