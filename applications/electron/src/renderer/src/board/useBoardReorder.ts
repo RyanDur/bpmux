@@ -2,8 +2,7 @@ import { useCallback } from 'react'
 import { describeHttpError } from '../api/http'
 import { postStoryLabels } from '../api/labelsClient'
 import { computeMemberDropMutation } from './iterationPosition'
-import { eagerReorder, positionInParentIteration } from './iterationMembers'
-import { findCurrentIteration } from './currentIteration'
+import { eagerReorder } from './iterationMembers'
 import { parseParentIterationLabel } from './labelSchema'
 import { columnFor, storyTypeFromLabels, type BoardResponse, type ColumnState } from './types'
 
@@ -38,23 +37,21 @@ export const useBoardReorder = ({
         )
 
       if (state === 'ready' && prevData) {
-        const iteration = findCurrentIteration(prevData.stories)
-        if (iteration === null) return
         const readyStories = inGroupOf(prevData)
+        const draggedStory = readyStories.find((s) => s.number === moved)
+        const membership = draggedStory?.iteration_membership
+        if (membership === undefined || membership === null) return
+        const iterationNumber = membership.iteration_number
+        const draggedOldPosition = membership.position
         const targetMemberIndex = readyStories.findIndex((s) => s.number === targetNumber)
         if (targetMemberIndex === -1) return
-        const draggedStory = readyStories.find((s) => s.number === moved)
-        const draggedOldPosition = draggedStory
-          ? positionInParentIteration(draggedStory, iteration.number)
-          : null
-        if (draggedOldPosition === null) return
         const targetMemberPositions = readyStories
-          .map((s) => positionInParentIteration(s, iteration.number))
-          .filter((p): p is number => p !== null)
+          .map((s) => s.iteration_membership?.position)
+          .filter((p): p is number => p !== undefined && p !== null)
         const mutation = computeMemberDropMutation({
-          draggedIterationNumber: iteration.number,
+          draggedIterationNumber: iterationNumber,
           draggedOldPosition,
-          targetIterationNumber: iteration.number,
+          targetIterationNumber: iterationNumber,
           targetMemberPositions,
           targetMemberIndex,
           targetMembersIncludeDragged: true
@@ -72,7 +69,7 @@ export const useBoardReorder = ({
                 ? {
                     ...s,
                     iteration_membership: {
-                      iteration_number: iteration.number,
+                      iteration_number: iterationNumber,
                       position: added.position
                     }
                   }
@@ -87,7 +84,7 @@ export const useBoardReorder = ({
             position:
               s.number === moved
                 ? added.position
-                : (positionInParentIteration(s, iteration.number) ?? Number.MAX_SAFE_INTEGER)
+                : (s.iteration_membership?.position ?? Number.MAX_SAFE_INTEGER)
           }))
           .sort((a, b) => a.position - b.position)
         const newIndex = orderedAfter.findIndex((s) => s.number === moved)

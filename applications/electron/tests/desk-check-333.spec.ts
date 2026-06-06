@@ -32,7 +32,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T03:00:00Z',
       body: '',
-      ...inMockCurrentIteration(1)
+      ...inMockCurrentIteration(100)
     },
     {
       number: 702,
@@ -42,7 +42,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T03:00:00Z',
       body: '',
-      ...inMockCurrentIteration(2)
+      ...inMockCurrentIteration(200)
     },
     {
       number: 703,
@@ -52,7 +52,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T03:00:00Z',
       body: '',
-      ...inMockCurrentIteration(3)
+      ...inMockCurrentIteration(300)
     }
   ]
 }
@@ -64,9 +64,9 @@ const MOCK_BOARD_AFTER = {
   fetched_at: '2026-04-23T03:00:05Z',
   stories: [
     ITERATION_STORY,
-    { ...MOCK_BOARD_BEFORE.stories[3] }, // 703 first (skip iteration at idx 0)
-    { ...MOCK_BOARD_BEFORE.stories[1] }, // 701 second
-    { ...MOCK_BOARD_BEFORE.stories[2] } // 702 last
+    { ...MOCK_BOARD_BEFORE.stories[1], ...inMockCurrentIteration(250) },
+    MOCK_BOARD_BEFORE.stories[2],
+    MOCK_BOARD_BEFORE.stories[3]
   ]
 }
 
@@ -184,9 +184,9 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
       fetched_at: '2026-04-23T03:00:05Z',
       stories: [
         ITERATION_STORY,
-        { ...MOCK_BOARD_BEFORE.stories[2] },
-        { ...MOCK_BOARD_BEFORE.stories[1] },
-        { ...MOCK_BOARD_BEFORE.stories[3] }
+        { ...MOCK_BOARD_BEFORE.stories[1], ...inMockCurrentIteration(250) },
+        MOCK_BOARD_BEFORE.stories[2],
+        MOCK_BOARD_BEFORE.stories[3]
       ]
     }
     const { app } = await launchWithFixture({ postReorderBody: adjacentDownBoard })
@@ -203,28 +203,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     const grip = win.locator(
       '#board-group-ready-content [data-test="board-story-701"] [data-test="story-grip"]'
     )
-    await grip.evaluate((el) => {
-      el.dispatchEvent(
-        new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() })
-      )
-    })
-    await expect(
-      win.locator('#board-group-ready-content [data-test="board-story-701"]')
-    ).toHaveAttribute('data-dragging', 'true')
-
-    await win.locator('#board-group-ready-content [data-test="board-story-702"]').evaluate((li) => {
-      const dt = new DataTransfer()
-      dt.setData('application/x-bpmux-story', '701')
-      li.dispatchEvent(
-        new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt })
-      )
-    })
-    await win.waitForTimeout(50)
-    await win.locator('#board-group-ready-content [data-test="board-story-702"]').evaluate((li) => {
-      const dt = new DataTransfer()
-      dt.setData('application/x-bpmux-story', '701')
-      li.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
-    })
+    await grip.dragTo(win.locator('#board-group-ready-content [data-test="board-story-702"]'))
 
     await expect(async () => {
       expect(
