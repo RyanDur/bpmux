@@ -24,11 +24,34 @@ export interface UseStoryDragResult<P> {
   hasType: (event: React.DragEvent<HTMLElement>) => boolean
 }
 
+const DRAG_GHOST_MARKER = 'data-drag-ghost'
+
+const removeDragGhosts = (): void => {
+  if (typeof document === 'undefined') return
+  document.querySelectorAll(`[${DRAG_GHOST_MARKER}]`).forEach((el) => el.remove())
+}
+
 const setDragImageFromClosestLi = (event: React.DragEvent<HTMLElement>): void => {
   const row = (event.currentTarget as HTMLElement).closest('li')
   if (!row || typeof event.dataTransfer.setDragImage !== 'function') return
+  removeDragGhosts()
   const rect = row.getBoundingClientRect()
-  event.dataTransfer.setDragImage(row, event.clientX - rect.left, event.clientY - rect.top)
+  const ghost = row.cloneNode(true) as HTMLElement
+  ghost.removeAttribute('data-test')
+  ghost.removeAttribute('id')
+  ghost.querySelectorAll('[data-test], [id]').forEach((el) => {
+    el.removeAttribute('data-test')
+    el.removeAttribute('id')
+  })
+  ghost.setAttribute(DRAG_GHOST_MARKER, '')
+  ghost.setAttribute('aria-hidden', 'true')
+  ghost.style.position = 'fixed'
+  ghost.style.top = '-10000px'
+  ghost.style.left = '0'
+  ghost.style.width = `${rect.width}px`
+  ghost.style.pointerEvents = 'none'
+  document.body.appendChild(ghost)
+  event.dataTransfer.setDragImage(ghost, event.clientX - rect.left, event.clientY - rect.top)
 }
 
 export const useStoryDrag = <P>(options: UseStoryDragOptions<P>): UseStoryDragResult<P> => {
@@ -47,6 +70,7 @@ export const useStoryDrag = <P>(options: UseStoryDragOptions<P>): UseStoryDragRe
   )
 
   const endDrag = useCallback((): void => {
+    removeDragGhosts()
     setDraggedNumber(null)
     setHoveredNumber(null)
   }, [])

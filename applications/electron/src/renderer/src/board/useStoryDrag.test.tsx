@@ -116,6 +116,39 @@ describe('#1358 useStoryDrag lifecycle', () => {
     expect(result.current.decode(event)).toEqual(payload)
   })
 
+  test('#1517 startDrag sets the drag image from a detached, test-id-stripped CLONE of the row — not the live row that gets opacity-hidden (so the ghost stays visible)', () => {
+    const li = document.createElement('li')
+    li.setAttribute('data-test', 'board-iteration-42')
+    document.body.appendChild(li)
+    const stored: Record<string, string> = {}
+    let dragImageArg: HTMLElement | null = null
+    const event = {
+      dataTransfer: {
+        setData: (key: string, value: string) => {
+          stored[key] = value
+        },
+        getData: (key: string): string => stored[key] ?? '',
+        setDragImage: (image: HTMLElement) => {
+          dragImageArg = image
+        },
+        effectAllowed: 'none',
+        dropEffect: 'none',
+        types: [] as unknown as DataTransferItemList & string[]
+      },
+      currentTarget: li,
+      clientX: 0,
+      clientY: 0
+    } as unknown as React.DragEvent<HTMLElement>
+
+    const { result } = renderHook(() => useStoryDrag(stringOptions))
+    act(() => result.current.startDrag(event, 42, 42))
+
+    expect(dragImageArg).not.toBeNull()
+    expect(dragImageArg).not.toBe(li)
+    expect((dragImageArg as HTMLElement | null)?.getAttribute('data-test')).toBeNull()
+    li.remove()
+  })
+
   test('DRAG_MIMETYPE_REGISTRY exports the 3 canonical mime types', () => {
     expect(DRAG_MIMETYPE_REGISTRY.STORY_ROW).toBe('application/x-bpmux-story')
     expect(DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER).toBe('application/x-bpmux-iteration-member')
