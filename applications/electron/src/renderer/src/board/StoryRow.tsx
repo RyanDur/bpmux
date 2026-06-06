@@ -1,9 +1,8 @@
-import { GripIcon } from './GripIcon'
+import { DragGrip } from './DragGrip'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
 import { deriveBadge } from './StoryBadge.utils'
 import StoryTypeGlyph from './StoryTypeGlyph'
-import { STORY_GRIP_TEST_ID } from './testIds'
 import { type GripDragProps, type RowDragProps } from './useDragReorder'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
@@ -85,17 +84,8 @@ const StoryRow = ({
         aria-label={ariaLabel}
         data-rework={story.rework_comment ? 'true' : undefined}
       />
-      {draggable ? (
-        <button
-          type="button"
-          className="board-story-grip"
-          data-test={STORY_GRIP_TEST_ID}
-          aria-label={`Drag to reorder #${story.number}`}
-          tabIndex={-1}
-          {...gripDragProps}
-        >
-          <GripIcon />
-        </button>
+      {draggable && gripDragProps !== undefined ? (
+        <DragGrip storyNumber={story.number} gripDragProps={gripDragProps} />
       ) : null}
       <small className="board-story-number">#{story.number}</small>
       <StoryTypeGlyph type={type} />

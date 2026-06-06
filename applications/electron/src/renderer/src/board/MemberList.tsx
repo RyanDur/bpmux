@@ -1,10 +1,9 @@
-import { GripIcon } from './GripIcon'
+import { DragGrip } from './DragGrip'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { computeMemberDropMutation } from './iterationPosition'
 import { parseParentIterationLabel } from './labelSchema'
-import { STORY_GRIP_TEST_ID } from './testIds'
 import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
 import { type DragPayload, postLabelMutation } from './iterationMembers'
 import type { IterationMember } from './useIterationMembers'
@@ -142,16 +141,7 @@ const MemberList = ({
             }}
           />
           {iteration.gh_state !== 'closed' ? (
-            <button
-              type="button"
-              className="board-story-grip"
-              data-test={STORY_GRIP_TEST_ID}
-              aria-label={`Drag to reorder #${story.number}`}
-              tabIndex={-1}
-              {...gripProps({ story, position })}
-            >
-              <GripIcon />
-            </button>
+            <DragGrip storyNumber={story.number} gripDragProps={gripProps({ story, position })} />
           ) : null}
           <small className="board-story-number">#{story.number}</small>
           <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
