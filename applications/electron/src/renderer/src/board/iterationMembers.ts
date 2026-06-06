@@ -18,12 +18,16 @@ export interface PendingMemberPosition {
 }
 
 export const positionInIterationOrder = (story: BoardStory): number | null => {
+  let lowest: number | null = null
   for (const label of story.labels) {
     const n = parseIterationOrderPosition(label)
-    if (n !== null) return n
+    if (n !== null && (lowest === null || n < lowest)) lowest = n
   }
-  return null
+  return lowest
 }
+
+export const iterationOrderLabelsOf = (story: BoardStory): string[] =>
+  story.labels.filter((label) => parseIterationOrderPosition(label) !== null)
 
 export const isIterationStory = (story: BoardStory): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'

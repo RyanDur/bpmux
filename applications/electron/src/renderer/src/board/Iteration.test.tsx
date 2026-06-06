@@ -517,6 +517,36 @@ describe('#1517 iteration-row drag-sort adopts the shared useDragReorder (real p
     expect(activeIterationNumbers()).toEqual([9002, 9001])
   })
 
+  test('#1517 a reorder clears ALL stale order-labels on the dragged iteration (self-heals accumulated duplicates like Aquila #1655)', () => {
+    const accumulated = iterationStory({
+      number: 9001,
+      title: 'Iteration A',
+      gh_state: 'open',
+      labels: ['Iteration', iterationOrderLabel(100), iterationOrderLabel(250)]
+    })
+    const other = iterationStory({
+      number: 9002,
+      title: 'Iteration B',
+      gh_state: 'open',
+      labels: ['Iteration', iterationOrderLabel(200)]
+    })
+    render(<Iteration stories={[accumulated, other]} onOpen={() => {}} />)
+    expect(activeIterationNumbers()).toEqual([9001, 9002])
+
+    const grips = screen.getAllByTestId('iteration-grip')
+    const dataTransfer = makeDataTransfer()
+    fireEvent.dragStart(grips[0], { dataTransfer })
+    const rows = document.querySelectorAll('.board-iteration-row')
+    fireEvent.dragOver(rows[1] as HTMLElement, { dataTransfer })
+    fireEvent.drop(rows[1] as HTMLElement, { dataTransfer })
+
+    const call = postLabelMutationMock.mock.calls.find((c) => c[0] === 9001)
+    expect(call).toBeDefined()
+    const removeLabels = call?.[2] as string[]
+    expect(removeLabels).toContain(iterationOrderLabel(100))
+    expect(removeLabels).toContain(iterationOrderLabel(250))
+  })
+
   test('closed iterations are not drag sources (no grip) — drag-sort is active-planned only', () => {
     const open = iterationStory({
       number: 9003,

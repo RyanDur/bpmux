@@ -3,11 +3,7 @@ import { GripIcon } from './GripIcon'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import {
-  computeEstablishOrderMutations,
-  computeIterationOrderMutation,
-  type DropMutation
-} from './iterationPosition'
+import { computeEstablishOrderMutations, computeIterationOrderMutation } from './iterationPosition'
 import { parseIterationOrderPosition, themeNameFromTitle } from './labelSchema'
 import { ITERATION_GRIP_TEST_ID, boardIterationTestId } from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -16,6 +12,7 @@ import type { BoardStory } from './types'
 import {
   type IterationDragPayload,
   eagerReorder,
+  iterationOrderLabelsOf,
   positionInIterationOrder,
   postLabelMutation
 } from './iterationMembers'
@@ -58,11 +55,12 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   const activePlannedIterations = sortedIterations.filter((it) => it.gh_state !== 'closed')
   const closedIterations = sortedIterations.filter((it) => it.gh_state === 'closed')
 
-  const applyOrderMutation = (iterationNumber: number, mutation: DropMutation): void => {
-    postLabelMutation(iterationNumber, mutation.add, mutation.remove)
-    const newOrder = parseIterationOrderPosition(mutation.add[0])
+  const applyOrderMutation = (story: BoardStory, addLabel: string): void => {
+    const remove = iterationOrderLabelsOf(story).filter((label) => label !== addLabel)
+    postLabelMutation(story.number, [addLabel], remove)
+    const newOrder = parseIterationOrderPosition(addLabel)
     if (newOrder !== null) {
-      setPendingIterationOrder(iterationNumber, newOrder)
+      setPendingIterationOrder(story.number, newOrder)
     }
   }
 
@@ -95,7 +93,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
         targetMembersIncludeDragged: true
       })
       if (mutation === null) return null
-      applyOrderMutation(movedNumber, mutation)
+      applyOrderMutation(moved, mutation.add[0])
       return finalIndex + 1
     }
 
@@ -107,7 +105,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     )
     if (mutations.length === 0) return null
     for (const m of mutations) {
-      applyOrderMutation(m.iterationNumber, m)
+      const story = activePlannedIterations.find((it) => it.number === m.iterationNumber)
+      if (story !== undefined) applyOrderMutation(story, m.add[0])
     }
     return finalIndex + 1
   }
