@@ -31,12 +31,26 @@ const removeDragGhosts = (): void => {
   document.querySelectorAll(`[${DRAG_GHOST_MARKER}]`).forEach((el) => el.remove())
 }
 
+const copyPaintedStyles = (source: Element, clone: Element): void => {
+  const sourceEls = [source, ...Array.from(source.querySelectorAll('*'))]
+  const cloneEls = [clone, ...Array.from(clone.querySelectorAll('*'))]
+  sourceEls.forEach((sourceEl, index) => {
+    const cloneEl = cloneEls[index]
+    if (cloneEl === undefined || !(cloneEl instanceof HTMLElement)) return
+    const computed = window.getComputedStyle(sourceEl)
+    cloneEl.style.backgroundColor = computed.backgroundColor
+    cloneEl.style.color = computed.color
+    cloneEl.style.borderColor = computed.borderColor
+  })
+}
+
 const setDragImageFromClosestLi = (event: React.DragEvent<HTMLElement>): void => {
   const row = (event.currentTarget as HTMLElement).closest('li')
   if (!row || typeof event.dataTransfer.setDragImage !== 'function') return
   removeDragGhosts()
   const rect = row.getBoundingClientRect()
   const ghost = row.cloneNode(true) as HTMLElement
+  if (typeof window.getComputedStyle === 'function') copyPaintedStyles(row, ghost)
   ghost.removeAttribute('data-test')
   ghost.removeAttribute('id')
   ghost.querySelectorAll('[data-test], [id]').forEach((el) => {
@@ -50,7 +64,7 @@ const setDragImageFromClosestLi = (event: React.DragEvent<HTMLElement>): void =>
   ghost.style.left = '0'
   ghost.style.width = `${rect.width}px`
   ghost.style.pointerEvents = 'none'
-  ;(row.parentElement ?? document.body).appendChild(ghost)
+  document.body.appendChild(ghost)
   event.dataTransfer.setDragImage(ghost, event.clientX - rect.left, event.clientY - rect.top)
 }
 
