@@ -29,6 +29,10 @@ pub(crate) async fn handle_view_board(
             }
         }
     }
+    Ok(build_board_text(&stories))
+}
+
+pub(in crate::bridge) fn build_board_text(stories: &[crate::board::domain::Story]) -> String {
     let format_entry = |s: &crate::board::domain::Story| -> (u64, String) {
         let prefix = if s.parent_epic.is_some() { "↳ " } else { "" };
         let suffix = match s.parent_epic {
@@ -101,5 +105,5 @@ pub(crate) async fn handle_view_board(
     section(ColumnBucket::Delivered.header(), &delivered, &mut out);
     section(ColumnBucket::Accepted.header(), &accepted, &mut out);
     section(ColumnBucket::Retired.header(), &retired, &mut out);
-    Ok(out)
+    out
 }
