@@ -27,7 +27,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T11:00:00Z',
       body: '',
-      ...inMockCurrentIteration(1)
+      ...inMockCurrentIteration(100)
     },
     {
       number: 812,
@@ -37,7 +37,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T11:00:00Z',
       body: '',
-      ...inMockCurrentIteration(2)
+      ...inMockCurrentIteration(200)
     },
     {
       number: 813,
@@ -47,7 +47,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T11:00:00Z',
       body: '',
-      ...inMockCurrentIteration(3)
+      ...inMockCurrentIteration(300)
     }
   ]
 }
@@ -85,7 +85,9 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await expect(win.locator('[data-test="board-group-ready"]').first()).toBeVisible()
 
-    const firstRow = win.locator('#board-group-ready-content [data-test="board-story-811"] .board-story-navigate')
+    const firstRow = win.locator(
+      '#board-group-ready-content [data-test="board-story-811"] .board-story-navigate'
+    )
     await firstRow.focus()
 
     // Pre-reorder: live region empty.
@@ -116,7 +118,9 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // announcement.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const firstRow = win.locator('#board-group-ready-content [data-test="board-story-811"] .board-story-navigate')
+    const firstRow = win.locator(
+      '#board-group-ready-content [data-test="board-story-811"] .board-story-navigate'
+    )
     await firstRow.focus()
 
     await firstRow.press('Control+Shift+ArrowUp')
@@ -138,7 +142,9 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // Mirror of the first-row case at the other boundary.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const lastRow = win.locator('#board-group-ready-content [data-test="board-story-813"] .board-story-navigate')
+    const lastRow = win.locator(
+      '#board-group-ready-content [data-test="board-story-813"] .board-story-navigate'
+    )
     await lastRow.focus()
 
     await lastRow.press('Control+Shift+ArrowDown')
@@ -159,7 +165,9 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // Keyboard-only users hear the affordance at focus time.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const button = win.locator('#board-group-ready-content [data-test="board-story-811"] .board-story-navigate')
+    const button = win.locator(
+      '#board-group-ready-content [data-test="board-story-811"] .board-story-navigate'
+    )
     const ariaLabel = await button.getAttribute('aria-label')
     expect(ariaLabel).toMatch(/position 1 of 3/i)
     expect(ariaLabel).toMatch(/Ctrl\+Shift/i)
