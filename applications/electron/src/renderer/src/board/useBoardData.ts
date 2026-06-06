@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import { isIterationPositionLabel } from './labelSchema'
+import { findCurrentIteration } from './currentIteration'
+import { positionInParentIteration } from './iterationMembers'
 import {
   GROUP_ORDER,
   groupStories,
@@ -58,7 +60,24 @@ export const useBoardData = (data: BoardResponse | null): UseBoardDataResult => 
       }),
     [nonEpicStories]
   )
-  const grouped = useMemo(() => groupStories(flatBoardStories), [flatBoardStories])
+  const grouped = useMemo(() => {
+    const byColumn = groupStories(flatBoardStories)
+    const current = findCurrentIteration(stories)
+    if (current !== null) {
+      const ready = byColumn.get('ready')
+      if (ready) {
+        ready.sort((a, b) => {
+          const ap = positionInParentIteration(a, current.number)
+          const bp = positionInParentIteration(b, current.number)
+          if (ap !== null && bp !== null) return ap - bp
+          if (ap !== null) return -1
+          if (bp !== null) return 1
+          return a.number - b.number
+        })
+      }
+    }
+    return byColumn
+  }, [flatBoardStories, stories])
   const navOrder = useMemo(() => {
     const out: number[] = []
     for (const group of GROUP_ORDER) {
