@@ -13,6 +13,7 @@ export interface SortableRowContext {
   rowDragProps: RowDragProps
   gripDragProps: GripDragProps
   dragging: boolean
+  index: number
 }
 
 export interface SortableListProps<P, T> {
@@ -51,12 +52,13 @@ export const SortableList = <P, T>({
   })
   return (
     <ul className={ulClassName}>
-      {orderedItems.map((item) => (
+      {orderedItems.map((item, index) => (
         <Fragment key={rowKey(item)}>
           {renderRow(item, {
             rowDragProps: rowProps(item),
             gripDragProps: gripProps(item),
-            dragging: draggedNumber === keyOf(item)
+            dragging: draggedNumber === keyOf(item),
+            index
           })}
         </Fragment>
       ))}

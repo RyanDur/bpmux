@@ -117,7 +117,7 @@ describe('#1358 useStoryDrag lifecycle', () => {
   })
 
   test('DRAG_MIMETYPE_REGISTRY exports the 3 canonical mime types', () => {
-    expect(DRAG_MIMETYPE_REGISTRY.STORY_ROW).toBe('text/bpmux-story')
+    expect(DRAG_MIMETYPE_REGISTRY.STORY_ROW).toBe('application/x-bpmux-story')
     expect(DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER).toBe('application/x-bpmux-iteration-member')
     expect(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF).toBe('application/x-bpmux-iteration-itself')
   })

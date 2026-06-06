@@ -82,4 +82,24 @@ describe('SortableList', () => {
     fireEvent.dragStart(screen.getByTestId('grip-2'), { dataTransfer: dt })
     expect(screen.getByTestId('row-2').getAttribute('data-dragging')).toBe('true')
   })
+
+  test('passes each row its ordered index through the context', () => {
+    render(
+      <SortableList<number, number>
+        items={[10, 20, 30]}
+        keyOf={(n) => n}
+        rowKey={(n) => n}
+        config={numberConfig}
+        buildPayload={(n) => n}
+        onReorder={vi.fn()}
+        ulClassName="indexed-list"
+        renderRow={(n, ctx) => (
+          <li data-test={`indexed-${n}`} data-index={ctx.index} />
+        )}
+      />
+    )
+    expect(screen.getByTestId('indexed-10').getAttribute('data-index')).toBe('0')
+    expect(screen.getByTestId('indexed-20').getAttribute('data-index')).toBe('1')
+    expect(screen.getByTestId('indexed-30').getAttribute('data-index')).toBe('2')
+  })
 })

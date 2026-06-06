@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 
 export const DRAG_MIMETYPE_REGISTRY = {
-  STORY_ROW: 'text/bpmux-story',
+  STORY_ROW: 'application/x-bpmux-story',
   ITERATION_MEMBER: 'application/x-bpmux-iteration-member',
   ITERATION_ITSELF: 'application/x-bpmux-iteration-itself'
 } as const

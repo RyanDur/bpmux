@@ -1,12 +1,7 @@
 import StoryRow from './StoryRow'
-import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
-import { useDragReorder } from './useDragReorder'
+import { SortableList } from './SortableList'
+import { READY_STORY_DRAG } from './sortableDragConfigs'
 import { isClosedIterationMarker, type BoardStory, type ColumnState, type GroupSpec } from './types'
-
-const decodeStoryNumber = (raw: string): number | null => {
-  const n = Number.parseInt(raw, 10)
-  return Number.isNaN(n) ? null : n
-}
 
 export interface BoardGroupProps {
   group: GroupSpec
@@ -38,21 +33,6 @@ const BoardGroup = ({
   children
 }: BoardGroupProps): React.JSX.Element => {
   const draggable = (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
-
-  const { orderedItems, draggedNumber, rowProps, gripProps } = useDragReorder<number, BoardStory>({
-    items: stories,
-    keyOf: (s) => s.number,
-    mimeType: DRAG_MIMETYPE_REGISTRY.STORY_ROW,
-    encode: String,
-    decode: decodeStoryNumber,
-    payloadKey: (p) => p,
-    buildPayload: (s) => s.number,
-    disabled: !draggable,
-    onReorder: (moved, targetNumber) => {
-      if (onReorder === undefined) return
-      onReorder(group.state, moved, targetNumber)
-    }
-  })
 
   const contentId = `board-group-${group.state}-content`
   return (
@@ -94,12 +74,22 @@ const BoardGroup = ({
         ) : stories.length === 0 ? (
           <p className="board-group-empty">none</p>
         ) : (
-          <ul className="board-story-list">
-            {orderedItems.map((story, i) => {
+          <SortableList<number, BoardStory>
+            items={stories}
+            keyOf={(s) => s.number}
+            rowKey={(s) => s.number}
+            config={READY_STORY_DRAG}
+            buildPayload={(s) => s.number}
+            onReorder={(moved, targetNumber) => {
+              if (onReorder === undefined) return
+              onReorder(group.state, moved, targetNumber)
+            }}
+            disabled={!draggable}
+            ulClassName="board-story-list"
+            renderRow={(story, { rowDragProps, gripDragProps, dragging, index }) => {
               const rowDraggable = draggable && !isClosedIterationMarker(story)
               return (
                 <StoryRow
-                  key={story.number}
                   story={story}
                   parentEpicTitle={
                     story.parent_epic !== undefined
@@ -108,16 +98,15 @@ const BoardGroup = ({
                   }
                   selected={story.number === selectedNumber}
                   draggable={rowDraggable}
-                  dragging={draggedNumber === story.number}
-                  position={i + 1}
-                  total={orderedItems.length}
+                  dragging={dragging}
+                  position={index + 1}
+                  total={stories.length}
                   onKeyboardReorder={
                     rowDraggable && onReorder !== undefined
                       ? (direction) => {
-                          if (direction === 'up' && i === 0) return
-                          if (direction === 'down' && i === orderedItems.length - 1) return
-                          const target =
-                            direction === 'up' ? orderedItems[i - 1] : orderedItems[i + 1]
+                          if (direction === 'up' && index === 0) return
+                          if (direction === 'down' && index === stories.length - 1) return
+                          const target = direction === 'up' ? stories[index - 1] : stories[index + 1]
                           onReorder(group.state, story.number, target.number)
                         }
                       : undefined
@@ -125,12 +114,12 @@ const BoardGroup = ({
                   onOpen={onOpen}
                   onOpenTimeline={onOpenTimeline}
                   onSelect={onSelect}
-                  rowDragProps={rowDraggable ? rowProps(story) : undefined}
-                  gripDragProps={rowDraggable ? gripProps(story) : undefined}
+                  rowDragProps={rowDraggable ? rowDragProps : undefined}
+                  gripDragProps={rowDraggable ? gripDragProps : undefined}
                 />
               )
-            })}
-          </ul>
+            }}
+          />
         )}
       </section>
     </details>

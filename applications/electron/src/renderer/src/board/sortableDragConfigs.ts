@@ -16,3 +16,15 @@ export const ITERATION_MEMBER_DRAG: SortableDragConfig<DragPayload> = {
   decode: decodeMemberPayload,
   payloadKey: (payload) => payload.storyNumber
 }
+
+const decodeStoryNumber = (raw: string): number | null => {
+  const n = Number.parseInt(raw, 10)
+  return Number.isNaN(n) ? null : n
+}
+
+export const READY_STORY_DRAG: SortableDragConfig<number> = {
+  mimeType: DRAG_MIMETYPE_REGISTRY.STORY_ROW,
+  encode: String,
+  decode: decodeStoryNumber,
+  payloadKey: (storyNumber) => storyNumber
+}
