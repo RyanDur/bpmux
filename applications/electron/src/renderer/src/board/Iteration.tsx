@@ -4,7 +4,7 @@ import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
 import { computeIterationOrderMutation } from './iterationPosition'
-import { themeNameFromTitle } from './labelSchema'
+import { parseIterationOrderPosition, themeNameFromTitle } from './labelSchema'
 import { ITERATION_GRIP_TEST_ID, boardIterationTestId } from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { findCurrentIteration } from './currentIteration'
@@ -42,7 +42,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   const [dragRejectedIterationNumber, setDragRejectedIterationNumber] = useState<number | null>(
     null
   )
-  const { sortedIterations, sortedLoose, getMembersFor, setPending } = useIterationMembers(stories)
+  const { sortedIterations, sortedLoose, getMembersFor, setPending, setPendingIterationOrder } =
+    useIterationMembers(stories)
   const sectionStorage = useCollapsibleSectionsStorage<IterationSectionId>(
     ITERATION_SECTIONS_STORAGE_PREFIX,
     RENDERER_IDENTITY,
@@ -67,6 +68,10 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     })
     if (!mutation) return
     postLabelMutation(payload.iterationNumber, mutation.add, mutation.remove)
+    const newOrder = parseIterationOrderPosition(mutation.add[0])
+    if (newOrder !== null) {
+      setPendingIterationOrder(payload.iterationNumber, newOrder)
+    }
   }
 
   const sectionOpen = sectionStorage.state
@@ -114,6 +119,10 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     })
     if (!mutation) return
     postLabelMutation(iteration.number, mutation.add, mutation.remove)
+    const newOrder = parseIterationOrderPosition(mutation.add[0])
+    if (newOrder !== null) {
+      setPendingIterationOrder(iteration.number, newOrder)
+    }
     onReorderAnnounce?.(
       `Moved ${iteration.title} to position ${targetMemberIndex + 1} of ${activePlannedIterations.length} among iterations`
     )

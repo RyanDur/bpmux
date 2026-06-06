@@ -19,15 +19,7 @@ export interface UseIterationMembersResult {
   sortedLoose: BoardStory[]
   getMembersFor: (iterationNumber: number) => IterationMember[]
   setPending: (storyNumber: number, iterationNumber: number, position: number) => void
-}
-
-const compareIterations = (a: BoardStory, b: BoardStory): number => {
-  const ao = positionInIterationOrder(a)
-  const bo = positionInIterationOrder(b)
-  if (ao !== null && bo !== null) return ao - bo
-  if (ao !== null) return -1
-  if (bo !== null) return 1
-  return a.number - b.number
+  setPendingIterationOrder: (iterationNumber: number, position: number) => void
 }
 
 const compareLoose = (a: BoardStory, b: BoardStory): number => {
@@ -43,6 +35,9 @@ export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersR
   const [pendingMemberPosition, setPendingMemberPosition] = useState<
     Record<number, PendingMemberPosition>
   >({})
+  const [pendingIterationOrder, setPendingIterationOrderState] = useState<Record<number, number>>(
+    {}
+  )
 
   const effectivePending = useMemo<Record<number, PendingMemberPosition>>(() => {
     const out: Record<number, PendingMemberPosition> = {}
@@ -58,10 +53,31 @@ export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersR
     return out
   }, [stories, pendingMemberPosition])
 
-  const sortedIterations = useMemo(
-    () => [...stories.filter(isIterationStory)].sort(compareIterations),
-    [stories]
-  )
+  const effectivePendingIterationOrder = useMemo<Record<number, number>>(() => {
+    const out: Record<number, number> = {}
+    for (const [numStr, position] of Object.entries(pendingIterationOrder)) {
+      const num = Number(numStr)
+      const story = stories.find((s) => s.number === num)
+      const actualPosition = story ? positionInIterationOrder(story) : null
+      if (actualPosition === position) continue
+      out[num] = position
+    }
+    return out
+  }, [stories, pendingIterationOrder])
+
+  const sortedIterations = useMemo(() => {
+    const orderOf = (story: BoardStory): number | null =>
+      effectivePendingIterationOrder[story.number] ?? positionInIterationOrder(story)
+    const compare = (a: BoardStory, b: BoardStory): number => {
+      const ao = orderOf(a)
+      const bo = orderOf(b)
+      if (ao !== null && bo !== null) return ao - bo
+      if (ao !== null) return -1
+      if (bo !== null) return 1
+      return a.number - b.number
+    }
+    return [...stories.filter(isIterationStory)].sort(compare)
+  }, [stories, effectivePendingIterationOrder])
 
   const sortedLoose = useMemo(() => [...stories.filter(isLooseStory)].sort(compareLoose), [stories])
 
@@ -100,5 +116,12 @@ export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersR
     []
   )
 
-  return { sortedIterations, sortedLoose, getMembersFor, setPending }
+  const setPendingIterationOrder = useCallback(
+    (iterationNumber: number, position: number): void => {
+      setPendingIterationOrderState((prev) => ({ ...prev, [iterationNumber]: position }))
+    },
+    []
+  )
+
+  return { sortedIterations, sortedLoose, getMembersFor, setPending, setPendingIterationOrder }
 }

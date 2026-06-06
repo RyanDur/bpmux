@@ -42,6 +42,14 @@ const iterationStory = (overrides: Partial<BoardStory>): BoardStory => ({
   ...overrides
 })
 
+const activeIterationNumbers = (): number[] => {
+  const section = document.querySelector('[data-test="board-iterations-section-active-planned"]')
+  if (section === null) return []
+  return Array.from(section.querySelectorAll('.board-iteration-card')).map((el) =>
+    Number((el.getAttribute('data-test') ?? '').replace('board-iteration-', ''))
+  )
+}
+
 const memberStory = (overrides: Partial<BoardStory>): BoardStory => ({
   number: 9100,
   title: 'member',
@@ -452,6 +460,32 @@ describe('#1517 iteration-row drag-sort adopts the shared useDragReorder (real p
     expect(removeLabels).toEqual([iterationOrderLabel(100)])
     const newPos = Number(String(addLabels[0]).replace('iteration-order.', ''))
     expect(newPos).toBeGreaterThan(200)
+  })
+
+  test('clause-13: a dropped iteration stays in the new order in the optimistic window, before the backend confirms (no snap-back to the label order)', () => {
+    const a = iterationStory({
+      number: 9001,
+      title: 'Iteration A',
+      gh_state: 'open',
+      labels: ['Iteration', iterationOrderLabel(100)]
+    })
+    const b = iterationStory({
+      number: 9002,
+      title: 'Iteration B',
+      gh_state: 'open',
+      labels: ['Iteration', iterationOrderLabel(200)]
+    })
+    render(<Iteration stories={[a, b]} onOpen={() => {}} />)
+    expect(activeIterationNumbers()).toEqual([9001, 9002])
+
+    const grips = screen.getAllByTestId('iteration-grip')
+    const dataTransfer = makeDataTransfer()
+    fireEvent.dragStart(grips[0], { dataTransfer })
+    const rows = document.querySelectorAll('.board-iteration-row')
+    fireEvent.dragOver(rows[1] as HTMLElement, { dataTransfer })
+    fireEvent.drop(rows[1] as HTMLElement, { dataTransfer })
+
+    expect(activeIterationNumbers()).toEqual([9002, 9001])
   })
 
   test('closed iterations are not drag sources (no grip) — drag-sort is active-planned only', () => {
