@@ -1,7 +1,6 @@
 export const ITERATION_PREFIX = 'iteration-'
 export const ITERATION_ORDER_PREFIX = 'iteration-order.'
 export const PARENT_ITERATION_PREFIX = 'parent-iteration-#'
-export const READY_ORDER_PREFIX = 'ready-order.'
 export const UNSCHEDULED_THEME_NAME = 'Unscheduled'
 export const UNSCHEDULED_LABEL_PREFIX = `${ITERATION_PREFIX}${UNSCHEDULED_THEME_NAME}.`
 
@@ -33,8 +32,6 @@ export const parseParentIterationLabel = (label: string): ParentIterationLabelPa
 export const iterationOrderLabel = (position: number): string =>
   `${ITERATION_ORDER_PREFIX}${position}`
 
-export const readyOrderLabel = (position: number): string => `${READY_ORDER_PREFIX}${position}`
-
 export const unscheduledLabel = (position: number): string =>
   `${UNSCHEDULED_LABEL_PREFIX}${position}`
 
@@ -48,13 +45,6 @@ export const parseIterationOrderPosition = (label: string): number | null => {
   if (!label.startsWith(ITERATION_ORDER_PREFIX)) return null
   const n = parseInt(label.slice(ITERATION_ORDER_PREFIX.length), 10)
   return Number.isNaN(n) ? null : n
-}
-
-export const parseReadyOrderPosition = (label: string): number | null => {
-  if (!label.startsWith(READY_ORDER_PREFIX)) return null
-  const n = Number(label.slice(READY_ORDER_PREFIX.length))
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null
-  return n
 }
 
 export const parseUnscheduledPosition = (label: string): number | null => {

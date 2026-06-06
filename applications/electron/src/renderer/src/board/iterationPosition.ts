@@ -1,4 +1,4 @@
-import { iterationOrderLabel, parentIterationLabel, readyOrderLabel } from './labelSchema'
+import { iterationOrderLabel, parentIterationLabel } from './labelSchema'
 
 export const DEFAULT_FIRST_POSITION = 100
 export const DEFAULT_STEP = 100
@@ -104,29 +104,4 @@ export const computeMemberDropMutation = (input: MemberDropMutationInput): DropM
     add: [parentIterationLabel(input.targetIterationNumber, position)],
     remove: [parentIterationLabel(input.draggedIterationNumber, input.draggedOldPosition)]
   }
-}
-
-export interface ReadyDropMutationInput {
-  draggedOldPosition: number | null
-  targetMemberPositions: number[]
-  targetMemberIndex: number
-  targetMembersIncludeDragged: boolean
-}
-
-export const computeReadyDropMutation = (input: ReadyDropMutationInput): DropMutation | null => {
-  const {
-    draggedOldPosition,
-    targetMemberPositions,
-    targetMemberIndex,
-    targetMembersIncludeDragged
-  } = input
-  const withoutSource =
-    draggedOldPosition !== null && targetMembersIncludeDragged
-      ? targetMemberPositions.filter((p) => p !== draggedOldPosition)
-      : targetMemberPositions
-  const { position: newPosition } = computeInsertPosition(targetMemberIndex, withoutSource)
-  if (draggedOldPosition !== null && newPosition === draggedOldPosition) return null
-  const add = [readyOrderLabel(newPosition)]
-  const remove = draggedOldPosition !== null ? [readyOrderLabel(draggedOldPosition)] : []
-  return { add, remove }
 }

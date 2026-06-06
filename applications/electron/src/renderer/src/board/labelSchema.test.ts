@@ -3,16 +3,13 @@ import { describe, expect, it } from 'vitest'
 import {
   ITERATION_ORDER_PREFIX,
   ITERATION_PREFIX,
-  READY_ORDER_PREFIX,
   UNSCHEDULED_LABEL_PREFIX,
   UNSCHEDULED_THEME_NAME,
   iterationLabel,
   isIterationPositionLabel,
   parseIterationLabel,
   parseIterationOrderPosition,
-  parseReadyOrderPosition,
   parseUnscheduledPosition,
-  readyOrderLabel,
   themeNameFromTitle,
   unscheduledLabel
 } from './labelSchema'
@@ -38,17 +35,6 @@ describe('#1365 labelSchema — single-source-of-truth constants + parsers', () 
     expect(parseIterationOrderPosition('iteration-order.100')).toBe(100)
     expect(parseIterationOrderPosition('iteration-Andromeda.100')).toBeNull()
     expect(parseIterationOrderPosition('iteration-order.foo')).toBeNull()
-  })
-
-  it('parses ready-order positions', () => {
-    expect(parseReadyOrderPosition('ready-order.250')).toBe(250)
-    expect(parseReadyOrderPosition('ready-order.foo')).toBeNull()
-    expect(parseReadyOrderPosition('ready')).toBeNull()
-    expect(parseReadyOrderPosition('ready-order.-5')).toBeNull()
-  })
-
-  it('readyOrderLabel constructor mirrors prefix + position', () => {
-    expect(readyOrderLabel(300)).toBe('ready-order.300')
   })
 
   it('parses unscheduled position from iteration-Unscheduled prefix', () => {
@@ -84,7 +70,6 @@ describe('#1365 labelSchema — single-source-of-truth constants + parsers', () 
   it('exports the canonical prefix constants', () => {
     expect(ITERATION_PREFIX).toBe('iteration-')
     expect(ITERATION_ORDER_PREFIX).toBe('iteration-order.')
-    expect(READY_ORDER_PREFIX).toBe('ready-order.')
     expect(UNSCHEDULED_THEME_NAME).toBe('Unscheduled')
     expect(UNSCHEDULED_LABEL_PREFIX).toBe('iteration-Unscheduled.')
   })
