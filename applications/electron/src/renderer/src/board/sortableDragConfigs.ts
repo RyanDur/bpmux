@@ -1,5 +1,5 @@
 import type { SortableDragConfig } from './SortableList'
-import type { DragPayload } from './iterationMembers'
+import type { DragPayload, IterationDragPayload } from './iterationMembers'
 import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
 
 const decodeMemberPayload = (raw: string): DragPayload | null => {
@@ -27,4 +27,19 @@ export const READY_STORY_DRAG: SortableDragConfig<number> = {
   encode: String,
   decode: decodeStoryNumber,
   payloadKey: (storyNumber) => storyNumber
+}
+
+const decodeIterationPayload = (raw: string): IterationDragPayload | null => {
+  try {
+    return JSON.parse(raw) as IterationDragPayload
+  } catch {
+    return null
+  }
+}
+
+export const ITERATION_ITSELF_DRAG: SortableDragConfig<IterationDragPayload> = {
+  mimeType: DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF,
+  encode: JSON.stringify,
+  decode: decodeIterationPayload,
+  payloadKey: (payload) => payload.iterationNumber
 }
