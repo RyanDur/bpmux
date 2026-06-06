@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!--
+  #1593 mockup — Owner sees an agent's bpmux-actions in its terminal-stream.
+  Mockup-FIRST → for Ryan's review BEFORE build (per the story's mockup-gate).
+  Honors Ryan's PLAIN-MODEL pin (no special visual-treatment; actions read as
+  normal terminal-content). Rendered terminal-styled (not chat-ASCII) per the
+  medium-survives-its-surface lesson. Resolves the OUTPUT-VOLUME question.
+  Designer, 2026-06-06. Aquila #1655.2.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>#1593 — agent bpmux-actions in the terminal-stream (plain-model)</title>
+<style>
+  :root {
+    --bg: #1e1e1e; --fg: #cfcfcf; --dim: #7a7a7a; --green: #6a9955;
+    --cyan: #4ec9b0; --note-bg: #252526; --note-br: #3a3a3a; --accent: #569cd6;
+  }
+  body { background:#121212; color:var(--fg); font-family:-apple-system,system-ui,sans-serif; margin:0; padding:24px; }
+  h1 { font-size:16px; font-weight:600; margin:0 0 4px; }
+  .sub { color:var(--dim); font-size:13px; margin:0 0 20px; }
+  .term {
+    background:var(--bg); border-radius:8px; padding:16px 18px; max-width:860px;
+    font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13px; line-height:1.65;
+    box-shadow:0 8px 32px rgb(0 0 0 / 45%); white-space:pre-wrap;
+  }
+  .bar { color:var(--dim); border-bottom:1px solid #333; padding-bottom:8px; margin-bottom:12px; }
+  .reason { color:var(--fg); }      /* the agent's reasoning — normal stream content */
+  .reason .b { color:var(--accent); }
+  .cmd { color:var(--fg); }          /* an own bpmux-action: PLAIN terminal-content, no decoration */
+  .cmd .p { color:var(--green); }    /* shell prompt glyph only */
+  .out { color:var(--dim); }         /* compact action result — readable, summarized not dumped */
+  .incoming { color:var(--cyan); }   /* an INCOMING msg = #1656's ⟦bpmux⟧ marker (security/attribution) */
+  .note { max-width:860px; margin:22px 0 0; background:var(--note-bg); border:1px solid var(--note-br);
+          border-radius:8px; padding:14px 18px; font-size:13px; line-height:1.6; }
+  .note h2 { font-size:13px; margin:0 0 8px; color:var(--accent); }
+  .note b { color:var(--fg); }
+  .note code { background:#333; padding:1px 5px; border-radius:3px; font-size:12px; }
+  .legend { color:var(--dim); font-size:12px; margin-top:10px; }
+  .legend .s { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:middle; margin:0 4px 0 12px; }
+</style>
+</head>
+<body>
+  <h1>#1593 — the owner sees an agent's bpmux-actions in its terminal-stream</h1>
+  <p class="sub">Plain-model (Ryan's pin): actions read as normal terminal-content. The visibility IS them being in the stream — no special visual-treatment. This mockup resolves the output-volume question. For your review before build.</p>
+
+  <div class="term"><span class="bar">designer · live terminal (#1466)                                   ⟦bpmux⟧ designer</span>
+<span class="reason">● Reviewing #1656's falsifier for the misattribution-guard.
+  The marker has to be sanitizer-reservable so a crafted body can't <span class="b">forge</span> it.</span>
+
+<span class="cmd"><span class="p">›</span> bpmux send --to pm "confirm dev's precision — retire #1326 only, defer the rest"</span>
+<span class="out">  ✓ sent → pm</span>
+
+<span class="incoming">⟦bpmux⟧ pm→broadcast  Aquila's queue is set: #1656 → #1593 → the 3 rejects.</span>
+
+<span class="reason">● Order confirmed. Grounding #1593's scope firsthand before the mockup.</span>
+
+<span class="cmd"><span class="p">›</span> bpmux story 1593</span>
+<span class="out">  #1593 [Feature] Owner sees agent's bpmux-actions in terminal-stream · ready · Aquila #1655.2</span>
+
+<span class="cmd"><span class="p">›</span> bpmux board</span>
+<span class="out">  Aquila #1655 · ready 5 · in-progress 1 · icebox 152      (full: bpmux board --full)</span>
+
+<span class="reason">● The board's a compact index by default — the full dump is opt-in. Drafting the mockup now.</span></div>
+
+  <p class="legend"><span class="s" style="background:#cfcfcf"></span>reasoning + own actions (plain)<span class="s" style="background:#4ec9b0"></span>incoming peer-message (#1656 ⟦bpmux⟧ marker)<span class="s" style="background:#7a7a7a"></span>compact action-result</p>
+
+  <div class="note">
+    <h2>Three design decisions for your review</h2>
+    <p>1. <b>Plain-model (your pin) holds.</b> An agent's own bpmux-actions read as normal terminal-content — a <code>bpmux send …</code> line + a one-line confirmation, woven in with its reasoning. No badge, no color-coding on own-actions. The visibility is simply that they're <i>in the stream</i>, nothing out-of-band.</p>
+    <p>2. <b>Output-volume resolved by compact-by-default.</b> Read-heavy actions (<code>board</code>, <code>story</code>) echo a <i>compact index line</i> — counts / the one-line title — not the full dump. The raw payload is opt-in (<code>--full</code>). So the stream stays readable (falsifier b) without a 132KB board flooding it. <i>(Same principle as the board-IA / read-tool-IA arc — the index, drill on demand.)</i></p>
+    <p>3. <b>Coherence with #1656 is principled, not uniform.</b> The <code>⟦bpmux⟧</code> marker is RESERVED for <b>incoming external</b> content (peer-messages — where the marker is load-bearing for the misattribution-guard). The agent's OWN actions need no guard, so they stay plain. The visual line carries the trust-boundary: <b>marked = external (guard it) · plain = the agent's own work</b>.</p>
+    <p style="color:var(--dim);margin-bottom:0">Out of scope here (dev's HOW): echo-MCP vs thin-CLI delivery, and the gate-migration (falsifier c — the PreToolUse gates must still fire). This mockup pins the visible shape only.</p>
+  </div>
+</body>
+</html>

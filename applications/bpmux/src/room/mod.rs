@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 pub mod file_storage;
+pub mod inject;
 pub mod live_registry;
 pub mod spawn;
 

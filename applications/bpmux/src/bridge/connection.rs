@@ -254,26 +254,77 @@ pub(crate) async fn run_ws_connection(
                 eprintln!("Bridge: failed to send channel notification: {e}");
                 break;
             }
-            if let Some(directed) = addressee
-                .as_deref()
-                .filter(|a| *a != crate::session::message::BROADCAST_ALL)
-            {
-                subscriptions
-                    .dispatch(
-                        "addressed_to_me",
-                        json!({
-                            "from": from_short,
-                            "text": text,
-                            "ts": ts,
-                            "channel": channel,
-                            "addressee": directed,
-                        }),
-                    )
-                    .await;
+            for class in chat_event_classes(&channel, addressee.as_deref()) {
+                let mut payload = json!({
+                    "from": from_short,
+                    "text": &text,
+                    "ts": &ts,
+                    "channel": &channel,
+                });
+                if class == "addressed_to_me"
+                    && let Some(a) = addressee.as_deref()
+                    && let Some(obj) = payload.as_object_mut()
+                {
+                    obj.insert("addressee".to_string(), json!(a));
+                }
+                subscriptions.dispatch(class, payload).await;
             }
         }
     }
 
     *ws_tx_store.lock().await = None;
     eprintln!("Bridge: disconnected from bpmux");
+}
+
+pub(crate) fn chat_event_classes(channel: &str, addressee: Option<&str>) -> Vec<&'static str> {
+    let mut classes = Vec::new();
+    if channel == "broadcast" {
+        classes.push("broadcast_received");
+    }
+    if matches!(addressee, Some(a) if a != crate::session::message::BROADCAST_ALL) {
+        classes.push("addressed_to_me");
+    }
+    classes
+}
+
+#[cfg(test)]
+mod chat_event_classes_tests {
+    use super::chat_event_classes;
+
+    #[test]
+    fn broadcast_chat_dispatches_broadcast_received() {
+        assert_eq!(
+            chat_event_classes("broadcast", None),
+            vec!["broadcast_received"]
+        );
+    }
+
+    #[test]
+    fn directed_addressee_dispatches_addressed_to_me() {
+        assert_eq!(
+            chat_event_classes("pm,dev", Some("dev")),
+            vec!["addressed_to_me"]
+        );
+    }
+
+    #[test]
+    fn broadcast_with_addressee_dispatches_both() {
+        assert_eq!(
+            chat_event_classes("broadcast", Some("dev")),
+            vec!["broadcast_received", "addressed_to_me"]
+        );
+    }
+
+    #[test]
+    fn broadcast_all_addressee_is_not_a_directed_addressee() {
+        assert_eq!(
+            chat_event_classes("broadcast", Some("all")),
+            vec!["broadcast_received"]
+        );
+    }
+
+    #[test]
+    fn scoped_chat_with_no_addressee_dispatches_nothing_no_leak() {
+        assert!(chat_event_classes("pm,dev", None).is_empty());
+    }
 }
