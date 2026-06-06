@@ -57,10 +57,11 @@ const renderList = (onReorder = vi.fn()): void => {
 }
 
 describe('SortableList', () => {
-  test('renders each item through renderRow inside a ul carrying the given class', () => {
+  test('renders each item through renderRow inside a ul carrying the shared sortable-list class plus the given class', () => {
     renderList()
     const list = screen.getByRole('list')
-    expect(list.className).toBe('test-list')
+    expect(list.classList.contains('sortable-list')).toBe(true)
+    expect(list.classList.contains('test-list')).toBe(true)
     expect(screen.queryByTestId('row-1')).not.toBeNull()
     expect(screen.queryByTestId('row-2')).not.toBeNull()
     expect(screen.queryByTestId('row-3')).not.toBeNull()

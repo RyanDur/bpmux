@@ -51,7 +51,7 @@ export const SortableList = <P, T>({
     disabled
   })
   return (
-    <ul className={ulClassName}>
+    <ul className={`sortable-list ${ulClassName}`}>
       {orderedItems.map((item, index) => (
         <Fragment key={rowKey(item)}>
           {renderRow(item, {
