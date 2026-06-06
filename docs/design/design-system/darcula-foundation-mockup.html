@@ -13,7 +13,7 @@
   :root{
     --bg-base:#2b2b2b;        /* Darcula editor grey (was #1a1a1a — cooler/darker) */
     --bg-elevated:#3c3f41;    /* Darcula panel (was #252525) */
-    --bg-highlighted:#4e5254; /* Darcula selection-ish (was #333) */
+    --bg-highlighted:#44474a; /* Darcula selection-ish (was #333; darkened from #4e5254 so #bbbbbb text passes WCAG-AA 4.5:1 — see §4 audit) */
     --fg-primary:#bbbbbb;     /* Darcula UI text (was #e8e8e8 — brighter/whiter) */
     --fg-secondary:#a9b7c6;   /* Darcula content blue-grey (the signature) */
     --fg-dim:#808080;
@@ -50,7 +50,7 @@
   <div class="sw">
     <div class="chip"><div class="c" style="background:#2b2b2b"></div><div class="l"><b>--bg-base</b><span>#2b2b2b <span class="was">#1a1a1a</span></span></div></div>
     <div class="chip"><div class="c" style="background:#3c3f41"></div><div class="l"><b>--bg-elevated</b><span>#3c3f41 <span class="was">#252525</span></span></div></div>
-    <div class="chip"><div class="c" style="background:#4e5254"></div><div class="l"><b>--bg-highlighted</b><span>#4e5254 <span class="was">#333</span></span></div></div>
+    <div class="chip"><div class="c" style="background:#44474a"></div><div class="l"><b>--bg-highlighted</b><span>#44474a <span class="was">#4e5254</span></span></div></div>
     <div class="chip"><div class="c" style="background:#bbbbbb"></div><div class="l"><b>--fg-primary</b><span>#bbbbbb <span class="was">#e8e8e8</span></span></div></div>
     <div class="chip"><div class="c" style="background:#a9b7c6"></div><div class="l"><b>--fg-secondary</b><span>#a9b7c6 (signature)</span></div></div>
     <div class="chip"><div class="c" style="background:#4e7ec2"></div><div class="l"><b>--accent-brand</b><span>#4e7ec2 <span class="was">#6aa0ff</span></span></div></div>
@@ -79,6 +79,20 @@
     <tr><td><b>Sync</b></td><td><span class="pill">● ○ ? ◌ ⚠ <span class="err">✗</span> ↻ ◔ ⊘</span> <span style="color:var(--fg-dim)">9 glyphs</span></td><td><span class="pill"><span class="ok">●</span> <span class="warn">◌</span> <span class="warn">◐</span> <span class="err">✗</span> <span class="dim">○</span></span> <span style="color:var(--fg-dim)">(9→5; ⚠◔→◐, ↻→◌, ⊘→✗)</span></td></tr>
     <tr><td><b>Online</b></td><td><span class="pill">role dots ●/○</span></td><td><span class="pill"><span class="ok">●</span> <span class="warn">◐</span> <span class="dim">○</span></span> <span style="color:var(--fg-dim)">(online/away/offline)</span></td></tr>
   </table>
+
+  <h2>4 · WCAG contrast audit (the palette is accessible by construction)</h2>
+  <p class="sub">Every proposed pair computed against WCAG 2.1 (AA = 4.5:1 normal text · 3:1 large-text/UI/icons). The palette passes — with <b>one correction</b> the audit forced: <code>--bg-highlighted</code> darkened <span class="was">#4e5254</span> → <code>#44474a</code> so text on a selected row / textarea clears 4.5:1 (it was 4.11). Result:</p>
+  <table>
+    <tr><th>pair</th><th>ratio</th><th>need</th><th>verdict</th></tr>
+    <tr><td>fg-primary <code>#bbbbbb</code> on bg-base</td><td>7.38</td><td>4.5</td><td class="ok">PASS</td></tr>
+    <tr><td>fg-primary on bg-elevated</td><td>5.53</td><td>4.5</td><td class="ok">PASS</td></tr>
+    <tr><td>fg-primary on bg-highlighted <code>#44474a</code></td><td>4.87</td><td>4.5</td><td class="ok">PASS <span class="dim">(was 4.11 on #4e5254)</span></td></tr>
+    <tr><td>fg-secondary <code>#a9b7c6</code> on base / elevated / highlighted</td><td>6.93 / 5.19 / 4.58</td><td>4.5</td><td class="ok">PASS</td></tr>
+    <tr><td>accents brand/ok/warn/err on base (as fill/border/icon)</td><td>3.43–4.25</td><td>3.0</td><td class="ok">PASS</td></tr>
+    <tr><td>primary-button text <code>#0d1116</code> on brand-fill</td><td>4.59</td><td>4.5</td><td class="ok">PASS</td></tr>
+    <tr><td>focus-ring brand vs base</td><td>3.43</td><td>3.0</td><td class="ok">PASS</td></tr>
+  </table>
+  <p class="sub"><b>Usage-rules the audit pins</b> (so colored-text never goes low-contrast — the #1 dark-theme a11y bug): <code>fg-dim #808080</code> (3.59:1) and the <b>accents as text</b> (brand 3.43, err 3.56) are <b>large-text / non-essential / UI-only</b> — never small body copy. As fills, borders, icons, and large labels they pass; as 13px paragraph text they don't. The system encodes this: accents are fill/border tokens, body text is always fg-primary/secondary.</p>
 
   <div class="note">
     <b>What this gets you:</b> wherever a status shows — the board-sync glyph, the CI glyph, a roster presence dot — it speaks the SAME 5-state language. You learn it once; <b>●</b>=good, <b>◌</b>=working, <b>◐</b>=needs-you, <b>✗</b>=broken, <b>○</b>=unknown, everywhere. That's the coherence you asked about.<br><br>
