@@ -214,7 +214,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
 
     await win.locator('#board-group-ready-content [data-test="board-story-702"]').evaluate((li) => {
       const dt = new DataTransfer()
-      dt.setData('text/bpmux-story', '701')
+      dt.setData('application/x-bpmux-story', '701')
       li.dispatchEvent(
         new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt })
       )
@@ -222,7 +222,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     await win.waitForTimeout(50)
     await win.locator('#board-group-ready-content [data-test="board-story-702"]').evaluate((li) => {
       const dt = new DataTransfer()
-      dt.setData('text/bpmux-story', '701')
+      dt.setData('application/x-bpmux-story', '701')
       li.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
     })
 
