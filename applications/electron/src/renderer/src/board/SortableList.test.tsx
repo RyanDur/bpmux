@@ -93,9 +93,7 @@ describe('SortableList', () => {
         buildPayload={(n) => n}
         onReorder={vi.fn()}
         ulClassName="indexed-list"
-        renderRow={(n, ctx) => (
-          <li data-test={`indexed-${n}`} data-index={ctx.index} />
-        )}
+        renderRow={(n, ctx) => <li data-test={`indexed-${n}`} data-index={ctx.index} />}
       />
     )
     expect(screen.getByTestId('indexed-10').getAttribute('data-index')).toBe('0')
