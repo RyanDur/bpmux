@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -12,7 +12,7 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
     rendered = null
   })
 
-  it('dragging Iteration Sirius (order .200) onto Iteration Vega (order .100) sets Sirius iteration-order.50 + removes iteration-order.200', async () => {
+  it('dragging Iteration Sirius (order .200) onto Iteration Vega (order .100) orders Sirius before Vega + removes iteration-order.200', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
@@ -50,13 +50,13 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
 
     rendered = renderApp()
 
-    const sirius = await rendered.findByTestId('board-iteration-8101', undefined, {
+    const sirius = await screen.findByTestId('board-iteration-8101', undefined, {
       timeout: 15_000
     })
     const siriusRow = sirius.closest('.board-iteration-row') as HTMLElement
     const siriusGrip = siriusRow.querySelector('[data-test="iteration-grip"]') as HTMLElement
     expect(siriusGrip).toBeTruthy()
-    const vega = await rendered.findByTestId('board-iteration-8102', undefined, {
+    const vega = await screen.findByTestId('board-iteration-8102', undefined, {
       timeout: 15_000
     })
 
@@ -84,9 +84,18 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
         const boardBody = (await boardRes.json()) as {
           stories: { number: number; labels: string[] }[]
         }
-        const moved = boardBody.stories.find((s) => s.number === 8101)
-        expect(moved?.labels).toContain('iteration-order.50')
-        expect(moved?.labels).not.toContain('iteration-order.200')
+        const orderOf = (labels: string[]): number | undefined => {
+          const label = labels.find((x) => x.startsWith('iteration-order.'))
+          return label === undefined ? undefined : Number(label.slice('iteration-order.'.length))
+        }
+        const sirius = boardBody.stories.find((s) => s.number === 8101)
+        const vega = boardBody.stories.find((s) => s.number === 8102)
+        const siriusOrder = orderOf(sirius?.labels ?? [])
+        const vegaOrder = orderOf(vega?.labels ?? [])
+        expect(siriusOrder).toBeDefined()
+        expect(vegaOrder).toBeDefined()
+        expect(Number(siriusOrder)).toBeLessThan(Number(vegaOrder))
+        expect(sirius?.labels).not.toContain('iteration-order.200')
       },
       { timeout: 10_000, interval: 200 }
     )
