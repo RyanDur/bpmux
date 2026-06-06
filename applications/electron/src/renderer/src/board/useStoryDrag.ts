@@ -50,7 +50,7 @@ const setDragImageFromClosestLi = (event: React.DragEvent<HTMLElement>): void =>
   ghost.style.left = '0'
   ghost.style.width = `${rect.width}px`
   ghost.style.pointerEvents = 'none'
-  document.body.appendChild(ghost)
+  ;(row.parentElement ?? document.body).appendChild(ghost)
   event.dataTransfer.setDragImage(ghost, event.clientX - rect.left, event.clientY - rect.top)
 }
 
