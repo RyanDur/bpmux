@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!--
+  Darcula design-system — FOUNDATION mockup (palette + unified status/signaling language).
+  Mockup-FIRST → for Ryan's taste-review. Designer, 2026-06-06. Epic: design-system.
+  Grounded firsthand: current tokens (styles/tokens.css), CI signal (ci/CiGlyph),
+  Sync signal (sync/syncState). Darcula values = IntelliJ Darcula base.
+  This is the FOUNDATION (palette + the unified status grammar Ryan named); button/modal
+  primitives (button-modal-research.md) are the next mockup. NOT shipped tokens — taste-review first.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Darcula design-system — foundation</title>
+<style>
+  /* === Darcula synthesis tokens (proposed — shift current values toward IntelliJ Darcula, keep the token STRUCTURE) === */
+  :root{
+    --bg-base:#2b2b2b;        /* Darcula editor grey (was #1a1a1a — cooler/darker) */
+    --bg-elevated:#3c3f41;    /* Darcula panel (was #252525) */
+    --bg-highlighted:#4e5254; /* Darcula selection-ish (was #333) */
+    --fg-primary:#bbbbbb;     /* Darcula UI text (was #e8e8e8 — brighter/whiter) */
+    --fg-secondary:#a9b7c6;   /* Darcula content blue-grey (the signature) */
+    --fg-dim:#808080;
+    --brand:#4e7ec2;          /* Darcula blue (was #6aa0ff — brighter) */
+    --ok:#6a8759;             /* Darcula green/strings (was #3fb950) */
+    --warn:#cc7832;           /* Darcula orange/keyword (was #d4a13c) */
+    --err:#cf5b56;            /* Darcula red (was #ff6b6b) */
+    --border:#323232;
+  }
+  body{background:#1e1e1e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:28px;line-height:1.55}
+  h1{font-size:17px;margin:0 0 4px}h2{font-size:14px;color:var(--fg-secondary);margin:26px 0 10px;border-bottom:1px solid var(--border);padding-bottom:6px}
+  .sub{color:var(--fg-dim);font-size:13px;margin:0 0 8px;max-width:760px}
+  .sw{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
+  .chip{width:120px;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:11px}
+  .chip .c{height:46px}.chip .l{padding:5px 7px;background:var(--bg-elevated);color:var(--fg-primary)}
+  .chip .l b{display:block}.chip .l span{color:var(--fg-dim)}
+  table{border-collapse:collapse;font-size:13px;margin:6px 0;width:100%;max-width:820px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--fg-dim);font-weight:600;font-size:12px}
+  .g{font-size:18px;font-family:monospace;width:1.4em;display:inline-block;text-align:center}
+  .ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}.dim{color:var(--fg-dim)}.brand{color:var(--brand)}
+  .pill{display:inline-flex;align-items:center;gap:5px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:12px;font-family:monospace}
+  .note{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;max-width:820px;margin-top:14px}
+  .note b{color:var(--fg-primary)}
+  code{background:#333;padding:1px 5px;border-radius:3px;font-size:12px}
+  .was{color:var(--fg-dim);text-decoration:line-through}
+</style></head>
+<body>
+  <h1>Darcula design-system — foundation</h1>
+  <p class="sub">Two foundation pieces for your taste-review: (1) the palette synthesized onto IntelliJ-Darcula, and (2) the <b>unified status &amp; signaling language</b> — one grammar across board-sync / CI / online, where today there are three. Grounded in the live tokens + the CI + Sync glyph code. Mockup-first — these are proposed, not shipped.</p>
+
+  <h2>1 · Palette — Darcula base (keep the token structure, shift the values)</h2>
+  <p class="sub">Current is a cooler/darker dark-theme (<span class="was">#1a1a1a</span> bg, bright <span class="was">#e8e8e8</span> text). Darcula's signature is the warmer panel-grey + blue-grey content text. Proposed shift:</p>
+  <div class="sw">
+    <div class="chip"><div class="c" style="background:#2b2b2b"></div><div class="l"><b>--bg-base</b><span>#2b2b2b <span class="was">#1a1a1a</span></span></div></div>
+    <div class="chip"><div class="c" style="background:#3c3f41"></div><div class="l"><b>--bg-elevated</b><span>#3c3f41 <span class="was">#252525</span></span></div></div>
+    <div class="chip"><div class="c" style="background:#4e5254"></div><div class="l"><b>--bg-highlighted</b><span>#4e5254 <span class="was">#333</span></span></div></div>
+    <div class="chip"><div class="c" style="background:#bbbbbb"></div><div class="l"><b>--fg-primary</b><span>#bbbbbb <span class="was">#e8e8e8</span></span></div></div>
+    <div class="chip"><div class="c" style="background:#a9b7c6"></div><div class="l"><b>--fg-secondary</b><span>#a9b7c6 (signature)</span></div></div>
+    <div class="chip"><div class="c" style="background:#4e7ec2"></div><div class="l"><b>--accent-brand</b><span>#4e7ec2 <span class="was">#6aa0ff</span></span></div></div>
+    <div class="chip"><div class="c" style="background:#6a8759"></div><div class="l"><b>--accent-success</b><span>#6a8759 <span class="was">#3fb950</span></span></div></div>
+    <div class="chip"><div class="c" style="background:#cc7832"></div><div class="l"><b>--accent-warning</b><span>#cc7832 <span class="was">#d4a13c</span></span></div></div>
+    <div class="chip"><div class="c" style="background:#cf5b56"></div><div class="l"><b>--accent-error</b><span>#cf5b56 <span class="was">#ff6b6b</span></span></div></div>
+  </div>
+  <p class="sub">Role colours (identity) stay distinct but can re-tune to Darcula's muted register: ryan <span style="color:#d9b25f">●</span> · designer <span style="color:#9876aa">●</span> · dev <span style="color:#6897bb">●</span> · pm <span style="color:#6a8759">●</span>. Spacing grid (2/4/6/<b>8</b>/12/16/24/32…) already matches Ryan's 8px·4px research grid — keep it.</p>
+
+  <h2>2 · The unified status &amp; signaling language (the coherence)</h2>
+  <p class="sub">THE problem, grounded: "all-good" is <span class="g ok">✓</span> in CI but <span class="g ok">●</span> in Sync; Sync sprawls to <b>9 glyphs</b> (●○?◌⚠✗↻◔⊘) while CI uses 5 — three signals, three vocabularies. One canonical grammar fixes it: <b>5 semantic states, each ONE glyph + ONE colour</b> (shape + colour both carry it → colourblind-safe), applied everywhere.</p>
+  <table>
+    <tr><th>State</th><th>Glyph</th><th>Colour</th><th>Means</th></tr>
+    <tr><td><b>OK</b></td><td><span class="g ok">●</span></td><td class="ok">success</td><td>synced · CI passing · online — all good</td></tr>
+    <tr><td><b>WORKING</b></td><td><span class="g warn">◌</span></td><td class="warn">warning</td><td>syncing · CI running · recovering — in progress</td></tr>
+    <tr><td><b>ATTENTION</b></td><td><span class="g warn">◐</span></td><td class="warn">warning</td><td>offline-queued · quota · stale · away — degraded, needs you, not failed</td></tr>
+    <tr><td><b>ERROR</b></td><td><span class="g err">✗</span></td><td class="err">error</td><td>CI failed · drained-failure · startup-fail — broken</td></tr>
+    <tr><td><b>UNKNOWN</b></td><td><span class="g dim">○</span></td><td class="dim">dim</td><td>loading · unreachable — no data yet</td></tr>
+  </table>
+  <p class="sub">Glyph logic: filled <b>●</b> = present/good · hollow <b>○</b> = absent/unknown · <b>◌</b> = spinner/working · <b>◐</b> = half/degraded · <b>✗</b> = broken. Count-badge (the Sync <code>pending</code> count) rides any state as a small superscript.</p>
+
+  <h2>3 · The three signals reconciled onto it</h2>
+  <table>
+    <tr><th>Signal</th><th>today (divergent)</th><th>→ unified</th></tr>
+    <tr><td><b>CI</b></td><td><span class="pill"><span class="ok">✓</span> ◌ ⏸ <span class="err">✗</span> ?</span></td><td><span class="pill"><span class="ok">●</span> <span class="warn">◌</span> <span class="warn">◐</span> <span class="err">✗</span> <span class="dim">○</span></span> <span style="color:var(--fg-dim)">(✓→●, quota→◐)</span></td></tr>
+    <tr><td><b>Sync</b></td><td><span class="pill">● ○ ? ◌ ⚠ <span class="err">✗</span> ↻ ◔ ⊘</span> <span style="color:var(--fg-dim)">9 glyphs</span></td><td><span class="pill"><span class="ok">●</span> <span class="warn">◌</span> <span class="warn">◐</span> <span class="err">✗</span> <span class="dim">○</span></span> <span style="color:var(--fg-dim)">(9→5; ⚠◔→◐, ↻→◌, ⊘→✗)</span></td></tr>
+    <tr><td><b>Online</b></td><td><span class="pill">role dots ●/○</span></td><td><span class="pill"><span class="ok">●</span> <span class="warn">◐</span> <span class="dim">○</span></span> <span style="color:var(--fg-dim)">(online/away/offline)</span></td></tr>
+  </table>
+
+  <div class="note">
+    <b>What this gets you:</b> wherever a status shows — the board-sync glyph, the CI glyph, a roster presence dot — it speaks the SAME 5-state language. You learn it once; <b>●</b>=good, <b>◌</b>=working, <b>◐</b>=needs-you, <b>✗</b>=broken, <b>○</b>=unknown, everywhere. That's the coherence you asked about.<br><br>
+    <b>Taste-calls for you:</b> the Darcula palette warmth (is <code>#2b2b2b</code> the right base, or warmer/cooler?) · the blue-grey content text (<code>#a9b7c6</code> signature, or keep it neutral?) · OK as <b>●</b> vs <b>✓</b> · the ATTENTION glyph <b>◐</b>. Tell me the taste; I re-synthesize. Next mockup: the button/modal primitives on this base (the research + #1518 as first consumer).
+  </div>
+</body></html>
