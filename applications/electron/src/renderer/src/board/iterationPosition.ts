@@ -91,6 +91,31 @@ export interface MemberDropMutationInput {
   targetMembersIncludeDragged: boolean
 }
 
+export interface IterationOrderSlot {
+  number: number
+  currentPosition: number | null
+}
+
+export interface IterationOrderAssignment extends DropMutation {
+  iterationNumber: number
+}
+
+export const computeEstablishOrderMutations = (
+  sequence: IterationOrderSlot[]
+): IterationOrderAssignment[] => {
+  const out: IterationOrderAssignment[] = []
+  sequence.forEach((slot, index) => {
+    const targetPosition = (index + 1) * DEFAULT_STEP
+    if (slot.currentPosition === targetPosition) return
+    out.push({
+      iterationNumber: slot.number,
+      add: [iterationOrderLabel(targetPosition)],
+      remove: slot.currentPosition === null ? [] : [iterationOrderLabel(slot.currentPosition)]
+    })
+  })
+  return out
+}
+
 export const computeMemberDropMutation = (input: MemberDropMutationInput): DropMutation | null => {
   const position = resolveReorderPosition(
     input.draggedIterationNumber === input.targetIterationNumber,

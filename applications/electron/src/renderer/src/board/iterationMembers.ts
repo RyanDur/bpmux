@@ -10,7 +10,6 @@ export interface DragPayload {
 
 export interface IterationDragPayload {
   iterationNumber: number
-  oldOrder: number | null
 }
 
 export interface PendingMemberPosition {

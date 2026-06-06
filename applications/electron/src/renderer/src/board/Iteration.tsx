@@ -3,7 +3,11 @@ import { GripIcon } from './GripIcon'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import { computeIterationOrderMutation } from './iterationPosition'
+import {
+  computeEstablishOrderMutations,
+  computeIterationOrderMutation,
+  type DropMutation
+} from './iterationPosition'
 import { parseIterationOrderPosition, themeNameFromTitle } from './labelSchema'
 import { ITERATION_GRIP_TEST_ID, boardIterationTestId } from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -11,6 +15,7 @@ import { findCurrentIteration } from './currentIteration'
 import type { BoardStory } from './types'
 import {
   type IterationDragPayload,
+  eagerReorder,
   positionInIterationOrder,
   postLabelMutation
 } from './iterationMembers'
@@ -53,25 +58,64 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   const activePlannedIterations = sortedIterations.filter((it) => it.gh_state !== 'closed')
   const closedIterations = sortedIterations.filter((it) => it.gh_state === 'closed')
 
-  const reorderIterationByDrag = (payload: IterationDragPayload, targetKey: number): void => {
-    if (payload.oldOrder === null) return
-    const targetIndex = activePlannedIterations.findIndex((it) => it.number === targetKey)
-    if (targetIndex === -1) return
-    const activeOrders = activePlannedIterations
-      .map((it) => positionInIterationOrder(it))
-      .filter((p): p is number => p !== null)
-    const mutation = computeIterationOrderMutation({
-      draggedOldPosition: payload.oldOrder,
-      targetMemberPositions: activeOrders,
-      targetMemberIndex: targetIndex,
-      targetMembersIncludeDragged: true
-    })
-    if (!mutation) return
-    postLabelMutation(payload.iterationNumber, mutation.add, mutation.remove)
+  const applyOrderMutation = (iterationNumber: number, mutation: DropMutation): void => {
+    postLabelMutation(iterationNumber, mutation.add, mutation.remove)
     const newOrder = parseIterationOrderPosition(mutation.add[0])
     if (newOrder !== null) {
-      setPendingIterationOrder(payload.iterationNumber, newOrder)
+      setPendingIterationOrder(iterationNumber, newOrder)
     }
+  }
+
+  const placeIteration = (movedNumber: number, targetMemberIndex: number): number | null => {
+    const moved = activePlannedIterations.find((it) => it.number === movedNumber)
+    if (moved === undefined) return null
+    const targetNumber = activePlannedIterations[targetMemberIndex]?.number ?? null
+    const newSequence = eagerReorder(
+      activePlannedIterations,
+      (it) => it.number,
+      movedNumber,
+      targetNumber
+    )
+    const finalIndex = newSequence.findIndex((it) => it.number === movedNumber)
+    if (finalIndex === -1) return null
+
+    const draggedOldPosition = positionInIterationOrder(moved)
+    const fullyOrdered = activePlannedIterations.every(
+      (it) => positionInIterationOrder(it) !== null
+    )
+
+    if (fullyOrdered && draggedOldPosition !== null) {
+      const activeOrders = activePlannedIterations
+        .map((it) => positionInIterationOrder(it))
+        .filter((p): p is number => p !== null)
+      const mutation = computeIterationOrderMutation({
+        draggedOldPosition,
+        targetMemberPositions: activeOrders,
+        targetMemberIndex,
+        targetMembersIncludeDragged: true
+      })
+      if (mutation === null) return null
+      applyOrderMutation(movedNumber, mutation)
+      return finalIndex + 1
+    }
+
+    const mutations = computeEstablishOrderMutations(
+      newSequence.map((it) => ({
+        number: it.number,
+        currentPosition: positionInIterationOrder(it)
+      }))
+    )
+    if (mutations.length === 0) return null
+    for (const m of mutations) {
+      applyOrderMutation(m.iterationNumber, m)
+    }
+    return finalIndex + 1
+  }
+
+  const reorderIterationByDrag = (payload: IterationDragPayload, targetKey: number): void => {
+    const targetIndex = activePlannedIterations.findIndex((it) => it.number === targetKey)
+    if (targetIndex === -1) return
+    placeIteration(payload.iterationNumber, targetIndex)
   }
 
   const sectionOpen = sectionStorage.state
@@ -97,8 +141,6 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   const reorderIterationByKeyboard = (iteration: BoardStory, direction: 'up' | 'down'): void => {
     const iterationIdx = activePlannedIterations.findIndex((it) => it.number === iteration.number)
     if (iterationIdx === -1) return
-    const myOrder = positionInIterationOrder(iteration)
-    if (myOrder === null) return
     if (direction === 'up' && iterationIdx === 0) {
       onReorderAnnounce?.(`${iteration.title} is already at position 1 among iterations`)
       return
@@ -107,24 +149,11 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
       onReorderAnnounce?.(`${iteration.title} is already at last position among iterations`)
       return
     }
-    const activeOrders = activePlannedIterations
-      .map((it) => positionInIterationOrder(it))
-      .filter((p): p is number => p !== null)
     const targetMemberIndex = direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
-    const mutation = computeIterationOrderMutation({
-      draggedOldPosition: myOrder,
-      targetMemberPositions: activeOrders,
-      targetMemberIndex,
-      targetMembersIncludeDragged: true
-    })
-    if (!mutation) return
-    postLabelMutation(iteration.number, mutation.add, mutation.remove)
-    const newOrder = parseIterationOrderPosition(mutation.add[0])
-    if (newOrder !== null) {
-      setPendingIterationOrder(iteration.number, newOrder)
-    }
+    const newPosition = placeIteration(iteration.number, targetMemberIndex)
+    if (newPosition === null) return
     onReorderAnnounce?.(
-      `Moved ${iteration.title} to position ${targetMemberIndex + 1} of ${activePlannedIterations.length} among iterations`
+      `Moved ${iteration.title} to position ${newPosition} of ${activePlannedIterations.length} among iterations`
     )
   }
 
@@ -253,8 +282,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
           rowKey={(it) => it.number}
           config={ITERATION_ITSELF_DRAG}
           buildPayload={(it) => ({
-            iterationNumber: it.number,
-            oldOrder: positionInIterationOrder(it)
+            iterationNumber: it.number
           })}
           onReorder={reorderIterationByDrag}
           ulClassName="board-iterations-list"

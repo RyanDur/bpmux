@@ -488,6 +488,35 @@ describe('#1517 iteration-row drag-sort adopts the shared useDragReorder (real p
     expect(activeIterationNumbers()).toEqual([9002, 9001])
   })
 
+  test('#1517 dragging an UNORDERED iteration (no iteration-order label — how create_iteration makes them) establishes a persisted order instead of silently no-opping', () => {
+    const a = iterationStory({
+      number: 9001,
+      title: 'Iteration A',
+      gh_state: 'open',
+      labels: ['Iteration']
+    })
+    const b = iterationStory({
+      number: 9002,
+      title: 'Iteration B',
+      gh_state: 'open',
+      labels: ['Iteration']
+    })
+    render(<Iteration stories={[a, b]} onOpen={() => {}} />)
+    expect(activeIterationNumbers()).toEqual([9001, 9002])
+
+    const grips = screen.getAllByTestId('iteration-grip')
+    const dataTransfer = makeDataTransfer()
+    fireEvent.dragStart(grips[1], { dataTransfer })
+    const rows = document.querySelectorAll('.board-iteration-row')
+    fireEvent.dragOver(rows[0] as HTMLElement, { dataTransfer })
+    fireEvent.drop(rows[0] as HTMLElement, { dataTransfer })
+
+    const calledNumbers = postLabelMutationMock.mock.calls.map((c) => c[0])
+    expect(calledNumbers).toContain(9001)
+    expect(calledNumbers).toContain(9002)
+    expect(activeIterationNumbers()).toEqual([9002, 9001])
+  })
+
   test('closed iterations are not drag sources (no grip) — drag-sort is active-planned only', () => {
     const open = iterationStory({
       number: 9003,
