@@ -173,7 +173,7 @@ async fn roundtrip_coherence_view_board_reflects_new_story() {
     let resp = post_create_story(router, body).await;
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let view = bridge::dispatch_test_view_board(Some(&refresh))
+    let view = bridge::dispatch_test_view_board(serde_json::Map::new(), Some(&refresh))
         .await
         .expect("view_board returns Ok");
     assert!(

@@ -150,7 +150,7 @@ async fn dispatch(
         "reorder_story" => bridge::dispatch_test_reorder_story(args, agent, refresh_ref).await,
         "move_story" => bridge::dispatch_test_move_story(args, agent, refresh_ref).await,
         "edit_story" => bridge::dispatch_test_edit_story(args, agent, refresh_ref).await,
-        "view_board" => bridge::dispatch_test_view_board(refresh_ref).await,
+        "view_board" => bridge::dispatch_test_view_board(args, refresh_ref).await,
         "get_story" => bridge::dispatch_test_get_story(args, refresh_ref).await,
         "list_ready" => bridge::dispatch_test_list_ready(refresh_ref).await,
         "list_epic_children" => bridge::dispatch_test_list_epic_children(args, refresh_ref).await,

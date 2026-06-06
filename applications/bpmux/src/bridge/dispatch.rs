@@ -289,9 +289,10 @@ pub(crate) async fn dispatch_test_view_velocity(
 }
 
 pub(crate) async fn dispatch_test_view_board(
+    args: serde_json::Map<String, serde_json::Value>,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    tools_stories::handle_view_board(&serde_json::Map::new(), refresh).await
+    tools_stories::handle_view_board(&args, refresh).await
 }
 
 pub(crate) async fn dispatch_test_get_story(
