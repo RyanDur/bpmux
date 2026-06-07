@@ -332,6 +332,10 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_messages).post(transport::rest::post_message),
         )
         .route(
+            "/api/wait-for-event",
+            axum::routing::get(transport::rest::wait_for_event),
+        )
+        .route(
             "/api/search",
             axum::routing::get(transport::rest::search_messages),
         )

@@ -7,6 +7,7 @@ mod chat_misc_tests;
 mod chat_post_tests;
 mod excerpt_enrichment_tests;
 mod reaction_event_tests;
+mod wait_event_tests;
 
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -217,5 +217,7 @@ mod view_story_timeline_e2e;
 mod view_tokens_e2e;
 #[path = "integration_main_modules/view_velocity_e2e.rs"]
 mod view_velocity_e2e;
+#[path = "integration_main_modules/wait_for_event_cli_e2e.rs"]
+mod wait_for_event_cli_e2e;
 #[path = "integration_main_modules/wait_helpers.rs"]
 mod wait_helpers;

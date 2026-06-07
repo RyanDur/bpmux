@@ -90,6 +90,22 @@ enum Command {
         #[command(subcommand)]
         action: RoomAction,
     },
+    #[command(
+        about = "Block until this agent's next team-event arrives, draining bpmux's own store off Claude's Channels (Stop-hook receive-loop). Prints the event JSON or a timed-out result to stdout; identity is ambient via BPMUX_ROLE."
+    )]
+    WaitForEvent {
+        #[arg(
+            long,
+            help = "Only return events newer than this cursor (from a prior call's cursor field); advances so the same event is not re-delivered"
+        )]
+        after: Option<String>,
+        #[arg(
+            long,
+            default_value_t = transport::rest::DEFAULT_WAIT_TIMEOUT_MS,
+            help = "Max milliseconds to block before returning a timed-out result"
+        )]
+        timeout_ms: u64,
+    },
 }
 
 #[derive(Subcommand)]
@@ -203,6 +219,27 @@ fn resolve_role(role_arg: &Option<String>) -> String {
         .unwrap_or_else(|| "dev".to_string())
 }
 
+fn run_wait_for_event(after: &Option<String>, timeout_ms: u64) -> anyhow::Result<()> {
+    let role = resolve_role(&None);
+    let port = resolve_bpmux_port();
+    let mut url = transport::local_url::api_url(port, "/api/wait-for-event");
+    url.push_str(&format!("?as={role}&timeout_ms={timeout_ms}"));
+    if let Some(cursor) = after {
+        url.push_str(&format!("&after={cursor}"));
+    }
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let body = rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(timeout_ms + 5_000))
+            .build()?;
+        client.get(&url).send().await?.text().await
+    })?;
+    println!("{body}");
+    Ok(())
+}
+
 fn run_emit_precommit_passed(sha: &str, role_arg: &Option<String>) -> anyhow::Result<()> {
     let role = resolve_role(role_arg);
     let body = session::precommit::build_precommit_activity_payload(&role, sha);
@@ -312,6 +349,10 @@ pub fn run() -> anyhow::Result<()> {
 
     if let Some(Command::EmitPrecommitPassed { sha, role }) = &cli.command {
         return run_emit_precommit_passed(sha, role);
+    }
+
+    if let Some(Command::WaitForEvent { after, timeout_ms }) = &cli.command {
+        return run_wait_for_event(after, *timeout_ms);
     }
 
     if let Some(Command::Room { action }) = &cli.command {
