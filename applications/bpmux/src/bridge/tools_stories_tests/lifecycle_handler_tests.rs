@@ -620,6 +620,75 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     );
 }
 
+#[tokio::test]
+async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, GateComment, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let older = "older reject — already addressed in a prior pass";
+    let latest = "latest reject — the active rework to ground on";
+    let seeded = Story::new_minimal(
+        1525,
+        "twice-rejected".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_gate_comments(
+        1525,
+        vec![
+            GateComment {
+                gate: Gate::Rejected,
+                ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
+                actor: "ryan".into(),
+                payload: Some(older.into()),
+            },
+            GateComment {
+                gate: Gate::Delivered,
+                ts: Utc.with_ymd_and_hms(2026, 6, 6, 10, 0, 0).unwrap(),
+                actor: "dev".into(),
+                payload: Some("re-delivered the rework".into()),
+            },
+            GateComment {
+                gate: Gate::Rejected,
+                ts: Utc.with_ymd_and_hms(2026, 6, 6, 11, 0, 0).unwrap(),
+                actor: "ryan".into(),
+                payload: Some(latest.into()),
+            },
+        ],
+    );
+    let store = Arc::new(crate::board::BoardStore::new());
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(1525));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
+    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator))
+        .await
+        .expect("start_story succeeds");
+
+    assert!(
+        result.contains(latest),
+        "start_story must LEAD with the LATEST reject: {result}"
+    );
+    assert!(
+        !result.contains(older),
+        "the superseded older reject must NOT surface — only the latest leads: {result}"
+    );
+}
+
 #[cfg(test)]
 mod classify_for_pass_desk_check_tests {
     use super::*;
