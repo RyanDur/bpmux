@@ -94,6 +94,14 @@ the **SURFACE** (surface 3) — making the reject impossible to miss at pickup �
 **carry-survives-move** regression-test that proves #1686's derived `latest_reject` persists across
 the move. A bespoke carry-mechanism would over-engineer against a problem #1686 already solved.
 
+**Precondition (precision):** #1686's read-through gates on a rework-state story
+(`needs_gates = Ready | InProgress`) — the normal pickup case. So the carry-survives-move test
+seeds the moved story as **Ready** (read-through fires → `latest_reject` derives). The edge where a
+carried-reject is NOT in a rework-state (stuck phantom-accepted, state mis-derived closed → the
+read-through wouldn't fire) is exactly **#1691's** state-derivation — complementary, not #1687's
+job. Don't seed a non-rework-state story and expect `latest_reject`; it won't surface until #1691
+gets it to Ready.
+
 I would reject if I observed ANY of:
 1. **Carry lost** — a moved-rejected story (rejected in N, carried to N+1, picked up) does NOT
    surface its `latest_reject` (regresses #1686's post-move derivation); the carry-survives-move
@@ -116,7 +124,19 @@ team-acceptor (team-verifiable via the move + start_story-output tests). The boa
 OWNER-VISIBLE (Ryan glances) — a render-surface that warrants a capture / owner-walk, a distinct
 acceptor-axis from the agent-facing surface. If the badge rides in #1687 it carries an owner-walk
 component; it is cleanly sliceable as its own owner-visible story. (Surfacing the render-nature; the
-slice/acceptor call is PM's.)
+slice/acceptor call is PM's.) — PM SPLIT it to a staged owner-acceptor story (designer-designed, not
+owner-raised → staged for Ryan's confirm-want + walk at return, NOT built autonomously).
+
+**Existing-badge design-review (input for the staged owner-story):** the board badge already ships
+as `ReworkGlyph` (↩ glyph). SOURCE verified ✓ — `rework_comment = most_recent_backward_transition().comment`
+(json.rs:34-40), VERBATIM and the same canonical primitive as #1686's `latest_reject` (no
+paraphrase-path). Two refinements for Ryan's confirm-want + walk: **(a) color** — the glyph is
+`color: var(--fg-dim)` (muted), which UNDERSELLS the load-bearing reject; it should carry a
+reject-semantic color (the reject is can't-miss, not subtle — per the status-grammar). **(b) reveal**
+— the reason reveals via a native `title` tooltip (`cursor: help`): functional, but slow / unstyled /
+truncation-prone for long reasons and not keyboard-revealable; a styled, keyboard-accessible reveal
+is the richness-upside. (Primitive note: `most_recent_backward_transition` already exists here —
+#1691's state-derivation can reuse it.)
 
 ### FACET 3 (#1691) — the state-derivation observation-falsifier
 
