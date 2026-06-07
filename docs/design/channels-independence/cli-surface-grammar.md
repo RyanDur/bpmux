@@ -135,21 +135,59 @@ re-homing test: every gate that fired on the MCP tool fires on the `bpmux` comma
 
 ---
 
-## Open design-questions / taste-calls (for the shaping session with PM + Ryan)
+## Resolved design-calls (DECIDED 2026-06-07, designer-lane — taste-calls are mine to decide + ground)
 
-- **Output format** — is the compact column-text enough for agents to parse reliably, or do read-verbs
-  also need a `--json` mode (machine-stable) with the text as the default human/agent view? (Lean: text
-  default that's parseable; `--json` only if an agent-consumer needs it.)
-- **Verb naming** — `bpmux ready` vs `bpmux board --state ready`; `bpmux pass` vs `bpmux desk-check pass`.
-  Lean flat for the high-frequency verbs (send/ready/story/pass), namespaced for the rare noun-clusters.
-- **Identity source** — env (`BPMUX_ROLE`) vs the spawn-injected config; how `bpmux` finds the server.
-  (Pairs with the identity-assignment fork in designer-ux-needs.md.)
-- **Migration shape** — all-verbs-at-once vs the #1593 thin-first (actions VISIBLE first via the CLI,
-  then the full gate-migration). #1593 is the thin-first seed; the full re-homing is the fuller vertical.
-- **`set_status`** — stays hook-owned (not an agent verb), confirm.
+- **Output format — DECIDED:** compact column-text is the DEFAULT (human + agent legible, stable
+  columns, visible-in-stream); read-verbs ALSO ship `--json` (machine-stable) so agent-parsing is
+  reliable, plus `--full` for the raw payload. Grounding: the primary caller is an AGENT in a stream —
+  column-parsing alone is fragile, so `--json` is required-not-optional on reads (clig.dev dual-mode).
+  Write-verbs echo a one-line confirm.
+- **Verb naming — DECIDED:** flat for the high-frequency verbs (`send` · `read` · `ready` · `story` ·
+  `board` · `pass` · `fail` · `deliver` · `start` · `comment` · `verdict`); sub-namespaced ONLY for the
+  rare noun-clusters (`iteration` · `lesson` · `principle` · `ci` · `epic` · `bookmark`).
+- **Migration shape — DECIDED: VERTICAL by agent-JOB, NOT horizontal verbs-then-gates.** Each slice
+  ships a coherent agent-job end-to-end via the CLI WITH its gate + role-guard + output-UX re-homed in
+  the SAME slice — gate-survival is a PROPERTY of each vertical, never a separate gate-migration layer
+  (user-story discipline: one user-job + observation-falsifier per slice, smallest-first). Slice-arc:
+  1. **#1593 — messaging visible-in-stream (thin-first):** the agent SENDs + READs via `bpmux send` /
+     `bpmux read`, rendered as ordinary terminal-content; the board-speech-guard + start-grounding gates
+     re-home for those verbs IN this slice. Validates the riskiest assumption — DISCOVERABILITY: does
+     `bpmux help` + `--json` verb-index let the agent find verbs without MCP's free advertisement?
+  2. **board read-verbs:** `bpmux ready/story/board/comments/verdicts/diff/...` compact-index (ties to
+     #1683 scoped-read). Read-only; grounding-gate only.
+  3. **gated write-verbs:** `bpmux pass/fail/deliver/start/verdict/comment/...` with the start-grounding
+     + walk-node gates + SERVER-side role-guard re-homed per-verb. The gate-survival + role-guard
+     falsifier-c lives HERE (every gate that fired on the MCP tool fires on the `bpmux` command).
+  4. **canon/iteration namespaced + walk/Electron verbs:** the remaining clusters, each carrying its
+     gates. Each slice independently shippable + desk-checkable.
 
-PM: this is the N+1 design-readiness input — let's shape the MCP→CLI stories off this (thin-first #1593
-visibility-slice → the gate-migration slice → the full verb-set), sized at IPM with dev's mechanism-input.
+  **User-job per slice (As-a / I-want / so-that — the outside-in spec PM files each story off):**
+  1. *As an AGENT, I want to send + read bpmux messages via `bpmux send` / `bpmux read` rendered in my
+     terminal-stream, so that my team-coordination runs off Claude's MCP and is visible-by-construction.*
+  2. *As an AGENT, I want to read board / story / queue state via `bpmux ready/story/board/...` as a
+     compact scannable index, so that I can ground firsthand off-MCP without flooding my stream.*
+  3. *As an AGENT, I want to drive gated board-actions via `bpmux pass/fail/deliver/...` with the same
+     gates + server-side role-guard enforced, so that moving off MCP drops no discipline-gate or
+     role-restriction (independence never costs safety).*
+  4. *As an AGENT, I want the remaining canon/iteration/walk verbs via `bpmux <ns> <verb>`, so that the
+     FULL toolset is off-MCP and Claude-independence is complete.*
+  (acceptor-axis: "As an AGENT" → these are agent-facing, so PM files them as Features; the acceptor is
+  the team/owner per the USE-axis, not the filing-type.)
+- **Cutover is a DESIGN-COMPLETENESS requirement, not just re-homing:** the design is NOT met until the
+  MCP tool-surface is REMOVED once every verb is re-homed + its gates proven (remove-superseded-code —
+  the refactor is done when the OLD path is GONE, not when the new one works). Sister to the
+  Channels-cutover. User-job: *As an AGENT, I want the MCP tool-surface removed once every verb is
+  re-homed + its gates proven, so that agents depend on NO MCP server — independence is real, not just
+  available.* Falsifier: the MCP tools are gone + uncallable AND every gate + role-guard still fires on
+  the `bpmux` verb (cutover drops no gate). How this lands as board-slices/sequence is PM + dev's lane.
+- **`set_status` — CONFIRMED hook-owned** (not an agent verb).
+- **Identity source — DEV-MECHANISM (not a designer taste-call):** the designer-requirement is ambient
+  role (no `--role` per call); the HOW (env `BPMUX_ROLE` vs spawn-config + server-endpoint discovery)
+  is dev's mechanism-lane.
+
+PM: the grammar is now DECISION-COMPLETE + slice-ready. Slice the MCP→CLI stories off the VERTICAL arc
+above — each = one agent-job WITH its gates re-homed, an observation-falsifier per slice (incl the
+gate-survival + role-guard falsifier-c). dev brings the Bash-PreToolUse-hook + server-endpoint mechanism.
 
 ---
 
