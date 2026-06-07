@@ -1,8 +1,20 @@
 # Agent CLI-surface — `bpmux <verb>` grammar + output-UX (MCP→CLI re-homing)
 
+> ✅ **ACTIVE — per Ryan (2026-06-07): the `bpmux <verb>` CLI is available in BOTH development AND
+> production; the MCP is retained as a DEVELOPMENT tool.** The CLI is the UNIVERSAL agent-surface — it
+> works in every environment (visible-in-stream, gate- + role-guard-complete, discoverable). The MCP
+> server/client stay UNTOUCHED, available in DEV only (restart-safety + dev/debug); production runs on
+> the CLI. Additive, never a cutover — MCP is never removed (the off-MCP removal, former slice-5, is
+> DROPPED). **Production-readiness implication (load-bearing):** in production the CLI is the ONLY
+> surface, so the re-homing must be COMPLETE + every gate/role-guard preserved before production relies
+> on it — a partial CLI would strand prod agents (no MCP fallback there). Epic-falsifier: "a full
+> `bpmux <verb>` CLI exists — visible, gated, role-guarded — usable as the agent-surface in dev AND
+> prod, with MCP retained for dev," NOT "MCP is gone." #1593 visibility is the thin-first seed.
+
 Designer interaction-design for **N+1 (channels-independence completion, Epic #1657 slice-4)**:
-every MCP tool the agent uses → a `bpmux <verb>` shell-command, so the agent acts on bpmux
-through its **terminal** (visible-by-construction, off MCP). This is the OUTGOING half of the
+every MCP tool the agent uses also gets a `bpmux <verb>` shell-command, so the agent can act on bpmux
+through its **terminal** (visible-by-construction; an ADDITIVE off-MCP-capable surface that COEXISTS
+with the retained MCP — Ryan's "A" call 2026-06-07). This is the OUTGOING half of the
 Redux flow (agent dispatches actions via the CLI); the incoming push-path is dev/PM substrate.
 
 **Status:** design-ready draft for PM to shape into stories (designer owns the agent-surface UX;
@@ -173,13 +185,14 @@ re-homing test: every gate that fired on the MCP tool fires on the `bpmux` comma
      FULL toolset is off-MCP and Claude-independence is complete.*
   (acceptor-axis: "As an AGENT" → these are agent-facing, so PM files them as Features; the acceptor is
   the team/owner per the USE-axis, not the filing-type.)
-- **Cutover is a DESIGN-COMPLETENESS requirement, not just re-homing:** the design is NOT met until the
-  MCP tool-surface is REMOVED once every verb is re-homed + its gates proven (remove-superseded-code —
-  the refactor is done when the OLD path is GONE, not when the new one works). Sister to the
-  Channels-cutover. User-job: *As an AGENT, I want the MCP tool-surface removed once every verb is
-  re-homed + its gates proven, so that agents depend on NO MCP server — independence is real, not just
-  available.* Falsifier: the MCP tools are gone + uncallable AND every gate + role-guard still fires on
-  the `bpmux` verb (cutover drops no gate). How this lands as board-slices/sequence is PM + dev's lane.
+- **NO MCP cutover — the MCP server/client are RETAINED (owner-directive, Ryan 2026-06-07):** "leave
+  the mcp server and client alone… I don't know if you will survive bpmux restarts, and they may be
+  useful for development purposes." So the CLI is ADDITIVE, never a replacement: `bpmux <verb>` becomes
+  the PRIMARY visible agent-surface (the independence + visible-in-stream win), while the MCP
+  server/client STAY in place as the restart-survival fallback + a dev-utility. There is NO
+  removal/cutover slice. Epic-falsifier reframes: every tool is usable + visible + gated + role-guarded
+  via `bpmux <verb>` — NOT "MCP is gone." (Supersedes the earlier off-MCP-cutover framing — the
+  remove-superseded-code canon is OVERRIDDEN here by the owner's keep-MCP directive.)
 - **`set_status` — CONFIRMED hook-owned** (not an agent verb).
 - **Identity source — DEV-MECHANISM (not a designer taste-call):** the designer-requirement is ambient
   role (no `--role` per call); the HOW (env `BPMUX_ROLE` vs spawn-config + server-endpoint discovery)
