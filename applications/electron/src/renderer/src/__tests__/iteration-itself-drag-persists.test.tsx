@@ -2,7 +2,7 @@ import { afterEach, describe, expect, inject, it } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
-import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { resetStories, seedStories } from '../../../../test/fixtures/seedMessages'
 
 describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order label mutation', () => {
   let rendered: RenderAppResult | null = null
@@ -17,6 +17,7 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
 
+    await resetStories(apiBase, authToken)
     await seedStories(apiBase, authToken, [
       {
         number: 8101,
@@ -50,15 +51,16 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
 
     rendered = renderApp()
 
-    const sirius = await screen.findByTestId('board-iteration-8101', undefined, {
-      timeout: 15_000
-    })
-    const siriusRow = sirius.closest('.board-iteration-row') as HTMLElement
-    const siriusGrip = siriusRow.querySelector('[data-test="iteration-grip"]') as HTMLElement
-    expect(siriusGrip).toBeTruthy()
-    const vega = await screen.findByTestId('board-iteration-8102', undefined, {
-      timeout: 15_000
-    })
+    await screen.findByTestId('board-iteration-8101', undefined, { timeout: 15_000 })
+    await screen.findByTestId('board-iteration-8102', undefined, { timeout: 15_000 })
+
+    const siriusGrip = (): HTMLElement => {
+      const row = screen.getByTestId('board-iteration-8101').closest('.board-iteration-row')
+      const grip = row?.querySelector('[data-test="iteration-grip"]')
+      expect(grip).toBeTruthy()
+      return grip as HTMLElement
+    }
+    const vegaRow = (): HTMLElement => screen.getByTestId('board-iteration-8102')
 
     const dataStore: Record<string, string> = {}
     const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
@@ -71,10 +73,10 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-    fireEvent.dragStart(siriusGrip, { dataTransfer: dt })
+    fireEvent.dragStart(siriusGrip(), { dataTransfer: dt })
     Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
-    fireEvent.dragOver(vega, { dataTransfer: dt })
-    fireEvent.drop(vega, { dataTransfer: dt })
+    fireEvent.dragOver(vegaRow(), { dataTransfer: dt })
+    fireEvent.drop(vegaRow(), { dataTransfer: dt })
 
     await waitFor(
       async () => {

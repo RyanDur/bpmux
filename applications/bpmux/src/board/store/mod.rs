@@ -179,6 +179,15 @@ impl BoardStore {
         self.dirty.store(true, Ordering::Release);
     }
 
+    pub fn clear(&self) {
+        let mut w = self.stories.write().unwrap_or_else(|e| e.into_inner());
+        if !w.is_empty() {
+            w.clear();
+            drop(w);
+            self.dirty.store(true, Ordering::Release);
+        }
+    }
+
     pub fn remove(&self, number: u64) -> Option<Story> {
         let removed = self
             .stories

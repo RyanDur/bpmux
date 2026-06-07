@@ -67,6 +67,35 @@ pub async fn post_reset_messages(
     (StatusCode::OK, "reset messages".to_string())
 }
 
+pub async fn post_reset_stories(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+) -> impl IntoResponse {
+    let Some(refresh) = test_refresh.as_ref() else {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "reset_stories: tracker not configured (test-refresh handle absent)".to_string(),
+        );
+    };
+    refresh.store().clear();
+    let invalidate_delta = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(session::message::StateDeltaPayload::BoardInvalidated {
+            reason: "board reset".to_string(),
+        }),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&invalidate_delta) {
+        crate::session::diag::log_diag(&format!(
+            "post_reset_stories: board_invalidated state-delta broadcast failed: {e}"
+        ));
+    }
+    (StatusCode::OK, "reset stories".to_string())
+}
+
 #[derive(Deserialize)]
 pub struct SeedRosterBody {
     pub identities: Vec<String>,

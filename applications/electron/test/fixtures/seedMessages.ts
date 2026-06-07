@@ -33,6 +33,16 @@ export const resetMessages = async (apiBase: string, authToken: string): Promise
   }
 }
 
+export const resetStories = async (apiBase: string, authToken: string): Promise<void> => {
+  const res = await fetch(`${apiBase}/api/test/reset_stories`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${authToken}` }
+  })
+  if (!res.ok) {
+    throw new Error(`reset_stories POST failed: ${res.status} ${await res.text()}`)
+  }
+}
+
 export const seedRoster = async (
   apiBase: string,
   authToken: string,
