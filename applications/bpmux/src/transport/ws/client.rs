@@ -54,19 +54,6 @@ pub(crate) async fn handle_client_message(
                 ..session::Message::default()
             };
             session.broadcast(&msg)?;
-            let broadcast = match &msg.to {
-                None => true,
-                Some(r) => r
-                    .iter()
-                    .any(|x| x == crate::session::message::BROADCAST_ALL),
-            };
-            if broadcast && msg.is_chat() {
-                crate::room::inject::deliver_broadcast_to_terminals(
-                    pty_registry,
-                    crate::transport::ws::short_name(&msg.from),
-                    &msg.text,
-                );
-            }
         }
         Ok(ClientMessage::BoardInvalidate) => {
             session.broadcast(&board_invalidated_state_delta())?;
