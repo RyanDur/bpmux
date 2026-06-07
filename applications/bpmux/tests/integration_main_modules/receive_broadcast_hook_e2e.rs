@@ -122,3 +122,51 @@ async fn receive_broadcast_stop_hook_allows_stop_when_already_blocking() {
         "when stop_hook_active is true the hook must NOT re-block (no decision output) — loop guard; stdout: {stdout}"
     );
 }
+
+#[tokio::test]
+async fn receive_broadcast_stop_hook_does_not_deliver_a_message_scoped_to_another_role() {
+    let bpmux = TestBpmux::start();
+    let port = bpmux.port();
+    let tmp = tempfile::tempdir().expect("tmpdir");
+
+    let mut hook = tokio::process::Command::new("bash")
+        .arg(receive_hook_script())
+        .env("BPMUX_PORT", port.to_string())
+        .env("BPMUX_ROLE", "dev")
+        .env("PATH", path_with_bpmux_bin())
+        .env("TMPDIR", tmp.path())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn receive-broadcast.sh");
+    hook.stdin
+        .take()
+        .expect("hook stdin")
+        .write_all(b"{}")
+        .await
+        .expect("write empty hook stdin");
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let posted = bpmux
+        .authed_post(
+            "/api/messages",
+            json!({ "from": "pm", "text": "for designer only", "to": ["designer"] }),
+        )
+        .await;
+    assert!(
+        posted.status().is_success(),
+        "scoped POST should succeed, got {}",
+        posted.status()
+    );
+
+    let output = hook
+        .wait_with_output()
+        .await
+        .expect("collect receive-broadcast.sh output");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "a to:[designer] broadcast must NOT reach role=dev (no-leak, falsifier #4): the hook filters it via should_deliver, times out, and emits NO decision:block; stdout: {stdout}"
+    );
+}
