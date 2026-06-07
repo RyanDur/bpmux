@@ -16,6 +16,8 @@ export interface UseBoardReorderOptions {
   setData: React.Dispatch<React.SetStateAction<BoardResponse | null>>
   setReorderAnnounce: (msg: string) => void
   setError: (msg: string) => void
+  setPendingReadyOrder: (storyNumber: number, position: number) => void
+  clearPendingReadyOrder: (storyNumbers: number[]) => void
   usingMock: boolean
   apiBase: string | undefined
   authToken: string | undefined
@@ -28,6 +30,8 @@ export const useBoardReorder = ({
   setData,
   setReorderAnnounce,
   setError,
+  setPendingReadyOrder,
+  clearPendingReadyOrder,
   usingMock,
   apiBase,
   authToken
@@ -94,6 +98,9 @@ export const useBoardReorder = ({
         if (assignments.length === 0) return
 
         const positionByStory = new Map(assignments.map((a) => [a.storyNumber, a.position]))
+        for (const assignment of assignments) {
+          setPendingReadyOrder(assignment.storyNumber, assignment.position)
+        }
         setData((prev) => {
           if (!prev) return prev
           return {
@@ -135,6 +142,7 @@ export const useBoardReorder = ({
             assignment.mutation
           ).onFailure((error) => {
             setData(prevData)
+            clearPendingReadyOrder(assignments.map((a) => a.storyNumber))
             setError(`Reorder failed: ${describeHttpError(error)}`)
           }).value
         }
@@ -168,6 +176,16 @@ export const useBoardReorder = ({
         setReorderAnnounce(`Moved to position ${newPosition} of ${groupSize}`)
       }
     },
-    [data, setData, setReorderAnnounce, setError, usingMock, apiBase, authToken]
+    [
+      data,
+      setData,
+      setReorderAnnounce,
+      setError,
+      setPendingReadyOrder,
+      clearPendingReadyOrder,
+      usingMock,
+      apiBase,
+      authToken
+    ]
   )
 }

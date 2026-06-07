@@ -183,3 +183,50 @@ async fn drain_once_handles_multiple_events_in_order() {
     assert_eq!(pushed[0].story_number(), 1);
     assert_eq!(pushed[1].story_number(), 2);
 }
+
+#[tokio::test]
+async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = seed_story(1687, StoryState::Ready);
+    seeded.iteration_membership = Some((1655, 125));
+    seeded.raw_labels = vec!["parent-iteration-#1655.125".to_string()];
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(1687, vec!["parent-iteration-#1655.125".to_string()]);
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+
+    orchestrator.ingest_once().await.unwrap();
+    assert_eq!(
+        store.story(1687).and_then(|s| s.iteration_membership),
+        Some((1655, 125)),
+        "baseline: story starts membered at the old position"
+    );
+
+    orchestrator
+        .mutate(BoardEvent::TagAdded {
+            meta: meta(),
+            number: 1687,
+            label: "parent-iteration-#1655.106".to_string(),
+        })
+        .unwrap();
+    orchestrator
+        .mutate(BoardEvent::TagRemoved {
+            meta: meta(),
+            number: 1687,
+            label: "parent-iteration-#1655.125".to_string(),
+        })
+        .unwrap();
+    assert_eq!(
+        store.story(1687).and_then(|s| s.iteration_membership),
+        Some((1655, 106)),
+        "optimistic reorder moves the story to the new position"
+    );
+
+    orchestrator.ingest_once().await.unwrap();
+
+    assert_eq!(
+        store.story(1687).and_then(|s| s.iteration_membership),
+        Some((1655, 106)),
+        "a refresh that reads the source before the reorder's write has drained must NOT clobber the un-acknowledged optimistic position"
+    );
+}

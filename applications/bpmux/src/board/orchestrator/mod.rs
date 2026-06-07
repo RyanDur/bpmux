@@ -86,6 +86,21 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     ) -> Result<(), SyncError> {
         match self.adapter.ingest_metadata_since(since).await {
             Ok(stories) => {
+                let in_flight_label_stories = self.with_pending(|p| {
+                    p.iter()
+                        .filter(|q| {
+                            matches!(
+                                q.event,
+                                BoardEvent::TagAdded { .. } | BoardEvent::TagRemoved { .. }
+                            )
+                        })
+                        .map(|q| q.event.story_number())
+                        .collect::<Vec<u64>>()
+                });
+                let stories = stories
+                    .into_iter()
+                    .filter(|s| !in_flight_label_stories.contains(&s.number))
+                    .collect::<Vec<_>>();
                 self.store.seed_all(stories);
                 let purge = super::adapters::github::iteration_numbers_to_purge_as_retired_empty(
                     &self.store.all_stories(),

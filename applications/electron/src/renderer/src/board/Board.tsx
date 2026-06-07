@@ -7,6 +7,7 @@ import BoardTabs from './BoardTabs'
 import { useBoardData } from './useBoardData'
 import { useBoardFetch } from './useBoardFetch'
 import { useBoardReorder } from './useBoardReorder'
+import { usePendingReadyOrder } from './usePendingReadyOrder'
 import { findCurrentIteration } from './currentIteration'
 import { themeNameFromTitle } from './labelSchema'
 import { GROUP_ORDER, type BoardStory, type ColumnState } from './types'
@@ -62,8 +63,10 @@ const Board = ({
 
   const asideRef = useRef<HTMLElement | null>(null)
 
+  const { setPendingReadyOrder, clearPendingReadyOrder, effectiveReadyPosition } =
+    usePendingReadyOrder(data)
   const { stories, epics, epicTitleByNumber, iterationContainerStories, grouped, navOrder } =
-    useBoardData(data)
+    useBoardData(data, effectiveReadyPosition)
 
   const currentIteration = findCurrentIteration(stories)
   const currentIterationName =
@@ -134,6 +137,8 @@ const Board = ({
     setData,
     setReorderAnnounce,
     setError,
+    setPendingReadyOrder,
+    clearPendingReadyOrder,
     usingMock,
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken

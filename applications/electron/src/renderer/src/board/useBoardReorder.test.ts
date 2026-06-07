@@ -57,6 +57,8 @@ const reorderWith = (
       setData,
       setReorderAnnounce: vi.fn(),
       setError: vi.fn(),
+      setPendingReadyOrder: vi.fn(),
+      clearPendingReadyOrder: vi.fn(),
       usingMock: false,
       apiBase: 'http://localhost',
       authToken: 'tok'
