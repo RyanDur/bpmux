@@ -724,3 +724,98 @@ async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
         "no latest_reject surfaces when the gate-records couldn't be fetched"
     );
 }
+
+#[tokio::test]
+async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
+    let mut story = make_story(1700, StoryState::Accepted, Some("body"));
+    story.is_closed = true;
+    let reason = "carried reject — the active rework";
+    let gates = vec![
+        GateComment {
+            gate: Gate::Delivered,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 8, 0, 0).unwrap(),
+            actor: "dev".into(),
+            payload: Some("delivered".into()),
+        },
+        GateComment {
+            gate: Gate::Rejected,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
+            actor: "ryan".into(),
+            payload: Some(reason.into()),
+        },
+    ];
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_gate_comments(1700, gates);
+    store.seed_all(vec![story]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+
+    let args = serde_json::json!({"number": 1700});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(
+        parsed["workflow_state"], "ready",
+        "carried-reject (last gate = backward Rejected) must derive rework, NOT phantom-accepted from the stale closed-state"
+    );
+    assert_eq!(
+        parsed["is_closed"], true,
+        "is_closed (GH-state axis) still reflects the stale closed issue; only workflow_state derives from the gate-history"
+    );
+}
+
+#[tokio::test]
+async fn re_accepted_after_reject_workflow_state_stays_accepted() {
+    let mut story = make_story(1701, StoryState::Accepted, Some("body"));
+    story.is_closed = true;
+    let gates = vec![
+        GateComment {
+            gate: Gate::Delivered,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 8, 0, 0).unwrap(),
+            actor: "dev".into(),
+            payload: Some("first delivery".into()),
+        },
+        GateComment {
+            gate: Gate::Rejected,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
+            actor: "ryan".into(),
+            payload: Some("rework".into()),
+        },
+        GateComment {
+            gate: Gate::Delivered,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 10, 0, 0).unwrap(),
+            actor: "dev".into(),
+            payload: Some("re-delivery".into()),
+        },
+        GateComment {
+            gate: Gate::Accepted,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 11, 0, 0).unwrap(),
+            actor: "ryan".into(),
+            payload: None,
+        },
+    ];
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_gate_comments(1701, gates);
+    store.seed_all(vec![story]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+
+    let args = serde_json::json!({"number": 1701});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(
+        parsed["workflow_state"], "accepted",
+        "re-accepted-after-reject (last gate = forward Accepted) stays accepted — the earlier reject is SUPERSEDED; guards the .last() primitive against an any-backward regression"
+    );
+}

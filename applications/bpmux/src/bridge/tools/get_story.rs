@@ -87,7 +87,9 @@ pub(in crate::bridge) async fn handle_get_story(
             }
         }
     }
-    let needs_gates = matches!(story.state, StoryState::Ready | StoryState::InProgress);
+    let needs_gates = matches!(story.state, StoryState::Ready | StoryState::InProgress)
+        || story.is_closed
+        || matches!(story.state, StoryState::Accepted);
     if needs_gates
         && story.gate_comments.is_none()
         && let Some(r) = refresh
@@ -108,6 +110,14 @@ pub(in crate::bridge) async fn handle_get_story(
     let body_cached = story.body.as_deref();
     let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
     let latest_reject = story.gate_comments.as_deref().and_then(latest_reject_json);
+    let workflow_state = story
+        .gate_comments
+        .as_deref()
+        .and_then(|gates| {
+            let transitions = replay_transitions(gates);
+            most_recent_backward_transition(&transitions).map(|t| state_label(t.to))
+        })
+        .unwrap_or_else(|| state_label(story.state));
     if needs_gates
         && let Some(gates) = story.gate_comments.as_ref()
         && let Some(ctx) = rework_context_from_gates(gates)
@@ -135,7 +145,7 @@ pub(in crate::bridge) async fn handle_get_story(
         "number": story.number,
         "title": story.title,
         "body": body_out,
-        "workflow_state": state_label(story.state),
+        "workflow_state": workflow_state,
         "is_closed": story.is_closed,
         "labels": labels,
         "parent_epic": story.parent_epic,
