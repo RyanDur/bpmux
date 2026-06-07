@@ -191,6 +191,7 @@ const DrillInActions = ({
         }}
       >
         <form
+          className="drill-in-reject-form-body"
           onSubmit={(event) => {
             event.preventDefault()
             void handleRejectSend()
