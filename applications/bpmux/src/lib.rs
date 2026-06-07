@@ -219,6 +219,8 @@ fn resolve_role(role_arg: &Option<String>) -> String {
         .unwrap_or_else(|| "dev".to_string())
 }
 
+const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
+
 fn run_wait_for_event(after: &Option<String>, timeout_ms: u64) -> anyhow::Result<()> {
     let role = resolve_role(&None);
     let port = resolve_bpmux_port();
@@ -232,7 +234,9 @@ fn run_wait_for_event(after: &Option<String>, timeout_ms: u64) -> anyhow::Result
         .build()?;
     let body = rt.block_on(async {
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_millis(timeout_ms + 5_000))
+            .timeout(std::time::Duration::from_millis(
+                timeout_ms + WAIT_CLIENT_GRACE_MS,
+            ))
             .build()?;
         client.get(&url).send().await?.text().await
     })?;
