@@ -64,6 +64,25 @@ And in the bpmux board/story-view (Ryan's + agents' glance): a rejected story ca
 without digging. (Ties to the now-tab/board-IA surface; same "load-bearing context is
 glanceable" principle.)
 
+## Facet — the loss corrupts gate-STATE, not just context (lived 2026-06-07, #1524)
+
+PM + designer hit this firsthand re-desk-checking #1524. The story carried a STALE gate-state
+from its Aquila reject that **never reopened**: `get_story` returned `workflow_state: accepted`
++ `is_closed: true` + a stray `in progress` label, while `view_story_timeline` returned ONLY a
+`filed` event (every reject/deliver/desk-check marker `gate_comments_hydrated: false`) and the
+`desk_check` + `delivered` columns were both empty. The substrate said "accepted+closed"; the
+truth was "rework never reopened, desk-check never ran." It nearly drove a `pass_desk_check` on
+a closed story (caught by grounding the authoritative column + timeline, not `get_story`).
+
+So the reject-record loss has a **STATE dimension on top of the context dimension**: an
+unhydrated gate-record doesn't just hide the *reason* — it leaves `workflow_state` **mis-derived**
+(a closed reject reads as an *acceptance*), so the state-machine position itself is wrong. The
+same hydration that surfaces `latest_reject` (surface 1) MUST also make the gate-records
+**authoritative for state-derivation**, so `workflow_state` follows the real last gate-transition
+(reject → ready/rework), never a stale GitHub closed-state. Hydrating the reason but leaving the
+state mis-derived would still strand the story in a phantom-accepted limbo. *(Substrate: dev. The
+design point: the reject-record is load-bearing for the STATE machine, not only the rework-spec.)*
+
 ## Observation-falsifier (the design's AC)
 
 I would reject if:
@@ -76,6 +95,9 @@ I would reject if:
    unhydrated comment-stream).
 5. the verbatim reject is PARAPHRASED or lossy anywhere in the chain — the at-source word is
    canonical; a summary is the exact failure mode that dropped #1524's sync-clause.
+6. a rejected-then-carried story's `workflow_state` reads `accepted` (or any non-rework terminal)
+   because its gate-records are unhydrated — the derived state must reflect the real last
+   gate-transition (reject → ready/rework), never a stale closed-state (the #1524 corruption).
 
 ## Why first-class (not "just hydrate the comment")
 
