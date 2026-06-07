@@ -83,6 +83,36 @@ same hydration that surfaces `latest_reject` (surface 1) MUST also make the gate
 state mis-derived would still strand the story in a phantom-accepted limbo. *(Substrate: dev. The
 design point: the reject-record is load-bearing for the STATE machine, not only the rework-spec.)*
 
+### FACET 3 (#1691) — the state-derivation observation-falsifier
+
+The state-derivation fix (its own story, depends on #1686's hydration feeding it) has a
+load-bearing falsifier of its own. I would reject if I observed ANY of:
+
+1. **Phantom-accepted (core)** — a carried-reject story reads `workflow_state` =
+   accepted/closed/any terminal NOT derived from its real last gate-transition; the derivation
+   must yield `ready`/`rework`.
+2. **Source-precedence inverted** — the derivation reads the stale GitHub closed-state (or raw
+   `is_closed`) instead of the hydrated gate-records' last gate-transition.
+3. **Hydration without derivation (the half-fix)** — gate-records are hydrated (#1686) but
+   `workflow_state` still mis-derives because the derivation isn't wired to them.
+4. **Backward-transition blindness — THE CRUX (= the #1524 mechanism)** — the derivation reads
+   the MOST-ADVANCED / forward-only gate and misses the backward reject (a reject moves the story
+   BACKWARD: desk_check/delivered → ready). It must read the AUTHORITATIVE last transition BY
+   TIMESTAMP; a most-advanced / dual-label decode silently drops the backward reject. (Sister to
+   the banked "probe-backward transitions for completeness" lesson — the same most-advanced-decoder
+   trap.)
+5. **Over-correction on a real accept (inverse failure)** — a story whose real last transition is
+   a genuine accept mis-derives to rework; the derivation must distinguish a real accept-transition
+   from a reject-then-closed (a normally-accepted, non-carried story is unaffected).
+6. **Vacuous coverage** — the load-bearing test seeds a carried-reject fixture (hydrated
+   gate-records whose LAST transition by-time = reject + a STALE closed/accepted source) and asserts
+   `derive → ready/rework` (RED without the derivation). Omitting the accept-discrimination case
+   (genuinely-accepted fixture → stays accepted) is VACUOUS for #5; not seeding the backward reject
+   as last-by-time can't catch #4.
+
+The crux is #4: read the authoritative last gate-transition by timestamp, discriminating a
+backward reject from a forward accept — never the stale GitHub closed-state.
+
 ## Observation-falsifier (the design's AC)
 
 I would reject if:
