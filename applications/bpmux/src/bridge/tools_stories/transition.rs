@@ -24,12 +24,19 @@ pub(crate) async fn handle_start_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let (was_closed, prior_state) = if let Some(r) = refresh {
+    let (was_closed, prior_state, reject_lead) = if let Some(r) = refresh {
         let prior = ensure_story_in_canonical_store(r, number).await?;
         let _ = r.fetch_body(number).await;
-        (prior.is_closed, Some(prior.state))
+        let _ = r.fetch_gate_comments(number).await;
+        let lead = r
+            .story(number)
+            .and_then(|s| s.gate_comments)
+            .as_deref()
+            .and_then(super::super::tools::rework_context::latest_reject)
+            .and_then(super::super::tools::rework_context::reject_lead);
+        (prior.is_closed, Some(prior.state), lead)
     } else {
-        (false, None)
+        (false, None, None)
     };
     if let Some(state) = prior_state {
         crate::workflow::check_target_state_valid(transition, state.as_str())
@@ -86,7 +93,10 @@ pub(crate) async fn handle_start_story(
             .await
             .map_err(|e| format!("#{number} start push failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
-        return Ok(format!("#{number} marked as in progress"));
+        return Ok(match reject_lead {
+            Some(lead) => format!("{lead}\n#{number} marked as in progress"),
+            None => format!("#{number} marked as in progress"),
+        });
     }
     Err(
         "start_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"

@@ -44,7 +44,7 @@ mod list_ready;
 mod read_messages;
 mod remove_principle;
 mod rerun_ci;
-mod rework_context;
+pub(in crate::bridge) mod rework_context;
 mod save_bookmark;
 mod save_briefing;
 mod save_lesson;

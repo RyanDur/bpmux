@@ -45,20 +45,13 @@ fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
 }
 
 fn latest_reject_json(gates: &[GateComment]) -> Option<serde_json::Value> {
-    let gc = gates
-        .iter()
-        .rev()
-        .find(|g| matches!(g.gate, Gate::Rejected | Gate::FailDeskCheck))?;
+    let gc = super::rework_context::latest_reject(gates)?;
     let reason = gc.payload.clone()?;
-    let gate = match gc.gate {
-        Gate::FailDeskCheck => "fail-desk-check",
-        _ => "rejected",
-    };
     Some(serde_json::json!({
         "reason": reason,
         "by": gc.actor,
         "at": gc.ts.to_rfc3339(),
-        "gate": gate,
+        "gate": super::rework_context::reject_gate_label(gc.gate),
     }))
 }
 

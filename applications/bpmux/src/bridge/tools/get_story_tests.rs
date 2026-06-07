@@ -648,3 +648,79 @@ async fn non_rejected_story_carries_no_latest_reject() {
         "a non-rejected story must not carry a latest_reject"
     );
 }
+
+#[tokio::test]
+async fn latest_reject_survives_an_iteration_move() {
+    let story = make_story(1524, StoryState::Ready, Some("base body"));
+    let reason = "drag srt does not persist and does not have the same drag css as the iteration";
+    let gates = vec![GateComment {
+        gate: Gate::Rejected,
+        ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
+        actor: "ryan".into(),
+        payload: Some(reason.into()),
+    }];
+    let (store, orch) = seeded_orchestrator(vec![story], vec![(1524, gates)]).await;
+    let args = serde_json::json!({"number": 1524});
+
+    let before = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .unwrap();
+    let before_json: serde_json::Value = serde_json::from_str(&before).unwrap();
+    assert_eq!(
+        before_json["latest_reject"]["reason"].as_str(),
+        Some(reason),
+        "pre-move: the rejected story surfaces its reject"
+    );
+
+    let meta = crate::board::orchestrator::cache_fill_meta();
+    store.apply(&crate::board::BoardEvent::TagAdded {
+        meta: meta.clone(),
+        number: 1524,
+        label: "parent-iteration-#1656.1".to_string(),
+    });
+    store.apply(&crate::board::BoardEvent::TagRemoved {
+        meta,
+        number: 1524,
+        label: "parent-iteration-#1655.1".to_string(),
+    });
+
+    let after = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .unwrap();
+    let after_json: serde_json::Value = serde_json::from_str(&after).unwrap();
+    assert_eq!(
+        after_json["latest_reject"]["reason"].as_str(),
+        Some(reason),
+        "the reject SURVIVES the iteration-move — gate-comments live on the issue; the move only re-labels parent-iteration, never touches the gate-records"
+    );
+}
+
+#[tokio::test]
+async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
+    let story = make_story(442, StoryState::Ready, Some("body"));
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.set_ingest_failures(true);
+    store.seed_all(vec![story]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    let args = serde_json::json!({"number": 442});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
+        .await
+        .expect("handler degrades gracefully when the gate read-through fails");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    assert_eq!(
+        parsed["gate_comments_hydrated"].as_bool(),
+        Some(false),
+        "a failed gate read-through degrades gracefully — unhydrated, not an error"
+    );
+    assert!(
+        parsed
+            .get("latest_reject")
+            .map(|x| x.is_null())
+            .unwrap_or(true),
+        "no latest_reject surfaces when the gate-records couldn't be fetched"
+    );
+}

@@ -558,6 +558,68 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     );
 }
 
+#[tokio::test]
+async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, GateComment, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let reason = "drag srt does not persist and does not have the same drag css as the iteration";
+    let seeded = Story::new_minimal(
+        1524,
+        "ready-queue drag".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_gate_comments(
+        1524,
+        vec![GateComment {
+            gate: Gate::Rejected,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
+            actor: "ryan".into(),
+            payload: Some(reason.into()),
+        }],
+    );
+    let store = Arc::new(crate::board::BoardStore::new());
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(1524));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
+    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator))
+        .await
+        .expect("start_story succeeds");
+
+    assert!(
+        result.contains(reason),
+        "start_story must surface the VERBATIM reject reason at pickup: {result}"
+    );
+    let reject_pos = result.find(reason).expect("reason present in output");
+    let progress_pos = result
+        .find("marked as in progress")
+        .expect("progress line present");
+    assert!(
+        reject_pos < progress_pos,
+        "the reject must LEAD — appear before the marked-in-progress line: {result}"
+    );
+    assert!(
+        result.contains("REWORK"),
+        "the reject is framed as a REWORK lead at pickup: {result}"
+    );
+}
+
 #[cfg(test)]
 mod classify_for_pass_desk_check_tests {
     use super::*;
