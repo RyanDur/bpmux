@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<!--
+  Darcula design-system — FORMS-GRAMMAR (Antlia #1679 form-controls). Mockup-FIRST → Ryan taste-review.
+  Designer 2026-06-06. Builds on darcula-foundation-mockup.html (tokens) + button-modal-primitives-mockup.html
+  (the button primitive). NOT shipped tokens — taste-review first.
+
+  WHY this exists (grounded firsthand): bpmux has 4 form surfaces that are the SAME form wearing bespoke
+  classes — chat/Input (`.chat-input`), board/Comments (`.drill-in-comment-form`), the reject-modal
+  (`.drill-in-reject-form`), and BugQuestionDialog. Each is `<label><small>caption</small> + <textarea></label>`
+  + submit + busy-disable + optimistic, but each restyles it. The drift (audited, DrillIn.css/Input.css):
+    • field-stack gap:  chat 6 · comment 8 · bug 8 · reject **12** (outlier)
+    • modal padding:    reject 16 vs bug 12
+    • textarea radius:  reject 6 vs comment 4 vs chat 4
+  Consistent already: label→field = 4 · button-gap = 8. The grammar below makes the WHOLE thing consistent:
+  ONE field primitive + ONE action primitive, composed into TWO archetypes (inline-composer, modal-form),
+  with proximity spacing (tight WITHIN a group, a consistent loose distance BETWEEN groups — Ryan's rule).
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Darcula design-system — forms grammar</title>
+<style>
+  :root{
+    /* inherited from the foundation (Darcula synthesis) */
+    --bg-base:#2b2b2b; --bg-elevated:#3c3f41; --bg-highlighted:#44474a;
+    --fg-primary:#bbbbbb; --fg-secondary:#a9b7c6; --fg-dim:#808080;
+    --brand:#4e7ec2; --ok:#6a8759; --warn:#cc7832; --err:#cf5b56; --border:#323232;
+    /* proposed FORM tokens (the grammar) */
+    --field-gap:4px;            /* label → control: TIGHT (intra-group), unchanged from today */
+    --group-gap:24px;          /* BETWEEN groups (title↔field↔actions): LOOSE + consistent (fixes reject's 12) */
+    --action-gap:8px;          /* button → button: TIGHT (intra-group), unchanged */
+    --composer-gap:8px;        /* inline composer is ONE unit — its internal stack is tight */
+    --field-radius:6px;        /* unify (reject 6 / comment 4 / chat 4 → 6) */
+    --field-pad:6px 8px;
+    --modal-pad:24px;          /* unify (reject 16 / bug 12 → 24, the research content-margin) */
+    --focus-ring:0 0 0 2px color-mix(in srgb,var(--brand) 45%,transparent);
+    --btn-radius:6px;
+  }
+  body{background:#1e1e1e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:28px;line-height:1.55}
+  h1{font-size:18px;margin:0 0 4px}
+  h2{font-size:14px;color:var(--fg-secondary);margin:30px 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px}
+  h3{font-size:12.5px;color:var(--fg-primary);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+  .sub{color:var(--fg-dim);font-size:13px;margin:0 0 12px;max-width:880px}
+  .sub code,td code{background:#333;padding:1px 5px;border-radius:3px;font-size:12px;color:var(--fg-secondary)}
+  .stage{display:flex;gap:34px;flex-wrap:wrap;align-items:flex-start;margin:12px 0}
+  .cap{font-size:12px;color:var(--fg-dim);margin:0 0 8px;max-width:320px}.cap b{color:var(--fg-primary)}
+
+  /* === the FIELD primitive === */
+  .field{display:flex;flex-direction:column;gap:var(--field-gap)}
+  .field>small{font-size:13px;color:var(--fg-secondary)}
+  .field textarea,.field input{
+    background:var(--bg-highlighted);color:var(--fg-primary);border:1px solid #5a5f62;
+    border-radius:var(--field-radius);padding:var(--field-pad);font:inherit;font-size:13px;
+    box-sizing:border-box;resize:none;width:100%}
+  .field textarea{min-height:72px}
+  .field .is-focus{border-color:var(--brand);box-shadow:var(--focus-ring);outline:none}
+  .field .is-disabled{opacity:.5;cursor:default}
+  .field.has-error textarea,.field.has-error input{border-color:var(--err)}
+  .field .help{font-size:12px;color:var(--fg-dim)}
+  .field .err{font-size:12px;color:var(--err)}
+
+  /* === the ACTION primitive (reuses the button primitive) === */
+  .actions{display:flex;gap:var(--action-gap)}
+  .actions.end{justify-content:flex-end}
+  .btn{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 16px;
+    border-radius:var(--btn-radius);border:1px solid transparent;font:inherit;font-size:13px;font-weight:500;cursor:pointer}
+  .btn--primary{background:var(--brand);border-color:var(--brand);color:#0d1116;font-weight:600}
+  .btn--ghost{background:transparent;color:var(--fg-secondary);border-color:#5a5f62}
+  .btn--danger{background:transparent;border-color:var(--err);color:var(--err)}
+  .btn.is-disabled{opacity:.45;cursor:default}
+
+  /* === archetype frames === */
+  .panel{width:330px;background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:10px}
+  .composer{display:flex;flex-direction:column;gap:var(--composer-gap)}
+  .composer .hint{font-size:11px;color:var(--fg-dim)}
+  .modal{width:320px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;
+    box-shadow:0 8px 32px rgb(0 0 0 / 45%);padding:var(--modal-pad);display:flex;flex-direction:column;gap:var(--group-gap)}
+  .modal .title{font-size:16px;font-weight:600;color:var(--fg-primary);margin:0}
+
+  table{border-collapse:collapse;font-size:12.5px;margin:10px 0;width:100%;max-width:840px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--fg-dim);font-weight:600;font-size:12px}.was{color:var(--fg-dim);text-decoration:line-through}
+  .note{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;max-width:880px;margin-top:16px}
+  .note b{color:var(--fg-primary)}ul{margin:6px 0;padding-left:18px}li{margin:4px 0;font-size:13px}
+</style></head>
+<body>
+  <h1>Darcula design-system — forms grammar</h1>
+  <p class="sub">Antlia's form-controls. The 4 form surfaces in bpmux are the same form in different clothes —
+  this unifies them into <b>one FIELD primitive + one ACTION primitive</b>, composed into <b>two archetypes</b>.
+  Spacing follows your proximity rule: tight WITHIN a purpose-group (<code>label→field 4</code>, <code>button→button 8</code>),
+  a consistent looser distance BETWEEN groups (<code>24</code>). Mockup-first; rendered at real size.</p>
+
+  <h2>1 · The FIELD primitive (every input is this)</h2>
+  <p class="sub">A caption-label hugging its control (4px), one control style, and explicit STATES — the states
+  today are ad-hoc per surface (the reject focus-ring exists; comments/chat have none; no error state anywhere).</p>
+  <div class="stage">
+    <div><p class="cap"><b>Default</b></p><div class="field" style="width:240px"><small>Reason (sent to the team)</small><textarea>…</textarea></div></div>
+    <div><p class="cap"><b>Focus</b> — accent ring (WCAG)</p><div class="field" style="width:240px"><small>Reason (sent to the team)</small><textarea class="is-focus">the look is</textarea></div></div>
+    <div><p class="cap"><b>Error</b> — err border + message</p><div class="field has-error" style="width:240px"><small>Reason (sent to the team)</small><textarea class="">…</textarea><span class="err">A reason is required to reject.</span></div></div>
+    <div><p class="cap"><b>Disabled / submitting</b></p><div class="field" style="width:240px"><small>Reason (sent to the team)</small><textarea class="is-disabled" disabled>Sending…</textarea></div></div>
+  </div>
+
+  <h2>2 · The ACTION primitive</h2>
+  <p class="sub">The button hierarchy (from the button-primitive slice) + an 8px group gap; right-aligned in a modal,
+  inline in a composer. Primary is the one default action; ghost dismisses; danger for destructive confirms.</p>
+  <div class="stage">
+    <div class="actions end" style="width:240px"><button class="btn btn--ghost">Cancel</button><button class="btn btn--primary">Send</button></div>
+    <div class="actions end" style="width:240px"><button class="btn btn--ghost">Cancel</button><button class="btn btn--danger">Reject</button></div>
+  </div>
+
+  <h2>3 · Archetype A — INLINE COMPOSER</h2>
+  <p class="sub">Consumers: <code>chat/Input</code> + <code>board/Comments</code>. A textarea + send, Enter-to-send /
+  Shift+Enter-newline, busy-disable + optimistic-append. One tight unit — no title, no heavy chrome.</p>
+  <div class="stage">
+    <div><p class="cap"><b>Chat input</b> — no label, hint inline</p>
+      <div class="panel"><div class="composer">
+        <div class="field"><textarea placeholder="type here — Enter to send, Shift+Enter for newline"></textarea></div>
+      </div></div></div>
+    <div><p class="cap"><b>Story comments</b> — small label + send</p>
+      <div class="panel"><div class="composer">
+        <div class="field"><small>Add a comment</small><textarea></textarea></div>
+        <div class="actions end"><button class="btn btn--primary">Comment</button></div>
+      </div></div></div>
+  </div>
+
+  <h2>4 · Archetype B — MODAL FORM</h2>
+  <p class="sub">Consumers: the reject-modal (#1518) + BugQuestionDialog. Title → field(s) → actions, in a
+  native <code>&lt;dialog&gt;</code>, with the proximity hierarchy (24 between groups). This is #1518's seed,
+  re-skinned onto the system.</p>
+  <div class="stage">
+    <div><p class="cap"><b>Reject story</b> — title · field · ghost+danger</p>
+      <div class="modal">
+        <h3 class="title">Reject story</h3>
+        <div class="field"><small>Reason (sent to the team)</small><textarea class="is-focus">the look is</textarea></div>
+        <div class="actions end"><button class="btn btn--ghost">Cancel</button><button class="btn btn--danger">Reject</button></div>
+      </div></div>
+    <div><p class="cap"><b>Bug question</b> — title · primary/ghost · bypass-field</p>
+      <div class="modal">
+        <h3 class="title">File a bug about this story?</h3>
+        <div class="field"><small>Why is this bypass justified?</small><textarea></textarea></div>
+        <div class="actions end"><button class="btn btn--ghost">No</button><button class="btn btn--primary">Yes, file</button></div>
+      </div></div>
+  </div>
+
+  <h2>5 · What unifies (the drift the grammar removes)</h2>
+  <table>
+    <tr><th>relationship</th><th>today (4 sisters)</th><th>→ grammar</th></tr>
+    <tr><td>label → control</td><td><code>4</code> everywhere ✓</td><td><code>--field-gap: 4</code> (keep — already consistent)</td></tr>
+    <tr><td>button → button</td><td><code>8</code> everywhere ✓</td><td><code>--action-gap: 8</code> (keep)</td></tr>
+    <tr><td>between groups (title↔field↔actions)</td><td class="was">reject 12 · others n/a</td><td><code>--group-gap: 24</code> (loose + consistent — the proximity fix)</td></tr>
+    <tr><td>modal padding</td><td class="was">reject 16 · bug 12</td><td><code>--modal-pad: 24</code> (unified content-margin)</td></tr>
+    <tr><td>control radius</td><td class="was">reject 6 · comment 4 · chat 4</td><td><code>--field-radius: 6</code> (unified)</td></tr>
+    <tr><td>focus / error / disabled states</td><td class="was">ad-hoc (reject ring only; no error state)</td><td>one FIELD state-set (focus-ring · err-border+msg · disabled)</td></tr>
+  </table>
+
+  <div class="note">
+    <b>What this gets you:</b> the reject-modal, bug-dialog, comment box, and chat input all read as ONE family —
+    same field, same buttons, same rhythm — learned once. The error + disabled states (missing today) come for
+    free with the primitive. #1518's reject-modal is the first consumer (ships on current tokens now; re-skins onto
+    this when Antlia lands).
+    <br><br>
+    <b>Taste-calls for you:</b>
+    <ul>
+      <li><b>Between-group distance</b> — <code>24</code> (shown) or <code>16</code> (tighter)?</li>
+      <li><b>Reject confirm</b> — <b>danger</b> red-outline (shown) or neutral primary <b>Send</b>?</li>
+      <li><b>Composer send</b> — Enter-only (chat) vs an explicit button (comments) — keep both per surface, or one rule?</li>
+      <li><b>Error display</b> — inline message under the field (shown), or a quieter affordance?</li>
+    </ul>
+    Tell me the taste; I re-synthesize. This is the form-controls half of Antlia; pairs with the button/modal primitives + the list/row primitive (the #1524/#1517 drag surfaces) next.
+  </div>
+</body></html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>bpmux — native-shell terminal mockup</title>
+<style>
+  /* Tokens lifted verbatim from the shipped app:
+     applications/electron/src/renderer/src/styles/tokens.css (dark theme).
+     Using the real palette so "looks/feels native" is testable on paper. */
+  :root {
+    --bg-base: rgb(26 26 26);
+    --bg-elevated: rgb(37 37 37);
+    --bg-highlighted: rgb(51 51 51);
+    --fg-primary: rgb(232 232 232);
+    --fg-secondary: rgb(176 176 176);
+    --fg-dim: rgb(157 157 157);
+    --fg-dimmer: rgb(128 128 128);
+    --border-subtle: rgb(51 51 51);
+    --border-strong: rgb(85 85 85);
+    --accent-success: rgb(63 185 80);
+    --accent-warning: rgb(212 161 60);
+    --accent-error: rgb(255 107 107);
+    --accent-info: rgb(79 195 247);
+    --accent-brand: rgb(106 160 255);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0c0c0c;
+    font-family: var(--font-ui);
+    color: var(--fg-primary);
+    padding: 32px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 20px; font-weight: 650; margin-bottom: 4px; }
+  .sub { color: var(--fg-dim); font-size: 13px; margin-bottom: 24px; }
+  .sub code { font-family: var(--font-mono); color: var(--fg-secondary); }
+
+  /* ── window chrome ─────────────────────────────── */
+  .window {
+    width: 1240px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 24px 64px rgba(0,0,0,.55);
+    background: var(--bg-base);
+  }
+  .titlebar {
+    height: 36px; background: #161616;
+    display: flex; align-items: center; gap: 8px; padding: 0 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .tl { width: 12px; height: 12px; border-radius: 50%; }
+  .tl.r { background:#ff5f57; } .tl.y { background:#febc2e; } .tl.g { background:#28c840; }
+  .titlebar .name { margin-left: 10px; color: var(--fg-dim); font-size: 12.5px; font-weight: 600; }
+
+  .body { display: flex; height: 560px; }
+
+  /* ── sidebar ───────────────────────────────────── */
+  .sidebar {
+    flex: 0 0 232px; background: var(--bg-elevated);
+    border-right: 1px solid var(--border-subtle);
+    padding: 10px 8px; display: flex; flex-direction: column; gap: 4px;
+    overflow-y: auto;
+  }
+  .side-allconv {
+    display:flex; align-items:center; gap:8px;
+    padding: 7px 10px; border-radius: 6px; font-size: 13.5px;
+    color: var(--fg-secondary); cursor: default;
+  }
+  .side-allconv:hover { background: var(--bg-highlighted); }
+
+  .sec {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 10px 4px; font-size: 11px; letter-spacing: .06em;
+    text-transform: lowercase; color: var(--fg-dimmer); font-weight: 600;
+  }
+  .sec .add {
+    width: 18px; height: 18px; border-radius: 4px; line-height: 16px; text-align:center;
+    font-size: 15px; color: var(--fg-secondary); border: 1px solid var(--border-strong);
+    cursor: pointer; font-weight: 400;
+  }
+  .sec .add:hover { background: var(--bg-highlighted); color: var(--fg-primary); }
+
+  .item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 6px; font-size: 13.5px;
+    color: var(--fg-secondary); cursor: default;
+  }
+  .item:hover { background: var(--bg-highlighted); }
+  .item.active { background: var(--bg-highlighted); color: var(--fg-primary); font-weight: 600; }
+  .item .label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .cwd { font-family: var(--font-mono); font-size: 12px; }
+  .item small { color: var(--fg-dim); font-size: 11.5px; font-weight: 400; }
+  /* S5 close affordance — ✕ on the row (reveals on hover/active), the ＋ companion */
+  .item .x {
+    flex: 0 0 auto; width: 16px; height: 16px; line-height: 14px; text-align: center;
+    border-radius: 4px; color: var(--fg-dim); font-size: 13px; cursor: pointer;
+  }
+  .item .x:hover { background: var(--accent-error); color: #fff; }
+
+  /* presence/lifecycle dot — same 8px geometry + token colors as shipped */
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+  .dot.alive { background: var(--accent-success); }
+  .dot.spawning { background: var(--accent-warning); }
+  .dot.failed { background: var(--accent-error); }
+  .dot.dead { background: var(--fg-dimmer); opacity: .45; }
+
+  /* ── main terminal pane ────────────────────────── */
+  .main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; background: var(--bg-base); }
+  .term-head {
+    flex: 0 0 auto; height: 34px; display: flex; align-items: center; gap: 10px;
+    padding: 0 14px; border-bottom: 1px solid var(--border-subtle); background: #1f1f1f;
+    font-size: 12.5px; color: var(--fg-secondary);
+  }
+  .term-head .cwd { font-family: var(--font-mono); color: var(--fg-primary); }
+  .term-head .shell { color: var(--fg-dim); }
+  .term-head .spacer { flex: 1 1 auto; }
+  .term-head .meta { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-dimmer); }
+
+  .term {
+    flex: 1 1 auto; min-height: 0; padding: 10px 12px; overflow: auto;
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.45;
+    color: #d4d4d4; background: var(--bg-base);
+    white-space: pre-wrap;
+  }
+  .term .pr   { color: var(--accent-success); }   /* prompt user@cwd */
+  .term .br   { color: var(--accent-brand); }      /* branch / path  */
+  .term .dir  { color: var(--accent-info); }       /* ls dir entries */
+  .term .dim  { color: var(--fg-dim); }
+  .term .warn { color: var(--accent-warning); }
+  .term .cursor {
+    display:inline-block; width: 8px; height: 1.05em; vertical-align: text-bottom;
+    background: #d4d4d4; animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ── board (right column) — EXISTING shipped UI, OUT OF SCOPE, illustrative only.
+     Mirrors the real board chrome (NOW/PLAN/DONE tabs + sections); content is
+     neutral placeholder (no story IDs — those churn per iteration + would drift). ── */
+  .resize { flex: 0 0 3px; background: var(--border-subtle); cursor: col-resize; }
+  .board { flex: 0 0 270px; background: var(--bg-base); border-left: 1px solid var(--border-subtle); display: flex; flex-direction: column; overflow: hidden; }
+  .board .scope-tag {
+    font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .04em;
+    color: var(--fg-dim); background: var(--bg-highlighted); padding: 4px 10px;
+    border-bottom: 1px solid var(--border-subtle); text-align: center;
+  }
+  .board .bhead { padding: 8px 12px 0; font-size: 11px; letter-spacing:.06em; color: var(--fg-dimmer); font-weight:600; }
+  .board .tabs { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); }
+  .board .tab { font-size: 11px; padding: 3px 9px; border-radius: 5px; color: var(--fg-dim); }
+  .board .tab.on { background: var(--bg-highlighted); color: var(--fg-secondary); font-weight: 600; }
+  .board .inner { padding: 10px 12px; opacity: .55; flex: 1 1 auto; }
+  .board .iter { font-size: 11px; color: var(--fg-dim); margin-bottom: 10px; }
+  .board .sec-h { font-size: 10px; color: var(--fg-dim); font-weight: 700; margin: 12px 0 6px; text-transform: uppercase; letter-spacing:.05em; }
+  .board .sec-h:first-of-type { margin-top: 0; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .row .ph { height: 8px; border-radius: 4px; background: var(--border-strong); }
+  .row .ph.s { width: 40%; } .row .ph.m { width: 62%; } .row .ph.l { width: 78%; }
+  .board .none { font-size: 11px; color: var(--fg-dimmer); font-style: italic; padding: 2px 0; }
+
+  /* ── state gallery ─────────────────────────────── */
+  .gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 26px; width: 1240px; }
+  .card { border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden; background: var(--bg-base); }
+  .card .cap {
+    padding: 8px 12px; background: var(--bg-elevated); border-bottom: 1px solid var(--border-subtle);
+    font-size: 12px; color: var(--fg-secondary); display: flex; align-items: center; gap: 8px; font-weight: 600;
+  }
+  .card .pane {
+    height: 150px; padding: 10px 12px; font-family: var(--font-mono); font-size: 12px; line-height: 1.4;
+    color: #d4d4d4; display: flex; flex-direction: column;
+  }
+  .center { align-items: center; justify-content: center; text-align: center; gap: 8px; }
+  .banner {
+    border-radius: 6px; padding: 8px 10px; font-size: 11.5px; line-height: 1.4; width: 100%;
+  }
+  .banner.fail { background: rgba(255,107,107,.12); border: 1px solid var(--accent-error); color: #ffb3b3; }
+  .banner.exit { background: rgba(128,128,128,.12); border: 1px solid var(--border-strong); color: var(--fg-dim); }
+  .footbtn {
+    display:inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 5px;
+    border: 1px solid var(--border-strong); color: var(--fg-secondary); font-family: var(--font-ui);
+    font-size: 11.5px; cursor: pointer;
+  }
+  .footbtn:hover { background: var(--bg-highlighted); color: var(--fg-primary); }
+  .spin {
+    width: 16px; height: 16px; border: 2px solid var(--border-strong);
+    border-top-color: var(--accent-warning); border-radius: 50%; animation: rot .8s linear infinite;
+  }
+  @keyframes rot { to { transform: rotate(360deg); } }
+  .muted-line { color: var(--fg-dim); font-size: 11.5px; }
+
+  /* ── annotations ───────────────────────────────── */
+  .notes { width: 1240px; margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+  .note { border-left: 3px solid var(--accent-brand); padding: 2px 0 2px 14px; }
+  .note.fz { border-left-color: var(--accent-warning); }
+  .note h3 { font-size: 13px; margin-bottom: 3px; color: var(--fg-primary); }
+  .note p { font-size: 12.5px; color: var(--fg-secondary); }
+  .note code { font-family: var(--font-mono); font-size: 11.5px; color: var(--accent-info); }
+  .fztag { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-warning); font-weight: 700; }
+  .legend { width:1120px; margin-top: 18px; color: var(--fg-dim); font-size: 12px; }
+  .legend .dot { display:inline-block; vertical-align: middle; margin: 0 4px 0 14px; }
+</style>
+</head>
+<body>
+
+  <h1>bpmux — native-shell terminal</h1>
+  <p class="sub">
+    Mockup for planning. Primitive = a real native shell (full-duplex PTY, your <code>$SHELL</code>,
+    native cwd + powers). Starting an agent = running a command in one. Tokens are the shipped
+    <code>tokens.css</code> dark theme. Surface to falsify on paper before we decompose.
+  </p>
+
+  <!-- ════════════════ PRIMARY: app shell, one ready terminal ════════════════ -->
+  <div class="window">
+    <div class="titlebar">
+      <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
+      <span class="name">bpmux</span>
+    </div>
+    <div class="body">
+
+      <!-- sidebar -->
+      <nav class="sidebar">
+        <div class="side-allconv">all conversations</div>
+
+        <!-- NEW: terminals are first-class, user-created, not per-role -->
+        <div class="sec">terminals <span class="add" title="new terminal">+</span></div>
+        <div class="item active">
+          <span class="dot alive"></span>
+          <span class="label cwd">1 · ~/bpmux</span>
+          <span class="x" title="close terminal">✕</span>
+        </div>
+        <div class="item">
+          <span class="dot alive"></span>
+          <span class="label cwd">2 · ~/notes</span>
+        </div>
+        <div class="item">
+          <span class="dot dead"></span>
+          <span class="label cwd">3 · ~/tmp</span>
+          <small>exited</small>
+        </div>
+
+        <!-- existing message-plane, unchanged — shown for context only -->
+        <div class="sec">direct</div>
+        <div class="item"><span class="dot alive"></span><span class="label">pm</span></div>
+        <div class="item"><span class="dot alive"></span><span class="label">dev</span></div>
+      </nav>
+
+      <!-- main terminal pane: READY -->
+      <div class="main">
+        <div class="term-head">
+          <span class="cwd">~/bpmux/applications/electron</span>
+          <span class="shell">— zsh · tracks cwd (S6)</span>
+          <span class="spacer"></span>
+          <span class="meta">112 × 30 · xterm-256color</span>
+        </div>
+        <div class="term"><span class="pr">ryan@mac</span> <span class="br">~/bpmux</span> <span class="dim">(main)</span> $ ls
+<span class="dir">applications/</span>  <span class="dir">docs/</span>  <span class="dir">kb/</span>  Cargo.toml  README.md
+<span class="pr">ryan@mac</span> <span class="br">~/bpmux</span> <span class="dim">(main)</span> $ cd applications/electron
+<span class="pr">ryan@mac</span> <span class="br">~/bpmux/applications/electron</span> <span class="dim">(main)</span> $ claude
+<span class="dim">╭───────────────────────────────────────────╮</span>
+<span class="dim">│</span> <span class="warn">✻</span> Welcome to Claude Code                  <span class="dim">│</span>
+<span class="dim">╰───────────────────────────────────────────╯</span>
+ <span class="dim">&gt;</span> help me wire the PtyResize message<span class="cursor"></span>
+</div>
+      </div>
+
+      <!-- board: right column — EXISTING shipped UI, positionally unchanged, OUT OF SCOPE.
+           Illustrative chrome only; this story does NOT touch the board. -->
+      <div class="resize"></div>
+      <aside class="board">
+        <div class="scope-tag">▕ EXISTING BOARD · UNCHANGED · NOT IN SCOPE ▏</div>
+        <div class="bhead">BOARD</div>
+        <div class="tabs"><span class="tab on">now</span><span class="tab">plan</span><span class="tab">done</span></div>
+        <div class="inner">
+          <div class="iter">iteration · epics · ready / in&nbsp;progress / desk&nbsp;check / acceptance</div>
+          <div class="sec-h">ready</div>
+          <div class="row"><span class="ph l"></span></div>
+          <div class="row"><span class="ph m"></span></div>
+          <div class="row"><span class="ph s"></span></div>
+          <div class="sec-h">in progress</div>
+          <div class="none">—</div>
+          <div class="sec-h">desk check</div>
+          <div class="none">—</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ════════════════ STATE GALLERY ════════════════ -->
+  <div class="gallery">
+
+    <div class="card">
+      <div class="cap"><span class="dot alive"></span> ready</div>
+      <div class="pane">
+        <div><span style="color:var(--accent-success)">ryan@mac</span> <span style="color:var(--accent-brand)">~</span> $ <span style="color:var(--fg-dim)">▏</span></div>
+        <div class="muted-line" style="margin-top:auto">prompt paints from the first PTY byte — alive dot</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cap"><span class="dot spawning"></span> spawning…</div>
+      <div class="pane center">
+        <div class="spin"></div>
+        <div class="muted-line">starting zsh…</div>
+        <div class="muted-line" style="margin-top:auto">transient — only until first byte; never sticks</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cap"><span class="dot failed"></span> spawn-failed</div>
+      <div class="pane">
+        <div class="banner fail">couldn't start terminal<br><code style="color:#ffb3b3">/bin/zsh: spawn ENOENT</code></div>
+        <div style="margin-top:auto"><span class="footbtn">retry</span> <span class="footbtn">close</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cap"><span class="dot dead"></span> exited</div>
+      <div class="pane">
+        <div style="color:var(--fg-dim)">$ exit</div>
+        <div class="banner exit" style="margin-top:8px">process exited · code 0</div>
+        <div style="margin-top:auto"><span class="footbtn">restart</span> <span class="footbtn">close</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend" style="width:1240px">
+    lifecycle dots (8px, token colors):
+    <span class="dot alive"></span> alive
+    <span class="dot spawning"></span> spawning
+    <span class="dot failed"></span> spawn-failed
+    <span class="dot dead"></span> exited (faded)
+    — every state is visually distinct; <b>blank-indistinguishable-from-working is designed out</b>.
+  </div>
+
+  <!-- ════════════════ ANNOTATIONS + FALSIFIERS ════════════════ -->
+  <div class="notes">
+    <div class="note">
+      <h3>3-zone layout unchanged — only the center transforms</h3>
+      <p>Sidebar (left) + board (right) stay positionally fixed. The terminal occupies the <b>center column</b>
+      where chat goes — same principle as #1466. Terminals are user-created (new <b>terminals</b> section +
+      <code>+</code>, one at a time, labelled <code>N · cwd</code>); the old click-a-role-to-attach path is gone,
+      which deletes the #1466 fresh-blank-agent spawn entirely.</p>
+    </div>
+    <div class="note">
+      <h3>Start an agent = run a command</h3>
+      <p>No special agent UI. <code>cd</code> then <code>claude</code> in the shell. "Watch" = native PTY output;
+      "type/unblock" = native stdin. Both are free once the render is faithful.</p>
+    </div>
+    <div class="note">
+      <h3>Thin terminal header — label = spawn-dir (static)</h3>
+      <p>The header/sidebar label is the <b>spawn directory</b> — stable identity (a label that renames itself
+      every <code>cd</code> is a moving target). Live <code>cols × rows · TERM</code> stay (free, the
+      load-bearing proof resize is real). Note: the shell's <b>prompt</b> already shows live cwd natively — so
+      a header <i>tracking</i> cwd (iTerm tab-title feel, OSC-7, ~2pt) is a legit native-feel slice if wanted,
+      not "polish"; scope call. Sidebar label stays static regardless.</p>
+    </div>
+    <div class="note">
+      <h3>Background-running + scrollback persists</h3>
+      <p>Switching terminals doesn't kill the PTY; returning shows intact scrollback. The terminal owns
+      its history — no bpmux message-history bleeds in.</p>
+    </div>
+    <div class="note">
+      <h3>Close/kill — the ＋ companion (S5)</h3>
+      <p><code>✕</code> on the terminal's row (+ a close in the header) tears it down: SIGTERM→grace→SIGKILL,
+      reap the process (no orphaned PTY leak), drop from the N-list. Confirm-before-close if a foreground
+      process is running — don't silently kill a running agent. Closing the active terminal focuses the next
+      one or an empty-state, never a blank center.</p>
+    </div>
+    <div class="note fz">
+      <h3><span class="fztag">FALSIFIER</span> resize-reflow</h3>
+      <p>I'd reject if I resized the window and text still wrapped at 80 cols. <code>FitAddon → PtyResize → winsize</code>
+      must reflow the live shell. (FitAddon is cosmetic-only today — this is the real work.)</p>
+    </div>
+    <div class="note fz">
+      <h3><span class="fztag">FALSIFIER</span> never-blank</h3>
+      <p>I'd reject if a spawn that fails (or an exited shell) showed a blank pane indistinguishable from a
+      working terminal. Each of spawning / failed / exited has a loud, distinct surface + dot.</p>
+    </div>
+    <div class="note fz">
+      <h3><span class="fztag">FALSIFIER</span> native fidelity (S1)</h3>
+      <p>I'd reject if colors/cursor/TUI didn't render (must be <code>xterm-256color</code>, not plain log-tail),
+      or if <code>Ctrl-C</code> didn't interrupt the live process, or scrollback / paste didn't work.
+      (Paste + Ctrl-C ride the real shell free; Cmd-C copy is its own slice, S7.)</p>
+    </div>
+    <div class="note fz">
+      <h3><span class="fztag">FALSIFIER</span> copy fidelity (S7)</h3>
+      <p>I'd reject if I selected terminal output and <code>Cmd-C</code> didn't copy it to paste elsewhere.
+      <code>Cmd-C</code> bound ONLY — never <code>Ctrl-C</code> (that's SIGINT; binding it would be a bug).</p>
+    </div>
+    <div class="note fz">
+      <h3><span class="fztag">FALSIFIER</span> real shell powers</h3>
+      <p>I'd reject if it weren't my login <code>$SHELL</code> with my env, or <code>cd</code> didn't actually
+      change dir, or it spawned in the backend's cwd instead of a real working directory.</p>
+    </div>
+    <div class="note fz">
+      <h3><span class="fztag">FALSIFIER</span> close/kill (S5)</h3>
+      <p>I'd reject if closing a terminal left its process running (orphan leak), the pane lingered, the N-list
+      didn't update, or closing the active one dropped me to a blank center instead of the next terminal /
+      empty-state.</p>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!--
+  Darcula design-system — LIST/ROW primitive (Antlia slice-3). Mockup-FIRST → Ryan taste-review.
+  Designer 2026-06-06. The canonical draggable-sortable list + row + grip the whole app shares:
+  SortableList / StoryRow / MemberList / Iteration / DragGrip. Builds on the foundation tokens
+  (dual-theme via var()). NOT shipped tokens — taste-review first.
+
+  WHY (Ryan's #1524 reject, verbatim 2026-06-06): "the look of dragging is the same in the ready
+  queue, it is the same for ALL draggable sortable lists" + "a component extraction is all the things
+  that make it work" (the CSS/look, not just the logic). So the SHARED component OWNS the drag-look —
+  every consumer (ready-queue · iteration-members · iteration-rows) is identical by construction; the
+  look can't drift per-surface (today it does: ready-queue opacity:0 vs member --invisible-placeholder;
+  story-grip missing the focus-ring the iteration-grip has — both unified here). #1524 is implementing
+  this canonical drag-look into the shared SortableList now (current tokens); this is its design-system
+  home (Antlia, dual-theme) the surfaces re-skin onto when the system lands.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Darcula design-system — list/row primitive</title>
+<style>
+  :root{
+    --bg-base:#2b2b2b; --bg-elevated:#3c3f41; --bg-highlighted:#44474a;
+    --fg-primary:#bbbbbb; --fg-secondary:#a9b7c6; --fg-dim:#808080; --fg-dimmer:#6f7479;
+    --brand:#4e7ec2; --warn:#cc7832; --err:#cf5b56; --border:#323232;
+    --invisible-placeholder:0.001; --row-gap:2px; --grip-w:16px;
+  }
+  body{background:#1e1e1e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:28px;line-height:1.55}
+  h1{font-size:18px;margin:0 0 4px}
+  h2{font-size:14px;color:var(--fg-secondary);margin:28px 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px}
+  h3{font-size:12.5px;color:var(--fg-primary);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+  .sub{color:var(--fg-dim);font-size:13px;margin:0 0 12px;max-width:880px}
+  .sub code,td code{background:#333;padding:1px 5px;border-radius:3px;font-size:12px;color:var(--fg-secondary)}
+  .stage{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start;margin:12px 0}
+  .cap{font-size:12px;color:var(--fg-dim);margin:0 0 8px;max-width:300px}.cap b{color:var(--fg-primary)}
+
+  /* === the LIST + ROW + GRIP primitive === */
+  .slist{list-style:none;margin:0;padding:0;width:300px;background:var(--bg-base);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .srow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border)}
+  .srow:last-child{border-bottom:0}
+  .srow:hover{background:var(--bg-highlighted)}
+  .srow .label{flex:1;font-size:13px;color:var(--fg-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .srow .meta{font-size:11px;color:var(--fg-dim)}
+  /* grip — shared by every row type */
+  .grip{width:var(--grip-w);flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+        background:transparent;border:0;color:var(--fg-dimmer);cursor:grab;padding:0 2px}
+  .grip:active{cursor:grabbing}
+  .grip:hover{color:var(--fg-primary)}
+  .grip:focus-visible{outline:2px solid var(--brand);outline-offset:1px} /* unified — story-grip lacked this */
+  .grip svg{display:block}
+  /* drag states (the canonical drag-feedback the component OWNS) */
+  .srow.dragging{opacity:var(--invisible-placeholder)}          /* invisible-in-place, kept in flow + a11y-tree */
+  .srow.drop-preview{background:color-mix(in srgb,var(--brand) 12%,transparent)} /* eager reflow target hint */
+  .srow.rejected{animation:shake .3s ease-in-out}
+  @keyframes shake{0%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}100%{transform:none}}
+
+  /* iteration-row variant (#1517): <details> toggle-only summary + grip SIBLING on the right */
+  .irow{display:grid;grid-template-columns:1fr auto;align-items:start;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border)}
+  .irow details{min-width:0}
+  .irow summary{list-style:none;cursor:pointer;font-size:13px;color:var(--fg-primary);display:flex;gap:6px;align-items:center}
+  .irow summary::-webkit-details-marker{display:none}
+  .irow summary .chev{color:var(--fg-dim);font-size:11px}
+  .irow .body{padding:6px 0 2px 18px;font-size:12px;color:var(--fg-secondary)}
+  .irow .grip{align-self:center}
+
+  .gripicon{width:10px;height:14px}
+  table{border-collapse:collapse;font-size:12.5px;margin:10px 0;width:100%;max-width:840px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--fg-dim);font-weight:600;font-size:12px}.was{color:var(--fg-dim);text-decoration:line-through}
+  .note{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;max-width:880px;margin-top:16px}.note b{color:var(--fg-primary)}ul{margin:6px 0;padding-left:18px}li{margin:4px 0;font-size:13px}
+</style></head>
+<body>
+  <h1>Darcula design-system — list / row / grip primitive</h1>
+  <p class="sub">ONE draggable-sortable list the whole app shares — ready-queue, iteration-members,
+  iteration-rows. The component OWNS the drag-look (Ryan's #1524 reject: "the look of dragging… is the
+  same for ALL draggable sortable lists"), so no surface can drift. Dual-theme via the foundation tokens.
+  Rendered at real size.</p>
+
+  <h2>1 · The row + grip (story / member row)</h2>
+  <p class="sub">Content + a drag-grip (6-dot, right). Grip is dim by default, brightens on hover, has a
+  keyboard-focus ring (the story-grip lacks this today — unified here). Row hover = bg-highlighted.</p>
+  <div class="stage">
+    <div><p class="cap"><b>Resting list</b> (ready-queue / member-list — same component)</p>
+      <ul class="slist">
+        <li class="srow"><span class="label">#1656 Broadcast off Channels</span><span class="meta">owner</span><button class="grip" aria-label="Drag to reorder"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="srow dragging"><span class="label">#1524 (dragging — invisible-in-place)</span><span class="meta">owner</span><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="srow drop-preview"><span class="label">#1517 (drop-target — eager reflow)</span><span class="meta">owner</span><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="srow"><span class="label">#1683 Scoped board-read</span><span class="meta">team</span><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+      </ul></div>
+  </div>
+
+  <h2>2 · The canonical drag-feedback (the component OWNS this — uniform everywhere)</h2>
+  <table>
+    <tr><th>state</th><th>treatment</th><th>note</th></tr>
+    <tr><td>dragged row</td><td><code>opacity: var(--invisible-placeholder)</code> (0.001)</td><td>invisible-in-place, kept in flow + a11y-tree; native drag-image follows cursor. (Unifies ready-queue's <code class="was">opacity:0</code>.)</td></tr>
+    <tr><td>drop target</td><td>eager live-reflow (rows slide to the would-be order)</td><td>NO separate insertion-line; <code>dropEffect:'move'</code></td></tr>
+    <tr><td>grip</td><td>6-dot · <code>--fg-dimmer</code> → <code>--fg-primary</code> on hover · <code>grab/grabbing</code></td><td>+ <code>:focus-visible</code> accent ring (story-grip lacked it)</td></tr>
+    <tr><td>rejected drop</td><td>shake (0.3s)</td><td>e.g. dropping a member onto a CLOSED iteration</td></tr>
+    <tr><td>keyboard</td><td>Ctrl+Shift+↑/↓ reorder</td><td><code>aria-keyshortcuts</code> + aria-live "moved to N of M"</td></tr>
+  </table>
+
+  <h2>3 · Iteration-row variant (#1517)</h2>
+  <p class="sub">Same grip + drag-look, different layout: a <code>&lt;details&gt;</code> (summary toggle-ONLY: chevron+title+count, no nested buttons) + the grip as a SIBLING on the RIGHT via a parent grid (<code>1fr auto</code>, gap not margin). Disclosure, navigate, and drag are distinct affordances.</p>
+  <ul class="slist">
+    <li class="irow"><details><summary><span class="chev">▸</span> #1655 Aquila <span class="meta">(5)</span></summary><div class="body">members + "view iteration details →"</div></details><button class="grip" aria-label="Reorder iteration — drag, or Ctrl+Shift+↑/↓"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+    <li class="irow"><details open><summary><span class="chev">▾</span> #1521 Pyxis <span class="meta">(3)</span></summary><div class="body">member rows render here (the same .srow component, nested)</div></details><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+  </ul>
+
+  <div class="note">
+    <b>What this gets you:</b> every draggable list in the app — ready-queue, members, iterations —
+    drags identically, because the COMPONENT owns the look (no per-surface CSS to drift, which is exactly
+    what #1524 was rejected for). Dual-theme by construction (tokens via var()). The iteration-row's
+    summary-toggle / grip-sibling-right structure (#1517) reuses the same grip + drag-feedback.
+    <br><br>
+    <b>Taste-calls:</b>
+    <ul>
+      <li><b>Drop feedback</b> — eager live-reflow (shown — rows slide), or an insertion-LINE between rows? (Today's app uses eager-reflow; Ryan likes the member-list, which is eager.)</li>
+      <li><b>Dragged-row</b> — fully invisible-in-place (shown, --invisible-placeholder), or a faint ghost (low opacity + dashed outline)?</li>
+      <li><b>Grip glyph</b> — the 6-dot (shown), or a different drag-affordance?</li>
+    </ul>
+    #1524/#1517 ship this drag-look on CURRENT tokens now (the shared SortableList); they re-skin onto these dual-theme tokens when Antlia lands.
+  </div>
+</body></html>

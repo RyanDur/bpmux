@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!--
+  In-bpmux CONTEXT CANVAS — floating context-conversations on the design board. Mockup-FIRST → Ryan react.
+  Designer 2026-06-06, working from Ryan's vision (verbatim): "a floating chat box on the design board
+  where the context needs to be... create a new one wherever a new context begins... a chat box attached
+  to a context would always have the context the agent needs to have an informed conversation with the human."
+
+  The leap beyond Figma comment-pins: pins are one-way FEEDBACK threads; these are two-way AGENT↔HUMAN
+  CONVERSATIONS bound to a context. Each box carries its anchored context (the design + the region/element
+  it's pinned to) → the agent always HAS the context (no flipping between agents to pass it — the exact pain
+  that birthed this). Plus a deep-link mirrored into the main chat so the team stays aware + can jump.
+  Coexists with chat (Ryan's "keep the chat, see designs"); dual-theme. NOT shipped tokens — react first.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>In-bpmux context canvas</title>
+<style>
+  :root{--bg-base:#2b2b2b;--bg-elevated:#3c3f41;--bg-highlighted:#44474a;--fg-primary:#bbbbbb;--fg-secondary:#a9b7c6;--fg-dim:#808080;--brand:#4e7ec2;--border:#323232}
+  [data-theme="light"]{--bg-base:#fff;--bg-elevated:#f5f5f5;--bg-highlighted:#e5e8ef;--fg-primary:#1a1a1a;--fg-secondary:#4a5568;--fg-dim:#5a6578;--brand:#2563eb;--border:#e2e8f0}
+  body{background:#1e1e1e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:24px;line-height:1.5}
+  h1{font-size:18px;margin:0 0 4px}.sub{color:var(--fg-dim);font-size:13px;margin:0 0 12px;max-width:900px}.sub code{background:#333;padding:1px 5px;border-radius:3px;font-size:12px}
+  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;margin:0 0 12px}
+  /* the bpmux window: main-chat region + the design-canvas region (coexist) */
+  .win{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:380px;background:var(--bg-base)}
+  .region{display:flex;flex-direction:column}.rh{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-dim);padding:5px 8px;border-bottom:1px solid var(--border);background:var(--bg-elevated)}
+  /* main chat (the hub) — gets deep-link refs to canvas conversations */
+  .chat{width:210px;border-right:1px solid var(--border)}
+  .chat .body{flex:1;padding:8px;font-size:11px;overflow:hidden}
+  .msg{margin:0 0 8px}.msg .who{font-size:10px;color:var(--fg-secondary);font-weight:600}.msg .tx{color:var(--fg-primary)}
+  .ref{display:block;margin:4px 0;padding:5px 7px;background:color-mix(in srgb,var(--brand) 12%,transparent);border-left:2px solid var(--brand);border-radius:3px;font-size:10px;color:var(--brand);cursor:pointer}
+  .input{height:16px;border-top:1px solid var(--border);background:var(--bg-elevated);font-size:10px;color:var(--fg-dim);display:flex;align-items:center;padding:0 8px}
+  /* the design canvas */
+  .canvas{flex:1;position:relative;background:repeating-linear-gradient(45deg,transparent 0 11px,rgba(128,128,128,.04) 11px 12px),var(--bg-base);overflow:hidden}
+  .design{position:absolute;top:30px;left:40px;width:230px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;box-shadow:0 6px 20px rgb(0 0 0 / 30%);padding:12px;font-size:10px;color:var(--fg-secondary)}
+  .design .t{font-size:13px;color:var(--fg-primary);font-weight:600;margin:0 0 8px}
+  .design .btnrow{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}.design .b{height:14px;border-radius:3px}.design .b.p{width:34px;background:var(--brand)}.design .b.g{width:26px;background:transparent;border:1px solid var(--fg-dim)}
+  /* a context dot (anchor) on the design */
+  .dot{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--brand);color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-base);box-shadow:0 1px 4px rgb(0 0 0 / 40%)}
+  /* a floating context chat-box, anchored to a context */
+  .ctxbox{position:absolute;width:190px;background:var(--bg-elevated);border:1px solid var(--brand);border-radius:8px;box-shadow:0 8px 28px rgb(0 0 0 / 45%);font-size:10px;overflow:hidden}
+  .ctxbox .ctxh{padding:5px 8px;background:color-mix(in srgb,var(--brand) 16%,transparent);border-bottom:1px solid var(--border);color:var(--fg-secondary);font-size:9px;display:flex;justify-content:space-between}
+  .ctxbox .ctxh b{color:var(--fg-primary)}
+  .ctxbox .conv{padding:6px 8px;display:flex;flex-direction:column;gap:5px}
+  .ctxbox .m{}.ctxbox .m .w{font-size:9px;color:var(--fg-secondary);font-weight:600}.ctxbox .m .x{color:var(--fg-primary)}
+  .ctxbox .ci{border-top:1px solid var(--border);padding:4px 8px;color:var(--fg-dim);font-size:9px}
+  .note{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;max-width:900px;margin-top:16px}.note b{color:var(--fg-primary)}ul{margin:6px 0;padding-left:18px}li{margin:4px 0;font-size:13px}
+</style></head>
+<body id="b">
+  <h1>In-bpmux context canvas — conversations anchored to the design</h1>
+  <p class="sub">Working from your idea: a floating chat-box attached to a CONTEXT on the design board; a new box wherever a new context begins; the box carries its context so the agent has what it needs for an informed conversation — no flipping to pass context. The main chat stays the hub (gets deep-link refs). Toggle the theme:</p>
+  <p class="toggle"><button onclick="b.setAttribute('data-theme',b.getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
+
+  <div class="win">
+    <div class="region chat"><div class="rh">team chat (the hub)</div>
+      <div class="body">
+        <div class="msg"><div class="who">ryan</div><div class="tx">let's look at the reject modal</div></div>
+        <span class="ref">💬 context #1 — reject-modal · the Send button →</span>
+        <span class="ref">💬 context #2 — reject-modal · the spacing →</span>
+        <div class="msg"><div class="who">designer</div><div class="tx">opened two contexts on it ↑</div></div>
+      </div>
+      <div class="input">reply…</div>
+    </div>
+    <div class="region canvas" style="flex:1"><div class="rh">design canvas</div>
+      <div style="position:relative;flex:1">
+        <div class="design"><div class="t">Reject story</div>Reason (sent to the team)<div style="height:34px;background:var(--bg-highlighted);border:1px solid var(--fg-dim);border-radius:4px;margin-top:4px"></div><div class="btnrow"><span class="b g"></span><span class="b p"></span></div></div>
+        <div class="dot" style="top:150px;left:250px">1</div>
+        <div class="dot" style="top:60px;left:60px">2</div>
+        <!-- context box 1: anchored to the Send button, carrying its context -->
+        <div class="ctxbox" style="top:120px;left:285px">
+          <div class="ctxh"><b>context #1 · 👥 ryan + designer</b><span>Send btn</span></div>
+          <div class="conv">
+            <div class="m"><span class="w">ryan</span> <span class="x">should this be danger-red?</span></div>
+            <div class="m"><span class="w">designer</span> <span class="x">it's a reject — red signals consequence. want me to swap it?</span></div>
+          </div>
+          <div class="ci">reply… (agent has the context: this modal + this button)</div>
+        </div>
+        <!-- context box 2: anchored to the spacing -->
+        <div class="ctxbox" style="top:150px;left:30px;width:170px">
+          <div class="ctxh"><b>context #2 · 👥 ryan + designer + dev</b><span>spacing</span></div>
+          <div class="conv"><div class="m"><span class="w">ryan</span> <span class="x">tighten the gap here</span></div><div class="m"><span class="w">dev</span> <span class="x">pulled in — that's a CSS token, easy</span></div></div>
+          <div class="ci">reply…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>The model:</b> each floating box is a two-way agent↔human CONVERSATION bound to a context (a design + the point/region it's pinned to). The box CARRIES that context → the agent is informed without anyone passing it (the flip-pain, solved). A new box opens wherever a new context begins; the main chat gets a deep-link ref (💬 →) so the team's aware + can jump. Coexists with chat, never replaces it. <b>One-to-many participants (Ryan 2026-06-06):</b> each box is participant-SCOPED like a bpmux channel — 1:1 (you + me), or pull in dev/pm for a multi-agent+human context (box #2 above pulls dev in) — reusing the existing DM/group/broadcast scoping; the box shows + lets you edit who's in it.
+    <br><br>
+    <b>Thin-first slice (smallest real value):</b> ONE design in the canvas + ONE anchored context-box (point-pin) where you + I converse, mirrored as a deep-link in the main chat. Validates the riskiest bit: an anchored conversation that carries its context end-to-end. <b>North-star path:</b> multiple boxes · new-box-on-new-context · region/object anchoring · resolve/collapse · infinite-canvas pan/zoom · live multiplayer.
+    <br><br>
+    <b>Open design Qs to talk through:</b> does a box's conversation ALSO live in the main chat-log (one stream, two views) or only on the canvas (deep-link in)? · when a context resolves, does its box collapse to a dot? · does the agent get auto-subscribed to a box when it's pinned to its work?
+  </div>
+</body></html>

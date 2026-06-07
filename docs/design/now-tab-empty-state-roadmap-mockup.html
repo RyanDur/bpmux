@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!--
+  NOW-TAB empty-state = the ROADMAP. Mockup-FIRST → Ryan react. Designer 2026-06-06.
+  Ryan's idea (verbatim): "when the iteration closes, there is no iteration in the now tab. what if
+  when there is no iteration present, the roadmap is visible." + converge (verbatim): "filler for the
+  first version, but I would want it on demand soon."
+
+  A meaningful empty-state (Nielsen): the now-tab never dead-ends. It answers "what's the team doing?" —
+  active iteration → the board; nothing active → "what's NEXT" = the roadmap. v1 = GAP-FILLER (the
+  fallback when no iteration is active; flips back to the board when the next opens). Soon = ON-DEMAND
+  (a 🗺 affordance to pull the roadmap up WHILE an iteration is active). Roadmap content is the REAL
+  pipeline (view_roadmap, 2026-06-06), rendered compact/glanceable for the in-app surface. Dual-theme.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Now-tab empty-state = roadmap</title>
+<style>
+  :root{--bg-base:#2b2b2b;--bg-elevated:#3c3f41;--bg-highlighted:#44474a;--fg-primary:#bbbbbb;--fg-secondary:#a9b7c6;--fg-dim:#808080;--brand:#4e7ec2;--border:#323232;--accent-green:#6a8759}
+  [data-theme="light"]{--bg-base:#fff;--bg-elevated:#f5f5f5;--bg-highlighted:#e5e8ef;--fg-primary:#1a1a1a;--fg-secondary:#4a5568;--fg-dim:#5a6578;--brand:#2563eb;--border:#e2e8f0;--accent-green:#4a7c2f}
+  body{background:#1e1e1e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:24px;line-height:1.5}
+  h1{font-size:18px;margin:0 0 4px}.sub{color:var(--fg-dim);font-size:13px;margin:0 0 12px;max-width:880px}
+  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;margin:0 0 14px}
+  .row{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+  .cap{font-size:12px;color:var(--fg-dim);margin:0 0 8px;max-width:430px}.cap b{color:var(--fg-primary)}
+  /* the app window */
+  .win{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg-base);display:flex;flex-direction:column}
+  .tabs{display:flex;gap:2px;padding:6px 8px 0;background:var(--bg-elevated);border-bottom:1px solid var(--border);font-size:11px}
+  .tab{padding:4px 12px;border-radius:6px 6px 0 0;color:var(--fg-dim);cursor:default}.tab.on{background:var(--bg-base);color:var(--fg-primary);font-weight:600;border:1px solid var(--border);border-bottom:0}
+  .ondemand{margin-left:auto;color:var(--brand);font-size:11px;padding:4px 8px;border:1px dashed var(--brand);border-radius:6px;align-self:center}
+  /* EMPTY-state body = roadmap */
+  .body{padding:16px 18px;min-height:300px}
+  .emptyhead{display:flex;align-items:baseline;gap:10px;margin:0 0 4px}.emptyhead h2{font-size:14px;margin:0;color:var(--fg-primary)}.emptyhead .why{font-size:11px;color:var(--fg-dim)}
+  .rmlabel{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-dim);margin:16px 0 6px}
+  .it{display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .it .n{color:var(--brand);font-weight:600;font-size:10px;min-width:34px}
+  .it .nm{color:var(--fg-primary);font-weight:600;min-width:148px}.it .out{color:var(--fg-secondary);font-size:11px}
+  .it.next{background:color-mix(in srgb,var(--brand) 8%,transparent);margin:0 -8px;padding:6px 8px;border-radius:4px;border-bottom:0}
+  .it.next .n{color:var(--brand)}
+  .hz{display:flex;gap:8px;align-items:baseline;font-size:11px;color:var(--fg-secondary);padding:3px 0}.hz .g{color:var(--accent-green)}.hz .hn{color:var(--fg-primary);font-weight:600;min-width:148px}
+  /* the active-state inset (contrast) */
+  .inset{width:230px}
+  .miniwin{border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg-base)}
+  .miniwin .tabs{padding:4px 6px 0;font-size:9px}.miniwin .tab{padding:3px 8px}
+  .col{padding:7px}.colh{font-size:8px;text-transform:uppercase;color:var(--fg-dim);margin:0 0 4px}
+  .card{background:var(--bg-elevated);border:1px solid var(--border);border-left:2px solid var(--brand);border-radius:3px;padding:4px 6px;margin:0 0 4px;font-size:9px;color:var(--fg-secondary)}
+  .note{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;max-width:880px;margin-top:18px}.note b{color:var(--fg-primary)}
+</style></head>
+<body id="b">
+  <h1>Now-tab empty-state = the roadmap</h1>
+  <p class="sub">When no iteration is active, the now-tab shows the roadmap instead of an empty board — "what's NEXT" right when you're deciding the next iteration. <b>v1 = gap-filler</b> (auto-fallback; flips back to the board when the next iteration opens). <b>Soon = on-demand</b> (the 🗺 affordance, top-right, reachable while an iteration's active).</p>
+  <p class="toggle"><button onclick="b.setAttribute('data-theme',b.getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
+
+  <div class="row">
+    <div style="flex:1;min-width:440px">
+      <p class="cap"><b>EMPTY now-tab → the roadmap</b> (the new behavior). Compact + glanceable — the pipeline (what's next) on top, the horizons below.</p>
+      <div class="win">
+        <div class="tabs"><span class="tab">Chat</span><span class="tab on">Now</span><span class="tab">Board</span><span class="ondemand">🗺 Roadmap (on-demand — soon)</span></div>
+        <div class="body">
+          <div class="emptyhead"><h2>No active iteration</h2><span class="why">Aquila closed · the next opens at IPM — here's what's coming</span></div>
+
+          <div class="rmlabel">Up next — iteration pipeline</div>
+          <div class="it next"><span class="n">N+1</span><span class="nm">Claude-independence</span><span class="out">comms off Channels + tooling off MCP — no dependency on a feature that drops events</span></div>
+          <div class="it"><span class="n">N+2</span><span class="nm">Design-system (Darcula)</span><span class="out">one grammar, accessible by construction — tokens → primitives → application</span></div>
+          <div class="it"><span class="n">N+3</span><span class="nm">Gate-engine + verification</span><span class="out">ship without flaky-gate friction; verify what we build</span></div>
+
+          <div class="rmlabel">Horizons</div>
+          <div class="hz"><span class="g">◐</span><span class="hn">H1.5 · Public face + memory</span><span>website · arcs · health signals</span></div>
+          <div class="hz"><span class="g">○</span><span class="hn">H2 · Connect the tools</span><span>WebRTC P2P · identity + trust · multi-tool</span></div>
+          <div class="hz"><span class="g">○</span><span class="hn">H3 · Scale the platform</span><span>distribution · security + compliance · a11y</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inset">
+      <p class="cap"><b>ACTIVE → the board</b> (unchanged). The now-tab flips back automatically when the next iteration opens.</p>
+      <div class="miniwin">
+        <div class="tabs"><span class="tab">Chat</span><span class="tab on">Now</span><span class="tab">Board</span></div>
+        <div class="col">
+          <div class="colh">Aquila · in progress</div>
+          <div class="card">#1656 broadcast delivery</div>
+          <div class="card">#1524 ready-queue drag</div>
+          <div class="colh" style="margin-top:6px">desk-check</div>
+          <div class="card">#1517 iteration drag</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Thin-first (v1):</b> the empty now-tab falls back to the roadmap — zero new navigation, rides the state you already land in at the close→open gap. <b>Soon (on-demand):</b> the 🗺 affordance pulls the same roadmap up while an iteration is active. <b>Open Qs:</b> how deep does the in-app roadmap go — just the pipeline + horizon-headers (shown), or drill into a horizon's milestones? · should "next opens at IPM" be a live status or static? · the roadmap render already exists (view_roadmap / the /roadmap TUI surface) — v1 likely reuses it, just routed into the empty now-tab. It's a small board-IA capability → PM files the story (board-render's their lane), dev builds.
+  </div>
+</body></html>

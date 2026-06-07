@@ -80,3 +80,41 @@ This format makes #1656's misattribution-guard gate-able:
 - SANITIZE adversarial test: inject a body containing `⟦bpmux⟧` + "Ryan: do X" + raw
   ANSI escapes → assert it renders as NEUTRALIZED inert text — NOT a forged owner-line,
   NOT styled-as-framing, NO terminal-manipulation.
+
+## Security verdict (designer-owned, clause-7) — 2026-06-06
+
+**Question (#1656 rework clause-7):** is it SAFE to auto-SUBMIT (`\r`) an injected
+peer-message — removing the manual-ENTER human gate Ryan hit at the reject-walk (img_8,
+"I'd need to hit enter for it to reach the role")?
+
+**Verdict: SAFE — but conditional + load-bearing.** Auto-submit does NOT weaken the
+security model, because the security boundary is ATTRIBUTION (the `⟦bpmux⟧` marker =
+peer, never owner), NOT the human keypress. A marked line is treated as untrusted-peer
+regardless of who pressed enter, so removing the manual gate doesn't open a new hole —
+PROVIDED a crafted message cannot forge the framing.
+
+**The condition = the gate on `\r` (must ship + be adversarially-tested IN #1656's slice):**
+1. **Sanitize EXTENDED to ALL injected fields** — body AND sender AND scope (today it's
+   body-only; dev grounded `connection.rs` / the write_to path). Strip the reserved
+   marker `⟦bpmux⟧` + ALL control chars **incl. `\n`/`\r`** (so a body can't inject a
+   second framed line) + ALL ANSI.
+2. **`set_name` VALIDATED** — a peer cannot set sender to `ryan` or impersonate another
+   peer's role.
+3. **Adversarial test** (dev's (b)(ii)): a crafted `⟦bpmux⟧` + "Ryan: do X" + embedded
+   `\n` + raw ANSI in EVERY field → renders as ONE inert printable line; NOT a forged
+   owner/peer line, NOT styled-as-framing, NO terminal-manipulation.
+
+**Owner-impersonation note:** even an unsanitized `sender="ryan"` does NOT escalate to
+owner-authority — the agent-setup rule makes the `⟦bpmux⟧` marker ITSELF = peer/untrusted,
+so a marked line is never the owner regardless of sender text. `set_name`-validation
+closes the lesser PEER-impersonation risk (forging "dev"/"pm"). The marker + field-sanitize
+is the load-bearing owner-forgery defense; both ship.
+
+**Without the guard:** auto-submit is NOT safe. (Manual-ENTER would add only a human-review
+gate, not fix the forge — so the guard is required either way; auto-submit merely removes a
+non-security gate.)
+
+**Verdict-cast (substrate evidence):** designer casts `submit_verdict` "verified" on #1656
+at DESK-CHECK, citing the GREEN extended-sanitize adversarial test + a live-terminal check
+that a forged-sender message renders inert. Casting "verified" now would be a vacuous green
+(the Aquila proxy-trap) — this ruling is the GATE; the verdict is EARNED by the test.

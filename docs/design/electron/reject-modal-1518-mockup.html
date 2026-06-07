@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<!--
+  #1518 reject-modal-as-FORM — seed mockup. Mockup-FIRST → for Ryan's taste-pick. Designer 2026-06-06.
+  CURRENT tokens (grounded firsthand from applications/.../styles/tokens.css), NOT the future Darcula
+  design-system — this is the forms-grammar SEED that ships in slice-2 (Pyxis), forward-compatible with
+  the Antlia forms component (#1659).
+
+  WHY img_7 was rejected — GROUNDED, not guessed: the built reject-form (DrillIn.css:259-349) uses a
+  UNIFORM --space-12 (12px) gap between the title, the field-group, AND the actions (.drill-in-reject-form
+  [open] { gap: var(--space-12) }, :284). Every group is equidistant → there is NO proximity hierarchy.
+  The eye can't tell the title belongs to the modal, the label belongs to the field, the actions are
+  their own zone. img_7 already HAD a title + focus-ring + buttons — the defect was never missing
+  elements, it was the SPACING. This is exactly Ryan's 2026-06-06 thread: a consistent (tight) distance
+  WITHIN a purpose-group, a consistent (loose) distance BETWEEN adjacent groups — and the CONTRAST
+  between them is what creates grouping (Gestalt proximity).
+
+  The fix is a spacing/proximity pass (+ light polish), on current tokens. Rendered at real size so the
+  grouping reads. The two modals below are the SAME markup; only the gap-rhythm differs.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>#1518 reject-modal as a form — proximity fix</title>
+<style>
+  /* === CURRENT shipped tokens (grounded: styles/tokens.css, dark) === */
+  :root{
+    --bg-base:#1a1a1a; --bg-elevated:#252525; --bg-highlighted:#333333;
+    --fg-primary:#e8e8e8; --fg-secondary:#b0b0b0; --fg-dim:#9d9d9d; --fg-dimmer:#808080;
+    --border-subtle:#333333; --border-strong:#555555;
+    --accent-brand:#6aa0ff; --accent-error:#ff6b6b;
+    --space-4:4px; --space-6:6px; --space-8:8px; --space-12:12px; --space-16:16px; --space-24:24px;
+    --fs-13:13px; --fs-15:15px; --fs-16:16px; --fs-18:18px;
+  }
+  body{background:#0f0f0f;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:28px;line-height:1.55}
+  h1{font-size:18px;margin:0 0 4px}
+  h2{font-size:14px;color:var(--fg-secondary);margin:30px 0 6px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px}
+  .sub{color:var(--fg-dim);font-size:13px;margin:0 0 14px;max-width:880px}
+  .sub code,td code{background:#2a2a2a;padding:1px 5px;border-radius:3px;font-size:12px;color:var(--fg-secondary)}
+  .stage{display:flex;gap:46px;flex-wrap:wrap;align-items:flex-start;margin:14px 0 6px}
+  .case{flex:0 0 auto}
+  .caption{font-size:12px;color:var(--fg-dim);margin:0 0 10px;max-width:360px}
+  .caption b{color:var(--fg-primary)}
+  .bad{color:var(--accent-error)} .good{color:#7bb274}
+
+  /* a mock app-window behind the modal, so the backdrop + centering read */
+  .win{position:relative;width:360px;height:300px;border-radius:8px;overflow:hidden;
+       background:var(--bg-base);border:1px solid var(--border-subtle)}
+  .win::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,#202020 0 1px,transparent 1px 22px);opacity:.5}
+  .win::after{content:"";position:absolute;inset:0;background:rgb(0 0 0 / 50%)} /* ::backdrop dim */
+
+  /* === the reject modal (native <dialog> flavor) === */
+  .modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;
+         background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:8px;
+         box-shadow:0 8px 32px rgb(0 0 0 / 45%);padding:var(--space-16);box-sizing:border-box;
+         display:flex;flex-direction:column}
+  .modal .title{font-size:var(--fs-16);font-weight:600;color:var(--fg-primary);margin:0}
+  .field{display:flex;flex-direction:column;gap:var(--space-4)} /* label→textarea: TIGHT (intra-group), unchanged */
+  .field small{font-size:var(--fs-13);color:var(--fg-secondary)}
+  .field textarea{background:var(--bg-highlighted);color:var(--fg-primary);border:1px solid var(--border-strong);
+         border-radius:6px;padding:var(--space-6) var(--space-8);font:inherit;font-size:var(--fs-13);
+         min-height:64px;resize:none;box-sizing:border-box}
+  .actions{display:flex;justify-content:flex-end;gap:var(--space-8)} /* button→button: TIGHT (intra-group) */
+  .btn{font:inherit;font-size:var(--fs-13);border-radius:6px;padding:7px 14px;cursor:pointer;border:1px solid transparent}
+  .btn--ghost{background:transparent;color:var(--fg-secondary);border-color:var(--border-subtle)}
+  .btn--primary{background:var(--accent-brand);color:#0d1116;border-color:var(--accent-brand);font-weight:600}
+
+  /* THE ONLY DIFFERENCE between the two cases: the inter-group gap rhythm. */
+  .modal.asbuilt{gap:var(--space-12)}                 /* uniform 12 between EVERY group — the defect */
+  .modal.proposed{gap:var(--space-24)}                /* 24 between adjacent groups — loose, consistent */
+  .modal.proposed .field textarea{min-height:72px}
+  .modal.proposed .field textarea.focus{border-color:var(--accent-brand);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent-brand) 28%,transparent)}
+
+  /* gap annotation pills */
+  .gap{position:relative}
+  .tag{position:absolute;right:-14px;transform:translateX(100%);white-space:nowrap;font-size:10.5px;
+       padding:2px 6px;border-radius:3px;background:#2a2a2a;color:var(--fg-dim);font-family:monospace}
+  .tag.lo{color:#7bb274} .tag.hi{color:var(--accent-error)}
+
+  table{border-collapse:collapse;font-size:12.5px;margin:10px 0;width:100%;max-width:760px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border-subtle);vertical-align:top}
+  th{color:var(--fg-dim);font-weight:600;font-size:12px}
+  .was{color:var(--fg-dim);text-decoration:line-through}
+  .note{background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:8px;padding:13px 16px;font-size:13px;max-width:880px;margin-top:16px}
+  .note b{color:var(--fg-primary)} ul{margin:6px 0;padding-left:18px}li{margin:4px 0;font-size:13px}
+</style></head>
+<body>
+  <h1>#1518 · The reject modal is a FORM — the fix is proximity</h1>
+  <p class="sub">img_7 already had a title, a focus-ring, and Cancel/Send buttons — so what reads as
+  "needs better style" is not a missing element, it's the <b>spacing</b>. Grounded: the built form puts a
+  <b>uniform 12px gap between the title, the field, and the actions</b> (<code>DrillIn.css:284</code>), so
+  every group is equidistant and nothing reads as belonging together. The fix is your spacing rule —
+  tight WITHIN a purpose-group, a consistent looser distance BETWEEN adjacent groups. Same markup, same
+  tokens; only the gap-rhythm changes. Rendered at real size:</p>
+
+  <div class="stage">
+    <div class="case">
+      <p class="caption"><b>As built — img_7 (rejected)</b><br><span class="bad">Uniform 12px everywhere.</span>
+      Title, field, and actions are all 12px apart — the field looks equally bound to the title above and
+      the buttons below. Flat: no groups.</p>
+      <div class="win">
+        <div class="modal asbuilt">
+          <h3 class="title gap">Reject story<span class="tag hi">↕ 12</span></h3>
+          <label class="field gap"><small>Reason (sent to the team)</small><textarea>the look is</textarea><span class="tag hi">↕ 12</span></label>
+          <div class="actions"><button class="btn btn--ghost">Cancel</button><button class="btn btn--primary">Send</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="case">
+      <p class="caption"><b>Proposed — proximity hierarchy</b><br><span class="good">24px between groups, 4–8px within.</span>
+      The title sits clearly above; the label hugs its field (4px); the actions are their own zone (24px
+      below). The <b>contrast</b> is what makes the eye read three groups.</p>
+      <div class="win">
+        <div class="modal proposed">
+          <h3 class="title gap">Reject story<span class="tag lo">↕ 24</span></h3>
+          <label class="field gap"><small>Reason (sent to the team)</small><textarea class="focus">the look is</textarea><span class="tag lo">↕ 24</span></label>
+          <div class="actions"><button class="btn btn--ghost">Cancel</button><button class="btn btn--primary">Send</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>What changes (current tokens only — nothing new)</h2>
+  <table>
+    <tr><th>relationship</th><th>built (img_7)</th><th>→ proposed</th><th>why</th></tr>
+    <tr><td>title → field-group</td><td class="was">12 (<code>--space-12</code>)</td><td><code>--space-24</code></td><td>inter-group: loosen so the title reads as the modal header, not part of the field</td></tr>
+    <tr><td>field-group → actions</td><td class="was">12</td><td><code>--space-24</code></td><td>inter-group: SAME loose distance (your "consistent distance between adjacent groupings") → actions are a distinct zone</td></tr>
+    <tr><td>label → textarea</td><td><code>--space-4</code></td><td><code>--space-4</code> (keep)</td><td>intra-group: stays tight — the label belongs to the field</td></tr>
+    <tr><td>button → button</td><td><code>--space-8</code></td><td><code>--space-8</code> (keep)</td><td>intra-group: the two buttons are one action-group</td></tr>
+    <tr><td>focus-ring (textarea)</td><td>border-color only</td><td>border + 2px accent ring</td><td>clearer "type here" cue; matches focus-visible elsewhere</td></tr>
+    <tr><td>outer padding</td><td><code>--space-16</code></td><td><code>--space-16</code> (keep) — taste-call below</td><td>content margin; 16 is comfortable on this compact modal</td></tr>
+  </table>
+  <p class="sub">The single load-bearing move is <b>12 → 24 on the two inter-group gaps</b>. Everything else
+  (title, buttons, elevation, backdrop, centering, native <code>&lt;dialog&gt;</code>) is already accepted and
+  stays. This is a CSS-only change to existing classes — no new structure.</p>
+
+  <h2>Reference — what "other comment modal boxes" do (your ask)</h2>
+  <p class="sub">GitHub's "Add a comment"/close-with-comment, Linear's comment composer, VA/Carbon dialog:
+  all share the same proximity rhythm — a clear header set apart, a label hugging its field, and the
+  primary action in a distinct bottom-right zone with generous separation. None of them space the header,
+  field, and footer equally. The proposed modal adopts that rhythm on our own (current) palette.</p>
+
+  <div class="note">
+    <b>Taste-calls for you (I re-synthesize on your word):</b>
+    <ul>
+      <li><b>Inter-group distance</b> — <code>24</code> (shown, clear separation) or <code>16</code> (tighter, still grouped)? 24 reads most like a "comment modal"; 16 is more compact.</li>
+      <li><b>Send button semantics</b> — neutral blue <b>Send</b> (shown, matches today), or a <b>danger</b> styling since this confirms a rejection (red-outline ghost / filled-red)? Rejecting is consequential.</li>
+      <li><b>Outer padding</b> — keep <code>16</code>, or go <code>24</code> for more breathing room (the research's upper content-margin)?</li>
+      <li><b>Title size</b> — <code>16</code> (shown) or bump to <code>18</code> for a stronger header?</li>
+    </ul>
+    <b>Scope:</b> ships on CURRENT tokens in slice-2, bounded to this modal. It's the forms-grammar SEED —
+    the same FIELD (label-tight + ring) + ACTION (primary/ghost, right) + proximity rhythm becomes the
+    Antlia forms component across chat-input, comments, bug-dialog (#1659). Pick the taste and I finalize
+    the spec for dev; the walk-node = the live modal matches the option you pick (capture + pixel-measure
+    of the real gaps, not eyeball).
+  </div>
+</body></html>

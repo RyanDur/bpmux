@@ -94,6 +94,44 @@
   </table>
   <p class="sub"><b>Usage-rules the audit pins</b> (so colored-text never goes low-contrast — the #1 dark-theme a11y bug): <code>fg-dim #808080</code> (3.59:1) and the <b>accents as text</b> (brand 3.43, err 3.56) are <b>large-text / non-essential / UI-only</b> — never small body copy. As fills, borders, icons, and large labels they pass; as 13px paragraph text they don't. The system encodes this: accents are fill/border tokens, body text is always fg-primary/secondary.</p>
 
+  <h2>5 · Light mode — dual-theme (the IntelliJ-Light counterpart)</h2>
+  <p class="sub">The system is DUAL-THEME (Ryan: "remember there is a light mode"). The Darcula dark palette pairs with an IntelliJ-Light counterpart; tokens swap via <code>[data-theme="light"]</code> (already in tokens.css), components stay theme-agnostic (they read tokens, never hard-coded colours), and the 5-state status grammar carries in both (shape + colour). Grounded in the live light tokens:</p>
+  <table>
+    <tr><th>token</th><th>dark (Darcula)</th><th>light (IntelliJ-Light)</th></tr>
+    <tr><td>--bg-base</td><td><code>#2b2b2b</code></td><td><code>#ffffff</code></td></tr>
+    <tr><td>--bg-elevated</td><td><code>#3c3f41</code></td><td><code>#f5f5f5</code></td></tr>
+    <tr><td>--bg-highlighted</td><td><code>#44474a</code></td><td><code>#e5e8ef</code></td></tr>
+    <tr><td>--fg-primary</td><td><code>#bbbbbb</code></td><td><code>#1a1a1a</code></td></tr>
+    <tr><td>--fg-secondary</td><td><code>#a9b7c6</code></td><td><code>#4a5568</code></td></tr>
+    <tr><td>--fg-dim / dimmer</td><td><code>#808080 / —</code></td><td><code>#5a6578 / #718096</code></td></tr>
+    <tr><td>--accent-brand</td><td><code>#4e7ec2</code></td><td><code>#2563eb</code></td></tr>
+    <tr><td>--accent success/warn/error</td><td><code>#6a8759 / #cc7832 / #cf5b56</code></td><td><code>#16a34a / #b45309 / #dc2626</code></td></tr>
+    <tr><td>--border subtle/strong</td><td><code>#323232 / #555</code></td><td><code>#e2e8f0 / #cbd5e0</code></td></tr>
+  </table>
+  <p class="sub"><b>Light WCAG (same discipline as dark; exact ratios computed at synthesis):</b> fg-primary/secondary/dim clear 4.5:1 on every surface (dark text on light bg). The SAME usage-rule as dark holds: <code>fg-dimmer</code> + accents-as-text (error/success) are large-text / UI-only (they don't clear 4.5:1 as small body copy); body text is always fg-primary/secondary, accents are fill/border. So the system is accessible-by-construction in BOTH modes — ONE usage-discipline, two palettes. <b>Taste-call:</b> keep these light tokens, or shift toward IntelliJ-Light's warmer register (off-white base ~#fafafa, warmer greys) to mirror Darcula's IDE-pairing?</p>
+
+  <h2>6 · Typography · motion · focus-ring (the rest of the foundation)</h2>
+  <p class="sub">The cross-cutting tokens every component reads (grounded in styles/tokens.css + cross-cutting-research.md). Theme-agnostic — these don't change between dark/light.</p>
+  <h3>Type scale (rem-based — respects user zoom)</h3>
+  <table>
+    <tr><th>token</th><th>size</th><th>use</th></tr>
+    <tr><td>--font-size-11 / -12</td><td>0.6875 / 0.75rem</td><td>meta · counts · micro-labels (fg-dim)</td></tr>
+    <tr><td>--font-size-13 / -14</td><td>0.8125 / 0.875rem</td><td>body / row text (the default)</td></tr>
+    <tr><td>--font-size-15 / -16</td><td>0.9375 / 1rem</td><td>emphasis · modal title</td></tr>
+    <tr><td>--font-size-18 / -20 / -24</td><td>1.125 / 1.25 / 1.5rem</td><td>headings (modal header 20, section 18)</td></tr>
+  </table>
+  <p class="sub">rem for fonts (zoom-safe) · px for borders/hairlines · %/fr for responsive widths (css-canon unit-discipline). One scale; never an off-scale font-size.</p>
+  <h3>Motion (GPU-friendly; honor prefers-reduced-motion)</h3>
+  <table>
+    <tr><th>token</th><th>value</th><th>use</th></tr>
+    <tr><td>--motion-duration-instant</td><td>80ms</td><td>hover/active feedback</td></tr>
+    <tr><td>--motion-duration-fast</td><td>150ms</td><td>toggles · focus-ring · small reveals</td></tr>
+    <tr><td>--motion-duration-medium</td><td>250ms</td><td>open/close · mount-in · drag-settle</td></tr>
+  </table>
+  <p class="sub">+ the 3 ease tokens. Animate transform/opacity only (GPU); animations live in CSS (css-canon). <code>--invisible-placeholder: 0.001</code> = the dragged-row treatment (kept in flow + a11y-tree).</p>
+  <h3>Focus-ring (WCAG 2.4.7 — one token, every interactive element)</h3>
+  <p class="sub">A single <code>--focus-ring</code>: <b>3px, ≥3:1 contrast</b> vs adjacent (the brand accent in dark, the light-brand in light — both audited ≥3:1). Visible on EVERY interactive element at all times for keyboard users; standardized as a token so no surface invents its own (or omits it — the story-grip's missing ring, fixed in the list/row primitive). Target size ≥44×44 (invisible-padding ok).</p>
+
   <div class="note">
     <b>What this gets you:</b> wherever a status shows — the board-sync glyph, the CI glyph, a roster presence dot — it speaks the SAME 5-state language. You learn it once; <b>●</b>=good, <b>◌</b>=working, <b>◐</b>=needs-you, <b>✗</b>=broken, <b>○</b>=unknown, everywhere. That's the coherence you asked about.<br><br>
     <b>Taste-calls for you:</b> the Darcula palette warmth (is <code>#2b2b2b</code> the right base, or warmer/cooler?) · the blue-grey content text (<code>#a9b7c6</code> signature, or keep it neutral?) · OK as <b>●</b> vs <b>✓</b> · the ATTENTION glyph <b>◐</b>. Tell me the taste; I re-synthesize. Next mockup: the button/modal primitives on this base (the research + #1518 as first consumer).
