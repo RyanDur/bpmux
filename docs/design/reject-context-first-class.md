@@ -83,6 +83,41 @@ same hydration that surfaces `latest_reject` (surface 1) MUST also make the gate
 state mis-derived would still strand the story in a phantom-accepted limbo. *(Substrate: dev. The
 design point: the reject-record is load-bearing for the STATE machine, not only the rework-spec.)*
 
+### FACET 2 (#1687) — the carry + surface observation-falsifier
+
+**Scope-shaping insight (load-bearing): the CARRY is already provided by #1686.** `latest_reject`
+is DERIVED from the issue's gate-comments (the read-through's `rev().find` over reject-class), and an
+iteration-move only re-labels `parent-iteration` — it does NOT touch the issue's comments. So a
+moved-rejected story (now Ready) re-derives `latest_reject` through #1686's read-through
+automatically; there is NO separate carry-store to build. #1687's load-bearing NEW work is therefore
+the **SURFACE** (surface 3) — making the reject impossible to miss at pickup — plus a
+**carry-survives-move** regression-test that proves #1686's derived `latest_reject` persists across
+the move. A bespoke carry-mechanism would over-engineer against a problem #1686 already solved.
+
+I would reject if I observed ANY of:
+1. **Carry lost** — a moved-rejected story (rejected in N, carried to N+1, picked up) does NOT
+   surface its `latest_reject` (regresses #1686's post-move derivation); the carry-survives-move
+   test is the guard.
+2. **Pickup doesn't LEAD with the reject** — start_story's output does not put the VERBATIM reject
+   FIRST (base-spec leads, reject buried below or absent). The drift happens precisely because the
+   agent grounds on the base; the reject must be the first thing read.
+3. **Paraphrased / lossy** — the surfaced reject is summarized, truncated, or not the at-source
+   verbatim word (same canonical-verbatim bar as #1686).
+4. **Older reject surfaces** — not the most-recent reject-class gate (must match #1686's
+   most-recent-backward-transition read; an older reject is the wrong rework-spec).
+5. **Badge not glanceable** — a rejected story in the board-view carries no reject-badge, or the
+   reason is buried (not reveal-on-expand). Ryan must see WHY at a glance.
+6. **Vacuous surface-test** — the test asserts the reject is merely PRESENT in start_story's output,
+   not that it LEADS (ordering is the load-bearing property — present-but-buried still drifts); and a
+   carry-test that doesn't actually move the story across iterations can't catch #1.
+
+**Acceptor-coherence (render-nature; PM's call):** the agent-facing carry + pickup-surface is
+team-acceptor (team-verifiable via the move + start_story-output tests). The board reject-badge is
+OWNER-VISIBLE (Ryan glances) — a render-surface that warrants a capture / owner-walk, a distinct
+acceptor-axis from the agent-facing surface. If the badge rides in #1687 it carries an owner-walk
+component; it is cleanly sliceable as its own owner-visible story. (Surfacing the render-nature; the
+slice/acceptor call is PM's.)
+
 ### FACET 3 (#1691) — the state-derivation observation-falsifier
 
 The state-derivation fix (its own story, depends on #1686's hydration feeding it) has a
