@@ -130,3 +130,44 @@ export const computeMemberDropMutation = (input: MemberDropMutationInput): DropM
     remove: [parentIterationLabel(input.draggedIterationNumber, input.draggedOldPosition)]
   }
 }
+
+export const insertPositionWouldCascade = (
+  draggedOldPosition: number,
+  targetMemberPositions: number[],
+  targetMemberIndex: number
+): boolean => {
+  const withoutSource = targetMemberPositions.filter((p) => p !== draggedOldPosition)
+  const { position, cascadeNeeded } = computeInsertPosition(targetMemberIndex, withoutSource)
+  return cascadeNeeded || withoutSource.includes(position)
+}
+
+export interface MemberSlot {
+  storyNumber: number
+  currentPosition: number | null
+}
+
+export interface MemberOrderAssignment extends DropMutation {
+  storyNumber: number
+  position: number
+}
+
+export const computeMemberRespace = (
+  iterationNumber: number,
+  sequence: MemberSlot[]
+): MemberOrderAssignment[] => {
+  const out: MemberOrderAssignment[] = []
+  sequence.forEach((slot, index) => {
+    const targetPosition = (index + 1) * DEFAULT_STEP
+    if (slot.currentPosition === targetPosition) return
+    out.push({
+      storyNumber: slot.storyNumber,
+      position: targetPosition,
+      add: [parentIterationLabel(iterationNumber, targetPosition)],
+      remove:
+        slot.currentPosition === null
+          ? []
+          : [parentIterationLabel(iterationNumber, slot.currentPosition)]
+    })
+  })
+  return out
+}

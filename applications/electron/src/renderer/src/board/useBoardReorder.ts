@@ -1,7 +1,12 @@
 import { useCallback } from 'react'
 import { describeHttpError } from '../api/http'
 import { postStoryLabels } from '../api/labelsClient'
-import { computeMemberDropMutation } from './iterationPosition'
+import {
+  computeMemberDropMutation,
+  computeMemberRespace,
+  insertPositionWouldCascade,
+  type DropMutation
+} from './iterationPosition'
 import { eagerReorder } from './iterationMembers'
 import { parseParentIterationLabel } from './labelSchema'
 import { columnFor, storyTypeFromLabels, type BoardResponse, type ColumnState } from './types'
@@ -48,33 +53,63 @@ export const useBoardReorder = ({
         const targetMemberPositions = readyStories
           .map((s) => s.iteration_membership?.position)
           .filter((p): p is number => p !== undefined && p !== null)
-        const mutation = computeMemberDropMutation({
-          draggedIterationNumber: iterationNumber,
-          draggedOldPosition,
-          targetIterationNumber: iterationNumber,
-          targetMemberPositions,
-          targetMemberIndex,
-          targetMembersIncludeDragged: true
-        })
-        if (mutation === null) return
-        const added = parseParentIterationLabel(mutation.add[0])
-        if (added === null) return
 
+        const assignments: Array<{
+          storyNumber: number
+          position: number
+          mutation: DropMutation
+        }> = []
+        if (
+          insertPositionWouldCascade(draggedOldPosition, targetMemberPositions, targetMemberIndex)
+        ) {
+          const newSequence = eagerReorder(readyStories, (s) => s.number, moved, targetNumber)
+          const respaced = computeMemberRespace(
+            iterationNumber,
+            newSequence.map((s) => ({
+              storyNumber: s.number,
+              currentPosition: s.iteration_membership?.position ?? null
+            }))
+          )
+          for (const r of respaced) {
+            assignments.push({
+              storyNumber: r.storyNumber,
+              position: r.position,
+              mutation: { add: r.add, remove: r.remove }
+            })
+          }
+        } else {
+          const mutation = computeMemberDropMutation({
+            draggedIterationNumber: iterationNumber,
+            draggedOldPosition,
+            targetIterationNumber: iterationNumber,
+            targetMemberPositions,
+            targetMemberIndex,
+            targetMembersIncludeDragged: true
+          })
+          if (mutation === null) return
+          const added = parseParentIterationLabel(mutation.add[0])
+          if (added === null) return
+          assignments.push({ storyNumber: moved, position: added.position, mutation })
+        }
+        if (assignments.length === 0) return
+
+        const positionByStory = new Map(assignments.map((a) => [a.storyNumber, a.position]))
         setData((prev) => {
           if (!prev) return prev
           return {
             ...prev,
-            stories: prev.stories.map((s) =>
-              s.number === moved
-                ? {
+            stories: prev.stories.map((s) => {
+              const newPosition = positionByStory.get(s.number)
+              return newPosition === undefined
+                ? s
+                : {
                     ...s,
                     iteration_membership: {
                       iteration_number: iterationNumber,
-                      position: added.position
+                      position: newPosition
                     }
                   }
-                : s
-            )
+            })
           }
         })
 
@@ -82,9 +117,9 @@ export const useBoardReorder = ({
           .map((s) => ({
             number: s.number,
             position:
-              s.number === moved
-                ? added.position
-                : (s.iteration_membership?.position ?? Number.MAX_SAFE_INTEGER)
+              positionByStory.get(s.number) ??
+              s.iteration_membership?.position ??
+              Number.MAX_SAFE_INTEGER
           }))
           .sort((a, b) => a.position - b.position)
         const newIndex = orderedAfter.findIndex((s) => s.number === moved)
@@ -93,10 +128,16 @@ export const useBoardReorder = ({
         }
 
         if (usingMock || apiBase === undefined) return
-        void postStoryLabels({ apiBase, authToken }, moved, mutation).onFailure((error) => {
-          setData(prevData)
-          setError(`Reorder failed: ${describeHttpError(error)}`)
-        }).value
+        for (const assignment of assignments) {
+          void postStoryLabels(
+            { apiBase, authToken },
+            assignment.storyNumber,
+            assignment.mutation
+          ).onFailure((error) => {
+            setData(prevData)
+            setError(`Reorder failed: ${describeHttpError(error)}`)
+          }).value
+        }
         return
       }
 

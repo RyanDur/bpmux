@@ -5,7 +5,9 @@ import {
   computeInsertPosition,
   computeIterationOrderMutation,
   computeMemberDropMutation,
-  DEFAULT_FIRST_POSITION
+  computeMemberRespace,
+  DEFAULT_FIRST_POSITION,
+  insertPositionWouldCascade
 } from './iterationPosition'
 
 describe('computeInsertPosition — sparse-numeric position-suffix for iteration-{Name}.{N} labels', () => {
@@ -188,6 +190,41 @@ describe('computeIterationOrderMutation — iteration-order.N reorder label-pair
       targetMembersIncludeDragged: true
     })
     expect(result).toBeNull()
+  })
+})
+
+describe('insertPositionWouldCascade + computeMemberRespace — dense-position cascade cure (#1524)', () => {
+  it('insertPositionWouldCascade is TRUE for dense gaps (collision risk), FALSE for spaced positions', () => {
+    expect(insertPositionWouldCascade(3, [1, 2, 3], 1)).toBe(true)
+    expect(insertPositionWouldCascade(300, [100, 200, 300], 1)).toBe(false)
+  })
+
+  it('computeMemberRespace assigns clean distinct spaced positions, removing each stale one', () => {
+    const result = computeMemberRespace(9000, [
+      { storyNumber: 701, currentPosition: 1 },
+      { storyNumber: 703, currentPosition: 3 },
+      { storyNumber: 702, currentPosition: 2 }
+    ])
+    expect(result).toEqual([
+      {
+        storyNumber: 701,
+        position: 100,
+        add: ['parent-iteration-#9000.100'],
+        remove: ['parent-iteration-#9000.1']
+      },
+      {
+        storyNumber: 703,
+        position: 200,
+        add: ['parent-iteration-#9000.200'],
+        remove: ['parent-iteration-#9000.3']
+      },
+      {
+        storyNumber: 702,
+        position: 300,
+        add: ['parent-iteration-#9000.300'],
+        remove: ['parent-iteration-#9000.2']
+      }
+    ])
   })
 })
 

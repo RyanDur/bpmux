@@ -620,33 +620,33 @@ test.describe('real-backend', () => {
           title: 'Story one',
           state: 'ready',
           gh_state: 'open',
-          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.1'],
+          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.100'],
           assignees: [],
           created_at: '2026-04-22T00:00:00Z',
           body: '',
-          iteration_membership: { iteration_number: 700, position: 1 }
+          iteration_membership: { iteration_number: 700, position: 100 }
         },
         {
           number: 702,
           title: 'Story two',
           state: 'ready',
           gh_state: 'open',
-          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.2'],
+          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.200'],
           assignees: [],
           created_at: '2026-04-22T00:01:00Z',
           body: '',
-          iteration_membership: { iteration_number: 700, position: 2 }
+          iteration_membership: { iteration_number: 700, position: 200 }
         },
         {
           number: 703,
           title: 'Story three',
           state: 'ready',
           gh_state: 'open',
-          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.3'],
+          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.300'],
           assignees: [],
           created_at: '2026-04-22T00:02:00Z',
           body: '',
-          iteration_membership: { iteration_number: 700, position: 3 }
+          iteration_membership: { iteration_number: 700, position: 300 }
         }
       ]
     }
@@ -867,7 +867,9 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     // Open drill-in via board row click.
     await win
-      .locator('[data-test="board-tabpanel-now"] [data-test="board-story-356"] .board-story-navigate')
+      .locator(
+        '[data-test="board-tabpanel-now"] [data-test="board-story-356"] .board-story-navigate'
+      )
       .click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 

@@ -117,4 +117,23 @@ describe('#1524 useBoardReorder — ready-queue reorders on the shared canonical
     expect(moved?.iteration_number).toBe(ITER)
     expect(moved?.position).toBeGreaterThan(300)
   })
+
+  test('DENSE positions (gap<2) re-space the WHOLE member set to clean distinct gaps — no colliding/duplicate position (the snap-back + non-determinism cure)', () => {
+    const { run, membershipOf } = reorderWith([
+      iterationStory(),
+      story(701, 1),
+      story(702, 2),
+      story(703, 3)
+    ])
+    run(703, 702)
+    const p701 = membershipOf(701)?.position
+    const p702 = membershipOf(702)?.position
+    const p703 = membershipOf(703)?.position
+    expect(new Set([p701, p702, p703]).size).toBe(3)
+    for (const p of [p701, p702, p703]) {
+      expect(p).toBeGreaterThanOrEqual(100)
+    }
+    expect(p701).toBeLessThan(p703 ?? 0)
+    expect(p703).toBeLessThan(p702 ?? 0)
+  })
 })
