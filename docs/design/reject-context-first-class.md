@@ -140,8 +140,26 @@ is the richness-upside. (Primitive note: `most_recent_backward_transition` alrea
 
 ### FACET 3 (#1691) — the state-derivation observation-falsifier
 
-The state-derivation fix (its own story, depends on #1686's hydration feeding it) has a
-load-bearing falsifier of its own. I would reject if I observed ANY of:
+**SPLIT (PM scope-call, grounded): #1691 = READ-defense; WORKABILITY auto-heal = icebox sister.**
+dev's firsthand grounding showed canonical rejects ALREADY auto-reopen (reject.rs:80-120 —
+StoryReopened + StateTransitioned(Ready)), so phantom-accepted is a non-recurring, DETECTABLE
+anomaly (#1524 was an Aquila-bypass, healed), not a systematic problem. So #1691 re-scopes to the
+**READ-defense**: get_story EMITS the corrected `workflow_state` (derived from the most-recent
+backward gate-transition) + widens `needs_gates` to `is_closed || Accepted` (so a phantom's gates
+are fetched to read) — explicitly NOT `story.state` / `is_closed` / workability. The WORKABILITY
+auto-heal (an actual StoryReopened core-state mutation, board-wide blast-radius) splits to an
+**icebox sister** — high-risk for a non-recurring edge; revisit on recurrence or Ryan's
+defense-in-depth call.
+
+**Honesty (the read-vs-actability gap):** #1691 emits `workflow_state: ready` while `is_closed` /
+`story.state` stay accepted, so an agent READS "ready" but `start_story` still gates on
+`story.state` (rejects Accepted). #1691's walk-node is honestly the READ — "the agent is not
+MISLED into stamping a phantom-accepted" — NOT "the story is workable." That gap is exactly the
+icebox sister's job; shipping the READ does not claim it (the bar held — not shipped under
+WORKABILITY's walk-node).
+
+The READ falsifier (asserted on get_story's EMITTED `workflow_state`, same derivation). I would
+reject if I observed ANY of:
 
 1. **Phantom-accepted (core)** — a carried-reject story reads `workflow_state` =
    accepted/closed/any terminal NOT derived from its real last gate-transition; the derivation
@@ -159,11 +177,23 @@ load-bearing falsifier of its own. I would reject if I observed ANY of:
 5. **Over-correction on a real accept (inverse failure)** — a story whose real last transition is
    a genuine accept mis-derives to rework; the derivation must distinguish a real accept-transition
    from a reject-then-closed (a normally-accepted, non-carried story is unaffected).
-6. **Vacuous coverage** — the load-bearing test seeds a carried-reject fixture (hydrated
-   gate-records whose LAST transition by-time = reject + a STALE closed/accepted source) and asserts
-   `derive → ready/rework` (RED without the derivation). Omitting the accept-discrimination case
-   (genuinely-accepted fixture → stays accepted) is VACUOUS for #5; not seeding the backward reject
-   as last-by-time can't catch #4.
+6. **Vacuous coverage** — the load-bearing test seeds a carried-reject fixture (gate-records whose
+   LAST transition by-time = reject + a STALE closed/accepted source) and asserts get_story EMITS
+   `ready/rework` (RED without the override). The accept-discrimination (#5) fixture must be
+   **RE-ACCEPTED-AFTER-REJECT** (reject → deliver → accept → emits `accepted`), NOT a never-rejected
+   accept — only that shape exercises + guards the `.last().filter(is_backward)` supersession
+   (`most_recent_backward_transition` returns `None` when the latest is a forward accept; it would go
+   RED if the primitive regressed to "any backward"). A never-rejected accept has no backward to
+   supersede → vacuous for #5. Not seeding the backward reject as last-by-time can't catch #4.
+
+**WORKABILITY sister (icebox) — its own walk-node, for when it's revisited:** when a phantom-accepted
+is detected (`story.state` = Accepted / `is_closed` but the most-recent gate-transition is a reject),
+an auto-heal reopen fires (StoryReopened + StateTransitioned(Ready) + persist) → the story becomes
+genuinely workable automatically (pickable via `start_story`, desk-checkable), no manual
+reopen+re-deliver. Scope = core-state mutation (`story.state` + `is_closed`), board-wide blast-radius,
+interacts with the `is_closed → Accepted` reopen-guards (reject.rs:81, desk_check.rs:232) — high-risk,
+its own careful design. Icebox'd: the gap is non-recurring + detectable (canonical rejects auto-reopen),
+so this is defense-in-depth, revisited on recurrence or Ryan's prioritization.
 
 The crux is #4: read the authoritative last gate-transition by timestamp, discriminating a
 backward reject from a forward accept — never the stale GitHub closed-state.
