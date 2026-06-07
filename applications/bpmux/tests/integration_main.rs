@@ -141,6 +141,8 @@ mod precompact_save_bookmark_e2e;
 mod read_messages_e2e;
 #[path = "integration_main_modules/recall_observability.rs"]
 mod recall_observability;
+#[path = "integration_main_modules/receive_broadcast_hook_e2e.rs"]
+mod receive_broadcast_hook_e2e;
 #[path = "integration_main_modules/reject_story_e2e.rs"]
 mod reject_story_e2e;
 #[path = "integration_main_modules/reorder_story_e2e.rs"]
