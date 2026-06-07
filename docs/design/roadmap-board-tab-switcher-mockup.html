@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!--
+  BOARD ⟷ ROADMAP tab-switcher — adaptive Board tab. Designer 2026-06-07 (rev 2).
+
+  Ryan: "split the area in half … make sure the current iteration name is visible in the board tab" +
+  "when there is an iteration the board tab has the name of the iteration AND board, side by side; when
+  not in an iteration the board title is centered."
+
+  → 50/50 split (Board | Roadmap). The BOARD tab is ADAPTIVE:
+    • in an iteration: [iteration name] + [Board] side-by-side (+ the sync ● — board-status).
+    • no iteration:    [Board] centered (no iteration name to pair).
+  Both states shown below. Grounded firsthand: real tokens (tokens.css) + the real header
+  (Board.tsx/.css: .board-iteration-name 15px/600 · .board-title uppercase 12px/.05em fg-dim ·
+  SyncStatusGlyph ●). Base treatment = the app's underline-tab grammar (consistent w/ the existing tabs);
+  the side-by-side/centered content works with any base. Dual-theme.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Board ⟷ Roadmap — adaptive Board tab</title>
+<style>
+  :root{
+    --bg-base:#1a1a1a;--bg-elevated:#252525;--bg-highlighted:#333;--fg-primary:#e8e8e8;--fg-secondary:#b0b0b0;--fg-dim:#9d9d9d;--fg-dimmer:#808080;
+    --accent-brand:#6aa0ff;--accent-success:#3fb950;--border-subtle:#333;--border-strong:#555;
+  }
+  [data-theme="light"]{
+    --bg-base:#fff;--bg-elevated:#f5f5f5;--bg-highlighted:#e5e8ef;--fg-primary:#1a1a1a;--fg-secondary:#4a5568;--fg-dim:#5a6578;--fg-dimmer:#718096;
+    --accent-brand:#2563eb;--accent-success:#1a7f37;--border-subtle:#e2e8f0;--border-strong:#cbd5e0;
+  }
+  *{box-sizing:border-box}
+  body{background:#0e0e0e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:22px;line-height:1.5}
+  h1{font-size:16px;margin:0 0 3px}.sub{color:var(--fg-dim);font-size:12px;margin:0 0 16px;max-width:840px}.sub b{color:var(--fg-secondary)}
+  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 10px;cursor:pointer;margin:0 0 16px}
+  .case{margin:0 0 20px}.lbl{font-size:11px;color:var(--fg-dim);margin:0 0 6px}.lbl b{color:var(--fg-secondary)}
+  .col{width:360px;border:1px solid var(--border-strong);border-radius:7px;overflow:hidden;background:var(--bg-elevated)}
+  .colbody{height:50px;background:var(--bg-elevated)}
+  /* 50/50 underline tab-row */
+  .tabs{display:flex;border-bottom:1px solid var(--border-subtle)}
+  .tab{flex:1;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:2px solid transparent;margin-bottom:-1px;min-width:0}
+  .tab.center{justify-content:center}
+  .tab.on{border-bottom-color:var(--accent-brand)}
+  .iter{flex:1 1 auto;min-width:0;font-size:.9375rem;font-weight:600;color:var(--fg-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tab.on .iter{color:var(--fg-primary)}
+  .blabel{flex-shrink:0;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--fg-dim)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent-success);flex-shrink:0}
+  .rm{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--fg-dim);display:flex;align-items:center;gap:6px}
+  .note{background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:7px;padding:12px 15px;font-size:12.5px;max-width:840px;margin-top:6px;line-height:1.55;color:var(--fg-secondary)}.note b{color:var(--fg-primary)}
+</style></head>
+<body id="b">
+  <h1>Board ⟷ Roadmap — split 50/50, adaptive Board tab</h1>
+  <p class="sub">Per your refinement: <b>in an iteration</b> the Board tab shows the iteration name + Board side-by-side; <b>no iteration</b> → Board centered. Roadmap is the right half. Real tokens + real header structure.</p>
+  <p class="toggle"><button onclick="b.setAttribute('data-theme',b.getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
+
+  <!-- State 1: in an iteration, Board active -->
+  <div class="case">
+    <p class="lbl"><b>In an iteration · Board active</b> — iteration name + Board side-by-side, sync ● rides the Board tab.</p>
+    <div class="col">
+      <div class="tabs">
+        <span class="tab on"><span class="iter">Lupus</span><span class="blabel">Board</span><span class="dot"></span></span>
+        <span class="tab"><span class="rm">🗺 Roadmap</span></span>
+      </div>
+      <div class="colbody"></div>
+    </div>
+  </div>
+
+  <!-- State 2: in an iteration, Roadmap active -->
+  <div class="case">
+    <p class="lbl"><b>In an iteration · Roadmap active</b> — highlight moves to Roadmap; Board tab still names the iteration.</p>
+    <div class="col">
+      <div class="tabs">
+        <span class="tab"><span class="iter">Lupus</span><span class="blabel">Board</span><span class="dot"></span></span>
+        <span class="tab on"><span class="rm" style="color:var(--fg-primary)">🗺 Roadmap</span></span>
+      </div>
+      <div class="colbody"></div>
+    </div>
+  </div>
+
+  <!-- State 3: no iteration, Board active -->
+  <div class="case">
+    <p class="lbl"><b>No iteration · Board active</b> — no iteration name to show, so Board is centered in its half (the board would show the roadmap-fallback, #1684).</p>
+    <div class="col">
+      <div class="tabs">
+        <span class="tab on center"><span class="blabel">Board</span></span>
+        <span class="tab"><span class="rm">🗺 Roadmap</span></span>
+      </div>
+      <div class="colbody"></div>
+    </div>
+  </div>
+
+  <!-- State 4: long iteration name → ellipsis, Board ● anchored right -->
+  <div class="case">
+    <p class="lbl"><b>Long iteration name</b> — the name truncates with an ellipsis; "Board ●" stays anchored right (the label + status never get pushed off).</p>
+    <div class="col">
+      <div class="tabs">
+        <span class="tab on"><span class="iter">Andromeda-Q3-Platform-Hardening</span><span class="blabel">Board</span><span class="dot"></span></span>
+        <span class="tab"><span class="rm">🗺 Roadmap</span></span>
+      </div>
+      <div class="colbody"></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Adaptive Board tab:</b> iteration name + Board side-by-side when there's a current iteration (the iteration is the most-visible thing, the BOARD label + sync ● give context); just <b>Board centered</b> when none. 50/50 split throughout; Roadmap is the constant right half. Shown in the app's underline-tab grammar for consistency — if you'd rather a segmented/pill treatment, the same side-by-side/centered content drops in. Confirm the content + base-style and I refine it to spec for #1704.
+  </div>
+</body></html>

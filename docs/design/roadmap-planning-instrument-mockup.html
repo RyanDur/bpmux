@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!--
+  ROADMAP planning-instrument — FULL-SCREEN + ALL DRILL-INS. Designer 2026-06-07 (rev 6).
+
+  Ryan: "I would see the outcome on top, and the iteration list would drop below? can you update the
+  designs for all the drillins? what about seeing the contents of an iteration?" → nested accordion:
+  OUTCOME (top) → click → its ITERATIONS drop below → click an iteration → its STORIES (contents) drop
+  below. Three levels: outcome → iteration → story (epic → iteration-entities → stories — all derivable).
+
+  Grounded firsthand (no guessing — every element from the live board / real renderer):
+  • real tokens (src/styles/tokens.css), real proportions (sidebar 200 · chat flex · board 360), real
+    chrome (32px titlebar+traffic-lights · Conversations sidebar · chat·events·bpmux filter-pills),
+    side-sections lighter (--bg-elevated) / chat darker (--bg-base) per Ryan's contrast note.
+  • Lupus #1694 stories + states from view_board(iteration:1694): #1695 NEEDS-FIXES (just failed
+    desk-check — falsifier-5 e2e gap), #1656/#1696/#1658/#1593/#1698/#1699/#1700/#1701 READY.
+  • Design-system outcome (Epic #1659) → iterations Fornax #1678 · Antlia #1679 · Horologium #1681.
+
+  Readiness ROLLS UP: an outcome's state = its iterations'; an iteration's = its ready-to-convene checks.
+  Open for Ryan: depth (2/3) · nudge (warn/look-only). Dual-theme.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Roadmap — all drill-ins</title>
+<style>
+  :root{
+    --bg-base:#1a1a1a;--bg-elevated:#252525;--bg-highlighted:#333;--fg-primary:#e8e8e8;--fg-secondary:#b0b0b0;--fg-dim:#9d9d9d;--fg-dimmer:#808080;
+    --accent-brand:#6aa0ff;--accent-success:#3fb950;--accent-warning:#d4a13c;--accent-error:#ff6b6b;--border-subtle:#333;--border-strong:#555;
+    --role-ryan:#ffd54f;--role-designer:#b368e9;--role-dev:#4fc3f7;--role-pm:#81c784;
+  }
+  [data-theme="light"]{
+    --bg-base:#fff;--bg-elevated:#f5f5f5;--bg-highlighted:#e5e8ef;--fg-primary:#1a1a1a;--fg-secondary:#4a5568;--fg-dim:#5a6578;--fg-dimmer:#718096;
+    --accent-brand:#2563eb;--accent-success:#1a7f37;--accent-warning:#9a6700;--accent-error:#cf222e;--border-subtle:#e2e8f0;--border-strong:#cbd5e0;
+    --role-ryan:#9a6700;--role-designer:#8250df;--role-dev:#0969da;--role-pm:#1a7f37;
+  }
+  *{box-sizing:border-box}
+  body{background:#0e0e0e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:18px;line-height:1.4}
+  h1{font-size:16px;margin:0 0 3px}.sub{color:var(--fg-dim);font-size:12px;margin:0 0 10px;max-width:1000px}.sub b{color:var(--fg-secondary)}
+  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 10px;cursor:pointer;margin:0 0 12px}
+  .win{width:1080px;max-width:100%;height:640px;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--bg-base);display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .titlebar{height:32px;display:flex;align-items:center;gap:8px;padding:0 12px 0 78px;border-bottom:1px solid var(--border-subtle);background:var(--bg-base);font-size:13px;font-weight:600;flex-shrink:0}
+  .titlebar .app{color:var(--fg-primary)}.titlebar .st{color:var(--accent-success);font-weight:400;font-size:12px}.titlebar .sp{flex:1}.titlebar .ci{width:9px;height:9px;border-radius:50%;background:var(--accent-success)}
+  .traffic{position:absolute;left:30px;top:29px;display:flex;gap:8px}.traffic i{width:11px;height:11px;border-radius:50%;display:block}.t1{background:#ff5f57}.t2{background:#febc2e}.t3{background:#28c840}
+  .row{flex:1;display:flex;min-height:0}
+  .side{width:200px;flex-shrink:0;border-right:1px solid var(--border-subtle);background:var(--bg-elevated);padding:10px 8px;font-size:12px;overflow:hidden}
+  .side h4{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-dimmer);margin:12px 0 4px;font-weight:600}.side h4:first-child{margin-top:0}
+  .ch{padding:3px 8px;border-radius:4px;color:var(--fg-secondary)}.ch.on{background:var(--bg-highlighted);color:var(--fg-primary)}
+  .who{display:flex;align-items:center;gap:7px;padding:3px 8px;color:var(--fg-secondary)}.who .d{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .chat{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border-subtle);background:var(--bg-base)}
+  .pills{display:flex;gap:5px;padding:7px 12px;border-bottom:1px solid var(--border-subtle);font-size:11px}
+  .pill{padding:2px 9px;border-radius:11px;border:1px solid var(--border-subtle);color:var(--fg-dim)}.pill.on{background:var(--accent-brand);color:#0e0e0e;border-color:var(--accent-brand);font-weight:600}
+  .msgs{flex:1;overflow:hidden;padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+  .m{font-size:13px}.m .nm{font-weight:700;font-size:12px;margin-right:7px}
+  .m.ryan .nm{color:var(--role-ryan)}.m.pm .nm{color:var(--role-pm)}.m.designer .nm{color:var(--role-designer)}.m .bd{color:var(--fg-secondary)}
+  .cinput{border-top:1px solid var(--border-subtle);padding:9px 12px;display:flex;gap:8px}
+  .cinput .box{flex:1;border:1px solid var(--border-subtle);border-radius:6px;background:var(--bg-base);padding:6px 10px;color:var(--fg-dimmer);font-size:12px}
+  .cinput .send{border:1px solid var(--accent-brand);color:var(--accent-brand);border-radius:6px;padding:6px 13px;font-size:12px}
+  /* roadmap panel — board column, lighter (elevated) side-section */
+  .bc{width:360px;flex-shrink:0;display:flex;flex-direction:column;background:var(--bg-elevated)}
+  .bc .switch{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--border-subtle);font-size:12px}
+  .bc .switch span{padding:5px 12px;border-radius:5px 5px 0 0;color:var(--fg-dim)}
+  .bc .switch .on{color:var(--accent-brand);font-weight:700;border:1px solid var(--border-subtle);border-bottom:0;background:var(--bg-elevated)}
+  .bc .pane{flex:1;overflow:auto;padding:9px 10px}
+  .derived{display:inline-flex;align-items:center;gap:5px;font-size:9px;color:var(--fg-dimmer);border:1px solid var(--border-subtle);border-radius:9px;padding:1px 7px;margin-bottom:8px}.derived .dot{width:5px;height:5px;border-radius:50%;background:var(--accent-success)}
+  /* L0 outcome row */
+  .oc{margin:5px 0 0;border:1px solid var(--border-subtle);border-radius:6px;background:var(--bg-base);overflow:hidden}
+  .oc.now{border-left:3px solid var(--accent-brand)}.oc.gap{border-left:3px solid var(--accent-warning)}.oc.ns{border-left:3px solid var(--fg-dimmer)}
+  .ochead{display:flex;align-items:center;gap:6px;padding:7px 9px;cursor:default}
+  .tw{font-size:9px;font-weight:700;color:var(--accent-brand);min-width:30px}
+  .ocnm{color:var(--fg-primary);font-weight:600;font-size:12px;flex:1}
+  .dis{color:var(--fg-dim);font-size:10px;width:11px}
+  .ocstate{font-size:9px;font-weight:700;padding:1px 7px;border-radius:9px;white-space:nowrap}
+  .ocstate.now{color:var(--accent-brand);background:color-mix(in srgb,var(--accent-brand) 15%,transparent)}
+  .ocstate.gap{color:var(--accent-warning);background:color-mix(in srgb,var(--accent-warning) 15%,transparent)}
+  .ocstate.ns{color:var(--fg-dimmer);background:var(--bg-highlighted)}
+  .ocout{font-size:10px;color:var(--fg-dim);padding:0 9px 6px 39px}
+  /* L1 iteration rows (drop below the outcome) */
+  .iters{padding:2px 9px 8px 22px;border-top:1px solid var(--border-subtle);background:color-mix(in srgb,var(--bg-elevated) 60%,var(--bg-base))}
+  .itr{margin:5px 0 0;border:1px solid var(--border-subtle);border-radius:5px;background:var(--bg-elevated);overflow:hidden}
+  .itrhead{display:flex;align-items:center;gap:6px;padding:5px 8px}
+  .itrnm{color:var(--fg-primary);font-weight:600;font-size:11px;flex:1}
+  .itrstate{font-size:9px;padding:1px 6px;border-radius:8px;white-space:nowrap}
+  .itrstate.cur{color:var(--accent-brand);background:color-mix(in srgb,var(--accent-brand) 14%,transparent)}
+  .itrstate.gap{color:var(--accent-warning);background:color-mix(in srgb,var(--accent-warning) 14%,transparent)}
+  .itrstate.plan{color:var(--fg-dimmer);background:var(--bg-highlighted)}
+  /* L2 story rows (contents of an iteration) */
+  .stories{padding:1px 8px 6px 20px}
+  .st{display:flex;align-items:baseline;gap:7px;padding:2px 0;font-size:10px}
+  .st .id{color:var(--accent-brand);min-width:46px}.st .ti{color:var(--fg-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .st .ss{font-size:8px;padding:0 5px;border-radius:7px;background:var(--bg-highlighted);white-space:nowrap}
+  .ss.ready{color:var(--fg-secondary)}.ss.fix{color:var(--accent-warning)}.ss.dc{color:var(--accent-brand)}.ss.ice{color:var(--fg-dimmer)}
+  .hz{display:flex;gap:7px;align-items:baseline;font-size:10px;color:var(--fg-secondary);padding:2px 0 2px 2px}.hz .g{color:var(--fg-dimmer)}.hz .hn{color:var(--fg-primary);font-weight:600;min-width:130px}
+  .bandh{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-dimmer);font-weight:600;margin:13px 0 1px}
+  .cap{font-size:12px;color:var(--fg-dim);margin:11px 0 0;max-width:1000px}.cap b{color:var(--fg-secondary)}
+</style></head>
+<body id="b">
+  <h1>Roadmap — all drill-ins (outcome → iterations → stories)</h1>
+  <p class="sub">Click an OUTCOME → its ITERATIONS drop below; click an ITERATION → its STORIES (contents) drop below. Three levels (epic → iterations → stories). Shown fully-expanded so you see every drill-level at once. Chat stays the visible middle panel.</p>
+  <p class="toggle"><button onclick="b.setAttribute('data-theme',b.getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
+
+  <div class="win" style="position:relative">
+    <div class="traffic"><i class="t1"></i><i class="t2"></i><i class="t3"></i></div>
+    <div class="titlebar"><span class="app">bpmux</span><span class="st">online</span><span class="sp"></span><span class="ci"></span></div>
+    <div class="row">
+      <nav class="side">
+        <h4>Conversations</h4>
+        <div class="ch">Broadcast</div><div class="ch on">designer · pm</div><div class="ch">pm · dev</div>
+        <h4>Roster</h4>
+        <div class="who"><span class="d" style="background:var(--role-pm)"></span> pm</div>
+        <div class="who"><span class="d" style="background:var(--role-dev)"></span> dev</div>
+        <div class="who"><span class="d" style="background:var(--role-designer)"></span> designer</div>
+        <h4>Terminals</h4><div class="ch">+ new terminal</div>
+      </nav>
+      <section class="chat">
+        <div class="pills"><span class="pill on">chat</span><span class="pill">events</span><span class="pill">bpmux</span></div>
+        <div class="msgs">
+          <div class="m ryan"><span class="nm">ryan</span><span class="bd">can you update the designs for all the drill-ins? what about seeing the contents of an iteration?</span></div>
+          <div class="m designer"><span class="nm">designer</span><span class="bd">outcome → click → iterations drop below → click → that iteration's stories. all 3 levels →</span></div>
+          <div class="m pm"><span class="nm">pm</span><span class="bd">epic → iterations → stories, all derivable from the board</span></div>
+        </div>
+        <div class="cinput"><span class="box">message designer · pm…</span><span class="send">send</span></div>
+      </section>
+      <aside class="bc">
+        <div class="switch"><span>Board</span><span class="on">🗺 Roadmap</span></div>
+        <div class="pane">
+          <span class="derived"><span class="dot"></span> derived from gate-acts + board</span>
+
+          <!-- OUTCOME 1: NOW, expanded → iteration → stories -->
+          <div class="oc now">
+            <div class="ochead"><span class="dis">▾</span><span class="tw">NOW</span><span class="ocnm">Claude-independence</span><span class="ocstate now">in progress</span></div>
+            <div class="ocout">comms off Claude's Channels + a universal bpmux CLI</div>
+            <div class="iters">
+              <div class="itr">
+                <div class="itrhead"><span class="dis">▾</span><span class="itrnm">Lupus</span><span class="itrstate cur">current · 0/9</span></div>
+                <div class="stories">
+                  <div class="st"><span class="id">#1695</span><span class="ti">wait-for-event primitive</span><span class="ss fix">needs-fixes</span></div>
+                  <div class="st"><span class="id">#1656</span><span class="ti">receive-loop (keystone)</span><span class="ss ready">ready</span></div>
+                  <div class="st"><span class="id">#1696</span><span class="ti">delete PTY path</span><span class="ss ready">ready</span></div>
+                  <div class="st"><span class="id">#1658</span><span class="ti">remove Channels push</span><span class="ss ready">ready</span></div>
+                  <div class="st"><span class="id">#1593</span><span class="ti">send/read CLI</span><span class="ss ready">ready</span></div>
+                  <div class="st"><span class="id">#1698</span><span class="ti">board-reads CLI</span><span class="ss ready">ready</span></div>
+                  <div class="st"><span class="id">#1699</span><span class="ti">gated-writes CLI</span><span class="ss ready">ready</span></div>
+                  <div class="st"><span class="id">#1701</span><span class="ti">walk/Electron verbs CLI</span><span class="ss ready">ready</span></div>
+                  <div class="st"><span class="id">#1700</span><span class="ti">canon verbs + parity-audit</span><span class="ss ready">ready</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OUTCOME 2: NEXT, expanded → iterations (not drilled to stories) -->
+          <div class="oc gap">
+            <div class="ochead"><span class="dis">▾</span><span class="tw">NEXT</span><span class="ocnm">Design-system (Darcula)</span><span class="ocstate gap">◐ 1 gap</span></div>
+            <div class="ocout">consistent + accessible by construction</div>
+            <div class="iters">
+              <div class="itr"><div class="itrhead"><span class="dis">▸</span><span class="itrnm">Fornax — foundation</span><span class="itrstate gap">◐ review pending</span></div></div>
+              <div class="itr"><div class="itrhead"><span class="dis">▸</span><span class="itrnm">Antlia — primitives</span><span class="itrstate plan">planned</span></div></div>
+              <div class="itr"><div class="itrhead"><span class="dis">▸</span><span class="itrnm">Horologium — application</span><span class="itrstate plan">planned</span></div></div>
+            </div>
+          </div>
+
+          <!-- OUTCOME 3 + 4: collapsed -->
+          <div class="oc gap"><div class="ochead"><span class="dis">▸</span><span class="tw">+2</span><span class="ocnm">See the roadmap + ground rot-free</span><span class="ocstate gap">◐ shaping</span></div></div>
+          <div class="oc ns"><div class="ochead"><span class="dis">▸</span><span class="tw">+3</span><span class="ocnm">Gate-engine + verify</span><span class="ocstate ns">○ outcome</span></div></div>
+
+          <div class="bandh">Horizons · directional</div>
+          <div class="hz"><span class="g">◐</span><span class="hn">Public face + memory</span></div>
+          <div class="hz"><span class="g">○</span><span class="hn">Connect the tools</span></div>
+          <div class="hz"><span class="g">○</span><span class="hn">Scale the platform</span></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <p class="cap"><b>All three drill-levels, fully expanded:</b> OUTCOME (▾ Claude-independence) → its ITERATION (▾ Lupus) → its STORIES (#1695 needs-fixes · the 8 ready) — that's "the contents of an iteration." Design-system shows OUTCOME → its three ITERATIONS (Fornax/Antlia/Horologium, collapsed at the iteration level). Collapsed outcomes (+2/+3) show just the headline. Readiness rolls UP: Lupus shows 0/9 + #1695 needs-fixes; Darcula reads ◐ because Fornax's review is pending. All grounded from the live board (view_board) + real tokens — nothing guessed. Open for you: depth (2 vs 3) · nudge (warn vs look-only).</p>
+</body></html>
