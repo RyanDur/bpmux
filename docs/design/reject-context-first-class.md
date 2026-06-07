@@ -148,7 +148,7 @@ anomaly (#1524 was an Aquila-bypass, healed), not a systematic problem. So #1691
 backward gate-transition) + widens `needs_gates` to `is_closed || Accepted` (so a phantom's gates
 are fetched to read) — explicitly NOT `story.state` / `is_closed` / workability. The WORKABILITY
 auto-heal (an actual StoryReopened core-state mutation, board-wide blast-radius) splits to an
-**icebox sister** — high-risk for a non-recurring edge; revisit on recurrence or Ryan's
+**icebox sister (#1693)** — high-risk for a non-recurring edge; revisit on recurrence or Ryan's
 defense-in-depth call.
 
 **Honesty (the read-vs-actability gap):** #1691 emits `workflow_state: ready` while `is_closed` /
@@ -186,7 +186,7 @@ reject if I observed ANY of:
    RED if the primitive regressed to "any backward"). A never-rejected accept has no backward to
    supersede → vacuous for #5. Not seeding the backward reject as last-by-time can't catch #4.
 
-**WORKABILITY sister (icebox) — its own walk-node, for when it's revisited:** when a phantom-accepted
+**WORKABILITY sister #1693 (icebox) — its own walk-node, for when it's revisited:** when a phantom-accepted
 is detected (`story.state` = Accepted / `is_closed` but the most-recent gate-transition is a reject),
 an auto-heal reopen fires (StoryReopened + StateTransitioned(Ready) + persist) → the story becomes
 genuinely workable automatically (pickable via `start_story`, desk-checkable), no manual
