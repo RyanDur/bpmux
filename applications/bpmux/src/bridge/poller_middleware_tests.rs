@@ -283,7 +283,13 @@ async fn get_story_returns_gate_comments_hydrated_flag_in_response() {
     let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
     let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
     assert_eq!(
-        json["gate_comments_hydrated"], false,
-        "fresh seed has no gate_comments hydrated; field exposed for caller to discover"
+        json["gate_comments_hydrated"], true,
+        "#1686: get_story read-through-fetches gate-records for a rework-state story; the flag reports fetched (empty here — 8004 has no gates)"
+    );
+    assert!(
+        json.get("latest_reject")
+            .map(|x| x.is_null())
+            .unwrap_or(true),
+        "a non-rejected story surfaces no latest_reject even though its gate-records are now hydrated"
     );
 }

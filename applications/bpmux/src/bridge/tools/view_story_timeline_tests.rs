@@ -206,3 +206,61 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
     assert_eq!(events[2]["payload"], "first delivery");
     assert_eq!(events[3]["payload"], "not quite");
 }
+
+#[tokio::test]
+async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, GateComment, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let reason = "drag srt does not persist and does not have the same drag css as the iteration";
+    let story = Story::new_minimal(
+        1524,
+        "title".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_gate_comments(
+        1524,
+        vec![GateComment {
+            gate: Gate::Rejected,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
+            actor: "ryan".into(),
+            payload: Some(reason.into()),
+        }],
+    );
+    store.seed_all(vec![story]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+
+    let args = serde_json::json!({"number": 1524});
+    let result =
+        handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
+            .await
+            .expect("success");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    assert_eq!(
+        parsed["gate_comments_hydrated"], true,
+        "read-through hydrates the timeline's reject gate-records"
+    );
+    let events = parsed["events"].as_array().expect("events array");
+    let reject = events
+        .iter()
+        .find(|e| e["gate"] == "rejected")
+        .expect("reject event present in hydrated timeline");
+    assert_eq!(
+        reject["payload"], reason,
+        "the reject reason is VERBATIM byte-exact in the timeline"
+    );
+    assert_eq!(reject["actor"], "ryan");
+}

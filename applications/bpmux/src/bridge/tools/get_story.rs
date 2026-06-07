@@ -44,6 +44,24 @@ fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
     Some(out)
 }
 
+fn latest_reject_json(gates: &[GateComment]) -> Option<serde_json::Value> {
+    let gc = gates
+        .iter()
+        .rev()
+        .find(|g| matches!(g.gate, Gate::Rejected | Gate::FailDeskCheck))?;
+    let reason = gc.payload.clone()?;
+    let gate = match gc.gate {
+        Gate::FailDeskCheck => "fail-desk-check",
+        _ => "rejected",
+    };
+    Some(serde_json::json!({
+        "reason": reason,
+        "by": gc.actor,
+        "at": gc.ts.to_rfc3339(),
+        "gate": gate,
+    }))
+}
+
 const NOT_HYDRATED_PLACEHOLDER: &str =
     "(body not yet hydrated; no refresh driver available to live-fetch.)";
 
@@ -76,9 +94,27 @@ pub(in crate::bridge) async fn handle_get_story(
             }
         }
     }
+    let needs_gates = matches!(story.state, StoryState::Ready | StoryState::InProgress);
+    if needs_gates
+        && story.gate_comments.is_none()
+        && let Some(r) = refresh
+    {
+        match r.fetch_gate_comments(number).await {
+            Ok(_) => {
+                story = b.story(number).ok_or_else(|| {
+                    format!("story #{number} not found in board after gate fetch")
+                })?;
+            }
+            Err(e) => {
+                crate::session::diag::log_diag(&format!(
+                    "get_story #{number} read-through fetch_gate_comments failed: {e}"
+                ));
+            }
+        }
+    }
     let body_cached = story.body.as_deref();
     let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
-    let needs_gates = matches!(story.state, StoryState::Ready | StoryState::InProgress);
+    let latest_reject = story.gate_comments.as_deref().and_then(latest_reject_json);
     if needs_gates
         && let Some(gates) = story.gate_comments.as_ref()
         && let Some(ctx) = rework_context_from_gates(gates)
@@ -112,6 +148,7 @@ pub(in crate::bridge) async fn handle_get_story(
         "parent_epic": story.parent_epic,
         "body_hydrated": body_cached.is_some(),
         "gate_comments_hydrated": story.gate_comments.is_some(),
+        "latest_reject": latest_reject,
     });
     serde_json::to_string_pretty(&out).map_err(|e| format!("serialize story: {e}"))
 }

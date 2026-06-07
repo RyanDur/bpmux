@@ -573,3 +573,78 @@ async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
         "open member preserved: {body}"
     );
 }
+
+#[tokio::test]
+async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
+    let story = make_story(1524, StoryState::Ready, Some("base story body"));
+    let reason = "drag srt does not persist and does not have the same drag css as the iteration";
+    let gates = vec![
+        GateComment {
+            gate: Gate::Delivered,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 8, 0, 0).unwrap(),
+            actor: "dev".into(),
+            payload: Some("delivered the drag-reorder".into()),
+        },
+        GateComment {
+            gate: Gate::Rejected,
+            ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
+            actor: "ryan".into(),
+            payload: Some(reason.into()),
+        },
+    ];
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_gate_comments(1524, gates);
+    store.seed_all(vec![story]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+
+    let args = serde_json::json!({"number": 1524});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+
+    assert_eq!(
+        parsed["gate_comments_hydrated"].as_bool(),
+        Some(true),
+        "read-through must hydrate the reject gate-records (the unfetched-not-absent bug)"
+    );
+    assert_eq!(
+        parsed["latest_reject"]["reason"].as_str(),
+        Some(reason),
+        "reason must round-trip VERBATIM byte-exact — no paraphrase or truncation anywhere in the chain"
+    );
+    assert_eq!(parsed["latest_reject"]["by"].as_str(), Some("ryan"));
+    assert_eq!(parsed["latest_reject"]["gate"].as_str(), Some("rejected"));
+}
+
+#[tokio::test]
+async fn non_rejected_story_carries_no_latest_reject() {
+    let story = make_story(500, StoryState::Ready, Some("body"));
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![story.clone()]);
+    store.seed_all(vec![story]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+
+    let args = serde_json::json!({"number": 500});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+
+    assert!(
+        parsed
+            .get("latest_reject")
+            .map(|x| x.is_null())
+            .unwrap_or(true),
+        "a non-rejected story must not carry a latest_reject"
+    );
+}

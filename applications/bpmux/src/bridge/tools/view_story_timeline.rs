@@ -42,16 +42,32 @@ pub fn build_timeline_from_board(story: &Story, gates: &[GateComment]) -> Vec<se
 pub(in crate::bridge) async fn handle_view_story_timeline(
     args: &serde_json::Map<String, serde_json::Value>,
     board: Option<&Arc<BoardStore>>,
-    _refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let b = board.ok_or("view_story_timeline requires board (canonical-store)")?;
-    let story = b
+    let mut story = b
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in board"))?;
+    if story.gate_comments.is_none()
+        && let Some(r) = refresh
+    {
+        match r.fetch_gate_comments(number).await {
+            Ok(_) => {
+                story = b.story(number).ok_or_else(|| {
+                    format!("story #{number} not found in board after gate fetch")
+                })?;
+            }
+            Err(e) => {
+                crate::session::diag::log_diag(&format!(
+                    "view_story_timeline #{number} read-through fetch_gate_comments failed: {e}"
+                ));
+            }
+        }
+    }
     let hydrated = story.gate_comments.is_some();
     let gates = story.gate_comments.clone().unwrap_or_default();
     let events = build_timeline_from_board(&story, &gates);
