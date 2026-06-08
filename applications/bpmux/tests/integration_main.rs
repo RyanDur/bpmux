@@ -37,6 +37,8 @@ mod bpmux_arrangement_verbs_cli_parity_e2e;
 mod bpmux_board_read_cli_e2e;
 #[path = "integration_main_modules/bpmux_capture_cli_parity_e2e.rs"]
 mod bpmux_capture_cli_parity_e2e;
+#[path = "integration_main_modules/bpmux_ci_cli_parity_e2e.rs"]
+mod bpmux_ci_cli_parity_e2e;
 #[path = "integration_main_modules/bpmux_creation_verbs_cli_parity_e2e.rs"]
 mod bpmux_creation_verbs_cli_parity_e2e;
 #[path = "integration_main_modules/bpmux_epic_verbs_cli_parity_e2e.rs"]

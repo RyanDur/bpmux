@@ -404,6 +404,15 @@ pub fn run() -> anyhow::Result<()> {
         };
     }
 
+    if let Some(cli::Command::Ci { action }) = &cli.command {
+        return match action {
+            cli::CiAction::State => cli::run_ci_state(),
+            cli::CiAction::Log { run } => cli::run_ci_log(run),
+            cli::CiAction::Jobs { run } => cli::run_ci_jobs(run),
+            cli::CiAction::Rerun { run } => cli::run_ci_rerun(run),
+        };
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {

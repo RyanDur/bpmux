@@ -1,6 +1,6 @@
 use clap::Subcommand;
 
-use super::actions::{EpicAction, IterationAction, LessonAction, RoomAction};
+use super::actions::{CiAction, EpicAction, IterationAction, LessonAction, RoomAction};
 
 #[derive(Subcommand)]
 pub(crate) enum Command {
@@ -339,5 +339,12 @@ pub(crate) enum Command {
     Lesson {
         #[command(subcommand)]
         action: LessonAction,
+    },
+    #[command(
+        about = "CI operations off Claude's MCP — state/log/jobs/rerun via the same Bearer-auth /api/ci endpoints the bridge uses (no role-guard, mirroring the MCP ci tools)."
+    )]
+    Ci {
+        #[command(subcommand)]
+        action: CiAction,
     },
 }

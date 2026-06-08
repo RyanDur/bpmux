@@ -76,6 +76,27 @@ pub(crate) enum LessonAction {
 }
 
 #[derive(Subcommand)]
+pub(crate) enum CiAction {
+    #[command(about = "Show the current CI state")]
+    State,
+    #[command(about = "Show the CI log for a run")]
+    Log {
+        #[arg(long, help = "CI run id")]
+        run: String,
+    },
+    #[command(about = "Show per-job status for a run")]
+    Jobs {
+        #[arg(long, help = "CI run id")]
+        run: String,
+    },
+    #[command(about = "Rerun a CI run")]
+    Rerun {
+        #[arg(long, help = "CI run id")]
+        run: String,
+    },
+}
+
+#[derive(Subcommand)]
 pub(crate) enum RoomAction {
     Spawn {
         role: String,

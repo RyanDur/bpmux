@@ -2,11 +2,11 @@ mod actions;
 mod commands;
 mod read;
 mod write;
-pub(crate) use actions::{EpicAction, IterationAction, LessonAction, RoomAction};
+pub(crate) use actions::{CiAction, EpicAction, IterationAction, LessonAction, RoomAction};
 pub(crate) use commands::Command;
 pub(crate) use read::{
-    run_board, run_capture, run_lesson_list, run_lesson_list_peer, run_lesson_save, run_ready,
-    run_story,
+    run_board, run_capture, run_ci_jobs, run_ci_log, run_ci_rerun, run_ci_state, run_lesson_list,
+    run_lesson_list_peer, run_lesson_save, run_ready, run_story,
 };
 pub(crate) use write::{
     run_accept, run_close, run_comment, run_create, run_deliver, run_edit, run_epic_set_parent,
