@@ -211,3 +211,114 @@ async fn bpmux_start_then_deliver_drive_the_dev_lifecycle_off_mcp() {
         "the CLI prints the handler's own success message — the gated writes completed end-to-end; stdout: {out}"
     );
 }
+
+#[tokio::test]
+async fn bpmux_verdict_blocks_a_non_evidence_role_via_its_own_handler_guard() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(
+        &bpmux,
+        "pm",
+        &[
+            "verdict",
+            "1",
+            "--verdict",
+            "verified",
+            "--grounding",
+            "cli cite",
+        ],
+    )
+    .await;
+    assert!(
+        !out.status.success(),
+        "submit_verdict is dev/designer-only; pm must be refused"
+    );
+    let e = stderr(&out);
+    assert!(
+        e.contains("restricted to dev or designer") && e.contains("pm"),
+        "bpmux verdict hits the SAME submit_verdict handler-guard as MCP (its own dev/designer check, not a transition role-guard); pm is refused; stderr: {e}"
+    );
+}
+
+#[tokio::test]
+async fn bpmux_verdict_does_not_owner_bypass_because_it_is_not_a_transition_role_guard() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(
+        &bpmux,
+        "owner",
+        &[
+            "verdict",
+            "1",
+            "--verdict",
+            "verified",
+            "--grounding",
+            "cli cite",
+        ],
+    )
+    .await;
+    let e = stderr(&out);
+    assert!(
+        e.contains("restricted to dev or designer"),
+        "the owner is NOT an evidence role and is refused for verdict — the #1548 superset-bypass lives in enforce_role_allowed (transitions); submit_verdict uses its OWN guard, so the owner does not bypass it (identical to MCP). This is why per-verb grounding beats per-story prose; stderr: {e}"
+    );
+}
+
+#[tokio::test]
+async fn bpmux_verdict_succeeds_for_a_dev_evidence_role_off_mcp() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(
+        &bpmux,
+        "dev",
+        &[
+            "verdict",
+            "1",
+            "--verdict",
+            "verified",
+            "--grounding",
+            "applications/bpmux/src/cli/write.rs run_verdict",
+        ],
+    )
+    .await;
+    assert!(
+        out.status.success(),
+        "dev is an evidence role — its bpmux verdict records off MCP; stderr: {}",
+        stderr(&out)
+    );
+    let o = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        o.contains("verdict recorded") && o.contains("#1"),
+        "the CLI prints the handler's success message — the verdict write completed; stdout: {o}"
+    );
+}
+
+#[tokio::test]
+async fn bpmux_accept_blocks_a_non_acceptor_proving_it_routes_through_the_gated_handler() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(&bpmux, "dev", &["accept", "1"]).await;
+    assert!(
+        !out.status.success(),
+        "team-verifiable accept is pm-only; dev must be refused"
+    );
+    let e = stderr(&out);
+    assert!(
+        e.contains("workflow-role-not-allowed")
+            && e.contains("\"actor_role\":\"dev\"")
+            && e.contains("pm"),
+        "bpmux accept routes through the GATED handle_accept_story (the structured role-error proves it) — NOT the gate-skipping post_accept_story-direct REST (which has no role-guard); dev is refused; stderr: {e}"
+    );
+}
+
+#[tokio::test]
+async fn bpmux_accept_owner_bypasses_the_acceptor_role_guard_via_the_reused_superset() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(&bpmux, "owner", &["accept", "1"]).await;
+    assert!(
+        !stderr(&out).contains("workflow-role-not-allowed"),
+        "the owner bypasses the pm-only acceptor role-guard via the reused #1548 superset; any block is a downstream gate (evidence/CI); stderr: {}",
+        stderr(&out)
+    );
+}

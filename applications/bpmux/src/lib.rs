@@ -287,6 +287,25 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_reject(*number, reason);
     }
 
+    if let Some(cli::Command::Verdict {
+        number,
+        verdict,
+        grounding,
+    }) = &cli.command
+    {
+        return cli::run_verdict(*number, verdict, grounding);
+    }
+
+    if let Some(cli::Command::Accept {
+        number,
+        would_file_bug,
+        force,
+        bypass_reason,
+    }) = &cli.command
+    {
+        return cli::run_accept(*number, *would_file_bug, *force, bypass_reason);
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {

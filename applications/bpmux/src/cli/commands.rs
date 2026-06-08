@@ -190,6 +190,42 @@ pub(crate) enum Command {
         #[arg(long, help = "Rejection reason — recorded as a comment on the story")]
         reason: Option<String>,
     },
+    #[command(
+        about = "Cast a substrate-grounded verdict on a story off Claude's MCP — fires the same gated /api/rpc/submit_verdict handler the bridge uses (dev/designer-only guard; the owner is not an evidence role and is refused, identical to MCP)."
+    )]
+    Verdict {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "Verdict outcome, e.g. verified | rejected")]
+        verdict: String,
+        #[arg(
+            long,
+            help = "Required source-grounded cite for the verdict (non-empty)"
+        )]
+        grounding: String,
+    },
+    #[command(
+        about = "Accept a delivered story off Claude's MCP — fires the same gated /api/rpc/accept_story handler the bridge uses (role-guard by gate-class + evidence + CI + bug-question), NOT the gate-skipping Electron-accept REST. The owner bypasses the role-guard via the #1548 superset."
+    )]
+    Accept {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(
+            long,
+            help = "Bug-question: would you file a bug if you accepted this as-is? (blocks unless --force + --bypass-reason)"
+        )]
+        would_file_bug: bool,
+        #[arg(
+            long,
+            help = "Override the bug-question block (requires --bypass-reason)"
+        )]
+        force: bool,
+        #[arg(
+            long,
+            help = "Justification recorded in the gate-comment when --force overrides the bug-question"
+        )]
+        bypass_reason: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

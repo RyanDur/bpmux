@@ -105,3 +105,35 @@ pub(crate) fn run_reject(number: u64, reason: &Option<String>) -> anyhow::Result
     }
     dispatch_write("reject_story", args)
 }
+
+pub(crate) fn run_verdict(number: u64, verdict: &str, grounding: &str) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("story_number".to_string(), serde_json::json!(number));
+    args.insert("verdict".to_string(), serde_json::json!(verdict));
+    args.insert(
+        "substrate_grounding".to_string(),
+        serde_json::json!(grounding),
+    );
+    dispatch_write("submit_verdict", args)
+}
+
+pub(crate) fn run_accept(
+    number: u64,
+    would_file_bug: bool,
+    force: bool,
+    bypass_reason: &Option<String>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert(
+        "would_file_bug".to_string(),
+        serde_json::json!(would_file_bug),
+    );
+    if force {
+        args.insert("force".to_string(), serde_json::json!(true));
+    }
+    if let Some(r) = bypass_reason {
+        args.insert("bypass_reason".to_string(), serde_json::json!(r));
+    }
+    dispatch_write("accept_story", args)
+}
