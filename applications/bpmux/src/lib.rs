@@ -376,6 +376,11 @@ pub fn run() -> anyhow::Result<()> {
                 position_after,
             } => cli::run_iteration_create(theme, *position_after),
             cli::IterationAction::Designate { number } => cli::run_iteration_designate(*number),
+            cli::IterationAction::Add {
+                iteration,
+                story,
+                position,
+            } => cli::run_iteration_add(*iteration, *story, *position),
         };
     }
 

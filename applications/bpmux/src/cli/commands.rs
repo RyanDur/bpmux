@@ -363,6 +363,15 @@ pub(crate) enum IterationAction {
         #[arg(help = "Iteration number")]
         number: u64,
     },
+    #[command(about = "Add a member story to an iteration at a 1-indexed position")]
+    Add {
+        #[arg(long, help = "Iteration entity issue number")]
+        iteration: u64,
+        #[arg(long, help = "Member story issue number")]
+        story: u64,
+        #[arg(long, help = "1-indexed position within the iteration")]
+        position: u64,
+    },
 }
 
 #[derive(Subcommand)]
