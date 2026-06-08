@@ -55,6 +55,8 @@ mod bpmux_lesson_cli_parity_e2e;
 mod bpmux_pass_cli_substrate_parity_e2e;
 #[path = "integration_main_modules/bpmux_principle_cli_parity_e2e.rs"]
 mod bpmux_principle_cli_parity_e2e;
+#[path = "integration_main_modules/bpmux_reads_rpc_cli_parity_e2e.rs"]
+mod bpmux_reads_rpc_cli_parity_e2e;
 #[path = "integration_main_modules/bpmux_send_read_cli_e2e.rs"]
 mod bpmux_send_read_cli_e2e;
 #[path = "integration_main_modules/bpmux_send_speech_guard_parity_e2e.rs"]

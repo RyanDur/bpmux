@@ -18,9 +18,10 @@ pub(crate) use read::{
     run_lesson_list_peer, run_lesson_save, run_ready, run_story,
 };
 pub(crate) use write::{
-    run_accept, run_close, run_comment, run_create, run_deliver, run_edit, run_epic_set_parent,
-    run_epic_unset_parent, run_fail, run_iteration_add, run_iteration_close, run_iteration_create,
-    run_iteration_designate, run_label, run_move, run_pass, run_reject, run_start, run_verdict,
+    run_accept, run_backlog, run_close, run_comment, run_comments, run_create, run_deliver,
+    run_edit, run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_fail,
+    run_iteration_add, run_iteration_close, run_iteration_create, run_iteration_designate,
+    run_label, run_move, run_pass, run_reject, run_start, run_timeline, run_verdict, run_verdicts,
 };
 
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
@@ -282,7 +283,12 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
         Command::Epic { action } => Some(match action {
             EpicAction::SetParent { number, epic } => run_epic_set_parent(*number, *epic),
             EpicAction::UnsetParent { number } => run_epic_unset_parent(*number),
+            EpicAction::Children { epic } => run_epic_children(*epic),
         }),
+        Command::Backlog => Some(run_backlog()),
+        Command::Comments { story } => Some(run_comments(*story)),
+        Command::Timeline { story } => Some(run_timeline(*story)),
+        Command::Verdicts { story } => Some(run_verdicts(*story)),
         Command::Lesson { action } => Some(match action {
             LessonAction::Save {
                 topic,

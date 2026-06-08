@@ -375,4 +375,29 @@ pub(crate) enum Command {
         #[command(subcommand)]
         action: BookmarkAction,
     },
+    #[command(
+        about = "Show the backlog summary off Claude's MCP — fires the same gated /api/rpc/view_backlog read the bridge uses."
+    )]
+    Backlog,
+    #[command(
+        about = "Show a story's comments off Claude's MCP — fires the same gated /api/rpc/view_comments read the bridge uses."
+    )]
+    Comments {
+        #[arg(help = "Story number")]
+        story: u64,
+    },
+    #[command(
+        about = "Show a story's timeline off Claude's MCP — fires the same gated /api/rpc/view_story_timeline read the bridge uses."
+    )]
+    Timeline {
+        #[arg(help = "Story number")]
+        story: u64,
+    },
+    #[command(
+        about = "Show a story's verdicts off Claude's MCP — fires the same gated /api/rpc/view_verdicts read the bridge uses."
+    )]
+    Verdicts {
+        #[arg(help = "Story number")]
+        story: u64,
+    },
 }

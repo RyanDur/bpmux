@@ -273,3 +273,31 @@ pub(crate) fn run_iteration_close(iteration: u64) -> anyhow::Result<()> {
     args.insert("iteration_number".to_string(), serde_json::json!(iteration));
     dispatch_write("close_iteration", args)
 }
+
+pub(crate) fn run_epic_children(epic: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("epic_number".to_string(), serde_json::json!(epic));
+    dispatch_write("list_epic_children", args)
+}
+
+pub(crate) fn run_backlog() -> anyhow::Result<()> {
+    dispatch_write("view_backlog", serde_json::Map::new())
+}
+
+pub(crate) fn run_comments(number: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    dispatch_write("view_comments", args)
+}
+
+pub(crate) fn run_timeline(number: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    dispatch_write("view_story_timeline", args)
+}
+
+pub(crate) fn run_verdicts(story: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("story_number".to_string(), serde_json::json!(story));
+    dispatch_write("view_verdicts", args)
+}

@@ -14,6 +14,11 @@ pub(crate) enum EpicAction {
         #[arg(help = "Child story number")]
         number: u64,
     },
+    #[command(about = "List the child stories under an Epic")]
+    Children {
+        #[arg(help = "Epic issue number")]
+        epic: u64,
+    },
 }
 
 #[derive(Subcommand)]
