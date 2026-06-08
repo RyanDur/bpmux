@@ -9,14 +9,14 @@ use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
-async fn create_story_rejects_non_pm_role() {
+async fn create_story_rejects_non_pm_non_owner_role() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({
         "title": "dev-filed story",
         "user_job": "as dev, I want X",
         "observation_falsifier": "reject if X"
     });
-    for role in ["dev", "designer", "ryan", "unknown"].iter() {
+    for role in ["dev", "designer", "unknown"].iter() {
         let result = handle_create_story(args.as_object().unwrap(), role, &ws_tx, None).await;
         assert!(
             result.is_err(),
@@ -32,6 +32,14 @@ async fn create_story_rejects_non_pm_role() {
             "error should redirect to broadcast. role={role}, err={err}"
         );
     }
+    let owner_result = handle_create_story(args.as_object().unwrap(), "ryan", &ws_tx, None).await;
+    assert!(
+        !owner_result
+            .as_ref()
+            .err()
+            .is_some_and(|e| e.contains("pm-lane")),
+        "the owner bypasses create_story's custom pm-lane guard via the #1548 superset (the #1709 require_role extension does NOT reach create's custom check); got {owner_result:?}"
+    );
 }
 
 #[tokio::test]

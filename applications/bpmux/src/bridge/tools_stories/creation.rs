@@ -78,6 +78,12 @@ fn validate_actor_role_can_create(
     let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
     let dev = workflow.role_id_for_purpose("dev").unwrap_or("dev");
     let actor_role = role_from_name(agent_name);
+    if let Some(owner) = workflow.owner_role_id()
+        && !owner.is_empty()
+        && actor_role == owner
+    {
+        return Ok(());
+    }
     let is_chore = story_type == crate::board::domain::StoryType::Chore;
     if actor_role != pm && !(actor_role == dev && is_chore) {
         return Err(
