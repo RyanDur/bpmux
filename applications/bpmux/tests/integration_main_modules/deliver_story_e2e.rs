@@ -126,9 +126,8 @@ fn deliver_story_rejects_missing_verified_observation() {
 
 #[test]
 fn deliver_story_view_board_reflects_delivered_state_via_fixture_seed() {
-    use harness::mock_gh::{issue_json, mock_story_mutations};
-    use httpmock::{Method, MockServer};
-    use serde_json::Value;
+    use harness::mock_gh::{issue_json, mock_story_full};
+    use httpmock::MockServer;
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
@@ -137,13 +136,7 @@ fn deliver_story_view_board_reflects_delivered_state_via_fixture_seed() {
         env!("CARGO_MANIFEST_DIR")
     );
     let issue = issue_json(300, "Pre-seeded in-progress", &["in progress"], Some(&body));
-    server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![issue.clone()]).to_string());
-    });
-    mock_story_mutations(&server, 300, &issue);
+    mock_story_full(&server, 300, &issue);
 
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");

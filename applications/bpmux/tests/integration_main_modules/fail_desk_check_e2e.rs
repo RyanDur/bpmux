@@ -129,20 +129,13 @@ fn fail_desk_check_rejects_missing_reason() {
 
 #[test]
 fn fail_desk_check_view_board_reflects_in_progress_via_fixture_seed() {
-    use harness::mock_gh::{issue_json, mock_story_mutations};
-    use httpmock::{Method, MockServer};
-    use serde_json::Value;
+    use harness::mock_gh::{issue_json, mock_story_full};
+    use httpmock::MockServer;
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
     let issue = issue_json(400, "Pre-seeded delivered", &["delivered"], None);
-    server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![issue.clone()]).to_string());
-    });
-    mock_story_mutations(&server, 400, &issue);
+    mock_story_full(&server, 400, &issue);
 
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");

@@ -105,20 +105,13 @@ fn pass_desk_check_rejects_dev_caller_per_designer_lane_gate() {
 
 #[test]
 fn pass_desk_check_view_board_reflects_ready_for_accept_via_fixture_seed() {
-    use harness::mock_gh::{issue_json, mock_story_mutations};
-    use httpmock::{Method, MockServer};
-    use serde_json::Value;
+    use harness::mock_gh::{issue_json, mock_story_full};
+    use httpmock::MockServer;
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
     let issue = issue_json(500, "Pre-seeded delivered", &["delivered"], None);
-    server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![issue.clone()]).to_string());
-    });
-    mock_story_mutations(&server, 500, &issue);
+    mock_story_full(&server, 500, &issue);
 
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
@@ -156,8 +149,12 @@ fn pass_desk_check_view_board_reflects_ready_for_accept_via_fixture_seed() {
             .map(String::from)
             .unwrap_or_else(|| story.to_string());
         assert!(
+            story_text.contains("awaiting owner"),
+            "get_story reflects the awaiting-owner acceptor-label that pass_desk_check(acceptor=owner) applies — the ready-for-accept signal the test name promises; a faithful list-mock is required since a stale-list clobber would strip it; got:\n{story_text}"
+        );
+        assert!(
             story_text.contains("delivered"),
-            "get_story reflects delivered label (post-pass_desk_check StateTransition) for seeded story #500; got:\n{story_text}"
+            "pass_desk_check keeps the delivered label (reap_workflow_labels keeps LABEL_DELIVERED; state stays Delivered) for seeded story #500; got:\n{story_text}"
         );
     });
 }

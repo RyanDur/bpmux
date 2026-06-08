@@ -137,20 +137,13 @@ fn reject_story_rejects_unknown_role() {
 
 #[test]
 fn reject_story_view_board_reflects_ready_via_fixture_seed() {
-    use harness::mock_gh::{issue_json, mock_story_mutations};
-    use httpmock::{Method, MockServer};
-    use serde_json::Value;
+    use harness::mock_gh::{issue_json, mock_story_full};
+    use httpmock::MockServer;
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
     let issue = issue_json(700, "Pre-seeded delivered", &["delivered"], None);
-    server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![issue.clone()]).to_string());
-    });
-    mock_story_mutations(&server, 700, &issue);
+    mock_story_full(&server, 700, &issue);
 
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
