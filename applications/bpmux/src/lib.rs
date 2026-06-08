@@ -257,6 +257,10 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_board(state, *limit, *json, *full);
     }
 
+    if let Some(cli::Command::Capture { window }) = &cli.command {
+        return cli::run_capture(*window);
+    }
+
     if let Some(cli::Command::Pass { number, acceptor }) = &cli.command {
         return cli::run_pass(*number, acceptor);
     }

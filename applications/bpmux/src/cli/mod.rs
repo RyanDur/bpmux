@@ -304,6 +304,43 @@ pub(crate) fn run_board(
     Ok(())
 }
 
+pub(crate) fn run_capture(window: bool) -> anyhow::Result<()> {
+    if !window {
+        anyhow::bail!(
+            "bpmux capture requires --window — the Electron renderer window is the only live capture surface; the TUI screen-capture was retired in #1166"
+        );
+    }
+    let role = crate::resolve_role(&None);
+    let port = crate::resolve_bpmux_port();
+    let token_path = crate::session::auth_token::default_auth_token_path()
+        .ok_or_else(|| anyhow::anyhow!("cannot resolve auth-token path (HOME unset?)"))?;
+    let token = crate::session::auth_token::read(&token_path)
+        .map_err(|e| anyhow::anyhow!("read auth-token from {}: {e}", token_path.display()))?;
+    let url =
+        crate::transport::local_url::api_url(port, &format!("/api/electron-capture?role={role}"));
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let (status, body) = rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(15_000))
+            .build()?;
+        let response = client
+            .get(&url)
+            .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
+            .send()
+            .await?;
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        Ok::<_, reqwest::Error>((status, body))
+    })?;
+    if !status.is_success() {
+        anyhow::bail!("bpmux capture --window failed ({status}): {body}");
+    }
+    println!("{body}");
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -144,6 +144,16 @@ pub(crate) enum Command {
         full: bool,
     },
     #[command(
+        about = "Capture the bpmux Electron renderer window as a PNG off Claude's MCP — fires the same gated /api/electron-capture path the MCP capture_electron_window tool uses, returning the byte-same artifact (JSON `{path, window_id, captured_at, width, height}` under ~/.bpmux/captures). The Electron window is the only live capture surface; the TUI screen-capture was retired in #1166."
+    )]
+    Capture {
+        #[arg(
+            long,
+            help = "Capture the Electron renderer window (required — the live walk surface; the TUI screen-capture was retired in #1166)"
+        )]
+        window: bool,
+    },
+    #[command(
         about = "Pass a story's desk-check as this agent (ambient role via BPMUX_ROLE), off Claude's MCP — fires the same gated /api/rpc/pass_desk_check path the bridge uses, so the role-guard, verdict-evidence, and CI-green gates apply identically. --acceptor voices the acceptor-class at the gate."
     )]
     Pass {
