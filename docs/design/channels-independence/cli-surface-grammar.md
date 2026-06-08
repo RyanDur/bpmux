@@ -4,8 +4,12 @@
 > production; the MCP is retained as a DEVELOPMENT tool.** The CLI is the UNIVERSAL agent-surface — it
 > works in every environment (visible-in-stream, gate- + role-guard-complete, discoverable). The MCP
 > server/client stay UNTOUCHED, available in DEV only (restart-safety + dev/debug); production runs on
-> the CLI. Additive, never a cutover — MCP is never removed (the off-MCP removal, former slice-5, is
-> DROPPED). **Production-readiness implication (load-bearing):** in production the CLI is the ONLY
+> the CLI. Additive at runtime, never a runtime-cutover — MCP + Channels are never REMOVED from DEV
+> (restart-safety + dev/debug). The PRODUCTION BINARY excludes both via a dev-only cargo-feature (#1708,
+> gated on CLI-parity) + the Channels-push goes prod-off (#1658) — so prod ships CLI-only on bpmux's own
+> substrate while DEV keeps MCP + Channels (Ryan 2026-06-08: "channels + mcp work in development; keep
+> mcp out of prod"); the former off-MCP-removal slice-5 is dropped in favor of this build-time exclusion.
+> **Production-readiness implication (load-bearing):** in production the CLI is the ONLY
 > surface, so the re-homing must be COMPLETE + every gate/role-guard preserved before production relies
 > on it — a partial CLI would strand prod agents (no MCP fallback there). Epic-falsifier: "a full
 > `bpmux <verb>` CLI exists — visible, gated, role-guarded — usable as the agent-surface in dev AND
@@ -37,8 +41,18 @@ the example invocations below ARE the mockup (a CLI's "look" is its commands + o
    an MCP tool today re-homes to a **Bash PreToolUse hook** matching the `bpmux <verb>`. Migrate the
    gates, never drop them (map below).
 4. **Identity is ambient, not per-call.** `bpmux send` must know it's "designer" without a `--role`
-   on every call. Role+auth come from the spawn-injected config / env (`BPMUX_ROLE`, the server
-   endpoint) — the same identity the per-role `.mcp.json --name` carries today.
+   on every call. Role is ambient via the spawn-injected env (`BPMUX_ROLE`) — the same identity the
+   per-role `.mcp.json --name` carries today. AUTH (grounded in `transport/auth.rs` + landed
+   #1593/#1698/#1699-3a — a READ/WRITE split, not uniform): the server binds 127.0.0.1, so ALL endpoints
+   are loopback-only at the network layer. **READS** (`bpmux ready/story/board`, #1698) sit on the
+   PUBLIC router — no token; the loopback-bind is their only boundary. **WRITES** (`bpmux pass` →
+   `/api/rpc/*`, #1699-3a) go through the `gate` middleware (`auth.rs::is_authorized = bearer_ok &&
+   host_ok`): they require BOTH a valid Bearer token (the session auth-token, loaded by
+   `post_rpc_write` from `default_auth_token_path`) AND a loopback `Host` header — so on the write-path
+   Bearer is NOT redundant, it's a required second factor (defense-in-depth among local processes), and
+   the X-BPMUX-Agent header carries the ambient role. A non-loopback prod bind (remote-P2P) is a #1708
+   call: writes already reject non-loopback via `host_ok`, so remote-write would need the host-check
+   reworked + the spawn-token threaded to the remote caller; reads would need a token added.
 
 ---
 
@@ -83,7 +97,7 @@ Flat where it reads naturally; a sub-namespace only where a noun has many action
 | `submit_verdict` | `bpmux verdict <n> --verdict verified --grounding "..."` |
 | `accept_story` / `reject_story` | `bpmux accept <n>` / `bpmux reject <n> --reason "..."` |
 | `comment_on_story` | `bpmux comment <n> "..."` |
-| `move_story` / `reorder_story` / `label_story` | `bpmux move <n> ...` / `bpmux reorder <n> ...` / `bpmux label <n> ...` |
+| `move_story` (successor of RETIRED `reorder_story` #1403) / `label_story` | `bpmux move <n> [--position p]` / `bpmux label <n> ...` |
 | `close_story` | `bpmux close <n>` |
 
 ### Iteration / epic / canon (sub-namespaced)
@@ -189,10 +203,13 @@ re-homing test: every gate that fired on the MCP tool fires on the `bpmux` comma
   the mcp server and client alone… I don't know if you will survive bpmux restarts, and they may be
   useful for development purposes." So the CLI is ADDITIVE, never a replacement: `bpmux <verb>` becomes
   the PRIMARY visible agent-surface (the independence + visible-in-stream win), while the MCP
-  server/client STAY in place as the restart-survival fallback + a dev-utility. There is NO
-  removal/cutover slice. Epic-falsifier reframes: every tool is usable + visible + gated + role-guarded
-  via `bpmux <verb>` — NOT "MCP is gone." (Supersedes the earlier off-MCP-cutover framing — the
-  remove-superseded-code canon is OVERRIDDEN here by the owner's keep-MCP directive.)
+  server/client STAY in place IN DEV as the restart-survival fallback + a dev-utility. There is no
+  RUNTIME removal/cutover; the PRODUCTION BINARY excludes MCP + Channels via the #1708 dev-only
+  cargo-feature (gated on CLI-parity) + #1658 takes the Channels-push prod-off — a build-time exclusion
+  (prod = CLI-only on bpmux's own substrate), NOT a runtime-removal, and DEV keeps both (Ryan 2026-06-08).
+  Epic-falsifier reframes: every tool is usable + visible + gated + role-guarded via `bpmux <verb>` —
+  NOT "MCP is gone" at runtime in dev. (Refines the earlier keep-MCP framing: keep-MCP applies to DEV;
+  the prod-binary excludes it via the #1708 build-feature — build-time exclusion, not runtime-removal.)
 - **`set_status` — CONFIRMED hook-owned** (not an agent verb).
 - **Identity source — DEV-MECHANISM (not a designer taste-call):** the designer-requirement is ambient
   role (no `--role` per call); the HOW (env `BPMUX_ROLE` vs spawn-config + server-endpoint discovery)
@@ -224,14 +241,27 @@ The clig.dev / agent-friendly CLI canon (kb/cli-design.md · `cli-design` skill)
   options behind flags — never a wall of required flags.
 - **Actionable errors + next-step:** an error says what failed AND the fix; multi-step flows end by
   printing the exact next `bpmux` command to run.
-- **Role-guard survival (Ryan 2026-06-06 — load-bearing):** the per-verb ROLE-RESTRICTIONS the MCP
-  tools enforce today MUST carry onto the `bpmux <verb>` commands — `pass`/`fail`=DESIGNER-only ·
-  `create`/`edit`/`move`/`reorder`/`label`/`iteration *`=PM-only · `verdict`=DEV+DESIGNER ·
-  `set_status`=hooks-only (not an agent verb). The CLI conveys the caller's ambient role
-  (`BPMUX_ROLE` / spawn-config) to the server; the server rejects a role-mismatched verb with the
-  same `workflow-role-not-allowed` error → stderr + exit-`2`. This is SERVER-side enforcement (not a
-  PreToolUse hook) — distinct from the gate-survival map above, and equally non-droppable: moving off
-  MCP must NOT drop the role-gating.
+- **Role-guard survival + OWNER-superset-bypass (Ryan 2026-06-06 + #1548 — load-bearing):** the
+  per-verb ROLE-RESTRICTIONS the MCP tools enforce today MUST carry onto the `bpmux <verb>` commands —
+  SERVER-side, the same `workflow-role-not-allowed` error → stderr + exit-`2` (NOT a PreToolUse hook;
+  distinct from the gate-survival map above). The CLI conveys the caller's ambient role (`BPMUX_ROLE` /
+  spawn-config) to the server. **Per-verb role-map (grounded in the handlers, 2026-06-08):**
+  - `pass`/`fail` = DESIGNER-only · `verdict` = DEV+DESIGNER · `start`/`deliver` = DEV-only ·
+    `reject` = OWNER-only.
+  - `move` = PM-only (via `enforce_role_allowed`, `workflow/gate.rs` — owner BYPASSES). `reorder` is
+    RETIRED (#1403 → use `move --position`); it is NOT a verb.
+  - `label` = PM-only · `close` = PM-only · `create` = PM-lane (dev MAY author `[Chore]`-class,
+    `tools_stories/creation.rs`) · `edit` = PM (+ owner) · `iteration create|close` = PM-only ·
+    `comment` = ALL ROLES (no role-guard) · `set_status` = hooks-only (not an agent verb).
+  - **OWNER bypass (#1548): the owner is a superset of every role and bypasses ALL role-guards via ONE
+    check.** ⚠️ CURRENT-SUBSTRATE GAP the re-homing must close: only the transition-path (the workflow
+    verbs + `move`, via `enforce_role_allowed` `gate.rs:205`) implements the superset-bypass. The
+    inline-list helpers (`require_role`/`require_purpose`: `create`/`edit`/`close`/`label`/`comment`/
+    `iteration`) do NOT — and owner-inclusion among them is INCONSISTENT (`edit` lists `owner`;
+    `close`/`label`/`close_iteration` EXCLUDE the owner). The re-homing must UNIFY these onto the
+    superset-bypass (the #1548 canon: ONE check REPLACING per-verb allow-lists). **Preserving the gate
+    must NOT preserve the owner-EXCLUSION** — that exclusion is the #1548-class trap (the owner couldn't
+    promote a story at the original walk).
 - **Discoverability (Ryan 2026-06-06 — the load-bearing MCP→CLI gap):** MCP ADVERTISES its tools (the
   `tools/list` push — the agent sees every tool automatically, no a-priori knowledge needed). A shell
   CLI does NOT — `bpmux <verb>` is INVISIBLE until something names it; there is no push. So discovery
