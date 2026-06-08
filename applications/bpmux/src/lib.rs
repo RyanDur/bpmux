@@ -19,7 +19,7 @@ pub mod workflow;
 
 use std::sync::Arc;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
@@ -44,160 +44,7 @@ pub(crate) struct Cli {
     session_base: Option<String>,
 
     #[command(subcommand)]
-    command: Option<Command>,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    /// Run as a channel bridge for Claude Code integration
-    Bridge {
-        /// bpmux server port to connect to
-        #[arg(long, default_value_t = transport::local_url::DEFAULT_API_PORT)]
-        port: u16,
-
-        /// Base identity name for this bridge (a unique suffix is appended)
-        #[arg(long, default_value = "claude-code")]
-        name: String,
-
-        /// Use fake story tracker (no gh calls). Test infrastructure only.
-        #[arg(long)]
-        fake_tracker: bool,
-
-        /// Path to a JSON fixture file for list_stories. Test infrastructure only.
-        #[arg(long)]
-        board_fixture: Option<String>,
-    },
-    Server,
-    /// Print an agent's recent lessons to stdout for session-start auto-surface (#157)
-    Recall {
-        /// Role to surface lessons for (e.g. dev, pm, designer).
-        /// Defaults to BPMUX_ROLE env var if unset.
-        #[arg(long)]
-        role: Option<String>,
-    },
-    /// Emit a pre-commit-gates-passed activity broadcast (#424). Invoked
-    /// by the git post-commit hook with the SHA of the just-created
-    /// commit. Fires only on gate-passed state because the commit
-    /// wouldn't exist if pre-commit had failed.
-    EmitPrecommitPassed {
-        /// SHA of the commit whose pre-commit gates just passed.
-        #[arg(long)]
-        sha: String,
-        /// Role to attribute the broadcast to. Defaults to BPMUX_ROLE
-        /// env var; falls back to "dev".
-        #[arg(long)]
-        role: Option<String>,
-    },
-    Room {
-        #[command(subcommand)]
-        action: RoomAction,
-    },
-    #[command(
-        about = "Block until this agent's next team-event arrives, draining bpmux's own store off Claude's Channels (Stop-hook receive-loop). Prints the event JSON or a timed-out result to stdout; identity is ambient via BPMUX_ROLE."
-    )]
-    WaitForEvent {
-        #[arg(
-            long,
-            help = "Only return events newer than this cursor (from a prior call's cursor field); advances so the same event is not re-delivered"
-        )]
-        after: Option<String>,
-        #[arg(
-            long,
-            default_value_t = transport::rest::DEFAULT_WAIT_TIMEOUT_MS,
-            help = "Max milliseconds to block before returning a timed-out result"
-        )]
-        timeout_ms: u64,
-    },
-    #[command(
-        about = "Send a team message to the bpmux channel as this agent (ambient role via BPMUX_ROLE), off Claude's MCP. Renders the command + a one-line confirm in the terminal stream."
-    )]
-    Send {
-        #[arg(help = "The message text to send")]
-        text: String,
-        #[arg(
-            long,
-            value_delimiter = ',',
-            help = "Comma-separated recipient roles (privacy filter); omit for broadcast"
-        )]
-        to: Vec<String>,
-        #[arg(long, help = "Role this message is directed at (attention signal)")]
-        addressee: Option<String>,
-    },
-    #[command(
-        about = "Read recent team messages as a compact index (sender + one-line), off Claude's MCP. Use --full for the raw payload."
-    )]
-    Read {
-        #[arg(long, default_value_t = 20, help = "Max messages to show")]
-        limit: usize,
-        #[arg(
-            long,
-            help = "Emit the raw message payload instead of the compact index"
-        )]
-        full: bool,
-    },
-    #[command(
-        about = "List the bpmux verbs for discovery (MCP advertises tools for free; the CLI re-creates discovery here). --json emits a machine-readable verb-index an agent can parse."
-    )]
-    Help {
-        #[arg(long, help = "Emit the verb-index as JSON for agent parsing")]
-        json: bool,
-    },
-    #[command(
-        about = "List the ready queue as a compact scannable index (position, #number, title, acceptor) from bpmux's own store off Claude's MCP — never a stream-flooding dump. --json for machine-parse, --full for the raw board payload."
-    )]
-    Ready {
-        #[arg(long, help = "Emit the ready stories as JSON for agent parsing")]
-        json: bool,
-        #[arg(long, help = "Emit the raw board payload instead of the compact index")]
-        full: bool,
-    },
-    #[command(
-        about = "Show one story as a compact summary (number, title, state, acceptor) from bpmux's own store off Claude's MCP. --json for machine-parse, --full for the body."
-    )]
-    Story {
-        #[arg(help = "Story number")]
-        number: u64,
-        #[arg(long, help = "Emit the story as JSON for agent parsing")]
-        json: bool,
-        #[arg(long, help = "Emit the full story body instead of the compact summary")]
-        full: bool,
-    },
-    #[command(
-        about = "List the board as a compact scannable index (counts + one-line titles) from bpmux's own store off Claude's MCP — never a stream-flooding dump. --state filters, --limit caps, --json machine-parses, --full emits the raw payload."
-    )]
-    Board {
-        #[arg(
-            long,
-            help = "Filter to a workflow state (ready, in-progress, desk-check, delivered, acceptance, accepted)"
-        )]
-        state: Option<String>,
-        #[arg(long, help = "Cap the number of stories shown")]
-        limit: Option<usize>,
-        #[arg(long, help = "Emit the stories as JSON for agent parsing")]
-        json: bool,
-        #[arg(long, help = "Emit the raw board payload instead of the compact index")]
-        full: bool,
-    },
-}
-
-#[derive(Subcommand)]
-enum RoomAction {
-    Spawn {
-        role: String,
-        #[arg(long, default_value = "claude-code")]
-        agent: String,
-        #[arg(long)]
-        headless: bool,
-    },
-    List {},
-    Read {
-        role: String,
-        #[arg(long)]
-        lines: Option<usize>,
-    },
-    Kill {
-        role: String,
-    },
+    command: Option<cli::Command>,
 }
 
 fn run_room_spawn(role: &str, agent: &str, headless: bool) -> anyhow::Result<()> {
@@ -354,7 +201,7 @@ fn spawn_shutdown_signal_listener(ct: CancellationToken) {
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    if let Some(Command::Bridge {
+    if let Some(cli::Command::Bridge {
         port,
         name,
         fake_tracker,
@@ -364,19 +211,19 @@ pub fn run() -> anyhow::Result<()> {
         return bridge::run_bridge(port, &name, fake_tracker, board_fixture);
     }
 
-    if let Some(Command::Recall { role }) = &cli.command {
+    if let Some(cli::Command::Recall { role }) = &cli.command {
         return run_recall(&cli, role);
     }
 
-    if let Some(Command::EmitPrecommitPassed { sha, role }) = &cli.command {
+    if let Some(cli::Command::EmitPrecommitPassed { sha, role }) = &cli.command {
         return cli::run_emit_precommit_passed(sha, role);
     }
 
-    if let Some(Command::WaitForEvent { after, timeout_ms }) = &cli.command {
+    if let Some(cli::Command::WaitForEvent { after, timeout_ms }) = &cli.command {
         return cli::run_wait_for_event(after, *timeout_ms);
     }
 
-    if let Some(Command::Send {
+    if let Some(cli::Command::Send {
         text,
         to,
         addressee,
@@ -385,23 +232,23 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_send(text, to, addressee);
     }
 
-    if let Some(Command::Read { limit, full }) = &cli.command {
+    if let Some(cli::Command::Read { limit, full }) = &cli.command {
         return cli::run_read(*limit, *full);
     }
 
-    if let Some(Command::Help { json }) = &cli.command {
+    if let Some(cli::Command::Help { json }) = &cli.command {
         return cli::run_help(*json);
     }
 
-    if let Some(Command::Ready { json, full }) = &cli.command {
+    if let Some(cli::Command::Ready { json, full }) = &cli.command {
         return cli::run_ready(*json, *full);
     }
 
-    if let Some(Command::Story { number, json, full }) = &cli.command {
+    if let Some(cli::Command::Story { number, json, full }) = &cli.command {
         return cli::run_story(*number, *json, *full);
     }
 
-    if let Some(Command::Board {
+    if let Some(cli::Command::Board {
         state,
         limit,
         json,
@@ -411,16 +258,16 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_board(state, *limit, *json, *full);
     }
 
-    if let Some(Command::Room { action }) = &cli.command {
+    if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
-            RoomAction::Spawn {
+            cli::RoomAction::Spawn {
                 role,
                 agent,
                 headless,
             } => run_room_spawn(role, agent, *headless),
-            RoomAction::List {} => run_room_list(),
-            RoomAction::Read { role, lines } => run_room_read(role, *lines),
-            RoomAction::Kill { role } => run_room_kill(role),
+            cli::RoomAction::List {} => run_room_list(),
+            cli::RoomAction::Read { role, lines } => run_room_read(role, *lines),
+            cli::RoomAction::Kill { role } => run_room_kill(role),
         };
     }
 

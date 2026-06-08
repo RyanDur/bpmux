@@ -1,3 +1,6 @@
+mod commands;
+pub(crate) use commands::{Command, RoomAction};
+
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
 
 pub(crate) fn emit_recall_activity(role: &str, count: usize) {
