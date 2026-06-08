@@ -1,9 +1,15 @@
 mod actions;
 mod commands;
+mod principle;
 mod read;
 mod write;
-pub(crate) use actions::{CiAction, EpicAction, IterationAction, LessonAction, RoomAction};
+pub(crate) use actions::{
+    CiAction, EpicAction, IterationAction, LessonAction, PrincipleAction, RoomAction, ValueAction,
+};
 pub(crate) use commands::Command;
+pub(crate) use principle::{
+    run_identity_get, run_principle_add, run_principle_remove, run_principle_update, run_value_add,
+};
 pub(crate) use read::{
     run_board, run_capture, run_ci_jobs, run_ci_log, run_ci_rerun, run_ci_state, run_lesson_list,
     run_lesson_list_peer, run_lesson_save, run_ready, run_story,
@@ -289,6 +295,15 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
             CiAction::Jobs { run } => run_ci_jobs(run),
             CiAction::Rerun { run } => run_ci_rerun(run),
         }),
+        Command::Principle { action } => Some(match action {
+            PrincipleAction::Add { value, principle } => run_principle_add(value, principle),
+            PrincipleAction::Update { value, old, new } => run_principle_update(value, old, new),
+            PrincipleAction::Remove { value, principle } => run_principle_remove(value, principle),
+        }),
+        Command::Value { action } => Some(match action {
+            ValueAction::Add { name, description } => run_value_add(name, description),
+        }),
+        Command::Identity => Some(run_identity_get()),
         Command::Bridge { .. }
         | Command::Recall { .. }
         | Command::Room { .. }

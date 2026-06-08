@@ -1,6 +1,8 @@
 use clap::Subcommand;
 
-use super::actions::{CiAction, EpicAction, IterationAction, LessonAction, RoomAction};
+use super::actions::{
+    CiAction, EpicAction, IterationAction, LessonAction, PrincipleAction, RoomAction, ValueAction,
+};
 
 #[derive(Subcommand)]
 pub(crate) enum Command {
@@ -347,4 +349,22 @@ pub(crate) enum Command {
         #[command(subcommand)]
         action: CiAction,
     },
+    #[command(
+        about = "Principle operations off Claude's MCP — add/update/remove principles in this role's identity (filesystem-direct, ungated; same crate::session::identity store the bridge uses)."
+    )]
+    Principle {
+        #[command(subcommand)]
+        action: PrincipleAction,
+    },
+    #[command(
+        about = "Value operations off Claude's MCP — add an identity value to this role's identity (filesystem-direct, ungated)."
+    )]
+    Value {
+        #[command(subcommand)]
+        action: ValueAction,
+    },
+    #[command(
+        about = "Print this role's identity (values + principles) off Claude's MCP, from the same crate::session::identity store the bridge uses."
+    )]
+    Identity,
 }

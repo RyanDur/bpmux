@@ -97,6 +97,44 @@ pub(crate) enum CiAction {
 }
 
 #[derive(Subcommand)]
+pub(crate) enum PrincipleAction {
+    #[command(about = "Add a principle under a value")]
+    Add {
+        #[arg(long, help = "Value name the principle belongs to")]
+        value: String,
+        #[arg(long, help = "The principle text")]
+        principle: String,
+    },
+    #[command(about = "Update a principle's text under a value")]
+    Update {
+        #[arg(long, help = "Value name")]
+        value: String,
+        #[arg(long, help = "Existing principle text")]
+        old: String,
+        #[arg(long, help = "Replacement principle text")]
+        new: String,
+    },
+    #[command(about = "Remove a principle from a value")]
+    Remove {
+        #[arg(long, help = "Value name")]
+        value: String,
+        #[arg(long, help = "The principle text to remove")]
+        principle: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum ValueAction {
+    #[command(about = "Add an identity value")]
+    Add {
+        #[arg(long, help = "Value name")]
+        name: String,
+        #[arg(long, help = "Value description")]
+        description: String,
+    },
+}
+
+#[derive(Subcommand)]
 pub(crate) enum RoomAction {
     Spawn {
         role: String,
