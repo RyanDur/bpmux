@@ -246,8 +246,13 @@ The clig.dev / agent-friendly CLI canon (kb/cli-design.md · `cli-design` skill)
   SERVER-side, the same `workflow-role-not-allowed` error → stderr + exit-`2` (NOT a PreToolUse hook;
   distinct from the gate-survival map above). The CLI conveys the caller's ambient role (`BPMUX_ROLE` /
   spawn-config) to the server. **Per-verb role-map (grounded in the handlers, 2026-06-08):**
-  - `pass`/`fail` = DESIGNER-only · `verdict` = DEV+DESIGNER · `start`/`deliver` = DEV-only ·
-    `reject` = OWNER-only.
+  - **Transition-verbs — role-map SOURCE = `bundled_default.rs` `actor_roles`, NOT the `require_role`
+    unit-tests** (those pass a hardcoded list as an ARG, proving allowed≠only): `pass` = DESIGNER-only
+    (`bundled_default.rs:96`) · `fail` = PM+DESIGNER (`bundled_default.rs:114` — either can send a
+    desk-check back; NOT designer-only, dev-caught 2026-06-08) · `start`/`deliver` = DEV-only ·
+    `reject` = OWNER-only. `verdict` = DEV+DESIGNER via a HANDLER-guard (NOT a transition role-guard)
+    → the owner does NOT bypass `verdict` (it's evidence-casting, not a gated transition; dev-pinned in
+    the #1711 e2e).
   - `move` = PM-only (via `enforce_role_allowed`, `workflow/gate.rs` — owner BYPASSES). `reorder` is
     RETIRED (#1403 → use `move --position`); it is NOT a verb.
   - `label` = PM-only · `close` = PM-only · `create` = PM-lane (dev MAY author `[Chore]`-class,
