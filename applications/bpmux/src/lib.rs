@@ -5,6 +5,7 @@ pub mod bridge;
 pub mod ci;
 #[cfg(test)]
 mod ci_tests;
+mod cli;
 pub mod github;
 pub mod mcp;
 pub mod orchestrator;
@@ -29,7 +30,7 @@ use tokio_util::sync::CancellationToken;
     about = "P2P group chat for AI pair programming",
     disable_help_subcommand = true
 )]
-struct Cli {
+pub(crate) struct Cli {
     /// Your name in the session
     #[arg(long, default_value = "dev")]
     name: String,
@@ -230,179 +231,23 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
     };
     let lessons = session::recall::surface_for_role(&session_dir, &role);
     print!("{}", session::recall::format_for_surface(&role, &lessons));
-    emit_recall_activity(&role, lessons.len());
+    cli::emit_recall_activity(&role, lessons.len());
     Ok(())
 }
 
-fn resolve_bpmux_port() -> u16 {
+pub(crate) fn resolve_bpmux_port() -> u16 {
     std::env::var("BPMUX_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(transport::local_url::DEFAULT_API_PORT)
 }
 
-fn emit_recall_activity(role: &str, count: usize) {
-    let body = session::recall::build_recall_activity_payload(role, count);
-    post_activity(&body);
-}
-
-fn resolve_role(role_arg: &Option<String>) -> String {
+pub(crate) fn resolve_role(role_arg: &Option<String>) -> String {
     role_arg
         .clone()
         .or_else(|| std::env::var("BPMUX_ROLE").ok())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "dev".to_string())
-}
-
-const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
-
-fn run_wait_for_event(after: &Option<String>, timeout_ms: u64) -> anyhow::Result<()> {
-    let role = resolve_role(&None);
-    let port = resolve_bpmux_port();
-    let mut url = transport::local_url::api_url(port, "/api/wait-for-event");
-    url.push_str(&format!("?as={role}&timeout_ms={timeout_ms}"));
-    if let Some(cursor) = after {
-        url.push_str(&format!("&after={cursor}"));
-    }
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-    let body = rt.block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_millis(
-                timeout_ms + WAIT_CLIENT_GRACE_MS,
-            ))
-            .build()?;
-        client.get(&url).send().await?.text().await
-    })?;
-    println!("{body}");
-    Ok(())
-}
-
-fn run_send(text: &str, to: &[String], addressee: &Option<String>) -> anyhow::Result<()> {
-    let role = resolve_role(&None);
-    let mut payload = serde_json::Map::new();
-    payload.insert(
-        "from".to_string(),
-        serde_json::json!(format!("{role}:claude-code")),
-    );
-    payload.insert("text".to_string(), serde_json::json!(text));
-    if !to.is_empty() {
-        payload.insert("to".to_string(), serde_json::json!(to));
-    }
-    if let Some(target) = addressee {
-        payload.insert("addressee".to_string(), serde_json::json!(target));
-    }
-    let body = serde_json::Value::Object(payload);
-    let port = resolve_bpmux_port();
-    let url = transport::local_url::api_url(port, "/api/messages");
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-    let (status, reason) = rt.block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_millis(5_000))
-            .build()?;
-        let response = client.post(&url).json(&body).send().await?;
-        let status = response.status();
-        let reason = response.text().await.unwrap_or_default();
-        Ok::<_, reqwest::Error>((status, reason))
-    })?;
-    if !status.is_success() {
-        anyhow::bail!("send rejected ({status}): {reason}");
-    }
-    let destination = if to.is_empty() {
-        "broadcast".to_string()
-    } else {
-        format!("[{}]", to.join(", "))
-    };
-    println!("✓ sent → {destination}");
-    Ok(())
-}
-
-fn run_read(limit: usize, full: bool) -> anyhow::Result<()> {
-    let role = resolve_role(&None);
-    let port = resolve_bpmux_port();
-    let mut url = transport::local_url::api_url(port, "/api/messages");
-    url.push_str(&format!("?limit={limit}&chat_only=true&as={role}"));
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-    let body = rt.block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_millis(5_000))
-            .build()?;
-        client.get(&url).send().await?.text().await
-    })?;
-    if full {
-        println!("{body}");
-        return Ok(());
-    }
-    let messages: Vec<serde_json::Value> = serde_json::from_str(&body).unwrap_or_default();
-    for message in messages.iter().rev() {
-        let sender = message["from"]
-            .as_str()
-            .unwrap_or("?")
-            .split(':')
-            .next()
-            .unwrap_or("?");
-        let text = message["text"].as_str().unwrap_or("");
-        println!("{sender}: {text}");
-    }
-    Ok(())
-}
-
-fn run_help(json: bool) -> anyhow::Result<()> {
-    let command = <Cli as clap::CommandFactory>::command();
-    if json {
-        let verbs: Vec<serde_json::Value> = command
-            .get_subcommands()
-            .map(|sub| {
-                serde_json::json!({
-                    "verb": sub.get_name(),
-                    "about": sub.get_about().map(|about| about.to_string()).unwrap_or_default(),
-                })
-            })
-            .collect();
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&serde_json::json!({ "verbs": verbs }))?
-        );
-    } else {
-        for sub in command.get_subcommands() {
-            let about = sub
-                .get_about()
-                .map(|about| about.to_string())
-                .unwrap_or_default();
-            println!("{:20} {about}", sub.get_name());
-        }
-    }
-    Ok(())
-}
-
-fn run_emit_precommit_passed(sha: &str, role_arg: &Option<String>) -> anyhow::Result<()> {
-    let role = resolve_role(role_arg);
-    let body = session::precommit::build_precommit_activity_payload(&role, sha);
-    post_activity(&body);
-    Ok(())
-}
-
-fn post_activity(body: &serde_json::Value) {
-    let port = resolve_bpmux_port();
-    let url = transport::local_url::api_url(port, "/api/messages");
-    let Ok(rt) = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-    else {
-        return;
-    };
-    rt.block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_millis(500))
-            .build();
-        let Ok(client) = client else { return };
-        let _ = client.post(&url).json(&body).send().await;
-    });
 }
 
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
@@ -488,11 +333,11 @@ pub fn run() -> anyhow::Result<()> {
     }
 
     if let Some(Command::EmitPrecommitPassed { sha, role }) = &cli.command {
-        return run_emit_precommit_passed(sha, role);
+        return cli::run_emit_precommit_passed(sha, role);
     }
 
     if let Some(Command::WaitForEvent { after, timeout_ms }) = &cli.command {
-        return run_wait_for_event(after, *timeout_ms);
+        return cli::run_wait_for_event(after, *timeout_ms);
     }
 
     if let Some(Command::Send {
@@ -501,15 +346,15 @@ pub fn run() -> anyhow::Result<()> {
         addressee,
     }) = &cli.command
     {
-        return run_send(text, to, addressee);
+        return cli::run_send(text, to, addressee);
     }
 
     if let Some(Command::Read { limit, full }) = &cli.command {
-        return run_read(*limit, *full);
+        return cli::run_read(*limit, *full);
     }
 
     if let Some(Command::Help { json }) = &cli.command {
-        return run_help(*json);
+        return cli::run_help(*json);
     }
 
     if let Some(Command::Room { action }) = &cli.command {
