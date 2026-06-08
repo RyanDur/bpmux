@@ -256,17 +256,22 @@ The clig.dev / agent-friendly CLI canon (kb/cli-design.md · `cli-design` skill)
   - `move` = PM-only (via `enforce_role_allowed`, `workflow/gate.rs` — owner BYPASSES). `reorder` is
     RETIRED (#1403 → use `move --position`); it is NOT a verb.
   - `label` = PM-only · `close` = PM-only · `create` = PM-lane (dev MAY author `[Chore]`-class,
-    `tools_stories/creation.rs`) · `edit` = PM (+ owner) · `iteration create|close` = PM-only ·
-    `comment` = ALL ROLES (no role-guard) · `set_status` = hooks-only (not an agent verb).
+    `tools_stories/creation.rs`) · `edit` = PM · `iteration create|close` = PM-only ·
+    `comment` = ALL ROLES (no role-guard) · `set_status` = hooks-only (not an agent verb). These
+    inline-list verbs (label/close/edit/iteration-ops + set/unset-epic/designate) all owner-BYPASS via
+    the #1709 `require_role` extension (below).
   - **OWNER bypass (#1548): the owner is a superset of every role and bypasses ALL role-guards via ONE
-    check.** ⚠️ CURRENT-SUBSTRATE GAP the re-homing must close: only the transition-path (the workflow
-    verbs + `move`, via `enforce_role_allowed` `gate.rs:205`) implements the superset-bypass. The
-    inline-list helpers (`require_role`/`require_purpose`: `create`/`edit`/`close`/`label`/`comment`/
-    `iteration`) do NOT — and owner-inclusion among them is INCONSISTENT (`edit` lists `owner`;
-    `close`/`label`/`close_iteration` EXCLUDE the owner). The re-homing must UNIFY these onto the
-    superset-bypass (the #1548 canon: ONE check REPLACING per-verb allow-lists). **Preserving the gate
-    must NOT preserve the owner-EXCLUSION** — that exclusion is the #1548-class trap (the owner couldn't
-    promote a story at the original walk).
+    check per mechanism — now COMPLETE across both as of #1709.** The transition-path (workflow verbs +
+    `move`, via `enforce_role_allowed` `gate.rs`) got it in `b57663c4`; the inline-list family
+    (`require_role`/`require_purpose`: label/close/edit/iteration-ops/set-epic/designate) got it in
+    `ab5eaa4a` — the owner-bypass added ONCE to `require_role` (reuse `owner_role_id` + empty-guard),
+    `require_purpose` inheriting via delegation, and `edit`'s inline `[pm,owner]` stripped to `[pm]`
+    (now consistent, bypasses via the extension — not an owner-regression). `verdict` deliberately does
+    NOT bypass (its own dev/designer handler-guard, not require_role — the owner isn't an evidence role).
+    REMAINING owner-work: `create_story` uses CUSTOM role-logic (NOT require_role), so the extension
+    doesn't reach it — its owner-handling is #1710's scope. (Historical: pre-#1709 the inline-list
+    family inconsistently included the owner — `edit` inline-listed it; `label`/`close`/`close_iteration`
+    EXCLUDED it — the #1548-class trap that #1709 closed.)
 - **Discoverability (Ryan 2026-06-06 — the load-bearing MCP→CLI gap):** MCP ADVERTISES its tools (the
   `tools/list` push — the agent sees every tool automatically, no a-priori knowledge needed). A shell
   CLI does NOT — `bpmux <verb>` is INVISIBLE until something names it; there is no push. So discovery
