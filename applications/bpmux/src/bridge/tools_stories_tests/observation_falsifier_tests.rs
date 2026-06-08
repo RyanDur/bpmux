@@ -360,12 +360,24 @@ async fn label_story_still_pm_gated_with_operation_param() {
         "label": "ready",
         "operation": "remove"
     });
-    for caller in ["dev:claude-code", "designer:claude-code", "ryan:human"] {
+    for caller in ["dev:claude-code", "designer:claude-code"] {
         let result = handle_label_story(args.as_object().unwrap(), caller, &ws_tx, None).await;
-        assert!(result.is_err(), "{caller} must be rejected by PM-only gate");
+        assert!(
+            result.is_err(),
+            "{caller} (non-pm, non-owner) must be rejected by PM-only gate"
+        );
         assert!(
             result.unwrap_err().contains("restricted to pm"),
             "{caller} rejection should cite role restriction"
         );
     }
+    let owner_result =
+        handle_label_story(args.as_object().unwrap(), "ryan:human", &ws_tx, None).await;
+    assert!(
+        !owner_result
+            .as_ref()
+            .err()
+            .is_some_and(|e| e.contains("restricted to pm")),
+        "the owner bypasses the pm-only label gate via the #1548 superset (any block is downstream, not the role-guard); got {owner_result:?}"
+    );
 }

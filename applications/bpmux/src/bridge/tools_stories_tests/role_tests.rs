@@ -24,6 +24,13 @@ fn require_role_allows_matching_role() {
 }
 
 #[test]
+fn require_role_owner_superset_bypasses_any_gate_yet_non_owner_stays_gated() {
+    assert!(require_role("ryan:human", &["pm"], "label").is_ok());
+    assert!(require_role("ryan:human", &["designer"], "fail desk-check").is_ok());
+    assert!(require_role("dev:claude-code", &["pm"], "label").is_err());
+}
+
+#[test]
 fn require_role_rejects_non_matching_role() {
     let result = require_role("designer:claude-code", &["dev"], "start");
     assert!(result.is_err());
@@ -76,10 +83,8 @@ fn require_role_rejects_designer_from_close_iteration() {
 }
 
 #[test]
-fn require_role_rejects_ryan_from_close_iteration() {
-    let result = require_role("ryan:human", &["pm"], "close iteration");
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("restricted to pm"));
+fn require_role_lets_owner_bypass_close_iteration_via_the_1548_superset() {
+    assert!(require_role("ryan:human", &["pm"], "close iteration").is_ok());
 }
 
 #[test]
@@ -122,15 +127,19 @@ fn build_board_invalidate_signal_is_the_structured_board_invalidate_variant() {
 }
 
 #[test]
-fn close_story_is_pm_only_gate() {
-    for caller in ["dev:claude-code", "designer:claude-code", "ryan:human"] {
+fn close_story_is_pm_only_gate_for_non_owner_roles() {
+    for caller in ["dev:claude-code", "designer:claude-code"] {
         let result = require_role(caller, &["pm"], "close");
         assert!(
             result.is_err(),
-            "{caller} should not pass close_story permission gate"
+            "{caller} (non-pm, non-owner) should not pass close_story permission gate"
         );
         assert!(result.unwrap_err().contains("restricted to pm"));
     }
+    assert!(
+        require_role("ryan:human", &["pm"], "close").is_ok(),
+        "the owner bypasses the pm-only close gate via the #1548 superset"
+    );
 }
 
 #[test]
@@ -182,8 +191,8 @@ async fn comment_on_story_rejects_when_refresh_absent() {
 }
 
 #[test]
-fn require_role_rejects_non_designer_from_desk_check_operations() {
-    for caller in ["dev:claude-code", "pm:claude-code", "ryan:human"] {
+fn require_role_rejects_non_designer_non_owner_from_desk_check_operations() {
+    for caller in ["dev:claude-code", "pm:claude-code"] {
         let result = require_role(caller, &["designer"], "pass desk-check");
         assert!(
             result.is_err(),
@@ -191,6 +200,10 @@ fn require_role_rejects_non_designer_from_desk_check_operations() {
         );
         assert!(result.unwrap_err().contains("restricted to designer"));
     }
+    assert!(
+        require_role("ryan:human", &["designer"], "pass desk-check").is_ok(),
+        "the owner bypasses the designer-only require_role gate via the #1548 superset"
+    );
 }
 
 fn reorder_args(

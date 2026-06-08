@@ -90,6 +90,12 @@ pub(crate) fn require_role(
     operation: &str,
 ) -> Result<(), String> {
     let role = role_from_name(agent_name);
+    if let Some(owner) = crate::workflow::current_workflow().owner_role_id()
+        && !owner.is_empty()
+        && role == owner
+    {
+        return Ok(());
+    }
     if allowed.contains(&role) {
         Ok(())
     } else {

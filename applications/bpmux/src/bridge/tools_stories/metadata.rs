@@ -319,7 +319,7 @@ pub(crate) async fn handle_edit_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm", "owner"], "edit story")?;
+    require_purpose(agent_name, &["pm"], "edit story")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
