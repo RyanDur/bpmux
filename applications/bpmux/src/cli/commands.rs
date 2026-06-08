@@ -152,6 +152,44 @@ pub(crate) enum Command {
         #[arg(long, help = "Acceptor class voiced at the gate: team | owner | dev")]
         acceptor: String,
     },
+    #[command(
+        about = "Start (pick up) a ready story as this agent off Claude's MCP — fires the same gated /api/rpc/start_story path the bridge uses (dev-only pickup role-guard; owner bypasses via the #1548 superset)."
+    )]
+    Start {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "Your restatement of the user-job at pickup")]
+        paraphrase: String,
+        #[arg(long, help = "Your reframing of the observation-falsifier")]
+        falsifier: String,
+    },
+    #[command(
+        about = "Mark a story delivered as this agent off Claude's MCP — fires the same gated /api/rpc/deliver_story path the bridge uses (dev-only; owner bypasses)."
+    )]
+    Deliver {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "What you drove end-to-end (the desk-check diff-point)")]
+        observation: String,
+    },
+    #[command(
+        about = "Fail a story's desk-check as this agent off Claude's MCP — fires the same gated /api/rpc/fail_desk_check path the bridge uses (pm/designer role-guard; owner bypasses)."
+    )]
+    Fail {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "What failed — surfaced to dev as the workflow signal")]
+        reason: String,
+    },
+    #[command(
+        about = "Reject a delivered story as this agent off Claude's MCP — fires the same gated /api/rpc/reject_story path the bridge uses (pm role-guard; owner bypasses)."
+    )]
+    Reject {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "Rejection reason — recorded as a comment on the story")]
+        reason: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

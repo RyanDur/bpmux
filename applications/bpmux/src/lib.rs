@@ -262,6 +262,31 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_pass(*number, acceptor);
     }
 
+    if let Some(cli::Command::Start {
+        number,
+        paraphrase,
+        falsifier,
+    }) = &cli.command
+    {
+        return cli::run_start(*number, paraphrase, falsifier);
+    }
+
+    if let Some(cli::Command::Deliver {
+        number,
+        observation,
+    }) = &cli.command
+    {
+        return cli::run_deliver(*number, observation);
+    }
+
+    if let Some(cli::Command::Fail { number, reason }) = &cli.command {
+        return cli::run_fail(*number, reason);
+    }
+
+    if let Some(cli::Command::Reject { number, reason }) = &cli.command {
+        return cli::run_reject(*number, reason);
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {

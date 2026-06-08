@@ -48,13 +48,60 @@ pub(crate) fn post_rpc_write(
     }
 }
 
-pub(crate) fn run_pass(number: u64, acceptor: &str) -> anyhow::Result<()> {
+fn dispatch_write(
+    tool: &str,
+    args: serde_json::Map<String, serde_json::Value>,
+) -> anyhow::Result<()> {
     let role = crate::resolve_role(&None);
+    let message = post_rpc_write(tool, &role, &serde_json::Value::Object(args))?;
+    println!("{message}");
+    Ok(())
+}
+
+pub(crate) fn run_pass(number: u64, acceptor: &str) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(number));
     args.insert("acceptor".to_string(), serde_json::json!(acceptor));
     args.insert("would_file_bug".to_string(), serde_json::json!(false));
-    let message = post_rpc_write("pass_desk_check", &role, &serde_json::Value::Object(args))?;
-    println!("{message}");
-    Ok(())
+    dispatch_write("pass_desk_check", args)
+}
+
+pub(crate) fn run_start(number: u64, paraphrase: &str, falsifier: &str) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert(
+        "pickup_paraphrase".to_string(),
+        serde_json::json!(paraphrase),
+    );
+    args.insert(
+        "falsifier_reframing".to_string(),
+        serde_json::json!(falsifier),
+    );
+    dispatch_write("start_story", args)
+}
+
+pub(crate) fn run_deliver(number: u64, observation: &str) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert(
+        "verified_observation".to_string(),
+        serde_json::json!(observation),
+    );
+    dispatch_write("deliver_story", args)
+}
+
+pub(crate) fn run_fail(number: u64, reason: &str) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("reason".to_string(), serde_json::json!(reason));
+    dispatch_write("fail_desk_check", args)
+}
+
+pub(crate) fn run_reject(number: u64, reason: &Option<String>) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    if let Some(r) = reason {
+        args.insert("reason".to_string(), serde_json::json!(r));
+    }
+    dispatch_write("reject_story", args)
 }
