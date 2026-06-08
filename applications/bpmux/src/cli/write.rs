@@ -246,3 +246,16 @@ pub(crate) fn run_iteration_designate(number: u64) -> anyhow::Result<()> {
     args.insert("iteration_number".to_string(), serde_json::json!(number));
     dispatch_write("designate_current_iteration", args)
 }
+
+pub(crate) fn run_epic_set_parent(number: u64, epic: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("epic_number".to_string(), serde_json::json!(epic));
+    dispatch_write("set_parent_epic", args)
+}
+
+pub(crate) fn run_epic_unset_parent(number: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    dispatch_write("unset_parent_epic", args)
+}

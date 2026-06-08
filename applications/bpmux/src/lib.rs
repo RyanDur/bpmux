@@ -379,6 +379,13 @@ pub fn run() -> anyhow::Result<()> {
         };
     }
 
+    if let Some(cli::Command::Epic { action }) = &cli.command {
+        return match action {
+            cli::EpicAction::SetParent { number, epic } => cli::run_epic_set_parent(*number, *epic),
+            cli::EpicAction::UnsetParent { number } => cli::run_epic_unset_parent(*number),
+        };
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {

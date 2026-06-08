@@ -324,6 +324,29 @@ pub(crate) enum Command {
         #[command(subcommand)]
         action: IterationAction,
     },
+    #[command(
+        about = "Epic operations off Claude's MCP — group/ungroup a child story under an Epic via the same gated /api/rpc/{set_parent_epic,unset_parent_epic} the bridge uses (PM-only via require_role; owner bypasses via the #1709 superset)."
+    )]
+    Epic {
+        #[command(subcommand)]
+        action: EpicAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum EpicAction {
+    #[command(about = "Group a child story under an Epic")]
+    SetParent {
+        #[arg(help = "Child story number")]
+        number: u64,
+        #[arg(long, help = "Epic issue number that owns the child")]
+        epic: u64,
+    },
+    #[command(about = "Ungroup a child story from its current Epic")]
+    UnsetParent {
+        #[arg(help = "Child story number")]
+        number: u64,
+    },
 }
 
 #[derive(Subcommand)]

@@ -1,12 +1,12 @@
 mod commands;
 mod read;
 mod write;
-pub(crate) use commands::{Command, IterationAction, RoomAction};
+pub(crate) use commands::{Command, EpicAction, IterationAction, RoomAction};
 pub(crate) use read::{run_board, run_capture, run_ready, run_story};
 pub(crate) use write::{
-    run_accept, run_close, run_comment, run_create, run_deliver, run_edit, run_fail,
-    run_iteration_create, run_iteration_designate, run_label, run_move, run_pass, run_reject,
-    run_start, run_verdict,
+    run_accept, run_close, run_comment, run_create, run_deliver, run_edit, run_epic_set_parent,
+    run_epic_unset_parent, run_fail, run_iteration_create, run_iteration_designate, run_label,
+    run_move, run_pass, run_reject, run_start, run_verdict,
 };
 
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
