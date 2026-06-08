@@ -34,7 +34,6 @@ pub async fn run_server(
     session: Arc<session::Session>,
     port: u16,
     ct: CancellationToken,
-    screen_capture: Arc<std::sync::Mutex<String>>,
 ) -> anyhow::Result<()> {
     let token_path = session::auth_token::default_auth_token_path()
         .ok_or_else(|| anyhow::anyhow!("cannot locate ~/.bpmux auth token path"))?;
@@ -352,10 +351,6 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_peer_lessons),
         )
         .route(
-            "/api/screen",
-            axum::routing::get(transport::rest::get_screen),
-        )
-        .route(
             "/api/classifier-misfire",
             axum::routing::post(transport::rest::post_classifier_misfire),
         )
@@ -363,7 +358,6 @@ pub async fn run_server(
         .merge(test_routes)
         .merge(test_seed_routes)
         .with_state(session)
-        .layer(axum::Extension(screen_capture))
         .layer(axum::Extension(tracker))
         .layer(axum::Extension(ci_state_store))
         .layer(axum::Extension(ci_log_store))

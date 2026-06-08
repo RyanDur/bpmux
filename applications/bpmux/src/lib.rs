@@ -147,7 +147,6 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let port = cli.mcp_port;
     let ct = CancellationToken::new();
     let restart_signal = transport::self_update::RestartSignal::new();
-    let screen_capture = Arc::new(std::sync::Mutex::new(String::new()));
     let rt = tokio::runtime::Runtime::new()?;
     let server_result = rt.block_on({
         let ct = ct.clone();
@@ -156,7 +155,7 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
             session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
             transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
             spawn_shutdown_signal_listener(ct.clone());
-            server::run_server(session, port, ct, screen_capture)
+            server::run_server(session, port, ct)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))
         }

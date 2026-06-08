@@ -28,26 +28,8 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::list_peer_lessons_tool(
             "Read lessons from a connected peer. Returns the peer's lesson index (read-only). Use this to see what another machine has learned. Call save_lesson to internalize anything valuable.",
         ),
-        crate::mcp::tools::capture_screen_tool(
-            "Capture the current TUI screen as text. Returns the 80x24 grid exactly as the user sees it. Use for visual verification and desk checking.",
-        ),
         crate::mcp::tools::capture_electron_window_tool(
             "Capture the bpmux Electron renderer window as a PNG (#1183). No args. Returns JSON `{ path, window_id, captured_at, width, height }` where `path` is a file under `~/.bpmux/captures/<timestamp>-<role>.png` that the agent can Read. macOS-only in v1: relies on system `screencapture` + `swift` (Xcode CLT). First-time use prompts macOS Screen Recording permission for the terminal/process running bpmux; until granted, the tool returns `{kind:'permission_denied', detail:...}` with the System Settings path. Other named error shapes: `electron_not_running` (no Electron process visible), `no_window` (Electron running but no bpmux window onscreen), `window_minimized` (window has 0x0 bounds). Captures are namespaced per role; the directory is auto-cleaned after 24h. Use this when you need to see what Ryan sees in the Electron app — replaces the Ryan-drops-screenshot anti-pattern.",
-        ),
-        crate::mcp::tools::simulate_click_tool(
-            "Simulate a mouse click at (x, y) on the TUI. Use with capture_screen for interactive testing.",
-        ),
-        crate::mcp::tools::simulate_key_tool(
-            "Simulate a key press on the TUI. Use with capture_screen for interactive testing.",
-        ),
-        crate::mcp::tools::simulate_type_tool(
-            "Simulate multi-char typing into the current input buffer (e.g. slash commands like `/board` or DM text like `/to dev hello`). Same observable effect as Ryan typing each character. Pairs with simulate_input_submit to fire the Enter path.",
-        ),
-        crate::mcp::tools::simulate_input_clear_tool(
-            "Clear the current input buffer. Use between simulate_type / simulate_key calls to reset state between audit scenarios. Takes no arguments.",
-        ),
-        crate::mcp::tools::simulate_input_submit_tool(
-            "Submit the current input buffer — same effect as Ryan pressing Enter in Chat mode. Fires the command-or-send path (slash commands run, prose sends). Takes no arguments.",
         ),
         crate::mcp::tools::set_name_tool(
             "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
@@ -230,13 +212,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "list_lessons",
     "list_peer_lessons",
     "save_lesson",
-    "capture_screen",
     "capture_electron_window",
-    "simulate_click",
-    "simulate_key",
-    "simulate_type",
-    "simulate_input_clear",
-    "simulate_input_submit",
     "classifier_misfire",
     "save_bookmark",
     "get_bookmark",

@@ -106,16 +106,10 @@ impl ServerHandler for BridgeServer {
                 "list_lessons" => tools::handle_list_lessons(&args, port).await,
                 "list_peer_lessons" => tools::handle_list_peer_lessons(&args, port).await,
                 "save_lesson" => tools::handle_save_lesson(&args, port, &name).await,
-                "capture_screen" => tools::handle_capture_screen(port).await,
                 "capture_electron_window" => {
                     let role = name.lock().await.clone();
                     tools::handle_capture_electron_window(&role, port).await
                 }
-                "simulate_click" => tools::handle_simulate_click(&args, port).await,
-                "simulate_key" => tools::handle_simulate_key(&args, port).await,
-                "simulate_type" => tools::handle_simulate_type(&args, port).await,
-                "simulate_input_clear" => tools::handle_simulate_input_clear(port).await,
-                "simulate_input_submit" => tools::handle_simulate_input_submit(port).await,
                 "classifier_misfire" => tools::handle_classifier_misfire(&args, port, &name).await,
                 "save_bookmark" => {
                     let current_name = name.lock().await;

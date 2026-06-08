@@ -18,7 +18,7 @@ pub use board::{
     AcceptPayload, RejectPayload, get_board, get_story, get_story_comments, get_story_timeline,
     post_accept_story, post_reject_story, post_story_comment,
 };
-pub use capture::{ElectronCaptureQuery, get_electron_capture, get_screen};
+pub use capture::{ElectronCaptureQuery, get_electron_capture};
 pub use ci::{get_ci, get_ci_jobs, get_ci_log, post_ci_rerun};
 pub use classifier::{ClassifierMisfire, post_classifier_misfire};
 pub use iteration_close::{CloseIterationRequest, post_close_iteration};

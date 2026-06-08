@@ -1,21 +1,9 @@
-use std::sync::Arc;
-
 use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use super::shared::json_headers;
-
-pub async fn get_screen(
-    axum::Extension(capture): axum::Extension<Arc<std::sync::Mutex<String>>>,
-) -> impl IntoResponse {
-    let screen = capture
-        .lock()
-        .map(|s| s.clone())
-        .unwrap_or_else(|_| "screen unavailable".to_string());
-    (StatusCode::OK, screen)
-}
 
 #[derive(Debug, Default, Deserialize)]
 pub struct ElectronCaptureQuery {

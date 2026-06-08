@@ -31,44 +31,6 @@ pub(super) fn urlencoding(s: &str) -> String {
         .collect()
 }
 
-pub(super) async fn post_simulate(
-    port: u16,
-    path: &str,
-    body: &serde_json::Value,
-) -> Result<String, String> {
-    let token = load_auth_token()?;
-    let url = crate::transport::local_url::api_url(port, path);
-    let resp = reqwest::Client::new()
-        .post(&url)
-        .bearer_auth(&token)
-        .header(reqwest::header::HOST, format!("127.0.0.1:{port}"))
-        .json(body)
-        .send()
-        .await
-        .map_err(|e| format!("failed: {e}"))?;
-    resp.text().await.map_err(|e| format!("failed: {e}"))
-}
-
-fn load_auth_token() -> Result<String, String> {
-    let path = crate::session::auth_token::default_auth_token_path()
-        .ok_or_else(|| "auth token path unavailable (no home directory)".to_string())?;
-    match crate::session::auth_token::read(&path) {
-        Ok(t) if !t.is_empty() => Ok(t),
-        Ok(_) => Err(format!(
-            "Auth token not found at {}. Start bpmux first to generate it.",
-            path.display()
-        )),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(format!(
-            "Auth token not found at {}. Start bpmux first to generate it.",
-            path.display()
-        )),
-        Err(e) => Err(format!(
-            "Auth token unreadable at {}. Check permissions. ({e})",
-            path.display()
-        )),
-    }
-}
-
 pub(super) fn identity_success(index: &crate::session::identity::IdentityIndex) -> String {
     let view = crate::bridge::view_model::IdentityIndexView::from(index);
     serde_json::to_string_pretty(&view).unwrap_or_else(|_| "{}".to_string())
