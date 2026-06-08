@@ -381,6 +381,7 @@ pub fn run() -> anyhow::Result<()> {
                 story,
                 position,
             } => cli::run_iteration_add(*iteration, *story, *position),
+            cli::IterationAction::Close { iteration } => cli::run_iteration_close(*iteration),
         };
     }
 

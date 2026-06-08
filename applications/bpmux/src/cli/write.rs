@@ -267,3 +267,42 @@ pub(crate) fn run_iteration_add(iteration: u64, story: u64, position: u64) -> an
     args.insert("position".to_string(), serde_json::json!(position));
     dispatch_write("add_story_to_iteration", args)
 }
+
+pub(crate) fn run_iteration_close(iteration: u64) -> anyhow::Result<()> {
+    let port = crate::resolve_bpmux_port();
+    let token_path = crate::session::auth_token::default_auth_token_path()
+        .ok_or_else(|| anyhow::anyhow!("cannot resolve auth-token path (HOME unset?)"))?;
+    let token = crate::session::auth_token::read(&token_path)
+        .map_err(|e| anyhow::anyhow!("read auth-token from {}: {e}", token_path.display()))?;
+    let url = crate::transport::local_url::api_url(port, "/api/close_iteration");
+    let body = serde_json::json!({ "iteration_number": iteration });
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let (status, text) = rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(5_000))
+            .build()?;
+        let response = client
+            .post(&url)
+            .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
+            .json(&body)
+            .send()
+            .await?;
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        Ok::<_, reqwest::Error>((status, text))
+    })?;
+    if !status.is_success() {
+        let parsed: serde_json::Value =
+            serde_json::from_str(&text).unwrap_or(serde_json::Value::Null);
+        let reason = parsed
+            .get("error")
+            .and_then(|v| v.as_str())
+            .unwrap_or(text.as_str())
+            .to_string();
+        anyhow::bail!("bpmux iteration close rejected ({status}): {reason}");
+    }
+    println!("iteration #{iteration} closed");
+    Ok(())
+}

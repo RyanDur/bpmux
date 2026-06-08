@@ -39,6 +39,11 @@ pub(crate) enum IterationAction {
         #[arg(long, help = "1-indexed position within the iteration")]
         position: u64,
     },
+    #[command(about = "Close an iteration (terminal; the ready queue must be empty)")]
+    Close {
+        #[arg(long, help = "Iteration entity issue number")]
+        iteration: u64,
+    },
 }
 
 #[derive(Subcommand)]

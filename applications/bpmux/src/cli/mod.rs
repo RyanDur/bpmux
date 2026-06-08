@@ -7,7 +7,7 @@ pub(crate) use commands::Command;
 pub(crate) use read::{run_board, run_capture, run_ready, run_story};
 pub(crate) use write::{
     run_accept, run_close, run_comment, run_create, run_deliver, run_edit, run_epic_set_parent,
-    run_epic_unset_parent, run_fail, run_iteration_add, run_iteration_create,
+    run_epic_unset_parent, run_fail, run_iteration_add, run_iteration_close, run_iteration_create,
     run_iteration_designate, run_label, run_move, run_pass, run_reject, run_start, run_verdict,
 };
 
