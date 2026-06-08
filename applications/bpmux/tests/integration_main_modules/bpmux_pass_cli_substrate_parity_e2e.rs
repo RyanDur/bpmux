@@ -78,3 +78,28 @@ async fn bpmux_pass_succeeds_for_the_designer_actor_with_fresh_evidence_and_gree
         "the CLI prints the handler's own success message — the gated write completed end-to-end through the shared endpoint; stdout: {stdout}"
     );
 }
+
+#[tokio::test]
+async fn bpmux_pass_lets_the_owner_clear_the_designer_only_role_guard_via_the_1548_superset() {
+    let bpmux = TestBpmux::start();
+    let pm = TestBridge::connect(&bpmux, "pm").await;
+    let number = create_target_story(
+        &pm,
+        "[Feature] cli-pass-owner-superset-target",
+        "the owner's bpmux pass must clear the designer-only role-guard via the superset-bypass",
+    )
+    .await;
+    pm.close().await;
+    seed_team_verifiable_evidence(&bpmux, number).await;
+    let out = run_pass(&bpmux, "owner", number).await;
+    assert!(
+        out.status.success(),
+        "the owner is a superset of every role (#1548): the owner's bpmux pass clears the SAME designer-only role-guard that refuses dev, and completes the desk-check — the superset-bypass reaches the CLI/RPC path, not just the handler; stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains(&format!("#{number}")) && stdout.contains("passed desk-check"),
+        "the owner's gated write completes end-to-end off MCP; stdout: {stdout}"
+    );
+}

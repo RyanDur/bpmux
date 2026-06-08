@@ -183,6 +183,10 @@ pub async fn post_rpc_tool(
             );
         }
     };
+    let agent = crate::workflow::current_workflow()
+        .role_id_for_purpose(&agent)
+        .map(str::to_string)
+        .unwrap_or(agent);
     let Some(refresh) = refresh else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
