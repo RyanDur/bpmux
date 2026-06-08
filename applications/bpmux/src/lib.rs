@@ -299,22 +299,24 @@ fn run_send(text: &str, to: &[String], addressee: &Option<String>) -> anyhow::Re
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
-    let status = rt.block_on(async {
+    let (status, reason) = rt.block_on(async {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_millis(5_000))
             .build()?;
-        Ok::<_, reqwest::Error>(client.post(&url).json(&body).send().await?.status())
+        let response = client.post(&url).json(&body).send().await?;
+        let status = response.status();
+        let reason = response.text().await.unwrap_or_default();
+        Ok::<_, reqwest::Error>((status, reason))
     })?;
-    if status.is_success() {
-        let destination = if to.is_empty() {
-            "broadcast".to_string()
-        } else {
-            format!("[{}]", to.join(", "))
-        };
-        println!("✓ sent → {destination}");
-    } else {
-        println!("✗ send failed: {status}");
+    if !status.is_success() {
+        anyhow::bail!("send rejected ({status}): {reason}");
     }
+    let destination = if to.is_empty() {
+        "broadcast".to_string()
+    } else {
+        format!("[{}]", to.join(", "))
+    };
+    println!("✓ sent → {destination}");
     Ok(())
 }
 

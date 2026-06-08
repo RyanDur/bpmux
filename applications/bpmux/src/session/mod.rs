@@ -14,6 +14,7 @@ pub mod precommit;
 pub mod reactions;
 pub mod recall;
 pub mod search;
+pub mod speech_guard;
 pub mod storage;
 #[cfg(test)]
 mod storage_tests;
