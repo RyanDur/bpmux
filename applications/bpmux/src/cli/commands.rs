@@ -226,6 +226,33 @@ pub(crate) enum Command {
         )]
         bypass_reason: Option<String>,
     },
+    #[command(
+        about = "Move a story to a column (and optionally reorder) off Claude's MCP — fires the same gated /api/rpc/move_story path the bridge uses (PM-only role-guard for all moves; owner bypasses via the #1548 superset)."
+    )]
+    Move {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(
+            long,
+            help = "Target column: icebox | ready | in-progress | desk-check | delivered | accepted | retired"
+        )]
+        target_state: String,
+        #[arg(long, help = "Why the move — the required audit-trail reason")]
+        rationale: String,
+        #[arg(long, help = "1-based position for ready/icebox ordering (optional)")]
+        position: Option<usize>,
+    },
+    #[command(
+        about = "Add or remove a label on a story off Claude's MCP — fires the same gated /api/rpc/label_story path the bridge uses (PM-only role-guard; owner bypasses via the #1548 superset)."
+    )]
+    Label {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "The label to add or remove")]
+        label: String,
+        #[arg(long, help = "add (default) | remove")]
+        operation: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

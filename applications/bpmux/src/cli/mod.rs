@@ -2,7 +2,8 @@ mod commands;
 mod write;
 pub(crate) use commands::{Command, RoomAction};
 pub(crate) use write::{
-    run_accept, run_deliver, run_fail, run_pass, run_reject, run_start, run_verdict,
+    run_accept, run_deliver, run_fail, run_label, run_move, run_pass, run_reject, run_start,
+    run_verdict,
 };
 
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;

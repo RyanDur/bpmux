@@ -137,3 +137,33 @@ pub(crate) fn run_accept(
     }
     dispatch_write("accept_story", args)
 }
+
+pub(crate) fn run_move(
+    number: u64,
+    target_state: &str,
+    rationale: &str,
+    position: Option<usize>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("target_state".to_string(), serde_json::json!(target_state));
+    args.insert("rationale".to_string(), serde_json::json!(rationale));
+    if let Some(p) = position {
+        args.insert("position".to_string(), serde_json::json!(p));
+    }
+    dispatch_write("move_story", args)
+}
+
+pub(crate) fn run_label(
+    number: u64,
+    label: &str,
+    operation: &Option<String>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("label".to_string(), serde_json::json!(label));
+    if let Some(op) = operation {
+        args.insert("operation".to_string(), serde_json::json!(op));
+    }
+    dispatch_write("label_story", args)
+}

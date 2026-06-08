@@ -306,6 +306,25 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_accept(*number, *would_file_bug, *force, bypass_reason);
     }
 
+    if let Some(cli::Command::Move {
+        number,
+        target_state,
+        rationale,
+        position,
+    }) = &cli.command
+    {
+        return cli::run_move(*number, target_state, rationale, *position);
+    }
+
+    if let Some(cli::Command::Label {
+        number,
+        label,
+        operation,
+    }) = &cli.command
+    {
+        return cli::run_label(*number, label, operation);
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {
