@@ -176,3 +176,122 @@ fn post_activity(body: &serde_json::Value) {
         let _ = client.post(&url).json(&body).send().await;
     });
 }
+
+pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
+    match command {
+        Command::EmitPrecommitPassed { sha, role } => Some(run_emit_precommit_passed(sha, role)),
+        Command::WaitForEvent { after, timeout_ms } => Some(run_wait_for_event(after, *timeout_ms)),
+        Command::Send {
+            text,
+            to,
+            addressee,
+        } => Some(run_send(text, to, addressee)),
+        Command::Read { limit, full } => Some(run_read(*limit, *full)),
+        Command::Help { json } => Some(run_help(*json)),
+        Command::Ready { json, full } => Some(run_ready(*json, *full)),
+        Command::Story { number, json, full } => Some(run_story(*number, *json, *full)),
+        Command::Board {
+            state,
+            limit,
+            json,
+            full,
+        } => Some(run_board(state, *limit, *json, *full)),
+        Command::Capture { window } => Some(run_capture(*window)),
+        Command::Pass { number, acceptor } => Some(run_pass(*number, acceptor)),
+        Command::Start {
+            number,
+            paraphrase,
+            falsifier,
+        } => Some(run_start(*number, paraphrase, falsifier)),
+        Command::Deliver {
+            number,
+            observation,
+        } => Some(run_deliver(*number, observation)),
+        Command::Fail { number, reason } => Some(run_fail(*number, reason)),
+        Command::Reject { number, reason } => Some(run_reject(*number, reason)),
+        Command::Verdict {
+            number,
+            verdict,
+            grounding,
+        } => Some(run_verdict(*number, verdict, grounding)),
+        Command::Accept {
+            number,
+            would_file_bug,
+            force,
+            bypass_reason,
+        } => Some(run_accept(*number, *would_file_bug, *force, bypass_reason)),
+        Command::Move {
+            number,
+            target_state,
+            rationale,
+            position,
+        } => Some(run_move(*number, target_state, rationale, *position)),
+        Command::Label {
+            number,
+            label,
+            operation,
+        } => Some(run_label(*number, label, operation)),
+        Command::Create {
+            title,
+            user_job,
+            observation_falsifier,
+            body,
+            parent_epic,
+            acceptance_test_path,
+        } => Some(run_create(
+            title,
+            user_job,
+            observation_falsifier,
+            body,
+            *parent_epic,
+            acceptance_test_path,
+        )),
+        Command::Edit {
+            number,
+            title,
+            body,
+        } => Some(run_edit(*number, title, body)),
+        Command::Comment { number, body } => Some(run_comment(*number, body)),
+        Command::Close {
+            number,
+            reason,
+            disposition,
+        } => Some(run_close(*number, reason, disposition)),
+        Command::Iteration { action } => Some(match action {
+            IterationAction::Create {
+                theme,
+                position_after,
+            } => run_iteration_create(theme, *position_after),
+            IterationAction::Designate { number } => run_iteration_designate(*number),
+            IterationAction::Add {
+                iteration,
+                story,
+                position,
+            } => run_iteration_add(*iteration, *story, *position),
+            IterationAction::Close { iteration } => run_iteration_close(*iteration),
+        }),
+        Command::Epic { action } => Some(match action {
+            EpicAction::SetParent { number, epic } => run_epic_set_parent(*number, *epic),
+            EpicAction::UnsetParent { number } => run_epic_unset_parent(*number),
+        }),
+        Command::Lesson { action } => Some(match action {
+            LessonAction::Save {
+                topic,
+                lesson,
+                evidence,
+            } => run_lesson_save(topic, lesson, evidence),
+            LessonAction::List { topic, limit } => run_lesson_list(topic, *limit),
+            LessonAction::ListPeer { peer } => run_lesson_list_peer(peer),
+        }),
+        Command::Ci { action } => Some(match action {
+            CiAction::State => run_ci_state(),
+            CiAction::Log { run } => run_ci_log(run),
+            CiAction::Jobs { run } => run_ci_jobs(run),
+            CiAction::Rerun { run } => run_ci_rerun(run),
+        }),
+        Command::Bridge { .. }
+        | Command::Recall { .. }
+        | Command::Room { .. }
+        | Command::Server => None,
+    }
+}
