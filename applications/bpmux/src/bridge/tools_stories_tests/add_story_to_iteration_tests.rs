@@ -85,7 +85,7 @@ async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
 }
 
 #[tokio::test]
-async fn non_pm_rejected_with_workflow_role_not_allowed_1399() {
+async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed_1399() {
     let (_store, orch) = build_orchestrator(vec![
         iteration_seed(1397, "Telescopium"),
         member_seed(1500, "x"),
@@ -95,7 +95,6 @@ async fn non_pm_rejected_with_workflow_role_not_allowed_1399() {
     for caller in [
         "designer:claude-code",
         "dev:claude-code",
-        "ryan:human",
         "intern:claude-code",
     ] {
         let result =
@@ -120,6 +119,23 @@ async fn non_pm_rejected_with_workflow_role_not_allowed_1399() {
             "{caller}: error must enumerate allowed-roles=[pm]; got {err}"
         );
     }
+}
+
+#[tokio::test]
+async fn owner_bypasses_add_story_to_iteration_via_superset_1548() {
+    let (_store, orch) = build_orchestrator(vec![
+        iteration_seed(1397, "Telescopium"),
+        member_seed(1500, "child story"),
+    ])
+    .await;
+    let ws_tx = connected_ws_sink_for_test().await;
+    let result =
+        handle_add_story_to_iteration(&args(1397, 1500, 100), "ryan:human", &ws_tx, Some(&orch))
+            .await;
+    assert!(
+        result.is_ok(),
+        "owner (ryan) bypasses the pm-only add-to-iteration role-guard via the #1548 superset: {result:?}"
+    );
 }
 
 #[tokio::test]

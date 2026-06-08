@@ -149,7 +149,12 @@ pub(crate) async fn handle_add_story_to_iteration(
         crate::workflow::GateClass::None,
     )
     .map_err(|e| e.as_json_string())?;
-    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    crate::workflow::enforce_role_allowed(
+        transition,
+        actor_role,
+        workflow.owner_role_id().unwrap_or(""),
+    )
+    .map_err(|e| e.as_json_string())?;
     let story_number = args
         .get("story_number")
         .and_then(|v| v.as_u64())

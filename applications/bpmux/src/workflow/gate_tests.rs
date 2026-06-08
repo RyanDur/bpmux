@@ -6,8 +6,8 @@ use super::bundled_default::bundled_default;
 use super::config::{GateClass, Transition, WorkflowConfig};
 use super::gate::{
     CiSnapshot, EvidenceMessage, GateError, PriorFire, check_ci_green, check_evidence_present,
-    check_role_allowed, check_self_mutation_refused, check_target_state_valid, resolve_transition,
-    verdict_freshness,
+    check_role_allowed, check_self_mutation_refused, check_target_state_valid,
+    enforce_role_allowed, resolve_transition, verdict_freshness,
 };
 
 fn accept_team_verifiable() -> Transition {
@@ -32,8 +32,13 @@ fn accept_dev_verifiable() -> Transition {
 }
 
 #[test]
-fn bundled_default_allows_ryan_to_accept_team_verifiable() {
-    assert!(check_role_allowed(&accept_team_verifiable(), "ryan").is_ok());
+fn owner_bypasses_team_verifiable_accept_via_superset_not_actor_list() {
+    assert!(
+        !accept_team_verifiable()
+            .actor_roles
+            .contains(&"ryan".to_string())
+    );
+    assert!(enforce_role_allowed(&accept_team_verifiable(), "ryan", "ryan").is_ok());
 }
 
 #[test]
@@ -53,7 +58,6 @@ fn bundled_default_refuses_designer_to_accept_team_verifiable() {
         } => {
             assert_eq!(actor_role, "designer");
             assert_eq!(attempted_transition, "accept");
-            assert!(allowed_roles.contains(&"ryan".to_string()));
             assert!(allowed_roles.contains(&"pm".to_string()));
             assert!(!allowed_roles.contains(&"designer".to_string()));
         }
@@ -70,9 +74,10 @@ fn bundled_default_refuses_dev_to_accept_team_verifiable() {
 }
 
 #[test]
-fn owner_walk_accept_allows_ryan_only() {
+fn owner_walk_accept_allows_owner_via_bypass_and_refuses_team() {
     let owner_walk = accept_owner_walk();
-    assert!(check_role_allowed(&owner_walk, "ryan").is_ok());
+    assert!(owner_walk.actor_roles.is_empty());
+    assert!(enforce_role_allowed(&owner_walk, "ryan", "ryan").is_ok());
     assert!(matches!(
         check_role_allowed(&owner_walk, "pm"),
         Err(GateError::RoleNotAllowed { .. })
@@ -97,6 +102,22 @@ fn dev_verifiable_accept_allows_dev_only() {
     ));
     assert!(matches!(
         check_role_allowed(&dev_verifiable, "designer"),
+        Err(GateError::RoleNotAllowed { .. })
+    ));
+}
+
+#[test]
+fn owner_superset_bypass_fires_every_gate_class_yet_non_owner_stays_role_checked() {
+    assert!(enforce_role_allowed(&accept_team_verifiable(), "ryan", "ryan").is_ok());
+    assert!(enforce_role_allowed(&accept_owner_walk(), "ryan", "ryan").is_ok());
+    assert!(enforce_role_allowed(&accept_dev_verifiable(), "ryan", "ryan").is_ok());
+    assert!(enforce_role_allowed(&accept_dev_verifiable(), "dev", "ryan").is_ok());
+    assert!(matches!(
+        enforce_role_allowed(&accept_dev_verifiable(), "pm", "ryan"),
+        Err(GateError::RoleNotAllowed { .. })
+    ));
+    assert!(matches!(
+        enforce_role_allowed(&accept_dev_verifiable(), "", ""),
         Err(GateError::RoleNotAllowed { .. })
     ));
 }

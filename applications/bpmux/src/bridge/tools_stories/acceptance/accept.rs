@@ -39,7 +39,12 @@ pub(crate) async fn handle_accept_story(
         .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
     let transition = crate::workflow::resolve_transition(workflow, "accept", class)
         .map_err(|e| e.as_json_string())?;
-    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    crate::workflow::enforce_role_allowed(
+        transition,
+        actor_role,
+        workflow.owner_role_id().unwrap_or(""),
+    )
+    .map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
         let evidence = recent_evidence_for_story(s, number)?;
         let current_head = crate::bridge::tools::git_repo::current_head_sha();

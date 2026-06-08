@@ -20,7 +20,12 @@ pub(crate) async fn handle_close_story(
     let transition =
         crate::workflow::resolve_transition(workflow, "close", crate::workflow::GateClass::None)
             .map_err(|e| e.as_json_string())?;
-    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    crate::workflow::enforce_role_allowed(
+        transition,
+        actor_role,
+        workflow.owner_role_id().unwrap_or(""),
+    )
+    .map_err(|e| e.as_json_string())?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())

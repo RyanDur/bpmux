@@ -15,7 +15,7 @@ pub use config::{
 pub use gate::{
     CiSnapshot, EvidenceMessage, GateError, PriorFire, VerdictState, check_ci_green,
     check_evidence_present, check_role_allowed, check_self_mutation_refused,
-    check_target_state_valid, resolve_transition, verdict_freshness,
+    check_target_state_valid, enforce_role_allowed, resolve_transition, verdict_freshness,
 };
 pub use loader::{
     CANONICAL_SECTIONS, WorkflowLoadError, current_workflow, install_workflow,

@@ -95,7 +95,7 @@ fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind(
             serde_json::json!({
                 "number": target_number,
                 "label": "awaiting team",
-                "rationale": "test fixture: acceptor=team to assert allowed_roles=[ryan,pm]"
+                "rationale": "test fixture: acceptor=team to assert allowed_roles=[pm] (owner bypasses via #1548 superset)"
             }),
         )
         .await
@@ -122,8 +122,8 @@ fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind(
             "attempted_transition names the gate; got {err}"
         );
         assert!(
-            err.contains("\"ryan\"") && err.contains("\"pm\""),
-            "allowed_roles cites the workflow.toml-configured set; got {err}"
+            err.contains("\"pm\"") && !err.contains("\"ryan\""),
+            "allowed_roles cites the team set [pm]; the owner is absent because it bypasses via superset (#1548); got {err}"
         );
 
         pm.close().await;
@@ -386,8 +386,8 @@ fn pm_firing_accept_on_owner_walk_story_returns_role_not_allowed() {
             "rejection cites pm as firing role; got {err}"
         );
         assert!(
-            err.contains("\"allowed_roles\":[\"ryan\"]"),
-            "rejection cites only ryan allowed for owner-walk class; got {err}"
+            err.contains("\"allowed_roles\":[]"),
+            "owner-walk lists no team actor; the owner bypasses via the #1548 superset; got {err}"
         );
 
         pm.close().await;

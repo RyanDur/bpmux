@@ -99,7 +99,12 @@ pub(crate) async fn handle_pass_desk_check(
         .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
     let transition = crate::workflow::resolve_transition(workflow, "pass-desk-check", class)
         .map_err(|e| e.as_json_string())?;
-    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    crate::workflow::enforce_role_allowed(
+        transition,
+        actor_role,
+        workflow.owner_role_id().unwrap_or(""),
+    )
+    .map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
         let evidence = recent_evidence_for_story(s, number)?;
         crate::workflow::check_evidence_present(
@@ -213,7 +218,12 @@ pub(crate) async fn handle_fail_desk_check(
         crate::workflow::GateClass::None,
     )
     .map_err(|e| e.as_json_string())?;
-    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    crate::workflow::enforce_role_allowed(
+        transition,
+        actor_role,
+        workflow.owner_role_id().unwrap_or(""),
+    )
+    .map_err(|e| e.as_json_string())?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())

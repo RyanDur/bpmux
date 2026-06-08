@@ -149,7 +149,12 @@ pub(in crate::bridge) async fn handle_move_story(
         crate::workflow::GateClass::None,
     )
     .map_err(|e| e.as_json_string())?;
-    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    crate::workflow::enforce_role_allowed(
+        transition,
+        actor_role,
+        workflow.owner_role_id().unwrap_or(""),
+    )
+    .map_err(|e| e.as_json_string())?;
 
     if position.is_some() {
         let allows_position = matches!(

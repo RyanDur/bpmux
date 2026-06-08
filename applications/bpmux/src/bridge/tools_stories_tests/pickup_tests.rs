@@ -91,11 +91,11 @@ async fn start_story_still_dev_only_with_new_params() {
         "pickup_paraphrase": "any text",
         "falsifier_reframing": "any text"
     });
-    for caller in ["pm:claude-code", "designer:claude-code", "ryan:human"] {
+    for caller in ["pm:claude-code", "designer:claude-code"] {
         let result = handle_start_story(args.as_object().unwrap(), caller, &ws_tx, None).await;
         assert!(
             result.is_err(),
-            "{caller} must be rejected by workflow-substrate role-gate"
+            "{caller} (non-dev, non-owner) must be rejected by workflow-substrate role-gate"
         );
         let err = result.unwrap_err();
         assert!(

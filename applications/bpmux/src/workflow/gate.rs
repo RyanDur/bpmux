@@ -197,6 +197,17 @@ pub fn check_role_allowed(transition: &Transition, actor_role: &str) -> Result<(
     }
 }
 
+pub fn enforce_role_allowed(
+    transition: &Transition,
+    actor_role: &str,
+    owner_role: &str,
+) -> Result<(), GateError> {
+    if !owner_role.is_empty() && actor_role == owner_role {
+        return Ok(());
+    }
+    check_role_allowed(transition, actor_role)
+}
+
 pub fn check_target_state_valid(
     transition: &Transition,
     current_state: &str,
