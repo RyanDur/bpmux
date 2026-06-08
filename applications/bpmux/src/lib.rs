@@ -26,7 +26,8 @@ use tokio_util::sync::CancellationToken;
 #[command(
     name = "bpmux",
     version,
-    about = "P2P group chat for AI pair programming"
+    about = "P2P group chat for AI pair programming",
+    disable_help_subcommand = true
 )]
 struct Cli {
     /// Your name in the session
@@ -105,6 +106,40 @@ enum Command {
             help = "Max milliseconds to block before returning a timed-out result"
         )]
         timeout_ms: u64,
+    },
+    #[command(
+        about = "Send a team message to the bpmux channel as this agent (ambient role via BPMUX_ROLE), off Claude's MCP. Renders the command + a one-line confirm in the terminal stream."
+    )]
+    Send {
+        #[arg(help = "The message text to send")]
+        text: String,
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = "Comma-separated recipient roles (privacy filter); omit for broadcast"
+        )]
+        to: Vec<String>,
+        #[arg(long, help = "Role this message is directed at (attention signal)")]
+        addressee: Option<String>,
+    },
+    #[command(
+        about = "Read recent team messages as a compact index (sender + one-line), off Claude's MCP. Use --full for the raw payload."
+    )]
+    Read {
+        #[arg(long, default_value_t = 20, help = "Max messages to show")]
+        limit: usize,
+        #[arg(
+            long,
+            help = "Emit the raw message payload instead of the compact index"
+        )]
+        full: bool,
+    },
+    #[command(
+        about = "List the bpmux verbs for discovery (MCP advertises tools for free; the CLI re-creates discovery here). --json emits a machine-readable verb-index an agent can parse."
+    )]
+    Help {
+        #[arg(long, help = "Emit the verb-index as JSON for agent parsing")]
+        json: bool,
     },
 }
 
@@ -244,6 +279,105 @@ fn run_wait_for_event(after: &Option<String>, timeout_ms: u64) -> anyhow::Result
     Ok(())
 }
 
+fn run_send(text: &str, to: &[String], addressee: &Option<String>) -> anyhow::Result<()> {
+    let role = resolve_role(&None);
+    let mut payload = serde_json::Map::new();
+    payload.insert(
+        "from".to_string(),
+        serde_json::json!(format!("{role}:claude-code")),
+    );
+    payload.insert("text".to_string(), serde_json::json!(text));
+    if !to.is_empty() {
+        payload.insert("to".to_string(), serde_json::json!(to));
+    }
+    if let Some(target) = addressee {
+        payload.insert("addressee".to_string(), serde_json::json!(target));
+    }
+    let body = serde_json::Value::Object(payload);
+    let port = resolve_bpmux_port();
+    let url = transport::local_url::api_url(port, "/api/messages");
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let status = rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(5_000))
+            .build()?;
+        Ok::<_, reqwest::Error>(client.post(&url).json(&body).send().await?.status())
+    })?;
+    if status.is_success() {
+        let destination = if to.is_empty() {
+            "broadcast".to_string()
+        } else {
+            format!("[{}]", to.join(", "))
+        };
+        println!("✓ sent → {destination}");
+    } else {
+        println!("✗ send failed: {status}");
+    }
+    Ok(())
+}
+
+fn run_read(limit: usize, full: bool) -> anyhow::Result<()> {
+    let role = resolve_role(&None);
+    let port = resolve_bpmux_port();
+    let mut url = transport::local_url::api_url(port, "/api/messages");
+    url.push_str(&format!("?limit={limit}&chat_only=true&as={role}"));
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let body = rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(5_000))
+            .build()?;
+        client.get(&url).send().await?.text().await
+    })?;
+    if full {
+        println!("{body}");
+        return Ok(());
+    }
+    let messages: Vec<serde_json::Value> = serde_json::from_str(&body).unwrap_or_default();
+    for message in messages.iter().rev() {
+        let sender = message["from"]
+            .as_str()
+            .unwrap_or("?")
+            .split(':')
+            .next()
+            .unwrap_or("?");
+        let text = message["text"].as_str().unwrap_or("");
+        println!("{sender}: {text}");
+    }
+    Ok(())
+}
+
+fn run_help(json: bool) -> anyhow::Result<()> {
+    let command = <Cli as clap::CommandFactory>::command();
+    if json {
+        let verbs: Vec<serde_json::Value> = command
+            .get_subcommands()
+            .map(|sub| {
+                serde_json::json!({
+                    "verb": sub.get_name(),
+                    "about": sub.get_about().map(|about| about.to_string()).unwrap_or_default(),
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({ "verbs": verbs }))?
+        );
+    } else {
+        for sub in command.get_subcommands() {
+            let about = sub
+                .get_about()
+                .map(|about| about.to_string())
+                .unwrap_or_default();
+            println!("{:20} {about}", sub.get_name());
+        }
+    }
+    Ok(())
+}
+
 fn run_emit_precommit_passed(sha: &str, role_arg: &Option<String>) -> anyhow::Result<()> {
     let role = resolve_role(role_arg);
     let body = session::precommit::build_precommit_activity_payload(&role, sha);
@@ -357,6 +491,23 @@ pub fn run() -> anyhow::Result<()> {
 
     if let Some(Command::WaitForEvent { after, timeout_ms }) = &cli.command {
         return run_wait_for_event(after, *timeout_ms);
+    }
+
+    if let Some(Command::Send {
+        text,
+        to,
+        addressee,
+    }) = &cli.command
+    {
+        return run_send(text, to, addressee);
+    }
+
+    if let Some(Command::Read { limit, full }) = &cli.command {
+        return run_read(*limit, *full);
+    }
+
+    if let Some(Command::Help { json }) = &cli.command {
+        return run_help(*json);
     }
 
     if let Some(Command::Room { action }) = &cli.command {
