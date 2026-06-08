@@ -258,6 +258,10 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_board(state, *limit, *json, *full);
     }
 
+    if let Some(cli::Command::Pass { number, acceptor }) = &cli.command {
+        return cli::run_pass(*number, acceptor);
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {

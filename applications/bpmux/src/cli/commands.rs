@@ -143,6 +143,15 @@ pub(crate) enum Command {
         #[arg(long, help = "Emit the raw board payload instead of the compact index")]
         full: bool,
     },
+    #[command(
+        about = "Pass a story's desk-check as this agent (ambient role via BPMUX_ROLE), off Claude's MCP — fires the same gated /api/rpc/pass_desk_check path the bridge uses, so the role-guard, verdict-evidence, and CI-green gates apply identically. --acceptor voices the acceptor-class at the gate."
+    )]
+    Pass {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "Acceptor class voiced at the gate: team | owner | dev")]
+        acceptor: String,
+    },
 }
 
 #[derive(Subcommand)]
