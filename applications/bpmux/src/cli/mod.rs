@@ -1,9 +1,10 @@
 mod commands;
 mod write;
-pub(crate) use commands::{Command, RoomAction};
+pub(crate) use commands::{Command, IterationAction, RoomAction};
 pub(crate) use write::{
-    run_accept, run_close, run_comment, run_create, run_deliver, run_edit, run_fail, run_label,
-    run_move, run_pass, run_reject, run_start, run_verdict,
+    run_accept, run_close, run_comment, run_create, run_deliver, run_edit, run_fail,
+    run_iteration_create, run_iteration_designate, run_label, run_move, run_pass, run_reject,
+    run_start, run_verdict,
 };
 
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;

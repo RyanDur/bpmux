@@ -307,6 +307,29 @@ pub(crate) enum Command {
         #[arg(long, help = "retire (default) | wontfix")]
         disposition: Option<String>,
     },
+    #[command(
+        about = "Iteration operations off Claude's MCP — fire the same gated /api/rpc/{create_iteration,designate_current_iteration} the bridge uses (PM-only via require_role; owner bypasses via the #1709 superset-extension)."
+    )]
+    Iteration {
+        #[command(subcommand)]
+        action: IterationAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum IterationAction {
+    #[command(about = "Create an iteration with a theme")]
+    Create {
+        #[arg(long, help = "Iteration theme name")]
+        theme: String,
+        #[arg(long, help = "Insert after this iteration number (optional)")]
+        position_after: Option<u64>,
+    },
+    #[command(about = "Designate the current iteration by number")]
+    Designate {
+        #[arg(help = "Iteration number")]
+        number: u64,
+    },
 }
 
 #[derive(Subcommand)]

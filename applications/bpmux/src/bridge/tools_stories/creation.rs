@@ -162,10 +162,13 @@ pub(crate) async fn handle_create_iteration(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let pm = crate::workflow::current_workflow()
-        .role_id_for_purpose("pm")
-        .unwrap_or("pm");
-    if role_from_name(agent_name) != pm {
+    let workflow = crate::workflow::current_workflow();
+    let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
+    let actor_role = role_from_name(agent_name);
+    let is_owner = workflow
+        .owner_role_id()
+        .is_some_and(|o| !o.is_empty() && actor_role == o);
+    if actor_role != pm && !is_owner {
         return Err(
             "create_iteration is pm-lane. Iteration entities are PM-owned per Epic #1189."
                 .to_string(),

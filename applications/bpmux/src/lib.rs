@@ -366,6 +366,16 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_close(*number, reason, disposition);
     }
 
+    if let Some(cli::Command::Iteration { action }) = &cli.command {
+        return match action {
+            cli::IterationAction::Create {
+                theme,
+                position_after,
+            } => cli::run_iteration_create(theme, *position_after),
+            cli::IterationAction::Designate { number } => cli::run_iteration_designate(*number),
+        };
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {

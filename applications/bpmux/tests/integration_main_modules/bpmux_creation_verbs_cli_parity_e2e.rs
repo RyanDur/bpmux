@@ -259,3 +259,86 @@ async fn bpmux_close_succeeds_for_pm_off_mcp() {
         stderr(&out)
     );
 }
+
+#[tokio::test]
+async fn bpmux_iteration_create_blocks_a_non_pm_via_its_custom_pm_lane_guard() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(
+        &bpmux,
+        "dev",
+        &["iteration", "create", "--theme", "Telescopium"],
+    )
+    .await;
+    assert!(
+        !out.status.success(),
+        "create_iteration is PM-only; dev must be refused"
+    );
+    assert!(
+        stderr(&out).contains("pm-lane"),
+        "bpmux iteration create hits the SAME custom pm-lane guard as MCP create_iteration (a CUSTOM check, NOT require_role — substrate-grounded; the map drifted); dev refused; stderr: {}",
+        stderr(&out)
+    );
+}
+
+#[tokio::test]
+async fn bpmux_iteration_create_owner_bypasses_its_custom_pm_lane_guard() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(
+        &bpmux,
+        "owner",
+        &["iteration", "create", "--theme", "Telescopium"],
+    )
+    .await;
+    assert!(
+        !stderr(&out).contains("pm-lane"),
+        "the owner bypasses create_iteration's CUSTOM pm-lane guard via the #1710 owner-fix (a SECOND custom guard like create_story; the require_role extension does NOT reach it); stderr: {}",
+        stderr(&out)
+    );
+}
+
+#[tokio::test]
+async fn bpmux_iteration_create_succeeds_for_pm_off_mcp() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(
+        &bpmux,
+        "pm",
+        &["iteration", "create", "--theme", "Telescopium"],
+    )
+    .await;
+    assert!(
+        out.status.success(),
+        "pm's bpmux iteration create completes the create_iteration write off MCP; stderr: {}",
+        stderr(&out)
+    );
+}
+
+#[tokio::test]
+async fn bpmux_iteration_designate_blocks_a_non_pm_via_require_role() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(&bpmux, "dev", &["iteration", "designate", "1"]).await;
+    assert!(
+        !out.status.success(),
+        "designate_current_iteration is PM-only; dev must be refused"
+    );
+    assert!(
+        stderr(&out).contains("restricted to pm"),
+        "bpmux iteration designate hits the SAME require_role(pm) guard as MCP designate_current_iteration; dev refused; stderr: {}",
+        stderr(&out)
+    );
+}
+
+#[tokio::test]
+async fn bpmux_iteration_designate_owner_bypasses_the_pm_only_require_role_guard() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(&bpmux, "owner", &["iteration", "designate", "1"]).await;
+    assert!(
+        !stderr(&out).contains("restricted to pm"),
+        "the owner bypasses the pm-only designate_current_iteration require_role guard via the #1709 superset-extension; stderr: {}",
+        stderr(&out)
+    );
+}

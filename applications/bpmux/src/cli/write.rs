@@ -231,3 +231,18 @@ pub(crate) fn run_close(
     }
     dispatch_write("close_story", args)
 }
+
+pub(crate) fn run_iteration_create(theme: &str, position_after: Option<u64>) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("theme_name".to_string(), serde_json::json!(theme));
+    if let Some(p) = position_after {
+        args.insert("position_after".to_string(), serde_json::json!(p));
+    }
+    dispatch_write("create_iteration", args)
+}
+
+pub(crate) fn run_iteration_designate(number: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("iteration_number".to_string(), serde_json::json!(number));
+    dispatch_write("designate_current_iteration", args)
+}
