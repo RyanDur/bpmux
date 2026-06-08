@@ -1,6 +1,6 @@
 use clap::Subcommand;
 
-use super::actions::{EpicAction, IterationAction, RoomAction};
+use super::actions::{EpicAction, IterationAction, LessonAction, RoomAction};
 
 #[derive(Subcommand)]
 pub(crate) enum Command {
@@ -332,5 +332,12 @@ pub(crate) enum Command {
     Epic {
         #[command(subcommand)]
         action: EpicAction,
+    },
+    #[command(
+        about = "Lesson operations off Claude's MCP — save/list lessons via the same /api/lessons + /api/peer-lessons endpoints the bridge uses (ungated; author_role from BPMUX_ROLE)."
+    )]
+    Lesson {
+        #[command(subcommand)]
+        action: LessonAction,
     },
 }

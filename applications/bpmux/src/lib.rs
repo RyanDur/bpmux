@@ -392,6 +392,18 @@ pub fn run() -> anyhow::Result<()> {
         };
     }
 
+    if let Some(cli::Command::Lesson { action }) = &cli.command {
+        return match action {
+            cli::LessonAction::Save {
+                topic,
+                lesson,
+                evidence,
+            } => cli::run_lesson_save(topic, lesson, evidence),
+            cli::LessonAction::List { topic, limit } => cli::run_lesson_list(topic, *limit),
+            cli::LessonAction::ListPeer { peer } => cli::run_lesson_list_peer(peer),
+        };
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {

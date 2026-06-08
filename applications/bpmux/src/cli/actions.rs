@@ -47,6 +47,35 @@ pub(crate) enum IterationAction {
 }
 
 #[derive(Subcommand)]
+pub(crate) enum LessonAction {
+    #[command(about = "Save a lesson under a topic (author_role from BPMUX_ROLE)")]
+    Save {
+        #[arg(long, help = "Topic name")]
+        topic: String,
+        #[arg(long, help = "The lesson text")]
+        lesson: String,
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = "Optional comma-separated evidence refs"
+        )]
+        evidence: Vec<String>,
+    },
+    #[command(about = "List lessons, optionally filtered by topic")]
+    List {
+        #[arg(long, help = "Filter to a topic")]
+        topic: Option<String>,
+        #[arg(long, help = "Max lessons to show")]
+        limit: Option<u64>,
+    },
+    #[command(about = "List a connected peer's lessons")]
+    ListPeer {
+        #[arg(long, help = "Peer name (optional)")]
+        peer: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
 pub(crate) enum RoomAction {
     Spawn {
         role: String,

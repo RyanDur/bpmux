@@ -45,6 +45,8 @@ mod bpmux_epic_verbs_cli_parity_e2e;
 mod bpmux_iteration_add_cli_parity_e2e;
 #[path = "integration_main_modules/bpmux_iteration_close_cli_parity_e2e.rs"]
 mod bpmux_iteration_close_cli_parity_e2e;
+#[path = "integration_main_modules/bpmux_lesson_cli_parity_e2e.rs"]
+mod bpmux_lesson_cli_parity_e2e;
 #[path = "integration_main_modules/bpmux_pass_cli_substrate_parity_e2e.rs"]
 mod bpmux_pass_cli_substrate_parity_e2e;
 #[path = "integration_main_modules/bpmux_send_read_cli_e2e.rs"]
