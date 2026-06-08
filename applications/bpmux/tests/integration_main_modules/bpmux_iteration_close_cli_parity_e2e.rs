@@ -23,14 +23,30 @@ fn stderr(out: &std::process::Output) -> String {
 }
 
 #[tokio::test]
-async fn bpmux_iteration_close_reaches_the_handler_with_no_role_guard() {
+async fn bpmux_iteration_close_blocks_a_non_pm_with_the_require_role_error() {
     let bpmux = TestBpmux::start();
     bpmux.simulate_secret();
     let out = run_verb(&bpmux, "dev", &["iteration", "close", "--iteration", "1"]).await;
-    let e = stderr(&out);
     assert!(
-        e.contains("not found") || e.contains("not an Iteration"),
-        "bpmux iteration close reaches the SAME gated /api/close_iteration handler (no role-guard, like MCP close_iteration) — iteration #1 absent yields the handler's iteration-validation error, not a route-404 nor a CLI-added role-guard; stderr: {e}"
+        !out.status.success(),
+        "close_iteration is PM-only; dev must be refused"
+    );
+    assert!(
+        stderr(&out).contains("restricted to pm"),
+        "bpmux iteration close routes through the GATED /api/rpc/close_iteration (require_purpose pm), mirroring the MCP close_iteration tool's gate — dev refused, NOT the old bare gate-skipping /api/close_iteration REST; stderr: {}",
+        stderr(&out)
+    );
+}
+
+#[tokio::test]
+async fn bpmux_iteration_close_owner_bypasses_the_pm_only_guard() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run_verb(&bpmux, "owner", &["iteration", "close", "--iteration", "1"]).await;
+    assert!(
+        !stderr(&out).contains("restricted to pm"),
+        "the owner bypasses close_iteration's pm-only require_role guard via the #1709 superset (then hits iteration-not-found, not the role-gate); stderr: {}",
+        stderr(&out)
     );
 }
 

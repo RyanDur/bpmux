@@ -19,7 +19,7 @@ pub(crate) fn json_headers() -> [(axum::http::HeaderName, &'static str); 1] {
     [(axum::http::header::CONTENT_TYPE, "application/json")]
 }
 
-pub(super) fn broadcast_board_invalidate(session: &session::Session) {
+pub(crate) fn broadcast_board_invalidate(session: &session::Session) {
     let delta = session::Message {
         from: "bpmux".to_string(),
         text: String::new(),

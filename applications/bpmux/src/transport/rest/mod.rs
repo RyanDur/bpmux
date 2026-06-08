@@ -2,7 +2,7 @@ mod board;
 mod capture;
 mod ci;
 mod classifier;
-mod iteration_close;
+pub(crate) mod iteration_close;
 mod labels;
 mod lessons;
 mod messages;
@@ -11,7 +11,7 @@ mod reactions;
 mod room;
 mod roster;
 mod search;
-mod shared;
+pub(crate) mod shared;
 mod wait;
 
 pub use board::{
