@@ -140,7 +140,6 @@ pub async fn run_server(
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
 
     let gated_routes = axum::Router::new()
-        .route("/api/board", axum::routing::get(transport::rest::get_board))
         .route(
             "/api/stories/{number}",
             axum::routing::get(transport::rest::get_story),
@@ -335,6 +334,7 @@ pub async fn run_server(
             "/api/messages",
             axum::routing::get(transport::rest::get_messages).post(transport::rest::post_message),
         )
+        .route("/api/board", axum::routing::get(transport::rest::get_board))
         .route(
             "/api/wait-for-event",
             axum::routing::get(transport::rest::wait_for_event),

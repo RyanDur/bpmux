@@ -142,6 +142,42 @@ enum Command {
         #[arg(long, help = "Emit the verb-index as JSON for agent parsing")]
         json: bool,
     },
+    #[command(
+        about = "List the ready queue as a compact scannable index (position, #number, title, acceptor) from bpmux's own store off Claude's MCP — never a stream-flooding dump. --json for machine-parse, --full for the raw board payload."
+    )]
+    Ready {
+        #[arg(long, help = "Emit the ready stories as JSON for agent parsing")]
+        json: bool,
+        #[arg(long, help = "Emit the raw board payload instead of the compact index")]
+        full: bool,
+    },
+    #[command(
+        about = "Show one story as a compact summary (number, title, state, acceptor) from bpmux's own store off Claude's MCP. --json for machine-parse, --full for the body."
+    )]
+    Story {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "Emit the story as JSON for agent parsing")]
+        json: bool,
+        #[arg(long, help = "Emit the full story body instead of the compact summary")]
+        full: bool,
+    },
+    #[command(
+        about = "List the board as a compact scannable index (counts + one-line titles) from bpmux's own store off Claude's MCP — never a stream-flooding dump. --state filters, --limit caps, --json machine-parses, --full emits the raw payload."
+    )]
+    Board {
+        #[arg(
+            long,
+            help = "Filter to a workflow state (ready, in-progress, desk-check, delivered, acceptance, accepted)"
+        )]
+        state: Option<String>,
+        #[arg(long, help = "Cap the number of stories shown")]
+        limit: Option<usize>,
+        #[arg(long, help = "Emit the stories as JSON for agent parsing")]
+        json: bool,
+        #[arg(long, help = "Emit the raw board payload instead of the compact index")]
+        full: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -355,6 +391,24 @@ pub fn run() -> anyhow::Result<()> {
 
     if let Some(Command::Help { json }) = &cli.command {
         return cli::run_help(*json);
+    }
+
+    if let Some(Command::Ready { json, full }) = &cli.command {
+        return cli::run_ready(*json, *full);
+    }
+
+    if let Some(Command::Story { number, json, full }) = &cli.command {
+        return cli::run_story(*number, *json, *full);
+    }
+
+    if let Some(Command::Board {
+        state,
+        limit,
+        json,
+        full,
+    }) = &cli.command
+    {
+        return cli::run_board(state, *limit, *json, *full);
     }
 
     if let Some(Command::Room { action }) = &cli.command {

@@ -31,6 +31,8 @@ mod board_column_parity_e2e;
 mod board_fixture_seed;
 #[path = "integration_main_modules/bookmark_e2e.rs"]
 mod bookmark_e2e;
+#[path = "integration_main_modules/bpmux_board_read_cli_e2e.rs"]
+mod bpmux_board_read_cli_e2e;
 #[path = "integration_main_modules/bpmux_send_read_cli_e2e.rs"]
 mod bpmux_send_read_cli_e2e;
 #[path = "integration_main_modules/bpmux_send_speech_guard_parity_e2e.rs"]
