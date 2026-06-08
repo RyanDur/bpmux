@@ -135,6 +135,36 @@ pub(crate) enum ValueAction {
 }
 
 #[derive(Subcommand)]
+pub(crate) enum BookmarkAction {
+    #[command(about = "Save a session bookmark for this role")]
+    Save {
+        #[arg(long, help = "Current task")]
+        current_task: String,
+        #[arg(long, help = "Next step (optional)")]
+        next_step: Option<String>,
+        #[arg(long, help = "Notes (optional)")]
+        notes: Option<String>,
+        #[arg(
+            long = "decision",
+            value_name = "DECISION",
+            help = "A decision (repeatable)"
+        )]
+        decisions: Vec<String>,
+        #[arg(
+            long = "open-question",
+            value_name = "QUESTION",
+            help = "An open question (repeatable)"
+        )]
+        open_questions: Vec<String>,
+    },
+    #[command(about = "Get a session bookmark (defaults to this role)")]
+    Get {
+        #[arg(long, help = "Role whose bookmark to load (optional)")]
+        role: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
 pub(crate) enum RoomAction {
     Spawn {
         role: String,

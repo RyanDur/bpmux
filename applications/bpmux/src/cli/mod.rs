@@ -1,11 +1,14 @@
 mod actions;
+mod bookmark;
 mod commands;
 mod principle;
 mod read;
 mod write;
 pub(crate) use actions::{
-    CiAction, EpicAction, IterationAction, LessonAction, PrincipleAction, RoomAction, ValueAction,
+    BookmarkAction, CiAction, EpicAction, IterationAction, LessonAction, PrincipleAction,
+    RoomAction, ValueAction,
 };
+pub(crate) use bookmark::{run_bookmark_get, run_bookmark_save};
 pub(crate) use commands::Command;
 pub(crate) use principle::{
     run_identity_get, run_principle_add, run_principle_remove, run_principle_update, run_value_add,
@@ -304,6 +307,16 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
             ValueAction::Add { name, description } => run_value_add(name, description),
         }),
         Command::Identity => Some(run_identity_get()),
+        Command::Bookmark { action } => Some(match action {
+            BookmarkAction::Save {
+                current_task,
+                next_step,
+                notes,
+                decisions,
+                open_questions,
+            } => run_bookmark_save(current_task, next_step, notes, decisions, open_questions),
+            BookmarkAction::Get { role } => run_bookmark_get(role),
+        }),
         Command::Bridge { .. }
         | Command::Recall { .. }
         | Command::Room { .. }

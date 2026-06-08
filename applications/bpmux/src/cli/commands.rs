@@ -1,7 +1,8 @@
 use clap::Subcommand;
 
 use super::actions::{
-    CiAction, EpicAction, IterationAction, LessonAction, PrincipleAction, RoomAction, ValueAction,
+    BookmarkAction, CiAction, EpicAction, IterationAction, LessonAction, PrincipleAction,
+    RoomAction, ValueAction,
 };
 
 #[derive(Subcommand)]
@@ -367,4 +368,11 @@ pub(crate) enum Command {
         about = "Print this role's identity (values + principles) off Claude's MCP, from the same crate::session::identity store the bridge uses."
     )]
     Identity,
+    #[command(
+        about = "Bookmark operations off Claude's MCP — save/get a session-continuity bookmark for this role (filesystem-direct in the current session dir; ungated; same crate::session::bookmark store the bridge uses)."
+    )]
+    Bookmark {
+        #[command(subcommand)]
+        action: BookmarkAction,
+    },
 }
