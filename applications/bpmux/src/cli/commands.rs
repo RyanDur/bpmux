@@ -253,6 +253,60 @@ pub(crate) enum Command {
         #[arg(long, help = "add (default) | remove")]
         operation: Option<String>,
     },
+    #[command(
+        about = "Create a story off Claude's MCP — fires the same gated /api/rpc/create_story handler the bridge uses (pm-lane: pm any type, dev [Chore]-class only; owner bypasses via the #1548 superset)."
+    )]
+    Create {
+        #[arg(long, help = "Story title")]
+        title: String,
+        #[arg(
+            long,
+            help = "The user-job (Mike Cohn): as <role>, I want <goal> so that <benefit>"
+        )]
+        user_job: String,
+        #[arg(
+            long,
+            help = "The observation-falsifier — what would make you reject this as built"
+        )]
+        observation_falsifier: String,
+        #[arg(long, help = "Story body (optional)")]
+        body: Option<String>,
+        #[arg(long, help = "Parent epic number (optional)")]
+        parent_epic: Option<u64>,
+        #[arg(long, help = "Acceptance-test path (optional)")]
+        acceptance_test_path: Option<String>,
+    },
+    #[command(
+        about = "Edit a story's title/body off Claude's MCP — fires the same gated /api/rpc/edit_story path the bridge uses (PM-only; owner bypasses via the #1709 require_role superset-extension)."
+    )]
+    Edit {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "New title (optional)")]
+        title: Option<String>,
+        #[arg(long, help = "New body (optional)")]
+        body: Option<String>,
+    },
+    #[command(
+        about = "Comment on a story off Claude's MCP — fires the same gated /api/rpc/comment_on_story path the bridge uses (all roles; no role-restriction)."
+    )]
+    Comment {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "The comment body")]
+        body: String,
+    },
+    #[command(
+        about = "Close a story off Claude's MCP — fires the same gated /api/rpc/close_story path the bridge uses (PM-only via the close transition; owner bypasses via the #1548 superset)."
+    )]
+    Close {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "Why the story is closed")]
+        reason: String,
+        #[arg(long, help = "retire (default) | wontfix")]
+        disposition: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

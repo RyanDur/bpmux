@@ -167,3 +167,67 @@ pub(crate) fn run_label(
     }
     dispatch_write("label_story", args)
 }
+
+pub(crate) fn run_create(
+    title: &str,
+    user_job: &str,
+    observation_falsifier: &str,
+    body: &Option<String>,
+    parent_epic: Option<u64>,
+    acceptance_test_path: &Option<String>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("title".to_string(), serde_json::json!(title));
+    args.insert("user_job".to_string(), serde_json::json!(user_job));
+    args.insert(
+        "observation_falsifier".to_string(),
+        serde_json::json!(observation_falsifier),
+    );
+    if let Some(b) = body {
+        args.insert("body".to_string(), serde_json::json!(b));
+    }
+    if let Some(e) = parent_epic {
+        args.insert("parent_epic".to_string(), serde_json::json!(e));
+    }
+    if let Some(p) = acceptance_test_path {
+        args.insert("acceptance_test_path".to_string(), serde_json::json!(p));
+    }
+    dispatch_write("create_story", args)
+}
+
+pub(crate) fn run_edit(
+    number: u64,
+    title: &Option<String>,
+    body: &Option<String>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    if let Some(t) = title {
+        args.insert("title".to_string(), serde_json::json!(t));
+    }
+    if let Some(b) = body {
+        args.insert("body".to_string(), serde_json::json!(b));
+    }
+    dispatch_write("edit_story", args)
+}
+
+pub(crate) fn run_comment(number: u64, body: &str) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("body".to_string(), serde_json::json!(body));
+    dispatch_write("comment_on_story", args)
+}
+
+pub(crate) fn run_close(
+    number: u64,
+    reason: &str,
+    disposition: &Option<String>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("reason".to_string(), serde_json::json!(reason));
+    if let Some(d) = disposition {
+        args.insert("disposition".to_string(), serde_json::json!(d));
+    }
+    dispatch_write("close_story", args)
+}

@@ -325,6 +325,47 @@ pub fn run() -> anyhow::Result<()> {
         return cli::run_label(*number, label, operation);
     }
 
+    if let Some(cli::Command::Create {
+        title,
+        user_job,
+        observation_falsifier,
+        body,
+        parent_epic,
+        acceptance_test_path,
+    }) = &cli.command
+    {
+        return cli::run_create(
+            title,
+            user_job,
+            observation_falsifier,
+            body,
+            *parent_epic,
+            acceptance_test_path,
+        );
+    }
+
+    if let Some(cli::Command::Edit {
+        number,
+        title,
+        body,
+    }) = &cli.command
+    {
+        return cli::run_edit(*number, title, body);
+    }
+
+    if let Some(cli::Command::Comment { number, body }) = &cli.command {
+        return cli::run_comment(*number, body);
+    }
+
+    if let Some(cli::Command::Close {
+        number,
+        reason,
+        disposition,
+    }) = &cli.command
+    {
+        return cli::run_close(*number, reason, disposition);
+    }
+
     if let Some(cli::Command::Room { action }) = &cli.command {
         return match action {
             cli::RoomAction::Spawn {
