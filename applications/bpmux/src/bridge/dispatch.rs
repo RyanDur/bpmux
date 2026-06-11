@@ -330,6 +330,18 @@ pub(crate) async fn dispatch_test_view_velocity(
     tools::handle_view_velocity(|| async move { Ok(messages) }, &empty_ws, refresh).await
 }
 
+pub(crate) async fn dispatch_test_view_story_commits(
+    args: serde_json::Map<String, serde_json::Value>,
+) -> Result<String, String> {
+    tools::handle_view_story_commits(&args).await
+}
+
+pub(crate) async fn dispatch_test_view_commit_diff(
+    args: serde_json::Map<String, serde_json::Value>,
+) -> Result<String, String> {
+    tools::handle_view_commit_diff(&args).await
+}
+
 pub(crate) async fn dispatch_test_view_board(
     args: serde_json::Map<String, serde_json::Value>,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,

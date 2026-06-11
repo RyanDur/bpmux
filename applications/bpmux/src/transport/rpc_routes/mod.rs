@@ -50,6 +50,9 @@ fn known_tools() -> &'static [&'static str] {
         "view_backlog",
         "submit_verdict",
         "view_verdicts",
+        "view_velocity",
+        "view_story_commits",
+        "view_commit_diff",
     ]
 }
 
@@ -65,6 +68,9 @@ fn is_read_only_tool(tool: &str) -> bool {
             | "view_comments"
             | "view_backlog"
             | "view_verdicts"
+            | "view_velocity"
+            | "view_story_commits"
+            | "view_commit_diff"
     )
 }
 
@@ -164,6 +170,14 @@ async fn dispatch(
         "view_backlog" => bridge::dispatch_test_view_backlog(refresh_ref).await,
         "submit_verdict" => bridge::dispatch_test_submit_verdict(args, agent, session).await,
         "view_verdicts" => bridge::dispatch_test_view_verdicts(args, session, refresh_ref).await,
+        "view_velocity" => {
+            let messages = session
+                .read_messages()
+                .map_err(|e| format!("view_velocity: read messages: {e}"))?;
+            bridge::dispatch_test_view_velocity(messages, refresh_ref).await
+        }
+        "view_story_commits" => bridge::dispatch_test_view_story_commits(args).await,
+        "view_commit_diff" => bridge::dispatch_test_view_commit_diff(args).await,
         _ => Err(format!(
             "rpc: unknown tool '{tool}'; expected one of {:?}",
             known_tools()

@@ -48,7 +48,8 @@ pub(crate) use dispatch::{
     dispatch_test_move_story, dispatch_test_pass_desk_check, dispatch_test_reject_story,
     dispatch_test_reorder_story, dispatch_test_set_parent_epic, dispatch_test_start_story,
     dispatch_test_submit_verdict, dispatch_test_unset_parent_epic, dispatch_test_view_backlog,
-    dispatch_test_view_board, dispatch_test_view_comments, dispatch_test_view_story_timeline,
+    dispatch_test_view_board, dispatch_test_view_comments, dispatch_test_view_commit_diff,
+    dispatch_test_view_story_commits, dispatch_test_view_story_timeline,
     dispatch_test_view_velocity, dispatch_test_view_verdicts,
 };
 

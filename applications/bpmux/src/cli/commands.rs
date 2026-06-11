@@ -400,4 +400,24 @@ pub(crate) enum Command {
         #[arg(help = "Story number")]
         story: u64,
     },
+    #[command(
+        about = "Show feature-velocity metrics off Claude's MCP — fires the same gated /api/rpc/view_velocity read the bridge uses."
+    )]
+    Velocity,
+    #[command(
+        about = "List the commits that reference a story off Claude's MCP — fires the same gated /api/rpc/view_story_commits read the bridge uses."
+    )]
+    Commits {
+        #[arg(help = "Story number")]
+        story: u64,
+    },
+    #[command(
+        about = "Show a commit's diff off Claude's MCP — fires the same gated /api/rpc/view_commit_diff read the bridge uses."
+    )]
+    Diff {
+        #[arg(help = "Commit SHA or ref")]
+        sha: String,
+        #[arg(long, help = "Truncate the diff to this many bytes")]
+        max_bytes: Option<u64>,
+    },
 }

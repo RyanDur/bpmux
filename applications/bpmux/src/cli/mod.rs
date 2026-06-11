@@ -20,10 +20,11 @@ pub(crate) use principle::{
 };
 pub(crate) use read::{run_board, run_capture, run_ready, run_story};
 pub(crate) use write::{
-    run_accept, run_backlog, run_close, run_comment, run_comments, run_create, run_deliver,
-    run_edit, run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_fail,
+    run_accept, run_backlog, run_close, run_comment, run_comments, run_commit_diff, run_create,
+    run_deliver, run_edit, run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_fail,
     run_iteration_add, run_iteration_close, run_iteration_create, run_iteration_designate,
-    run_label, run_move, run_pass, run_reject, run_start, run_timeline, run_verdict, run_verdicts,
+    run_label, run_move, run_pass, run_reject, run_start, run_story_commits, run_timeline,
+    run_velocity, run_verdict, run_verdicts,
 };
 
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
@@ -291,6 +292,9 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
         Command::Comments { story } => Some(run_comments(*story)),
         Command::Timeline { story } => Some(run_timeline(*story)),
         Command::Verdicts { story } => Some(run_verdicts(*story)),
+        Command::Velocity => Some(run_velocity()),
+        Command::Commits { story } => Some(run_story_commits(*story)),
+        Command::Diff { sha, max_bytes } => Some(run_commit_diff(sha, *max_bytes)),
         Command::Lesson { action } => Some(match action {
             LessonAction::Save {
                 topic,
