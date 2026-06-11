@@ -1,6 +1,9 @@
 mod actions;
 mod bookmark;
+mod ci;
 mod commands;
+mod http;
+mod lesson;
 mod principle;
 mod read;
 mod write;
@@ -9,14 +12,13 @@ pub(crate) use actions::{
     RoomAction, ValueAction,
 };
 pub(crate) use bookmark::{run_bookmark_get, run_bookmark_save};
+pub(crate) use ci::{run_ci_jobs, run_ci_log, run_ci_rerun, run_ci_state};
 pub(crate) use commands::Command;
+pub(crate) use lesson::{run_lesson_list, run_lesson_list_peer, run_lesson_save};
 pub(crate) use principle::{
     run_identity_get, run_principle_add, run_principle_remove, run_principle_update, run_value_add,
 };
-pub(crate) use read::{
-    run_board, run_capture, run_ci_jobs, run_ci_log, run_ci_rerun, run_ci_state, run_lesson_list,
-    run_lesson_list_peer, run_lesson_save, run_ready, run_story,
-};
+pub(crate) use read::{run_board, run_capture, run_ready, run_story};
 pub(crate) use write::{
     run_accept, run_backlog, run_close, run_comment, run_comments, run_create, run_deliver,
     run_edit, run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_fail,
