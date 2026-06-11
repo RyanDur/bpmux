@@ -1,13 +1,14 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::extract::{Query, State};
+use axum::extract::{Extension, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::session;
+use crate::session::routing_identity::RoutingStore;
 use crate::transport::ws::should_deliver;
 
 pub const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;
@@ -22,12 +23,12 @@ pub struct WaitParams {
 
 pub async fn wait_for_event(
     State(session): State<Arc<session::Session>>,
+    Extension(routing): Extension<Arc<RoutingStore>>,
     Query(params): Query<WaitParams>,
 ) -> impl IntoResponse {
     let role = params.as_peer.unwrap_or_default();
     let timeout = Duration::from_millis(params.timeout_ms.unwrap_or(DEFAULT_WAIT_TIMEOUT_MS));
-    let after_cursor = params
-        .after
+    let after_cursor = durable_drain_cursor(&routing, &role, params.after.as_deref())
         .as_deref()
         .and_then(|raw| raw.parse::<chrono::DateTime<chrono::Utc>>().ok());
 
@@ -56,6 +57,17 @@ pub async fn wait_for_event(
             },
             _ = &mut deadline => return timed_out(),
         }
+    }
+}
+
+fn durable_drain_cursor(
+    routing: &RoutingStore,
+    role: &str,
+    client_after: Option<&str>,
+) -> Option<String> {
+    match routing.resolve(short_name(role)).into_iter().next() {
+        Some(session_id) => routing.drain_floor(&session_id, client_after),
+        None => client_after.map(str::to_string),
     }
 }
 

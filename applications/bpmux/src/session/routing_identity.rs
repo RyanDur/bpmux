@@ -127,6 +127,44 @@ impl RoutingStore {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         identity.link_terminal(session_id, terminal_id);
     }
+
+    pub fn resolve(&self, display: &str) -> Vec<String> {
+        let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        identity.resolve(display)
+    }
+
+    pub fn drain_floor(&self, session_id: &str, client_ack: Option<&str>) -> Option<String> {
+        let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        let stored = identity.cursor(session_id);
+        let floor = later_cursor(stored.as_deref(), client_ack);
+        if let Some(ref position) = floor {
+            identity.advance_cursor(session_id, position);
+            let _ = identity.save(&self.dir);
+        }
+        floor
+    }
+}
+
+fn later_cursor(a: Option<&str>, b: Option<&str>) -> Option<String> {
+    fn parse(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+        chrono::DateTime::parse_from_rfc3339(value)
+            .ok()
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+    }
+    match (a, b) {
+        (Some(x), Some(y)) => match (parse(x), parse(y)) {
+            (Some(px), Some(py)) => Some(if px >= py {
+                x.to_string()
+            } else {
+                y.to_string()
+            }),
+            (Some(_), None) => Some(x.to_string()),
+            (None, _) => Some(y.to_string()),
+        },
+        (Some(x), None) => Some(x.to_string()),
+        (None, Some(y)) => Some(y.to_string()),
+        (None, None) => None,
+    }
 }
 
 #[cfg(test)]
@@ -229,6 +267,50 @@ mod tests {
             identity.terminal_for("sess-1"),
             Some("term-B".to_string()),
             "a reconnecting same-session-id re-links to its NEW live pty — delivery follows the agent across a restart"
+        );
+    }
+
+    #[test]
+    fn drain_floor_clamps_a_stale_client_cursor_forward_the_durable_cure_for_tmp_replay() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register("sess-1", "dev");
+
+        let first = store.drain_floor("sess-1", Some("2026-06-11T20:00:05Z"));
+        assert_eq!(
+            first.as_deref(),
+            Some("2026-06-11T20:00:05Z"),
+            "the client's ack advances the server-tracked drain position"
+        );
+
+        let stale = store.drain_floor("sess-1", Some("2026-06-11T20:00:01Z"));
+        assert_eq!(
+            stale.as_deref(),
+            Some("2026-06-11T20:00:05Z"),
+            "a STALE client cursor (an old /tmp value) is clamped FORWARD to the server's drained position — never moves the floor back, so it can never replay already-drained events (the durable cure for the stale-/tmp replay class)"
+        );
+
+        let fresher = store.drain_floor("sess-1", Some("2026-06-11T20:00:09Z"));
+        assert_eq!(
+            fresher.as_deref(),
+            Some("2026-06-11T20:00:09Z"),
+            "a fresher client ack monotonically advances the durable cursor"
+        );
+
+        let reloaded = RoutingIdentity::load(dir.path());
+        assert_eq!(
+            reloaded.cursor("sess-1").as_deref(),
+            Some("2026-06-11T20:00:09Z"),
+            "the durable cursor survives a server restart — the drain position is recovered from disk, not a volatile /tmp file"
+        );
+    }
+
+    #[test]
+    fn later_cursor_parses_rather_than_lexically_compares_so_subsecond_precision_is_correct() {
+        assert_eq!(
+            later_cursor(Some("2026-06-11T20:00:01Z"), Some("2026-06-11T20:00:01.5Z")).as_deref(),
+            Some("2026-06-11T20:00:01.5Z"),
+            "the later instant wins by PARSED time — a lexical string compare would wrongly pick the no-fraction form ('Z' > '.5') and lose half a second of events"
         );
     }
 
