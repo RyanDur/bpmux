@@ -170,6 +170,20 @@ pub(crate) enum BookmarkAction {
 }
 
 #[derive(Subcommand)]
+pub(crate) enum BriefingAction {
+    #[command(about = "Save this role's briefing")]
+    Save {
+        #[arg(help = "Briefing content (markdown)")]
+        content: String,
+    },
+    #[command(about = "Get a briefing (defaults to this role)")]
+    Get {
+        #[arg(long, help = "Role whose briefing to load (optional)")]
+        role: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
 pub(crate) enum RoomAction {
     Spawn {
         role: String,

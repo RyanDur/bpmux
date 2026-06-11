@@ -1,8 +1,8 @@
 use clap::Subcommand;
 
 use super::actions::{
-    BookmarkAction, CiAction, EpicAction, IterationAction, LessonAction, PrincipleAction,
-    RoomAction, ValueAction,
+    BookmarkAction, BriefingAction, CiAction, EpicAction, IterationAction, LessonAction,
+    PrincipleAction, RoomAction, ValueAction,
 };
 
 #[derive(Subcommand)]
@@ -374,6 +374,13 @@ pub(crate) enum Command {
     Bookmark {
         #[command(subcommand)]
         action: BookmarkAction,
+    },
+    #[command(
+        about = "Briefing operations off Claude's MCP — save/get this role's briefing (filesystem-direct under BPMUX_BRIEFINGS_DIR; ungated; same crate::session::briefing store the bridge uses)."
+    )]
+    Briefing {
+        #[command(subcommand)]
+        action: BriefingAction,
     },
     #[command(
         about = "Show the backlog summary off Claude's MCP — fires the same gated /api/rpc/view_backlog read the bridge uses."

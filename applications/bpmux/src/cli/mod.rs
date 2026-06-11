@@ -1,5 +1,6 @@
 mod actions;
 mod bookmark;
+mod briefing;
 mod ci;
 mod commands;
 mod http;
@@ -8,10 +9,11 @@ mod principle;
 mod read;
 mod write;
 pub(crate) use actions::{
-    BookmarkAction, CiAction, EpicAction, IterationAction, LessonAction, PrincipleAction,
-    RoomAction, ValueAction,
+    BookmarkAction, BriefingAction, CiAction, EpicAction, IterationAction, LessonAction,
+    PrincipleAction, RoomAction, ValueAction,
 };
 pub(crate) use bookmark::{run_bookmark_get, run_bookmark_save};
+pub(crate) use briefing::{run_briefing_get, run_briefing_save};
 pub(crate) use ci::{run_ci_jobs, run_ci_log, run_ci_rerun, run_ci_state};
 pub(crate) use commands::Command;
 pub(crate) use lesson::{run_lesson_list, run_lesson_list_peer, run_lesson_save};
@@ -333,6 +335,10 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
                 open_questions,
             } => run_bookmark_save(current_task, next_step, notes, decisions, open_questions),
             BookmarkAction::Get { role } => run_bookmark_get(role),
+        }),
+        Command::Briefing { action } => Some(match action {
+            BriefingAction::Save { content } => run_briefing_save(content),
+            BriefingAction::Get { role } => run_briefing_get(role),
         }),
         Command::Bridge { .. }
         | Command::Recall { .. }
