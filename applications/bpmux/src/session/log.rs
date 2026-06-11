@@ -179,6 +179,22 @@ pub fn create_session(base: &Path) -> Result<PathBuf, LogError> {
     Ok(session_dir)
 }
 
+pub const DIR_SESSION_ID_MARKER: &str = ".bpmux-session-id";
+
+pub fn read_or_create_dir_session_id(dir: &Path) -> Result<String, LogError> {
+    let marker = dir.join(DIR_SESSION_ID_MARKER);
+    if let Ok(existing) = std::fs::read_to_string(&marker) {
+        let trimmed = existing.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    std::fs::create_dir_all(dir)?;
+    std::fs::write(&marker, &id)?;
+    Ok(id)
+}
+
 #[derive(Error, Debug)]
 pub enum LogError {
     #[error("IO error: {0}")]

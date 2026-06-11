@@ -111,12 +111,7 @@ pub(crate) fn run_send(
 pub(crate) fn run_register() -> anyhow::Result<()> {
     let role = crate::resolve_role(&None);
     let cwd = std::env::current_dir()?;
-    let session_dir = crate::session::resume_or_create_session(&cwd)?;
-    let session_id = session_dir
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or_else(|| anyhow::anyhow!("session dir has no name: {}", session_dir.display()))?
-        .to_string();
+    let session_id = crate::session::read_or_create_dir_session_id(&cwd)?;
     let mut payload = serde_json::Map::new();
     payload.insert("session_id".to_string(), serde_json::json!(session_id));
     payload.insert("display".to_string(), serde_json::json!(role));

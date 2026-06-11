@@ -79,6 +79,28 @@ fn resumes_existing_session() {
 }
 
 #[test]
+fn dir_session_id_is_held_in_the_dir_minted_once_then_reclaimed_via_a_lightweight_marker() {
+    let dir = TempDir::new().expect("temp dir");
+    let first = read_or_create_dir_session_id(dir.path()).expect("mint");
+    assert!(!first.is_empty());
+
+    let second = read_or_create_dir_session_id(dir.path()).expect("reclaim");
+    assert_eq!(
+        first, second,
+        "the id is HELD in the dir — a second derivation (restart in the same dir) reclaims the same id, never mints a new one (Ryan's dir-anchor)"
+    );
+
+    assert!(
+        dir.path().join(DIR_SESSION_ID_MARKER).is_file(),
+        "the id lives in a lightweight hidden marker — not a full session dir, so registering an agent never pollutes its workspace"
+    );
+    assert!(
+        !dir.path().join("current").exists(),
+        "no `current` symlink / session-dir scaffolding is written into the workspace (the pollution resume_or_create_session(cwd) would have caused)"
+    );
+}
+
+#[test]
 fn session_broadcasts_and_reads() {
     let dir = TempDir::new().expect("temp dir");
     let (tx, mut rx) = broadcast::channel(16);

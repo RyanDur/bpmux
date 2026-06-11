@@ -30,7 +30,7 @@ mod team_roster_tests;
 pub use classifier::{MessageClass, classify};
 pub use log::{
     BROADCAST_CHANNEL_CAPACITY, LogError, Session, append_message, create_session,
-    default_sessions_base, read_messages, resume_or_create_session,
+    default_sessions_base, read_messages, read_or_create_dir_session_id, resume_or_create_session,
 };
 pub use message::{Message, MessageType};
 pub use search::{SearchFilters, SearchResult, search};
