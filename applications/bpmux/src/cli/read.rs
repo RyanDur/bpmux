@@ -1,4 +1,4 @@
-use super::http::http_get;
+use super::http::{authed_get, http_get, http_get_with_query};
 
 fn fetch_board() -> anyhow::Result<serde_json::Value> {
     let port = crate::resolve_bpmux_port();
@@ -150,6 +150,34 @@ pub(crate) fn run_capture(window: bool) -> anyhow::Result<()> {
     })?;
     if !status.is_success() {
         anyhow::bail!("bpmux capture --window failed ({status}): {body}");
+    }
+    println!("{body}");
+    Ok(())
+}
+
+pub(crate) fn run_roadmap() -> anyhow::Result<()> {
+    let text = crate::roadmap::fetch_roadmap().map_err(|e| anyhow::anyhow!("{e}"))?;
+    println!("{text}");
+    Ok(())
+}
+
+pub(crate) fn run_sync_status() -> anyhow::Result<()> {
+    let (status, body) = authed_get("/api/sync-status")?;
+    if !status.is_success() {
+        anyhow::bail!("sync-status failed ({status}): {body}");
+    }
+    println!("{body}");
+    Ok(())
+}
+
+pub(crate) fn run_search(query: &str, sender: &Option<String>) -> anyhow::Result<()> {
+    let mut params: Vec<(&str, &str)> = vec![("query", query)];
+    if let Some(s) = sender {
+        params.push(("sender", s));
+    }
+    let (status, body) = http_get_with_query("/api/search", &params)?;
+    if !status.is_success() {
+        anyhow::bail!("search failed ({status}): {body}");
     }
     println!("{body}");
     Ok(())

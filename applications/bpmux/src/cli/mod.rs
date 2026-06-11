@@ -18,7 +18,9 @@ pub(crate) use lesson::{run_lesson_list, run_lesson_list_peer, run_lesson_save};
 pub(crate) use principle::{
     run_identity_get, run_principle_add, run_principle_remove, run_principle_update, run_value_add,
 };
-pub(crate) use read::{run_board, run_capture, run_ready, run_story};
+pub(crate) use read::{
+    run_board, run_capture, run_ready, run_roadmap, run_search, run_story, run_sync_status,
+};
 pub(crate) use write::{
     run_accept, run_backlog, run_close, run_comment, run_comments, run_commit_diff, run_create,
     run_deliver, run_edit, run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_fail,
@@ -295,6 +297,9 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
         Command::Velocity => Some(run_velocity()),
         Command::Commits { story } => Some(run_story_commits(*story)),
         Command::Diff { sha, max_bytes } => Some(run_commit_diff(sha, *max_bytes)),
+        Command::Roadmap => Some(run_roadmap()),
+        Command::SyncStatus => Some(run_sync_status()),
+        Command::Search { query, sender } => Some(run_search(query, sender)),
         Command::Lesson { action } => Some(match action {
             LessonAction::Save {
                 topic,

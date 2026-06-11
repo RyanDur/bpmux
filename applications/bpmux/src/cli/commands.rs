@@ -420,4 +420,21 @@ pub(crate) enum Command {
         #[arg(long, help = "Truncate the diff to this many bytes")]
         max_bytes: Option<u64>,
     },
+    #[command(
+        about = "Print the project roadmap off Claude's MCP — reads ROADMAP.md from the repo root directly."
+    )]
+    Roadmap,
+    #[command(
+        about = "Show the canonical-store sync status off Claude's MCP — the same /api/sync-status read the bridge uses."
+    )]
+    SyncStatus,
+    #[command(
+        about = "Search the message log off Claude's MCP — the same /api/search read the bridge uses."
+    )]
+    Search {
+        #[arg(help = "Search query")]
+        query: String,
+        #[arg(long, help = "Filter to a sender role")]
+        sender: Option<String>,
+    },
 }

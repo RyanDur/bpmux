@@ -14,6 +14,34 @@ pub(crate) fn http_get(url: &str) -> anyhow::Result<(reqwest::StatusCode, String
     Ok(result?)
 }
 
+fn percent_encode(value: &str) -> String {
+    value
+        .bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                String::from(b as char)
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
+pub(crate) fn http_get_with_query(
+    path: &str,
+    params: &[(&str, &str)],
+) -> anyhow::Result<(reqwest::StatusCode, String)> {
+    let port = crate::resolve_bpmux_port();
+    let mut url = crate::transport::local_url::api_url(port, path);
+    for (i, (key, value)) in params.iter().enumerate() {
+        let separator = if i == 0 { '?' } else { '&' };
+        url.push(separator);
+        url.push_str(key);
+        url.push('=');
+        url.push_str(&percent_encode(value));
+    }
+    http_get(&url)
+}
+
 fn bearer_token() -> anyhow::Result<String> {
     let token_path = crate::session::auth_token::default_auth_token_path()
         .ok_or_else(|| anyhow::anyhow!("cannot resolve auth-token path (HOME unset?)"))?;
