@@ -68,11 +68,11 @@ const EXCLUDED: &[(&str, &str)] = &[
     ),
     (
         "subscribe",
-        "event-receive mechanism; delivery is pushed, not pulled via a CLI verb",
+        "registers event-classes to the bridge's MCP push-stream; an off-MCP agent drains events via the in-scope wait-for-event pull",
     ),
     (
         "unsubscribe",
-        "event-receive mechanism; the inverse of subscribe",
+        "the inverse of subscribe — MCP push-stream deregistration; off-MCP receive is the wait-for-event pull",
     ),
     (
         "share_message",
@@ -84,11 +84,14 @@ const EXCLUDED: &[(&str, &str)] = &[
     ),
     ("get_token_report", "token telemetry"),
     ("get_usage", "usage telemetry"),
-    ("view_tokens", "token telemetry"),
+    (
+        "view_tokens",
+        "opens the Ryan-facing tokens TUI view (a renderer-open, not agent data — cf. get_token_report which returns the JSON)",
+    ),
     ("dev_in_flight", "dev WIP-introspection telemetry"),
     (
         "reorder_story",
-        "retired tombstone — superseded by move_story with a position",
+        "superseded by the move verb's --position (bpmux move <n> <same-state> --position covers reordering); retired per #1403, still advertised as a guiding tombstone",
     ),
     (
         "user_fn",
