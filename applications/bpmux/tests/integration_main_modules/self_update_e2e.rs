@@ -112,6 +112,7 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
             "BPMUX_LOG",
             std::env::temp_dir().join("bpmux-self-update-e2e-diag.log"),
         )
+        .env_remove("BPMUX_BINARY_WATCH_PATH")
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
