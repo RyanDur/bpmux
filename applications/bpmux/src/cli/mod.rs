@@ -108,6 +108,40 @@ pub(crate) fn run_send(
     Ok(())
 }
 
+pub(crate) fn run_register() -> anyhow::Result<()> {
+    let role = crate::resolve_role(&None);
+    let cwd = std::env::current_dir()?;
+    let session_dir = crate::session::resume_or_create_session(&cwd)?;
+    let session_id = session_dir
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| anyhow::anyhow!("session dir has no name: {}", session_dir.display()))?
+        .to_string();
+    let mut payload = serde_json::Map::new();
+    payload.insert("session_id".to_string(), serde_json::json!(session_id));
+    payload.insert("display".to_string(), serde_json::json!(role));
+    let body = serde_json::Value::Object(payload);
+    let port = crate::resolve_bpmux_port();
+    let url = crate::transport::local_url::api_url(port, "/api/register");
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let (status, reason) = rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(5_000))
+            .build()?;
+        let response = client.post(&url).json(&body).send().await?;
+        let status = response.status();
+        let reason = response.text().await.unwrap_or_default();
+        Ok::<_, reqwest::Error>((status, reason))
+    })?;
+    if !status.is_success() {
+        anyhow::bail!("register rejected ({status}): {reason}");
+    }
+    println!("✓ registered {role} ({session_id})");
+    Ok(())
+}
+
 pub(crate) fn run_read(limit: usize, full: bool) -> anyhow::Result<()> {
     let role = crate::resolve_role(&None);
     let port = crate::resolve_bpmux_port();
@@ -205,6 +239,7 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
             to,
             addressee,
         } => Some(run_send(text, to, addressee)),
+        Command::Register => Some(run_register()),
         Command::Read { limit, full } => Some(run_read(*limit, *full)),
         Command::Help { json } => Some(run_help(*json)),
         Command::Ready { json, full } => Some(run_ready(*json, *full)),

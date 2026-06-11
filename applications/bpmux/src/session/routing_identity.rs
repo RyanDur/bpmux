@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 
@@ -99,6 +100,32 @@ impl RoutingIdentity {
             .filter(|(id, _)| !self.terminal_by_id.contains_key(*id))
             .map(|(id, display)| (id.clone(), display.clone()))
             .collect()
+    }
+}
+
+pub struct RoutingStore {
+    identity: Mutex<RoutingIdentity>,
+    dir: PathBuf,
+}
+
+impl RoutingStore {
+    pub fn load(dir: PathBuf) -> Self {
+        let identity = RoutingIdentity::load(&dir);
+        Self {
+            identity: Mutex::new(identity),
+            dir,
+        }
+    }
+
+    pub fn register(&self, session_id: &str, display: &str) {
+        let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        identity.register(session_id, display);
+        let _ = identity.save(&self.dir);
+    }
+
+    pub fn link_terminal(&self, session_id: &str, terminal_id: &str) {
+        let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        identity.link_terminal(session_id, terminal_id);
     }
 }
 
@@ -202,6 +229,22 @@ mod tests {
             identity.terminal_for("sess-1"),
             Some("term-B".to_string()),
             "a reconnecting same-session-id re-links to its NEW live pty — delivery follows the agent across a restart"
+        );
+    }
+
+    #[test]
+    fn routing_store_handle_persists_each_registration_so_a_reload_recovers_it() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        {
+            let store = RoutingStore::load(dir.path().to_path_buf());
+            store.register("sess-1", "dev");
+            store.link_terminal("sess-1", "term-A");
+        }
+        let reloaded = RoutingIdentity::load(dir.path());
+        assert_eq!(
+            reloaded.resolve("dev"),
+            vec!["sess-1".to_string()],
+            "the shared handle persists the identity on every mutation — a reload (server restart) recovers it without the caller remembering to save"
         );
     }
 

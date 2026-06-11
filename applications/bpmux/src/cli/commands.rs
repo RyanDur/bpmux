@@ -94,6 +94,10 @@ pub(crate) enum Command {
         addressee: Option<String>,
     },
     #[command(
+        about = "Register this agent's routing identity at startup (channels-independence #1712). Derives a stable session-id from the current directory (reclaimed across restart-in-the-same-dir, else minted) and registers it with the server keyed to this agent's display-name (ambient role via BPMUX_ROLE). Agnostic: a direct server call, no Claude-specific glue."
+    )]
+    Register,
+    #[command(
         about = "Read recent team messages as a compact index (sender + one-line), off Claude's MCP. Use --full for the raw payload."
     )]
     Read {

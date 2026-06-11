@@ -93,6 +93,14 @@ pub async fn run_server(
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
+    let routing_store_dir = session
+        .dir
+        .parent()
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_else(|| session.dir.clone());
+    let routing_store = std::sync::Arc::new(crate::session::routing_identity::RoutingStore::load(
+        routing_store_dir,
+    ));
     let mut orchestrator_inner = crate::orchestrator::Orchestrator::new(
         session.clone(),
         tracker.as_ref().cloned(),
@@ -354,6 +362,10 @@ pub async fn run_server(
             "/api/classifier-misfire",
             axum::routing::post(transport::rest::post_classifier_misfire),
         )
+        .route(
+            "/api/register",
+            axum::routing::post(transport::rest::post_register),
+        )
         .merge(gated_routes)
         .merge(test_routes)
         .merge(test_seed_routes)
@@ -365,6 +377,7 @@ pub async fn run_server(
         .layer(axum::Extension(test_refresh))
         .layer(axum::Extension(orchestrator.clone()))
         .layer(axum::Extension(pty_registry.clone()))
+        .layer(axum::Extension(routing_store.clone()))
         .layer(axum::Extension(port))
         .layer(
             tower_http::cors::CorsLayer::new()
