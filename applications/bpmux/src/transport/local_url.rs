@@ -10,6 +10,18 @@ pub fn ws_url(port: u16, path: &str) -> String {
     format!("ws://{LOCAL_HOST}:{port}{path}")
 }
 
+pub(crate) fn percent_encode(value: &str) -> String {
+    value
+        .bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                String::from(b as char)
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -84,5 +96,11 @@ mod tests {
     #[test]
     fn default_api_port_pins_4117() {
         assert_eq!(DEFAULT_API_PORT, 4117);
+    }
+
+    #[test]
+    fn percent_encode_passes_unreserved_and_escapes_the_rest() {
+        assert_eq!(percent_encode("abcXYZ090-_.~"), "abcXYZ090-_.~");
+        assert_eq!(percent_encode("a b&c=d"), "a%20b%26c%3Dd");
     }
 }

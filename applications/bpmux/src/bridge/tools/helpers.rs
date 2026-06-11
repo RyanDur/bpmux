@@ -21,14 +21,7 @@ pub(in crate::bridge) async fn ws_send(
 }
 
 pub(super) fn urlencoding(s: &str) -> String {
-    s.bytes()
-        .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                String::from(b as char)
-            }
-            _ => format!("%{b:02X}"),
-        })
-        .collect()
+    crate::transport::local_url::percent_encode(s)
 }
 
 pub(super) fn identity_success(index: &crate::session::identity::IdentityIndex) -> String {

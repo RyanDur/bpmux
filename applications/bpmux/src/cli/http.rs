@@ -14,18 +14,6 @@ pub(crate) fn http_get(url: &str) -> anyhow::Result<(reqwest::StatusCode, String
     Ok(result?)
 }
 
-fn percent_encode(value: &str) -> String {
-    value
-        .bytes()
-        .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                String::from(b as char)
-            }
-            _ => format!("%{b:02X}"),
-        })
-        .collect()
-}
-
 pub(crate) fn http_get_with_query(
     path: &str,
     params: &[(&str, &str)],
@@ -37,7 +25,7 @@ pub(crate) fn http_get_with_query(
         url.push(separator);
         url.push_str(key);
         url.push('=');
-        url.push_str(&percent_encode(value));
+        url.push_str(&crate::transport::local_url::percent_encode(value));
     }
     http_get(&url)
 }
