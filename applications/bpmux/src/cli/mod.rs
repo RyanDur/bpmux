@@ -5,6 +5,8 @@ mod ci;
 mod commands;
 mod http;
 mod lesson;
+#[cfg(test)]
+mod parity_audit;
 mod principle;
 mod read;
 mod write;
