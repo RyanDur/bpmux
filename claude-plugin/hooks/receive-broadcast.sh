@@ -28,7 +28,13 @@ else
   printf '%s' "$after" >"$cursor_file"
 fi
 
-event="$(bpmux wait-for-event --after "$after" --timeout-ms 2000 2>/dev/null)"
+# Resolve the bpmux binary robustly: prefer PATH, else the self-update install
+# target (BPMUX_BINARY_WATCH_PATH / ~/.bpmux/installed). A bare `bpmux` that is
+# off PATH would hit command-not-found, get swallowed by 2>/dev/null, and read
+# as "no event" — silently killing the off-Channels receive-loop.
+bpmux_bin="$(command -v bpmux || true)"
+[ -z "$bpmux_bin" ] && bpmux_bin="${BPMUX_BINARY_WATCH_PATH:-$HOME/.bpmux/installed/bpmux}"
+event="$("$bpmux_bin" wait-for-event --after "$after" --timeout-ms 2000 2>/dev/null)"
 
 if [ -z "$event" ] || printf '%s' "$event" | jq -e '.timed_out == true' >/dev/null 2>&1; then
   exit 0
