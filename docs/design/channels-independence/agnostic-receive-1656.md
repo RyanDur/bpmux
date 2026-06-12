@@ -70,12 +70,15 @@ for a Claude agent; `bpmux register --name` for a truly-agnostic one).
   `transport/ws/mod.rs:279`) is still **display-name string-match**, NOT id-resolve — the
   session-id is the CURSOR key, not yet the delivery key. So §Identity-model's "`should_deliver`
   resolves to:[name]→id via the durable store" describes the **#1656 TARGET, not #1712's shipped
-  shape**. Req-2's full **id-keyed DELIVERY** (collision-safe — the connection carries its OWN
-  id rather than resolve-from-display; a display-collision picks arbitrarily today) is **SLICE-A = #1714** (req-2's collision-safe completion — connection-carries-own-id;
-  build-gated on leave-mcp-alone, sequenced after #1658). **THIS doc (#1656) is now SLICE-B,
-  DISPLAY-routed only** — the agnostic-receive for today's unique-display team; #1714(A)
-  completes req-2's id-keyed delivery. (The §contract's req-2 below is the FULL contract-target;
-  B realizes the display-routed half, A=#1714 the id-keyed-collision-safe half.)
+  shape**. **#1656 = ROUTE-BY-ID** (PM scope-call (1), 2026-06-12, per the §IDENTITY-MODEL RESOLVED
+  block above — this SUPERSEDES the earlier "display-routed-B" framing): `should_deliver` migrates
+  from #1712's display-match to **resolve `to:[name]`→id→deliver-by-id**. For today's UNIQUE-display
+  team `resolve(name)`→a SINGLE id, so id-routing delivers correctly with NO collision to
+  disambiguate. The collision-safe completion — `resolve(name)`→MULTIPLE ids (two-live-same-display:
+  the connection carries its OWN id rather than picking arbitrarily) — is **#1714**, a SEPARATE slice
+  gated after #1658 (per its note), which this team never hits. So **#1656 builds the id-routing
+  spine NOW; #1714 adds collision-disambiguation later.** (The §contract's req-2 below is the FULL
+  contract-target; #1656 realizes the id-routing spine, #1714 the collision-safe disambiguation.)
 - **#1713 FILED** (agnostic-registration, Epic #1657, sequenced pre-#1656) — the
   §Session↔terminal-LINK capture-mechanism **EVOLVED to AGENT-START-DETECTION (B, pinned 2026-06-12)**.
   The server-owned PTY-tap monitors per-terminal: (1) cwd via OSC-7 (accumulation-buffered for
@@ -176,9 +179,10 @@ be forged. Without the guard, auto-submit is NOT safe.
 ## Identity-model — FOUNDATIONAL precursor slice (PM-scoped 2026-06-11; #1656 routes ON it)
 
 > **SHIPPED as #1712 — see §STATUS.** Read the delivery-vs-cursor nuance there: #1712 keyed the
-> CURSOR by session-id but DELIVERY (`should_deliver`) is still display-match; the full id-keyed
-> DELIVERY (req-2, collision-safe) is #1656's remaining connection-id work. The model below
-> describes the precursor as designed.
+> CURSOR by session-id but DELIVERY (`should_deliver`) is still display-match; #1656 migrates
+> DELIVERY to **route-by-id** (resolve `to:[name]`→id→deliver-by-id — PM scope-call (1) 2026-06-12).
+> The collision-safe completion (`resolve(name)`→MULTIPLE ids, connection-carries-own-id) is the
+> SEPARATE #1714, gated after #1658. The model below describes the precursor as designed.
 
 Ryan reframed routing-identity (verbatim across 2026-06-11): *"the roles may not be the right
 mechanism for routing since you can rename yourself whenever … maybe an id approach that goes
