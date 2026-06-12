@@ -308,6 +308,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_pty_loop_delivered_message_is_not_systematically_re_drained_by_the_dev_stop_hook() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let routing = RoutingStore::load(dir.path().to_path_buf());
+        let registry = LivePtyRegistry::new();
+        let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+        let _rx = live.subscribe();
+        registry.insert("term-dev".to_string(), live);
+        routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+
+        let m = chat("pm", "single-delivery", None);
+        deliver_to_terminals(&m, &registry, &routing);
+
+        let floor = routing
+            .drain_floor("sess-dev", Some("2020-01-01T00:00:00Z"))
+            .expect("floor");
+        let floor_ts = chrono::DateTime::parse_from_rfc3339(&floor)
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        assert!(
+            floor_ts >= m.ts,
+            "after the PTY-loop delivers M and advances the shared #1712 id-cursor, the still-firing DEV Stop-hook's wait-for-event drain (drain_floor) clamps a lagging client cursor FORWARD to >= M — so first_pending_after(floor) excludes M and the Stop-hook does NOT re-deliver it: SYSTEMATIC no-double via the shared cursor (whichever delivers first advances it). The narrow concurrent race (both read the cursor before either advances) is bounded-as-DEV-transitional — prod post-#1658 runs ONLY the PTY-loop. floor {floor:?} vs M.ts {}",
+            m.ts
+        );
+    }
+
+    #[tokio::test]
     async fn a_non_chat_message_is_never_injected_into_a_terminal() {
         let dir = tempfile::TempDir::new().unwrap();
         let routing = RoutingStore::load(dir.path().to_path_buf());
