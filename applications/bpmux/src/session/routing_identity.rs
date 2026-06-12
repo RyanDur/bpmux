@@ -111,6 +111,11 @@ fn short(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
+pub fn bridge_agent_name(terminal_id: &str) -> String {
+    let prefix = &terminal_id[..terminal_id.len().min(8)];
+    format!("agent-{prefix}")
+}
+
 pub struct RoutingStore {
     identity: Mutex<RoutingIdentity>,
     dir: PathBuf,
@@ -195,6 +200,7 @@ impl RoutingStore {
             .into_iter()
             .filter(|id| !sender_ids.contains(id))
             .filter_map(|id| identity.terminal_for(&id).map(|terminal| (id, terminal)))
+            .filter(|(_, terminal)| bridge_agent_name(terminal) != short(sender))
             .collect()
     }
 
@@ -526,6 +532,28 @@ mod tests {
             store.delivery_targets(None, "dev:claude-code"),
             vec![("sess-pm".to_string(), "term-pm".to_string())],
             "the SENDER's own terminal is excluded (no self-echo) and the sender is matched by short-name across a full identity; other terminals still receive"
+        );
+    }
+
+    #[test]
+    fn delivery_targets_excludes_the_senders_own_terminal_even_when_the_send_name_is_the_unresolved_bridge_name()
+     {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        let dev_terminal = "ccb4298d-1111-2222-3333-444455556666";
+        store.register_agent("sess-dev", "dev", dev_terminal, "2026-06-12T10:00:00Z");
+        store.register_agent("sess-pm", "pm", "term-pm", "2026-06-12T10:00:00Z");
+
+        let sender = bridge_agent_name(dev_terminal);
+        let targets = store.delivery_targets(None, &sender);
+
+        assert!(
+            targets.iter().any(|(_, t)| t == "term-pm"),
+            "non-vacuous: a broadcast still reaches a DIFFERENT agent's terminal; got {targets:?}"
+        );
+        assert!(
+            targets.iter().all(|(_, t)| t != dev_terminal),
+            "a broadcast sent under the bridge name agent-{{terminal[..8]}} must NOT route back into the sender's OWN terminal. The bridge auto-assigns this name (rest/room.rs) separately from the dir-session display ('dev'), so resolve-by-display cannot exclude it — the deterministic wiring link agent-{{terminal[..8]}} must. This is Ryan's reject: a terminal's own messages reflected back into its input; got {targets:?}"
         );
     }
 

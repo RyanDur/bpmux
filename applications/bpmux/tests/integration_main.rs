@@ -237,6 +237,8 @@ mod story_state_transition_e2e;
 mod sync_status_changed_e2e;
 #[path = "integration_main_modules/terminal_bridge_provision_e2e.rs"]
 mod terminal_bridge_provision_e2e;
+#[path = "integration_main_modules/terminal_receive_affordances_e2e.rs"]
+mod terminal_receive_affordances_e2e;
 #[path = "integration_main_modules/test_seed_e2e.rs"]
 mod test_seed_e2e;
 #[path = "integration_main_modules/token_adapter.rs"]

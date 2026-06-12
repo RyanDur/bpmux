@@ -271,6 +271,33 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn an_agents_own_broadcast_under_its_bridge_name_is_not_reflected_back_into_its_own_terminal()
+     {
+        let dir = tempfile::TempDir::new().unwrap();
+        let routing = RoutingStore::load(dir.path().to_path_buf());
+        let registry = LivePtyRegistry::new();
+        let dev_terminal = "ccb4298d-1111-2222-3333-444455556666";
+        let mut dev_rx = register_live_cat(&registry, &routing, "sess-dev", "dev", dev_terminal);
+        let mut pm_rx = register_live_cat(&registry, &routing, "sess-pm", "pm", "term-pm");
+
+        let sender = crate::session::routing_identity::bridge_agent_name(dev_terminal);
+        deliver_to_terminals(&chat(&sender, "my own line", None), &registry, &routing);
+
+        let pm_seen = drain_for(&mut pm_rx, "my own line").await;
+        assert!(
+            pm_seen.contains("⟦bpmux⟧") && pm_seen.contains("my own line"),
+            "non-vacuous: a DIFFERENT agent's real terminal still receives the broadcast through the live delivery path; got {pm_seen:?}"
+        );
+
+        registry.write_to(dev_terminal, b"OWN-SENTINEL\r");
+        let dev_seen = drain_for(&mut dev_rx, "OWN-SENTINEL").await;
+        assert!(
+            !dev_seen.contains("my own line"),
+            "an agent's OWN broadcast is never reflected back into its own terminal — even though the bridge sends it under the auto-assigned name agent-{{terminal_id[..8]}} (NOT the dir-session display 'dev'), the live delivery path excludes the sender's own terminal. The sentinel arrives, proving we drained past where an echo would be; got {dev_seen:?}"
+        );
+    }
+
+    #[tokio::test]
     async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump() {
         let store_dir = tempfile::TempDir::new().unwrap();
         let routing = RoutingStore::load(store_dir.path().to_path_buf());
