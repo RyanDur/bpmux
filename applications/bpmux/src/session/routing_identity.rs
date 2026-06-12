@@ -133,6 +133,12 @@ impl RoutingStore {
         identity.resolve(display)
     }
 
+    pub fn rename(&self, session_id: &str, new_display: &str) {
+        let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        identity.rename(session_id, new_display);
+        let _ = identity.save(&self.dir);
+    }
+
     pub fn drain_floor(&self, session_id: &str, client_ack: Option<&str>) -> Option<String> {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         let stored = identity.cursor(session_id);
@@ -311,6 +317,27 @@ mod tests {
             later_cursor(Some("2026-06-11T20:00:01Z"), Some("2026-06-11T20:00:01.5Z")).as_deref(),
             Some("2026-06-11T20:00:01.5Z"),
             "the later instant wins by PARSED time — a lexical string compare would wrongly pick the no-fraction form ('Z' > '.5') and lose half a second of events"
+        );
+    }
+
+    #[test]
+    fn routing_store_rename_updates_the_display_for_the_fixed_id_and_persists_so_the_new_name_resolves()
+     {
+        let dir = tempfile::TempDir::new().expect("dir");
+        {
+            let store = RoutingStore::load(dir.path().to_path_buf());
+            store.register("sess-1", "dev");
+            store.rename("sess-1", "dev-renamed");
+        }
+        let reloaded = RoutingIdentity::load(dir.path());
+        assert_eq!(
+            reloaded.resolve("dev-renamed"),
+            vec!["sess-1".to_string()],
+            "rename moves the DISPLAY for the fixed session-id and persists — the new name resolves to the same id, so the durable cursor stays reachable across a rename"
+        );
+        assert!(
+            reloaded.resolve("dev").is_empty(),
+            "the OLD display no longer resolves — the route-key (session-id) never moved, only the display attribute"
         );
     }
 

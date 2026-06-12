@@ -30,8 +30,9 @@ pub async fn ws_handler(
         Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
     >,
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
+    axum::Extension(routing): axum::Extension<Arc<crate::session::routing_identity::RoutingStore>>,
 ) -> Response {
-    ws.on_upgrade(move |socket| handle_ws(socket, session, orchestrator, pty_registry))
+    ws.on_upgrade(move |socket| handle_ws(socket, session, orchestrator, pty_registry, routing))
 }
 
 async fn handle_ws(
@@ -41,9 +42,10 @@ async fn handle_ws(
         crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
     >,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
+    routing: Arc<crate::session::routing_identity::RoutingStore>,
 ) {
     let (tx, rx) = socket.split();
-    if let Err(e) = run_ws_session(tx, rx, session, orchestrator, pty_registry).await {
+    if let Err(e) = run_ws_session(tx, rx, session, orchestrator, pty_registry, routing).await {
         crate::session::diag::log_diag(&format!("ws: session error: {e}"));
     }
 }
@@ -56,8 +58,10 @@ async fn run_ws_session(
         crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
     >,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
+    routing: Arc<crate::session::routing_identity::RoutingStore>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
+    let routing_session_id = routing.resolve(short_name(&identity)).into_iter().next();
     session.peer_connected();
     session.roster_join(&identity);
     dispatch_roster_join(&orchestrator, &identity).await;
@@ -145,6 +149,9 @@ async fn run_ws_session(
                                 session.roster_leave(&identity);
                                 dispatch_roster_leave(&orchestrator, &identity).await;
                                 identity = new_identity;
+                                if let Some(ref session_id) = routing_session_id {
+                                    routing.rename(session_id, short_name(&identity));
+                                }
                                 session.roster_join(&identity);
                                 dispatch_roster_join(&orchestrator, &identity).await;
                                                             let _ = session.broadcast(&system_announcement(&format!("{identity} joined")));
