@@ -39,10 +39,12 @@ jobs:
         env:
           BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
         run: cargo test
+      - name: Install cargo-audit (pre-built; avoids the ~1-2min source recompile every run — CARGO_HOME is per-run-isolated so the installed binary is never cached)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
       - name: Audit
-        run: |
-          cargo install cargo-audit
-          cargo audit
+        run: cargo audit
       - name: Verify Ryan's $HOME state preserved (#1285 regression gate)
         run: scripts/verify-home-isolation.sh
 
