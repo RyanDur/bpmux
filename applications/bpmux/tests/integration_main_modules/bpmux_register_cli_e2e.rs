@@ -19,6 +19,14 @@ async fn run_register(bin: &str, port: u16, cwd: &std::path::Path) -> (bool, Str
     (output.status.success(), stdout)
 }
 
+fn marker_id(marker: &std::path::Path) -> String {
+    let raw = std::fs::read_to_string(marker).expect("read marker");
+    serde_json::from_str::<serde_json::Value>(raw.trim())
+        .ok()
+        .and_then(|value| value["id"].as_str().map(str::to_string))
+        .expect("the marker holds {id, name} JSON")
+}
+
 #[tokio::test]
 async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_server_side() {
     let bpmux = TestBpmux::start();
@@ -39,15 +47,12 @@ async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_serve
     let marker = workspace.path().join(".bpmux-session-id");
     assert!(
         marker.is_file(),
-        "register holds the agent's session-id in a lightweight .bpmux-session-id marker in the cwd (the dir-anchor), not a full session dir"
+        "register holds the agent's identity in a lightweight .bpmux-session-id marker in the cwd (the dir-anchor), not a full session dir"
     );
-    let session_id = std::fs::read_to_string(&marker)
-        .expect("read marker")
-        .trim()
-        .to_string();
+    let session_id = marker_id(&marker);
     assert!(
         !session_id.is_empty(),
-        "the marker holds the minted session-id"
+        "the {{id, name}} marker holds the minted session-id"
     );
 
     let store_json =
@@ -74,14 +79,8 @@ async fn register_in_a_different_dir_mints_a_distinct_session_id() {
     let (ok_b, _) = run_register(bin, port, workspace_b.path()).await;
     assert!(ok_a && ok_b, "both registrations succeed");
 
-    let id_a = std::fs::read_to_string(workspace_a.path().join(".bpmux-session-id"))
-        .expect("read marker a")
-        .trim()
-        .to_string();
-    let id_b = std::fs::read_to_string(workspace_b.path().join(".bpmux-session-id"))
-        .expect("read marker b")
-        .trim()
-        .to_string();
+    let id_a = marker_id(&workspace_a.path().join(".bpmux-session-id"));
+    let id_b = marker_id(&workspace_b.path().join(".bpmux-session-id"));
     assert_ne!(
         id_a, id_b,
         "a register from a different start-dir mints a DISTINCT session-id — the identity is anchored to the dir, so two agents started in different dirs are distinct instances"

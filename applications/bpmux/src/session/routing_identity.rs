@@ -149,6 +149,23 @@ impl RoutingStore {
         }
         floor
     }
+
+    pub fn register_agent(
+        &self,
+        session_id: &str,
+        display: &str,
+        terminal_id: &str,
+        job_start: &str,
+    ) {
+        let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        let fresh = identity.cursor(session_id).is_none();
+        if fresh {
+            identity.register(session_id, display);
+            identity.advance_cursor(session_id, job_start);
+        }
+        identity.link_terminal(session_id, terminal_id);
+        let _ = identity.save(&self.dir);
+    }
 }
 
 fn later_cursor(a: Option<&str>, b: Option<&str>) -> Option<String> {
@@ -402,6 +419,63 @@ mod tests {
                 .resolve_recipients(Some(&["ghost".to_string()]))
                 .is_empty(),
             "a scoped message to an unknown display routes to NO instance — no mis-route/leak"
+        );
+    }
+
+    #[test]
+    fn register_agent_fresh_floors_the_cursor_at_job_start_so_gate_window_messages_drain() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register_agent("sess-fresh", "dev", "term-A", "2026-06-12T10:00:00Z");
+
+        let reloaded = RoutingIdentity::load(dir.path());
+        assert_eq!(
+            reloaded.cursor("sess-fresh").as_deref(),
+            Some("2026-06-12T10:00:00Z"),
+            "a FRESH agent's cursor floors at the agent-JOB-START — not empty (would flood all history) nor the register-instant (would lose the gate-window) — so a to:[role] sent during the ~1s gate-window (after job-start, before register) still drains"
+        );
+        assert_eq!(
+            reloaded.resolve("dev"),
+            vec!["sess-fresh".to_string()],
+            "register_agent registers the display=role so the agent is routable"
+        );
+    }
+
+    #[test]
+    fn register_agent_reclaim_preserves_a_renamed_display_not_clobbered_by_the_default_name() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register_agent("sess-1", "bpmux-dev", "term-A", "2026-06-12T10:00:00Z");
+        store.rename("sess-1", "dev");
+
+        store.register_agent("sess-1", "bpmux-dev", "term-B", "2026-06-12T11:00:00Z");
+
+        let reloaded = RoutingIdentity::load(dir.path());
+        assert_eq!(
+            reloaded.resolve("dev"),
+            vec!["sess-1".to_string()],
+            "a returning agent keeps the owner-forged name (dev) — re-detection re-supplies the folder-default (bpmux-dev) but must NOT clobber the rename back"
+        );
+        assert!(
+            reloaded.resolve("bpmux-dev").is_empty(),
+            "the folder-default name no longer resolves — the rename held across the reclaim, the display is sourced once at first-sight"
+        );
+    }
+
+    #[test]
+    fn register_agent_reclaim_preserves_the_durable_cursor_not_reset_to_the_new_job_start() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register_agent("sess-ret", "dev", "term-A", "2026-06-12T09:00:00Z");
+        store.drain_floor("sess-ret", Some("2026-06-12T12:00:00Z"));
+
+        store.register_agent("sess-ret", "dev", "term-B", "2026-06-12T15:00:00Z");
+
+        let reloaded = RoutingIdentity::load(dir.path());
+        assert_eq!(
+            reloaded.cursor("sess-ret").as_deref(),
+            Some("2026-06-12T12:00:00Z"),
+            "a RETURNING agent preserves its durable drain-position (noon) — re-detecting it at a NEW job-start (15:00) must NOT reset the cursor, which would skip the offline 12:00-15:00 messages the durable-reclaim must still deliver"
         );
     }
 }

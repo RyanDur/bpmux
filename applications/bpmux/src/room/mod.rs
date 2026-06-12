@@ -10,7 +10,8 @@ pub use file_storage::FileRoomStorage;
 pub use live_registry::LivePtyRegistry;
 pub use spawn::{
     BridgeWiring, LivePty, Osc7Integration, osc7_shell_integration, resolve_terminal_spawn,
-    spawn_captured, spawn_pty, spawn_pty_retained, terminal_provisioning, terminate,
+    spawn_agent_run_detector, spawn_captured, spawn_pty, spawn_pty_retained, terminal_provisioning,
+    terminate,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

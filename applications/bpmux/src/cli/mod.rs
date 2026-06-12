@@ -111,7 +111,7 @@ pub(crate) fn run_send(
 pub(crate) fn run_register() -> anyhow::Result<()> {
     let role = crate::resolve_role(&None);
     let cwd = std::env::current_dir()?;
-    let session_id = crate::session::read_or_create_dir_session_id(&cwd)?;
+    let session_id = crate::session::read_or_create_dir_session(&cwd)?.id;
     let mut payload = serde_json::Map::new();
     payload.insert("session_id".to_string(), serde_json::json!(session_id));
     payload.insert("display".to_string(), serde_json::json!(role));

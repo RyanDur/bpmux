@@ -6,6 +6,7 @@ use axum::response::IntoResponse;
 
 use super::shared::json_headers;
 use crate::room::LivePtyRegistry;
+use crate::session::routing_identity::RoutingStore;
 
 #[derive(serde::Deserialize)]
 pub struct TerminalCloseRequest {
@@ -17,6 +18,7 @@ pub struct TerminalCloseRequest {
 pub async fn post_terminal_spawn(
     Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
     Extension(port): Extension<u16>,
+    Extension(routing): Extension<Arc<RoutingStore>>,
 ) -> impl IntoResponse {
     let room_agent = std::env::var("BPMUX_ROOM_AGENT").ok();
     let shell = std::env::var("SHELL").ok();
@@ -57,6 +59,14 @@ pub async fn post_terminal_spawn(
             }
             let pid = live.pid();
             pty_registry.insert(terminal_id.clone(), live);
+            if let Some(output) = pty_registry.subscribe_for(&terminal_id) {
+                crate::room::spawn_agent_run_detector(
+                    terminal_id.clone(),
+                    output,
+                    pty_registry.clone(),
+                    routing.clone(),
+                );
+            }
             (
                 StatusCode::OK,
                 json_headers(),

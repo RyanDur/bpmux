@@ -80,23 +80,47 @@ fn resumes_existing_session() {
 
 #[test]
 fn dir_session_id_is_held_in_the_dir_minted_once_then_reclaimed_via_a_lightweight_marker() {
-    let dir = TempDir::new().expect("temp dir");
-    let first = read_or_create_dir_session_id(dir.path()).expect("mint");
-    assert!(!first.is_empty());
+    let parent = TempDir::new().expect("temp dir");
+    let dir = parent.path().join("my-project");
+    std::fs::create_dir_all(&dir).expect("mkdir");
+    let first = read_or_create_dir_session(&dir).expect("mint");
+    assert!(!first.id.is_empty());
+    assert_eq!(
+        first.name, "my-project",
+        "the name defaults to the folder basename at mint — a self-describing label until renamed in the owner-conversation"
+    );
 
-    let second = read_or_create_dir_session_id(dir.path()).expect("reclaim");
+    let second = read_or_create_dir_session(&dir).expect("reclaim");
     assert_eq!(
         first, second,
-        "the id is HELD in the dir — a second derivation (restart in the same dir) reclaims the same id, never mints a new one (Ryan's dir-anchor)"
+        "the {{id, name}} is HELD in the dir — a second derivation (restart in the same dir) reclaims the same identity, never mints a new one (Ryan's dir-anchor)"
     );
 
     assert!(
-        dir.path().join(DIR_SESSION_ID_MARKER).is_file(),
-        "the id lives in a lightweight hidden marker — not a full session dir, so registering an agent never pollutes its workspace"
+        dir.join(DIR_SESSION_ID_MARKER).is_file(),
+        "the identity lives in a lightweight hidden marker — not a full session dir, so registering an agent never pollutes its workspace"
     );
     assert!(
-        !dir.path().join("current").exists(),
+        !dir.join("current").exists(),
         "no `current` symlink / session-dir scaffolding is written into the workspace (the pollution resume_or_create_session(cwd) would have caused)"
+    );
+}
+
+#[test]
+fn a_pre_id_name_marker_reads_back_compat_keeping_the_id_and_deriving_the_name() {
+    let parent = TempDir::new().expect("temp dir");
+    let dir = parent.path().join("legacy-dir");
+    std::fs::create_dir_all(&dir).expect("mkdir");
+    std::fs::write(dir.join(DIR_SESSION_ID_MARKER), "legacy-uuid-1234").expect("write old marker");
+
+    let session = read_or_create_dir_session(&dir).expect("read back-compat");
+    assert_eq!(
+        session.id, "legacy-uuid-1234",
+        "a bare-id (pre-{{id,name}}) marker keeps its id — the durable route-key never changes across the format upgrade"
+    );
+    assert_eq!(
+        session.name, "legacy-dir",
+        "the missing name is derived from the folder basename — an old marker stays routable with no migration step"
     );
 }
 

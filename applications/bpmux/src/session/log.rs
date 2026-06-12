@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -181,18 +182,39 @@ pub fn create_session(base: &Path) -> Result<PathBuf, LogError> {
 
 pub const DIR_SESSION_ID_MARKER: &str = ".bpmux-session-id";
 
-pub fn read_or_create_dir_session_id(dir: &Path) -> Result<String, LogError> {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DirSession {
+    pub id: String,
+    pub name: String,
+}
+
+pub fn read_or_create_dir_session(dir: &Path) -> Result<DirSession, LogError> {
     let marker = dir.join(DIR_SESSION_ID_MARKER);
     if let Ok(existing) = std::fs::read_to_string(&marker) {
         let trimmed = existing.trim();
         if !trimmed.is_empty() {
-            return Ok(trimmed.to_string());
+            if let Ok(session) = serde_json::from_str::<DirSession>(trimmed) {
+                return Ok(session);
+            }
+            return Ok(DirSession {
+                id: trimmed.to_string(),
+                name: dir_basename(dir),
+            });
         }
     }
-    let id = uuid::Uuid::new_v4().to_string();
+    let session = DirSession {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: dir_basename(dir),
+    };
     std::fs::create_dir_all(dir)?;
-    std::fs::write(&marker, &id)?;
-    Ok(id)
+    std::fs::write(&marker, serde_json::to_string(&session)?)?;
+    Ok(session)
+}
+
+fn dir_basename(dir: &Path) -> String {
+    dir.file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| "agent".to_string())
 }
 
 #[derive(Error, Debug)]

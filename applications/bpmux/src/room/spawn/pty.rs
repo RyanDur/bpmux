@@ -309,7 +309,7 @@ mod tests {
         let (command, args) = resolve_terminal_spawn(None, Some("/bin/zsh"));
         assert_eq!(
             command, "/bin/zsh",
-            "with no override the terminal spawns the user's $SHELL"
+            "with no override ＋ spawns the user's $SHELL — a bare login shell (the agent RUNNING in it is the registration signal, sourced by the always-on detector, not by this spawn-target)"
         );
         assert_eq!(
             args,
@@ -323,7 +323,7 @@ mod tests {
         let (command, args) = resolve_terminal_spawn(Some("/bin/echo"), Some("/bin/zsh"));
         assert_eq!(
             command, "/bin/echo",
-            "an explicit BPMUX_ROOM_AGENT override wins over $SHELL"
+            "an explicit BPMUX_ROOM_AGENT override wins over $SHELL — the spawn-command seam (the e2e harness pins a deterministic spawn-target; unset in prod, so prod ＋ is the bare $SHELL)"
         );
         assert!(
             args.is_empty(),
