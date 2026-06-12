@@ -30,3 +30,6 @@ screen-shots
 
 # Transient gh issue dumps from scripts — not meant to be tracked
 issues.csv
+
+# Per-clone agent routing identity (#1712) — the session-id held in the start dir
+.bpmux-session-id
