@@ -19,6 +19,7 @@ pub mod speech_guard;
 pub mod storage;
 #[cfg(test)]
 mod storage_tests;
+pub mod terminal_inject;
 pub mod tokens;
 pub mod usage;
 pub mod velocity;

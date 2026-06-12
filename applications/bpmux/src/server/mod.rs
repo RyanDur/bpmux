@@ -101,6 +101,11 @@ pub async fn run_server(
     let routing_store = std::sync::Arc::new(crate::session::routing_identity::RoutingStore::load(
         routing_store_dir,
     ));
+    crate::room::spawn_terminal_delivery_loop(
+        session.clone(),
+        pty_registry.clone(),
+        routing_store.clone(),
+    );
     let mut orchestrator_inner = crate::orchestrator::Orchestrator::new(
         session.clone(),
         tracker.as_ref().cloned(),

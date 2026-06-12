@@ -101,6 +101,14 @@ impl RoutingIdentity {
             .map(|(id, display)| (id.clone(), display.clone()))
             .collect()
     }
+
+    pub fn all_ids(&self) -> Vec<String> {
+        self.display_by_id.keys().cloned().collect()
+    }
+}
+
+fn short(identity: &str) -> &str {
+    identity.split(':').next().unwrap_or(identity)
 }
 
 pub struct RoutingStore {
@@ -148,6 +156,30 @@ impl RoutingStore {
             let _ = identity.save(&self.dir);
         }
         floor
+    }
+
+    pub fn delivery_terminals(&self, to: Option<&[String]>, sender: &str) -> Vec<String> {
+        let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        let sender_ids = identity.resolve(short(sender));
+        let recipient_ids: Vec<String> = match to {
+            None => identity.all_ids(),
+            Some(names)
+                if names
+                    .iter()
+                    .any(|n| n == crate::session::message::BROADCAST_ALL) =>
+            {
+                identity.all_ids()
+            }
+            Some(names) => names
+                .iter()
+                .flat_map(|name| identity.resolve(short(name)))
+                .collect(),
+        };
+        recipient_ids
+            .into_iter()
+            .filter(|id| !sender_ids.contains(id))
+            .filter_map(|id| identity.terminal_for(&id))
+            .collect()
     }
 
     pub fn register_agent(
@@ -438,6 +470,43 @@ mod tests {
             reloaded.resolve("dev"),
             vec!["sess-fresh".to_string()],
             "register_agent registers the display=role so the agent is routable"
+        );
+    }
+
+    #[test]
+    fn delivery_terminals_routes_by_id_excluding_the_sender_and_offline_ids() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register_agent("sess-dev", "dev", "term-dev", "2026-06-12T10:00:00Z");
+        store.register_agent("sess-pm", "pm", "term-pm", "2026-06-12T10:00:00Z");
+        store.register("sess-offline", "designer");
+
+        let mut broadcast = store.delivery_terminals(None, "ryan");
+        broadcast.sort();
+        assert_eq!(
+            broadcast,
+            vec!["term-dev".to_string(), "term-pm".to_string()],
+            "a broadcast routes by id to every LIVE-linked terminal; an offline id (registered, no terminal) is excluded from live-delivery — it drains durably on reconnect instead, never a live write to nobody"
+        );
+
+        let mut explicit_all = store.delivery_terminals(Some(&["all".to_string()]), "ryan");
+        explicit_all.sort();
+        assert_eq!(
+            explicit_all, broadcast,
+            "an explicit BROADCAST_ALL to-list routes identically to to=None"
+        );
+
+        assert_eq!(
+            store.delivery_terminals(Some(&["dev".to_string()]), "pm"),
+            vec!["term-dev".to_string()],
+            "a scoped to:[dev] resolves dev's DISPLAY to its id to its terminal and reaches ONLY it"
+        );
+
+        let from_dev = store.delivery_terminals(None, "dev:claude-code");
+        assert_eq!(
+            from_dev,
+            vec!["term-pm".to_string()],
+            "the SENDER's own terminal is excluded (no self-echo) and the sender is matched by short-name across a full identity; other terminals still receive"
         );
     }
 
