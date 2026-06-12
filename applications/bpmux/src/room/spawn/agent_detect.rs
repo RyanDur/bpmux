@@ -111,6 +111,7 @@ pub fn spawn_agent_run_detector(
                             &dir_session.id,
                             &terminal_id,
                             &dir_session.name,
+                            &mint.job_start_ts,
                         );
                     }
                 }

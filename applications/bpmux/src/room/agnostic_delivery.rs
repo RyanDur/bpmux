@@ -51,13 +51,20 @@ pub fn drain_missed(
     session_id: &str,
     terminal_id: &str,
     display: &str,
+    join_ts: &str,
 ) {
+    let join = chrono::DateTime::parse_from_rfc3339(join_ts)
+        .ok()
+        .map(|dt| dt.with_timezone(&chrono::Utc));
     let messages = match session.read_messages() {
         Ok(messages) => messages,
         Err(_) => return,
     };
     for msg in messages {
-        if !msg.is_chat() || short_name(&msg.from) == display || !reaches(&msg, display) {
+        if !msg.is_chat() || short_name(&msg.from) == display || !addressed_to(&msg, display) {
+            continue;
+        }
+        if join.is_some_and(|join| msg.ts <= join) {
             continue;
         }
         if !after_cursor(routing, session_id, msg.ts) {
@@ -90,10 +97,10 @@ fn after_cursor(
     }
 }
 
-fn reaches(msg: &Message, display: &str) -> bool {
+fn addressed_to(msg: &Message, display: &str) -> bool {
     match msg.to.as_deref() {
-        None => true,
-        Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => true,
+        None => false,
+        Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => false,
         Some(names) => names.iter().any(|name| short_name(name) == display),
     }
 }
@@ -129,6 +136,15 @@ mod tests {
             message_type: MessageType::Chat,
             to,
             ..Message::default()
+        }
+    }
+
+    fn chat_at(from: &str, text: &str, to: Option<Vec<String>>, ts: &str) -> Message {
+        Message {
+            ts: chrono::DateTime::parse_from_rfc3339(ts)
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+            ..chat(from, text, to)
         }
     }
 
@@ -258,7 +274,113 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn offline_then_reconnect_drains_the_missed_message_not_the_already_delivered_one() {
+    async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump() {
+        let store_dir = tempfile::TempDir::new().unwrap();
+        let routing = RoutingStore::load(store_dir.path().to_path_buf());
+        let registry = LivePtyRegistry::new();
+        let sess_dir = tempfile::TempDir::new().unwrap();
+        let (tx, _rx) = broadcast::channel(16);
+        let session =
+            crate::session::Session::new(sess_dir.path().to_path_buf(), "ryan".to_string(), tx);
+
+        session
+            .broadcast(&chat_at(
+                "pm",
+                "HISTORY-BROADCAST",
+                None,
+                "2020-01-01T00:00:00Z",
+            ))
+            .unwrap();
+        session
+            .broadcast(&chat_at(
+                "designer",
+                "HISTORY-ADDRESSED",
+                Some(vec!["dev".to_string()]),
+                "2020-01-02T00:00:00Z",
+            ))
+            .unwrap();
+
+        let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+        let mut rx = live.subscribe();
+        registry.insert("term-dev".to_string(), live);
+        routing.register("sess-dev", "dev");
+        routing.link_terminal("sess-dev", "term-dev");
+
+        drain_missed(
+            &session,
+            &registry,
+            &routing,
+            "sess-dev",
+            "term-dev",
+            "dev",
+            "2026-06-12T18:00:00Z",
+        );
+
+        registry.write_to("term-dev", b"CLEAN-SENTINEL\r");
+        let seen = drain_for(&mut rx, "CLEAN-SENTINEL").await;
+        assert!(
+            !seen.contains("HISTORY-BROADCAST") && !seen.contains("HISTORY-ADDRESSED"),
+            "registering an agent in a dir with REAL populated history starts the terminal CLEAN — the whole-history backlog is NEVER dumped (the disaster): broadcasts are live-forward-only (skipped) and addressed-before-JOIN is not history-dumped (bounded at join). Even with an empty cursor (the epoch-cursor bug), nothing historical reaches the terminal; got {seen:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_addressed_message_in_the_join_gate_window_is_drained_falsifier_4_intact() {
+        let store_dir = tempfile::TempDir::new().unwrap();
+        let routing = RoutingStore::load(store_dir.path().to_path_buf());
+        let registry = LivePtyRegistry::new();
+        let sess_dir = tempfile::TempDir::new().unwrap();
+        let (tx, _rx) = broadcast::channel(16);
+        let session =
+            crate::session::Session::new(sess_dir.path().to_path_buf(), "ryan".to_string(), tx);
+
+        session
+            .broadcast(&chat_at(
+                "pm",
+                "GATE-ADDRESSED",
+                Some(vec!["dev".to_string()]),
+                "2026-06-12T18:00:01Z",
+            ))
+            .unwrap();
+        session
+            .broadcast(&chat_at(
+                "pm",
+                "GATE-BROADCAST",
+                None,
+                "2026-06-12T18:00:02Z",
+            ))
+            .unwrap();
+
+        let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+        let mut rx = live.subscribe();
+        registry.insert("term-dev".to_string(), live);
+        routing.register("sess-dev", "dev");
+        routing.link_terminal("sess-dev", "term-dev");
+
+        drain_missed(
+            &session,
+            &registry,
+            &routing,
+            "sess-dev",
+            "term-dev",
+            "dev",
+            "2026-06-12T18:00:00Z",
+        );
+
+        registry.write_to("term-dev", b"GATE-SENTINEL\r");
+        let seen = drain_for(&mut rx, "GATE-SENTINEL").await;
+        assert!(
+            seen.contains("GATE-ADDRESSED"),
+            "an ADDRESSED message sent in the ~1s join-gate-window (after job-start) still drains on register — falsifier-4 intact, addressed-scoped (the broadcast-skip doesn't drop it); got {seen:?}"
+        );
+        assert!(
+            !seen.contains("GATE-BROADCAST"),
+            "a BROADCAST in the same gate-window is NOT drained — broadcasts are live-forward-only even at join (you don't catch up on ambient broadcasts); got {seen:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_forward_only() {
         let store_dir = tempfile::TempDir::new().unwrap();
         let routing = RoutingStore::load(store_dir.path().to_path_buf());
         let registry = LivePtyRegistry::new();
@@ -283,7 +405,6 @@ mod tests {
         );
 
         registry.remove("term1");
-        std::thread::sleep(std::time::Duration::from_millis(5));
 
         let m2 = chat("designer", "M2-while-offline", None);
         session.broadcast(&m2).unwrap();
@@ -293,17 +414,21 @@ mod tests {
         let mut rx2 = live2.subscribe();
         registry.insert("term2".to_string(), live2);
         routing.register_agent("sess-dev", "dev", "term2", "2026-06-12T20:00:00Z");
-        drain_missed(&session, &registry, &routing, "sess-dev", "term2", "dev");
-
-        registry.write_to("term2", b"DRAIN-SENTINEL\r");
-        let drained = drain_for(&mut rx2, "DRAIN-SENTINEL").await;
-        assert!(
-            drained.contains("M2-while-offline"),
-            "a reconnecting agent drains the message it missed while OFFLINE (falsifier-3 no-loss — reach = live OR on-reconnect, never lost); got {drained:?}"
+        drain_missed(
+            &session,
+            &registry,
+            &routing,
+            "sess-dev",
+            "term2",
+            "dev",
+            "2026-06-12T20:00:00Z",
         );
+
+        registry.write_to("term2", b"RECONNECT-SENTINEL\r");
+        let drained = drain_for(&mut rx2, "RECONNECT-SENTINEL").await;
         assert!(
-            !drained.contains("M1-delivered-live"),
-            "the already-live-delivered M1 is NOT re-delivered — the cursor advanced on live-delivery so reconnect drains only the gap (no double); got {drained:?}"
+            !drained.contains("M2-while-offline") && !drained.contains("M1-delivered-live"),
+            "a reconnecting agent does NOT catch up on broadcasts — neither the live-delivered M1 nor the offline-broadcast M2 is re-dumped; broadcasts are live-forward-only, the reconnect starts clean (the conscious falsifier-3 relaxation per Ryan); got {drained:?}"
         );
     }
 
