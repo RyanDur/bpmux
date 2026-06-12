@@ -46,6 +46,15 @@ impl LivePtyRegistry {
             .unwrap_or(false)
     }
 
+    pub fn submit_to(&self, role: &str, line: &[u8]) -> bool {
+        self.rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(role)
+            .map(|live| live.submit_input(line).is_ok())
+            .unwrap_or(false)
+    }
+
     pub fn resize(&self, terminal_id: &str, rows: u16, cols: u16) -> bool {
         self.rooms
             .lock()

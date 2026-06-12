@@ -1,11 +1,15 @@
+use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use tokio::sync::broadcast;
 
+use super::paste_mode::{PasteModeSniffer, frame_for_paste};
 use super::process::{io_other, signal};
 
 const PTY_OUTPUT_CAPACITY: usize = 1024;
+const SUBMIT: &[u8] = b"\r";
 
 pub fn spawn_pty(command: &str, args: &[String]) -> std::io::Result<u32> {
     let system = native_pty_system();
@@ -35,6 +39,7 @@ pub struct LivePty {
     writer: Mutex<Box<dyn std::io::Write + Send>>,
     child: Box<dyn portable_pty::Child + Send + Sync>,
     output: broadcast::Sender<Vec<u8>>,
+    paste_mode: Arc<AtomicBool>,
     _retained_tempdir: Option<tempfile::TempDir>,
 }
 
@@ -55,6 +60,19 @@ impl LivePty {
         use std::io::Write;
         let mut writer = self.writer.lock().unwrap_or_else(|e| e.into_inner());
         writer.write_all(bytes)?;
+        writer.flush()
+    }
+
+    pub fn paste_mode_enabled(&self) -> bool {
+        self.paste_mode.load(Ordering::Relaxed)
+    }
+
+    pub fn submit_input(&self, line: &[u8]) -> std::io::Result<()> {
+        use std::io::Write;
+        let framed = frame_for_paste(line, self.paste_mode_enabled());
+        let mut writer = self.writer.lock().unwrap_or_else(|e| e.into_inner());
+        writer.write_all(&framed)?;
+        writer.write_all(SUBMIT)?;
         writer.flush()
     }
 
@@ -135,13 +153,15 @@ pub fn spawn_pty_retained(
     let writer = pair.master.take_writer().map_err(io_other)?;
     let reader = pair.master.try_clone_reader().map_err(io_other)?;
     let (output, _) = broadcast::channel(PTY_OUTPUT_CAPACITY);
-    spawn_output_reader(reader, output.clone());
+    let paste_mode = Arc::new(AtomicBool::new(false));
+    spawn_output_reader(reader, output.clone(), paste_mode.clone());
     Ok(LivePty {
         pid,
         master: pair.master,
         writer: Mutex::new(writer),
         child,
         output,
+        paste_mode,
         _retained_tempdir: None,
     })
 }
@@ -149,9 +169,11 @@ pub fn spawn_pty_retained(
 fn spawn_output_reader(
     mut reader: Box<dyn std::io::Read + Send>,
     output: broadcast::Sender<Vec<u8>>,
+    paste_mode: Arc<AtomicBool>,
 ) {
     std::thread::spawn(move || {
         use std::io::Read;
+        let mut sniffer = PasteModeSniffer::new();
         let mut buf = [0u8; 4096];
         loop {
             match reader.read(&mut buf) {
@@ -160,6 +182,9 @@ fn spawn_output_reader(
                     break;
                 }
                 Ok(n) => {
+                    if let Some(state) = sniffer.observe(&buf[..n]) {
+                        paste_mode.store(state, Ordering::Relaxed);
+                    }
                     let _ = output.send(buf[..n].to_vec());
                 }
                 Err(_) => {
@@ -246,6 +271,35 @@ mod tests {
         assert!(
             second_out.contains("fanout-marker"),
             "subscriber two must ALSO receive the SAME full output — one server-owned reader fans out to every subscriber, never splitting the master fd between competing per-subscriber readers; got {second_out:?}"
+        );
+    }
+
+    #[test]
+    fn the_output_sniffer_flips_paste_mode_when_the_agent_declares_bracketed_paste() {
+        let live = spawn_pty_retained(
+            "/bin/sh",
+            &[
+                "-c".into(),
+                "read trigger; printf '\\033[?2004hPASTE-ON-MARKER\\n'; sleep 2".into(),
+            ],
+            None,
+            &[],
+        )
+        .unwrap();
+        assert!(
+            !live.paste_mode_enabled(),
+            "a freshly-spawned terminal defaults to paste-mode OFF until the agent declares it"
+        );
+        let mut rx = live.subscribe();
+        live.write_input(b"go\n").unwrap();
+        let collected = drain_subscriber_until(&mut rx, "PASTE-ON-MARKER");
+        assert!(
+            collected.contains("PASTE-ON-MARKER"),
+            "precondition: the child's output (incl the ESC[?2004h that precedes the marker in the same write) must have streamed; got {collected:?}"
+        );
+        assert!(
+            live.paste_mode_enabled(),
+            "after the agent emits ESC[?2004h, the LivePty output-sniffer must have flipped paste-mode ON — so injected lines get bracketed-paste-framed and auto-submit (a real Enter) instead of parking in the agent's input until a manual keypress (the owner-walk reject)"
         );
     }
 

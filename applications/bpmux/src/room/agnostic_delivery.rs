@@ -9,8 +9,6 @@ use crate::session::routing_identity::RoutingStore;
 use crate::session::terminal_inject::frame_team_message;
 use crate::transport::ws::short_name;
 
-const SUBMIT: char = '\r';
-
 pub fn spawn_terminal_delivery_loop(
     session: Arc<Session>,
     registry: Arc<LivePtyRegistry>,
@@ -32,13 +30,13 @@ pub fn deliver_to_terminals(msg: &Message, registry: &LivePtyRegistry, routing: 
     if !msg.is_chat() {
         return;
     }
-    let payload = framed_payload(msg);
+    let line = framed_line(msg);
     let ts = msg.ts.to_rfc3339();
     for (session_id, terminal_id) in routing.delivery_targets(msg.to.as_deref(), &msg.from) {
         if !after_cursor(routing, &session_id, msg.ts) {
             continue;
         }
-        if registry.write_to(&terminal_id, payload.as_bytes()) {
+        if registry.submit_to(&terminal_id, line.as_bytes()) {
             routing.mark_delivered(&session_id, &ts);
         }
     }
@@ -70,16 +68,15 @@ pub fn drain_missed(
         if !after_cursor(routing, session_id, msg.ts) {
             continue;
         }
-        if registry.write_to(terminal_id, framed_payload(&msg).as_bytes()) {
+        if registry.submit_to(terminal_id, framed_line(&msg).as_bytes()) {
             routing.mark_delivered(session_id, &msg.ts.to_rfc3339());
         }
     }
 }
 
-fn framed_payload(msg: &Message) -> String {
+fn framed_line(msg: &Message) -> String {
     let scope = scope_label(msg.to.as_deref());
-    let framed = frame_team_message(short_name(&msg.from), &scope, &msg.text);
-    format!("{framed}{SUBMIT}")
+    frame_team_message(short_name(&msg.from), &scope, &msg.text)
 }
 
 fn after_cursor(
