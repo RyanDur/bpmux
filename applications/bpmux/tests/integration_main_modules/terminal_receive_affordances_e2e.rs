@@ -92,6 +92,28 @@ async fn probe_until_live(bpmux: &TestBpmux, farm: &FakeAgentFarm, role: &str) -
     false
 }
 
+async fn terminal_send(port: u16, role: &str, to: Option<&str>, text: &str) {
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let mut args = vec!["send".to_string()];
+    if let Some(to) = to {
+        args.push("--to".to_string());
+        args.push(to.to_string());
+    }
+    args.push(text.to_string());
+    let out = tokio::process::Command::new(bin)
+        .args(&args)
+        .env("BPMUX_PORT", port.to_string())
+        .env("BPMUX_ROLE", role)
+        .output()
+        .await
+        .expect("run bpmux send");
+    assert!(
+        out.status.success(),
+        "bpmux send failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
 async fn wait_capture(farm: &FakeAgentFarm, role: &str, needle: &str) -> bool {
     let deadline = tokio::time::Instant::now() + Duration::from_secs(6);
     while tokio::time::Instant::now() < deadline {
@@ -225,7 +247,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_message_sent_from_a_terminal_routes_to_exactly_the_addressed_terminals_and_not_the_sender()
+async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_terminals_and_not_the_sender()
  {
     let farm = FakeAgentFarm::new();
     let agent = farm.write_agent_script();
@@ -233,6 +255,7 @@ async fn a_message_sent_from_a_terminal_routes_to_exactly_the_addressed_terminal
         "ryan",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
+    let port = bpmux.port();
 
     for role in ["dev", "pm", "designer"] {
         spawn_terminal(&bpmux).await;
@@ -242,43 +265,52 @@ async fn a_message_sent_from_a_terminal_routes_to_exactly_the_addressed_terminal
         );
     }
 
-    post_message(
-        &bpmux,
-        json!({ "from": "dev", "text": "DEV-TO-PM", "to": ["pm"] }),
-    )
-    .await;
-    post_message(&bpmux, json!({ "from": "dev", "text": "BARRIER-1" })).await;
+    terminal_send(port, "dev", Some("pm"), "DEV-SENDS-TO-PM").await;
+    post_message(&bpmux, json!({ "from": "ryan", "text": "BARRIER-1" })).await;
     assert!(
-        wait_capture(&farm, "pm", "DEV-TO-PM").await,
-        "vice-versa DIRECT: a message dev sends to:[pm] is injected into pm's terminal"
+        wait_capture(&farm, "pm", "DEV-SENDS-TO-PM").await,
+        "vice-versa DIRECT: dev running `bpmux send --to pm` in its terminal reaches pm's terminal"
     );
     assert!(
-        wait_capture(&farm, "designer", "BARRIER-1").await,
-        "barrier must reach designer, proving the cycle advanced past DEV-TO-PM"
+        wait_capture(&farm, "dev", "BARRIER-1").await
+            && wait_capture(&farm, "designer", "BARRIER-1").await,
+        "owner barrier must reach dev + designer, proving the cycle advanced past the dev->pm send"
     );
     assert!(
-        !farm.capture_contains("designer", "DEV-TO-PM")
-            && !farm.capture_contains("dev", "DEV-TO-PM"),
-        "a dev->pm direct is WITHHELD from designer (not addressed) AND from dev (the sender never receives its own)"
+        !farm.capture_contains("designer", "DEV-SENDS-TO-PM")
+            && !farm.capture_contains("dev", "DEV-SENDS-TO-PM"),
+        "FILTERING: `bpmux send --to pm` is WITHHELD from designer (not addressed) AND from dev (the sender never receives its own)"
     );
 
-    post_message(
-        &bpmux,
-        json!({ "from": "dev", "text": "DEV-TO-PM-DESIGNER", "to": ["pm", "designer"] }),
-    )
-    .await;
-    post_message(&bpmux, json!({ "from": "dev", "text": "BARRIER-2" })).await;
+    terminal_send(port, "dev", Some("pm,designer"), "DEV-SENDS-GROUP").await;
+    post_message(&bpmux, json!({ "from": "ryan", "text": "BARRIER-2" })).await;
     assert!(
-        wait_capture(&farm, "pm", "DEV-TO-PM-DESIGNER").await
-            && wait_capture(&farm, "designer", "DEV-TO-PM-DESIGNER").await,
-        "vice-versa GROUP: a message dev sends to:[pm,designer] reaches BOTH addressed terminals"
+        wait_capture(&farm, "pm", "DEV-SENDS-GROUP").await
+            && wait_capture(&farm, "designer", "DEV-SENDS-GROUP").await,
+        "vice-versa GROUP: dev running `bpmux send --to pm,designer` reaches BOTH addressed terminals"
     );
     assert!(
-        wait_capture(&farm, "pm", "BARRIER-2").await,
-        "barrier must reach pm, proving the cycle advanced past dev's own send"
+        wait_capture(&farm, "dev", "BARRIER-2").await,
+        "owner barrier must reach dev, proving the cycle advanced past dev's group send"
     );
     assert!(
-        !farm.capture_contains("dev", "DEV-TO-PM-DESIGNER"),
-        "the sender (dev) never receives its own group send"
+        !farm.capture_contains("dev", "DEV-SENDS-GROUP"),
+        "the sender (dev) never receives its own `bpmux send --to pm,designer`"
+    );
+
+    terminal_send(port, "dev", None, "DEV-SENDS-BROADCAST").await;
+    post_message(&bpmux, json!({ "from": "ryan", "text": "BARRIER-3" })).await;
+    assert!(
+        wait_capture(&farm, "pm", "DEV-SENDS-BROADCAST").await
+            && wait_capture(&farm, "designer", "DEV-SENDS-BROADCAST").await,
+        "vice-versa BROADCAST: dev running `bpmux send` reaches the other terminals"
+    );
+    assert!(
+        wait_capture(&farm, "dev", "BARRIER-3").await,
+        "owner barrier must reach dev, proving the cycle advanced past dev's broadcast"
+    );
+    assert!(
+        !farm.capture_contains("dev", "DEV-SENDS-BROADCAST"),
+        "dev's own broadcast via `bpmux send` is not reflected back into dev's own terminal"
     );
 }
