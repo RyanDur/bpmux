@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::extract::Extension;
+use axum::extract::{Extension, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
@@ -19,6 +19,7 @@ pub async fn post_terminal_spawn(
     Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
     Extension(port): Extension<u16>,
     Extension(routing): Extension<Arc<RoutingStore>>,
+    State(session): State<Arc<crate::session::Session>>,
 ) -> impl IntoResponse {
     let room_agent = std::env::var("BPMUX_ROOM_AGENT").ok();
     let shell = std::env::var("SHELL").ok();
@@ -65,6 +66,7 @@ pub async fn post_terminal_spawn(
                     output,
                     pty_registry.clone(),
                     routing.clone(),
+                    session.clone(),
                 );
             }
             (

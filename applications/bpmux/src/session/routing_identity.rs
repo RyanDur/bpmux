@@ -158,7 +158,23 @@ impl RoutingStore {
         floor
     }
 
-    pub fn delivery_terminals(&self, to: Option<&[String]>, sender: &str) -> Vec<String> {
+    pub fn cursor(&self, session_id: &str) -> Option<String> {
+        let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        identity.cursor(session_id)
+    }
+
+    pub fn mark_delivered(&self, session_id: &str, ts: &str) {
+        let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        let current = identity.cursor(session_id);
+        if let Some(later) = later_cursor(current.as_deref(), Some(ts))
+            && current.as_deref() != Some(later.as_str())
+        {
+            identity.advance_cursor(session_id, &later);
+            let _ = identity.save(&self.dir);
+        }
+    }
+
+    pub fn delivery_targets(&self, to: Option<&[String]>, sender: &str) -> Vec<(String, String)> {
         let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         let sender_ids = identity.resolve(short(sender));
         let recipient_ids: Vec<String> = match to {
@@ -178,7 +194,7 @@ impl RoutingStore {
         recipient_ids
             .into_iter()
             .filter(|id| !sender_ids.contains(id))
-            .filter_map(|id| identity.terminal_for(&id))
+            .filter_map(|id| identity.terminal_for(&id).map(|terminal| (id, terminal)))
             .collect()
     }
 
@@ -474,38 +490,41 @@ mod tests {
     }
 
     #[test]
-    fn delivery_terminals_routes_by_id_excluding_the_sender_and_offline_ids() {
+    fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
         let dir = tempfile::TempDir::new().expect("dir");
         let store = RoutingStore::load(dir.path().to_path_buf());
         store.register_agent("sess-dev", "dev", "term-dev", "2026-06-12T10:00:00Z");
         store.register_agent("sess-pm", "pm", "term-pm", "2026-06-12T10:00:00Z");
         store.register("sess-offline", "designer");
 
-        let mut broadcast = store.delivery_terminals(None, "ryan");
-        broadcast.sort();
+        let terminals = |targets: Vec<(String, String)>| {
+            let mut t: Vec<String> = targets.into_iter().map(|(_, terminal)| terminal).collect();
+            t.sort();
+            t
+        };
+
+        let broadcast = terminals(store.delivery_targets(None, "ryan"));
         assert_eq!(
             broadcast,
             vec!["term-dev".to_string(), "term-pm".to_string()],
             "a broadcast routes by id to every LIVE-linked terminal; an offline id (registered, no terminal) is excluded from live-delivery — it drains durably on reconnect instead, never a live write to nobody"
         );
 
-        let mut explicit_all = store.delivery_terminals(Some(&["all".to_string()]), "ryan");
-        explicit_all.sort();
         assert_eq!(
-            explicit_all, broadcast,
+            terminals(store.delivery_targets(Some(&["all".to_string()]), "ryan")),
+            broadcast,
             "an explicit BROADCAST_ALL to-list routes identically to to=None"
         );
 
         assert_eq!(
-            store.delivery_terminals(Some(&["dev".to_string()]), "pm"),
-            vec!["term-dev".to_string()],
-            "a scoped to:[dev] resolves dev's DISPLAY to its id to its terminal and reaches ONLY it"
+            store.delivery_targets(Some(&["dev".to_string()]), "pm"),
+            vec![("sess-dev".to_string(), "term-dev".to_string())],
+            "a scoped to:[dev] resolves dev's DISPLAY to its id to its terminal and reaches ONLY it — carrying the session-id so live-delivery advances dev's cursor"
         );
 
-        let from_dev = store.delivery_terminals(None, "dev:claude-code");
         assert_eq!(
-            from_dev,
-            vec!["term-pm".to_string()],
+            store.delivery_targets(None, "dev:claude-code"),
+            vec![("sess-pm".to_string(), "term-pm".to_string())],
             "the SENDER's own terminal is excluded (no self-echo) and the sender is matched by short-name across a full identity; other terminals still receive"
         );
     }

@@ -73,6 +73,7 @@ pub fn spawn_agent_run_detector(
     mut output: broadcast::Receiver<Vec<u8>>,
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
+    session: Arc<crate::session::Session>,
 ) {
     tokio::spawn(async move {
         let mut detector = AgentRunDetector::new(AGENT_RUN_GATE);
@@ -94,14 +95,22 @@ pub fn spawn_agent_run_detector(
                     };
                     let now_ts = chrono::Utc::now().to_rfc3339();
                     if let Some(mint) = detector.observe(foreground, Instant::now(), &now_ts)
-                        && let Ok(session) =
+                        && let Ok(dir_session) =
                             read_or_create_dir_session(std::path::Path::new(&mint.cwd))
                     {
                         routing.register_agent(
-                            &session.id,
-                            &session.name,
+                            &dir_session.id,
+                            &dir_session.name,
                             &terminal_id,
                             &mint.job_start_ts,
+                        );
+                        crate::room::drain_missed(
+                            &session,
+                            &registry,
+                            &routing,
+                            &dir_session.id,
+                            &terminal_id,
+                            &dir_session.name,
                         );
                     }
                 }
@@ -114,6 +123,12 @@ pub fn spawn_agent_run_detector(
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
+
+    fn empty_message_session() -> Arc<crate::session::Session> {
+        let dir = std::env::temp_dir().join(format!("bpmux-detect-{}", uuid::Uuid::new_v4()));
+        let (tx, _rx) = tokio::sync::broadcast::channel(16);
+        Arc::new(crate::session::Session::new(dir, "ryan".to_string(), tx))
+    }
 
     fn osc7(path: &str) -> Vec<u8> {
         format!("\x1b]7;file://host{path}\x07").into_bytes()
@@ -267,6 +282,7 @@ mod tests {
             output,
             registry.clone(),
             routing.clone(),
+            empty_message_session(),
         );
 
         registry.write_to(&terminal_id, format!("cd {work_path}\n").as_bytes());
@@ -328,6 +344,7 @@ mod tests {
             output,
             registry.clone(),
             routing.clone(),
+            empty_message_session(),
         );
 
         registry.write_to(&terminal_id, format!("cd {passed_path}\n").as_bytes());
@@ -379,6 +396,7 @@ mod tests {
             output,
             registry.clone(),
             routing.clone(),
+            empty_message_session(),
         );
 
         registry.write_to(&terminal_id, b"sleep 4\n");

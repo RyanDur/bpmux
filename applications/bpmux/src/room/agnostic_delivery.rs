@@ -32,11 +32,69 @@ pub fn deliver_to_terminals(msg: &Message, registry: &LivePtyRegistry, routing: 
     if !msg.is_chat() {
         return;
     }
+    let payload = framed_payload(msg);
+    let ts = msg.ts.to_rfc3339();
+    for (session_id, terminal_id) in routing.delivery_targets(msg.to.as_deref(), &msg.from) {
+        if !after_cursor(routing, &session_id, msg.ts) {
+            continue;
+        }
+        if registry.write_to(&terminal_id, payload.as_bytes()) {
+            routing.mark_delivered(&session_id, &ts);
+        }
+    }
+}
+
+pub fn drain_missed(
+    session: &Session,
+    registry: &LivePtyRegistry,
+    routing: &RoutingStore,
+    session_id: &str,
+    terminal_id: &str,
+    display: &str,
+) {
+    let messages = match session.read_messages() {
+        Ok(messages) => messages,
+        Err(_) => return,
+    };
+    for msg in messages {
+        if !msg.is_chat() || short_name(&msg.from) == display || !reaches(&msg, display) {
+            continue;
+        }
+        if !after_cursor(routing, session_id, msg.ts) {
+            continue;
+        }
+        if registry.write_to(terminal_id, framed_payload(&msg).as_bytes()) {
+            routing.mark_delivered(session_id, &msg.ts.to_rfc3339());
+        }
+    }
+}
+
+fn framed_payload(msg: &Message) -> String {
     let scope = scope_label(msg.to.as_deref());
     let framed = frame_team_message(short_name(&msg.from), &scope, &msg.text);
-    let payload = format!("{framed}{SUBMIT}");
-    for terminal_id in routing.delivery_terminals(msg.to.as_deref(), &msg.from) {
-        registry.write_to(&terminal_id, payload.as_bytes());
+    format!("{framed}{SUBMIT}")
+}
+
+fn after_cursor(
+    routing: &RoutingStore,
+    session_id: &str,
+    ts: chrono::DateTime<chrono::Utc>,
+) -> bool {
+    match routing
+        .cursor(session_id)
+        .as_deref()
+        .and_then(|cursor| chrono::DateTime::parse_from_rfc3339(cursor).ok())
+    {
+        Some(cursor) => ts > cursor.with_timezone(&chrono::Utc),
+        None => true,
+    }
+}
+
+fn reaches(msg: &Message, display: &str) -> bool {
+    match msg.to.as_deref() {
+        None => true,
+        Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => true,
+        Some(names) => names.iter().any(|name| short_name(name) == display),
     }
 }
 
@@ -168,6 +226,56 @@ mod tests {
         assert!(
             !seen.contains("my own line"),
             "own-sender suppression: a broadcast must not be injected back into the SENDER's own terminal (no self-echo loop); got {seen:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn offline_then_reconnect_drains_the_missed_message_not_the_already_delivered_one() {
+        let store_dir = tempfile::TempDir::new().unwrap();
+        let routing = RoutingStore::load(store_dir.path().to_path_buf());
+        let registry = LivePtyRegistry::new();
+        let sess_dir = tempfile::TempDir::new().unwrap();
+        let (tx, _rx) = broadcast::channel(16);
+        let session =
+            crate::session::Session::new(sess_dir.path().to_path_buf(), "ryan".to_string(), tx);
+
+        let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+        let mut rx1 = live.subscribe();
+        registry.insert("term1".to_string(), live);
+        routing.register_agent("sess-dev", "dev", "term1", "2000-01-01T00:00:00Z");
+
+        let m1 = chat("pm", "M1-delivered-live", None);
+        session.broadcast(&m1).unwrap();
+        deliver_to_terminals(&m1, &registry, &routing);
+        assert!(
+            drain_for(&mut rx1, "M1-delivered-live")
+                .await
+                .contains("M1-delivered-live"),
+            "M1 reaches dev live while online"
+        );
+
+        registry.remove("term1");
+        std::thread::sleep(std::time::Duration::from_millis(5));
+
+        let m2 = chat("designer", "M2-while-offline", None);
+        session.broadcast(&m2).unwrap();
+        deliver_to_terminals(&m2, &registry, &routing);
+
+        let live2 = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+        let mut rx2 = live2.subscribe();
+        registry.insert("term2".to_string(), live2);
+        routing.register_agent("sess-dev", "dev", "term2", "2026-06-12T20:00:00Z");
+        drain_missed(&session, &registry, &routing, "sess-dev", "term2", "dev");
+
+        registry.write_to("term2", b"DRAIN-SENTINEL\r");
+        let drained = drain_for(&mut rx2, "DRAIN-SENTINEL").await;
+        assert!(
+            drained.contains("M2-while-offline"),
+            "a reconnecting agent drains the message it missed while OFFLINE (falsifier-3 no-loss — reach = live OR on-reconnect, never lost); got {drained:?}"
+        );
+        assert!(
+            !drained.contains("M1-delivered-live"),
+            "the already-live-delivered M1 is NOT re-delivered — the cursor advanced on live-delivery so reconnect drains only the gap (no double); got {drained:?}"
         );
     }
 
