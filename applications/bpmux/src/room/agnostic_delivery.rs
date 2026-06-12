@@ -185,6 +185,34 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn the_carriage_return_submits_the_line_so_a_bare_read_loop_processes_it_not_parks() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let routing = RoutingStore::load(dir.path().to_path_buf());
+        let registry = LivePtyRegistry::new();
+        let live = spawn_pty_retained(
+            "/bin/sh",
+            &[
+                "-c".into(),
+                "while read line; do printf 'PROCESSED[%s]\\n' \"$line\"; done".into(),
+            ],
+            None,
+            &[],
+        )
+        .unwrap();
+        let mut rx = live.subscribe();
+        registry.insert("term-dev".to_string(), live);
+        routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+
+        deliver_to_terminals(&chat("pm", "reach-the-role", None), &registry, &routing);
+
+        let seen = drain_for(&mut rx, "PROCESSED[").await;
+        assert!(
+            seen.contains("PROCESSED[") && seen.contains("reach-the-role"),
+            "the \\r-submit makes a bare read-loop RETURN from `read` and PROCESS the line — it reaches the role processed, NOT parked awaiting a manual ENTER (falsifier-4, the 2026-06-06 reject, at the AGNOSTIC level: a non-Claude script, zero glue). Without the submit, `read` would block forever and PROCESSED[ would never appear; got {seen:?}"
+        );
+    }
+
+    #[tokio::test]
     async fn a_scoped_message_reaches_only_the_matching_display_no_leak() {
         let dir = tempfile::TempDir::new().unwrap();
         let routing = RoutingStore::load(dir.path().to_path_buf());
