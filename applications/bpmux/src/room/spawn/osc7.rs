@@ -81,7 +81,6 @@ mod tests {
 
     #[test]
     fn spawned_shell_emits_osc7_carrying_the_new_cwd_after_cd() {
-        use std::io::Read;
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
         let integration = osc7_shell_integration(&shell).unwrap();
         let target =
@@ -96,17 +95,16 @@ mod tests {
         if let Some(dir) = integration.zdotdir {
             live.attach_tempdir(dir);
         }
+        let mut rx = live.subscribe();
         live.write_input(format!("cd {}\n", target.display()).as_bytes())
             .unwrap();
-        let mut reader = live.reader().unwrap();
         let mut collected = String::new();
-        let mut buf = [0u8; 1024];
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
         while std::time::Instant::now() < deadline {
-            match reader.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
+            match rx.blocking_recv() {
+                Ok(bytes) if bytes.is_empty() => break,
+                Ok(bytes) => {
+                    collected.push_str(&String::from_utf8_lossy(&bytes));
                     if collected.contains("]7;file://") && collected.contains(&marker) {
                         break;
                     }
@@ -123,7 +121,6 @@ mod tests {
 
     #[test]
     fn bash_osc7_appends_to_a_user_prompt_command_without_clobbering_it() {
-        use std::io::Read;
         let bash = "/bin/bash";
         if !std::path::Path::new(bash).exists() {
             return;
@@ -148,21 +145,14 @@ mod tests {
         if let Some(dir) = integration.zdotdir {
             live.attach_tempdir(dir);
         }
+        let mut subscriber = live.subscribe();
         live.write_input(format!("cd {}\n", target.display()).as_bytes())
             .unwrap();
-        let reader = live.reader().unwrap();
         let (tx, rx) = std::sync::mpsc::channel::<Vec<u8>>();
         let reader_handle = std::thread::spawn(move || {
-            let mut reader = reader;
-            let mut buf = [0u8; 1024];
-            loop {
-                match reader.read(&mut buf) {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => {
-                        if tx.send(buf[..n].to_vec()).is_err() {
-                            break;
-                        }
-                    }
+            while let Ok(bytes) = subscriber.blocking_recv() {
+                if bytes.is_empty() || tx.send(bytes).is_err() {
+                    break;
                 }
             }
         });

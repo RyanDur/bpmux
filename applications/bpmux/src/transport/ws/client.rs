@@ -78,29 +78,29 @@ pub(crate) async fn handle_client_message(
             let already_streaming = pty_readers
                 .get(&terminal_id)
                 .is_some_and(|stop| !stop.load(std::sync::atomic::Ordering::Relaxed));
-            if !already_streaming && let Some(Ok(reader)) = pty_registry.reader_for(&terminal_id) {
+            if !already_streaming && let Some(mut output) = pty_registry.subscribe_for(&terminal_id)
+            {
                 let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
                 pty_readers.insert(terminal_id.clone(), stop.clone());
                 let sink = pty_tx.clone();
-                std::thread::spawn(move || {
-                    use std::io::Read;
-                    let mut reader = reader;
-                    let mut buf = [0u8; 4096];
+                tokio::spawn(async move {
+                    use tokio::sync::broadcast::error::RecvError;
                     loop {
                         if stop.load(std::sync::atomic::Ordering::Relaxed) {
                             break;
                         }
-                        match reader.read(&mut buf) {
-                            Ok(0) => {
+                        match output.recv().await {
+                            Ok(bytes) if bytes.is_empty() => {
                                 let _ = sink.send((terminal_id.clone(), Vec::new()));
                                 break;
                             }
-                            Ok(n) => {
-                                if sink.send((terminal_id.clone(), buf[..n].to_vec())).is_err() {
+                            Ok(bytes) => {
+                                if sink.send((terminal_id.clone(), bytes)).is_err() {
                                     break;
                                 }
                             }
-                            Err(_) => {
+                            Err(RecvError::Lagged(_)) => continue,
+                            Err(RecvError::Closed) => {
                                 let _ = sink.send((terminal_id.clone(), Vec::new()));
                                 break;
                             }

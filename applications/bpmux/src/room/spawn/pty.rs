@@ -1,8 +1,11 @@
 use std::sync::Mutex;
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+use tokio::sync::broadcast;
 
 use super::process::{io_other, signal};
+
+const PTY_OUTPUT_CAPACITY: usize = 1024;
 
 pub fn spawn_pty(command: &str, args: &[String]) -> std::io::Result<u32> {
     let system = native_pty_system();
@@ -31,6 +34,7 @@ pub struct LivePty {
     master: Box<dyn portable_pty::MasterPty + Send>,
     writer: Mutex<Box<dyn std::io::Write + Send>>,
     child: Box<dyn portable_pty::Child + Send + Sync>,
+    output: broadcast::Sender<Vec<u8>>,
     _retained_tempdir: Option<tempfile::TempDir>,
 }
 
@@ -43,8 +47,8 @@ impl LivePty {
         self._retained_tempdir = Some(dir);
     }
 
-    pub fn reader(&self) -> std::io::Result<Box<dyn std::io::Read + Send>> {
-        self.master.try_clone_reader().map_err(io_other)
+    pub fn subscribe(&self) -> broadcast::Receiver<Vec<u8>> {
+        self.output.subscribe()
     }
 
     pub fn write_input(&self, bytes: &[u8]) -> std::io::Result<()> {
@@ -129,13 +133,42 @@ pub fn spawn_pty_retained(
     drop(pair.slave);
     let pid = child.process_id().unwrap_or(0);
     let writer = pair.master.take_writer().map_err(io_other)?;
+    let reader = pair.master.try_clone_reader().map_err(io_other)?;
+    let (output, _) = broadcast::channel(PTY_OUTPUT_CAPACITY);
+    spawn_output_reader(reader, output.clone());
     Ok(LivePty {
         pid,
         master: pair.master,
         writer: Mutex::new(writer),
         child,
+        output,
         _retained_tempdir: None,
     })
+}
+
+fn spawn_output_reader(
+    mut reader: Box<dyn std::io::Read + Send>,
+    output: broadcast::Sender<Vec<u8>>,
+) {
+    std::thread::spawn(move || {
+        use std::io::Read;
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) => {
+                    let _ = output.send(Vec::new());
+                    break;
+                }
+                Ok(n) => {
+                    let _ = output.send(buf[..n].to_vec());
+                }
+                Err(_) => {
+                    let _ = output.send(Vec::new());
+                    break;
+                }
+            }
+        }
+    });
 }
 
 #[cfg(test)]
@@ -165,40 +198,59 @@ mod tests {
     }
 
     #[test]
-    fn spawn_pty_retained_reads_child_output_through_the_kept_master() {
-        use std::io::Read;
-        let live = spawn_pty_retained(
-            "/bin/sh",
-            &["-c".into(), "printf 'hello-retained-pty'".into()],
-            None,
-            &[],
-        )
-        .unwrap();
+    fn spawn_pty_retained_streams_child_output_to_a_subscriber() {
+        let live = spawn_pty_retained("/bin/sh", &[], None, &[]).unwrap();
         assert!(live.pid() > 0, "retained-pty spawn must report a child PID");
-        let mut reader = live.reader().unwrap();
-        let mut collected = String::new();
-        let mut buf = [0u8; 1024];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
-                    if collected.contains("hello-retained-pty") {
+        let mut rx = live.subscribe();
+        live.write_input(b"printf 'hello-retained-pty\\n'\n")
+            .unwrap();
+        let collected = drain_subscriber_until(&mut rx, "hello-retained-pty");
+        assert!(
+            collected.contains("hello-retained-pty"),
+            "the RETAINED master's server-owned reader must stream the child's live PTY output to a subscriber (not dropped like spawn_pty); got {collected:?}"
+        );
+    }
+
+    fn drain_subscriber_until(rx: &mut broadcast::Receiver<Vec<u8>>, marker: &str) -> String {
+        let mut out = String::new();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            match rx.blocking_recv() {
+                Ok(bytes) if bytes.is_empty() => break,
+                Ok(bytes) => {
+                    out.push_str(&String::from_utf8_lossy(&bytes));
+                    if out.contains(marker) {
                         break;
                     }
                 }
                 Err(_) => break,
             }
         }
+        out
+    }
+
+    #[test]
+    fn two_subscribers_to_one_pty_both_receive_the_full_output() {
+        let live = spawn_pty_retained("/bin/sh", &[], None, &[]).unwrap();
+        let mut first = live.subscribe();
+        let mut second = live.subscribe();
+        live.write_input(b"printf 'fanout-marker\\n'\n").unwrap();
+
+        let first_out = drain_subscriber_until(&mut first, "fanout-marker");
+        let second_out = drain_subscriber_until(&mut second, "fanout-marker");
+
         assert!(
-            collected.contains("hello-retained-pty"),
-            "the RETAINED master must yield the child's live PTY output (not dropped like spawn_pty); got {collected:?}"
+            first_out.contains("fanout-marker"),
+            "subscriber one must receive the live PTY output via the server-owned reader fanout; got {first_out:?}"
+        );
+        assert!(
+            second_out.contains("fanout-marker"),
+            "subscriber two must ALSO receive the SAME full output — one server-owned reader fans out to every subscriber, never splitting the master fd between competing per-subscriber readers; got {second_out:?}"
         );
     }
 
     #[test]
     fn spawn_pty_retained_runs_a_real_shell_in_the_given_cwd_with_term() {
-        use std::io::Read;
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
         let cwd =
             std::env::temp_dir().join(format!("bpmux-shell-cwd-{}-{}", std::process::id(), "s1"));
@@ -211,16 +263,15 @@ mod tests {
             &[("TERM", "xterm-256color")],
         )
         .unwrap();
+        let mut rx = live.subscribe();
         live.write_input(b"echo TERM=$TERM PWD=$PWD\n").unwrap();
-        let mut reader = live.reader().unwrap();
         let mut collected = String::new();
-        let mut buf = [0u8; 1024];
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         while std::time::Instant::now() < deadline {
-            match reader.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
+            match rx.blocking_recv() {
+                Ok(bytes) if bytes.is_empty() => break,
+                Ok(bytes) => {
+                    collected.push_str(&String::from_utf8_lossy(&bytes));
                     if collected.contains("TERM=xterm-256color") && collected.contains(&marker) {
                         break;
                     }
@@ -241,27 +292,12 @@ mod tests {
 
     #[test]
     fn live_pty_resize_propagates_the_winsize_to_the_shell_tty() {
-        use std::io::Read;
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
         let live = spawn_pty_retained(&shell, &[], None, &[("TERM", "xterm-256color")]).unwrap();
         live.resize(40, 120).unwrap();
+        let mut rx = live.subscribe();
         live.write_input(b"stty size\n").unwrap();
-        let mut reader = live.reader().unwrap();
-        let mut collected = String::new();
-        let mut buf = [0u8; 1024];
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-        while std::time::Instant::now() < deadline {
-            match reader.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
-                    if collected.contains("40 120") {
-                        break;
-                    }
-                }
-                Err(_) => break,
-            }
-        }
+        let collected = drain_subscriber_until(&mut rx, "40 120");
         assert!(
             collected.contains("40 120"),
             "stty size must report the RESIZED winsize (rows cols), proving master.resize propagated to the slave tty — not the spawn default 24 80; got {collected:?}"

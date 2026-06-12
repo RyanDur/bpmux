@@ -72,7 +72,6 @@ mod tests {
 
     #[test]
     fn provisioned_bash_wraps_claude_with_mcp_config_and_preserves_user_args() {
-        use std::io::Read;
         use std::os::unix::fs::PermissionsExt;
         let bash = "/bin/bash";
         if !std::path::Path::new(bash).exists() {
@@ -108,20 +107,13 @@ mod tests {
         if let Some(dir) = integration.zdotdir {
             live.attach_tempdir(dir);
         }
+        let mut subscriber = live.subscribe();
         live.write_input(b"claude hello world\n").unwrap();
-        let reader = live.reader().unwrap();
         let (tx, rx) = std::sync::mpsc::channel::<Vec<u8>>();
         let reader_handle = std::thread::spawn(move || {
-            let mut reader = reader;
-            let mut buf = [0u8; 1024];
-            loop {
-                match reader.read(&mut buf) {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => {
-                        if tx.send(buf[..n].to_vec()).is_err() {
-                            break;
-                        }
-                    }
+            while let Ok(bytes) = subscriber.blocking_recv() {
+                if bytes.is_empty() || tx.send(bytes).is_err() {
+                    break;
                 }
             }
         });
@@ -188,21 +180,13 @@ mod tests {
         secs: u64,
         mut done: impl FnMut(&str) -> bool,
     ) -> String {
-        use std::io::Read;
+        let mut subscriber = live.subscribe();
         live.write_input(input).unwrap();
-        let reader = live.reader().unwrap();
         let (tx, rx) = std::sync::mpsc::channel::<Vec<u8>>();
         let handle = std::thread::spawn(move || {
-            let mut reader = reader;
-            let mut buf = [0u8; 1024];
-            loop {
-                match reader.read(&mut buf) {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => {
-                        if tx.send(buf[..n].to_vec()).is_err() {
-                            break;
-                        }
-                    }
+            while let Ok(bytes) = subscriber.blocking_recv() {
+                if bytes.is_empty() || tx.send(bytes).is_err() {
+                    break;
                 }
             }
         });

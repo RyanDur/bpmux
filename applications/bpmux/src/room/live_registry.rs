@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use tokio::sync::broadcast;
+
 use super::spawn::LivePty;
 
 #[derive(Default)]
@@ -27,12 +29,12 @@ impl LivePtyRegistry {
             .contains_key(role)
     }
 
-    pub fn reader_for(&self, role: &str) -> Option<std::io::Result<Box<dyn std::io::Read + Send>>> {
+    pub fn subscribe_for(&self, role: &str) -> Option<broadcast::Receiver<Vec<u8>>> {
         self.rooms
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .get(role)
-            .map(|live| live.reader())
+            .map(|live| live.subscribe())
     }
 
     pub fn write_to(&self, role: &str, bytes: &[u8]) -> bool {
@@ -88,51 +90,47 @@ impl LivePtyRegistry {
 mod tests {
     use super::*;
     use crate::room::spawn::spawn_pty_retained;
-    use std::io::Read;
 
-    #[test]
-    fn registry_hands_out_a_working_reader_keyed_by_role() {
-        let registry = LivePtyRegistry::new();
-        let live = spawn_pty_retained(
-            "/bin/sh",
-            &["-c".into(), "printf 'registry-stream-marker'".into()],
-            None,
-            &[],
-        )
-        .unwrap();
-        registry.insert("dev".to_string(), live);
-
-        assert!(registry.contains("dev"));
-        assert!(!registry.contains("pm"));
-
-        let mut reader = registry
-            .reader_for("dev")
-            .expect("dev room present")
-            .unwrap();
-        let mut collected = String::new();
-        let mut buf = [0u8; 1024];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
-                    if collected.contains("registry-stream-marker") {
+    fn drain_until(rx: &mut broadcast::Receiver<Vec<u8>>, marker: &str) -> String {
+        let mut out = String::new();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            match rx.blocking_recv() {
+                Ok(bytes) if bytes.is_empty() => break,
+                Ok(bytes) => {
+                    out.push_str(&String::from_utf8_lossy(&bytes));
+                    if out.contains(marker) {
                         break;
                     }
                 }
                 Err(_) => break,
             }
         }
+        out
+    }
+
+    #[test]
+    fn registry_hands_out_a_working_subscriber_keyed_by_role() {
+        let registry = LivePtyRegistry::new();
+        let live = spawn_pty_retained("/bin/sh", &[], None, &[]).unwrap();
+        registry.insert("dev".to_string(), live);
+
+        assert!(registry.contains("dev"));
+        assert!(!registry.contains("pm"));
+
+        let mut rx = registry.subscribe_for("dev").expect("dev room present");
+        registry.write_to("dev", b"printf 'registry-stream-marker\\n'\n");
+        let collected = drain_until(&mut rx, "registry-stream-marker");
         assert!(
             collected.contains("registry-stream-marker"),
-            "registry.reader_for must stream the role's live PTY output; got {collected:?}"
+            "registry.subscribe_for must stream the role's live PTY output to a subscriber; got {collected:?}"
         );
     }
 
     #[test]
-    fn reader_for_absent_role_is_none() {
+    fn subscribe_for_absent_role_is_none() {
         let registry = LivePtyRegistry::new();
-        assert!(registry.reader_for("nobody").is_none());
+        assert!(registry.subscribe_for("nobody").is_none());
     }
 
     #[test]
@@ -147,27 +145,14 @@ mod tests {
         .unwrap();
         registry.insert("dev".to_string(), live);
 
+        let mut rx = registry.subscribe_for("dev").expect("dev present");
         assert!(registry.write_to("dev", b"ping"));
         assert!(
             registry.write_to("dev", b"-stdin\n"),
             "the SECOND write must also reach stdin — the writer is taken once at spawn and reused, not re-taken per write"
         );
 
-        let mut reader = registry.reader_for("dev").expect("dev present").unwrap();
-        let mut collected = String::new();
-        let mut buf = [0u8; 1024];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
-                    if collected.contains("GOT:ping-stdin") {
-                        break;
-                    }
-                }
-                Err(_) => break,
-            }
-        }
+        let collected = drain_until(&mut rx, "GOT:ping-stdin");
         assert!(
             collected.contains("GOT:ping-stdin"),
             "writing to the room write-half must reach the SAME live session's stdin (the child reads it and echoes GOT:<line> on the same master); got {collected:?}"
@@ -180,46 +165,11 @@ mod tests {
         assert!(!registry.write_to("nobody", b"x"));
     }
 
-    fn drain_room_until(
-        reader: Option<std::io::Result<Box<dyn std::io::Read + Send>>>,
-        marker: &str,
-    ) -> String {
-        use std::io::Read;
-        let mut reader = reader.expect("room present").unwrap();
-        let mut collected = String::new();
-        let mut buf = [0u8; 1024];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    collected.push_str(&String::from_utf8_lossy(&buf[..n]));
-                    if collected.contains(marker) {
-                        break;
-                    }
-                }
-                Err(_) => break,
-            }
-        }
-        collected
-    }
-
     #[test]
     fn two_rooms_are_isolated_no_cross_bleed_and_both_coexist() {
         let registry = LivePtyRegistry::new();
-        let dev = spawn_pty_retained(
-            "/bin/sh",
-            &["-c".into(), "printf 'DEV-ROOM-OUTPUT'".into()],
-            None,
-            &[],
-        )
-        .unwrap();
-        let pm = spawn_pty_retained(
-            "/bin/sh",
-            &["-c".into(), "printf 'PM-ROOM-OUTPUT'".into()],
-            None,
-            &[],
-        )
-        .unwrap();
+        let dev = spawn_pty_retained("/bin/sh", &[], None, &[]).unwrap();
+        let pm = spawn_pty_retained("/bin/sh", &[], None, &[]).unwrap();
         registry.insert("dev".to_string(), dev);
         registry.insert("pm".to_string(), pm);
 
@@ -228,8 +178,13 @@ mod tests {
             "spawning the pm room must not destabilize the dev room — both coexist"
         );
 
-        let dev_out = drain_room_until(registry.reader_for("dev"), "DEV-ROOM-OUTPUT");
-        let pm_out = drain_room_until(registry.reader_for("pm"), "PM-ROOM-OUTPUT");
+        let mut dev_rx = registry.subscribe_for("dev").expect("dev present");
+        let mut pm_rx = registry.subscribe_for("pm").expect("pm present");
+        registry.write_to("dev", b"printf 'DEV-ROOM-OUTPUT\\n'\n");
+        registry.write_to("pm", b"printf 'PM-ROOM-OUTPUT\\n'\n");
+
+        let dev_out = drain_until(&mut dev_rx, "DEV-ROOM-OUTPUT");
+        let pm_out = drain_until(&mut pm_rx, "PM-ROOM-OUTPUT");
 
         assert!(dev_out.contains("DEV-ROOM-OUTPUT"));
         assert!(
