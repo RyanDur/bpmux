@@ -4,12 +4,12 @@ use tempfile::TempDir;
 
 use crate::harness::pty::TestBpmux;
 
-async fn run_register(bin: &str, port: u16, cwd: &std::path::Path) -> (bool, String) {
+async fn run_register(bin: &str, port: u16, cwd: &std::path::Path, role: &str) -> (bool, String) {
     let output = tokio::process::Command::new(bin)
         .arg("register")
         .current_dir(cwd)
         .env("BPMUX_PORT", port.to_string())
-        .env("BPMUX_ROLE", "dev")
+        .env("BPMUX_ROLE", role)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -34,7 +34,7 @@ async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_serve
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let workspace = TempDir::new().expect("temp workspace");
 
-    let (ok, stdout) = run_register(bin, port, workspace.path()).await;
+    let (ok, stdout) = run_register(bin, port, workspace.path(), "dev").await;
     assert!(
         ok,
         "bpmux register must succeed end-to-end against the live server (CLI -> /api/register -> store); stdout: {stdout}"
@@ -75,8 +75,8 @@ async fn register_in_a_different_dir_mints_a_distinct_session_id() {
     let workspace_a = TempDir::new().expect("temp workspace a");
     let workspace_b = TempDir::new().expect("temp workspace b");
 
-    let (ok_a, _) = run_register(bin, port, workspace_a.path()).await;
-    let (ok_b, _) = run_register(bin, port, workspace_b.path()).await;
+    let (ok_a, _) = run_register(bin, port, workspace_a.path(), "dev").await;
+    let (ok_b, _) = run_register(bin, port, workspace_b.path(), "pm").await;
     assert!(ok_a && ok_b, "both registrations succeed");
 
     let id_a = marker_id(&workspace_a.path().join(".bpmux-session-id"));
@@ -84,5 +84,19 @@ async fn register_in_a_different_dir_mints_a_distinct_session_id() {
     assert_ne!(
         id_a, id_b,
         "a register from a different start-dir mints a DISTINCT session-id — the identity is anchored to the dir, so two agents started in different dirs are distinct instances"
+    );
+}
+
+#[tokio::test]
+async fn register_rejects_the_reserved_owner_identity() {
+    let bpmux = TestBpmux::start();
+    let port = bpmux.port();
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let workspace = TempDir::new().expect("temp workspace");
+
+    let (ok, stdout) = run_register(bin, port, workspace.path(), "ryan").await;
+    assert!(
+        !ok,
+        "registering the reserved OWNER identity must be REJECTED server-side (403) — an agent can never present as the owner; auto-submit's defense-in-depth peer-impersonation guard; stdout: {stdout}"
     );
 }

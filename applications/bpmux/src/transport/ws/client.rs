@@ -62,8 +62,20 @@ pub(crate) async fn handle_client_message(
             send_json(tx, &ServerMessage::Pong).await?;
         }
         Ok(ClientMessage::Rename { name }) => {
-            let tool = identity.split(':').nth(1).unwrap_or("ws");
-            return Ok(Some(format!("{name}:{tool}")));
+            if super::is_reserved_display(&name) {
+                send_json(
+                    tx,
+                    &ServerMessage::Error {
+                        reason: format!(
+                            "'{name}' is a reserved owner identity — an agent cannot present as the owner"
+                        ),
+                    },
+                )
+                .await?;
+            } else {
+                let tool = identity.split(':').nth(1).unwrap_or("ws");
+                return Ok(Some(format!("{name}:{tool}")));
+            }
         }
         Ok(ClientMessage::Identify { .. }) => {
             send_json(

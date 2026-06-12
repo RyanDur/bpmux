@@ -20,6 +20,12 @@ pub async fn post_register(
     Extension(routing): Extension<Arc<RoutingStore>>,
     Json(payload): Json<RegisterRequest>,
 ) -> impl IntoResponse {
+    if crate::transport::ws::is_reserved_display(&payload.display) {
+        return (
+            StatusCode::FORBIDDEN,
+            format!("'{}' is a reserved owner identity", payload.display),
+        );
+    }
     routing.register(&payload.session_id, &payload.display);
     if let Some(terminal_id) = &payload.terminal_id {
         routing.link_terminal(&payload.session_id, terminal_id);
