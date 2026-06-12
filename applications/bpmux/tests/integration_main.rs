@@ -183,6 +183,8 @@ mod recall_observability;
 mod receive_broadcast_hook_e2e;
 #[path = "integration_main_modules/reject_story_e2e.rs"]
 mod reject_story_e2e;
+#[path = "integration_main_modules/rename_route_delivery_e2e.rs"]
+mod rename_route_delivery_e2e;
 #[path = "integration_main_modules/reorder_story_e2e.rs"]
 mod reorder_story_e2e;
 #[path = "integration_main_modules/reorder_story_retire_e2e.rs"]
