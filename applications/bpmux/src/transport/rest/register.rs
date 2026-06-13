@@ -29,6 +29,7 @@ pub async fn post_register(
     routing.register(&payload.session_id, &payload.display);
     if let Some(terminal_id) = &payload.terminal_id {
         routing.link_terminal(&payload.session_id, terminal_id);
+        routing.reap_unclaimed_duplicates_of(&payload.display);
     }
     (StatusCode::CREATED, "registered".to_string())
 }

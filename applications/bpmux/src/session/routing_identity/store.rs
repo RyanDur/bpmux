@@ -42,6 +42,15 @@ impl RoutingStore {
         identity.is_terminal_linked(terminal_id)
     }
 
+    pub fn reap_unclaimed_duplicates_of(&self, display: &str) -> Vec<String> {
+        let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        let reaped = identity.reap_unclaimed_duplicates_of(display);
+        if !reaped.is_empty() {
+            let _ = identity.save(&self.dir);
+        }
+        reaped
+    }
+
     pub fn resolve(&self, display: &str) -> Vec<String> {
         let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         identity.resolve(display)
@@ -119,6 +128,7 @@ impl RoutingStore {
             identity.advance_cursor(session_id, job_start);
         }
         identity.link_terminal(session_id, terminal_id);
+        identity.reap_unclaimed_duplicates_of(display);
         let _ = identity.save(&self.dir);
     }
 }
@@ -347,6 +357,21 @@ mod tests {
             reloaded.cursor("sess-ret").as_deref(),
             Some("2026-06-12T12:00:00Z"),
             "a RETURNING agent preserves its durable drain-position (noon) — re-detecting it at a NEW job-start (15:00) must NOT reset the cursor, which would skip the offline 12:00-15:00 messages the durable-reclaim must still deliver"
+        );
+    }
+
+    #[test]
+    fn reaping_stale_duplicates_persists_so_a_reload_recovers_only_the_live_id() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register("dev-stale", "dev");
+        store.register_agent("dev-live", "dev", "term-live", "2026-06-13T10:00:00Z");
+
+        let reloaded = RoutingIdentity::load(dir.path());
+        assert_eq!(
+            reloaded.resolve("dev"),
+            vec!["dev-live".to_string()],
+            "register_agent reaped the unclaimed stale 'dev' when the live 'dev' bound its terminal, and the reap PERSISTED — a reload recovers only the one live id, not the splinter"
         );
     }
 }

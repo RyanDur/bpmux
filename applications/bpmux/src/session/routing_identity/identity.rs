@@ -99,6 +99,22 @@ impl RoutingIdentity {
             .any(|linked| linked == terminal_id)
     }
 
+    pub fn reap_unclaimed_duplicates_of(&mut self, display: &str) -> Vec<String> {
+        let reaped: Vec<String> = self
+            .display_by_id
+            .iter()
+            .filter(|(id, d)| {
+                d.as_str() == display && !self.terminal_by_id.contains_key(id.as_str())
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        for id in &reaped {
+            self.display_by_id.remove(id);
+            self.cursor_by_id.remove(id);
+        }
+        reaped
+    }
+
     pub fn unclaimed(&self) -> Vec<(String, String)> {
         self.display_by_id
             .iter()
@@ -260,6 +276,45 @@ mod tests {
                 .resolve_recipients(Some(&["ghost".to_string()]))
                 .is_empty(),
             "a scoped message to an unknown display routes to NO instance — no mis-route/leak"
+        );
+    }
+
+    #[test]
+    fn reap_removes_unclaimed_duplicates_of_a_live_display_but_never_an_offline_other_display() {
+        let mut identity = RoutingIdentity::new();
+        identity.register("dev-live", "dev");
+        identity.link_terminal("dev-live", "term-dev");
+        identity.register("dev-stale-a", "dev");
+        identity.advance_cursor("dev-stale-a", "2026-06-13T00:00:00Z");
+        identity.register("dev-stale-b", "dev");
+        identity.register("pm-offline", "pm");
+        identity.advance_cursor("pm-offline", "2026-06-13T00:00:00Z");
+
+        let reaped = identity.reap_unclaimed_duplicates_of("dev");
+
+        assert!(
+            reaped.contains(&"dev-stale-a".to_string())
+                && reaped.contains(&"dev-stale-b".to_string()),
+            "the unclaimed (no live terminal) dev duplicates — the splinters from the old per-cwd model — are reaped; got {reaped:?}"
+        );
+        assert_eq!(
+            identity.resolve("dev"),
+            vec!["dev-live".to_string()],
+            "the LIVE (terminal-bound) dev is preserved — only the one true dev remains"
+        );
+        assert!(
+            identity.cursor("dev-stale-a").is_none(),
+            "a reaped id's durable cursor is removed too (it was dead history)"
+        );
+        assert_eq!(
+            identity.resolve("pm"),
+            vec!["pm-offline".to_string()],
+            "an OFFLINE agent of a DIFFERENT display is untouched — reap is scoped to the display whose live terminal just bound, so a legitimately-offline agent (no live sibling) keeps its id"
+        );
+        assert_eq!(
+            identity.cursor("pm-offline"),
+            Some("2026-06-13T00:00:00Z".to_string()),
+            "the offline agent's durable cursor survives — the discriminator never breaks offline-reconnect"
         );
     }
 }
