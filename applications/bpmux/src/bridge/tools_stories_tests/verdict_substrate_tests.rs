@@ -162,29 +162,45 @@ mod verdict_substrate_integration_1407 {
         seed_expired_verdict(&session, 42, "dev");
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let (ws_tx, captured) = connected_ws_sink_with_capture().await;
-        let err = handle_accept_story(&accept_args(42), "pm", &ws_tx, Some(&orch), Some(&session))
-            .await
-            .expect_err("expired verdicts must still block the accept");
+        let mut rx = session.subscribe();
+        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
+        let err = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            &empty_ws,
+            Some(&orch),
+            Some(&session),
+        )
+        .await
+        .expect_err("expired verdicts must still block the accept");
         assert!(
             err.contains("verdict-expired"),
             "block still cites expiry — the reprompt is additive, never a bypass; got {err}"
         );
 
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        let messages = captured.lock().await;
-        let combined = messages.join("\n");
-        let reprompts = messages
-            .iter()
-            .filter(|m| m.contains("submit_verdict"))
-            .count();
+        let mut reprompts = Vec::new();
+        while let Ok(msg) = rx.try_recv() {
+            if msg.text.contains("submit_verdict") {
+                reprompts.push(msg);
+            }
+        }
         assert_eq!(
-            reprompts, 2,
-            "each expired role (designer + dev) is reprompted to re-cast; got {combined}"
+            reprompts.len(),
+            2,
+            "each expired role is reprompted — and it REACHES the user via session.broadcast on the live (empty_ws=None) path, not a dropped ws-signal; got {reprompts:?}"
+        );
+        let addressees: Vec<String> = reprompts
+            .iter()
+            .filter_map(|m| m.addressee.clone())
+            .collect();
+        assert!(
+            addressees.iter().any(|a| a.contains("designer"))
+                && addressees.iter().any(|a| a.contains("dev")),
+            "both expired roles are addressed by name; got {addressees:?}"
         );
         assert!(
-            combined.contains("designer") && combined.contains("dev"),
-            "both expired roles are addressed by name; got {combined}"
+            reprompts.iter().all(|m| m.from == "bpmux"),
+            "the reprompt is a bpmux system nudge (from=bpmux); got {reprompts:?}"
         );
     }
 
@@ -227,27 +243,34 @@ mod verdict_substrate_integration_1407 {
         seed_verdict_grounded_on(&session, 42, "dev", "stale-sha-x");
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let (ws_tx, captured) = connected_ws_sink_with_capture().await;
-        let err = handle_accept_story(&accept_args(42), "pm", &ws_tx, Some(&orch), Some(&session))
-            .await
-            .expect_err(
-                "a moved grounded-head must block accept even though the verdicts are time-fresh",
-            );
+        let mut rx = session.subscribe();
+        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
+        let err = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            &empty_ws,
+            Some(&orch),
+            Some(&session),
+        )
+        .await
+        .expect_err(
+            "a moved grounded-head must block accept even though the verdicts are time-fresh",
+        );
         assert!(
             err.contains("verdict-expired"),
             "substrate-change expiry routes through the same expired path; got {err}"
         );
 
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        let messages = captured.lock().await;
-        let reprompts = messages
-            .iter()
-            .filter(|m| m.contains("submit_verdict"))
-            .count();
+        let mut reprompts = Vec::new();
+        while let Ok(msg) = rx.try_recv() {
+            if msg.text.contains("submit_verdict") {
+                reprompts.push(msg);
+            }
+        }
         assert_eq!(
-            reprompts, 2,
-            "both head-stale roles are reprompted to re-cast against the new head; got {:?}",
-            *messages
+            reprompts.len(),
+            2,
+            "both head-stale roles are reprompted against the new head — reaching the user via session.broadcast on the live (empty_ws=None) path; got {reprompts:?}"
         );
     }
 

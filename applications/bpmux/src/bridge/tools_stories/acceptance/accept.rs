@@ -56,12 +56,28 @@ pub(crate) async fn handle_accept_story(
             current_head.as_deref(),
         ) {
             for role in e.expired_evidence_roles() {
-                let signal = serde_json::to_string(&build_verdict_reprompt_signal(number, &role))
-                    .map_err(|err| format!("reprompt signal: {err}"))?;
-                if let Err(err) = ws_send(ws_tx, signal).await {
-                    crate::session::diag::log_diag(&format!(
-                        "bridge: verdict-reprompt send failed: {err}"
-                    ));
+                if let crate::transport::protocol::ClientMessage::Send {
+                    text,
+                    to,
+                    addressee,
+                    message_type,
+                } = build_verdict_reprompt_signal(number, &role)
+                {
+                    let reprompt = crate::session::Message {
+                        from: "bpmux".to_string(),
+                        text,
+                        ts: chrono::Utc::now(),
+                        message_type: crate::session::MessageType::from(message_type.as_deref()),
+                        to,
+                        addressee,
+                        explicit_privacy: true,
+                        ..crate::session::Message::default()
+                    };
+                    if let Err(err) = s.broadcast(&reprompt) {
+                        crate::session::diag::log_diag(&format!(
+                            "bridge: verdict-reprompt broadcast failed: {err}"
+                        ));
+                    }
                 }
             }
             return Err(e.as_json_string());
