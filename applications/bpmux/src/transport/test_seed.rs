@@ -93,6 +93,7 @@ pub async fn post_reset_stories(
             "post_reset_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
+    crate::transport::rest::shared::broadcast_board_snapshot(&session, refresh);
     (StatusCode::OK, "reset stories".to_string())
 }
 
@@ -229,6 +230,7 @@ pub async fn post_seed_stories(
             "post_seed_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
+    crate::transport::rest::shared::broadcast_board_snapshot(&session, refresh);
     (
         StatusCode::CREATED,
         format!("seeded {} stories", body.stories.len()),

@@ -122,6 +122,7 @@ async fn post_close_iteration_canonical(
         ));
     }
     broadcast_board_invalidate(&session);
+    super::shared::broadcast_board_snapshot(&session, refresh);
     let body = serde_json::json!({
         "promoted": Vec::<u64>::new(),
         "deleted_marker_id": serde_json::Value::Null,

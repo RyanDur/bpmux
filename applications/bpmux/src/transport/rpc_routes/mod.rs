@@ -13,7 +13,8 @@ use crate::session;
 
 mod state_delta;
 use state_delta::{
-    fire_board_invalidate, fire_story_transition, fire_view_backlog_marker, story_state_label,
+    fire_board_invalidate, fire_board_snapshot, fire_story_transition, fire_view_backlog_marker,
+    story_state_label,
 };
 
 pub const AGENT_HEADER: &str = "X-BPMUX-Agent";
@@ -240,6 +241,7 @@ pub async fn post_rpc_tool(
                 fire_view_backlog_marker(&session);
             } else if !is_read_only_tool(&tool) {
                 fire_board_invalidate(&session);
+                fire_board_snapshot(&session, &refresh);
                 if let (Some(number), Some(from_state)) = (transition_number, prior_state)
                     && let Some(target_state) =
                         declared_target_state.or_else(|| story_state_label(&refresh, number))

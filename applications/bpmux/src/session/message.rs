@@ -99,6 +99,8 @@ pub enum StateDeltaPayload {
     },
     #[serde(rename = "board_invalidated")]
     BoardInvalidated { reason: String },
+    #[serde(rename = "board_snapshot")]
+    BoardSnapshot { stories: serde_json::Value },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -58,12 +58,12 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       expect(passResp.status).toBe(200)
       await seedTeamVerdicts(rpc, 1, ['designer', 'dev'])
 
-      await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
       const deliveredCard = win.locator(
         '#board-group-delivered-content [data-test="board-story-1"]'
       )
-      await expect(deliveredCard).toContainText('human-1170-accept-button-canonical-mutation')
+      await expect(deliveredCard).toContainText('human-1170-accept-button-canonical-mutation', {
+        timeout: 10_000
+      })
       await deliveredCard.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
       await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 

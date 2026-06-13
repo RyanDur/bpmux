@@ -8,6 +8,7 @@ import {
 } from './wsService'
 import type { MirrorState } from './state-delta'
 import type { ChatMessage, ConnectionStatus } from './types'
+import type { BoardResponse } from '../board/types'
 
 export { RENDERER_IDENTITY } from './wsService'
 export type { SendOptions } from './wsService'
@@ -26,6 +27,7 @@ export interface UseWebSocketResult {
   sessionId: string | null
   sendChat: (text: string, opts?: SendOptions) => void
   mirror: MirrorState
+  boardSnapshot: BoardResponse | null
   boardInvalidateTick: number
   syncStatusTick: number
 }
@@ -54,6 +56,7 @@ export const useWebSocket = (
     sessionId: snapshot.sessionId,
     sendChat,
     mirror: snapshot.mirror,
+    boardSnapshot: snapshot.boardSnapshot,
     boardInvalidateTick: snapshot.boardInvalidateTick,
     syncStatusTick: snapshot.syncStatusTick
   }

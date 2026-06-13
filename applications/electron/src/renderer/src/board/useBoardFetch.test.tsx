@@ -8,6 +8,7 @@ vi.mock('../api/boardClient', () => ({
 }))
 
 import { useBoardFetch } from './useBoardFetch'
+import type { BoardResponse } from './types'
 
 const chainableSuccess = (): unknown => {
   const chain = {
@@ -24,34 +25,39 @@ beforeEach(() => {
 
 afterEach(() => vi.clearAllMocks())
 
-describe('#1456 useBoardFetch — refetch survives the ingest-strip (tick replaces marker-scan)', () => {
+describe('#1720 useBoardFetch — a pushed board-snapshot becomes the data with no refetch (render=f(substrate))', () => {
   const props = {
-    boardInvalidateTick: 0,
+    boardSnapshot: null as BoardResponse | null,
     apiBase: 'http://127.0.0.1:9',
     authToken: 'tok'
   }
 
-  test('a board-invalidate tick increment triggers a refetch (silent-regression guard)', async () => {
-    const { rerender } = renderHook((p: typeof props) => useBoardFetch(p), {
+  test('a board-snapshot push replaces board data directly without an /api/board refetch', async () => {
+    const { result, rerender } = renderHook((p: typeof props) => useBoardFetch(p), {
       initialProps: props
     })
     await waitFor(() => expect(getBoard).toHaveBeenCalled())
     const callsAfterMount = getBoard.mock.calls.length
 
-    rerender({ ...props, boardInvalidateTick: 1 })
+    const pushed: BoardResponse = {
+      stories: [
+        {
+          number: 7,
+          title: 'pushed-live',
+          state: 'delivered',
+          labels: [],
+          assignees: [],
+          created_at: '2026-06-13T00:00:00Z',
+          body: ''
+        }
+      ],
+      fetched_at: '2026-06-13T00:00:00Z'
+    }
+    rerender({ ...props, boardSnapshot: pushed })
 
-    await waitFor(() => expect(getBoard.mock.calls.length).toBe(callsAfterMount + 1))
-  })
-
-  test('tick at 0 does not refetch beyond the mount fetch', async () => {
-    const { rerender } = renderHook((p: typeof props) => useBoardFetch(p), {
-      initialProps: props
-    })
-    await waitFor(() => expect(getBoard).toHaveBeenCalled())
-    const callsAfterMount = getBoard.mock.calls.length
-
-    rerender({ ...props, boardInvalidateTick: 0 })
-
+    await waitFor(() =>
+      expect(result.current.data?.stories?.[0]).toMatchObject({ number: 7, state: 'delivered' })
+    )
     expect(getBoard.mock.calls.length).toBe(callsAfterMount)
   })
 })

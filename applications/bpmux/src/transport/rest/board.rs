@@ -7,28 +7,39 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use super::shared::{
-    CommentPayload, TrackerHandle, broadcast_board_invalidate, err_body, json_headers,
+    CommentPayload, TrackerHandle, broadcast_board_invalidate, broadcast_board_snapshot, err_body,
+    json_headers,
 };
 use crate::session;
+
+pub(crate) fn ordered_board_stories(
+    refresh: &Arc<dyn crate::board::RefreshDriver>,
+) -> Vec<serde_json::Value> {
+    let all = refresh.all_stories();
+    let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
+    let stories: Vec<serde_json::Value> = all
+        .iter()
+        .map(|s| crate::board::adapters::json::story_to_board_json(&codec, s))
+        .collect();
+    crate::board::ready_order_label::sort_board_ready_by_membership(stories)
+}
 
 pub async fn get_board(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
 ) -> impl IntoResponse {
     if let Some(refresh) = test_refresh.as_ref() {
-        let mut all = refresh.all_stories();
-        if all.is_empty() {
+        if refresh.all_stories().is_empty() {
             match refresh.refresh_all().await {
                 Ok(()) => {
-                    all = refresh.all_stories();
-                    if all.is_empty() {
+                    if refresh.all_stories().is_empty() {
                         crate::session::diag::log_diag(
                             "rest get_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
                         );
                     } else {
                         crate::session::diag::log_diag(&format!(
                             "rest get_board: empty store; refresh_all recovered {} stories",
-                            all.len()
+                            refresh.all_stories().len()
                         ));
                     }
                 }
@@ -36,18 +47,11 @@ pub async fn get_board(
                     crate::session::diag::log_diag(&format!(
                         "rest get_board: empty store; refresh_all failed: {e}"
                     ));
-                    all = refresh.all_stories();
                 }
             }
         }
-        let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
-        let stories: Vec<serde_json::Value> = all
-            .iter()
-            .map(|s| crate::board::adapters::json::story_to_board_json(&codec, s))
-            .collect();
-        let ordered = crate::board::ready_order_label::sort_board_ready_by_membership(stories);
         let body = serde_json::json!({
-            "stories": ordered,
+            "stories": ordered_board_stories(refresh),
             "fetched_at": chrono::Utc::now().to_rfc3339(),
         });
         return (StatusCode::OK, json_headers(), body.to_string());
@@ -155,6 +159,7 @@ pub async fn post_accept_story(
     {
         Ok(()) => {
             broadcast_board_invalidate(&session);
+            broadcast_board_snapshot(&session, &refresh);
             (
                 StatusCode::OK,
                 json_headers(),
@@ -212,6 +217,7 @@ pub async fn post_reject_story(
     {
         Ok(()) => {
             broadcast_board_invalidate(&session);
+            broadcast_board_snapshot(&session, &refresh);
             (
                 StatusCode::OK,
                 json_headers(),

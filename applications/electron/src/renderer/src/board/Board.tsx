@@ -10,7 +10,7 @@ import { useBoardReorder } from './useBoardReorder'
 import { usePendingReadyOrder } from './usePendingReadyOrder'
 import { findCurrentIteration } from './currentIteration'
 import { themeNameFromTitle } from './labelSchema'
-import { GROUP_ORDER, type BoardStory, type ColumnState } from './types'
+import { GROUP_ORDER, type BoardResponse, type BoardStory, type ColumnState } from './types'
 import './Board.css'
 
 type CollapseState = Record<ColumnState, boolean>
@@ -26,6 +26,7 @@ const initialCollapseState: CollapseState = (() => {
 })()
 
 interface BoardProps {
+  boardSnapshot?: BoardResponse | null
   boardInvalidateTick: number
   syncStatusTick: number
   hidden?: boolean
@@ -33,6 +34,7 @@ interface BoardProps {
 }
 
 const Board = ({
+  boardSnapshot,
   boardInvalidateTick,
   syncStatusTick,
   hidden,
@@ -40,7 +42,7 @@ const Board = ({
 }: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const { data, setData, loading, error, setError, usingMock, refetch } = useBoardFetch({
-    boardInvalidateTick,
+    boardSnapshot,
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })

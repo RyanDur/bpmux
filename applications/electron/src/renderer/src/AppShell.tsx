@@ -21,6 +21,7 @@ import type {
   RosterMemberWire
 } from './transport/types'
 import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
+import type { BoardResponse } from './board/types'
 import { subscribeWsPtyExit } from './transport/wsService'
 import {
   readTerminalLayout,
@@ -85,6 +86,7 @@ interface Props {
   ciSnapshot?: CiSnapshotWire | null
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
   mirrorRoster?: readonly RosterMemberWire[]
+  boardSnapshot?: BoardResponse | null
   boardInvalidateTick: number
   syncStatusTick: number
 }
@@ -101,6 +103,7 @@ const AppShell = ({
   ciSnapshot,
   mirrorReactions,
   mirrorRoster,
+  boardSnapshot,
   boardInvalidateTick,
   syncStatusTick
 }: Props): React.JSX.Element => {
@@ -442,6 +445,7 @@ const AppShell = ({
           />
         ) : null}
         <Board
+          boardSnapshot={boardSnapshot}
           boardInvalidateTick={boardInvalidateTick}
           syncStatusTick={syncStatusTick}
           hidden={!boardOpen}

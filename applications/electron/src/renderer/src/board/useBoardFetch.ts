@@ -5,11 +5,10 @@ import { MOCK_BOARD_RESPONSE } from './mockBoard'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import type { BoardResponse } from './types'
 
-const POLL_INTERVAL_MS = 5 * 60_000
 const RETRY_DELAYS_MS = [0, 200, 500] as const
 
 export interface UseBoardFetchOptions {
-  boardInvalidateTick: number
+  boardSnapshot?: BoardResponse | null
   apiBase: string | undefined
   authToken: string | undefined
 }
@@ -25,7 +24,7 @@ export interface UseBoardFetchResult {
 }
 
 export const useBoardFetch = ({
-  boardInvalidateTick,
+  boardSnapshot,
   apiBase,
   authToken
 }: UseBoardFetchOptions): UseBoardFetchResult => {
@@ -76,21 +75,27 @@ export const useBoardFetch = ({
   useEffect(() => {
     const controller = new AbortController()
     const initial = setTimeout(() => fetchBoard(controller.signal), 0)
-    const id = setInterval(() => fetchBoard(), POLL_INTERVAL_MS)
     return () => {
       controller.abort()
       clearTimeout(initial)
-      clearInterval(id)
     }
   }, [fetchBoard])
 
   useRefetchOnReconnect(fetchBoard)
 
-  useEffect(() => {
-    if (boardInvalidateTick === 0) return
-    const id = setTimeout(() => fetchBoard(), 0)
-    return () => clearTimeout(id)
-  }, [boardInvalidateTick, fetchBoard])
+  const [lastAppliedSnapshot, setLastAppliedSnapshot] = useState<BoardResponse | null>(null)
+  if (
+    apiBase !== undefined &&
+    boardSnapshot !== null &&
+    boardSnapshot !== undefined &&
+    boardSnapshot !== lastAppliedSnapshot
+  ) {
+    setLastAppliedSnapshot(boardSnapshot)
+    setData(boardSnapshot)
+    setUsingMock(false)
+    setError(null)
+    setLoading(false)
+  }
 
   const refetch = useCallback((): void => {
     fetchBoard()

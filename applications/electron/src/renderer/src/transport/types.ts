@@ -58,6 +58,7 @@ export type StateDeltaPayload =
       blockers: { number: number; title: string; state: string }[]
     }
   | { domain: 'board_invalidated'; reason: string }
+  | { domain: 'board_snapshot'; stories: unknown[] }
 
 export interface ReactionsChannelSnapshot {
   channel: string

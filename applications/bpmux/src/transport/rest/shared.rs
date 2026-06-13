@@ -36,3 +36,23 @@ pub(crate) fn broadcast_board_invalidate(session: &session::Session) {
         ));
     }
 }
+
+pub(crate) fn broadcast_board_snapshot(
+    session: &session::Session,
+    refresh: &Arc<dyn crate::board::RefreshDriver>,
+) {
+    let stories = serde_json::Value::Array(super::board::ordered_board_stories(refresh));
+    let delta = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(session::message::StateDeltaPayload::BoardSnapshot { stories }),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&delta) {
+        session::diag::log_diag(&format!(
+            "rest: board-snapshot state-delta broadcast failed: {e}"
+        ));
+    }
+}

@@ -11,6 +11,7 @@ import {
   type ConnectionStatus,
   type ServerMessage
 } from './types'
+import type { BoardResponse, BoardStory } from '../board/types'
 
 export const RENDERER_IDENTITY = 'ryan'
 const RENDERER_TOOL = 'electron'
@@ -37,6 +38,7 @@ export interface WsSnapshot {
   messages: ChatMessage[]
   sessionId: string | null
   mirror: MirrorState
+  boardSnapshot: BoardResponse | null
   boardInvalidateTick: number
   syncStatusTick: number
   reconnectTick: number
@@ -59,6 +61,7 @@ const emptySnapshot = (url: string | undefined): WsSnapshot => ({
   messages: [],
   sessionId: null,
   mirror: emptyMirrorState(),
+  boardSnapshot: null,
   boardInvalidateTick: 0,
   syncStatusTick: 0,
   reconnectTick: 0
@@ -152,6 +155,12 @@ const handleServerMessage = (raw: string): void => {
         const delta = parsed.state_delta
         const next: Partial<WsSnapshot> = {
           mirror: applyStateDelta(state.snapshot.mirror, delta)
+        }
+        if (delta.domain === 'board_snapshot') {
+          next.boardSnapshot = {
+            stories: delta.stories as BoardStory[],
+            fetched_at: parsed.ts
+          }
         }
         if (delta.domain === 'board_invalidated') {
           next.boardInvalidateTick = state.snapshot.boardInvalidateTick + 1

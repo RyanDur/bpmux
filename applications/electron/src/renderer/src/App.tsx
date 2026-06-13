@@ -20,6 +20,7 @@ const App = (): React.JSX.Element => {
     messages: liveRaw,
     sendChat,
     mirror,
+    boardSnapshot,
     boardInvalidateTick,
     syncStatusTick
   } = useWebSocket(bridge?.wsUrl, {
@@ -52,6 +53,7 @@ const App = (): React.JSX.Element => {
       ciSnapshot={mirror.ci}
       mirrorReactions={mirror.reactions}
       mirrorRoster={mirror.roster}
+      boardSnapshot={boardSnapshot}
       boardInvalidateTick={boardInvalidateTick}
       syncStatusTick={syncStatusTick}
     />

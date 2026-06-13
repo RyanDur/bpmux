@@ -9,10 +9,14 @@ use crate::session;
 use crate::session::MessageType;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn handle_client_message(
     text: &str,
     identity: &str,
     session: &session::Session,
+    orchestrator: &crate::orchestrator::Orchestrator<
+        crate::board::adapters::github::GitHubSourceAdapter,
+    >,
     tx: &mut SplitSink<WebSocket, WsMessage>,
     pty_registry: &crate::room::LivePtyRegistry,
     pty_tx: &tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
@@ -57,6 +61,9 @@ pub(crate) async fn handle_client_message(
         }
         Ok(ClientMessage::BoardInvalidate) => {
             session.broadcast(&board_invalidated_state_delta())?;
+            if let Some(refresh) = orchestrator.refresh() {
+                crate::transport::rest::shared::broadcast_board_snapshot(session, refresh);
+            }
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;
