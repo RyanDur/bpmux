@@ -37,7 +37,12 @@ pub async fn post_terminal_spawn(
     };
     let integration =
         crate::room::terminal_provisioning(&command, Some(&bridge)).unwrap_or_default();
-    let mut env: Vec<(&str, &str)> = vec![("TERM", "xterm-256color")];
+    let port_str = port.to_string();
+    let mut env: Vec<(&str, &str)> = vec![
+        ("TERM", "xterm-256color"),
+        ("BPMUX_TERMINAL_ID", terminal_id.as_str()),
+        ("BPMUX_PORT", port_str.as_str()),
+    ];
     for (key, value) in &integration.env {
         env.push((key.as_str(), value.as_str()));
     }

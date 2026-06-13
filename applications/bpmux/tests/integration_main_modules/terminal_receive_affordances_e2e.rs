@@ -52,6 +52,38 @@ impl FakeAgentFarm {
         path
     }
 
+    fn write_register_agent_script(&self) -> std::path::PathBuf {
+        let claim = self.root.path().join("claim");
+        let work = self.root.path().join("work");
+        let capture = self.root.path().join("capture");
+        let bin = env!("CARGO_BIN_EXE_bpmux");
+        let script = format!(
+            "#!/bin/bash\n\
+             set -m\n\
+             role=\"\"\n\
+             for r in dev pm designer; do\n\
+             \x20 if mkdir \"{claim}/$r\" 2>/dev/null; then role=\"$r\"; break; fi\n\
+             done\n\
+             [ -z \"$role\" ] && exit 1\n\
+             mkdir -p \"{work}/$role\"\n\
+             cd \"{work}/$role\" || exit 1\n\
+             export BPMUX_ROLE=\"$role\"\n\
+             export BPMUX_SESSION_ID=\"pinned-$role\"\n\
+             \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
+             cat >> \"{capture}/$role\"\n",
+            claim = claim.display(),
+            work = work.display(),
+            capture = capture.display(),
+            bin = bin,
+        );
+        let path = self.root.path().join("register-agent.sh");
+        std::fs::write(&path, script).expect("write register agent");
+        let mut perms = std::fs::metadata(&path).expect("agent meta").permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&path, perms).expect("chmod agent");
+        path
+    }
+
     fn capture_contains(&self, role: &str, needle: &str) -> bool {
         std::fs::read_to_string(self.capture_path(role))
             .map(|s| s.contains(needle))
@@ -312,5 +344,48 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
     assert!(
         !farm.capture_contains("dev", "DEV-SENDS-BROADCAST"),
         "dev's own broadcast via `bpmux send` is not reflected back into dev's own terminal"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pinned_agent_that_runs_register_binds_its_one_id_to_its_terminal_for_addressed_delivery()
+{
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_register_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "ryan",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "dev registers via `bpmux register` ALONE (no OSC-7 emit, so agent-detect never mints) — receiving a broadcast proves the terminal was bound through register's forwarded BPMUX_TERMINAL_ID. register output: {:?}",
+        std::fs::read_to_string(farm.root.path().join("capture").join("dev.reg"))
+            .unwrap_or_default()
+    );
+    spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "pm").await,
+        "pm must register"
+    );
+
+    post_message(
+        &bpmux,
+        json!({ "from": "ryan", "text": "ADDRESSED-TO-DEV", "to": ["dev"] }),
+    )
+    .await;
+    assert!(
+        wait_capture(&farm, "dev", "ADDRESSED-TO-DEV").await,
+        "an ADDRESSED message (to:[dev]) reaches dev's terminal — because `bpmux register` forwarded BPMUX_TERMINAL_ID so the server bound dev's ONE pinned id (pinned-dev) to its terminal. This is the addressed-receive that was BROKEN when the terminal was not bound to the id the message routes to"
+    );
+    post_message(&bpmux, json!({ "from": "ryan", "text": "BARRIER" })).await;
+    assert!(
+        wait_capture(&farm, "pm", "BARRIER").await,
+        "barrier reaches pm, proving the delivery cycle advanced past the dev-addressed message"
+    );
+    assert!(
+        !farm.capture_contains("pm", "ADDRESSED-TO-DEV"),
+        "FILTERING: the to:[dev] message is withheld from pm"
     );
 }

@@ -118,6 +118,12 @@ pub(crate) fn run_register() -> anyhow::Result<()> {
     let mut payload = serde_json::Map::new();
     payload.insert("session_id".to_string(), serde_json::json!(session_id));
     payload.insert("display".to_string(), serde_json::json!(role));
+    if let Some(terminal_id) = std::env::var("BPMUX_TERMINAL_ID")
+        .ok()
+        .filter(|id| !id.trim().is_empty())
+    {
+        payload.insert("terminal_id".to_string(), serde_json::json!(terminal_id));
+    }
     let body = serde_json::Value::Object(payload);
     let port = crate::resolve_bpmux_port();
     let url = crate::transport::local_url::api_url(port, "/api/register");
