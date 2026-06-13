@@ -74,6 +74,9 @@ pub fn spawn_agent_run_detector(
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
     session: Arc<crate::session::Session>,
+    orchestrator: Option<
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    >,
 ) {
     tokio::spawn(async move {
         let mut detector = AgentRunDetector::new(AGENT_RUN_GATE);
@@ -116,6 +119,12 @@ pub fn spawn_agent_run_detector(
                         );
                     }
                 }
+            }
+        }
+        if let Some(display) = routing.display_for_terminal(&terminal_id) {
+            session.roster_leave(&display);
+            if let Some(orchestrator) = &orchestrator {
+                crate::transport::ws::dispatch_roster_leave(orchestrator, &display).await;
             }
         }
     });
@@ -285,6 +294,7 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
+            None,
         );
 
         registry.write_to(&terminal_id, format!("cd {work_path}\n").as_bytes());
@@ -347,6 +357,7 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
+            None,
         );
 
         registry.write_to(&terminal_id, format!("cd {passed_path}\n").as_bytes());
@@ -399,6 +410,7 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
+            None,
         );
 
         registry.write_to(&terminal_id, b"sleep 4\n");

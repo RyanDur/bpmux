@@ -466,3 +466,72 @@ async fn an_osc7_emitting_agent_that_also_registers_is_bound_once_no_duplicate_i
         std::fs::read_to_string(farm.capture_path("dev")).unwrap_or_default()
     );
 }
+
+async fn roster_identities(bpmux: &TestBpmux) -> Vec<String> {
+    let url = format!("http://127.0.0.1:{}/api/roster", bpmux.port());
+    let body: serde_json::Value = reqwest::Client::new()
+        .get(&url)
+        .bearer_auth(bpmux.simulate_secret())
+        .header(reqwest::header::HOST, format!("127.0.0.1:{}", bpmux.port()))
+        .send()
+        .await
+        .expect("GET /api/roster")
+        .json()
+        .await
+        .expect("roster json");
+    body["roster"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|e| e["identity"].as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+async fn wait_roster<F: Fn(&[String]) -> bool>(bpmux: &TestBpmux, pred: F) -> Vec<String> {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(8);
+    let mut ids = roster_identities(bpmux).await;
+    while tokio::time::Instant::now() < deadline {
+        if pred(&ids) {
+            return ids;
+        }
+        tokio::time::sleep(Duration::from_millis(150)).await;
+        ids = roster_identities(bpmux).await;
+    }
+    ids
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_dead_terminal_drops_its_agent_from_the_roster_so_the_roster_tracks_terminal_liveness() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_register_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "ryan",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    let terminal_id = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "dev registers (via `bpmux register`) and is reachable"
+    );
+    let present = wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev")).await;
+    assert!(
+        present.iter().any(|i| i == "dev"),
+        "after register-with-terminal, dev is in the roster (register roster-joins); got {present:?}"
+    );
+
+    bpmux
+        .authed_post(
+            "/api/terminals/close",
+            json!({ "terminal_id": terminal_id, "force": true }),
+        )
+        .await;
+
+    let after = wait_roster(&bpmux, |ids| !ids.iter().any(|i| i == "dev")).await;
+    assert!(
+        !after.iter().any(|i| i == "dev"),
+        "when dev's terminal dies, the agent-detect death-hook roster-leaves it — the roster TRACKS terminal liveness (online = bound terminal alive); got {after:?}"
+    );
+}

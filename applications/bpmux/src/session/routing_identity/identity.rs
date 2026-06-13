@@ -99,6 +99,15 @@ impl RoutingIdentity {
             .any(|linked| linked == terminal_id)
     }
 
+    pub fn display_for_terminal(&self, terminal_id: &str) -> Option<String> {
+        let session_id = self
+            .terminal_by_id
+            .iter()
+            .find(|(_, linked)| linked.as_str() == terminal_id)
+            .map(|(session_id, _)| session_id.clone())?;
+        self.display_by_id.get(&session_id).cloned()
+    }
+
     pub fn reap_unclaimed_duplicates_of(&mut self, display: &str) -> Vec<String> {
         let reaped: Vec<String> = self
             .display_by_id
@@ -276,6 +285,23 @@ mod tests {
                 .resolve_recipients(Some(&["ghost".to_string()]))
                 .is_empty(),
             "a scoped message to an unknown display routes to NO instance — no mis-route/leak"
+        );
+    }
+
+    #[test]
+    fn display_for_terminal_reverse_resolves_the_agent_bound_to_a_terminal() {
+        let mut identity = RoutingIdentity::new();
+        identity.register("sess-dev", "dev");
+        identity.link_terminal("sess-dev", "term-1");
+        assert_eq!(
+            identity.display_for_terminal("term-1"),
+            Some("dev".to_string()),
+            "the reverse lookup finds the DISPLAY bound to a terminal — used on terminal-death to roster-leave the right agent so the roster tracks terminal liveness"
+        );
+        assert_eq!(
+            identity.display_for_terminal("term-unbound"),
+            None,
+            "a terminal bound to no session resolves to no agent — death of an unregistered terminal leaves the roster untouched"
         );
     }
 
