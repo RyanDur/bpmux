@@ -50,6 +50,19 @@ So the leap-of-faith reads TRUE (a linked record changes behavior), and the thre
 - **Feasibility (dev):** how cheap is a story-linked decision-record? (a story field / a typed comment / a linked record — dev's tech-scope sizes whether A is trivial or a lift.)
 - **Viability (Ryan + PM):** does it earn the build now vs. later, and where does it sequence?
 
+## Designer recommendation — the record shape (direction-agnostic; sharpens slice-A for pickup)
+
+Slice A (the link) is the thinnest-first in *every* spectrum reading, so its shape can be settled now without waiting on the direction-converge. The lived proof decides it:
+
+**A decision is a first-class RECORD, not a story-field or a comment.** Fields: **what · why · supersedes (→ the prior decision it replaces) · ratified-by + when.** Linked to **one-or-more** stories (n:m), and surfaced as a first-class **"Decisions" facet** on each linked story — *not* buried among comments.
+
+- **Why not a story-field (1:1):** one decision spans many stories — the palette decision touches the whole Darcula arc. A field can't express n:m.
+- **Why not a comment:** the lived proof showed it's buried, manual, and 1:1; provenance (supersedes / ratified-by) wants structured fields, not free-text.
+- **Capture-moment = derive from the ratification act** (the captain's 👍, or an explicit "decide X") — sister to #1703's derive-from-recorded-acts. Low-friction by construction, closing the gap the lived proof exposed (the spec leaked into chat because capture was manual/later).
+- **Surfacing = a first-class "Decisions" facet on the story** (the third lived-proof gap) — discoverable from the story's own view, not a comment among comments.
+
+So slice-A concretely builds: the first-class decision-record (those fields, n:m story-links) + the story-facet surfacing + capture-at-ratification. Everything richer (stream/map/canvas) reads off these same records — so this shape is also the seed of B/C/D, not a throwaway.
+
 ## Open questions (for the HMW converge + dev tech-scope)
 
 - **Record shape:** is a decision a story *field*, a typed *comment*, or a first-class *record* linked to one-or-more stories? (one decision can span stories.)
