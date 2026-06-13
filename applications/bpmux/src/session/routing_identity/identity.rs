@@ -93,6 +93,12 @@ impl RoutingIdentity {
         self.terminal_by_id.get(session_id).cloned()
     }
 
+    pub fn is_terminal_linked(&self, terminal_id: &str) -> bool {
+        self.terminal_by_id
+            .values()
+            .any(|linked| linked == terminal_id)
+    }
+
     pub fn unclaimed(&self) -> Vec<(String, String)> {
         self.display_by_id
             .iter()

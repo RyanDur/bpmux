@@ -37,6 +37,11 @@ impl RoutingStore {
         identity.link_terminal(session_id, terminal_id);
     }
 
+    pub fn is_terminal_linked(&self, terminal_id: &str) -> bool {
+        let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        identity.is_terminal_linked(terminal_id)
+    }
+
     pub fn resolve(&self, display: &str) -> Vec<String> {
         let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         identity.resolve(display)

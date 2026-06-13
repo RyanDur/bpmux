@@ -95,6 +95,7 @@ pub fn spawn_agent_run_detector(
                     };
                     let now_ts = chrono::Utc::now().to_rfc3339();
                     if let Some(mint) = detector.observe(foreground, Instant::now(), &now_ts)
+                        && !routing.is_terminal_linked(&terminal_id)
                         && let Ok(dir_session) =
                             read_or_create_dir_session(std::path::Path::new(&mint.cwd))
                     {

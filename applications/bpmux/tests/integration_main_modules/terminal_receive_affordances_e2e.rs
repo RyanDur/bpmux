@@ -84,10 +84,49 @@ impl FakeAgentFarm {
         path
     }
 
+    fn write_osc7_register_agent_script(&self) -> std::path::PathBuf {
+        let claim = self.root.path().join("claim");
+        let work = self.root.path().join("work");
+        let capture = self.root.path().join("capture");
+        let bin = env!("CARGO_BIN_EXE_bpmux");
+        let script = format!(
+            "#!/bin/bash\n\
+             set -m\n\
+             role=\"\"\n\
+             for r in dev pm designer; do\n\
+             \x20 if mkdir \"{claim}/$r\" 2>/dev/null; then role=\"$r\"; break; fi\n\
+             done\n\
+             [ -z \"$role\" ] && exit 1\n\
+             mkdir -p \"{work}/$role\"\n\
+             cd \"{work}/$role\" || exit 1\n\
+             export BPMUX_ROLE=\"$role\"\n\
+             export BPMUX_SESSION_ID=\"pinned-$role\"\n\
+             printf '\\033]7;file://localhost%s\\007' \"$PWD\"\n\
+             \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
+             cat >> \"{capture}/$role\"\n",
+            claim = claim.display(),
+            work = work.display(),
+            capture = capture.display(),
+            bin = bin,
+        );
+        let path = self.root.path().join("osc7-register-agent.sh");
+        std::fs::write(&path, script).expect("write osc7 register agent");
+        let mut perms = std::fs::metadata(&path).expect("agent meta").permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&path, perms).expect("chmod agent");
+        path
+    }
+
     fn capture_contains(&self, role: &str, needle: &str) -> bool {
         std::fs::read_to_string(self.capture_path(role))
             .map(|s| s.contains(needle))
             .unwrap_or(false)
+    }
+
+    fn capture_count(&self, role: &str, needle: &str) -> usize {
+        std::fs::read_to_string(self.capture_path(role))
+            .map(|s| s.matches(needle).count())
+            .unwrap_or(0)
     }
 }
 
@@ -387,5 +426,43 @@ async fn a_pinned_agent_that_runs_register_binds_its_one_id_to_its_terminal_for_
     assert!(
         !farm.capture_contains("pm", "ADDRESSED-TO-DEV"),
         "FILTERING: the to:[dev] message is withheld from pm"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_osc7_emitting_agent_that_also_registers_is_bound_once_no_duplicate_injection() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_osc7_register_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "ryan",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "dev registers (via `bpmux register`) and receives"
+    );
+    tokio::time::sleep(Duration::from_secs(2)).await;
+
+    post_message(
+        &bpmux,
+        json!({ "from": "ryan", "text": "SINGLE-COPY-SENTINEL" }),
+    )
+    .await;
+    assert!(
+        wait_capture(&farm, "dev", "SINGLE-COPY-SENTINEL").await,
+        "the broadcast reaches dev's terminal"
+    );
+    post_message(&bpmux, json!({ "from": "ryan", "text": "COUNT-BARRIER" })).await;
+    assert!(
+        wait_capture(&farm, "dev", "COUNT-BARRIER").await,
+        "the barrier reaches dev, proving this broadcast's delivery cycle is complete"
+    );
+    assert_eq!(
+        farm.capture_count("dev", "SINGLE-COPY-SENTINEL"),
+        1,
+        "the agent emits OSC-7 (so agent-detect WOULD mint a dir-derived id) AND registers its pinned id — agent-detect must DEFER because the terminal is already linked, so the terminal carries ONE id, not two. Two ids both bound to the one terminal would inject the broadcast TWICE; capture={:?}",
+        std::fs::read_to_string(farm.capture_path("dev")).unwrap_or_default()
     );
 }
