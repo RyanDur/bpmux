@@ -69,6 +69,15 @@ A **practice** is how a principle manifests in specific behavior. Practices are 
 - Update **identity** only when a lesson has earned principle status (see Promotion below)
 - **Session log** is authored automatically by participating; no save action needed
 
+### Claude-memory index byte-budget (team-converged 2026-06-13)
+
+`MEMORY.md` (the index) is loaded into context at session start, so it has a hard byte-budget (~24.4 KiB). Above it the SessionStart warning fires and the index **silently truncates** — part of your canon stops loading while *feeling* loaded (a confident-wrong signal, worse than an honest-short one). At ~130–150 entries the index sits at byte-capacity, where each line costs ~140 bytes of `[title](filename.md)` scaffolding before any hook. Consequences:
+
+- **Hook-tightening has diminishing returns** — trimming the post-em-dash hook buys little against the fixed per-line scaffolding. `wc -c` is the only honest signal; "feels tightened" is not (it misled all three roles this session).
+- **Retire-one-to-add-one at capacity** — once at budget, a new entry requires retiring one. The index is a fixed budget, not an append log.
+- **Double-home release-valve** — the real lever is retiring *double-homed* entries: a line whose content now lives durably in a registered SKILL/subagent, or verbatim in an always-loaded CLAUDE.md section, is redundant in the index. Promote a cluster → SKILL (or fold into CLAUDE.md), then retire the member-pointers; the skill/CLAUDE.md is the durable home. Keep the topic file (still recall-able) even after retiring its index line.
+- **Integrity after pruning**: verify `wc -c` under-budget + zero *dangling* (index entry → missing file). Orphans (file with no index line) are acceptable when intentional (skill/CLAUDE.md-homed).
+
 ## Cadence and promotion
 
 ### Update cadence per layer
@@ -330,3 +339,4 @@ Extension of the Cassiopeia-arc canon "substrate-enforce > discipline-only" from
 - 2026-04-17: added "individual vs team identity" section — team converged on emergent-not-formalized with research backing (TMS, SMM, swift trust, social identity theory)
 - 2026-05-15: added "Iteration arcs — durable case-evidence" with Pegasus → Cassiopeia arc capturing 5 architectural-fix patterns + 10+ sub-pattern lessons (sister-pattern reference for future iterations facing substrate-pivot / horizontal-layer / discipline-recall / cascade-drop failure modes)
 - 2026-05-17: added META-PRINCIPLE "Claims must be substrate-enforced, not contract-by-discipline" — extends Cassiopeia-arc substrate-enforce canon to claim-surfaces (body/AC + workflow-state + commit-msg + ATP-path) with the triangulating substrate-fixes (#1362 + #1377 + #1378) cited per surface (#1380)
+- 2026-06-13: added "Claude-memory index byte-budget" under Storage layers — team-converged at Lupus-close when all three roles hit the ~24.4 KiB load-limit; captures retire-one-to-add-one + the double-home (SKILL / always-loaded-CLAUDE.md) release-valve + `wc -c`-as-only-honest-signal, so future tightens don't re-derive it
