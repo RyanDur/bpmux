@@ -82,42 +82,37 @@ test.describe('desk-check #381: inline markdown rendering', () => {
 
     // Bold: computed font-weight should NOT be "400" (normal).
     // Browser default for <strong> is 700 / "bold".
-    const strongWeight = await messageBody
-      .locator('strong', { hasText: 'bolded-word' })
-      .first()
-      .evaluate((el: HTMLElement) => getComputedStyle(el).fontWeight)
-    console.log(`#381 strong font-weight: ${strongWeight}`)
-    expect(Number(strongWeight)).toBeGreaterThan(400)
+    const strong = messageBody.locator('strong', { hasText: 'bolded-word' }).first()
+    await expect(strong).toBeVisible()
+    await expect
+      .poll(async () =>
+        Number(await strong.evaluate((el: HTMLElement) => getComputedStyle(el).fontWeight))
+      )
+      .toBeGreaterThan(400)
 
     // Italic: computed font-style should be "italic". Browser
     // default for <em> is italic.
-    const emStyle = await messageBody
-      .locator('em', { hasText: 'italicized-word' })
-      .first()
-      .evaluate((el: HTMLElement) => getComputedStyle(el).fontStyle)
-    console.log(`#381 em font-style: ${emStyle}`)
-    expect(emStyle).toBe('italic')
+    const em = messageBody.locator('em', { hasText: 'italicized-word' }).first()
+    await expect(em).toBeVisible()
+    await expect
+      .poll(async () => em.evaluate((el: HTMLElement) => getComputedStyle(el).fontStyle))
+      .toBe('italic')
 
     // Inline code: computed font-family should contain a monospace
     // family name. MessageBody.css sets ui-monospace + fallbacks.
-    const codeFamily = await messageBody
-      .locator('code', { hasText: 'coded-word' })
-      .first()
-      .evaluate((el: HTMLElement) => getComputedStyle(el).fontFamily)
-    console.log(`#381 inline code font-family: ${codeFamily}`)
-    expect(codeFamily.toLowerCase()).toMatch(/mono|menlo|sfmono|courier/)
+    const code = messageBody.locator('code', { hasText: 'coded-word' }).first()
+    await expect(code).toBeVisible()
+    await expect
+      .poll(async () =>
+        (await code.evaluate((el: HTMLElement) => getComputedStyle(el).fontFamily)).toLowerCase()
+      )
+      .toMatch(/mono|menlo|sfmono|courier/)
 
     // Inline code background: should be NON-transparent (distinct
     // from surrounding text).
-    const codeBg = await messageBody
-      .locator('code', { hasText: 'coded-word' })
-      .first()
-      .evaluate((el: HTMLElement) => getComputedStyle(el).backgroundColor)
-    console.log(`#381 inline code background: ${codeBg}`)
-    // `rgba(0, 0, 0, 0)` or `transparent` → test fails; any non-
-    // transparent color → pass.
-    expect(codeBg).not.toBe('rgba(0, 0, 0, 0)')
-    expect(codeBg).not.toBe('transparent')
+    await expect
+      .poll(async () => code.evaluate((el: HTMLElement) => getComputedStyle(el).backgroundColor))
+      .not.toBe('rgba(0, 0, 0, 0)')
 
     await win.screenshot({
       path: join(EVIDENCE_DIR, '106-381-markdown-inline.png')
