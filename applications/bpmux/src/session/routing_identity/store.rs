@@ -70,7 +70,8 @@ impl RoutingStore {
     pub fn drain_floor(&self, session_id: &str, client_ack: Option<&str>) -> Option<String> {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         let stored = identity.cursor(session_id);
-        let floor = later_cursor(stored.as_deref(), client_ack);
+        let trusted_ack = client_ack.filter(|ack| !is_future(ack));
+        let floor = later_cursor(stored.as_deref(), trusted_ack);
         if let Some(ref position) = floor {
             identity.advance_cursor(session_id, position);
             let _ = identity.save(&self.dir);
@@ -127,9 +128,12 @@ impl RoutingStore {
         job_start: &str,
     ) {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
-        let fresh = identity.cursor(session_id).is_none();
+        let stored = identity.cursor(session_id);
+        let fresh = stored.is_none();
         if fresh {
             identity.register(session_id, display);
+        }
+        if fresh || cursor_after(stored.as_deref(), job_start) {
             identity.advance_cursor(session_id, job_start);
         }
         identity.link_terminal(session_id, terminal_id);
@@ -138,14 +142,15 @@ impl RoutingStore {
     }
 }
 
+fn parse_ts(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    chrono::DateTime::parse_from_rfc3339(value)
+        .ok()
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+}
+
 fn later_cursor(a: Option<&str>, b: Option<&str>) -> Option<String> {
-    fn parse(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
-        chrono::DateTime::parse_from_rfc3339(value)
-            .ok()
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-    }
     match (a, b) {
-        (Some(x), Some(y)) => match (parse(x), parse(y)) {
+        (Some(x), Some(y)) => match (parse_ts(x), parse_ts(y)) {
             (Some(px), Some(py)) => Some(if px >= py {
                 x.to_string()
             } else {
@@ -158,6 +163,17 @@ fn later_cursor(a: Option<&str>, b: Option<&str>) -> Option<String> {
         (None, Some(y)) => Some(y.to_string()),
         (None, None) => None,
     }
+}
+
+fn cursor_after(stored: Option<&str>, job_start: &str) -> bool {
+    match (stored.and_then(parse_ts), parse_ts(job_start)) {
+        (Some(stored), Some(job_start)) => stored > job_start,
+        _ => false,
+    }
+}
+
+fn is_future(ts: &str) -> bool {
+    parse_ts(ts).is_some_and(|ts| ts > chrono::Utc::now())
 }
 
 #[cfg(test)]
@@ -262,6 +278,70 @@ mod tests {
             reloaded.resolve("dev"),
             vec!["sess-fresh".to_string()],
             "register_agent registers the display=role so the agent is routable"
+        );
+    }
+
+    #[test]
+    fn register_agent_resets_a_future_cursor_to_job_start_so_a_poisoned_floor_self_heals_on_rebind()
+    {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register("sess-designer", "designer");
+        store.mark_delivered("sess-designer", "2099-01-01T00:00:00Z");
+        assert_eq!(
+            store.cursor("sess-designer").as_deref(),
+            Some("2099-01-01T00:00:00Z"),
+            "precondition: the session carries a poisoned far-future delivery cursor (the production 2099 incident that muted the designer — every real message fails the msg.ts > cursor delivery gate)"
+        );
+
+        store.register_agent(
+            "sess-designer",
+            "designer",
+            "term-designer",
+            "2026-06-13T12:00:00Z",
+        );
+
+        assert_eq!(
+            store.cursor("sess-designer").as_deref(),
+            Some("2026-06-13T12:00:00Z"),
+            "a stored cursor LATER than this bind's job-start is impossible — no message can have been delivered after the very job that is binding now started — so it is corruption, and register_agent resets the floor to job-start, healing the muted session so delivery resumes on the agent's next restart"
+        );
+    }
+
+    #[test]
+    fn register_agent_preserves_a_past_cursor_on_reconnect_keeping_delivery_forward_only() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register_agent("sess-dev", "dev", "term-a", "2026-06-13T10:00:00Z");
+        store.mark_delivered("sess-dev", "2026-06-13T10:05:00Z");
+
+        store.register_agent("sess-dev", "dev", "term-b", "2026-06-13T11:00:00Z");
+
+        assert_eq!(
+            store.cursor("sess-dev").as_deref(),
+            Some("2026-06-13T10:05:00Z"),
+            "a reconnecting agent whose cursor is in the PAST (messages delivered before this job started) keeps its cursor — it drains forward from where it left off, NOT reset to the new job-start — so the self-heal never re-drains ambient history on a normal reconnect (the forward-only invariant the offline-broadcast test pins)"
+        );
+    }
+
+    #[test]
+    fn drain_floor_rejects_a_future_client_ack_so_a_bad_ack_cannot_poison_the_floor() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let store = RoutingStore::load(dir.path().to_path_buf());
+        store.register("sess-1", "dev");
+        store.mark_delivered("sess-1", "2026-06-13T10:00:00Z");
+
+        let floor = store.drain_floor("sess-1", Some("2099-01-01T00:00:00Z"));
+
+        assert_eq!(
+            floor.as_deref(),
+            Some("2026-06-13T10:00:00Z"),
+            "a client ack dated in the future is untrusted and rejected — the drain floor stays at the real stored cursor, never clamped forward into the future (the most plausible vector that muted the designer: a wait/drain call carrying a future after-cursor)"
+        );
+        assert_eq!(
+            store.cursor("sess-1").as_deref(),
+            Some("2026-06-13T10:00:00Z"),
+            "the durable cursor is never advanced by a future ack — the poison cannot be persisted"
         );
     }
 
