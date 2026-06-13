@@ -143,7 +143,8 @@ const Sidebar = ({
             recipient !== null &&
             recipient.length === 1 &&
             recipient[0] === role
-          const status = presence.get(role) ?? PRESENCE.Offline
+          const reported = presence.get(role)
+          const status = reported && reported !== PRESENCE.Offline ? reported : PRESENCE.Available
           const statusLabel = PRESENCE_LABEL[status]
           return (
             <button
@@ -162,7 +163,7 @@ const Sidebar = ({
                 title={`${role} — ${statusLabel}`}
               />
               {role}
-              {status !== PRESENCE.Offline && status !== PRESENCE.Available && (
+              {status !== PRESENCE.Available && (
                 <small className="sidebar-item-status" data-test={`presence-label-${role}`}>
                   {statusLabel}
                 </small>

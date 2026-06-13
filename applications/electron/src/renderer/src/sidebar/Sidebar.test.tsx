@@ -409,3 +409,48 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
     expect(html).toMatch(/data-test="presence-dot-pm"/)
   })
 })
+
+describe('Sidebar — presence dot is online by default for a present member (terminal-liveness), activity overlaid', () => {
+  test('a present roster member with no activity shows online (available), not offline', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="available"/)
+    expect(html).not.toMatch(/data-test="presence-dot-dev"[^>]*data-presence="offline"/)
+  })
+
+  test('a rich activity status (busy) overrides the online default', () => {
+    const messages: ChatMessage[] = [
+      ...RYAN_ONLY_MESSAGES,
+      {
+        id: 'act-busy',
+        from: 'dev:claude-code',
+        text: 'busy',
+        ts: '2026-04-23T12:01:00Z',
+        to: null,
+        addressee: null,
+        messageType: 'activity'
+      }
+    ]
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={messages}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="busy"/)
+  })
+})

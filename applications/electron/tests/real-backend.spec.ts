@@ -726,10 +726,8 @@ test.describe('real-backend', () => {
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
 
-    // Initial state: dev dot is offline (no activity messages, only
-    // the seed chat). data-presence='offline'.
     const devDot = win.locator('[data-test="presence-dot-dev"]')
-    await expect(devDot).toHaveAttribute('data-presence', 'offline', {
+    await expect(devDot).toHaveAttribute('data-presence', 'available', {
       timeout: 15_000
     })
 
