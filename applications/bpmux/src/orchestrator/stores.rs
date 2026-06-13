@@ -118,6 +118,8 @@ pub enum Presence {
     Busy,
     Away,
     Offline,
+    Blocked,
+    Help,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

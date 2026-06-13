@@ -136,6 +136,26 @@ pub async fn run_server(
     for identity in session.roster_snapshot() {
         crate::transport::ws::dispatch_roster_join(&orchestrator, &identity).await;
     }
+    if let Some(refresh) = test_refresh.as_ref().cloned() {
+        let owner_park =
+            crate::orchestrator::OwnerParkBroadcaster::new(orchestrator.clone(), refresh.store());
+        let mut events = refresh.store().subscribe();
+        let owner_park_ct = ct.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = owner_park_ct.cancelled() => return,
+                    received = events.recv() => match received {
+                        Ok(event) => owner_park.on_board_event(&event).await,
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                            owner_park.recompute_from_snapshot().await;
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                    }
+                }
+            }
+        });
+    }
     orchestrator
         .dispatch(crate::orchestrator::OrchestratorAction::StartCiPolling)
         .await;

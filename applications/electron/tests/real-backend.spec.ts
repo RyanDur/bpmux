@@ -700,18 +700,13 @@ test.describe('real-backend', () => {
   // dot color + text within latency. Uses the multi-party peer-post
   // pattern (POST from test process → WS broadcast → renderer
   // derives + renders).
-  test('presence: activity-class broadcast updates sidebar dot', async () => {
-    // #235 per-test auth-token isolation.
+  test('presence: a connected agent shows present-neutral, never green-by-connection (#1719)', async () => {
     const fs = await import('fs')
     const os = await import('os')
     const path = await import('path')
     const authTokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bpmux-presence-auth-'))
     const authTokenPath = path.join(authTokenDir, 'auth_token')
-    // Per `feedback_substrate_audit_current_team_shape`, sidebar
-    // presence dots derive from message senders — empty seed = no
-    // dots rendered. Seed a chat message from dev so the dot renders
-    // before we exercise the busy transition.
-    const { app, backendPort } = await launchWithIsolatedSession({
+    const { app } = await launchWithIsolatedSession({
       extraEnv: { BPMUX_AUTH_TOKEN_PATH: authTokenPath },
       seedRoster: ['dev:claude-code'],
       seedMessages: [
@@ -727,34 +722,10 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
 
     const devDot = win.locator('[data-test="presence-dot-dev"]')
-    await expect(devDot).toHaveAttribute('data-presence', 'available', {
+    await expect(devDot).toHaveAttribute('data-presence', 'present', {
       timeout: 15_000
     })
-
-    // Simulate dev going busy. POST an activity-class message as
-    // `dev:claude-code` — same shape the set_status hook broadcasts
-    // from the bridge.
-    const authToken = fs.readFileSync(authTokenPath, 'utf8').trim()
-    const res = await fetch(`http://127.0.0.1:${backendPort}/api/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'dev:claude-code',
-        text: 'busy',
-        message_type: 'activity'
-      })
-    })
-    expect(res.ok).toBe(true)
-
-    // Dot updates to busy within WS latency.
-    await expect(devDot).toHaveAttribute('data-presence', 'busy', {
-      timeout: 10_000
-    })
-    // Status suffix renders for non-available/offline states.
-    await expect(win.locator('[data-test="presence-label-dev"]')).toContainText('busy')
+    await expect(devDot).not.toHaveAttribute('data-presence', 'available')
 
     await app.close()
   })

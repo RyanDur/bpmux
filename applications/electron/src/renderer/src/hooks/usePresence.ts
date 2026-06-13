@@ -4,11 +4,13 @@ import type { ChatMessage } from '../transport/types'
 
 export const PRESENCE = {
   Available: 'available',
+  Present: 'present',
   Busy: 'busy',
   Blocked: 'blocked',
   Idle: 'idle',
   Help: 'help',
-  Offline: 'offline'
+  Offline: 'offline',
+  Unknown: 'unknown'
 } as const
 
 export type Presence = (typeof PRESENCE)[keyof typeof PRESENCE]

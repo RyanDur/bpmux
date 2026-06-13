@@ -358,3 +358,54 @@ async fn roster_remove_fires_listener_when_member_existed() {
         "upsert + remove fire; second remove of absent member is no-op"
     );
 }
+
+#[tokio::test]
+async fn roster_presence_change_to_blocked_records_blocked_presence() {
+    let orch = fresh_orch();
+    let rec = Arc::new(RecRoster::default());
+    orch.add_roster_listener(rec.clone());
+
+    orch.dispatch(OrchestratorAction::Roster(
+        RosterAction::RosterMemberUpserted {
+            name: "dev".to_string(),
+            identity: "dev:claude-code".to_string(),
+            role: RosterRole::Dev,
+            presence: Presence::Online,
+        },
+    ))
+    .await;
+    orch.dispatch(OrchestratorAction::Roster(
+        RosterAction::RosterPresenceChanged {
+            name: "dev".to_string(),
+            presence: Presence::Blocked,
+        },
+    ))
+    .await;
+
+    let members = orch.roster_store().members();
+    assert_eq!(members.len(), 1);
+    assert_eq!(
+        members[0].presence,
+        Presence::Blocked,
+        "owner-park presence is recorded as first-class Blocked, not ephemeral overlay-text"
+    );
+
+    let received = rec.received.lock().unwrap();
+    assert_eq!(received.last().unwrap()[0].presence, Presence::Blocked);
+}
+
+#[test]
+fn blocked_roster_member_wire_serializes_blocked_presence() {
+    use crate::session::message::RosterMemberWire;
+    let wire = RosterMemberWire {
+        name: "dev".to_string(),
+        identity: "dev:claude-code".to_string(),
+        role: RosterRole::Dev,
+        presence: Presence::Blocked,
+    };
+    let json = serde_json::to_string(&wire).unwrap();
+    assert!(
+        json.contains("\"presence\":\"Blocked\""),
+        "Blocked rides the durable wire field, not Activity-text: {json}"
+    );
+}

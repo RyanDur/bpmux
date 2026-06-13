@@ -106,6 +106,10 @@
       background: var(--accent-success);
     }
 
+    &.presence-dot--present {
+      background: var(--fg-dim);
+    }
+
     &.presence-dot--busy {
       background: var(--accent-warning);
     }
@@ -114,8 +118,33 @@
       background: var(--fg-dim);
     }
 
+    &.presence-dot--blocked {
+      background: var(--accent-error);
+      animation: presence-dot-pulse 2s var(--motion-ease-out) infinite;
+    }
+
+    &.presence-dot--help {
+      background: var(--accent-error);
+    }
+
+    &.presence-dot--unknown {
+      background: transparent;
+      box-shadow: inset 0 0 0 1px var(--fg-dimmer);
+    }
+
     &.presence-dot--offline {
       background: var(--fg-dimmer);
+    }
+  }
+
+  @keyframes presence-dot-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.4;
     }
   }
 

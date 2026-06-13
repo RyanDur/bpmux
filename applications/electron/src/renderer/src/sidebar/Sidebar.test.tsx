@@ -410,8 +410,8 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
   })
 })
 
-describe('Sidebar — presence dot is online by default for a present member (terminal-liveness), activity overlaid', () => {
-  test('a present roster member with no activity shows online (available), not offline', () => {
+describe('Sidebar — presence dot honestly reflects wire roster state, never green from mere connection (#1719)', () => {
+  test('wire presence Online (connected, activity-unknown) shows present-neutral, NEVER available/green', () => {
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -423,22 +423,14 @@ describe('Sidebar — presence dot is online by default for a present member (te
         mirrorRoster={ROSTER_FIXTURE}
       />
     )
-    expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="available"/)
-    expect(html).not.toMatch(/data-test="presence-dot-dev"[^>]*data-presence="offline"/)
+    expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="present"/)
+    expect(html).not.toMatch(/data-test="presence-dot-dev"[^>]*data-presence="available"/)
   })
 
-  test('a rich activity status (busy) overrides the online default', () => {
-    const messages: ChatMessage[] = [
-      ...RYAN_ONLY_MESSAGES,
-      {
-        id: 'act-busy',
-        from: 'dev:claude-code',
-        text: 'busy',
-        ts: '2026-04-23T12:01:00Z',
-        to: null,
-        addressee: null,
-        messageType: 'activity'
-      }
+  test('wire presence Blocked (owner-parked) shows a red blocked dot and the blocked label', () => {
+    const BLOCKED_ROSTER: RosterMemberWire[] = [
+      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Blocked' })
     ]
     const html = renderToStaticMarkup(
       <Sidebar
@@ -446,9 +438,64 @@ describe('Sidebar — presence dot is online by default for a present member (te
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={messages}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={BLOCKED_ROSTER}
+      />
+    )
+    expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="blocked"/)
+    expect(html).toMatch(/data-test="presence-label-dev"[^>]*>blocked</)
+  })
+
+  test('a roster member with no wire presence entry shows unknown (neutral), never available/green', () => {
+    const NO_PRESENCE: RosterMemberWire[] = [
+      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      { name: 'dev', identity: 'dev:claude-code', role: 'Dev' } as RosterMemberWire
+    ]
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={NO_PRESENCE}
+      />
+    )
+    expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="unknown"/)
+    expect(html).not.toMatch(/data-test="presence-dot-dev"[^>]*data-presence="available"/)
+  })
+
+  test('no path yields data-presence="available" from connection alone in S1', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
         filter={filter}
         mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).not.toMatch(/data-presence="available"/)
+  })
+
+  test('wire presence Busy maps to the busy dot', () => {
+    const BUSY_ROSTER: RosterMemberWire[] = [
+      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Busy' })
+    ]
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={BUSY_ROSTER}
       />
     )
     expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="busy"/)

@@ -1,5 +1,9 @@
 import type { ChatMessage } from '../transport/types'
-import type { RosterEntry } from '../hooks/useTeamRoster'
+
+type RosterIdentity = {
+  identity: string
+  role: string
+}
 
 const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
@@ -58,7 +62,9 @@ export const deriveCombinatorialGroups = (roles: readonly string[]): string[][] 
   return combinations(roles, 2, roles.length)
 }
 
-export const deriveTeamRolesFromRoster = (roster: readonly RosterEntry[]): readonly string[] => {
+export const deriveTeamRolesFromRoster = (
+  roster: readonly RosterIdentity[]
+): readonly string[] => {
   const set = new Set<string>()
   for (const entry of roster) set.add(entry.role)
   return Array.from(set).sort()
@@ -72,7 +78,7 @@ const toolSuffixOf = (identity: string): string => {
 const isAutoIdentity = (role: string): boolean => role.startsWith('agent-')
 
 export const deriveDirectRolesFromRoster = (
-  roster: readonly RosterEntry[],
+  roster: readonly RosterIdentity[],
   viewer?: string
 ): readonly string[] => {
   const self = viewer !== undefined ? shortName(viewer) : null
@@ -90,6 +96,6 @@ export const deriveDirectRolesFromRoster = (
 }
 
 export const deriveCombinableRolesFromRoster = (
-  roster: readonly RosterEntry[],
+  roster: readonly RosterIdentity[],
   viewer?: string
 ): readonly string[] => deriveDirectRolesFromRoster(roster, viewer)

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
 import { type MessageFilter } from '../hooks/useMessageFilter'
-import { PRESENCE, usePresence, type Presence } from '../hooks/usePresence'
+import { PRESENCE, type Presence } from '../hooks/usePresence'
 import { useTeamRoster } from '../hooks/useTeamRoster'
 import {
   deriveCombinableRolesFromRoster,
@@ -32,11 +32,13 @@ interface Props {
 
 const PRESENCE_LABEL: Record<Presence, string> = {
   available: 'available',
+  present: 'present',
   busy: 'busy',
   blocked: 'blocked',
   idle: 'idle',
   help: 'needs help',
-  offline: 'offline'
+  offline: 'offline',
+  unknown: 'unknown'
 }
 
 const groupKey = (names: readonly string[]): string => [...names].sort().join('+')
@@ -62,7 +64,6 @@ const Sidebar = ({
   onCloseTerminal = () => {},
   terminalNames = {},
   onRenameTerminal = () => {},
-  messages,
   filter,
   mirrorRoster
 }: Props): React.JSX.Element => {
@@ -97,7 +98,11 @@ const Sidebar = ({
       ),
     [combinableRoles]
   )
-  const presence = usePresence(messages, directRoles)
+  const rosterPresenceByRole = useMemo(() => {
+    const out = new Map<string, Presence>()
+    for (const entry of roster) out.set(entry.role, entry.presence)
+    return out
+  }, [roster])
 
   const noTerminalActive = activeTerminalKey === null
   const allMembersGroupSelected = !allView && recipient === null && noTerminalActive
@@ -143,9 +148,9 @@ const Sidebar = ({
             recipient !== null &&
             recipient.length === 1 &&
             recipient[0] === role
-          const reported = presence.get(role)
-          const status = reported && reported !== PRESENCE.Offline ? reported : PRESENCE.Available
+          const status = rosterPresenceByRole.get(role) ?? PRESENCE.Unknown
           const statusLabel = PRESENCE_LABEL[status]
+          const showStatusLabel = status !== PRESENCE.Available && status !== PRESENCE.Present
           return (
             <button
               key={role}
@@ -163,7 +168,7 @@ const Sidebar = ({
                 title={`${role} — ${statusLabel}`}
               />
               {role}
-              {status !== PRESENCE.Available && (
+              {showStatusLabel && (
                 <small className="sidebar-item-status" data-test={`presence-label-${role}`}>
                   {statusLabel}
                 </small>
