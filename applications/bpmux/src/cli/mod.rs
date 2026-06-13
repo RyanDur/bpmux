@@ -111,7 +111,10 @@ pub(crate) fn run_send(
 pub(crate) fn run_register() -> anyhow::Result<()> {
     let role = crate::resolve_role(&None);
     let cwd = std::env::current_dir()?;
-    let session_id = crate::session::read_or_create_dir_session(&cwd)?.id;
+    let pinned = std::env::var("BPMUX_SESSION_ID")
+        .map(|id| !id.trim().is_empty())
+        .unwrap_or(false);
+    let session_id = crate::resolve_session_id(&cwd)?;
     let mut payload = serde_json::Map::new();
     payload.insert("session_id".to_string(), serde_json::json!(session_id));
     payload.insert("display".to_string(), serde_json::json!(role));
@@ -134,6 +137,9 @@ pub(crate) fn run_register() -> anyhow::Result<()> {
         anyhow::bail!("register rejected ({status}): {reason}");
     }
     println!("✓ registered {role} ({session_id})");
+    if !pinned {
+        println!("  pin this identity so it survives a cd: export BPMUX_SESSION_ID={session_id}");
+    }
     Ok(())
 }
 

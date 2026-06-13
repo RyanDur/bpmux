@@ -133,6 +133,23 @@ pub(crate) fn resolve_role(role_arg: &Option<String>) -> String {
         .unwrap_or_else(|| "dev".to_string())
 }
 
+pub(crate) fn resolve_session_id(cwd: &std::path::Path) -> anyhow::Result<String> {
+    session_id_from_pin_or_dir(std::env::var("BPMUX_SESSION_ID").ok(), cwd)
+}
+
+fn session_id_from_pin_or_dir(
+    pinned: Option<String>,
+    cwd: &std::path::Path,
+) -> anyhow::Result<String> {
+    if let Some(pin) = pinned {
+        let pin = pin.trim();
+        if !pin.is_empty() {
+            return Ok(pin.to_string());
+        }
+    }
+    Ok(session::read_or_create_dir_session(cwd)?.id)
+}
+
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;
@@ -234,4 +251,41 @@ pub fn run() -> anyhow::Result<()> {
     }
 
     run_server_only(&cli)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod session_id_pin_tests {
+    use super::session_id_from_pin_or_dir;
+
+    #[test]
+    fn a_pinned_id_is_used_verbatim_ignoring_the_working_directory() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let pinned = session_id_from_pin_or_dir(Some("agent-fixed-id".to_string()), dir.path())
+            .expect("pinned resolves");
+        assert_eq!(
+            pinned, "agent-fixed-id",
+            "a pinned BPMUX_SESSION_ID is the agent's ONE id — it wins over the cwd-derived marker, so cd-ing never splinters the agent into a new id"
+        );
+        assert!(
+            !dir.path().join(".bpmux-session-id").exists(),
+            "when pinned, no per-cwd marker is minted — the cwd is not consulted at all"
+        );
+    }
+
+    #[test]
+    fn a_blank_pin_falls_back_to_the_dir_session_marker() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let derived = session_id_from_pin_or_dir(Some("   ".to_string()), dir.path())
+            .expect("blank pin falls back");
+        let again = session_id_from_pin_or_dir(None, dir.path()).expect("none falls back");
+        assert_eq!(
+            derived, again,
+            "a blank pin is treated as unset → both resolve to the SAME stable per-dir marker id (read_or_create reuses it)"
+        );
+        assert!(
+            dir.path().join(".bpmux-session-id").exists(),
+            "the unpinned path mints/reads the dir-session marker"
+        );
+    }
 }
