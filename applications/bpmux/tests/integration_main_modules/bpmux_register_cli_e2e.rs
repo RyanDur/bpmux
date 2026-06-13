@@ -100,3 +100,51 @@ async fn register_rejects_the_reserved_owner_identity() {
         "registering the reserved OWNER identity must be REJECTED server-side (403) — an agent can never present as the owner; auto-submit's defense-in-depth peer-impersonation guard; stdout: {stdout}"
     );
 }
+
+#[tokio::test]
+async fn register_with_a_terminal_reflects_the_routing_name_in_the_roster() {
+    let bpmux = TestBpmux::start();
+    let resp = bpmux
+        .authed_post(
+            "/api/register",
+            serde_json::json!({
+                "session_id": "sess-dev-roster",
+                "display": "dev",
+                "terminal_id": "abcd1234-5678-90ab-cdef-1234567890ab",
+            }),
+        )
+        .await;
+    assert!(resp.status().is_success(), "register should succeed");
+
+    let url = format!("http://127.0.0.1:{}/api/roster", bpmux.port());
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let mut identities: Vec<String> = vec![];
+    while std::time::Instant::now() < deadline {
+        let body: serde_json::Value = reqwest::Client::new()
+            .get(&url)
+            .bearer_auth(bpmux.simulate_secret())
+            .header(reqwest::header::HOST, format!("127.0.0.1:{}", bpmux.port()))
+            .send()
+            .await
+            .expect("GET /api/roster")
+            .json()
+            .await
+            .expect("roster json");
+        identities = body["roster"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|e| e["identity"].as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default();
+        if identities.iter().any(|i| i == "dev") {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    assert!(
+        identities.iter().any(|i| i == "dev"),
+        "registering routing identity 'dev' with a terminal must surface 'dev' in the roster (the DIRECT/sidebar source), not only in chat — the acceptance criterion 'name reflects on every surface'; got {identities:?}"
+    );
+}
