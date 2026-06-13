@@ -59,7 +59,7 @@ pub fn drain_missed(
         Err(_) => return,
     };
     for msg in messages {
-        if !msg.is_chat() || short_name(&msg.from) == display || !addressed_to(&msg, display) {
+        if !msg.is_chat() || short_name(&msg.from) == display || !reaches(&msg, display) {
             continue;
         }
         if join.is_some_and(|join| msg.ts <= join) {
@@ -94,10 +94,10 @@ fn after_cursor(
     }
 }
 
-fn addressed_to(msg: &Message, display: &str) -> bool {
+fn reaches(msg: &Message, display: &str) -> bool {
     match msg.to.as_deref() {
-        None => false,
-        Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => false,
+        None => true,
+        Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => true,
         Some(names) => names.iter().any(|name| short_name(name) == display),
     }
 }
@@ -349,7 +349,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn an_addressed_message_in_the_join_gate_window_is_drained_falsifier_4_intact() {
+    async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_broadcast() {
         let store_dir = tempfile::TempDir::new().unwrap();
         let routing = RoutingStore::load(store_dir.path().to_path_buf());
         let registry = LivePtyRegistry::new();
@@ -395,11 +395,11 @@ mod tests {
         let seen = drain_for(&mut rx, "GATE-SENTINEL").await;
         assert!(
             seen.contains("GATE-ADDRESSED"),
-            "an ADDRESSED message sent in the ~1s join-gate-window (after job-start) still drains on register — falsifier-4 intact, addressed-scoped (the broadcast-skip doesn't drop it); got {seen:?}"
+            "an ADDRESSED message sent in the ~1s join-gate-window (after job-start) still drains on register — falsifier-4 intact; got {seen:?}"
         );
         assert!(
-            !seen.contains("GATE-BROADCAST"),
-            "a BROADCAST in the same gate-window is NOT drained — broadcasts are live-forward-only even at join (you don't catch up on ambient broadcasts); got {seen:?}"
+            seen.contains("GATE-BROADCAST"),
+            "a BROADCAST sent in the join-gate-window — AFTER the agent's own job-start (the owner's 'welcome, i started you' the instant the agent spawned) — drains on register too: it is dropped by live delivery (the terminal isn't a delivery-target until the bind-gate) so the catch-up is its only path. Bounded by job-start, so this is NOT a history-dump and NOT a reconnect catch-up (those stay live-forward-only); got {seen:?}"
         );
     }
 
@@ -418,7 +418,7 @@ mod tests {
         registry.insert("term1".to_string(), live);
         routing.register_agent("sess-dev", "dev", "term1", "2000-01-01T00:00:00Z");
 
-        let m1 = chat("pm", "M1-delivered-live", None);
+        let m1 = chat_at("pm", "M1-delivered-live", None, "2026-06-13T10:00:00Z");
         session.broadcast(&m1).unwrap();
         deliver_to_terminals(&m1, &registry, &routing);
         assert!(
@@ -430,14 +430,14 @@ mod tests {
 
         registry.remove("term1");
 
-        let m2 = chat("designer", "M2-while-offline", None);
+        let m2 = chat_at("designer", "M2-while-offline", None, "2026-06-13T10:05:00Z");
         session.broadcast(&m2).unwrap();
         deliver_to_terminals(&m2, &registry, &routing);
 
         let live2 = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
         let mut rx2 = live2.subscribe();
         registry.insert("term2".to_string(), live2);
-        routing.register_agent("sess-dev", "dev", "term2", "2026-06-12T20:00:00Z");
+        routing.register_agent("sess-dev", "dev", "term2", "2026-06-13T11:00:00Z");
         drain_missed(
             &session,
             &registry,
@@ -445,14 +445,14 @@ mod tests {
             "sess-dev",
             "term2",
             "dev",
-            "2026-06-12T20:00:00Z",
+            "2026-06-13T11:00:00Z",
         );
 
         registry.write_to("term2", b"RECONNECT-SENTINEL\r");
         let drained = drain_for(&mut rx2, "RECONNECT-SENTINEL").await;
         assert!(
             !drained.contains("M2-while-offline") && !drained.contains("M1-delivered-live"),
-            "a reconnecting agent does NOT catch up on broadcasts — neither the live-delivered M1 nor the offline-broadcast M2 is re-dumped; broadcasts are live-forward-only, the reconnect starts clean (the conscious falsifier-3 relaxation per Ryan); got {drained:?}"
+            "a reconnecting agent does NOT catch up on broadcasts sent BEFORE its reconnect job-start — neither the live-delivered M1 (10:00) nor the offline-broadcast M2 (10:05) is re-dumped when the agent reconnects at 11:00; the gate-window catch-up is bounded by job-start, so ambient/offline broadcasts stay live-forward-only and the reconnect starts clean (the conscious falsifier-3 relaxation per Ryan); got {drained:?}"
         );
     }
 
