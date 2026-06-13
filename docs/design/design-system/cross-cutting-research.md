@@ -54,3 +54,39 @@ keyboard-nav, the responsive-reflow are part of each component, not a later pass
 - WCAG — 2.4.7 focus-visible · 2.1.1 keyboard · 2.5.5 target-size (w3.org/WAI)
 - Ryan's button/modal structural research — `button-modal-research.md` (GitLab / Carbon / VA)
 - a11y design-system guidance (a11ypros, level-access, vispero focus-indicators)
+
+## Audit-sweep findings (#1682 — designer, 2026-06-08)
+
+Swept all 8 design-system mockups (foundation · button-modal · forms · list-row · board · chat ·
+sidebar · appshell-overall-look) for cross-cutting coverage. **Baked well across the set:** the 3px
+focus-ring token, the WCAG contrast-audit (foundation §4, incl the `#44474a` correction), dual-theme,
+native-semantics (ul/li/form/dialog/time/nav), the 5-state colorblind-safe glyph grammar, the 8px grid,
+the motion tokens. **Two findings carry to the build:**
+
+1. **44px tap-target — REFINE the rule for the desktop context (designer-decision).** The button
+   primitive bakes 44px (the invisible `::after` inset, even on the 32px small button) ✓ — correct for
+   explicit action-buttons. But the list/row primitive + the application-row mockups (story/channel/
+   message rows) are ~30px with no inset. For a DESKTOP (mouse) app — Electron, IntelliJ row-convention
+   ~22-28px, WCAG-2.2 min-target 24×24 — dense list-rows at ~30px are conventional AND compliant; the
+   44px target is the TOUCH convention (Apple/Material). So the rule refines: **action-buttons/glyphs =
+   44px tap-target (baked); dense desktop list-rows = ≥24px (WCAG-2.2-min), ~30px conventional — add the
+   44px-via-invisible-inset only IF a touch-deployment is introduced.** (The earlier blanket "rows must
+   meet 44px" was over-strict for the desktop context.)
+
+2. **Row keyboard-operability — build-requirement.** The interactive ROWS in the mockups (channel /
+   story / message rows) are `<div>`/`<li>`, not `<button>`/`<a>`/`tabindex` — so row-SELECTION is not
+   keyboard-focusable (the drag-grip IS a focusable `<button>`, but selecting a row isn't). The mockups
+   show the visual; the cross-cutting "full keyboard operability" + each mockup's WCAG-claim require the
+   BUILD to make a selectable row keyboard-focusable (`<button>`/`<a>` or roving-`tabindex` + `aria-current`
+   + ↑/↓ nav). This is a prototype-vs-build gap, not a visual-taste issue — flag it as an acceptance-clause
+   on each application slice (board/chat/sidebar) so it's baked, not bolted on.
+
+3. **Standalone-mockup inline-drift — reconcile the reference mockups (build is safe via central tokens).**
+   Each mockup inlines its own copy of the primitive CSS, and they've drifted: `forms-grammar` uses a **2px**
+   focus-ring (`0 0 0 2px`, brand@45%) while the foundation + button-modal use the canonical **3px**
+   (brand@55%), and `forms-grammar`'s inline `.btn` is 36px with no 44-inset vs the button-primitive's 40px +
+   the `::after` 44-inset. Harmless at BUILD (the build reads ONE central `--focus-ring` token + ONE button
+   component — no inline copies to drift), but the mockups-as-living-reference should reconcile to the
+   canonical 3px ring so a reader isn't misled. Root: the "one grammar" thesis holds via CENTRAL tokens/
+   components — which standalone taste-mockups can't enforce among themselves. (So the focus-ring IS baked
+   everywhere; forms-grammar's value just drifted to 2px — fix on its next taste-pass.)

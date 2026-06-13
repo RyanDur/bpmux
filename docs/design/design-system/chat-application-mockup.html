@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<!--
+  Darcula design-system — CHAT application (Horologium slice-5). Mockup-FIRST → Ryan taste-review.
+  Designer 2026-06-08. The application-layer validation on the COMMS surface (after the board proved
+  the pattern): does the chat re-skin cleanly onto the confirmed foundation + primitives with NO
+  chat-specific re-styling? Composes them — the message-LIST (list/row variant: a sender-grouped
+  message row) + the inline-COMPOSER (forms-grammar: textarea + scope-chip + send button-primitive)
+  + the message-type grammar (chat / insight / nudge / system) on the dual-theme tokens.
+
+  The point (same as the board): chat is just a list of message-rows + a composer-form. If it composes
+  with no bespoke CSS, the primitives are right — and the live chat (sender rows, addressee/scope,
+  insight/nudge/state-delta types, the composer) inherits the uniform look by construction.
+  NOT shipped tokens — taste-review first.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Darcula design-system — chat application</title>
+<style>
+  :root{
+    --bg-base:#2b2b2b; --bg-elevated:#3c3f41; --bg-highlighted:#44474a;
+    --fg-primary:#bbbbbb; --fg-secondary:#a9b7c6; --fg-dim:#808080; --fg-dimmer:#6f7479;
+    --brand:#4e7ec2; --ok:#6a8759; --warn:#cc7832; --err:#cf5b56; --border:#323232;
+    /* cross-cutting tokens (cross-cutting-research.md): 3px focus-ring ≥3:1, 8px grid, 44px target */
+    --focus-ring:#4e7ec2; --space:8px;
+  }
+  [data-theme="light"]{
+    --bg-base:#fff; --bg-elevated:#f5f5f5; --bg-highlighted:#e5e8ef;
+    --fg-primary:#1a1a1a; --fg-secondary:#4a5568; --fg-dim:#5a6578; --fg-dimmer:#718096;
+    --brand:#2563eb; --ok:#16a34a; --warn:#b45309; --err:#dc2626; --border:#e2e8f0; --focus-ring:#2563eb;
+  }
+  body{background:#1e1e1e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:28px;line-height:1.5}
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{color:var(--fg-dim);font-size:13px;margin:0 0 14px;max-width:880px}
+  .sub code{background:#333;padding:1px 5px;border-radius:3px;font-size:12px;color:var(--fg-secondary)}
+  .toggle{font-size:12px;color:var(--fg-dim);margin:0 0 12px}
+  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;min-height:32px}
+  :focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+
+  /* === the chat (the application surface) — pure composition of the primitives === */
+  .chat{display:flex;flex-direction:column;height:520px;max-width:760px;background:var(--bg-base);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .chat-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--fg-dim)}
+  .chat-head .who{color:var(--fg-secondary);font-weight:600}
+
+  /* message-LIST = the list/row primitive, message variant. Native <ul>/<li>. */
+  .mlist{list-style:none;margin:0;padding:6px 0;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+  .mrow{padding:5px 12px;font-size:13px;border-left:3px solid transparent}
+  .mrow:hover{background:var(--bg-highlighted)}
+  .mhead{display:flex;align-items:baseline;gap:8px;margin:0 0 1px}
+  .sender{font-weight:600;color:var(--fg-secondary);font-size:12px}
+  .scope{font-size:11px;color:var(--fg-dimmer);background:var(--bg-elevated);border:1px solid var(--border);border-radius:4px;padding:0 5px}
+  time{font-size:11px;color:var(--fg-dimmer);margin-left:auto}
+  .body{color:var(--fg-primary);white-space:pre-wrap;word-break:break-word}
+
+  /* message-TYPE grammar — colour/weight only, NO layout change (same row primitive) */
+  .mrow.chat   { } /* default */
+  .mrow.insight{ border-left-color:var(--brand); }
+  .mrow.insight .sender{ color:var(--brand); }
+  .mrow.nudge  { border-left-color:var(--warn); }
+  .mrow.nudge  .body{ color:var(--fg-secondary); }
+  .mrow.system { } /* system/state-delta = dimmest, quiet */
+  .mrow.system .sender{ color:var(--fg-dim); }
+  .mrow.system .body{ color:var(--fg-dim);font-style:italic; }
+  .mrow.owner  { border-left-color:var(--ok); } /* owner-sent: always-visible accent */
+  .mrow.owner  .sender{ color:var(--ok); }
+
+  /* inline-COMPOSER = the forms-grammar (textarea + scope-chip + button-primitive) */
+  .composer{border-top:1px solid var(--border);background:var(--bg-elevated);padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+  .composer .scoperow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--fg-dim)}
+  .composer .chip{font-size:11px;color:var(--fg-secondary);background:var(--bg-base);border:1px solid var(--border);border-radius:4px;padding:2px 7px;cursor:pointer;min-height:24px}
+  .composer .field{display:flex;gap:8px;align-items:flex-end}
+  .composer textarea{flex:1;font:inherit;font-size:13px;resize:none;background:var(--bg-base);color:var(--fg-primary);border:1px solid var(--border);border-radius:6px;padding:8px 10px;min-height:38px;line-height:1.4}
+  .composer textarea::placeholder{color:var(--fg-dimmer)}
+  .send{font:inherit;font-size:13px;font-weight:600;background:var(--brand);color:#fff;border:0;border-radius:6px;padding:0 16px;min-height:38px;min-width:44px;cursor:pointer}
+  .send:hover{filter:brightness(1.08)}
+  .hint{font-size:11px;color:var(--fg-dimmer)}
+
+  .note{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;max-width:880px;margin-top:16px}.note b{color:var(--fg-primary)}ul{margin:6px 0;padding-left:18px}li{margin:4px 0;font-size:13px}
+</style></head>
+<body id="b">
+  <h1>Darcula design-system — chat application</h1>
+  <p class="sub">Chat is the <code>message-list</code> primitive (sender-row + body, with the type-grammar) + the inline-<code>composer</code> (the forms-grammar: textarea + scope-chip + send), on the foundation tokens — no chat-specific re-styling. The message-TYPES (chat · insight · nudge · system/state-delta · owner) are colour/weight variants of ONE row, never a layout fork. Toggle the theme to verify dual-mode:</p>
+  <p class="toggle"><button onclick="document.getElementById('b').setAttribute('data-theme', document.getElementById('b').getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
+
+  <section class="chat" aria-label="bpmux chat — broadcast">
+    <header class="chat-head"><span><span class="who">broadcast</span> · 6 here</span><span>chat 220 · events 164</span></header>
+    <ul class="mlist">
+      <li class="mrow chat"><div class="mhead"><span class="sender">pm</span><time>1:44 PM</time></div><div class="body">#1700's spec is locked — building the clusters, audit last.</div></li>
+      <li class="mrow chat"><div class="mhead"><span class="sender">dev</span><span class="scope">→ pm</span><time>1:46 PM</time></div><div class="body">First slice: iteration+epic writes via the /api/rpc archetype. Grounding their gates now.</div></li>
+      <li class="mrow insight"><div class="mhead"><span class="sender">designer</span><time>1:51 PM</time></div><div class="body">Insight: chat is just a list of message-rows + a composer — if it composes from the primitives with no bespoke CSS, the design-system holds at the application layer.</div></li>
+      <li class="mrow owner"><div class="mhead"><span class="sender">ryan</span><time>1:52 PM</time></div><div class="body">I appreciate you cleaning up dead code.</div></li>
+      <li class="mrow nudge"><div class="mhead"><span class="sender">bpmux</span><span class="scope">nudge</span><time>1:52 PM</time></div><div class="body">📝 1 candidate moment from recent chat — reflect through your own lens, save your own framing if any apply.</div></li>
+      <li class="mrow system"><div class="mhead"><span class="sender">bpmux</span><span class="scope">state-delta</span><time>1:53 PM</time></div><div class="body">#1701 passed desk-check — signal sent, label applied.</div></li>
+    </ul>
+    <form class="composer" onsubmit="return false">
+      <div class="scoperow"><span>to:</span><button type="button" class="chip">broadcast ▾</button><span class="hint">Enter sends · Shift-Enter newline</span></div>
+      <div class="field">
+        <textarea rows="1" placeholder="Type here — message the team…" aria-label="Message the team"></textarea>
+        <button type="submit" class="send">Send</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="note">
+    <b>What this validates:</b> chat re-skins with ZERO chat-specific layout CSS — it's the
+    <code>list/row</code> primitive (message variant) + the <code>forms-grammar</code> composer, on the
+    foundation tokens. The message-TYPE grammar (<b>chat</b> · <span style="color:var(--brand)">insight</span> ·
+    <span style="color:var(--warn)">nudge</span> · <span style="color:var(--fg-dim)">system</span> ·
+    <span style="color:var(--ok)">owner</span>) is a 3px left-accent + sender-colour ONLY — one row, never a
+    layout fork (Tufte: class via colour, not decoration/box). Dual-theme by construction (toggle above).
+    <br><br>
+    <b>WCAG baked (cross-cutting-research):</b> 3px focus-ring ≥3:1 on textarea/send/scope/messages ·
+    44px send target (min-width + min-height) · native semantics (<code>&lt;ul&gt;/&lt;li&gt;</code> list,
+    <code>&lt;form&gt;</code>, <code>&lt;textarea&gt;</code>, <code>&lt;time&gt;</code>, <code>&lt;button&gt;</code>) ·
+    full keyboard op (Enter sends, Shift-Enter newline, Tab to send/scope) · the Darcula contrast passes.
+    Owner-sent + addressed messages carry the always-visible accent (can't be muted) — matches the bridge's
+    "owner/addressed always pushed" rule.
+    <br><br>
+    <b>Taste-calls for Ryan:</b> (1) message-type accent as a quiet 3px left-border (shown) or stronger?
+    (2) sender-colour per-role (designer/dev/pm distinct hues) or uniform <code>--fg-secondary</code> (shown)?
+    (3) scope-chip inline-before-body (shown) or right-aligned? (4) composer scope-chip always-visible (shown)
+    or only when non-broadcast?
+  </div>
+</body></html>

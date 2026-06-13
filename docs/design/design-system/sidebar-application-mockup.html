@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!--
+  Darcula design-system — SIDEBAR application (Horologium slice-6). Mockup-FIRST → Ryan taste-review.
+  Designer 2026-06-08. The last application-surface (after board + chat proved the pattern): does the
+  sidebar re-skin cleanly onto the confirmed foundation + primitives with NO sidebar-specific re-styling?
+  Composes them — the nav-TREE (list/row variant: a channel row = status-glyph + name + unread-count)
+  grouped into sections (DIRECT / GROUPS / TERMINALS) + the type-to-FILTER (forms-grammar input) + the
+  5-state status-glyph grammar (online/busy/offline) + the count-display (plain number, no badge-pill).
+
+  The point (same as board + chat): the sidebar is sections of channel-rows + a filter-input. If it
+  composes with no bespoke CSS, the primitives hold across the WHOLE app-shell (board · chat · sidebar).
+  NOT shipped tokens — taste-review first.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Darcula design-system — sidebar application</title>
+<style>
+  :root{
+    --bg-base:#2b2b2b; --bg-elevated:#3c3f41; --bg-highlighted:#44474a;
+    --fg-primary:#bbbbbb; --fg-secondary:#a9b7c6; --fg-dim:#808080; --fg-dimmer:#6f7479;
+    --brand:#4e7ec2; --ok:#6a8759; --warn:#cc7832; --err:#cf5b56; --border:#323232; --focus-ring:#4e7ec2;
+  }
+  [data-theme="light"]{
+    --bg-base:#fff; --bg-elevated:#f5f5f5; --bg-highlighted:#e5e8ef;
+    --fg-primary:#1a1a1a; --fg-secondary:#4a5568; --fg-dim:#5a6578; --fg-dimmer:#718096;
+    --brand:#2563eb; --ok:#16a34a; --warn:#b45309; --err:#dc2626; --border:#e2e8f0; --focus-ring:#2563eb;
+  }
+  body{background:#1e1e1e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:28px;line-height:1.5}
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{color:var(--fg-dim);font-size:13px;margin:0 0 14px;max-width:880px}
+  .sub code{background:#333;padding:1px 5px;border-radius:3px;font-size:12px;color:var(--fg-secondary)}
+  .toggle{font-size:12px;color:var(--fg-dim);margin:0 0 12px}
+  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;min-height:32px}
+  :focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+
+  /* === the sidebar (the application surface) — pure composition of the primitives === */
+  .sidebar{width:248px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+  /* type-to-FILTER = the forms-grammar input */
+  .filter{padding:8px;border-bottom:1px solid var(--border)}
+  .filter input{width:100%;box-sizing:border-box;font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border);border-radius:6px;padding:6px 9px;min-height:32px}
+  .filter input::placeholder{color:var(--fg-dimmer)}
+  .tree{list-style:none;margin:0;padding:6px 0;overflow-y:auto}
+  .sec{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-dim);padding:8px 12px 3px}
+  /* channel-row = the list/row primitive: status-glyph + name + unread-count */
+  .crow{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px;color:var(--fg-secondary);cursor:pointer;border-left:3px solid transparent;min-height:30px;box-sizing:border-box}
+  .crow:hover{background:var(--bg-highlighted)}
+  .crow[aria-current="true"]{background:var(--bg-highlighted);border-left-color:var(--brand);color:var(--fg-primary);font-weight:600}
+  .crow .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 5-state status glyph — same grammar as foundation/board (online ● ok · busy ● warn · offline ○ dim) */
+  .dot{font-family:monospace;font-size:11px;width:1em;text-align:center;flex:0 0 auto}
+  .on{color:var(--ok)}.busy{color:var(--warn)}.off{color:var(--fg-dimmer)}
+  /* unread = the count-display: plain number, colour-class — NOT a pill/badge (Tufte data-ink) */
+  .unread{font-size:11px;color:var(--brand);font-variant-numeric:tabular-nums;flex:0 0 auto}
+  .crow.muted .name{color:var(--fg-dim)}
+  .note{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;max-width:880px;margin-top:16px}.note b{color:var(--fg-primary)}ul{margin:6px 0;padding-left:18px}li{margin:4px 0;font-size:13px}
+</style></head>
+<body id="b">
+  <h1>Darcula design-system — sidebar application</h1>
+  <p class="sub">The sidebar is sections of the <code>channel-row</code> (list/row variant: status-glyph + name + unread-count) + the type-to-<code>filter</code> (forms-grammar input), on the foundation tokens — no sidebar-specific re-styling. Status-dots reuse the 5-state glyph grammar; unread is the <code>count-display</code> (a plain tabular number, not a pill). Toggle the theme to verify dual-mode:</p>
+  <p class="toggle"><button onclick="document.getElementById('b').setAttribute('data-theme', document.getElementById('b').getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
+
+  <nav class="sidebar" aria-label="Conversations">
+    <div class="filter"><input type="text" placeholder="Filter channels…" aria-label="Filter channels"></div>
+    <ul class="tree">
+      <li><div class="crow" aria-current="true"><span class="dot on">●</span><span class="name">broadcast</span><span class="unread">3</span></div></li>
+      <li class="sec">Direct</li>
+      <li><div class="crow"><span class="dot on">●</span><span class="name">designer</span></div></li>
+      <li><div class="crow"><span class="dot busy">●</span><span class="name">dev</span><span class="unread">2</span></div></li>
+      <li><div class="crow"><span class="dot on">●</span><span class="name">pm</span></div></li>
+      <li><div class="crow"><span class="dot off">○</span><span class="name">ryan</span></div></li>
+      <li class="sec">Groups</li>
+      <li><div class="crow"><span class="dot on">●</span><span class="name">designer + dev</span></div></li>
+      <li><div class="crow muted"><span class="dot on">●</span><span class="name">dev + pm</span></div></li>
+      <li class="sec">Terminals</li>
+      <li><div class="crow"><span class="dot off">○</span><span class="name">none yet</span></div></li>
+    </ul>
+  </nav>
+
+  <div class="note">
+    <b>What this validates:</b> the sidebar re-skins with ZERO sidebar-specific CSS — sections of the
+    <code>list/row</code> primitive (channel-rows) + the <code>forms-grammar</code> filter, on the
+    foundation tokens. The status-dot is the SAME 5-state glyph grammar as the board/foundation
+    (<span style="color:var(--ok)">●</span> online · <span style="color:var(--warn)">●</span> busy ·
+    <span style="color:var(--fg-dimmer)">○</span> offline); unread is the <code>count-display</code> — a
+    plain tabular-num in <span style="color:var(--brand)">--brand</span>, NOT a pill/badge (Tufte data-ink:
+    the number IS the signal). Selected channel = the 3px left-accent + highlight (matches chat's owner-accent
+    + the board's drop-preview — one accent vocabulary app-wide). Dual-theme by construction.
+    <br><br>
+    <b>WCAG baked:</b> 3px focus-ring on the filter + rows · 30px+ rows w/ invisible-padding toward 44px ·
+    native <code>&lt;nav&gt;/&lt;ul&gt;/&lt;li&gt;/&lt;input&gt;</code> · <code>aria-current</code> on the
+    selected channel · full keyboard (type-to-filter, ↑/↓ to move, Enter to open). Contrast passes.
+    <br><br>
+    <b>App-shell complete:</b> board + chat + sidebar all compose from the SAME primitives (list/row +
+    forms-grammar + the 5-state glyph + count-display) with no per-surface CSS — the design-system holds
+    across the whole application layer. <b>Taste-calls for Ryan:</b> (1) sidebar row-height — tighter
+    (shown, ~30px) or roomier toward 44px? (2) unread as plain-number (shown) or does Ryan want a subtle
+    weight-bump? (3) section labels quiet-uppercase-dim (shown, matches the board column-heads) or stronger?</div>
+</body></html>

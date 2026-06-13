@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <!--
   Darcula design-system — BOARD application (Horologium slice). Mockup-FIRST → Ryan taste-review.
-  Designer 2026-06-06. The thin-first APPLICATION validation: does the board re-skin cleanly onto the
-  confirmed foundation + primitives? Composes them — list/row (story + iteration rows + grip + drag-look)
-  · the 5-state status-grammar (CI · sync) · dual-theme tokens — with NO board-specific re-styling.
-  Builds on the taste-approved foundation + primitives. NOT shipped tokens — taste-review first.
+  Designer 2026-06-06; section-contrast + collapsible-darker-header revision 2026-06-08 (per Ryan).
+  The thin-first APPLICATION validation: does the board re-skin cleanly onto the confirmed foundation +
+  primitives? Composes them — list/row (story + iteration rows + grip + drag-look) · the 5-state
+  status-grammar (CI · sync) · dual-theme tokens — with NO board-specific re-styling.
 
-  The point: the board is just COLUMNS of the list/row primitive + status glyphs. If it composes with
-  no bespoke CSS, the primitives are right (and the #1524/#1517 surfaces inherit the uniform drag-look
-  by construction). This validates the application layer cheaply on the central surface before chat/sidebar.
+  Structure: the board is a PANEL (--bg-elevated tool-window) of collapsible GROUPS (details/summary),
+  each with a DARKER sticky header (--bg-base) + chevron + count — matching the current renderer
+  (Board.css: .board on --bg-elevated, .disclosure-summary on --bg-base) which Ryan likes. Earlier this
+  mockup used flat side-by-side columns; revised to the stacked-collapsible-groups the app actually uses.
+  NOT shipped tokens — taste-review first.
 -->
 <html lang="en"><head><meta charset="utf-8"><title>Darcula design-system — board application</title>
 <style>
@@ -30,13 +32,22 @@
   .toggle{font-size:12px;color:var(--fg-dim);margin:0 0 12px}
   .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer}
 
-  /* === the board (the application surface) — pure composition of the primitives === */
-  .board{display:flex;gap:14px;align-items:flex-start;background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:12px}
-  .col{flex:1;min-width:0}
-  .colhead{display:flex;align-items:center;justify-content:space-between;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-dim);margin:0 0 6px;padding:0 2px}
-  .colhead .ct{color:var(--fg-secondary)}
-  .slist{list-style:none;margin:0;padding:0;background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;overflow:hidden}
-  .srow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border);font-size:12px}
+  /* === the board (the application surface) — collapsible GROUPS stacked in a panel === */
+  /* panel = --bg-elevated tool-window; each group's sticky header = --bg-base (darker), per Ryan + Board.css */
+  .board{width:340px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .grp{border-bottom:1px solid var(--border)}
+  .grp:last-child{border-bottom:0}
+  .grphead{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;text-align:left;border:0;cursor:pointer;background:var(--bg-base);color:var(--fg-secondary);font:inherit;font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;padding:8px 12px;position:sticky;top:0;z-index:1;list-style:none;user-select:none}
+  .grphead::-webkit-details-marker{display:none}
+  .grphead:hover{background:var(--bg-highlighted)}
+  .grp[open] .grphead{color:var(--fg-primary)}
+  .grphead:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+  .chev{flex:0 0 auto;width:.7em;font-size:10px;color:var(--fg-dim)}
+  .chev::before{content:'\25B8'}
+  .grp[open] .chev::before{content:'\25BE'}
+  .gct{margin-left:auto;color:var(--fg-dim);font-variant-numeric:tabular-nums;font-weight:400}
+  .slist{list-style:none;margin:0;padding:0}
+  .srow{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12px}
   .srow:last-child{border-bottom:0}
   .srow:hover{background:var(--bg-highlighted)}
   .srow .label{flex:1;color:var(--fg-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -48,52 +59,61 @@
   /* the 5-state status grammar — same glyphs as the foundation */
   .g{font-family:monospace;width:1.3em;display:inline-block;text-align:center;flex:0 0 auto}
   .ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}.dim{color:var(--fg-dim)}
-  /* iteration row variant */
-  .irow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px}
+  /* iteration row variant — a nested collapsible inside the group */
+  .irow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--border);font-size:12px}
+  .irow:last-child{border-bottom:0}
   .irow summary{list-style:none;cursor:pointer;color:var(--fg-primary);display:flex;gap:6px;align-items:center}
-  .irow summary::-webkit-details-marker{display:none}.irow .chev{color:var(--fg-dim);font-size:11px}
+  .irow summary::-webkit-details-marker{display:none}.irow .ichev{color:var(--fg-dim);font-size:11px}
   .note{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:13px 16px;font-size:13px;max-width:880px;margin-top:16px}.note b{color:var(--fg-primary)}ul{margin:6px 0;padding-left:18px}li{margin:4px 0;font-size:13px}
-  .grips{} /* shared markup helper below uses inline svg */
 </style></head>
 <body id="b">
   <h1>Darcula design-system — board application</h1>
-  <p class="sub">The board is COLUMNS of the list/row primitive + the 5-state status glyphs, on the foundation tokens — no board-specific re-styling. If it composes cleanly, the primitives are right (and ready-queue/iteration/member all inherit the uniform drag-look). Toggle the theme to verify dual-mode:</p>
+  <p class="sub">The board is a PANEL (<code>--bg-elevated</code>) of collapsible <code>groups</code> (details/summary), each with a <code>darker header</code> (<code>--bg-base</code>) + chevron + count — the structure the current app uses, which Ryan likes — filled with the list/row primitive + the 5-state status glyphs. No board-specific re-styling. Toggle the theme + collapse a group:</p>
   <p class="toggle"><button onclick="document.getElementById('b').setAttribute('data-theme', document.getElementById('b').getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
 
   <div class="board">
-    <div class="col">
-      <div class="colhead"><span>Ready</span><span class="ct">4</span></div>
+    <details class="grp" open>
+      <summary class="grphead"><span class="chev"></span>Ready<span class="gct">4</span></summary>
       <ul class="slist">
-        <li class="srow"><span class="g ok">●</span><span class="label">#1656 Broadcast off Channels</span><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
-        <li class="srow dragging"><span class="g ok">●</span><span class="label">#1524 (dragging)</span><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
-        <li class="srow drop-preview"><span class="g warn">◌</span><span class="label">#1517 (drop target)</span><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
-        <li class="srow"><span class="g dim">○</span><span class="label">#1683 Scoped board-read</span><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="srow"><span class="g ok">●</span><span class="label">#1656 Broadcast off Channels</span><button class="grip" aria-label="Reorder #1656"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="srow dragging"><span class="g ok">●</span><span class="label">#1524 (dragging)</span><button class="grip" aria-label="Reorder #1524"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="srow drop-preview"><span class="g warn">◌</span><span class="label">#1517 (drop target)</span><button class="grip" aria-label="Reorder #1517"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="srow"><span class="g dim">○</span><span class="label">#1683 Scoped board-read</span><button class="grip" aria-label="Reorder #1683"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
       </ul>
-    </div>
-    <div class="col">
-      <div class="colhead"><span>In progress</span><span class="ct">1</span></div>
+    </details>
+    <details class="grp" open>
+      <summary class="grphead"><span class="chev"></span>In progress<span class="gct">1</span></summary>
       <ul class="slist">
         <li class="srow"><span class="g warn">◌</span><span class="label">#1524 dev — drag-look + sync</span></li>
       </ul>
-    </div>
-    <div class="col">
-      <div class="colhead"><span>Iterations</span><span class="ct">2</span></div>
+    </details>
+    <details class="grp" open>
+      <summary class="grphead"><span class="chev"></span>Iterations<span class="gct">2</span></summary>
       <ul class="slist">
-        <li class="irow"><details><summary><span class="chev">▸</span> #1655 Aquila (5)</summary></details><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
-        <li class="irow"><details><summary><span class="chev">▸</span> #1659 Design-system (12)</summary></details><button class="grip"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="irow"><details><summary><span class="ichev">▸</span> #1655 Aquila (5)</summary></details><button class="grip" aria-label="Reorder Aquila"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
+        <li class="irow"><details><summary><span class="ichev">▸</span> #1659 Design-system (12)</summary></details><button class="grip" aria-label="Reorder Design-system"><svg class="gripicon" viewBox="0 0 10 14"><g fill="currentColor"><circle cx="2.5" cy="3" r="1"/><circle cx="7.5" cy="3" r="1"/><circle cx="2.5" cy="7" r="1"/><circle cx="7.5" cy="7" r="1"/><circle cx="2.5" cy="11" r="1"/><circle cx="7.5" cy="11" r="1"/></g></svg></button></li>
       </ul>
-    </div>
+    </details>
+    <details class="grp">
+      <summary class="grphead"><span class="chev"></span>Accepted<span class="gct">9</span></summary>
+      <ul class="slist"><li class="srow"><span class="label" style="color:var(--fg-dim)">collapsed — click the header to expand</span></li></ul>
+    </details>
   </div>
 
   <div class="note">
-    <b>What this validates:</b> the board re-skins with ZERO board-specific CSS — it's columns of the
-    <code>list/row</code> primitive (story-rows + iteration-rows + the shared grip + drag-states) and the
-    5-state status glyphs (<b>●</b> ready · <b>◌</b> working · <b>○</b> unknown), on the foundation tokens.
-    Dual-theme by construction (toggle above). So the #1524/#1517 surfaces inherit the uniform drag-look
-    automatically once they consume the primitive — no per-surface drift.
+    <b>What this validates:</b> the board is a PANEL (<code>--bg-elevated</code> tool-window) of collapsible
+    <code>groups</code> (native <code>&lt;details&gt;/&lt;summary&gt;</code>), each with a <i>darker</i>
+    sticky header (<code>--bg-base</code>) + chevron (▸ collapsed / ▾ open) + tabular count — matching the
+    current renderer (<code>Board.css</code>: <code>.board</code> on elevated, <code>.disclosure-summary</code>
+    on base), the section-breakup Ryan likes. Group bodies are the <code>list/row</code> primitive (story-rows
+    + iteration-rows + the shared grip + drag-states) and the 5-state status glyphs (<b>●</b> ready ·
+    <b>◌</b> working · <b>○</b> unknown). The darker header is the SAME <code>--bg-base</code> token the chat
+    well uses — one token, two roles (dark canvas / dark section-accent on a light panel). Dual-theme by
+    construction; "Accepted" is shown collapsed.
     <br><br>
-    <b>Next application surfaces</b> (same composition pattern, per-slice mockups when planned): chat
-    (message-list + the inline-composer form) · sidebar (the nav tree + type-to-filter) · appshell chrome.
-    <b>Taste-call:</b> column headers as quiet uppercase-dim (shown), or stronger?
+    <b>Section-contrast (per Ryan 2026-06-08):</b> in the full shell the board is the lighter tool-window
+    framing the darker chat well — see <code>appshell-overall-look-mockup.html</code> for the composition.
+    <b>Taste-call:</b> header darkness — the Darcula <code>--bg-base</code> (#2b2b2b) vs the chat well; want
+    the headers more pronounced (your current app's base is a touch darker)?
   </div>
 </body></html>
