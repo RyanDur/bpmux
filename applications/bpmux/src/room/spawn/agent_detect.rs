@@ -121,10 +121,14 @@ pub fn spawn_agent_run_detector(
                 }
             }
         }
-        if let Some(display) = routing.display_for_terminal(&terminal_id) {
-            session.roster_leave(&display);
+        let claimed_display = routing.display_for_terminal(&terminal_id);
+        let auto_name = crate::session::routing_identity::bridge_agent_name(&terminal_id);
+        let dead_terminal_names: Vec<String> =
+            claimed_display.into_iter().chain([auto_name]).collect();
+        for name in &dead_terminal_names {
+            session.roster_leave(name);
             if let Some(orchestrator) = &orchestrator {
-                crate::transport::ws::dispatch_roster_leave(orchestrator, &display).await;
+                crate::transport::ws::dispatch_roster_leave(orchestrator, name).await;
             }
         }
     });

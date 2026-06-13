@@ -133,6 +133,11 @@ pub async fn run_server(
     orchestrator.add_roster_listener(std::sync::Arc::new(
         crate::orchestrator::RosterSessionBroadcaster::new(session.clone()),
     ));
+    let live_terminal_ids = pty_registry.reap_dead_and_list_live();
+    let reaped_ghosts = session.reconcile_roster(&live_terminal_ids);
+    for identity in &reaped_ghosts {
+        crate::transport::ws::dispatch_roster_leave(&orchestrator, identity).await;
+    }
     for identity in session.roster_snapshot() {
         crate::transport::ws::dispatch_roster_join(&orchestrator, &identity).await;
     }

@@ -73,6 +73,35 @@ fn roster_join_is_idempotent() {
 }
 
 #[test]
+fn reconcile_drops_a_ghost_agent_with_no_live_terminal_but_keeps_role_and_live_bare_agent() {
+    use crate::session::routing_identity::bridge_agent_name;
+
+    let live_terminal = "aaaaaaaa-1111-2222-3333-444455556666";
+    let dead_terminal = "deadbeef-9999-8888-7777-666655554444";
+
+    let session = fresh_session();
+    session.roster_join("dev:claude-code");
+    session.roster_join(&bridge_agent_name(live_terminal));
+    session.roster_join(&bridge_agent_name(dead_terminal));
+
+    session.reconcile_roster(&[live_terminal.to_string()]);
+
+    let snapshot = session.roster_snapshot();
+    assert!(
+        !snapshot.contains(&bridge_agent_name(dead_terminal)),
+        "the ghost agent-<id> whose terminal is GONE from the live set is reaped — this is the orphaned sidebar entry that survived a restart/reclaim with no liveness reconcile; got {snapshot:?}"
+    );
+    assert!(
+        snapshot.contains(&"dev:claude-code".to_string()),
+        "a claimed role identity (no agent- prefix) is never a reconcile target — only auto-assigned agent-<id> names are reconciled; got {snapshot:?}"
+    );
+    assert!(
+        snapshot.contains(&bridge_agent_name(live_terminal)),
+        "a LEGITIMATE live bare-agent (its terminal IS in the live set) keeps its agent-<id> name — the discriminator is terminal-liveness, so the #1656 agnostic bare-agents are never reaped; got {snapshot:?}"
+    );
+}
+
+#[test]
 fn roster_snapshot_is_sorted() {
     let session = fresh_session();
     session.roster_join("zeta");

@@ -107,6 +107,28 @@ impl Session {
         out
     }
 
+    pub fn reconcile_roster(&self, live_terminal_ids: &[String]) -> Vec<String> {
+        use crate::session::routing_identity::bridge_agent_name;
+        const AUTO_AGENT_PREFIX: &str = "agent-";
+        let live_auto_names: HashSet<String> = live_terminal_ids
+            .iter()
+            .map(|terminal_id| bridge_agent_name(terminal_id))
+            .collect();
+        let mut r = self.roster.lock().unwrap_or_else(|e| e.into_inner());
+        let ghosts: Vec<String> = r
+            .iter()
+            .filter(|identity| {
+                let short = identity.split(':').next().unwrap_or(identity);
+                short.starts_with(AUTO_AGENT_PREFIX) && !live_auto_names.contains(short)
+            })
+            .cloned()
+            .collect();
+        for ghost in &ghosts {
+            r.remove(ghost);
+        }
+        ghosts
+    }
+
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {
         self.storage.append_message(msg)?;
         let _ = self.wake_tx.send(msg.clone());
