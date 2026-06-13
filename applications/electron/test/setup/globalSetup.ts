@@ -75,10 +75,12 @@ export default async function setup({
 }: VitestProvideContext): Promise<() => Promise<void>> {
   const thisFile = fileURLToPath(import.meta.url)
   const repoRoot = join(dirname(thisFile), REPO_ROOT_RELATIVE)
-  const bpmuxBinary = join(repoRoot, 'target', 'debug', 'bpmux')
+  const debugBinary = join(repoRoot, 'target', 'debug', 'bpmux')
+  const releaseBinary = join(repoRoot, 'target', 'release', 'bpmux')
+  const bpmuxBinary = existsSync(debugBinary) ? debugBinary : releaseBinary
   if (!existsSync(bpmuxBinary)) {
     throw new Error(
-      `bpmux binary not found at ${bpmuxBinary}. Run 'cargo build -p bpmux' before vitest.`
+      `bpmux binary not found at ${debugBinary} or ${releaseBinary}. Run 'cargo build -p bpmux' (or build --release) before vitest.`
     )
   }
   tempSessionDir = mkdtempSync(join(tmpdir(), 'bpmux-rtl-'))
