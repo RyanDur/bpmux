@@ -39,7 +39,7 @@ pub struct LivePty {
     writer: Mutex<Box<dyn std::io::Write + Send>>,
     child: Box<dyn portable_pty::Child + Send + Sync>,
     output: broadcast::Sender<Vec<u8>>,
-    paste_mode: Arc<AtomicBool>,
+    paste_capable: Arc<AtomicBool>,
     _retained_tempdir: Option<tempfile::TempDir>,
 }
 
@@ -63,13 +63,13 @@ impl LivePty {
         writer.flush()
     }
 
-    pub fn paste_mode_enabled(&self) -> bool {
-        self.paste_mode.load(Ordering::Relaxed)
+    pub fn paste_capable(&self) -> bool {
+        self.paste_capable.load(Ordering::Relaxed)
     }
 
     pub fn submit_input(&self, line: &[u8]) -> std::io::Result<()> {
         use std::io::Write;
-        let framed = frame_for_paste(line, self.paste_mode_enabled());
+        let framed = frame_for_paste(line, self.paste_capable());
         let mut writer = self.writer.lock().unwrap_or_else(|e| e.into_inner());
         writer.write_all(&framed)?;
         writer.write_all(SUBMIT)?;
@@ -153,15 +153,15 @@ pub fn spawn_pty_retained(
     let writer = pair.master.take_writer().map_err(io_other)?;
     let reader = pair.master.try_clone_reader().map_err(io_other)?;
     let (output, _) = broadcast::channel(PTY_OUTPUT_CAPACITY);
-    let paste_mode = Arc::new(AtomicBool::new(false));
-    spawn_output_reader(reader, output.clone(), paste_mode.clone());
+    let paste_capable = Arc::new(AtomicBool::new(false));
+    spawn_output_reader(reader, output.clone(), paste_capable.clone());
     Ok(LivePty {
         pid,
         master: pair.master,
         writer: Mutex::new(writer),
         child,
         output,
-        paste_mode,
+        paste_capable,
         _retained_tempdir: None,
     })
 }
@@ -169,7 +169,7 @@ pub fn spawn_pty_retained(
 fn spawn_output_reader(
     mut reader: Box<dyn std::io::Read + Send>,
     output: broadcast::Sender<Vec<u8>>,
-    paste_mode: Arc<AtomicBool>,
+    paste_capable: Arc<AtomicBool>,
 ) {
     std::thread::spawn(move || {
         use std::io::Read;
@@ -182,8 +182,8 @@ fn spawn_output_reader(
                     break;
                 }
                 Ok(n) => {
-                    if let Some(state) = sniffer.observe(&buf[..n]) {
-                        paste_mode.store(state, Ordering::Relaxed);
+                    if sniffer.observe(&buf[..n]) == Some(true) {
+                        paste_capable.store(true, Ordering::Relaxed);
                     }
                     let _ = output.send(buf[..n].to_vec());
                 }
@@ -275,7 +275,7 @@ mod tests {
     }
 
     #[test]
-    fn the_output_sniffer_flips_paste_mode_when_the_agent_declares_bracketed_paste() {
+    fn the_output_sniffer_latches_paste_capable_when_the_agent_declares_bracketed_paste() {
         let live = spawn_pty_retained(
             "/bin/sh",
             &[
@@ -287,8 +287,8 @@ mod tests {
         )
         .unwrap();
         assert!(
-            !live.paste_mode_enabled(),
-            "a freshly-spawned terminal defaults to paste-mode OFF until the agent declares it"
+            !live.paste_capable(),
+            "a freshly-spawned terminal is NOT paste-capable until the agent declares bracketed-paste"
         );
         let mut rx = live.subscribe();
         live.write_input(b"go\n").unwrap();
@@ -298,8 +298,41 @@ mod tests {
             "precondition: the child's output (incl the ESC[?2004h that precedes the marker in the same write) must have streamed; got {collected:?}"
         );
         assert!(
-            live.paste_mode_enabled(),
-            "after the agent emits ESC[?2004h, the LivePty output-sniffer must have flipped paste-mode ON — so injected lines get bracketed-paste-framed and auto-submit (a real Enter) instead of parking in the agent's input until a manual keypress (the owner-walk reject)"
+            live.paste_capable(),
+            "after the agent emits ESC[?2004h, the LivePty output-sniffer must have latched paste-capable ON — so injected lines get bracketed-paste-framed and auto-submit (a real Enter) instead of parking in the agent's input until a manual keypress (the owner-walk reject); the latch holds even when the agent later toggles bracketed-paste OFF while busy"
+        );
+    }
+
+    #[test]
+    fn a_paste_capable_tui_that_toggled_paste_off_still_gets_a_bracket_framed_submit() {
+        let live = spawn_pty_retained(
+            "/bin/sh",
+            &[
+                "-c".into(),
+                "printf '\\033[?2004h'; sleep 0.1; printf '\\033[?2004l'; sleep 0.1; exec cat"
+                    .into(),
+            ],
+            None,
+            &[],
+        )
+        .unwrap();
+        let mut rx = live.subscribe();
+        let toggles = drain_subscriber_until(&mut rx, "\x1b[?2004l");
+        assert!(
+            toggles.contains("\x1b[?2004h") && toggles.contains("\x1b[?2004l"),
+            "precondition: the agent DECLARED (ESC[?2004h) then DISABLED (ESC[?2004l) bracketed-paste — capability latched, current-mode now off; got {toggles:?}"
+        );
+
+        live.submit_input(b"reach-the-role").unwrap();
+
+        let seen = drain_subscriber_until(&mut rx, "reach-the-role");
+        assert!(
+            seen.contains("[200~") && seen.contains("[201~") && seen.contains("reach-the-role"),
+            "a paste-CAPABLE raw-TUI that has since toggled paste OFF (busy/rendering) must STILL \
+             receive the delivery bracket-paste-framed (the [200~…[201~ markers wrap the body) — the \
+             capability LATCHES, so the submit never depends on the flickering current paste-mode. \
+             Without the latch, a delivery in the paste-off window ships plain + a bare \\r that a \
+             busy raw-TUI PARKS awaiting a manual Enter (Ryan's 2026-06-13 intermittent reject); got {seen:?}"
         );
     }
 
