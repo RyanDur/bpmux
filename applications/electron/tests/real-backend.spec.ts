@@ -757,6 +757,14 @@ test.describe('real-backend', () => {
       'infinite'
     )
 
+    const motionFramesDir = process.env.BPMUX_MOTION_FRAMES
+    if (motionFramesDir) {
+      for (let frame = 0; frame < 5; frame++) {
+        await dot.screenshot({ path: `${motionFramesDir}/blocked-pulse-${frame}.png` })
+        await win.waitForTimeout(600)
+      }
+    }
+
     await win.emulateMedia({ reducedMotion: 'reduce' })
     await expect
       .poll(() => dot.evaluate((el) => getComputedStyle(el).animationName), { timeout: 5_000 })
