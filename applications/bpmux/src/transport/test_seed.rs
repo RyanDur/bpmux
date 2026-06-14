@@ -259,6 +259,7 @@ pub async fn post_seed_roster(
         orchestrator
             .dispatch(crate::orchestrator::OrchestratorAction::Roster(
                 crate::orchestrator::RosterAction::RosterMemberUpserted {
+                    routing_id: identity.clone(),
                     name,
                     identity: identity.clone(),
                     role,

@@ -28,6 +28,7 @@ pub(crate) async fn dispatch_roster_join(
     orchestrator: &Arc<
         crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
     >,
+    routing_id: &str,
     identity: &str,
 ) {
     use crate::orchestrator::OrchestratorAction;
@@ -37,6 +38,7 @@ pub(crate) async fn dispatch_roster_join(
     orchestrator
         .dispatch(OrchestratorAction::Roster(
             RosterAction::RosterMemberUpserted {
+                routing_id: routing_id.to_string(),
                 name: short,
                 identity: identity.to_string(),
                 role,
@@ -50,14 +52,15 @@ pub(crate) async fn dispatch_roster_leave(
     orchestrator: &Arc<
         crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
     >,
-    identity: &str,
+    routing_id: &str,
 ) {
     use crate::orchestrator::OrchestratorAction;
     use crate::orchestrator::stores::RosterAction;
-    let short = short_name(identity).to_string();
     orchestrator
         .dispatch(OrchestratorAction::Roster(
-            RosterAction::RosterMemberRemoved { name: short },
+            RosterAction::RosterMemberRemoved {
+                routing_id: routing_id.to_string(),
+            },
         ))
         .await;
 }

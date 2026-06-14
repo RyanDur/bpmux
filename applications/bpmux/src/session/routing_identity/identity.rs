@@ -93,6 +93,17 @@ impl RoutingIdentity {
         self.terminal_by_id.get(session_id).cloned()
     }
 
+    pub fn display_for(&self, session_id: &str) -> Option<String> {
+        self.display_by_id.get(session_id).cloned()
+    }
+
+    pub fn session_for_terminal(&self, terminal_id: &str) -> Option<String> {
+        self.terminal_by_id
+            .iter()
+            .find(|(_, linked)| linked.as_str() == terminal_id)
+            .map(|(session_id, _)| session_id.clone())
+    }
+
     pub fn is_terminal_linked(&self, terminal_id: &str) -> bool {
         self.terminal_by_id
             .values()

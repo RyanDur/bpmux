@@ -135,6 +135,7 @@ async fn roster_member_upserted_fires_listener() {
 
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
+            routing_id: "sess-ryan".to_string(),
             name: "ryan".to_string(),
             identity: "ryan:electron".to_string(),
             role: RosterRole::Owner,
@@ -153,6 +154,111 @@ async fn roster_member_upserted_fires_listener() {
 }
 
 #[tokio::test]
+async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_place_no_dup() {
+    let orch = fresh_orch();
+
+    orch.dispatch(OrchestratorAction::Roster(
+        RosterAction::RosterMemberUpserted {
+            routing_id: "sess-1".to_string(),
+            name: "bpmux-designer".to_string(),
+            identity: "bpmux-designer".to_string(),
+            role: RosterRole::Other,
+            presence: Presence::Online,
+        },
+    ))
+    .await;
+    orch.dispatch(OrchestratorAction::Roster(
+        RosterAction::RosterMemberUpserted {
+            routing_id: "sess-1".to_string(),
+            name: "designer".to_string(),
+            identity: "designer".to_string(),
+            role: RosterRole::Designer,
+            presence: Presence::Online,
+        },
+    ))
+    .await;
+
+    let members = orch.roster_store().members();
+    assert_eq!(
+        members.len(),
+        1,
+        "the default and the set-display are ONE row (same routing-id), not two — the dup in Ryan's screenshot is structurally impossible; got {members:?}"
+    );
+    assert_eq!(
+        members[0].name, "designer",
+        "register REPLACES the dir-name default with the set display name in place"
+    );
+    assert_eq!(members[0].role, RosterRole::Designer);
+}
+
+#[tokio::test]
+async fn roster_two_agents_sharing_a_display_are_two_rows_keyed_by_routing_id() {
+    let orch = fresh_orch();
+    for routing_id in ["sess-a", "sess-b"] {
+        orch.dispatch(OrchestratorAction::Roster(
+            RosterAction::RosterMemberUpserted {
+                routing_id: routing_id.to_string(),
+                name: "dev".to_string(),
+                identity: "dev".to_string(),
+                role: RosterRole::Dev,
+                presence: Presence::Online,
+            },
+        ))
+        .await;
+    }
+
+    let members = orch.roster_store().members();
+    assert_eq!(
+        members.len(),
+        2,
+        "two distinct connected agents that happen to share a display-name are TWO rows — the key is the routing-id, never the name (name-keying would collapse them into one); got {members:?}"
+    );
+}
+
+#[tokio::test]
+async fn roster_presence_change_targets_the_row_by_routing_id_not_a_shared_display() {
+    let orch = fresh_orch();
+    for routing_id in ["sess-a", "sess-b"] {
+        orch.dispatch(OrchestratorAction::Roster(
+            RosterAction::RosterMemberUpserted {
+                routing_id: routing_id.to_string(),
+                name: "dev".to_string(),
+                identity: "dev".to_string(),
+                role: RosterRole::Dev,
+                presence: Presence::Online,
+            },
+        ))
+        .await;
+    }
+    orch.dispatch(OrchestratorAction::Roster(
+        RosterAction::RosterPresenceChanged {
+            routing_id: "sess-a".to_string(),
+            presence: Presence::Busy,
+        },
+    ))
+    .await;
+
+    let members = orch.roster_store().members();
+    let by_id = |id: &str| {
+        members
+            .iter()
+            .find(|m| m.routing_id == id)
+            .unwrap()
+            .presence
+    };
+    assert_eq!(
+        by_id("sess-a"),
+        Presence::Busy,
+        "presence targets exactly the addressed routing-id"
+    );
+    assert_eq!(
+        by_id("sess-b"),
+        Presence::Online,
+        "the sibling sharing the same display is untouched — presence is per-id, not per-name"
+    );
+}
+
+#[tokio::test]
 async fn roster_presence_change_fires_only_when_actually_changed() {
     let orch = fresh_orch();
     let rec = Arc::new(RecRoster::default());
@@ -160,6 +266,7 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
 
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
+            routing_id: "sess-dev".to_string(),
             name: "dev".to_string(),
             identity: "dev:claude-code".to_string(),
             role: RosterRole::Dev,
@@ -169,14 +276,14 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
     .await;
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterPresenceChanged {
-            name: "dev".to_string(),
+            routing_id: "sess-dev".to_string(),
             presence: Presence::Online,
         },
     ))
     .await;
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterPresenceChanged {
-            name: "dev".to_string(),
+            routing_id: "sess-dev".to_string(),
             presence: Presence::Busy,
         },
     ))
@@ -269,10 +376,11 @@ async fn ws_dispatch_roster_join_populates_store_with_identity() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    crate::transport::ws::dispatch_roster_join(&orch, "dev:claude-code").await;
+    crate::transport::ws::dispatch_roster_join(&orch, "sess-dev", "dev:claude-code").await;
 
     let members = orch.roster_store().members();
     assert_eq!(members.len(), 1);
+    assert_eq!(members[0].routing_id, "sess-dev");
     assert_eq!(members[0].name, "dev");
     assert_eq!(members[0].identity, "dev:claude-code");
     assert_eq!(members[0].role, RosterRole::Dev);
@@ -288,8 +396,9 @@ async fn ws_dispatch_roster_leave_removes_member() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    crate::transport::ws::dispatch_roster_join(&orch, "designer:claude-code").await;
-    crate::transport::ws::dispatch_roster_leave(&orch, "designer:claude-code").await;
+    crate::transport::ws::dispatch_roster_join(&orch, "sess-designer", "designer:claude-code")
+        .await;
+    crate::transport::ws::dispatch_roster_leave(&orch, "sess-designer").await;
 
     let members = orch.roster_store().members();
     assert!(members.is_empty(), "leave removes member from store");
@@ -313,7 +422,7 @@ async fn ws_dispatch_roster_join_role_mapping_covers_known_short_names() {
     ];
     for (identity, expected_name, expected_role) in cases {
         let orch = fresh_orch();
-        crate::transport::ws::dispatch_roster_join(&orch, identity).await;
+        crate::transport::ws::dispatch_roster_join(&orch, "sess-x", identity).await;
         let members = orch.roster_store().members();
         assert_eq!(members.len(), 1, "identity {identity}: 1 member");
         assert_eq!(members[0].name, expected_name);
@@ -330,6 +439,7 @@ async fn roster_remove_fires_listener_when_member_existed() {
 
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
+            routing_id: "sess-designer".to_string(),
             name: "designer".to_string(),
             identity: "designer:claude-code".to_string(),
             role: RosterRole::Designer,
@@ -339,13 +449,13 @@ async fn roster_remove_fires_listener_when_member_existed() {
     .await;
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberRemoved {
-            name: "designer".to_string(),
+            routing_id: "sess-designer".to_string(),
         },
     ))
     .await;
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberRemoved {
-            name: "designer".to_string(),
+            routing_id: "sess-designer".to_string(),
         },
     ))
     .await;
@@ -367,6 +477,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
 
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
+            routing_id: "sess-dev".to_string(),
             name: "dev".to_string(),
             identity: "dev:claude-code".to_string(),
             role: RosterRole::Dev,
@@ -376,7 +487,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
     .await;
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterPresenceChanged {
-            name: "dev".to_string(),
+            routing_id: "sess-dev".to_string(),
             presence: Presence::Blocked,
         },
     ))
@@ -398,6 +509,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
 fn blocked_roster_member_wire_serializes_blocked_presence() {
     use crate::session::message::RosterMemberWire;
     let wire = RosterMemberWire {
+        routing_id: "sess-dev".to_string(),
         name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),
         role: RosterRole::Dev,

@@ -123,6 +123,7 @@ fn roster_to_wire(members: &[RosterMember]) -> Vec<RosterMemberWire> {
     members
         .iter()
         .map(|m| RosterMemberWire {
+            routing_id: m.routing_id.clone(),
             name: m.name.clone(),
             identity: m.identity.clone(),
             role: m.role,
@@ -213,7 +214,7 @@ pub fn owner_park_presence(
             continue;
         };
         if next != member.presence {
-            changes.push((member.name.clone(), next));
+            changes.push((member.routing_id.clone(), next));
         }
     }
     changes
@@ -247,10 +248,13 @@ impl<T: CiPollFetch> OwnerParkBroadcaster<T> {
         let stories = self.store.all_stories();
         let roster = self.orchestrator.roster_store().members();
         let changes = owner_park_presence(&stories, &roster, delivering);
-        for (name, presence) in changes {
+        for (routing_id, presence) in changes {
             self.orchestrator
                 .dispatch(OrchestratorAction::Roster(
-                    RosterAction::RosterPresenceChanged { name, presence },
+                    RosterAction::RosterPresenceChanged {
+                        routing_id,
+                        presence,
+                    },
                 ))
                 .await;
         }

@@ -117,6 +117,38 @@ impl FakeAgentFarm {
         path
     }
 
+    fn write_dir_default_then_register_agent_script(&self) -> std::path::PathBuf {
+        let claim = self.root.path().join("claim");
+        let work = self.root.path().join("work");
+        let capture = self.root.path().join("capture");
+        let bin = env!("CARGO_BIN_EXE_bpmux");
+        let script = format!(
+            "#!/bin/bash\n\
+             set -m\n\
+             role=\"\"\n\
+             for r in dev pm designer; do\n\
+             \x20 if mkdir \"{claim}/$r\" 2>/dev/null; then role=\"$r\"; break; fi\n\
+             done\n\
+             [ -z \"$role\" ] && exit 1\n\
+             mkdir -p \"{work}/bpmux-$role\"\n\
+             cd \"{work}/bpmux-$role\" || exit 1\n\
+             export BPMUX_ROLE=\"$role\"\n\
+             printf '\\033]7;file://localhost%s\\007' \"$PWD\"\n\
+             \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
+             cat >> \"{capture}/$role\"\n",
+            claim = claim.display(),
+            work = work.display(),
+            capture = capture.display(),
+            bin = bin,
+        );
+        let path = self.root.path().join("dir-default-register-agent.sh");
+        std::fs::write(&path, script).expect("write dir-default register agent");
+        let mut perms = std::fs::metadata(&path).expect("agent meta").permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&path, perms).expect("chmod agent");
+        path
+    }
+
     fn capture_contains(&self, role: &str, needle: &str) -> bool {
         std::fs::read_to_string(self.capture_path(role))
             .map(|s| s.contains(needle))
@@ -555,5 +587,37 @@ async fn a_connected_agent_auto_appears_in_the_roster_with_no_manual_register() 
     assert!(
         present.iter().any(|i| i == "dev"),
         "a CONNECTED agent (terminal-live, auto-detected via the PTY-tap) must auto-appear in the roster under its default display label with NO manual `bpmux register` — roster membership = CONNECTEDNESS, the role is a display label layered on top. This is the regression the off-MCP re-key introduced: it dropped the WS-connect roster-join and agent-detect never replaced it, so the leave-on-death had no join-on-detection counterpart and connected agents vanished from DIRECT until a manual register; got {present:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_dir_name_default_collapses_into_the_registered_role_one_id_keyed_row_no_dup() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_dir_default_then_register_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "ryan",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    let _terminal_id = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "the agent auto-detects (dir-name default) AND registers its role, then is reachable as 'dev'"
+    );
+
+    let roster = wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev")).await;
+    let dev_rows: Vec<&String> = roster.iter().filter(|i| i.contains("dev")).collect();
+    assert_eq!(
+        dev_rows.len(),
+        1,
+        "the dir-name default and the registered role are ONE id-keyed row, not two — this is Ryan's dup screenshot (the gray 'bpmux-dev' default beside the registered 'dev') made impossible by routing-id keying; got roster {roster:?}"
+    );
+    assert_eq!(
+        dev_rows[0], "dev",
+        "register REPLACED the dir-name default ('bpmux-dev') with the set display ('dev') in place on the same routing-id row"
+    );
+    assert!(
+        !roster.iter().any(|i| i == "bpmux-dev"),
+        "the dir-name default leaves NO orphan row once the role is set — the placeholder is shown only until the display name is set; got {roster:?}"
     );
 }

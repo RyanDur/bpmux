@@ -234,6 +234,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
             .members()
             .into_iter()
             .map(|m| RosterMemberWire {
+                routing_id: m.routing_id,
                 name: m.name,
                 identity: m.identity,
                 role: m.role,

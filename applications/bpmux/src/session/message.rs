@@ -160,6 +160,7 @@ pub struct CiSnapshotWire {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RosterMemberWire {
+    pub routing_id: String,
     pub name: String,
     pub identity: String,
     pub role: crate::orchestrator::stores::RosterRole,

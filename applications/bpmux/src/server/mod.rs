@@ -9,6 +9,17 @@ use crate::transport::auth::AuthState;
 
 pub type TestRefreshHandle = Option<Arc<dyn RefreshDriver>>;
 
+fn startup_routing_id(
+    routing: &crate::session::routing_identity::RoutingStore,
+    identity: &str,
+) -> String {
+    routing
+        .resolve(crate::transport::ws::short_name(identity))
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| identity.to_string())
+}
+
 fn spawn_periodic_snapshot(
     store: Arc<BoardStore>,
     storage: Arc<dyn crate::session::storage::Storage>,
@@ -136,10 +147,12 @@ pub async fn run_server(
     let live_terminal_ids = pty_registry.reap_dead_and_list_live();
     let reaped_ghosts = session.reconcile_roster(&live_terminal_ids);
     for identity in &reaped_ghosts {
-        crate::transport::ws::dispatch_roster_leave(&orchestrator, identity).await;
+        let routing_id = startup_routing_id(&routing_store, identity);
+        crate::transport::ws::dispatch_roster_leave(&orchestrator, &routing_id).await;
     }
     for identity in session.roster_snapshot() {
-        crate::transport::ws::dispatch_roster_join(&orchestrator, &identity).await;
+        let routing_id = startup_routing_id(&routing_store, &identity);
+        crate::transport::ws::dispatch_roster_join(&orchestrator, &routing_id, &identity).await;
     }
     if let Some(refresh) = test_refresh.as_ref().cloned() {
         let owner_park =
@@ -176,19 +189,19 @@ pub async fn run_server(
                         let roster = activity_orchestrator.roster_store().members();
                         let changes = crate::orchestrator::activity_presence::activity_presence_changes(
                             &roster,
-                            |name| {
-                                crate::orchestrator::activity_presence::terminal_quiet_for_display(
+                            |routing_id| {
+                                crate::orchestrator::activity_presence::terminal_quiet_for_id(
                                     &activity_routing,
                                     &activity_registry,
-                                    name,
+                                    routing_id,
                                 )
                             },
                         );
-                        for (name, presence) in changes {
+                        for (routing_id, presence) in changes {
                             activity_orchestrator
                                 .dispatch(crate::orchestrator::OrchestratorAction::Roster(
                                     crate::orchestrator::RosterAction::RosterPresenceChanged {
-                                        name,
+                                        routing_id,
                                         presence,
                                     },
                                 ))

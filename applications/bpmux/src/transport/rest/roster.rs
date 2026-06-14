@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use axum::extract::State;
+use axum::extract::Extension;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 use super::shared::{err_body, json_headers};
-use crate::session;
 
 #[derive(serde::Serialize)]
 pub struct RosterEntry {
@@ -13,13 +12,18 @@ pub struct RosterEntry {
     pub role: String,
 }
 
-pub async fn get_roster(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
-    let roster: Vec<RosterEntry> = session
-        .roster_snapshot()
+pub async fn get_roster(
+    Extension(orchestrator): Extension<
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    >,
+) -> impl IntoResponse {
+    let roster: Vec<RosterEntry> = orchestrator
+        .roster_store()
+        .members()
         .into_iter()
-        .map(|identity| {
-            let role = identity.split(':').next().unwrap_or(&identity).to_string();
-            RosterEntry { identity, role }
+        .map(|member| RosterEntry {
+            identity: member.identity,
+            role: member.name,
         })
         .collect();
     let body = serde_json::json!({

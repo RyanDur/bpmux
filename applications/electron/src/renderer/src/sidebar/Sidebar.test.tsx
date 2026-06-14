@@ -13,6 +13,7 @@ const filter: MessageFilter = {
 }
 
 const wire = (overrides: Partial<RosterMemberWire>): RosterMemberWire => ({
+  routing_id: 'sess-dev',
   name: 'dev',
   identity: 'dev:claude-code',
   role: 'Dev',

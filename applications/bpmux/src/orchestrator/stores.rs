@@ -124,6 +124,7 @@ pub enum Presence {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct RosterMember {
+    pub routing_id: String,
     pub name: String,
     pub identity: String,
     pub role: RosterRole,
@@ -133,16 +134,17 @@ pub struct RosterMember {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RosterAction {
     RosterMemberUpserted {
+        routing_id: String,
         name: String,
         identity: String,
         role: RosterRole,
         presence: Presence,
     },
     RosterMemberRemoved {
-        name: String,
+        routing_id: String,
     },
     RosterPresenceChanged {
-        name: String,
+        routing_id: String,
         presence: Presence,
     },
 }
@@ -171,22 +173,33 @@ impl RosterStore {
         let mut state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         match action {
             RosterAction::RosterMemberUpserted {
+                routing_id,
                 name,
                 identity,
                 role,
                 presence,
             } => {
-                if let Some(idx) = state.members.iter().position(|m| &m.name == name) {
+                if let Some(idx) = state
+                    .members
+                    .iter()
+                    .position(|m| &m.routing_id == routing_id)
+                {
                     let m = &mut state.members[idx];
-                    if m.identity == *identity && m.role == *role && m.presence == *presence {
+                    if m.name == *name
+                        && m.identity == *identity
+                        && m.role == *role
+                        && m.presence == *presence
+                    {
                         return StoreReduceOutcome::Unchanged;
                     }
+                    m.name = name.clone();
                     m.identity = identity.clone();
                     m.role = *role;
                     m.presence = *presence;
                     StoreReduceOutcome::Changed
                 } else {
                     state.members.push(RosterMember {
+                        routing_id: routing_id.clone(),
                         name: name.clone(),
                         identity: identity.clone(),
                         role: *role,
@@ -195,17 +208,24 @@ impl RosterStore {
                     StoreReduceOutcome::Changed
                 }
             }
-            RosterAction::RosterMemberRemoved { name } => {
+            RosterAction::RosterMemberRemoved { routing_id } => {
                 let before = state.members.len();
-                state.members.retain(|m| &m.name != name);
+                state.members.retain(|m| &m.routing_id != routing_id);
                 if state.members.len() == before {
                     StoreReduceOutcome::Unchanged
                 } else {
                     StoreReduceOutcome::Changed
                 }
             }
-            RosterAction::RosterPresenceChanged { name, presence } => {
-                let Some(m) = state.members.iter_mut().find(|m| &m.name == name) else {
+            RosterAction::RosterPresenceChanged {
+                routing_id,
+                presence,
+            } => {
+                let Some(m) = state
+                    .members
+                    .iter_mut()
+                    .find(|m| &m.routing_id == routing_id)
+                else {
                     return StoreReduceOutcome::Unchanged;
                 };
                 if m.presence == *presence {

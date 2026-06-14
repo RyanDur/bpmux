@@ -14,17 +14,14 @@ pub fn presence_from_quiet(quiet_for: Duration) -> Presence {
     }
 }
 
-pub fn terminal_quiet_for_display(
+pub fn terminal_quiet_for_id(
     routing: &RoutingStore,
     registry: &LivePtyRegistry,
-    display: &str,
+    session_id: &str,
 ) -> Option<Duration> {
     routing
-        .resolve(display)
-        .into_iter()
-        .filter_map(|session_id| routing.terminal_for(&session_id))
-        .filter_map(|terminal_id| registry.quiet_for(&terminal_id))
-        .min()
+        .terminal_for(session_id)
+        .and_then(|terminal_id| registry.quiet_for(&terminal_id))
 }
 
 pub fn activity_presence_changes(
@@ -39,12 +36,12 @@ pub fn activity_presence_changes(
         ) {
             continue;
         }
-        let Some(quiet) = quiet_for(&member.name) else {
+        let Some(quiet) = quiet_for(&member.routing_id) else {
             continue;
         };
         let next = presence_from_quiet(quiet);
         if next != member.presence {
-            changes.push((member.name.clone(), next));
+            changes.push((member.routing_id.clone(), next));
         }
     }
     changes
@@ -94,6 +91,7 @@ mod tests {
 
     fn member(name: &str, presence: Presence) -> RosterMember {
         RosterMember {
+            routing_id: name.to_string(),
             name: name.to_string(),
             identity: format!("{name}:claude-code"),
             role: RosterRole::Other,
@@ -159,8 +157,8 @@ mod tests {
         registry.insert(terminal_id.to_string(), live);
 
         assert!(
-            terminal_quiet_for_display(&routing, &registry, "dev").is_some(),
-            "the display resolves dev -> session-id -> linked terminal-id -> the live PTY's quiet duration: the session-id IS the key"
+            terminal_quiet_for_id(&routing, &registry, "sess-dev").is_some(),
+            "the routing-id keys the lookup: session-id -> linked terminal-id -> the live PTY's quiet duration. The roster row is keyed by this same session-id, so presence targets the right row even when two agents share a role display-name"
         );
         assert!(
             registry.quiet_for("dev").is_none(),

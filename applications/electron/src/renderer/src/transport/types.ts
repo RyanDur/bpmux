@@ -38,6 +38,7 @@ export type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
 export type PresenceWire = 'Online' | 'Busy' | 'Idle' | 'Offline' | 'Blocked' | 'Help'
 
 export interface RosterMemberWire {
+  routing_id: string
   name: string
   identity: string
   role: RosterRoleWire

@@ -62,9 +62,11 @@ async fn run_ws_session(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
     let routing_session_id = routing.resolve(short_name(&identity)).into_iter().next();
+    let mut roster_key = roster_key_for(&routing_session_id, &identity);
     session.peer_connected();
-    session.roster_join(&identity);
-    dispatch_roster_join(&orchestrator, &identity).await;
+    if let Some(ref key) = roster_key {
+        dispatch_roster_join(&orchestrator, key, &identity).await;
+    }
     let mut broadcast_rx = session.subscribe();
     let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
     heartbeat.tick().await;
@@ -146,15 +148,19 @@ async fn run_ws_session(
                         Some(Ok(WsMessage::Text(text))) => {
                             if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx, &pty_registry, &pty_tx, &mut pty_readers).await? {
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
-                                session.roster_leave(&identity);
-                                dispatch_roster_leave(&orchestrator, &identity).await;
                                 identity = new_identity;
                                 if let Some(ref session_id) = routing_session_id {
                                     routing.rename(session_id, short_name(&identity));
                                 }
-                                session.roster_join(&identity);
-                                dispatch_roster_join(&orchestrator, &identity).await;
-                                                            let _ = session.broadcast(&system_announcement(&format!("{identity} joined")));
+                                let new_key = roster_key_for(&routing_session_id, &identity);
+                                if new_key != roster_key && let Some(ref old) = roster_key {
+                                    dispatch_roster_leave(&orchestrator, old).await;
+                                }
+                                if let Some(ref key) = new_key {
+                                    dispatch_roster_join(&orchestrator, key, &identity).await;
+                                }
+                                roster_key = new_key;
+                                let _ = session.broadcast(&system_announcement(&format!("{identity} joined")));
                             }
                         }
                         Some(Ok(WsMessage::Close(_))) | None => break,
@@ -175,9 +181,21 @@ async fn run_ws_session(
     let leave_msg = system_announcement(&format!("{identity} left"));
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
-    session.roster_leave(&identity);
-    dispatch_roster_leave(&orchestrator, &identity).await;
+    if let Some(ref key) = roster_key {
+        dispatch_roster_leave(&orchestrator, key).await;
+    }
     result
+}
+
+fn roster_key_for(routing_session_id: &Option<String>, identity: &str) -> Option<String> {
+    if is_reserved_display(identity) {
+        return None;
+    }
+    Some(
+        routing_session_id
+            .clone()
+            .unwrap_or_else(|| identity.to_string()),
+    )
 }
 
 async fn wait_for_identify(

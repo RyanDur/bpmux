@@ -108,11 +108,14 @@ pub fn spawn_agent_run_detector(
                             &terminal_id,
                             &mint.job_start_ts,
                         );
-                        session.roster_join(&dir_session.name);
+                        let display = routing
+                            .display_for(&dir_session.id)
+                            .unwrap_or_else(|| dir_session.name.clone());
                         if let Some(orchestrator) = &orchestrator {
                             crate::transport::ws::dispatch_roster_join(
                                 orchestrator,
-                                &dir_session.name,
+                                &dir_session.id,
+                                &display,
                             )
                             .await;
                         }
@@ -129,15 +132,10 @@ pub fn spawn_agent_run_detector(
                 }
             }
         }
-        let claimed_display = routing.display_for_terminal(&terminal_id);
-        let auto_name = crate::session::routing_identity::bridge_agent_name(&terminal_id);
-        let dead_terminal_names: Vec<String> =
-            claimed_display.into_iter().chain([auto_name]).collect();
-        for name in &dead_terminal_names {
-            session.roster_leave(name);
-            if let Some(orchestrator) = &orchestrator {
-                crate::transport::ws::dispatch_roster_leave(orchestrator, name).await;
-            }
+        if let Some(session_id) = routing.session_for_terminal(&terminal_id)
+            && let Some(orchestrator) = &orchestrator
+        {
+            crate::transport::ws::dispatch_roster_leave(orchestrator, &session_id).await;
         }
     });
 }

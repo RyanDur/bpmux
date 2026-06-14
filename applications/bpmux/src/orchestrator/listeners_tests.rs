@@ -146,6 +146,7 @@ fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMem
             return members
                 .into_iter()
                 .map(|m| RosterMember {
+                    routing_id: m.routing_id,
                     name: m.name,
                     identity: m.identity,
                     role: m.role,
@@ -165,6 +166,7 @@ async fn seed_dev_online(
     use crate::orchestrator::stores::RosterAction;
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
+            routing_id: "sess-dev".to_string(),
             name: "dev".to_string(),
             identity: "dev:claude-code".to_string(),
             role: RosterRole::Dev,
@@ -280,6 +282,7 @@ async fn roster_listener_emits_typed_state_delta() {
     let (session, mut rx, _dir) = fresh_session();
     let listener = RosterSessionBroadcaster::new(session);
     let members = vec![RosterMember {
+        routing_id: "sess-ryan".to_string(),
         name: "ryan".to_string(),
         identity: "ryan:electron".to_string(),
         role: RosterRole::Owner,
