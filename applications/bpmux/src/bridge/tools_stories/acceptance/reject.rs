@@ -1,16 +1,11 @@
-use tokio::sync::Mutex;
-
-use crate::bridge::tools::{WsSink, ws_send};
 use crate::bridge::tools_stories::helpers::{
     LABEL_DELIVERED, LABEL_IN_PROGRESS, LABEL_READY, ensure_story_in_canonical_store,
     reap_workflow_labels, role_from_name,
 };
-use crate::bridge::tools_stories::signals::{broadcast_board_invalidate, build_reject_signal};
 
 pub(crate) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -64,14 +59,8 @@ pub(crate) async fn handle_reject_story(
                 transition.to
             )
         })?;
-    let signal = serde_json::to_string(&build_reject_signal(number, &reason))
-        .map_err(|e| format!("signal: {e}"))?;
-    if let Err(e) = ws_send(ws_tx, signal).await {
-        crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
-    }
     let actor = crate::transport::ws::short_name(agent_name).to_string();
     reject_via_canonical_store(r, number, actor, reason.clone(), target_state).await?;
-    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} rejected: {reason}"))
 }
 

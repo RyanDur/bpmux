@@ -2,14 +2,11 @@ use std::sync::Arc;
 
 use serde_json::Map;
 use serde_json::Value;
-use tokio::sync::Mutex;
 
 use crate::board::RefreshDriver;
 use crate::board::domain::StoryState;
 use crate::board::events::EventMeta;
-use crate::bridge::tools_stories::{KEEP_NONE, broadcast_board_invalidate, reap_workflow_labels};
-
-use super::tools::WsSink;
+use crate::bridge::tools_stories::{KEEP_NONE, reap_workflow_labels};
 
 const TARGET_STATE_RETIRED: &str = "retired";
 
@@ -122,7 +119,6 @@ fn audit_comment_body(
 pub(in crate::bridge) async fn handle_move_story(
     args: &Map<String, Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
@@ -274,8 +270,6 @@ pub(in crate::bridge) async fn handle_move_story(
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
     r.mutate_sync(crate::board::BoardEvent::FreeCommentAppended { meta, number, body })
         .map_err(|e| format!("#{number} audit-comment enqueue failed: {e}"))?;
-
-    broadcast_board_invalidate(ws_tx).await;
 
     let pos_msg = match position {
         Some(p) => format!(" at position {p}"),

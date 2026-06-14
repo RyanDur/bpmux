@@ -1,9 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -35,7 +33,6 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     ));
     orch.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(882));
     args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
@@ -44,7 +41,7 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
         "acceptance_test_path".into(),
         serde_json::json!("does/not/exist.spec.ts"),
     );
-    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+    let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
     assert!(result.is_err(), "missing path must block: {result:?}");
     assert!(result.unwrap_err().contains("does not exist"));
 }
@@ -76,12 +73,11 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     ));
     orch.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(883));
     args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
     args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+    let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
     assert!(result.is_ok(), "Chore exempt: {result:?}");
 }
 
@@ -114,11 +110,10 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
     ));
     orch.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(4690));
     args.insert("reason".into(), serde_json::json!("cascade drain test"));
-    handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orch))
+    handle_reject_story(&args, "ryan:human", Some(&orch))
         .await
         .unwrap();
 
@@ -166,11 +161,10 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     ));
     orch.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(4691));
     args.insert("reason".into(), serde_json::json!("cascade drain test"));
-    handle_fail_desk_check(&args, "designer:test", &ws_tx, Some(&orch))
+    handle_fail_desk_check(&args, "designer:test", Some(&orch))
         .await
         .unwrap();
 
@@ -213,11 +207,10 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
     ));
     orch.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(469));
     args.insert("reason".into(), serde_json::json!("rework needed"));
-    let result = handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orch)).await;
+    let result = handle_reject_story(&args, "ryan:human", Some(&orch)).await;
     assert!(result.is_ok(), "reject should succeed: {result:?}");
 
     orch.drain_pending().await.unwrap();
@@ -278,11 +271,10 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     ));
     orch.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(470));
     args.insert("reason".into(), serde_json::json!("not done"));
-    handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orch))
+    handle_reject_story(&args, "ryan:human", Some(&orch))
         .await
         .unwrap();
 
@@ -326,14 +318,13 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
 
     adapter.set_push_failures(true);
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(450));
     args.insert(
         "verified_observation".into(),
         serde_json::json!("drove the label-leak failure-injection scenario"),
     );
-    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+    let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
     assert!(
         result.is_err(),
         "deliver_story must surface drain failure load-bearing: {result:?}"

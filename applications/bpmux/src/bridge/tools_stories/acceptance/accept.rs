@@ -1,21 +1,15 @@
-use tokio::sync::Mutex;
-
 use super::helpers::{
     BugGate, format_bypass_payload, gate_to_id, recent_evidence_for_story,
     verify_bug_question_or_bypass,
 };
-use crate::bridge::tools::{WsSink, ws_send};
+use crate::bridge::tools_stories::build_verdict_reprompt_signal;
 use crate::bridge::tools_stories::helpers::{
     ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
-};
-use crate::bridge::tools_stories::{
-    broadcast_board_invalidate, build_accept_signal, build_verdict_reprompt_signal,
 };
 
 pub(crate) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
     session: Option<&std::sync::Arc<crate::session::Session>>,
 ) -> Result<String, String> {
@@ -103,16 +97,9 @@ pub(crate) async fn handle_accept_story(
             .map_err(|e| e.as_json_string())?;
         }
     }
-    let role = role_from_name(agent_name);
-    let signal = serde_json::to_string(&build_accept_signal(number, role))
-        .map_err(|e| format!("signal: {e}"))?;
-    if let Err(e) = ws_send(ws_tx, signal).await {
-        crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
-    }
     let actor = crate::transport::ws::short_name(agent_name).to_string();
     accept_via_canonical_store(r, number, actor, bypass).await?;
     r.test_race_window_complete();
-    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} accepted and closed"))
 }
 

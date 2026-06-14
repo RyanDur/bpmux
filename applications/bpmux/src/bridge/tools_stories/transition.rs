@@ -1,17 +1,12 @@
-use tokio::sync::Mutex;
-
-use super::super::tools::{WsSink, ws_send};
 use super::helpers::{
     LABEL_IN_PROGRESS, ensure_story_in_canonical_store, reap_workflow_labels,
     require_nonempty_string, role_from_name, validate_acceptance_test_path_at_deliver,
     validate_acceptance_test_path_at_pickup,
 };
-use super::signals::{broadcast_board_invalidate, build_delivery_signals, build_start_signal};
 
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -60,11 +55,6 @@ pub(crate) async fn handle_start_story(
     if let Some(r) = refresh {
         validate_acceptance_test_path_at_pickup(args, number, r.as_ref())?;
     }
-    let signal =
-        serde_json::to_string(&build_start_signal(number)).map_err(|e| format!("signal: {e}"))?;
-    if let Err(e) = ws_send(ws_tx, signal).await {
-        crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
-    }
     let pickup_payload =
         format!("{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}");
     if let Some(r) = refresh {
@@ -97,7 +87,6 @@ pub(crate) async fn handle_start_story(
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} start push failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
         return Ok(match reject_lead {
             Some(lead) => format!("{lead}\n#{number} marked as in progress"),
             None => format!("#{number} marked as in progress"),
@@ -112,7 +101,6 @@ pub(crate) async fn handle_start_story(
 pub(crate) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -159,17 +147,6 @@ pub(crate) async fn handle_deliver_story(
         "verified_observation",
         "verified_observation is required (2026-04-22 retro): articulate what you DROVE end-to-end in the running app, not 'tests pass'. Describe the falsifier scenario you exercised + what you observed. Becomes the diff-point at desk-check.",
     )?;
-    let title = refreshed
-        .as_ref()
-        .and_then(|s| s.as_ref())
-        .map(|story| story.title.clone())
-        .unwrap_or_else(|| format!("#{number}"));
-    for signal in build_delivery_signals(number, &title) {
-        let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
-        if let Err(e) = ws_send(ws_tx, json).await {
-            crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
-        }
-    }
     if let Some(r) = refresh {
         let was_closed = refreshed
             .as_ref()
@@ -205,7 +182,6 @@ pub(crate) async fn handle_deliver_story(
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} drain after deliver failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} delivered: signals sent, labels updated"));
     }
     Err(

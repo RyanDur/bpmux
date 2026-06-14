@@ -1,6 +1,3 @@
-use tokio::sync::Mutex;
-
-use super::super::tools::{WsSink, ws_send};
 use crate::transport::protocol::ClientMessage;
 
 fn role_id_for_purpose(purpose: &str) -> String {
@@ -11,26 +8,6 @@ fn role_id_for_purpose(purpose: &str) -> String {
 }
 
 pub const SYNC_STATUS_UPDATE_MARKER: &str = "__BPMUX_SYNC_STATUS_UPDATE__";
-
-pub(crate) fn build_board_invalidate_signal() -> ClientMessage {
-    ClientMessage::BoardInvalidate
-}
-
-pub(crate) async fn broadcast_board_invalidate(ws_tx: &Mutex<Option<WsSink>>) {
-    let msg = build_board_invalidate_signal();
-    match serde_json::to_string(&msg) {
-        Ok(json) => {
-            if let Err(e) = ws_send(ws_tx, json).await {
-                crate::session::diag::log_diag(&format!(
-                    "bridge: board-invalidate signal failed: {e}"
-                ));
-            }
-        }
-        Err(e) => crate::session::diag::log_diag(&format!(
-            "bridge: board-invalidate serialize failed: {e}"
-        )),
-    }
-}
 
 pub(crate) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMessage> {
     let designer = role_id_for_purpose("designer");

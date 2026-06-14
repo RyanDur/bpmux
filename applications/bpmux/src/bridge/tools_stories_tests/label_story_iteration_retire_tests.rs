@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::connected_ws_sink_for_test;
 use crate::board::BoardStore;
 use crate::board::RefreshDriver;
 use crate::board::SyncOrchestrator;
@@ -40,11 +39,9 @@ fn label_args(label: &str, operation: &str) -> serde_json::Map<String, serde_jso
 #[tokio::test]
 async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
     let (_store, orch) = build_orchestrator().await;
-    let ws_tx = connected_ws_sink_for_test().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
-        &ws_tx,
         Some(&orch),
     )
     .await;
@@ -70,20 +67,14 @@ async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
 #[tokio::test]
 async fn label_story_rejects_iteration_label_for_different_themes_1402() {
     let (_store, orch) = build_orchestrator().await;
-    let ws_tx = connected_ws_sink_for_test().await;
     for label in [
         "iteration-Pegasus.100",
         "iteration-Big-Dipper.200",
         "iteration-Cassiopeia.50",
         "iteration-Carina.999",
     ] {
-        let result = handle_label_story(
-            &label_args(label, "add"),
-            "pm:claude-code",
-            &ws_tx,
-            Some(&orch),
-        )
-        .await;
+        let result =
+            handle_label_story(&label_args(label, "add"), "pm:claude-code", Some(&orch)).await;
         let err = result.expect_err(&format!("{label} must be rejected"));
         assert!(
             err.contains("tool-retired"),
@@ -95,7 +86,6 @@ async fn label_story_rejects_iteration_label_for_different_themes_1402() {
 #[tokio::test]
 async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
     let (store, orch) = build_orchestrator().await;
-    let ws_tx = connected_ws_sink_for_test().await;
     for label in [
         "blocked",
         "deferred",
@@ -105,13 +95,8 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
         "parent-epic-#1384",
         "awaiting team",
     ] {
-        let result = handle_label_story(
-            &label_args(label, "add"),
-            "pm:claude-code",
-            &ws_tx,
-            Some(&orch),
-        )
-        .await;
+        let result =
+            handle_label_story(&label_args(label, "add"), "pm:claude-code", Some(&orch)).await;
         assert!(
             result.is_ok(),
             "{label} should NOT be affected by #1402 retire: {result:?}"
@@ -130,11 +115,9 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
 
 #[tokio::test]
 async fn label_story_rejects_iteration_label_before_canonical_store_check_1402() {
-    let ws_tx = connected_ws_sink_for_test().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
-        &ws_tx,
         None,
     )
     .await;
@@ -148,7 +131,6 @@ async fn label_story_rejects_iteration_label_before_canonical_store_check_1402()
 #[tokio::test]
 async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
     let (_store, orch) = build_orchestrator().await;
-    let ws_tx = connected_ws_sink_for_test().await;
     for label in [
         "iteration-",
         "iteration-Pegasus",
@@ -156,13 +138,8 @@ async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
         "iteration-Pegasus.foo",
         "iteration-#1400",
     ] {
-        let result = handle_label_story(
-            &label_args(label, "add"),
-            "pm:claude-code",
-            &ws_tx,
-            Some(&orch),
-        )
-        .await;
+        let result =
+            handle_label_story(&label_args(label, "add"), "pm:claude-code", Some(&orch)).await;
         assert!(
             result.is_ok() || !result.as_ref().unwrap_err().contains("tool-retired"),
             "{label} should NOT match the canonical iteration-label-shape (so it doesn't trip the retire-gate): {result:?}"
@@ -173,11 +150,9 @@ async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
 #[tokio::test]
 async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
     let (_store, orch) = build_orchestrator().await;
-    let ws_tx = connected_ws_sink_for_test().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "remove"),
         "pm:claude-code",
-        &ws_tx,
         Some(&orch),
     )
     .await;
@@ -190,11 +165,9 @@ async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
 #[tokio::test]
 async fn non_pm_role_rejected_before_retire_gate_fires_1402() {
     let (_store, orch) = build_orchestrator().await;
-    let ws_tx = connected_ws_sink_for_test().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "dev:claude-code",
-        &ws_tx,
         Some(&orch),
     )
     .await;

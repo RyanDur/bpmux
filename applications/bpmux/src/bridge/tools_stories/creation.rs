@@ -1,15 +1,10 @@
-use tokio::sync::Mutex;
-
-use super::super::tools::WsSink;
 use super::helpers::{
     compose_iteration_body, compose_story_body, require_nonempty_string, role_from_name,
 };
-use super::signals::broadcast_board_invalidate;
 
 pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let title = args
@@ -59,7 +54,6 @@ pub(crate) async fn handle_create_story(
         composed_body,
         story_type,
         parent_epic,
-        ws_tx,
     )
     .await?;
     Ok(match parent_epic {
@@ -124,7 +118,6 @@ async fn create_and_broadcast_story_events(
     composed_body: String,
     story_type: crate::board::domain::StoryType,
     parent_epic: Option<u64>,
-    ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<u64, String> {
     let number = r
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
@@ -152,14 +145,12 @@ async fn create_and_broadcast_story_events(
         })
         .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
     }
-    broadcast_board_invalidate(ws_tx).await;
     Ok(number)
 }
 
 pub(crate) async fn handle_create_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let workflow = crate::workflow::current_workflow();
@@ -219,6 +210,5 @@ pub(crate) async fn handle_create_iteration(
         label: "iteration".to_string(),
     })
     .map_err(|e| format!("#{number} iteration label enqueue failed: {e}"))?;
-    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("iteration created: #{number} {title}"))
 }

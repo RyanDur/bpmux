@@ -5,14 +5,13 @@ use super::helpers::{
     KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, require_purpose,
     role_from_name,
 };
-use super::signals::{broadcast_board_invalidate, build_iteration_close_signal};
+use super::signals::build_iteration_close_signal;
 
 const REASON_CITE_MIN_CHARS: usize = 16;
 
 pub(crate) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -80,7 +79,6 @@ pub(crate) async fn handle_close_story(
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} close push failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} closed: {reason}"));
     }
     Err(

@@ -1,25 +1,15 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
 async fn accept_requires_refresh_after_5n_fallback_retirement() {
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213, "would_file_bug": false});
-    let result = handle_accept_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        None,
-        None,
-    )
-    .await;
+    let result = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", None, None).await;
     assert!(
         result.is_err(),
         "expected refresh-required Err, got {result:?}"
@@ -33,7 +23,6 @@ async fn accept_rejects_unknown_role_via_handler() {
     use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
     use std::sync::Arc;
 
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
@@ -44,7 +33,6 @@ async fn accept_rejects_unknown_role_via_handler() {
     let result = handle_accept_story(
         args.as_object().unwrap(),
         "intern:claude-code",
-        &ws_tx,
         Some(&orchestrator),
         None,
     )
@@ -62,17 +50,10 @@ async fn accept_rejects_unknown_role_via_handler() {
 
 #[tokio::test]
 async fn accept_requires_would_file_bug_arg() {
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213});
-    let err = handle_accept_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        None,
-        None,
-    )
-    .await
-    .expect_err("missing would_file_bug should be rejected");
+    let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", None, None)
+        .await
+        .expect_err("missing would_file_bug should be rejected");
     assert!(
         err.contains("would_file_bug"),
         "rejection cites the missing arg: {err}"
@@ -85,17 +66,10 @@ async fn accept_requires_would_file_bug_arg() {
 
 #[tokio::test]
 async fn accept_blocks_when_would_file_bug_true_without_force() {
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213, "would_file_bug": true});
-    let err = handle_accept_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        None,
-        None,
-    )
-    .await
-    .expect_err("would_file_bug=true should block accept");
+    let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", None, None)
+        .await
+        .expect_err("would_file_bug=true should block accept");
     assert!(
         err.contains("reject_story"),
         "block routes to alternate gate: {err}"
@@ -108,17 +82,10 @@ async fn accept_blocks_when_would_file_bug_true_without_force() {
 
 #[tokio::test]
 async fn accept_force_bypass_requires_bypass_reason() {
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213, "would_file_bug": true, "force": true});
-    let err = handle_accept_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        None,
-        None,
-    )
-    .await
-    .expect_err("force without bypass_reason should be rejected");
+    let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", None, None)
+        .await
+        .expect_err("force without bypass_reason should be rejected");
     assert!(
         err.contains("bypass_reason"),
         "rejection cites the missing arg: {err}"
@@ -127,12 +94,10 @@ async fn accept_force_bypass_requires_bypass_reason() {
 
 #[tokio::test]
 async fn pass_desk_check_requires_would_file_bug_arg() {
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 201, "acceptor": "owner"});
     let err = handle_pass_desk_check(
         args.as_object().unwrap(),
         "designer:claude-code",
-        &ws_tx,
         None,
         None,
     )
@@ -150,12 +115,10 @@ async fn pass_desk_check_requires_would_file_bug_arg() {
 
 #[tokio::test]
 async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 201, "acceptor": "owner", "would_file_bug": true});
     let err = handle_pass_desk_check(
         args.as_object().unwrap(),
         "designer:claude-code",
-        &ws_tx,
         None,
         None,
     )
@@ -175,7 +138,6 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![Story::new_minimal(
@@ -200,7 +162,6 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     let result = handle_accept_story(
         args.as_object().unwrap(),
         "ryan:human",
-        &ws_tx,
         Some(&orchestrator),
         None,
     )
@@ -226,7 +187,6 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
 
 #[tokio::test]
 async fn reject_allows_pm_designer_dev_owner() {
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     for caller in [
         "ryan:human",
         "pm:claude-code",
@@ -234,7 +194,7 @@ async fn reject_allows_pm_designer_dev_owner() {
         "dev:claude-code",
     ] {
         let args = serde_json::json!({"number": 1, "reason": "needs rework"});
-        let result = handle_reject_story(args.as_object().unwrap(), caller, &ws_tx, None).await;
+        let result = handle_reject_story(args.as_object().unwrap(), caller, None).await;
         assert!(
             result.is_ok() || !result.as_ref().unwrap_err().contains("restricted to"),
             "reject must allow {caller}; got: {result:?}"
@@ -248,7 +208,6 @@ async fn reject_rejects_unknown_role_via_handler() {
     use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
     use std::sync::Arc;
 
-    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
@@ -259,7 +218,6 @@ async fn reject_rejects_unknown_role_via_handler() {
     let result = handle_reject_story(
         args.as_object().unwrap(),
         "intern:claude-code",
-        &ws_tx,
         Some(&orchestrator),
     )
     .await;

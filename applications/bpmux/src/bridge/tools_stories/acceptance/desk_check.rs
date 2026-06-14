@@ -1,9 +1,6 @@
-use tokio::sync::Mutex;
-
 use super::helpers::{
     BugGate, format_bypass_payload, recent_evidence_for_story, verify_bug_question_or_bypass,
 };
-use crate::bridge::tools::{WsSink, ws_send};
 use crate::bridge::tools_stories::helpers::{
     LABEL_AWAITING_DEV, LABEL_AWAITING_OWNER, LABEL_AWAITING_TEAM, LABEL_DELIVERED,
     ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
@@ -69,17 +66,12 @@ fn parse_acceptor_arg(
         .to_string()
     })
 }
-use crate::bridge::tools_stories::signals::{
-    broadcast_board_invalidate, build_fail_desk_check_signal, build_pass_desk_check_signals,
-    classify_for_pass_desk_check,
-};
 
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
 
 pub(crate) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
     session: Option<&std::sync::Arc<crate::session::Session>>,
 ) -> Result<String, String> {
@@ -128,17 +120,6 @@ pub(crate) async fn handle_pass_desk_check(
     } else {
         false
     };
-    let story_type = classify_for_pass_desk_check(number, refresh);
-    let labels = refresh
-        .and_then(|r| r.story(number))
-        .map(|s| s.raw_labels)
-        .unwrap_or_default();
-    for msg in build_pass_desk_check_signals(number, story_type, &labels) {
-        let signal = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
-        if let Err(e) = ws_send(ws_tx, signal).await {
-            crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
-        }
-    }
     if let Some(r) = refresh {
         let meta = crate::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
@@ -189,7 +170,6 @@ pub(crate) async fn handle_pass_desk_check(
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} drain after pass_desk_check failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
         return Ok(format!(
             "#{number} passed desk-check: signal sent, label applied"
         ));
@@ -207,7 +187,6 @@ fn label_for_state(state: crate::board::domain::StoryState) -> &'static str {
 pub(crate) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -263,11 +242,6 @@ pub(crate) async fn handle_fail_desk_check(
                 transition.to
             )
         })?;
-    let signal = serde_json::to_string(&build_fail_desk_check_signal(number, reason))
-        .map_err(|e| format!("signal: {e}"))?;
-    if let Err(e) = ws_send(ws_tx, signal).await {
-        crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
-    }
     if let Some(r) = refresh {
         let meta = crate::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
@@ -299,7 +273,6 @@ pub(crate) async fn handle_fail_desk_check(
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} drain after fail_desk_check failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
         return Ok(format!(
             "#{number} failed desk-check: signal sent, label applied"
         ));

@@ -1,9 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -43,11 +41,10 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(300));
     args.insert("epic_number".into(), serde_json::json!(457));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(300).unwrap();
@@ -93,11 +90,10 @@ async fn set_parent_epic_rejects_non_existent_epic() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(310));
     args.insert("epic_number".into(), serde_json::json!(9999));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found"));
 }
@@ -136,11 +132,10 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(311));
     args.insert("epic_number".into(), serde_json::json!(458));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.contains("not an Epic"));
@@ -174,11 +169,9 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(301));
-    let result =
-        handle_unset_parent_epic(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_unset_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(301).unwrap();
@@ -196,22 +189,20 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
 
 #[tokio::test]
 async fn set_parent_epic_rejects_non_pm_role() {
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(1));
     args.insert("epic_number".into(), serde_json::json!(2));
-    let result = handle_set_parent_epic(&args, "dev:claude-code", &ws_tx, None).await;
+    let result = handle_set_parent_epic(&args, "dev:claude-code", None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to pm"));
 }
 
 #[tokio::test]
 async fn set_parent_epic_rejects_self_parent() {
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(42));
     args.insert("epic_number".into(), serde_json::json!(42));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", &ws_tx, None).await;
+    let result = handle_set_parent_epic(&args, "pm:claude-code", None).await;
     assert!(result.is_err());
     assert!(
         result
@@ -248,7 +239,6 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("title".into(), serde_json::json!("child of epic"));
     args.insert("user_job".into(), serde_json::json!("user job here"));
@@ -257,7 +247,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
         serde_json::json!("would reject if X"),
     );
     args.insert("parent_epic".into(), serde_json::json!(500));
-    let result = handle_create_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(
         result.is_ok(),
         "create-with-parent should succeed: {result:?}"
@@ -304,7 +294,6 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("title".into(), serde_json::json!("orphan"));
     args.insert("user_job".into(), serde_json::json!("user job here"));
@@ -313,7 +302,7 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
         serde_json::json!("would reject if X"),
     );
     args.insert("parent_epic".into(), serde_json::json!(501));
-    let result = handle_create_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not an Epic"));
     let drained = orchestrator.drain_pending().await.unwrap();

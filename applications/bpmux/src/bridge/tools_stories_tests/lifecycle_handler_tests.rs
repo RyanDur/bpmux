@@ -1,9 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -36,7 +34,6 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(203));
     args.insert(
@@ -47,7 +44,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         "falsifier_reframing".into(),
         serde_json::json!("reframing content"),
     );
-    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_start_story(&args, "dev:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(203).unwrap();
@@ -127,14 +124,13 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(204));
     args.insert(
         "verified_observation".into(),
         serde_json::json!("drove the falsifier scenario end-to-end"),
     );
-    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_deliver_story(&args, "dev:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(204).unwrap();
@@ -202,11 +198,10 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(205));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    let result = handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orchestrator), None).await;
+    let result = handle_accept_story(&args, "ryan:human", Some(&orchestrator), None).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(205).unwrap();
@@ -301,11 +296,10 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     ));
     orch.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(5070));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orch), None)
+    handle_accept_story(&args, "ryan:human", Some(&orch), None)
         .await
         .unwrap();
 
@@ -376,11 +370,10 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(206));
     args.insert("reason".into(), serde_json::json!("scope mismatch"));
-    let result = handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_reject_story(&args, "ryan:human", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(206).unwrap();
@@ -458,7 +451,6 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert(
         "title".into(),
@@ -474,7 +466,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     );
     args.insert("body".into(), serde_json::json!("author note"));
 
-    let result = handle_create_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
     let response = result.unwrap();
     assert!(
@@ -535,26 +527,38 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let (ws_tx, captured) = connected_ws_sink_with_capture().await;
+    let dir = tempfile::TempDir::new().unwrap();
+    let (tx, _rx0) = tokio::sync::broadcast::channel(16);
+    let session = Arc::new(crate::session::log::Session::new(
+        dir.path().to_path_buf(),
+        "ryan".to_string(),
+        tx,
+    ));
+    let mut rx = session.subscribe();
+
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(207));
     args.insert(
         "verified_observation".into(),
         serde_json::json!("ran end-to-end"),
     );
-    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = crate::bridge::dispatch_test_deliver_story(
+        args,
+        "dev:claude-code",
+        Some(&orchestrator),
+        &session,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    let messages = captured.lock().await;
-    let signal_text_combined = messages.join("\n");
+    let mut combined = String::new();
+    while let Ok(msg) = rx.try_recv() {
+        combined.push_str(&msg.text);
+        combined.push('\n');
+    }
     assert!(
-        signal_text_combined.contains("store-titled-207"),
-        "migrated deliver path must use store-side title; expected `store-titled-207` in WS signals: {signal_text_combined}"
-    );
-    assert!(
-        !signal_text_combined.contains("(fake) story #207"),
-        "migrated deliver path must NOT fall back to FakeTracker title; FakeTracker text leaked: {signal_text_combined}"
+        combined.contains("store-titled-207"),
+        "migrated deliver path must use the store-side title in the delivery signal broadcast via session; got: {combined}"
     );
 }
 
@@ -593,12 +597,11 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(1524));
     args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator))
+    let result = handle_start_story(&args, "dev:claude-code", Some(&orchestrator))
         .await
         .expect("start_story succeeds");
 
@@ -670,12 +673,11 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(1525));
     args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator))
+    let result = handle_start_story(&args, "dev:claude-code", Some(&orchestrator))
         .await
         .expect("start_story succeeds");
 

@@ -1,6 +1,3 @@
-use tokio::sync::Mutex;
-
-use super::super::tools::WsSink;
 use crate::board::label_codec::LabelCodec;
 
 pub(crate) fn reorder_story_retired_error() -> String {
@@ -16,7 +13,6 @@ pub(crate) fn reorder_story_retired_error() -> String {
 pub(crate) async fn handle_reorder_story(
     _args: &serde_json::Map<String, serde_json::Value>,
     _agent_name: &str,
-    _ws_tx: &Mutex<Option<WsSink>>,
     _refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     Err(reorder_story_retired_error())

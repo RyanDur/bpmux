@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::connected_ws_sink_for_test;
 use crate::board::BoardStore;
 use crate::board::RefreshDriver;
 use crate::board::SyncOrchestrator;
@@ -57,8 +56,7 @@ fn args(iteration_number: u64) -> serde_json::Map<String, serde_json::Value> {
 #[tokio::test]
 async fn pm_designates_current_iteration_sets_is_current_1540() {
     let (store, orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    let ws_tx = connected_ws_sink_for_test().await;
-    handle_designate_current_iteration(&args(1552), "pm:claude-code", &ws_tx, Some(&orch))
+    handle_designate_current_iteration(&args(1552), "pm:claude-code", Some(&orch))
         .await
         .expect("designate should succeed");
     assert!(
@@ -74,11 +72,10 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
         iteration_seed(1552, "Carina"),
     ])
     .await;
-    let ws_tx = connected_ws_sink_for_test().await;
-    handle_designate_current_iteration(&args(1398), "pm:claude-code", &ws_tx, Some(&orch))
+    handle_designate_current_iteration(&args(1398), "pm:claude-code", Some(&orch))
         .await
         .expect("first designate");
-    handle_designate_current_iteration(&args(1552), "pm:claude-code", &ws_tx, Some(&orch))
+    handle_designate_current_iteration(&args(1552), "pm:claude-code", Some(&orch))
         .await
         .expect("second designate");
     assert!(
@@ -94,11 +91,9 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
 #[tokio::test]
 async fn designate_rejects_non_iteration_story_1540() {
     let (_store, orch) = build_orchestrator(vec![feature_seed(1500)]).await;
-    let ws_tx = connected_ws_sink_for_test().await;
-    let err =
-        handle_designate_current_iteration(&args(1500), "pm:claude-code", &ws_tx, Some(&orch))
-            .await
-            .expect_err("a non-Iteration story must be rejected");
+    let err = handle_designate_current_iteration(&args(1500), "pm:claude-code", Some(&orch))
+        .await
+        .expect_err("a non-Iteration story must be rejected");
     assert!(
         err.contains("not an Iteration"),
         "error names the story-type mismatch: {err}"
@@ -108,8 +103,7 @@ async fn designate_rejects_non_iteration_story_1540() {
 #[tokio::test]
 async fn designate_rejected_for_non_pm_1540() {
     let (_store, orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    let ws_tx = connected_ws_sink_for_test().await;
-    handle_designate_current_iteration(&args(1552), "dev:claude-code", &ws_tx, Some(&orch))
+    handle_designate_current_iteration(&args(1552), "dev:claude-code", Some(&orch))
         .await
         .expect_err("designate is PM-lane; non-pm is rejected");
 }

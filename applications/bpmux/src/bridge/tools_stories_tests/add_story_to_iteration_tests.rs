@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::connected_ws_sink_for_test;
 use crate::board::BoardEvent;
 use crate::board::BoardStore;
 use crate::board::RefreshDriver;
@@ -68,14 +67,8 @@ async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
         member_seed(1500, "child story"),
     ])
     .await;
-    let ws_tx = connected_ws_sink_for_test().await;
-    let result = handle_add_story_to_iteration(
-        &args(1397, 1500, 100),
-        "pm:claude-code",
-        &ws_tx,
-        Some(&orch),
-    )
-    .await;
+    let result =
+        handle_add_story_to_iteration(&args(1397, 1500, 100), "pm:claude-code", Some(&orch)).await;
     assert!(
         result.is_ok(),
         "PM add_story_to_iteration must succeed: {result:?}"
@@ -91,15 +84,13 @@ async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed_1399() {
         member_seed(1500, "x"),
     ])
     .await;
-    let ws_tx = connected_ws_sink_for_test().await;
     for caller in [
         "designer:claude-code",
         "dev:claude-code",
         "intern:claude-code",
     ] {
         let result =
-            handle_add_story_to_iteration(&args(1397, 1500, 100), caller, &ws_tx, Some(&orch))
-                .await;
+            handle_add_story_to_iteration(&args(1397, 1500, 100), caller, Some(&orch)).await;
         let err = result.expect_err(&format!("{caller} must be substrate-refused"));
         assert!(
             err.contains("workflow-role-not-allowed"),
@@ -128,10 +119,8 @@ async fn owner_bypasses_add_story_to_iteration_via_superset_1548() {
         member_seed(1500, "child story"),
     ])
     .await;
-    let ws_tx = connected_ws_sink_for_test().await;
     let result =
-        handle_add_story_to_iteration(&args(1397, 1500, 100), "ryan:human", &ws_tx, Some(&orch))
-            .await;
+        handle_add_story_to_iteration(&args(1397, 1500, 100), "ryan:human", Some(&orch)).await;
     assert!(
         result.is_ok(),
         "owner (ryan) bypasses the pm-only add-to-iteration role-guard via the #1548 superset: {result:?}"
@@ -145,14 +134,8 @@ async fn parent_must_be_iteration_storytype_rejects_non_iteration_1399() {
         member_seed(1500, "child"),
     ])
     .await;
-    let ws_tx = connected_ws_sink_for_test().await;
-    let result = handle_add_story_to_iteration(
-        &args(2000, 1500, 100),
-        "pm:claude-code",
-        &ws_tx,
-        Some(&orch),
-    )
-    .await;
+    let result =
+        handle_add_story_to_iteration(&args(2000, 1500, 100), "pm:claude-code", Some(&orch)).await;
     let err = result.expect_err("non-Iteration parent must be rejected");
     assert!(
         err.contains("not an Iteration"),
@@ -163,14 +146,8 @@ async fn parent_must_be_iteration_storytype_rejects_non_iteration_1399() {
 #[tokio::test]
 async fn self_add_rejected_1399() {
     let (_store, orch) = build_orchestrator(vec![iteration_seed(1397, "Telescopium")]).await;
-    let ws_tx = connected_ws_sink_for_test().await;
-    let result = handle_add_story_to_iteration(
-        &args(1397, 1397, 100),
-        "pm:claude-code",
-        &ws_tx,
-        Some(&orch),
-    )
-    .await;
+    let result =
+        handle_add_story_to_iteration(&args(1397, 1397, 100), "pm:claude-code", Some(&orch)).await;
     let err = result.expect_err("self-add must be rejected");
     assert!(
         err.contains("cannot be added to itself"),
@@ -180,11 +157,10 @@ async fn self_add_rejected_1399() {
 
 #[tokio::test]
 async fn missing_iteration_number_rejected_1399() {
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut m = serde_json::Map::new();
     m.insert("story_number".into(), serde_json::json!(1500));
     m.insert("position".into(), serde_json::json!(100));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", &ws_tx, None).await;
+    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
     let err = result.expect_err("missing iteration_number must be rejected");
     assert!(
         err.contains("iteration_number"),
@@ -194,11 +170,10 @@ async fn missing_iteration_number_rejected_1399() {
 
 #[tokio::test]
 async fn missing_story_number_rejected_1399() {
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut m = serde_json::Map::new();
     m.insert("iteration_number".into(), serde_json::json!(1397));
     m.insert("position".into(), serde_json::json!(100));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", &ws_tx, None).await;
+    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
     let err = result.expect_err("missing story_number must be rejected");
     assert!(
         err.contains("story_number"),
@@ -208,11 +183,10 @@ async fn missing_story_number_rejected_1399() {
 
 #[tokio::test]
 async fn missing_position_rejected_1399() {
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut m = serde_json::Map::new();
     m.insert("iteration_number".into(), serde_json::json!(1397));
     m.insert("story_number".into(), serde_json::json!(1500));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", &ws_tx, None).await;
+    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
     let err = result.expect_err("missing position must be rejected");
     assert!(
         err.contains("position"),
@@ -232,15 +206,9 @@ async fn enqueues_iteration_membership_set_event_with_correct_args_1399() {
         Arc::clone(&adapter),
     ));
     orch.refresh_all().await.unwrap();
-    let ws_tx = connected_ws_sink_for_test().await;
-    handle_add_story_to_iteration(
-        &args(1397, 1500, 250),
-        "pm:claude-code",
-        &ws_tx,
-        Some(&orch),
-    )
-    .await
-    .unwrap();
+    handle_add_story_to_iteration(&args(1397, 1500, 250), "pm:claude-code", Some(&orch))
+        .await
+        .unwrap();
     let drained = orch.drain_pending().await.unwrap();
     assert_eq!(drained, 1);
     let pushed = adapter.pushed_events();
@@ -281,15 +249,9 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
         Arc::clone(&adapter),
     ));
     orch.refresh_all().await.unwrap();
-    let ws_tx = connected_ws_sink_for_test().await;
-    handle_add_story_to_iteration(
-        &args(1396, 1500, 300),
-        "pm:claude-code",
-        &ws_tx,
-        Some(&orch),
-    )
-    .await
-    .unwrap();
+    handle_add_story_to_iteration(&args(1396, 1500, 300), "pm:claude-code", Some(&orch))
+        .await
+        .unwrap();
     let updated = store.story(1500).expect("member present after move");
     assert_eq!(
         updated.iteration_membership,

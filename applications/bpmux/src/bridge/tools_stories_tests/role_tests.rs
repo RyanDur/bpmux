@@ -1,9 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -117,16 +115,6 @@ fn build_iteration_close_signal_broadcasts_to_all() {
 }
 
 #[test]
-fn build_board_invalidate_signal_is_the_structured_board_invalidate_variant() {
-    let signal = build_board_invalidate_signal();
-    assert!(
-        matches!(signal, ClientMessage::BoardInvalidate),
-        "board-invalidate must be the structured ClientMessage::BoardInvalidate variant, not a \
-         text-marker — the server translates it into a board_invalidated state-delta"
-    );
-}
-
-#[test]
 fn close_story_is_pm_only_gate_for_non_owner_roles() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let result = require_role(caller, &["pm"], "close");
@@ -149,11 +137,10 @@ fn close_story_allows_pm() {
 
 #[tokio::test]
 async fn comment_on_story_rejects_empty_body() {
-    let ws_tx = tokio::sync::Mutex::new(None);
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!(""));
-    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, None).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", None).await;
     assert!(
         result.is_err(),
         "empty body must be rejected: got {result:?}"
@@ -163,22 +150,20 @@ async fn comment_on_story_rejects_empty_body() {
 
 #[tokio::test]
 async fn comment_on_story_rejects_whitespace_only_body() {
-    let ws_tx = tokio::sync::Mutex::new(None);
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!("   \n  "));
-    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, None).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", None).await;
     assert!(result.is_err(), "whitespace-only body must be rejected");
 }
 
 #[tokio::test]
 async fn comment_on_story_rejects_when_refresh_absent() {
-    let ws_tx = tokio::sync::Mutex::new(None);
     for caller in ["dev:claude-code", "pm:claude-code", "designer:claude-code"] {
         let mut args = serde_json::Map::new();
         args.insert("number".to_string(), serde_json::json!(42));
         args.insert("body".to_string(), serde_json::json!("a real comment"));
-        let result = handle_comment_on_story(&args, caller, &ws_tx, None).await;
+        let result = handle_comment_on_story(&args, caller, None).await;
         assert!(
             result.is_err(),
             "caller={caller} expected Err, got {result:?}"
@@ -238,10 +223,9 @@ fn move_args(
 
 #[tokio::test]
 async fn move_story_bare_column_move_is_pm_only_1548() {
-    let ws_tx = tokio::sync::Mutex::new(None);
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", None);
-        let err = crate::bridge::move_story::handle_move_story(&args, caller, &ws_tx, None)
+        let err = crate::bridge::move_story::handle_move_story(&args, caller, None)
             .await
             .expect_err(&format!("{caller}: bare column-move must be role-rejected"));
         assert!(
@@ -253,10 +237,9 @@ async fn move_story_bare_column_move_is_pm_only_1548() {
 
 #[tokio::test]
 async fn move_story_positioned_move_is_pm_only_1548() {
-    let ws_tx = tokio::sync::Mutex::new(None);
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", Some(1));
-        let err = crate::bridge::move_story::handle_move_story(&args, caller, &ws_tx, None)
+        let err = crate::bridge::move_story::handle_move_story(&args, caller, None)
             .await
             .expect_err(&format!("{caller}: positioned move must be role-rejected"));
         assert!(
@@ -268,13 +251,11 @@ async fn move_story_positioned_move_is_pm_only_1548() {
 
 #[tokio::test]
 async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
-    let ws_tx = tokio::sync::Mutex::new(None);
     for position in [None, Some(1)] {
         let args = move_args(42, "ready", position);
-        let err =
-            crate::bridge::move_story::handle_move_story(&args, "pm:claude-code", &ws_tx, None)
-                .await
-                .expect_err("pm passes the role-gate then hits refresh-absent");
+        let err = crate::bridge::move_story::handle_move_story(&args, "pm:claude-code", None)
+            .await
+            .expect_err("pm passes the role-gate then hits refresh-absent");
         assert!(
             !err.contains("workflow-role-not-allowed"),
             "pm must NOT be role-rejected (position={position:?}); got {err}"
@@ -288,7 +269,6 @@ async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
 
 #[tokio::test]
 async fn reorder_story_returns_tool_retired_regardless_of_role_1403() {
-    let ws_tx = tokio::sync::Mutex::new(None);
     let args = reorder_args(42, 1, "ready");
     for caller in [
         "designer:claude-code",
@@ -297,7 +277,7 @@ async fn reorder_story_returns_tool_retired_regardless_of_role_1403() {
         "intern:claude-code",
         "pm:claude-code",
     ] {
-        let result = handle_reorder_story(&args, caller, &ws_tx, None).await;
+        let result = handle_reorder_story(&args, caller, None).await;
         let err = result.expect_err(&format!(
             "{caller}: reorder_story is retired; must return tool-retired"
         ));
@@ -322,9 +302,8 @@ async fn reorder_story_returns_tool_retired_regardless_of_role_1403() {
 
 #[tokio::test]
 async fn reorder_story_retire_returns_actionable_successor_path_1403() {
-    let ws_tx = tokio::sync::Mutex::new(None);
     let args = reorder_args(42, 1, "ready");
-    let err = handle_reorder_story(&args, "pm:claude-code", &ws_tx, None)
+    let err = handle_reorder_story(&args, "pm:claude-code", None)
         .await
         .expect_err("retired tool must error");
     assert!(

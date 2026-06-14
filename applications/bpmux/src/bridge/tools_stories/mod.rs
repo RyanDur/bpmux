@@ -32,13 +32,13 @@ pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
 pub use signals::SYNC_STATUS_UPDATE_MARKER;
 #[cfg(test)]
 pub(crate) use signals::{
-    addressee_for_pass_desk_check, build_board_invalidate_signal, build_iteration_close_signal,
+    addressee_for_pass_desk_check, build_iteration_close_signal,
     build_pass_desk_check_pm_present_signal, build_pass_desk_check_signal,
 };
 pub(crate) use signals::{
-    broadcast_board_invalidate, build_accept_signal, build_delivery_signals,
-    build_fail_desk_check_signal, build_pass_desk_check_signals, build_reject_signal,
-    build_start_signal, build_verdict_reprompt_signal, classify_for_pass_desk_check,
+    build_accept_signal, build_delivery_signals, build_fail_desk_check_signal,
+    build_pass_desk_check_signals, build_reject_signal, build_start_signal,
+    build_verdict_reprompt_signal, classify_for_pass_desk_check,
 };
 pub(crate) use transition::{handle_deliver_story, handle_start_story};
 pub(crate) use view::handle_view_board;

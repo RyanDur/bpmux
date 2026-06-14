@@ -1,8 +1,4 @@
-use tokio::sync::Mutex;
-
-use super::super::tools::WsSink;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose, role_from_name};
-use super::signals::broadcast_board_invalidate;
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
     use crate::board::label_codec::LabelCodec;
@@ -30,7 +26,6 @@ pub(crate) fn retired_iteration_label_axis_error(label: &str) -> String {
 pub(crate) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "label")?;
@@ -84,7 +79,6 @@ pub(crate) async fn handle_label_story(
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} label push failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
         return Ok(ok_msg);
     }
     Err(
@@ -96,7 +90,6 @@ pub(crate) async fn handle_label_story(
 pub(crate) async fn handle_set_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "set parent epic")?;
@@ -131,14 +124,12 @@ pub(crate) async fn handle_set_parent_epic(
         epic_number,
     })
     .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
-    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} grouped under epic #{epic_number}"))
 }
 
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -193,7 +184,6 @@ pub(crate) async fn handle_add_story_to_iteration(
         position,
     })
     .map_err(|e| format!("#{story_number} iteration-membership enqueue failed: {e}"))?;
-    broadcast_board_invalidate(ws_tx).await;
     Ok(format!(
         "#{story_number} added to iteration #{iteration_number} at position {position}"
     ))
@@ -202,7 +192,6 @@ pub(crate) async fn handle_add_story_to_iteration(
 pub(crate) async fn handle_designate_current_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "designate current iteration")?;
@@ -246,14 +235,12 @@ pub(crate) async fn handle_designate_current_iteration(
         number: iteration_number,
     })
     .map_err(|e| format!("#{iteration_number} current-designation enqueue failed: {e}"))?;
-    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("iteration #{iteration_number} designated current"))
 }
 
 pub(crate) async fn handle_unset_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "unset parent epic")?;
@@ -270,14 +257,12 @@ pub(crate) async fn handle_unset_parent_epic(
     };
     r.mutate_sync(crate::board::BoardEvent::ParentEpicUnset { meta, number })
         .map_err(|e| format!("#{number} parent_epic-unset enqueue failed: {e}"))?;
-    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} ungrouped from parent epic"))
 }
 
 pub(crate) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
@@ -304,7 +289,6 @@ pub(crate) async fn handle_comment_on_story(
         };
         r.mutate_sync(event)
             .map_err(|e| format!("#{number} enqueue failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} commented"));
     }
     Err(
@@ -316,7 +300,6 @@ pub(crate) async fn handle_comment_on_story(
 pub(crate) async fn handle_edit_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "edit story")?;
@@ -351,6 +334,5 @@ pub(crate) async fn handle_edit_story(
             .map_err(|e| format!("#{number} body update failed: {e}"))?;
         updated.push("body");
     }
-    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} {} updated", updated.join(" + ")))
 }

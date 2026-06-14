@@ -12,7 +12,6 @@ use crate::bridge::tools_stories::handle_create_iteration;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 fn seed_iteration_story(number: u64, theme: &str, is_closed: bool) -> Story {
     let mut s = Story::new_minimal(
@@ -50,8 +49,7 @@ fn args(theme: &str) -> Map<String, Value> {
 #[tokio::test]
 async fn create_iteration_creates_issue_with_iteration_type_and_themed_title() {
     let refresh = build_empty_refresh().await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
-    let result = handle_create_iteration(&args("Aquila"), "pm:claude-code", &ws_tx, Some(&refresh))
+    let result = handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect("create_iteration succeeds");
     assert!(
@@ -77,8 +75,7 @@ async fn create_iteration_creates_issue_with_iteration_type_and_themed_title() {
 #[tokio::test]
 async fn create_iteration_rejects_duplicate_open_theme_name() {
     let refresh = build_refresh_with_stories(vec![seed_iteration_story(42, "Aquila", false)]).await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
-    let err = handle_create_iteration(&args("Aquila"), "pm:claude-code", &ws_tx, Some(&refresh))
+    let err = handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect_err("duplicate Aquila rejected");
     assert!(
@@ -94,8 +91,7 @@ async fn create_iteration_rejects_duplicate_open_theme_name() {
 #[tokio::test]
 async fn create_iteration_accepts_same_name_after_previous_closed() {
     let refresh = build_refresh_with_stories(vec![seed_iteration_story(42, "Aquila", true)]).await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
-    let result = handle_create_iteration(&args("Aquila"), "pm:claude-code", &ws_tx, Some(&refresh))
+    let result = handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect("re-using a closed theme_name succeeds");
     assert!(
@@ -107,8 +103,7 @@ async fn create_iteration_accepts_same_name_after_previous_closed() {
 #[tokio::test]
 async fn create_iteration_body_reserves_member_stories_section() {
     let refresh = build_empty_refresh().await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
-    handle_create_iteration(&args("Pegasus"), "pm:claude-code", &ws_tx, Some(&refresh))
+    handle_create_iteration(&args("Pegasus"), "pm:claude-code", Some(&refresh))
         .await
         .unwrap();
     let stories = refresh.all_stories();
@@ -134,8 +129,7 @@ async fn create_iteration_body_reserves_member_stories_section() {
 #[tokio::test]
 async fn create_iteration_attaches_iteration_label_atomically_at_source() {
     let refresh = build_empty_refresh().await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
-    handle_create_iteration(&args("Aquila"), "pm:claude-code", &ws_tx, Some(&refresh))
+    handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect("create_iteration succeeds");
     let number = refresh
@@ -172,8 +166,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
 #[tokio::test]
 async fn create_iteration_rejects_non_pm_role() {
     let refresh = build_empty_refresh().await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
-    let err = handle_create_iteration(&args("Lyra"), "dev:claude-code", &ws_tx, Some(&refresh))
+    let err = handle_create_iteration(&args("Lyra"), "dev:claude-code", Some(&refresh))
         .await
         .expect_err("dev role rejected from PM-only tool");
     assert!(
@@ -185,9 +178,8 @@ async fn create_iteration_rejects_non_pm_role() {
 #[tokio::test]
 async fn create_iteration_requires_theme_name_arg() {
     let refresh = build_empty_refresh().await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
     let empty: Map<String, Value> = Map::new();
-    let err = handle_create_iteration(&empty, "pm:claude-code", &ws_tx, Some(&refresh))
+    let err = handle_create_iteration(&empty, "pm:claude-code", Some(&refresh))
         .await
         .expect_err("missing theme_name rejected");
     assert!(

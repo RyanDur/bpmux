@@ -1,9 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -55,12 +53,11 @@ mod reopen_on_state_transition_tests {
     async fn start_story_reopens_when_prior_is_closed_true() {
         let seeded = seeded_closed_chore(7110, StoryState::Ready);
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
-        let ws_tx = super::connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(7110));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-        let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(result.is_ok(), "start_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
@@ -77,12 +74,11 @@ mod reopen_on_state_transition_tests {
         let mut seeded = seeded_closed_chore(7111, StoryState::Ready);
         seeded.is_closed = false;
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
-        let ws_tx = super::connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(7111));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-        handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch))
+        handle_start_story(&args, "dev:claude-code", Some(&orch))
             .await
             .unwrap();
         orch.drain_pending().await.unwrap();
@@ -99,14 +95,13 @@ mod reopen_on_state_transition_tests {
     async fn deliver_story_reopens_when_prior_is_closed_true() {
         let seeded = seeded_closed_chore(7120, StoryState::InProgress);
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
-        let ws_tx = super::connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(7120));
         args.insert(
             "verified_observation".into(),
             serde_json::json!("verified end-to-end"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+        let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         let pushed = adapter.pushed_events();
         assert!(
@@ -121,13 +116,11 @@ mod reopen_on_state_transition_tests {
     async fn pass_desk_check_reopens_when_prior_is_closed_true() {
         let seeded = seeded_closed_chore(7130, StoryState::DeskCheck);
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
-        let ws_tx = super::connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(7130));
         args.insert("acceptor".into(), serde_json::json!("owner"));
         args.insert("would_file_bug".into(), serde_json::json!(false));
-        let result =
-            handle_pass_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orch), None).await;
+        let result = handle_pass_desk_check(&args, "designer:claude-code", Some(&orch), None).await;
         assert!(result.is_ok(), "pass_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();

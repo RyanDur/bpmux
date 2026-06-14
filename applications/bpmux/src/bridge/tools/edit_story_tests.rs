@@ -11,7 +11,6 @@ use crate::bridge::tools_stories::handle_edit_story;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 fn seed_story(number: u64, title: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
@@ -47,12 +46,11 @@ async fn edit_story_title_only_updates_title_preserves_body() {
         "## What\n\nthe body content",
     )])
     .await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
     let args = args_obj(json!({
         "number": 1234,
         "title": "[Feature] corrected title"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", &ws_tx, Some(&refresh))
+    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
         .await
         .expect("edit_story with title-only succeeds");
     assert!(result.contains("title"), "result mentions title: {result}");
@@ -73,12 +71,11 @@ async fn edit_story_body_only_updates_body_preserves_title() {
         "old body",
     )])
     .await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
     let args = args_obj(json!({
         "number": 1234,
         "body": "## What\n\nnew body content"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", &ws_tx, Some(&refresh))
+    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
         .await
         .expect("edit_story with body-only succeeds");
     assert!(result.contains("body"), "result mentions body: {result}");
@@ -94,13 +91,12 @@ async fn edit_story_body_only_updates_body_preserves_title() {
 #[tokio::test]
 async fn edit_story_with_both_title_and_body_updates_both() {
     let refresh = build_refresh(vec![seed_story(1234, "old title", "old body")]).await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
     let args = args_obj(json!({
         "number": 1234,
         "title": "new title",
         "body": "new body"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", &ws_tx, Some(&refresh))
+    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
         .await
         .expect("edit_story with both succeeds");
     assert!(
@@ -115,9 +111,8 @@ async fn edit_story_with_both_title_and_body_updates_both() {
 #[tokio::test]
 async fn edit_story_with_neither_field_rejects() {
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
     let args = args_obj(json!({ "number": 1234 }));
-    let err = handle_edit_story(&args, "pm:claude-code", &ws_tx, Some(&refresh))
+    let err = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
         .await
         .expect_err("edit_story with neither body nor title rejected");
     assert!(
@@ -129,12 +124,11 @@ async fn edit_story_with_neither_field_rejects() {
 #[tokio::test]
 async fn edit_story_rejects_non_pm_role() {
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
-    let ws_tx: Mutex<Option<crate::bridge::WsSink>> = Mutex::new(None);
     let args = args_obj(json!({
         "number": 1234,
         "title": "new title"
     }));
-    let err = handle_edit_story(&args, "dev:claude-code", &ws_tx, Some(&refresh))
+    let err = handle_edit_story(&args, "dev:claude-code", Some(&refresh))
         .await
         .expect_err("dev role rejected from PM-only tool");
     assert!(

@@ -1,9 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -287,7 +285,6 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(301));
     args.insert(
@@ -295,7 +292,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         serde_json::json!("superseded by #999 — won't ship"),
     );
     args.insert("disposition".into(), serde_json::json!("retire"));
-    let result = handle_close_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_close_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(301).expect("story exists");

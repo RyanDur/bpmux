@@ -11,30 +11,6 @@ mod gate_retire_1348 {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    async fn connected_ws_sink_for_test() -> tokio::sync::Mutex<Option<crate::bridge::tools::WsSink>>
-    {
-        use futures::StreamExt;
-        use tokio::net::TcpListener;
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        tokio::spawn(async move {
-            if let Ok((stream, _)) = listener.accept().await
-                && let Ok(ws) = tokio_tungstenite::accept_async(stream).await
-            {
-                let (_srv_sink, mut srv_stream) = ws.split();
-                while srv_stream.next().await.is_some() {}
-            }
-        });
-        let url = format!("ws://{}/", addr);
-        let (ws, _) = tokio_tungstenite::connect_async(&url).await.unwrap();
-        let (sink, stream) = ws.split();
-        tokio::spawn(async move {
-            let mut stream = stream;
-            while stream.next().await.is_some() {}
-        });
-        tokio::sync::Mutex::new(Some(sink))
-    }
-
     async fn seeded_orchestrator(
         number: u64,
         title: &str,
@@ -82,12 +58,11 @@ mod gate_retire_1348 {
             body,
         )
         .await;
-        let ws_tx = connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(9101));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Feature start_story must succeed without ATP section: {result:?}"
@@ -109,14 +84,13 @@ mod gate_retire_1348 {
             body,
         )
         .await;
-        let ws_tx = connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(9102));
         args.insert(
             "verified_observation".into(),
             serde_json::json!("drove the user-job end-to-end via real-backend tests"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+        let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Feature deliver_story must succeed without ATP section: {result:?}"
@@ -138,12 +112,11 @@ mod gate_retire_1348 {
             body,
         )
         .await;
-        let ws_tx = connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(9103));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Bug start_story must succeed without ATP section: {result:?}"
@@ -161,12 +134,11 @@ mod gate_retire_1348 {
             &body,
         )
         .await;
-        let ws_tx = connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(9104));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(
             result.is_err(),
             "Feature with body-named ATP path that doesn't exist must still block: {result:?}"
@@ -188,14 +160,13 @@ mod gate_retire_1348 {
             &body,
         )
         .await;
-        let ws_tx = connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(9105));
         args.insert(
             "verified_observation".into(),
             serde_json::json!("drove end-to-end via tests"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+        let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(
             result.is_err(),
             "Feature with body-named ATP path that doesn't exist must still block at deliver: {result:?}"

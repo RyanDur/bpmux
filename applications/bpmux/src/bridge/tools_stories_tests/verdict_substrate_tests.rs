@@ -1,9 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -18,7 +16,6 @@ mod verdict_substrate_integration_1407 {
     use crate::board::domain::{Story, StoryState};
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
-    use crate::bridge::tools_stories_tests::connected_ws_sink_with_capture;
     use crate::session::log::Session;
     use crate::session::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};
@@ -139,15 +136,7 @@ mod verdict_substrate_integration_1407 {
             .unwrap();
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
-        let result = handle_accept_story(
-            &accept_args(42),
-            "pm",
-            &empty_ws,
-            Some(&orch),
-            Some(&session),
-        )
-        .await;
+        let result = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session)).await;
         assert!(
             result.is_ok(),
             "accept_story must succeed when both verdicts present for target story; got {result:?}"
@@ -163,16 +152,9 @@ mod verdict_substrate_integration_1407 {
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         let mut rx = session.subscribe();
-        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
-        let err = handle_accept_story(
-            &accept_args(42),
-            "pm",
-            &empty_ws,
-            Some(&orch),
-            Some(&session),
-        )
-        .await
-        .expect_err("expired verdicts must still block the accept");
+        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session))
+            .await
+            .expect_err("expired verdicts must still block the accept");
         assert!(
             err.contains("verdict-expired"),
             "block still cites expiry — the reprompt is additive, never a bypass; got {err}"
@@ -244,18 +226,11 @@ mod verdict_substrate_integration_1407 {
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         let mut rx = session.subscribe();
-        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
-        let err = handle_accept_story(
-            &accept_args(42),
-            "pm",
-            &empty_ws,
-            Some(&orch),
-            Some(&session),
-        )
-        .await
-        .expect_err(
-            "a moved grounded-head must block accept even though the verdicts are time-fresh",
-        );
+        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session))
+            .await
+            .expect_err(
+                "a moved grounded-head must block accept even though the verdicts are time-fresh",
+            );
         assert!(
             err.contains("verdict-expired"),
             "substrate-change expiry routes through the same expired path; got {err}"
@@ -286,16 +261,9 @@ mod verdict_substrate_integration_1407 {
             .unwrap();
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
-        let err = handle_accept_story(
-            &accept_args(42),
-            "pm",
-            &empty_ws,
-            Some(&orch),
-            Some(&session),
-        )
-        .await
-        .expect_err("verdicts on #99 must not satisfy accept_story #42");
+        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session))
+            .await
+            .expect_err("verdicts on #99 must not satisfy accept_story #42");
         assert!(
             err.contains("workflow-gate-mismatch"),
             "rejection cites structured kind; got {err}"
@@ -315,16 +283,9 @@ mod verdict_substrate_integration_1407 {
             .unwrap();
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
-        let err = handle_accept_story(
-            &accept_args(42),
-            "pm",
-            &empty_ws,
-            Some(&orch),
-            Some(&session),
-        )
-        .await
-        .expect_err("missing dev-verdict must refuse");
+        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session))
+            .await
+            .expect_err("missing dev-verdict must refuse");
         assert!(
             err.contains("dev-verdict"),
             "rejection cites missing dev-verdict; got {err}"

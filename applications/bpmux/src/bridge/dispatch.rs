@@ -32,10 +32,6 @@ pub(super) fn broadcast_client_msg_via_session(
     }
 }
 
-fn new_empty_ws() -> tokio::sync::Mutex<Option<WsSink>> {
-    tokio::sync::Mutex::new(None)
-}
-
 fn require_store(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
     tool: &str,
@@ -50,8 +46,7 @@ pub(crate) async fn dispatch_test_create_story(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_create_story(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_create_story(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_create_iteration(
@@ -59,8 +54,7 @@ pub(crate) async fn dispatch_test_create_iteration(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_create_iteration(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_create_iteration(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_close_iteration(
@@ -110,8 +104,7 @@ pub(crate) async fn dispatch_test_comment_on_story(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_comment_on_story(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_comment_on_story(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_close_story(
@@ -119,8 +112,7 @@ pub(crate) async fn dispatch_test_close_story(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_close_story(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_close_story(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_deliver_story(
@@ -129,8 +121,7 @@ pub(crate) async fn dispatch_test_deliver_story(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    let result = tools_stories::handle_deliver_story(&args, agent_name, &empty_ws, refresh).await?;
+    let result = tools_stories::handle_deliver_story(&args, agent_name, refresh).await?;
     if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
         let title = refresh
             .and_then(|r| r.story(number))
@@ -149,8 +140,7 @@ pub(crate) async fn dispatch_test_start_story(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    let result = tools_stories::handle_start_story(&args, agent_name, &empty_ws, refresh).await?;
+    let result = tools_stories::handle_start_story(&args, agent_name, refresh).await?;
     if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
         broadcast_client_msg_via_session(
             session,
@@ -167,10 +157,8 @@ pub(crate) async fn dispatch_test_accept_story(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
     let result =
-        tools_stories::handle_accept_story(&args, agent_name, &empty_ws, refresh, Some(session))
-            .await?;
+        tools_stories::handle_accept_story(&args, agent_name, refresh, Some(session)).await?;
     if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
         let role = tools_stories::role_from_name(agent_name);
         broadcast_client_msg_via_session(
@@ -188,9 +176,7 @@ pub(crate) async fn dispatch_test_fail_desk_check(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    let result =
-        tools_stories::handle_fail_desk_check(&args, agent_name, &empty_ws, refresh).await?;
+    let result = tools_stories::handle_fail_desk_check(&args, agent_name, refresh).await?;
     if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
         let reason = args
             .get("reason")
@@ -211,10 +197,8 @@ pub(crate) async fn dispatch_test_pass_desk_check(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
     let result =
-        tools_stories::handle_pass_desk_check(&args, agent_name, &empty_ws, refresh, Some(session))
-            .await?;
+        tools_stories::handle_pass_desk_check(&args, agent_name, refresh, Some(session)).await?;
     if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
         let story_type = tools_stories::classify_for_pass_desk_check(number, refresh);
         let labels = refresh
@@ -234,8 +218,7 @@ pub(crate) async fn dispatch_test_reject_story(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    let result = tools_stories::handle_reject_story(&args, agent_name, &empty_ws, refresh).await?;
+    let result = tools_stories::handle_reject_story(&args, agent_name, refresh).await?;
     if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
         let reason = args
             .get("reason")
@@ -255,8 +238,7 @@ pub(crate) async fn dispatch_test_label_story(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_label_story(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_label_story(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_set_parent_epic(
@@ -264,8 +246,7 @@ pub(crate) async fn dispatch_test_set_parent_epic(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_set_parent_epic(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_set_parent_epic(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_unset_parent_epic(
@@ -273,8 +254,7 @@ pub(crate) async fn dispatch_test_unset_parent_epic(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_unset_parent_epic(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_unset_parent_epic(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_add_story_to_iteration(
@@ -282,8 +262,7 @@ pub(crate) async fn dispatch_test_add_story_to_iteration(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_add_story_to_iteration(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_add_story_to_iteration(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_designate_current_iteration(
@@ -291,8 +270,7 @@ pub(crate) async fn dispatch_test_designate_current_iteration(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_designate_current_iteration(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_designate_current_iteration(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_reorder_story(
@@ -300,8 +278,7 @@ pub(crate) async fn dispatch_test_reorder_story(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_reorder_story(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_reorder_story(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_move_story(
@@ -309,8 +286,7 @@ pub(crate) async fn dispatch_test_move_story(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    move_story::handle_move_story(&args, agent_name, &empty_ws, refresh).await
+    move_story::handle_move_story(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_edit_story(
@@ -318,16 +294,15 @@ pub(crate) async fn dispatch_test_edit_story(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools_stories::handle_edit_story(&args, agent_name, &empty_ws, refresh).await
+    tools_stories::handle_edit_story(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_test_view_velocity(
     messages: Vec<crate::session::Message>,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let empty_ws = new_empty_ws();
-    tools::handle_view_velocity(|| async move { Ok(messages) }, &empty_ws, refresh).await
+    let no_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools::handle_view_velocity(|| async move { Ok(messages) }, &no_ws, refresh).await
 }
 
 pub(crate) async fn dispatch_test_view_story_commits(

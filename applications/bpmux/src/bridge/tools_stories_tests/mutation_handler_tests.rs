@@ -1,9 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::{
-    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
-};
+use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -35,15 +33,13 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = tokio::sync::Mutex::new(None);
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(123));
     args.insert(
         "body".into(),
         serde_json::json!("new comment via orchestrator"),
     );
-    let result =
-        handle_comment_on_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(123).unwrap();
@@ -89,12 +85,11 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = tokio::sync::Mutex::new(None);
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(200));
     args.insert("label".into(), serde_json::json!("blocked"));
     args.insert("operation".into(), serde_json::json!("add"));
-    let result = handle_label_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_label_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(200).unwrap();
@@ -140,13 +135,11 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = tokio::sync::Mutex::new(None);
-
     let mut add_args = serde_json::Map::new();
     add_args.insert("number".into(), serde_json::json!(200));
     add_args.insert("label".into(), serde_json::json!("blocked"));
     add_args.insert("operation".into(), serde_json::json!("add"));
-    handle_label_story(&add_args, "pm:claude-code", &ws_tx, Some(&orchestrator))
+    handle_label_story(&add_args, "pm:claude-code", Some(&orchestrator))
         .await
         .unwrap();
 
@@ -154,8 +147,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     remove_args.insert("number".into(), serde_json::json!(200));
     remove_args.insert("label".into(), serde_json::json!("blocked"));
     remove_args.insert("operation".into(), serde_json::json!("remove"));
-    let result =
-        handle_label_story(&remove_args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_label_story(&remove_args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(
         result.is_ok(),
         "migrated remove path should succeed: {result:?}"
@@ -207,19 +199,12 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(201));
     args.insert("acceptor".into(), serde_json::json!("owner"));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    let result = handle_pass_desk_check(
-        &args,
-        "designer:claude-code",
-        &ws_tx,
-        Some(&orchestrator),
-        None,
-    )
-    .await;
+    let result =
+        handle_pass_desk_check(&args, "designer:claude-code", Some(&orchestrator), None).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(201).unwrap();
@@ -302,13 +287,11 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(202));
     let substantive_reason = "observed: ATP file foo.rs has zero assertions, refutes clause (b)";
     args.insert("reason".into(), serde_json::json!(substantive_reason));
-    let result =
-        handle_fail_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_fail_desk_check(&args, "designer:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(202).unwrap();
