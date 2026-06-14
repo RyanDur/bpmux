@@ -25,8 +25,6 @@ pub enum ClientMessage {
     },
     #[serde(rename = "ping")]
     Ping,
-    #[serde(rename = "board_invalidate")]
-    BoardInvalidate,
     #[serde(rename = "rename")]
     Rename { name: String },
     #[serde(rename = "pty_subscribe")]

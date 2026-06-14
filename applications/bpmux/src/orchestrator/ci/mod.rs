@@ -196,10 +196,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
         Arc::clone(&self.roster_store)
     }
 
-    pub fn refresh(&self) -> Option<&Arc<dyn RefreshDriver>> {
-        self.refresh.as_ref()
-    }
-
     pub fn build_snapshot(&self) -> crate::session::message::StateSnapshotPayload {
         use crate::session::message::{
             CiSnapshotWire, ReactionAggregateWire, ReactionsChannelSnapshot, RosterMemberWire,

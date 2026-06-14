@@ -144,7 +144,7 @@ async fn run_ws_session(
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
-                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &orchestrator, &mut tx, &pty_registry, &pty_tx, &mut pty_readers).await? {
+                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx, &pty_registry, &pty_tx, &mut pty_readers).await? {
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
                                 session.roster_leave(&identity);
                                 dispatch_roster_leave(&orchestrator, &identity).await;
