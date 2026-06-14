@@ -116,7 +116,7 @@ pub enum RosterRole {
 pub enum Presence {
     Online,
     Busy,
-    Away,
+    Idle,
     Offline,
     Blocked,
     Help,

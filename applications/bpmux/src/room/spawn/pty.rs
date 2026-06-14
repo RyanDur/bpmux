@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use tokio::sync::broadcast;
@@ -40,6 +41,7 @@ pub struct LivePty {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     output: broadcast::Sender<Vec<u8>>,
     paste_capable: Arc<AtomicBool>,
+    last_output: Arc<Mutex<Instant>>,
     _retained_tempdir: Option<tempfile::TempDir>,
 }
 
@@ -54,6 +56,13 @@ impl LivePty {
 
     pub fn subscribe(&self) -> broadcast::Receiver<Vec<u8>> {
         self.output.subscribe()
+    }
+
+    pub fn quiet_for(&self) -> Duration {
+        self.last_output
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .elapsed()
     }
 
     pub fn write_input(&self, bytes: &[u8]) -> std::io::Result<()> {
@@ -154,7 +163,13 @@ pub fn spawn_pty_retained(
     let reader = pair.master.try_clone_reader().map_err(io_other)?;
     let (output, _) = broadcast::channel(PTY_OUTPUT_CAPACITY);
     let paste_capable = Arc::new(AtomicBool::new(false));
-    spawn_output_reader(reader, output.clone(), paste_capable.clone());
+    let last_output = Arc::new(Mutex::new(Instant::now()));
+    spawn_output_reader(
+        reader,
+        output.clone(),
+        paste_capable.clone(),
+        last_output.clone(),
+    );
     Ok(LivePty {
         pid,
         master: pair.master,
@@ -162,6 +177,7 @@ pub fn spawn_pty_retained(
         child,
         output,
         paste_capable,
+        last_output,
         _retained_tempdir: None,
     })
 }
@@ -170,6 +186,7 @@ fn spawn_output_reader(
     mut reader: Box<dyn std::io::Read + Send>,
     output: broadcast::Sender<Vec<u8>>,
     paste_capable: Arc<AtomicBool>,
+    last_output: Arc<Mutex<Instant>>,
 ) {
     std::thread::spawn(move || {
         use std::io::Read;
@@ -182,6 +199,7 @@ fn spawn_output_reader(
                     break;
                 }
                 Ok(n) => {
+                    *last_output.lock().unwrap_or_else(|e| e.into_inner()) = Instant::now();
                     if sniffer.observe(&buf[..n]) == Some(true) {
                         paste_capable.store(true, Ordering::Relaxed);
                     }

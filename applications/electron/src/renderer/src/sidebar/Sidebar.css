@@ -115,16 +115,17 @@
     }
 
     &.presence-dot--idle {
-      background: var(--fg-dim);
+      background: var(--accent-success);
     }
 
     &.presence-dot--blocked {
       background: var(--accent-error);
-      animation: presence-dot-pulse 2s var(--motion-ease-out) infinite;
+      animation: presence-dot-pulse-soft 2.4s var(--motion-ease-in-out) infinite;
     }
 
     &.presence-dot--help {
       background: var(--accent-error);
+      animation: presence-dot-pulse-strong 0.7s var(--motion-ease-in-out) infinite;
     }
 
     &.presence-dot--unknown {
@@ -135,16 +136,43 @@
     &.presence-dot--offline {
       background: var(--fg-dimmer);
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      &.presence-dot--blocked {
+        animation: none;
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-error) 35%, transparent);
+      }
+
+      &.presence-dot--help {
+        animation: none;
+        box-shadow:
+          0 0 0 2px var(--accent-error),
+          0 0 0 4px color-mix(in srgb, var(--accent-error) 40%, transparent);
+      }
+    }
   }
 
-  @keyframes presence-dot-pulse {
+  @keyframes presence-dot-pulse-soft {
     0%,
     100% {
       opacity: 1;
     }
 
     50% {
-      opacity: 0.4;
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes presence-dot-pulse-strong {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.3;
+      transform: scale(0.82);
     }
   }
 

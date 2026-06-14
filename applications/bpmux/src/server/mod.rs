@@ -161,6 +161,44 @@ pub async fn run_server(
             }
         });
     }
+    {
+        let activity_orchestrator = orchestrator.clone();
+        let activity_registry = pty_registry.clone();
+        let activity_routing = routing_store.clone();
+        let activity_ct = ct.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            loop {
+                tokio::select! {
+                    _ = activity_ct.cancelled() => return,
+                    _ = interval.tick() => {
+                        let roster = activity_orchestrator.roster_store().members();
+                        let changes = crate::orchestrator::activity_presence::activity_presence_changes(
+                            &roster,
+                            |name| {
+                                crate::orchestrator::activity_presence::terminal_quiet_for_display(
+                                    &activity_routing,
+                                    &activity_registry,
+                                    name,
+                                )
+                            },
+                        );
+                        for (name, presence) in changes {
+                            activity_orchestrator
+                                .dispatch(crate::orchestrator::OrchestratorAction::Roster(
+                                    crate::orchestrator::RosterAction::RosterPresenceChanged {
+                                        name,
+                                        presence,
+                                    },
+                                ))
+                                .await;
+                        }
+                    }
+                }
+            }
+        });
+    }
     orchestrator
         .dispatch(crate::orchestrator::OrchestratorAction::StartCiPolling)
         .await;

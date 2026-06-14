@@ -42,6 +42,11 @@ impl RoutingStore {
         identity.is_terminal_linked(terminal_id)
     }
 
+    pub fn terminal_for(&self, session_id: &str) -> Option<String> {
+        let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        identity.terminal_for(session_id)
+    }
+
     pub fn display_for_terminal(&self, terminal_id: &str) -> Option<String> {
         let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         identity.display_for_terminal(terminal_id)

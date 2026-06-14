@@ -700,7 +700,7 @@ test.describe('real-backend', () => {
   // dot color + text within latency. Uses the multi-party peer-post
   // pattern (POST from test process → WS broadcast → renderer
   // derives + renders).
-  test('presence: a connected agent shows present-neutral, never green-by-connection (#1719)', async () => {
+  test('presence: a registered agent with no live-terminal signal holds present — never offline, never a false green-idle (#1719 reshaped by #1721)', async () => {
     const fs = await import('fs')
     const os = await import('os')
     const path = await import('path')
@@ -725,7 +725,10 @@ test.describe('real-backend', () => {
     await expect(devDot).toHaveAttribute('data-presence', 'present', {
       timeout: 15_000
     })
+    await expect(devDot).not.toHaveAttribute('data-presence', 'offline')
+    await expect(devDot).not.toHaveAttribute('data-presence', 'idle')
     await expect(devDot).not.toHaveAttribute('data-presence', 'available')
+    await expect(devDot).not.toHaveAttribute('data-presence', 'busy')
 
     await app.close()
   })

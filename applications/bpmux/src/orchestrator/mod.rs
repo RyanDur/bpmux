@@ -1,3 +1,4 @@
+pub mod activity_presence;
 pub mod ci;
 pub mod listeners;
 pub mod stores;

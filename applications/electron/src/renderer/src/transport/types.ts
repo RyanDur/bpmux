@@ -35,7 +35,7 @@ export interface CiSnapshotWire {
 
 export type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
 
-export type PresenceWire = 'Online' | 'Busy' | 'Away' | 'Offline' | 'Blocked' | 'Help'
+export type PresenceWire = 'Online' | 'Busy' | 'Idle' | 'Offline' | 'Blocked' | 'Help'
 
 export interface RosterMemberWire {
   name: string
