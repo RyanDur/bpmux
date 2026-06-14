@@ -760,7 +760,11 @@ test.describe('real-backend', () => {
     const motionFramesDir = process.env.BPMUX_MOTION_FRAMES
     if (motionFramesDir) {
       for (let frame = 0; frame < 5; frame++) {
-        await dot.screenshot({ path: `${motionFramesDir}/blocked-pulse-${frame}.png` })
+        await dot.screenshot({
+          path: `${motionFramesDir}/blocked-pulse-${frame}.png`,
+          animations: 'allow',
+          caret: 'hide'
+        })
         await win.waitForTimeout(600)
       }
     }
