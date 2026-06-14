@@ -19,15 +19,6 @@ pub async fn post_terminal_spawn(
     Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
     Extension(port): Extension<u16>,
     Extension(routing): Extension<Arc<RoutingStore>>,
-    orchestrator: Option<
-        Extension<
-            Arc<
-                crate::orchestrator::Orchestrator<
-                    crate::board::adapters::github::GitHubSourceAdapter,
-                >,
-            >,
-        >,
-    >,
     State(session): State<Arc<crate::session::Session>>,
 ) -> impl IntoResponse {
     let room_agent = std::env::var("BPMUX_ROOM_AGENT").ok();
@@ -81,7 +72,6 @@ pub async fn post_terminal_spawn(
                     pty_registry.clone(),
                     routing.clone(),
                     session.clone(),
-                    orchestrator.as_ref().map(|Extension(o)| o.clone()),
                 );
             }
             (

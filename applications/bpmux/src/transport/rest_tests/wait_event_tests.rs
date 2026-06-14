@@ -24,6 +24,9 @@ fn wait_app(dir: &TempDir) -> (Arc<session::Session>, axum::Router) {
     let router = axum::Router::new()
         .route("/api/wait-for-event", axum::routing::get(wait_for_event))
         .layer(axum::Extension(routing))
+        .layer(axum::Extension(Arc::new(
+            crate::session::connection_liveness::ConnectionLiveness::new(),
+        )))
         .with_state(session.clone());
     (session, router)
 }

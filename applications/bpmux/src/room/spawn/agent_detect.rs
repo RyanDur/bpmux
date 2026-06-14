@@ -74,9 +74,6 @@ pub fn spawn_agent_run_detector(
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
     session: Arc<crate::session::Session>,
-    orchestrator: Option<
-        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
-    >,
 ) {
     tokio::spawn(async move {
         let mut detector = AgentRunDetector::new(AGENT_RUN_GATE);
@@ -108,17 +105,6 @@ pub fn spawn_agent_run_detector(
                             &terminal_id,
                             &mint.job_start_ts,
                         );
-                        let display = routing
-                            .display_for(&dir_session.id)
-                            .unwrap_or_else(|| dir_session.name.clone());
-                        if let Some(orchestrator) = &orchestrator {
-                            crate::transport::ws::dispatch_roster_join(
-                                orchestrator,
-                                &dir_session.id,
-                                &display,
-                            )
-                            .await;
-                        }
                         crate::room::drain_missed(
                             &session,
                             &registry,
@@ -131,11 +117,6 @@ pub fn spawn_agent_run_detector(
                     }
                 }
             }
-        }
-        if let Some(session_id) = routing.session_for_terminal(&terminal_id)
-            && let Some(orchestrator) = &orchestrator
-        {
-            crate::transport::ws::dispatch_roster_leave(orchestrator, &session_id).await;
         }
     });
 }
@@ -304,7 +285,6 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
-            None,
         );
 
         registry.write_to(&terminal_id, format!("cd {work_path}\n").as_bytes());
@@ -367,7 +347,6 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
-            None,
         );
 
         registry.write_to(&terminal_id, format!("cd {passed_path}\n").as_bytes());
@@ -420,7 +399,6 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
-            None,
         );
 
         registry.write_to(&terminal_id, b"sleep 4\n");

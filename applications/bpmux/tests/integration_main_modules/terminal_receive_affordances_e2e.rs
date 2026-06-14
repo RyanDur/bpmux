@@ -149,6 +149,39 @@ impl FakeAgentFarm {
         path
     }
 
+    fn write_keepalive_agent_script(&self) -> std::path::PathBuf {
+        let claim = self.root.path().join("claim");
+        let work = self.root.path().join("work");
+        let capture = self.root.path().join("capture");
+        let bin = env!("CARGO_BIN_EXE_bpmux");
+        let script = format!(
+            "#!/bin/bash\n\
+             set -m\n\
+             role=\"\"\n\
+             for r in dev pm designer; do\n\
+             \x20 if mkdir \"{claim}/$r\" 2>/dev/null; then role=\"$r\"; break; fi\n\
+             done\n\
+             [ -z \"$role\" ] && exit 1\n\
+             mkdir -p \"{work}/$role\"\n\
+             cd \"{work}/$role\" || exit 1\n\
+             export BPMUX_ROLE=\"$role\"\n\
+             export BPMUX_SESSION_ID=\"pinned-$role\"\n\
+             \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
+             \"{bin}\" keepalive --watch-pid $$ --interval-ms 200 >> \"{capture}/$role.ka\" 2>&1 &\n\
+             cat >> \"{capture}/$role\"\n",
+            claim = claim.display(),
+            work = work.display(),
+            capture = capture.display(),
+            bin = bin,
+        );
+        let path = self.root.path().join("keepalive-agent.sh");
+        std::fs::write(&path, script).expect("write keepalive agent");
+        let mut perms = std::fs::metadata(&path).expect("agent meta").permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&path, perms).expect("chmod agent");
+        path
+    }
+
     fn capture_contains(&self, role: &str, needle: &str) -> bool {
         std::fs::read_to_string(self.capture_path(role))
             .map(|s| s.contains(needle))
@@ -213,6 +246,22 @@ async fn terminal_send(port: u16, role: &str, to: Option<&str>, text: &str) {
     assert!(
         out.status.success(),
         "bpmux send failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+async fn terminal_disconnect(port: u16, role: &str) {
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let out = tokio::process::Command::new(bin)
+        .arg("disconnect")
+        .env("BPMUX_PORT", port.to_string())
+        .env("BPMUX_ROLE", role)
+        .output()
+        .await
+        .expect("run bpmux disconnect");
+    assert!(
+        out.status.success(),
+        "bpmux disconnect failed: {}",
         String::from_utf8_lossy(&out.stderr)
     );
 }
@@ -535,12 +584,15 @@ async fn wait_roster<F: Fn(&[String]) -> bool>(bpmux: &TestBpmux, pred: F) -> Ve
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_dead_terminal_drops_its_agent_from_the_roster_so_the_roster_tracks_terminal_liveness() {
+async fn a_keepalive_registrant_stays_idle_past_grace_then_is_reaped_when_its_agent_dies() {
     let farm = FakeAgentFarm::new();
-    let agent = farm.write_register_agent_script();
+    let agent = farm.write_keepalive_agent_script();
     let bpmux = TestBpmux::start_with_envs(
         "ryan",
-        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+        &[
+            ("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8")),
+            ("BPMUX_MEMBERSHIP_GRACE_MS", "2000"),
+        ],
     );
 
     let terminal_id = spawn_terminal(&bpmux).await;
@@ -551,7 +603,14 @@ async fn a_dead_terminal_drops_its_agent_from_the_roster_so_the_roster_tracks_te
     let present = wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev")).await;
     assert!(
         present.iter().any(|i| i == "dev"),
-        "after register-with-terminal, dev is in the roster (register roster-joins); got {present:?}"
+        "register joins the roster — membership = the agent's bpmux connection; got {present:?}"
+    );
+
+    tokio::time::sleep(Duration::from_secs(5)).await;
+    let still = roster_identities(&bpmux).await;
+    assert!(
+        still.iter().any(|i| i == "dev"),
+        "an IDLE agent that only heartbeats its keepalive STAYS past the grace — membership is a live connection, refreshed by the keepalive between turns, not by any call. got {still:?}"
     );
 
     bpmux
@@ -560,33 +619,52 @@ async fn a_dead_terminal_drops_its_agent_from_the_roster_so_the_roster_tracks_te
             json!({ "terminal_id": terminal_id, "force": true }),
         )
         .await;
-
     let after = wait_roster(&bpmux, |ids| !ids.iter().any(|i| i == "dev")).await;
     assert!(
         !after.iter().any(|i| i == "dev"),
-        "when dev's terminal dies, the agent-detect death-hook roster-leaves it — the roster TRACKS terminal liveness (online = bound terminal alive); got {after:?}"
+        "when the agent dies ungracefully its keepalive stops and the server reaps its roster row past the grace — membership tracks the AGENT's liveness, not a terminal pane or a board state. got {after:?}"
     );
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_connected_agent_auto_appears_in_the_roster_with_no_manual_register() {
+async fn a_clean_disconnect_drops_the_agent_instantly_even_under_a_long_grace() {
     let farm = FakeAgentFarm::new();
-    let agent = farm.write_agent_script();
+    let agent = farm.write_keepalive_agent_script();
     let bpmux = TestBpmux::start_with_envs(
         "ryan",
-        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+        &[
+            ("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8")),
+            ("BPMUX_MEMBERSHIP_GRACE_MS", "30000"),
+        ],
     );
+    let port = bpmux.port();
 
-    let _terminal_id = spawn_terminal(&bpmux).await;
+    let terminal_id = spawn_terminal(&bpmux).await;
     assert!(
         probe_until_live(&bpmux, &farm, "dev").await,
-        "the connected agent is auto-detected + reachable (its terminal links) with NO manual register"
+        "dev registers (via `bpmux register`) and is reachable"
+    );
+    assert!(
+        wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev"))
+            .await
+            .iter()
+            .any(|i| i == "dev"),
+        "register joins the roster"
     );
 
-    let present = wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev")).await;
+    bpmux
+        .authed_post(
+            "/api/terminals/close",
+            json!({ "terminal_id": terminal_id, "force": true }),
+        )
+        .await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    terminal_disconnect(port, "dev").await;
+
+    let after = wait_roster(&bpmux, |ids| !ids.iter().any(|i| i == "dev")).await;
     assert!(
-        present.iter().any(|i| i == "dev"),
-        "a CONNECTED agent (terminal-live, auto-detected via the PTY-tap) must auto-appear in the roster under its default display label with NO manual `bpmux register` — roster membership = CONNECTEDNESS, the role is a display label layered on top. This is the regression the off-MCP re-key introduced: it dropped the WS-connect roster-join and agent-detect never replaced it, so the leave-on-death had no join-on-detection counterpart and connected agents vanished from DIRECT until a manual register; got {present:?}"
+        !after.iter().any(|i| i == "dev"),
+        "a CLEAN disconnect (the SessionEnd hook's `bpmux disconnect`) drops the roster row INSTANTLY — within seconds despite a 30s grace — because mark-gone is unambiguous proof the agent left, not a timeout. got {after:?}"
     );
 }
 

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::Json;
-use axum::extract::{Query, State};
+use axum::extract::{Extension, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
@@ -78,8 +78,10 @@ pub async fn get_messages(
 
 pub async fn post_message(
     State(session): State<Arc<session::Session>>,
+    Extension(liveness): Extension<Arc<crate::session::connection_liveness::ConnectionLiveness>>,
     Json(payload): Json<PostMessage>,
 ) -> impl IntoResponse {
+    liveness.seen(payload.from.split(':').next().unwrap_or(&payload.from));
     if payload.text.is_empty() {
         return (
             StatusCode::BAD_REQUEST,

@@ -8,6 +8,7 @@ use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::session;
+use crate::session::connection_liveness::ConnectionLiveness;
 use crate::session::routing_identity::RoutingStore;
 use crate::transport::ws::should_deliver;
 
@@ -21,20 +22,95 @@ pub struct WaitParams {
     pub timeout_ms: Option<u64>,
 }
 
+struct WaitConnection<'a> {
+    liveness: &'a ConnectionLiveness,
+    role: &'a str,
+    armed: bool,
+}
+
+impl<'a> WaitConnection<'a> {
+    fn arm(liveness: &'a ConnectionLiveness, role: &'a str) -> Self {
+        liveness.wait_entered(role);
+        Self {
+            liveness,
+            role,
+            armed: true,
+        }
+    }
+
+    fn completed(&mut self) {
+        if self.armed {
+            self.armed = false;
+            self.liveness.wait_completed(self.role);
+        }
+    }
+}
+
+impl Drop for WaitConnection<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            self.liveness.wait_aborted(self.role);
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct PingParams {
+    #[serde(rename = "as")]
+    pub as_peer: Option<String>,
+}
+
+pub async fn liveness_ping(
+    Extension(liveness): Extension<Arc<ConnectionLiveness>>,
+    Query(params): Query<PingParams>,
+) -> impl IntoResponse {
+    let role = params.as_peer.unwrap_or_default();
+    if !role.is_empty() {
+        liveness.seen(short_name(&role));
+    }
+    (StatusCode::OK, "alive".to_string())
+}
+
+pub async fn liveness_disconnect(
+    Extension(liveness): Extension<Arc<ConnectionLiveness>>,
+    Query(params): Query<PingParams>,
+) -> impl IntoResponse {
+    let role = params.as_peer.unwrap_or_default();
+    if !role.is_empty() {
+        liveness.mark_gone(short_name(&role));
+    }
+    (StatusCode::OK, "disconnected".to_string())
+}
+
 pub async fn wait_for_event(
     State(session): State<Arc<session::Session>>,
     Extension(routing): Extension<Arc<RoutingStore>>,
+    Extension(liveness): Extension<Arc<ConnectionLiveness>>,
     Query(params): Query<WaitParams>,
 ) -> impl IntoResponse {
-    let role = params.as_peer.unwrap_or_default();
+    let role = params.as_peer.clone().unwrap_or_default();
+    let mut connection = (!role.is_empty()).then(|| WaitConnection::arm(&liveness, &role));
+    let result = drain_or_block(&session, &routing, &params, &role).await;
+    if let Some(connection) = connection.as_mut() {
+        connection.completed();
+    }
+    result
+}
+
+async fn drain_or_block(
+    session: &session::Session,
+    routing: &RoutingStore,
+    params: &WaitParams,
+    role: &str,
+) -> (StatusCode, String) {
     let timeout = Duration::from_millis(params.timeout_ms.unwrap_or(DEFAULT_WAIT_TIMEOUT_MS));
-    let after_cursor = durable_drain_cursor(&routing, &role, params.after.as_deref())
+    let after_cursor = durable_drain_cursor(routing, role, params.after.as_deref())
         .as_deref()
         .and_then(|raw| raw.parse::<chrono::DateTime<chrono::Utc>>().ok());
 
     let mut receiver = session.subscribe();
 
-    if let Some(event) = first_pending_after(&session, after_cursor, &role) {
+    if let Some(event) = first_pending_after(session, after_cursor, role) {
         return (StatusCode::OK, event.to_string());
     }
 
@@ -44,12 +120,12 @@ pub async fn wait_for_event(
         tokio::select! {
             received = receiver.recv() => match received {
                 Ok(message) => {
-                    if let Some(event) = event_for_role(&message, &role) {
+                    if let Some(event) = event_for_role(&message, role) {
                         return (StatusCode::OK, event.to_string());
                     }
                 }
                 Err(RecvError::Lagged(_)) => {
-                    if let Some(event) = first_pending_after(&session, after_cursor, &role) {
+                    if let Some(event) = first_pending_after(session, after_cursor, role) {
                         return (StatusCode::OK, event.to_string());
                     }
                 }

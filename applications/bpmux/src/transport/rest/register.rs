@@ -6,6 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
+use crate::session::connection_liveness::ConnectionLiveness;
 use crate::session::routing_identity::RoutingStore;
 
 #[derive(Deserialize)]
@@ -18,6 +19,7 @@ pub struct RegisterRequest {
 
 pub async fn post_register(
     Extension(routing): Extension<Arc<RoutingStore>>,
+    Extension(liveness): Extension<Arc<ConnectionLiveness>>,
     Extension(orchestrator): Extension<
         Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
     >,
@@ -29,6 +31,7 @@ pub async fn post_register(
             format!("'{}' is a reserved owner identity", payload.display),
         );
     }
+    liveness.seen(&payload.display);
     routing.register(&payload.session_id, &payload.display);
     if let Some(terminal_id) = &payload.terminal_id {
         routing.link_terminal(&payload.session_id, terminal_id);

@@ -149,6 +149,88 @@ pub(crate) fn run_register() -> anyhow::Result<()> {
     Ok(())
 }
 
+pub(crate) fn run_ping() -> anyhow::Result<()> {
+    let role = crate::resolve_role(&None);
+    let port = crate::resolve_bpmux_port();
+    let url = format!(
+        "{}?as={role}",
+        crate::transport::local_url::api_url(port, "/api/ping")
+    );
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    rt.block_on(async {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(5_000))
+            .build()?
+            .get(&url)
+            .send()
+            .await?
+            .text()
+            .await
+    })?;
+    println!("✓ alive");
+    Ok(())
+}
+
+pub(crate) fn run_keepalive(watch_pid: Option<u32>, interval_ms: u64) -> anyhow::Result<()> {
+    let pid = watch_pid.ok_or_else(|| {
+        anyhow::anyhow!(
+            "keepalive requires --watch-pid: the agent process to supervise. Without it the loop cannot die with the agent and would outlive a dead agent (a zombie heartbeat)."
+        )
+    })?;
+    let role = crate::resolve_role(&None);
+    let port = crate::resolve_bpmux_port();
+    let url = format!(
+        "{}?as={role}",
+        crate::transport::local_url::api_url(port, "/api/ping")
+    );
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(5_000))
+        .build()?;
+    let interval = std::time::Duration::from_millis(interval_ms);
+    while process_alive(pid) {
+        let _ = rt.block_on(async { client.get(&url).send().await?.text().await });
+        std::thread::sleep(interval);
+    }
+    Ok(())
+}
+
+pub(crate) fn run_disconnect() -> anyhow::Result<()> {
+    let role = crate::resolve_role(&None);
+    let port = crate::resolve_bpmux_port();
+    let url = format!(
+        "{}?as={role}",
+        crate::transport::local_url::api_url(port, "/api/disconnect")
+    );
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    rt.block_on(async {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(5_000))
+            .build()?
+            .get(&url)
+            .send()
+            .await?
+            .text()
+            .await
+    })?;
+    println!("✓ disconnected");
+    Ok(())
+}
+
+fn process_alive(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
 pub(crate) fn run_read(limit: usize, full: bool) -> anyhow::Result<()> {
     let role = crate::resolve_role(&None);
     let port = crate::resolve_bpmux_port();
@@ -247,6 +329,12 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
             addressee,
         } => Some(run_send(text, to, addressee)),
         Command::Register => Some(run_register()),
+        Command::Ping => Some(run_ping()),
+        Command::Keepalive {
+            watch_pid,
+            interval_ms,
+        } => Some(run_keepalive(*watch_pid, *interval_ms)),
+        Command::Disconnect => Some(run_disconnect()),
         Command::Read { limit, full } => Some(run_read(*limit, *full)),
         Command::Help { json } => Some(run_help(*json)),
         Command::Ready { json, full } => Some(run_ready(*json, *full)),
