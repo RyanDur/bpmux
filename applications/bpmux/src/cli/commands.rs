@@ -98,30 +98,6 @@ pub(crate) enum Command {
     )]
     Register,
     #[command(
-        about = "Mark this agent alive once (channels-independence #1721 liveness). Fires a lightweight /api/ping so the server's connection-liveness sees this agent within the membership grace. Identity is ambient via BPMUX_ROLE. The keepalive loop calls this on a cadence; an active agent's other calls also refresh liveness."
-    )]
-    Ping,
-    #[command(
-        about = "Run the liveness keepalive loop for this agent (channels-independence #1721): ping on a cadence while the supervised agent process is alive, then exit so a dead agent stops signalling and the server reaps it past the grace. Spawned detached by the session-start hook bundle, never hand-run. Identity is ambient via BPMUX_ROLE."
-    )]
-    Keepalive {
-        #[arg(
-            long,
-            help = "PID of the agent process to supervise; the loop exits when this process dies (the die-with-the-agent tie). Omit to supervise the parent process."
-        )]
-        watch_pid: Option<u32>,
-        #[arg(
-            long,
-            default_value_t = 5_000,
-            help = "Milliseconds between pings; must stay comfortably below the server's membership grace"
-        )]
-        interval_ms: u64,
-    },
-    #[command(
-        about = "Mark this agent gone now (channels-independence #1721 liveness). Fires /api/disconnect so the server drops this agent's roster row instantly on a clean exit, rather than waiting out the keepalive grace. Invoked by the session-end hook bundle. Identity is ambient via BPMUX_ROLE."
-    )]
-    Disconnect,
-    #[command(
         about = "Read recent team messages as a compact index (sender + one-line), off Claude's MCP. Use --full for the raw payload."
     )]
     Read {

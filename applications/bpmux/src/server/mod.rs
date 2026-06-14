@@ -9,16 +9,6 @@ use crate::transport::auth::AuthState;
 
 pub type TestRefreshHandle = Option<Arc<dyn RefreshDriver>>;
 
-const DEFAULT_MEMBERSHIP_GRACE: std::time::Duration = std::time::Duration::from_secs(20);
-
-fn membership_grace() -> std::time::Duration {
-    std::env::var("BPMUX_MEMBERSHIP_GRACE_MS")
-        .ok()
-        .and_then(|value| value.parse::<u64>().ok())
-        .map(std::time::Duration::from_millis)
-        .unwrap_or(DEFAULT_MEMBERSHIP_GRACE)
-}
-
 fn startup_routing_id(
     routing: &crate::session::routing_identity::RoutingStore,
     identity: &str,
@@ -122,8 +112,6 @@ pub async fn run_server(
     let routing_store = std::sync::Arc::new(crate::session::routing_identity::RoutingStore::load(
         routing_store_dir,
     ));
-    let connection_liveness =
-        std::sync::Arc::new(crate::session::connection_liveness::ConnectionLiveness::new());
     crate::room::spawn_terminal_delivery_loop(
         session.clone(),
         pty_registry.clone(),
@@ -190,9 +178,7 @@ pub async fn run_server(
         let activity_orchestrator = orchestrator.clone();
         let activity_registry = pty_registry.clone();
         let activity_routing = routing_store.clone();
-        let activity_liveness = connection_liveness.clone();
         let activity_ct = ct.clone();
-        let membership_grace = membership_grace();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -201,18 +187,6 @@ pub async fn run_server(
                     _ = activity_ct.cancelled() => return,
                     _ = interval.tick() => {
                         let roster = activity_orchestrator.roster_store().members();
-                        for member in &roster {
-                            if activity_liveness.tracked(&member.name)
-                                && !activity_liveness
-                                    .is_connected(&member.name, membership_grace)
-                            {
-                                crate::transport::ws::dispatch_roster_leave(
-                                    &activity_orchestrator,
-                                    &member.routing_id,
-                                )
-                                .await;
-                            }
-                        }
                         let changes = crate::orchestrator::activity_presence::activity_presence_changes(
                             &roster,
                             |routing_id| {
@@ -454,14 +428,6 @@ pub async fn run_server(
             axum::routing::get(transport::rest::wait_for_event),
         )
         .route(
-            "/api/ping",
-            axum::routing::get(transport::rest::liveness_ping),
-        )
-        .route(
-            "/api/disconnect",
-            axum::routing::get(transport::rest::liveness_disconnect),
-        )
-        .route(
             "/api/search",
             axum::routing::get(transport::rest::search_messages),
         )
@@ -493,7 +459,6 @@ pub async fn run_server(
         .layer(axum::Extension(orchestrator.clone()))
         .layer(axum::Extension(pty_registry.clone()))
         .layer(axum::Extension(routing_store.clone()))
-        .layer(axum::Extension(connection_liveness.clone()))
         .layer(axum::Extension(port))
         .layer(
             tower_http::cors::CorsLayer::new()

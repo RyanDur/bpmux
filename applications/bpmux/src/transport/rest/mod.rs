@@ -46,6 +46,4 @@ pub use roster::{
 pub use search::{SearchParams, search_messages};
 pub(crate) use shared::json_headers;
 pub use shared::{CommentPayload, TrackerHandle};
-pub use wait::{
-    DEFAULT_WAIT_TIMEOUT_MS, WaitParams, liveness_disconnect, liveness_ping, wait_for_event,
-};
+pub use wait::{DEFAULT_WAIT_TIMEOUT_MS, WaitParams, wait_for_event};

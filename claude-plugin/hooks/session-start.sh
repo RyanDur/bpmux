@@ -5,17 +5,12 @@
 # 2. Surfaces the agent's own per-role lessons from prior sessions so bpmux's
 #    lesson index becomes the authoritative auto-loaded memory path (#157).
 #    Closes the two-store duplication with Claude Code's auto-memory.
-# 3. Spawns the liveness keepalive so an idle agent stays present (#1721).
 #
 # The recall call reads directly from ~/.bpmux/sessions/current/lessons.json
 # (via `bpmux recall`), so it works even if the bpmux TUI isn't running yet.
 # Role comes from BPMUX_ROLE, which each workspace's .claude/settings.local.json
 # already sets. Missing role → recall silently emits a "no prior lessons"
 # line, which is fine.
-
-# The SessionStart payload arrives as JSON on stdin; capture it before writing
-# any stdout so the keepalive can read transcript_path to find the agent process.
-HOOK_INPUT=$(cat)
 
 echo "bpmux is connected. Call set_name first with your role (e.g. 'dev', 'pm', 'designer') so the team knows who joined. Status is managed automatically by hooks — do not call set_status manually. Messages are pushed to you via the bridge — do not poll read_messages."
 
@@ -43,41 +38,6 @@ done
 # the binary predates the verb. Non-Claude agents self-register via the terminal.
 if [ -n "$BPMUX_BIN" ] && [ -n "${BPMUX_ROLE:-}" ]; then
     "$BPMUX_BIN" register >/dev/null 2>&1 || true
-fi
-
-# Liveness keepalive (#1721): an idle off-MCP agent fires no hooks and makes no
-# calls between turns, so the server cannot see it and would reap its roster row.
-# Spawn a detached keepalive that pings on a cadence while THIS agent process is
-# alive and exits the moment it dies — so a killed agent stops signalling and the
-# server reaps it past the grace (the ungraceful-death backstop SessionEnd cannot
-# cover). The agent PID is discovered from the transcript file the agent holds open
-# (Claude Code exposes no PID, and a hook's parent PID is not a documented handle);
-# the parent PID is a last resort. nohup detaches it from this short-lived hook
-# (macOS has no setsid) so it survives the hook's return.
-if [ -n "$BPMUX_BIN" ] && [ -n "${BPMUX_ROLE:-}" ]; then
-    transcript_path=$(printf '%s' "$HOOK_INPUT" \
-        | grep -o '"transcript_path"[[:space:]]*:[[:space:]]*"[^"]*"' \
-        | sed 's/.*:[[:space:]]*"//; s/"$//')
-    agent_pid=""
-    if [ -n "$transcript_path" ]; then
-        agent_pid=$(lsof -t -- "$transcript_path" 2>/dev/null | head -1)
-    fi
-    [ -z "$agent_pid" ] && agent_pid="$PPID"
-    if [ -n "$agent_pid" ]; then
-        nohup "$BPMUX_BIN" keepalive --watch-pid "$agent_pid" >/dev/null 2>&1 &
-        keepalive_pid=$!
-        disown 2>/dev/null || true
-        # Record the keepalive PID keyed by session-id so the SessionEnd hook can
-        # kill it before the clean-disconnect — otherwise an in-flight ping could
-        # resurrect a just-disconnected agent. session-id is stable across the two
-        # hooks (it is in both payloads).
-        session_id=$(printf '%s' "$HOOK_INPUT" \
-            | grep -o '"session_id"[[:space:]]*:[[:space:]]*"[^"]*"' \
-            | sed 's/.*:[[:space:]]*"//; s/"$//')
-        if [ -n "$session_id" ]; then
-            printf '%s' "$keepalive_pid" > "${TMPDIR:-/tmp}/bpmux-keepalive-${session_id}.pid" 2>/dev/null || true
-        fi
-    fi
 fi
 
 if [ -n "$BPMUX_BIN" ] && [ -n "${BPMUX_ROLE:-}" ]; then

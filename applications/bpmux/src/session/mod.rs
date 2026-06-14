@@ -4,7 +4,6 @@ pub mod bayes;
 pub mod bookmark;
 pub mod briefing;
 pub mod classifier;
-pub mod connection_liveness;
 pub mod diag;
 pub mod identity;
 pub mod instrumented_storage;

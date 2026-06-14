@@ -149,7 +149,7 @@ impl FakeAgentFarm {
         path
     }
 
-    fn write_keepalive_agent_script(&self) -> std::path::PathBuf {
+    fn write_foreground_agent_script(&self) -> std::path::PathBuf {
         let claim = self.root.path().join("claim");
         let work = self.root.path().join("work");
         let capture = self.root.path().join("capture");
@@ -166,20 +166,25 @@ impl FakeAgentFarm {
              cd \"{work}/$role\" || exit 1\n\
              export BPMUX_ROLE=\"$role\"\n\
              export BPMUX_SESSION_ID=\"pinned-$role\"\n\
+             printf '\\033]7;file://localhost%s\\007' \"$PWD\"\n\
              \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
-             \"{bin}\" keepalive --watch-pid $$ --interval-ms 200 >> \"{capture}/$role.ka\" 2>&1 &\n\
-             cat >> \"{capture}/$role\"\n",
+             sh -c 'while [ ! -f \"$1\" ]; do sleep 0.1; done' _ \"{capture}/$role.die\"\n\
+             exec sleep 3600\n",
             claim = claim.display(),
             work = work.display(),
             capture = capture.display(),
             bin = bin,
         );
-        let path = self.root.path().join("keepalive-agent.sh");
-        std::fs::write(&path, script).expect("write keepalive agent");
+        let path = self.root.path().join("foreground-agent.sh");
+        std::fs::write(&path, script).expect("write foreground agent");
         let mut perms = std::fs::metadata(&path).expect("agent meta").permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&path, perms).expect("chmod agent");
         path
+    }
+
+    fn signal_agent_exit(&self, role: &str) {
+        std::fs::write(self.capture_path(role).with_extension("die"), "").expect("drop sentinel");
     }
 
     fn capture_contains(&self, role: &str, needle: &str) -> bool {
@@ -246,22 +251,6 @@ async fn terminal_send(port: u16, role: &str, to: Option<&str>, text: &str) {
     assert!(
         out.status.success(),
         "bpmux send failed: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-}
-
-async fn terminal_disconnect(port: u16, role: &str) {
-    let bin = env!("CARGO_BIN_EXE_bpmux");
-    let out = tokio::process::Command::new(bin)
-        .arg("disconnect")
-        .env("BPMUX_PORT", port.to_string())
-        .env("BPMUX_ROLE", role)
-        .output()
-        .await
-        .expect("run bpmux disconnect");
-    assert!(
-        out.status.success(),
-        "bpmux disconnect failed: {}",
         String::from_utf8_lossy(&out.stderr)
     );
 }
@@ -584,72 +573,52 @@ async fn wait_roster<F: Fn(&[String]) -> bool>(bpmux: &TestBpmux, pred: F) -> Ve
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_keepalive_registrant_stays_idle_past_grace_then_is_reaped_when_its_agent_dies() {
+async fn a_foreground_agent_appears_then_leaves_when_its_job_ends_while_the_terminal_stays_alive() {
     let farm = FakeAgentFarm::new();
-    let agent = farm.write_keepalive_agent_script();
+    let agent = farm.write_foreground_agent_script();
     let bpmux = TestBpmux::start_with_envs(
         "ryan",
-        &[
-            ("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8")),
-            ("BPMUX_MEMBERSHIP_GRACE_MS", "2000"),
-        ],
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
-    let terminal_id = spawn_terminal(&bpmux).await;
-    assert!(
-        probe_until_live(&bpmux, &farm, "dev").await,
-        "dev registers (via `bpmux register`) and is reachable"
-    );
+    let _terminal_id = spawn_terminal(&bpmux).await;
     let present = wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev")).await;
     assert!(
         present.iter().any(|i| i == "dev"),
-        "register joins the roster — membership = the agent's bpmux connection; got {present:?}"
+        "a live agent — the foreground job in a bpmux terminal — is DETECTED and joins the roster (presence = an agent is the foreground job, derived from the PTY bpmux owns); got {present:?}"
     );
 
-    tokio::time::sleep(Duration::from_secs(5)).await;
+    tokio::time::sleep(Duration::from_secs(2)).await;
     let still = roster_identities(&bpmux).await;
     assert!(
         still.iter().any(|i| i == "dev"),
-        "an IDLE agent that only heartbeats its keepalive STAYS past the grace — membership is a live connection, refreshed by the keepalive between turns, not by any call. got {still:?}"
+        "an IDLE foreground agent STAYS — it is still the foreground job (it must be, to hold the tty), so presence holds with no signal from the agent. got {still:?}"
     );
 
-    bpmux
-        .authed_post(
-            "/api/terminals/close",
-            json!({ "terminal_id": terminal_id, "force": true }),
-        )
-        .await;
+    farm.signal_agent_exit("dev");
     let after = wait_roster(&bpmux, |ids| !ids.iter().any(|i| i == "dev")).await;
     assert!(
         !after.iter().any(|i| i == "dev"),
-        "when the agent dies ungracefully its keepalive stops and the server reaps its roster row past the grace — membership tracks the AGENT's liveness, not a terminal pane or a board state. got {after:?}"
+        "when the agent exits but the terminal stays alive, the foreground returns to the shell and bpmux LEAVES it — presence tracks the AGENT (foreground job), never the bare pane. got {after:?}"
     );
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_clean_disconnect_drops_the_agent_instantly_even_under_a_long_grace() {
+async fn a_closed_terminal_drops_its_foreground_agent() {
     let farm = FakeAgentFarm::new();
-    let agent = farm.write_keepalive_agent_script();
+    let agent = farm.write_foreground_agent_script();
     let bpmux = TestBpmux::start_with_envs(
         "ryan",
-        &[
-            ("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8")),
-            ("BPMUX_MEMBERSHIP_GRACE_MS", "30000"),
-        ],
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
-    let port = bpmux.port();
 
     let terminal_id = spawn_terminal(&bpmux).await;
-    assert!(
-        probe_until_live(&bpmux, &farm, "dev").await,
-        "dev registers (via `bpmux register`) and is reachable"
-    );
     assert!(
         wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev"))
             .await
             .iter()
             .any(|i| i == "dev"),
-        "register joins the roster"
+        "the foreground agent is detected and present"
     );
 
     bpmux
@@ -658,13 +627,10 @@ async fn a_clean_disconnect_drops_the_agent_instantly_even_under_a_long_grace() 
             json!({ "terminal_id": terminal_id, "force": true }),
         )
         .await;
-    tokio::time::sleep(Duration::from_millis(500)).await;
-    terminal_disconnect(port, "dev").await;
-
     let after = wait_roster(&bpmux, |ids| !ids.iter().any(|i| i == "dev")).await;
     assert!(
         !after.iter().any(|i| i == "dev"),
-        "a CLEAN disconnect (the SessionEnd hook's `bpmux disconnect`) drops the roster row INSTANTLY — within seconds despite a 30s grace — because mark-gone is unambiguous proof the agent left, not a timeout. got {after:?}"
+        "closing the terminal (pane-close) tears down the PTY bpmux owns → the agent leaves the roster — the other death-mode, also handled by the foreground-job detector. got {after:?}"
     );
 }
 

@@ -66,7 +66,15 @@ impl AgentRunDetector {
         }
         None
     }
+
+    pub fn on_left(&mut self) {
+        self.registered = false;
+        self.job_start = None;
+    }
 }
+
+type DetectorOrchestrator =
+    Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>;
 
 pub fn spawn_agent_run_detector(
     terminal_id: String,
@@ -74,10 +82,12 @@ pub fn spawn_agent_run_detector(
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
     session: Arc<crate::session::Session>,
+    orchestrator: Option<DetectorOrchestrator>,
 ) {
     tokio::spawn(async move {
         let mut detector = AgentRunDetector::new(AGENT_RUN_GATE);
         let mut poll = tokio::time::interval(DETECTOR_POLL);
+        let mut present = false;
         loop {
             tokio::select! {
                 chunk = output.recv() => {
@@ -114,11 +124,39 @@ pub fn spawn_agent_run_detector(
                             &dir_session.name,
                             &mint.job_start_ts,
                         );
+                        if let Some(orchestrator) = &orchestrator {
+                            crate::transport::ws::dispatch_roster_join(
+                                orchestrator,
+                                &dir_session.id,
+                                &dir_session.name,
+                            )
+                            .await;
+                        }
+                    }
+                    if foreground {
+                        present = present || routing.is_terminal_linked(&terminal_id);
+                    } else if present {
+                        leave_terminal(&orchestrator, &routing, &terminal_id).await;
+                        present = false;
+                        detector.on_left();
                     }
                 }
             }
         }
+        leave_terminal(&orchestrator, &routing, &terminal_id).await;
     });
+}
+
+async fn leave_terminal(
+    orchestrator: &Option<DetectorOrchestrator>,
+    routing: &RoutingStore,
+    terminal_id: &str,
+) {
+    if let (Some(orchestrator), Some(routing_id)) =
+        (orchestrator, routing.session_for_terminal(terminal_id))
+    {
+        crate::transport::ws::dispatch_roster_leave(orchestrator, &routing_id).await;
+    }
 }
 
 #[cfg(test)]
@@ -247,6 +285,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn after_the_agent_leaves_a_fresh_foreground_job_re_mints() {
+        let mut detector = AgentRunDetector::new(GATE);
+        detector.feed_output(&osc7("/work"));
+        let start = Instant::now();
+        detector.observe(true, start, "ts");
+        assert!(
+            detector.observe(true, start + GATE, "ts").is_some(),
+            "the first sustained job mints"
+        );
+        detector.on_left();
+        let restart = start + Duration::from_millis(5000);
+        detector.observe(true, restart, "ts2");
+        assert!(
+            detector.observe(true, restart + GATE, "ts2").is_some(),
+            "once the agent left (foreground returned to the shell), on_left clears the registration so a fresh sustained foreground job — a restart in the same terminal — re-mints and re-joins"
+        );
+    }
+
     #[tokio::test]
     async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless() {
         use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
@@ -285,6 +342,7 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
+            None,
         );
 
         registry.write_to(&terminal_id, format!("cd {work_path}\n").as_bytes());
@@ -347,6 +405,7 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
+            None,
         );
 
         registry.write_to(&terminal_id, format!("cd {passed_path}\n").as_bytes());
@@ -399,6 +458,7 @@ mod tests {
             registry.clone(),
             routing.clone(),
             empty_message_session(),
+            None,
         );
 
         registry.write_to(&terminal_id, b"sleep 4\n");
