@@ -183,6 +183,40 @@ impl FakeAgentFarm {
         path
     }
 
+    fn write_detect_then_cross_cwd_register_script(&self) -> std::path::PathBuf {
+        let claim = self.root.path().join("claim");
+        let work = self.root.path().join("work");
+        let capture = self.root.path().join("capture");
+        let bin = env!("CARGO_BIN_EXE_bpmux");
+        let script = format!(
+            "#!/bin/bash\n\
+             set -m\n\
+             role=\"\"\n\
+             for r in dev pm designer; do\n\
+             \x20 if mkdir \"{claim}/$r\" 2>/dev/null; then role=\"$r\"; break; fi\n\
+             done\n\
+             [ -z \"$role\" ] && exit 1\n\
+             mkdir -p \"{work}/bpmux-$role\"\n\
+             cd \"{work}/bpmux-$role\" || exit 1\n\
+             export BPMUX_ROLE=\"$role\"\n\
+             printf '\\033]7;file://localhost%s\\007' \"$PWD\"\n\
+             sleep 1.5\n\
+             export BPMUX_SESSION_ID=\"pinned-other-$role\"\n\
+             \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
+             cat >> \"{capture}/$role\"\n",
+            claim = claim.display(),
+            work = work.display(),
+            capture = capture.display(),
+            bin = bin,
+        );
+        let path = self.root.path().join("detect-cross-cwd-register.sh");
+        std::fs::write(&path, script).expect("write cross-cwd register agent");
+        let mut perms = std::fs::metadata(&path).expect("agent meta").permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&path, perms).expect("chmod agent");
+        path
+    }
+
     fn signal_agent_exit(&self, role: &str) {
         std::fs::write(self.capture_path(role).with_extension("die"), "").expect("drop sentinel");
     }
@@ -663,5 +697,31 @@ async fn the_dir_name_default_collapses_into_the_registered_role_one_id_keyed_ro
     assert!(
         !roster.iter().any(|i| i == "bpmux-dev"),
         "the dir-name default leaves NO orphan row once the role is set — the placeholder is shown only until the display name is set; got {roster:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cross_cwd_register_reaps_the_detection_default_so_any_cwd_is_one_row() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_detect_then_cross_cwd_register_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "ryan",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    let _terminal_id = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "the detection mints the dir-default 'bpmux-dev' first, then the agent registers its role from a DIFFERENT session-id (a different cwd), then is reachable as 'dev'"
+    );
+
+    let roster = wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev")).await;
+    assert!(
+        roster.iter().any(|i| i == "dev"),
+        "the registered role 'dev' is present; got {roster:?}"
+    );
+    assert!(
+        !roster.iter().any(|i| i == "bpmux-dev"),
+        "registering from a cwd whose session-id differs from the terminal's DETECTION session-id STILL collapses to one row — register forwards BPMUX_TERMINAL_ID, so it reaps the orphaned detection dir-default ('bpmux-dev') when it takes the terminal over. Identity is terminal-anchored, not cwd-coupled (Ryan's 'you don't need to cd'); got {roster:?}"
     );
 }

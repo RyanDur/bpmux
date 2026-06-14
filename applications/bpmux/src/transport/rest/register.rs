@@ -29,10 +29,18 @@ pub async fn post_register(
             format!("'{}' is a reserved owner identity", payload.display),
         );
     }
+    let superseded = payload
+        .terminal_id
+        .as_ref()
+        .and_then(|terminal_id| routing.session_for_terminal(terminal_id))
+        .filter(|prior| *prior != payload.session_id);
     routing.register(&payload.session_id, &payload.display);
     if let Some(terminal_id) = &payload.terminal_id {
         routing.link_terminal(&payload.session_id, terminal_id);
         routing.reap_unclaimed_duplicates_of(&payload.display);
+    }
+    if let Some(prior) = superseded {
+        crate::transport::ws::dispatch_roster_leave(&orchestrator, &prior).await;
     }
     crate::transport::ws::dispatch_roster_join(
         &orchestrator,
