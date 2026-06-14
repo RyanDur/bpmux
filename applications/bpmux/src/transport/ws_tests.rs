@@ -71,7 +71,37 @@ fn group_addressed_delivered_to_all_named() {
     assert!(should_deliver(&m, "pm:claude-code"));
     assert!(should_deliver(&m, "designer:claude-code"));
     assert!(should_deliver(&m, "dev:human"));
-    assert!(!should_deliver(&m, "ryan:human"));
+    assert!(
+        should_deliver(&m, "ryan:human"),
+        "owner-omniscience: the owner receives a group conversation even though it is NOT named in --to — scope spares peers, never hides from the owner"
+    );
+}
+
+#[test]
+fn owner_receives_every_conversation_even_scoped_to_other_peers() {
+    let m = msg("dev:claude-code", Some(vec!["pm", "designer"]));
+    assert!(
+        should_deliver(&m, "ryan:human"),
+        "owner-omniscience (owner-raised): a chat message scoped to:[pm,designer] STILL reaches the owner — --to is peer-attention, never owner-hiding. The owner sees every conversation; the all-conversations view renders it while group rooms still filter by --to."
+    );
+    assert!(
+        !should_deliver(&m, "designer-x:claude-code"),
+        "owner-omniscience does NOT loosen peer scoping — a non-owner not in --to is still excluded"
+    );
+}
+
+#[test]
+fn owner_receives_activity_but_nudges_stay_substrate_excluded() {
+    let mut activity = msg("dev:claude-code", None);
+    activity.message_type = session::MessageType::Activity;
+    assert!(
+        should_deliver(&activity, "ryan:human"),
+        "the owner's SESSION receives activity signals (they were already broadcast) — hiding plumbing is the RENDERER's job (events-class hidden from all-conversations by default, FilterPills-toggleable), not the substrate's"
+    );
+    assert!(
+        !should_deliver(&nudge(Some(vec!["ryan"])), "ryan:human"),
+        "owner-omniscience PRESERVES the deliberate #1525 substrate nudge-exclusion — nudges (recall/handoff routing) never reach the owner-peer; surfacing them is a separate #1525-revisit, not this fix"
+    );
 }
 
 #[test]
