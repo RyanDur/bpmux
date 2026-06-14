@@ -256,10 +256,12 @@ const killBackend = (): void => {
 }
 
 const createWindow = (): void => {
+  const isolateFromHostInput = process.env.BPMUX_E2E === '1'
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
+    focusable: !isolateFromHostInput,
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
@@ -274,7 +276,11 @@ const createWindow = (): void => {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    if (isolateFromHostInput) {
+      mainWindow.showInactive()
+    } else {
+      mainWindow.show()
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

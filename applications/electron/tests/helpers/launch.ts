@@ -206,6 +206,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       // path. Tests that need FileStorage explicitly (e.g., asserting
       // on-disk artifacts) can override via opts.extraEnv.
       BPMUX_STORAGE_BACKEND: 'memory',
+      BPMUX_E2E: '1',
       ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})
     }
