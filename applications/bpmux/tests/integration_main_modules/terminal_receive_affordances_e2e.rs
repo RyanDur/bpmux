@@ -535,3 +535,25 @@ async fn a_dead_terminal_drops_its_agent_from_the_roster_so_the_roster_tracks_te
         "when dev's terminal dies, the agent-detect death-hook roster-leaves it — the roster TRACKS terminal liveness (online = bound terminal alive); got {after:?}"
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_connected_agent_auto_appears_in_the_roster_with_no_manual_register() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "ryan",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    let _terminal_id = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "the connected agent is auto-detected + reachable (its terminal links) with NO manual register"
+    );
+
+    let present = wait_roster(&bpmux, |ids| ids.iter().any(|i| i == "dev")).await;
+    assert!(
+        present.iter().any(|i| i == "dev"),
+        "a CONNECTED agent (terminal-live, auto-detected via the PTY-tap) must auto-appear in the roster under its default display label with NO manual `bpmux register` — roster membership = CONNECTEDNESS, the role is a display label layered on top. This is the regression the off-MCP re-key introduced: it dropped the WS-connect roster-join and agent-detect never replaced it, so the leave-on-death had no join-on-detection counterpart and connected agents vanished from DIRECT until a manual register; got {present:?}"
+    );
+}

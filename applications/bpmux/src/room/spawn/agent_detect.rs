@@ -108,6 +108,14 @@ pub fn spawn_agent_run_detector(
                             &terminal_id,
                             &mint.job_start_ts,
                         );
+                        session.roster_join(&dir_session.name);
+                        if let Some(orchestrator) = &orchestrator {
+                            crate::transport::ws::dispatch_roster_join(
+                                orchestrator,
+                                &dir_session.name,
+                            )
+                            .await;
+                        }
                         crate::room::drain_missed(
                             &session,
                             &registry,
