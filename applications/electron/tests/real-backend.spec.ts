@@ -733,6 +733,40 @@ test.describe('real-backend', () => {
     await app.close()
   })
 
+  test('presence: a blocked need-state dot applies the soft 2.4s infinite pulse CSS and stills to a static ring under reduced-motion (#1721 L2; headless attests the CSS is applied, not that it visually animates)', async () => {
+    const { app, backendPort } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    const seeded = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_roster`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identities: ['dev:claude-code'], presence: 'Blocked' })
+    })
+    expect(seeded.ok).toBe(true)
+
+    const dot = win.locator('[data-test="presence-dot-dev"]')
+    await expect(dot).toHaveAttribute('data-presence', 'blocked', { timeout: 15_000 })
+
+    await expect
+      .poll(() => dot.evaluate((el) => getComputedStyle(el).animationName), { timeout: 5_000 })
+      .toBe('presence-dot-pulse-soft')
+    expect(await dot.evaluate((el) => getComputedStyle(el).animationDuration)).toBe('2.4s')
+
+    expect(await dot.evaluate((el) => getComputedStyle(el).animationIterationCount)).toBe(
+      'infinite'
+    )
+
+    await win.emulateMedia({ reducedMotion: 'reduce' })
+    await expect
+      .poll(() => dot.evaluate((el) => getComputedStyle(el).animationName), { timeout: 5_000 })
+      .toBe('none')
+    const ring = await dot.evaluate((el) => getComputedStyle(el).boxShadow)
+    expect(ring).not.toBe('none')
+
+    await app.close()
+  })
+
   // #355 reaction picker positioning — above/below with tail, not
   // inline-over the message. Asserts the picker's bounding-box
   // doesn't overlap the target message's text region when opened.

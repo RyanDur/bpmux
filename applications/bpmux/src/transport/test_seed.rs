@@ -100,6 +100,8 @@ pub async fn post_reset_stories(
 #[derive(Deserialize)]
 pub struct SeedRosterBody {
     pub identities: Vec<String>,
+    #[serde(default)]
+    pub presence: Option<crate::orchestrator::Presence>,
 }
 
 #[derive(Deserialize)]
@@ -263,7 +265,9 @@ pub async fn post_seed_roster(
                     name,
                     identity: identity.clone(),
                     role,
-                    presence: crate::orchestrator::Presence::Online,
+                    presence: body
+                        .presence
+                        .unwrap_or(crate::orchestrator::Presence::Online),
                 },
             ))
             .await;
