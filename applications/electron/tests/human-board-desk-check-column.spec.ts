@@ -18,16 +18,18 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
         'board-group-delivered'
       ]
 
-      const order = await win.evaluate(() => {
-        const now = document.querySelector('[data-test="board-tabpanel-now-content"]')
-        const summaries =
-          now?.querySelectorAll<HTMLElement>(
-            '[data-test^="board-group-"]:not([data-test$="-count"])'
-          ) ?? []
-        return Array.from(summaries).map((el) => el.getAttribute('data-test') ?? '')
-      })
-
-      expect(order).toEqual(expectedColumnOrder)
+      await expect
+        .poll(async () =>
+          win.evaluate(() => {
+            const now = document.querySelector('[data-test="board-tabpanel-now-content"]')
+            const summaries =
+              now?.querySelectorAll<HTMLElement>(
+                '[data-test^="board-group-"]:not([data-test$="-count"])'
+              ) ?? []
+            return Array.from(summaries).map((el) => el.getAttribute('data-test') ?? '')
+          })
+        )
+        .toEqual(expectedColumnOrder)
     } finally {
       await app.close()
       await mockGh.close()
