@@ -36,7 +36,8 @@ pub use metrics::get_metrics;
 pub use reactions::{ReactionToggle, ReactionsChannelQuery, get_reactions, post_reaction};
 #[cfg(test)]
 pub(crate) use reactions::{
-    build_reaction_event_text_with_excerpt, find_message_excerpt, truncate_excerpt,
+    build_reaction_event_text_with_excerpt, find_message_excerpt, message_scope_from_key,
+    truncate_excerpt,
 };
 pub use register::{RegisterRequest, post_register};
 pub use room::{get_terminals, post_terminal_close, post_terminal_spawn};

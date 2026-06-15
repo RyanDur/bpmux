@@ -91,6 +91,71 @@ fn find_message_excerpt_returns_none_on_lookup_failure() {
 }
 
 #[test]
+fn message_scope_from_key_returns_the_reacted_messages_participants() {
+    use chrono::TimeZone;
+    let ts = chrono::Utc
+        .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
+        .unwrap();
+    let msgs = vec![session::Message {
+        from: "dev:claude-code".to_string(),
+        text: "scoped to dev+pm".to_string(),
+        ts,
+        to: Some(vec!["dev".to_string(), "pm".to_string()]),
+        ..session::Message::default()
+    }];
+    let key = format!("{}|dev:claude-code", ts.to_rfc3339());
+    let mut scope = message_scope_from_key(&msgs, &key).expect("a scoped message has a scope");
+    scope.sort();
+    assert_eq!(
+        scope,
+        vec!["dev".to_string(), "pm".to_string()],
+        "a reaction inherits the reacted message's participants (sender ∪ recipients) so it never leaks to a non-participant"
+    );
+}
+
+#[test]
+fn message_scope_from_key_adds_the_sender_so_reactions_reach_the_author() {
+    use chrono::TimeZone;
+    let ts = chrono::Utc
+        .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
+        .unwrap();
+    let msgs = vec![session::Message {
+        from: "ryan:electron".to_string(),
+        text: "ryan to dev+pm".to_string(),
+        ts,
+        to: Some(vec!["dev".to_string(), "pm".to_string()]),
+        ..session::Message::default()
+    }];
+    let key = format!("{}|ryan:electron", ts.to_rfc3339());
+    let mut scope = message_scope_from_key(&msgs, &key).expect("scope");
+    scope.sort();
+    assert_eq!(
+        scope,
+        vec!["dev".to_string(), "pm".to_string(), "ryan".to_string()]
+    );
+}
+
+#[test]
+fn message_scope_from_key_is_none_for_a_broadcast_so_its_reaction_stays_public() {
+    use chrono::TimeZone;
+    let ts = chrono::Utc
+        .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
+        .unwrap();
+    let msgs = vec![session::Message {
+        from: "dev:claude-code".to_string(),
+        text: "public".to_string(),
+        ts,
+        to: None,
+        ..session::Message::default()
+    }];
+    let key = format!("{}|dev:claude-code", ts.to_rfc3339());
+    assert!(
+        message_scope_from_key(&msgs, &key).is_none(),
+        "a reaction to a broadcast stays a broadcast — no scope to inherit"
+    );
+}
+
+#[test]
 fn build_reaction_event_text_with_excerpt_wraps_in_typographic_quotes() {
     let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
     let text = build_reaction_event_text_with_excerpt(&body, true, Some("merged #377"));

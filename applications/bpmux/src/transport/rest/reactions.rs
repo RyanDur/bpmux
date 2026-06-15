@@ -69,11 +69,14 @@ pub async fn post_reaction(
             },
         ))
         .await;
-    let excerpt = session
-        .read_messages()
-        .ok()
-        .and_then(|msgs| find_message_excerpt(&msgs, &body.message_key, EXCERPT_MAX_LEN));
-    broadcast_reaction_event(&session, &body, present, excerpt.as_deref());
+    let msgs = session.read_messages().ok();
+    let excerpt = msgs
+        .as_deref()
+        .and_then(|m| find_message_excerpt(m, &body.message_key, EXCERPT_MAX_LEN));
+    let scope = msgs
+        .as_deref()
+        .and_then(|m| message_scope_from_key(m, &body.message_key));
+    broadcast_reaction_event(&session, &body, present, excerpt.as_deref(), scope);
     (
         StatusCode::OK,
         json_headers(),
@@ -133,6 +136,36 @@ pub(crate) fn find_message_excerpt(
     None
 }
 
+pub(crate) fn message_scope_from_key(
+    messages: &[session::Message],
+    message_key: &str,
+) -> Option<Vec<String>> {
+    let (ts_str, from) = message_key.split_once('|')?;
+    if ts_str.is_empty() || from.is_empty() {
+        return None;
+    }
+    for m in messages {
+        if m.from != from || m.ts.to_rfc3339() != ts_str {
+            continue;
+        }
+        let recipients = m.to.as_ref()?;
+        if recipients.is_empty()
+            || recipients
+                .iter()
+                .any(|r| r == crate::session::message::BROADCAST_ALL)
+        {
+            return None;
+        }
+        let sender_short = from.split(':').next().unwrap_or(from);
+        let mut scope: Vec<String> = recipients.clone();
+        if !scope.iter().any(|p| p == sender_short) {
+            scope.push(sender_short.to_string());
+        }
+        return Some(scope);
+    }
+    None
+}
+
 pub(crate) fn build_reaction_event_text_with_excerpt(
     body: &ReactionToggle,
     present: bool,
@@ -169,6 +202,7 @@ fn broadcast_reaction_event(
     body: &ReactionToggle,
     present: bool,
     excerpt: Option<&str>,
+    scope: Option<Vec<String>>,
 ) {
     let text = build_reaction_event_text_with_excerpt(body, present, excerpt);
     let msg = session::Message {
@@ -176,6 +210,7 @@ fn broadcast_reaction_event(
         text,
         ts: chrono::Utc::now(),
         message_type: session::MessageType::Insight,
+        to: scope,
         ..session::Message::default()
     };
     if let Err(e) = session.broadcast(&msg) {
