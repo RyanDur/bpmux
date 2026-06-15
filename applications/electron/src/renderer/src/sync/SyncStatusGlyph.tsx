@@ -1,9 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import './SyncStatusGlyph.css'
 import {
-  acknowledge,
   ensureSyncStatusStarted,
-  forceSync,
   getSyncStatusSnapshot,
   refreshSyncStatusNow,
   subscribeSyncStatus,
@@ -83,40 +81,23 @@ const SyncStatusGlyph = ({ apiBase, authToken, syncStatusTick }: Props): React.J
       ? (report?.dropped_events.length ?? 0)
       : (report?.pending_events ?? 0)
 
-  const handleClick = (): void => {
-    if (!apiBase) return
-    if (state === 'drained-permanent-failure') {
-      void acknowledge()
-    } else if (
-      state === 'offline-queued' ||
-      state === 'syncing' ||
-      state === 'stale' ||
-      state === 'startup-fail'
-    ) {
-      void forceSync()
-    }
-  }
-
   const glyph = stateGlyph(state)
   const ariaLabel = stateAriaLabel(state, count)
   const tooltip = error ? `Sync error: ${error}` : buildTooltip(state, report)
   const showCount = state !== 'connected' && count > 0
 
   return (
-    <output aria-live="polite" className="sync-status-region">
-      <button
-        type="button"
-        className={`sync-status-glyph sync-status-glyph--${state}`}
-        onClick={handleClick}
-        title={tooltip}
-        aria-label={ariaLabel}
-        data-test="sync-status-glyph"
-        data-state={state}
-        data-count={count}
-      >
-        <i aria-hidden="true">{glyph}</i>
-        {showCount && <small className="sync-status-glyph__count">{count}</small>}
-      </button>
+    <output
+      aria-live="polite"
+      className={`sync-status-region sync-status-glyph sync-status-glyph--${state}`}
+      title={tooltip}
+      aria-label={ariaLabel}
+      data-test="sync-status-glyph"
+      data-state={state}
+      data-count={count}
+    >
+      <i aria-hidden="true">{glyph}</i>
+      {showCount && <small className="sync-status-glyph__count">{count}</small>}
     </output>
   )
 }

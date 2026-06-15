@@ -6,20 +6,9 @@
 .sync-status-glyph {
   font-size: var(--font-size-12);
   color: var(--fg-secondary);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-2) var(--space-8);
-  border-radius: 4px;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  -webkit-app-region: no-drag;
-
-  &:hover {
-    background: var(--bg-highlighted);
-    color: var(--fg-primary);
-  }
 
   &.sync-status-glyph--connected {
     color: var(--accent-success);

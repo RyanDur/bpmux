@@ -4,6 +4,8 @@ import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import SyncStatusGlyph from '../sync/SyncStatusGlyph'
 import DrillIn from './DrillIn'
 import BoardTabs from './BoardTabs'
+import BoardRoadmapSwitcher from './BoardRoadmapSwitcher'
+import Roadmap from './Roadmap'
 import { useBoardData } from './useBoardData'
 import { useBoardFetch } from './useBoardFetch'
 import { useBoardReorder } from './useBoardReorder'
@@ -188,28 +190,6 @@ const Board = ({
       style={width !== undefined && !hidden ? { flex: `0 0 ${width}px` } : undefined}
       inert={hidden ? true : undefined}
     >
-      <header className="board-header">
-        {currentIterationName !== null && (
-          <h2 className="board-iteration-name" data-test="board-header-iteration">
-            {currentIterationName}
-          </h2>
-        )}
-        <small className="board-title">Board</small>
-        <SyncStatusGlyph
-          apiBase={bridge?.apiBase}
-          authToken={bridge?.authToken}
-          syncStatusTick={syncStatusTick}
-        />
-        {usingMock ? (
-          <small
-            className="board-mock-flag"
-            aria-label="showing mock data"
-            data-test="board-mock-flag"
-          >
-            mock
-          </small>
-        ) : null}
-      </header>
       <output className="sr-only" aria-live="polite" data-test="board-reorder-announce">
         {reorderAnnounce}
       </output>
@@ -223,40 +203,71 @@ const Board = ({
         </section>
       )}
 
-      {renderedDrill !== null ? (
-        <DrillIn
-          story={renderedDrill}
-          isOwner={isOwner}
-          apiBase={bridge?.apiBase}
-          authToken={bridge?.authToken}
-          usingMock={usingMock}
-          boardInvalidateTick={boardInvalidateTick}
-          visible={drilledStory !== null}
-          focusTimeline={focusTimelineFor === renderedDrill.number}
-          onBack={handleBack}
-          onStoryMutated={handleStoryMutated}
-          onUnmountReady={handleDrillUnmountReady}
-        />
-      ) : (
-        <section className="board-body" data-test="board-list">
-          <BoardTabs
-            stories={stories}
-            epics={epics}
-            epicTitleByNumber={epicTitleByNumber}
-            iterationContainerStories={iterationContainerStories}
-            grouped={grouped}
-            loading={loading && !data}
-            effectiveSelected={effectiveSelected}
-            collapsed={collapsed}
-            onToggleCollapse={toggleCollapsed}
-            onOpen={handleOpen}
-            onOpenTimeline={handleOpenTimeline}
-            onSelect={setSelectedNumber}
-            onReorder={handleReorder}
-            onReorderAnnounce={setReorderAnnounce}
-          />
-        </section>
-      )}
+      <BoardRoadmapSwitcher
+        boardLabel={
+          <>
+            {currentIterationName !== null && (
+              <strong className="board-iteration-name" data-test="board-header-iteration">
+                {currentIterationName}
+              </strong>
+            )}
+            <small className="board-title">Board</small>
+            <SyncStatusGlyph
+              apiBase={bridge?.apiBase}
+              authToken={bridge?.authToken}
+              syncStatusTick={syncStatusTick}
+            />
+          </>
+        }
+        mock={
+          usingMock ? (
+            <small
+              className="board-mock-flag"
+              aria-label="showing mock data"
+              data-test="board-mock-flag"
+            >
+              mock
+            </small>
+          ) : undefined
+        }
+        board={
+          renderedDrill !== null ? (
+            <DrillIn
+              story={renderedDrill}
+              isOwner={isOwner}
+              apiBase={bridge?.apiBase}
+              authToken={bridge?.authToken}
+              usingMock={usingMock}
+              boardInvalidateTick={boardInvalidateTick}
+              visible={drilledStory !== null}
+              focusTimeline={focusTimelineFor === renderedDrill.number}
+              onBack={handleBack}
+              onStoryMutated={handleStoryMutated}
+              onUnmountReady={handleDrillUnmountReady}
+            />
+          ) : (
+            <section className="board-body" data-test="board-list">
+              <BoardTabs
+                stories={stories}
+                epics={epics}
+                epicTitleByNumber={epicTitleByNumber}
+                iterationContainerStories={iterationContainerStories}
+                grouped={grouped}
+                loading={loading && !data}
+                effectiveSelected={effectiveSelected}
+                collapsed={collapsed}
+                onToggleCollapse={toggleCollapsed}
+                onOpen={handleOpen}
+                onOpenTimeline={handleOpenTimeline}
+                onSelect={setSelectedNumber}
+                onReorder={handleReorder}
+                onReorderAnnounce={setReorderAnnounce}
+              />
+            </section>
+          )
+        }
+        roadmap={<Roadmap stories={stories} />}
+      />
     </aside>
   )
 }

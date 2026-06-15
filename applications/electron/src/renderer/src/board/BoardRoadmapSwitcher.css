@@ -1,0 +1,76 @@
+.board-roadmap-switcher {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.board-roadmap-fieldset {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4) var(--space-8) 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.board-roadmap-fieldset > .sync-status-region {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.board-roadmap-tab {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-width: 0;
+  padding: var(--space-4) var(--space-8);
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-dim);
+  font-size: var(--font-size-12);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.board-roadmap-tab:hover {
+  color: var(--fg-secondary);
+}
+
+.board-roadmap-tab:has(.tabs-radio:focus-visible) {
+  outline: 2px solid var(--accent-brand);
+  outline-offset: -2px;
+}
+
+.board-roadmap-tab[data-active='true'] {
+  border-bottom-color: var(--accent-brand);
+  color: var(--fg-primary);
+}
+
+.board-roadmap-tab--board {
+  justify-content: flex-start;
+}
+
+.board-roadmap-tab--board .board-iteration-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: var(--font-size-15);
+  color: var(--fg-dim);
+}
+
+.board-roadmap-tab--board[data-active='true'] .board-iteration-name {
+  color: var(--fg-primary);
+}
+
+.board-roadmap-tab--board .board-title {
+  flex-shrink: 0;
+}
