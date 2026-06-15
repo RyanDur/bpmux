@@ -259,6 +259,20 @@ pub(crate) fn run_iteration_dev_ok(number: u64) -> anyhow::Result<()> {
     dispatch_write("dev_ok_iteration", args)
 }
 
+pub(crate) fn run_outcome_create(
+    title: &str,
+    horizon: &str,
+    body: Option<&str>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("title".to_string(), serde_json::json!(title));
+    args.insert("horizon".to_string(), serde_json::json!(horizon));
+    if let Some(b) = body {
+        args.insert("body".to_string(), serde_json::json!(b));
+    }
+    dispatch_write("create_outcome", args)
+}
+
 pub(crate) fn run_epic_set_parent(number: u64, epic: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(number));

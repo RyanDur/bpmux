@@ -20,6 +20,7 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
             {"name": "awaiting owner"},
             {"name": "iteration-review-closed.designer"},
             {"name": "iteration-dev-ok.dev"},
+            {"name": "horizon.next"},
         ],
         "created_at": "2026-05-15T01:00:00+00:00",
         "user": {"login": "FIELD_COMPLETENESS_SENTINEL_FILER"},
@@ -50,6 +51,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         iteration_order: _,
         iteration_review_closed_by,
         iteration_dev_ok_by,
+        horizon,
         is_current: _,
         acceptor,
     } = decoded;
@@ -115,6 +117,11 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         iteration_dev_ok_by.as_slice(),
         ["dev".to_string()],
         "iteration_dev_ok_by must decode the approver role from the dev-ok label"
+    );
+    assert_eq!(
+        *horizon,
+        Some(crate::board::domain::Horizon::Next),
+        "horizon must decode from the horizon.next label"
     );
 
     let _ = free_comments;

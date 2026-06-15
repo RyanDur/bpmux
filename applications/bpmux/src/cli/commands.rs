@@ -2,7 +2,7 @@ use clap::Subcommand;
 
 use super::actions::{
     BookmarkAction, BriefingAction, CiAction, EpicAction, IterationAction, LessonAction,
-    PrincipleAction, RoomAction, ValueAction,
+    OutcomeAction, PrincipleAction, RoomAction, ValueAction,
 };
 
 #[derive(Subcommand)]
@@ -332,6 +332,13 @@ pub(crate) enum Command {
     Iteration {
         #[command(subcommand)]
         action: IterationAction,
+    },
+    #[command(
+        about = "Outcome operations off Claude's MCP — create first-class roadmap outcomes (the why, horizon-sequenced) via the gated /api/rpc/create_outcome the bridge uses (PM-only; owner bypasses)."
+    )]
+    Outcome {
+        #[command(subcommand)]
+        action: OutcomeAction,
     },
     #[command(
         about = "Epic operations off Claude's MCP — group/ungroup a child story under an Epic via the same gated /api/rpc/{set_parent_epic,unset_parent_epic} the bridge uses (PM-only via require_role; owner bypasses via the #1709 superset)."

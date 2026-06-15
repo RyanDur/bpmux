@@ -57,6 +57,14 @@ pub(crate) async fn dispatch_test_create_iteration(
     tools_stories::handle_create_iteration(&args, agent_name, refresh).await
 }
 
+pub(crate) async fn dispatch_test_create_outcome(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    tools_stories::handle_create_outcome(&args, agent_name, refresh).await
+}
+
 pub(crate) async fn dispatch_test_close_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

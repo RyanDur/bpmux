@@ -14,7 +14,7 @@ pub(crate) use acceptance::{
     verify_bug_question_or_bypass,
 };
 pub(crate) use closure::{handle_close_iteration, handle_close_story};
-pub(crate) use creation::{handle_create_iteration, handle_create_story};
+pub(crate) use creation::{handle_create_iteration, handle_create_outcome, handle_create_story};
 pub use helpers::parse_acceptance_test_path;
 #[cfg(test)]
 pub(crate) use helpers::{

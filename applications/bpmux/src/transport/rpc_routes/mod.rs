@@ -32,6 +32,7 @@ fn known_tools() -> &'static [&'static str] {
         "close_story",
         "create_story",
         "create_iteration",
+        "create_outcome",
         "close_iteration",
         "comment_on_story",
         "label_story",
@@ -143,6 +144,7 @@ async fn dispatch(
         "create_iteration" => {
             bridge::dispatch_test_create_iteration(args, agent, refresh_ref).await
         }
+        "create_outcome" => bridge::dispatch_test_create_outcome(args, agent, refresh_ref).await,
         "close_iteration" => {
             bridge::dispatch_test_close_iteration(args, agent, refresh_ref, session).await
         }

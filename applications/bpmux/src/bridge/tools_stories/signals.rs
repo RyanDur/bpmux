@@ -98,7 +98,8 @@ pub(crate) fn addressee_for_pass_desk_check(
     match story_type {
         crate::board::domain::StoryType::Feature
         | crate::board::domain::StoryType::Epic
-        | crate::board::domain::StoryType::Iteration => owner(),
+        | crate::board::domain::StoryType::Iteration
+        | crate::board::domain::StoryType::Outcome => owner(),
         crate::board::domain::StoryType::Bug | crate::board::domain::StoryType::Chore => team(),
     }
 }

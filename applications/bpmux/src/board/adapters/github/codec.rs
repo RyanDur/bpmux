@@ -63,6 +63,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.iteration_order = iteration_order_from_labels(&labels);
     story.iteration_review_closed_by = iteration_review_closers_from_labels(&labels);
     story.iteration_dev_ok_by = iteration_dev_ok_by_from_labels(&labels);
+    story.horizon = horizon_from_labels(&labels);
     story.is_current = is_current_from_labels(&labels);
     story.acceptor = acceptor_from_labels(&labels);
     story.raw_labels = labels;
@@ -122,6 +123,12 @@ pub fn acceptor_from_labels(labels: &[String]) -> Option<crate::board::domain::A
     labels
         .iter()
         .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_acceptor(l))
+}
+
+pub fn horizon_from_labels(labels: &[String]) -> Option<crate::board::domain::Horizon> {
+    labels
+        .iter()
+        .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_horizon(l))
 }
 
 fn is_iteration_position_label(label: &str) -> bool {

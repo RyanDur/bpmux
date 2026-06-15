@@ -66,6 +66,19 @@ pub(crate) enum IterationAction {
 }
 
 #[derive(Subcommand)]
+pub(crate) enum OutcomeAction {
+    #[command(about = "Create a first-class roadmap outcome (the why, horizon-sequenced)")]
+    Create {
+        #[arg(long, help = "The measurable behaviour-change the outcome pursues")]
+        title: String,
+        #[arg(long, help = "Horizon: now | next | later (sequence, not calendar)")]
+        horizon: String,
+        #[arg(long, help = "Outcome body markdown (why-fields); optional")]
+        body: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
 pub(crate) enum LessonAction {
     #[command(about = "Save a lesson under a topic (author_role from BPMUX_ROLE)")]
     Save {

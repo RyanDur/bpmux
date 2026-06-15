@@ -87,6 +87,20 @@ impl GhLabelCodec {
         format!("iteration-dev-ok.{role}")
     }
 
+    pub fn decode_horizon(&self, label: &str) -> Option<crate::board::domain::Horizon> {
+        use crate::board::domain::Horizon;
+        match label.strip_prefix("horizon.")? {
+            "now" => Some(Horizon::Now),
+            "next" => Some(Horizon::Next),
+            "later" => Some(Horizon::Later),
+            _ => None,
+        }
+    }
+
+    pub fn encode_horizon(&self, horizon: crate::board::domain::Horizon) -> String {
+        format!("horizon.{}", horizon.as_str())
+    }
+
     pub fn is_iteration_position_label(&self, label: &str) -> bool {
         let Some(rest) = label.strip_prefix("iteration-") else {
             return false;
@@ -225,6 +239,26 @@ mod tests {
             GhLabelCodec.decode_iteration_dev_ok("iteration-review-closed.designer"),
             None
         );
+    }
+
+    #[test]
+    fn horizon_round_trips_each_bucket() {
+        use crate::board::domain::Horizon;
+        for (h, label) in [
+            (Horizon::Now, "horizon.now"),
+            (Horizon::Next, "horizon.next"),
+            (Horizon::Later, "horizon.later"),
+        ] {
+            assert_eq!(GhLabelCodec.encode_horizon(h), label);
+            assert_eq!(GhLabelCodec.decode_horizon(label), Some(h));
+        }
+    }
+
+    #[test]
+    fn decode_horizon_rejects_other_labels() {
+        assert_eq!(GhLabelCodec.decode_horizon("horizon.someday"), None);
+        assert_eq!(GhLabelCodec.decode_horizon("iteration-order.3"), None);
+        assert_eq!(GhLabelCodec.decode_horizon("feature"), None);
     }
 
     #[test]

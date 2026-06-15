@@ -153,7 +153,8 @@ pub fn gate_class_from_labels_and_story_type(
     match story_type {
         crate::board::domain::StoryType::Feature
         | crate::board::domain::StoryType::Epic
-        | crate::board::domain::StoryType::Iteration => GateClass::OwnerWalk,
+        | crate::board::domain::StoryType::Iteration
+        | crate::board::domain::StoryType::Outcome => GateClass::OwnerWalk,
         crate::board::domain::StoryType::Bug => GateClass::TeamVerifiable,
         crate::board::domain::StoryType::Chore => GateClass::DevVerifiable,
     }

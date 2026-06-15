@@ -62,6 +62,7 @@ pub enum StoryType {
     Chore,
     Epic,
     Iteration,
+    Outcome,
 }
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {
@@ -72,6 +73,7 @@ pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryT
             "chore" => return StoryType::Chore,
             "epic" => return StoryType::Epic,
             "iteration" => return StoryType::Iteration,
+            "outcome" => return StoryType::Outcome,
             _ => {}
         }
     }
@@ -81,6 +83,9 @@ pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryT
     }
     if lower.starts_with("[iteration") {
         return StoryType::Iteration;
+    }
+    if lower.starts_with("[outcome") {
+        return StoryType::Outcome;
     }
     if lower.starts_with("[bug") || lower.starts_with("bug:") {
         return StoryType::Bug;
@@ -108,6 +113,24 @@ impl Acceptor {
             Acceptor::Team => "team",
             Acceptor::Owner => "owner",
             Acceptor::Dev => "dev",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Horizon {
+    Now,
+    Next,
+    Later,
+}
+
+impl Horizon {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Horizon::Now => "now",
+            Horizon::Next => "next",
+            Horizon::Later => "later",
         }
     }
 }
@@ -224,6 +247,8 @@ pub struct Story {
     #[serde(default)]
     pub iteration_dev_ok_by: Vec<String>,
     #[serde(default)]
+    pub horizon: Option<Horizon>,
+    #[serde(default)]
     pub is_current: bool,
     #[serde(default)]
     pub acceptor: Option<Acceptor>,
@@ -261,6 +286,7 @@ impl Story {
             iteration_order: None,
             iteration_review_closed_by: Vec::new(),
             iteration_dev_ok_by: Vec::new(),
+            horizon: None,
             is_current: false,
             acceptor: None,
         }
