@@ -75,6 +75,18 @@ impl GhLabelCodec {
         format!("iteration-review-closed.{role}")
     }
 
+    pub fn decode_iteration_dev_ok(&self, label: &str) -> Option<String> {
+        let role = label.strip_prefix("iteration-dev-ok.")?;
+        if role.is_empty() {
+            return None;
+        }
+        Some(role.to_string())
+    }
+
+    pub fn encode_iteration_dev_ok(&self, role: &str) -> String {
+        format!("iteration-dev-ok.{role}")
+    }
+
     pub fn is_iteration_position_label(&self, label: &str) -> bool {
         let Some(rest) = label.strip_prefix("iteration-") else {
             return false;
@@ -187,6 +199,32 @@ mod tests {
             None
         );
         assert_eq!(GhLabelCodec.decode_iteration_review_closer("feature"), None);
+    }
+
+    #[test]
+    fn iteration_dev_ok_round_trips_role() {
+        let encoded = GhLabelCodec.encode_iteration_dev_ok("dev");
+        assert_eq!(encoded, "iteration-dev-ok.dev");
+        assert_eq!(
+            GhLabelCodec.decode_iteration_dev_ok(&encoded),
+            Some("dev".to_string())
+        );
+    }
+
+    #[test]
+    fn decode_iteration_dev_ok_rejects_other_labels() {
+        assert_eq!(
+            GhLabelCodec.decode_iteration_dev_ok("iteration-order.3"),
+            None
+        );
+        assert_eq!(
+            GhLabelCodec.decode_iteration_dev_ok("iteration-dev-ok."),
+            None
+        );
+        assert_eq!(
+            GhLabelCodec.decode_iteration_dev_ok("iteration-review-closed.designer"),
+            None
+        );
     }
 
     #[test]

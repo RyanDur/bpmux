@@ -47,6 +47,7 @@ impl BoardStore {
                     iteration_membership: None,
                     iteration_order: None,
                     iteration_review_closed_by: Vec::new(),
+                    iteration_dev_ok_by: Vec::new(),
                     is_current: false,
                     acceptor: None,
                 };
@@ -73,6 +74,10 @@ impl BoardStore {
                         crate::board::adapters::github::iteration_review_closers_from_labels(
                             &story.raw_labels,
                         );
+                    story.iteration_dev_ok_by =
+                        crate::board::adapters::github::iteration_dev_ok_by_from_labels(
+                            &story.raw_labels,
+                        );
                 }
             }
             BoardEvent::TagRemoved { label, .. } => {
@@ -87,6 +92,10 @@ impl BoardStore {
                         );
                     story.iteration_review_closed_by =
                         crate::board::adapters::github::iteration_review_closers_from_labels(
+                            &story.raw_labels,
+                        );
+                    story.iteration_dev_ok_by =
+                        crate::board::adapters::github::iteration_dev_ok_by_from_labels(
                             &story.raw_labels,
                         );
                 }
@@ -181,6 +190,7 @@ impl BoardStore {
                     existing.iteration_membership = story.iteration_membership;
                     existing.iteration_order = story.iteration_order;
                     existing.iteration_review_closed_by = story.iteration_review_closed_by.clone();
+                    existing.iteration_dev_ok_by = story.iteration_dev_ok_by.clone();
                     existing.is_current = story.is_current;
                     existing.acceptor = story.acceptor;
                     if story.body.is_some() {
@@ -213,6 +223,8 @@ impl BoardStore {
                         crate::board::adapters::github::iteration_review_closers_from_labels(
                             labels,
                         );
+                    existing.iteration_dev_ok_by =
+                        crate::board::adapters::github::iteration_dev_ok_by_from_labels(labels);
                     existing.is_current =
                         crate::board::adapters::github::is_current_from_labels(labels);
                     existing.acceptor =

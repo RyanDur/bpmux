@@ -253,6 +253,12 @@ pub(crate) fn run_iteration_close_review(number: u64) -> anyhow::Result<()> {
     dispatch_write("close_pre_pickup_review", args)
 }
 
+pub(crate) fn run_iteration_dev_ok(number: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("iteration_number".to_string(), serde_json::json!(number));
+    dispatch_write("dev_ok_iteration", args)
+}
+
 pub(crate) fn run_epic_set_parent(number: u64, epic: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(number));

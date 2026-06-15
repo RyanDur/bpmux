@@ -72,10 +72,12 @@ mod tests {
         s.story_type = StoryType::Iteration;
         s.body = Some("## Iteration overview\n\ncomposed".to_string());
         s.iteration_review_closed_by = vec!["designer".to_string()];
+        s.iteration_dev_ok_by = vec!["dev".to_string()];
         s.raw_labels = vec![
             "iteration".into(),
             "ready".into(),
             "iteration-review-closed.designer".into(),
+            "iteration-dev-ok.dev".into(),
         ];
         s
     }
@@ -112,6 +114,11 @@ mod tests {
         );
         assert_eq!(readiness["drafted"].as_bool(), Some(true));
         assert_eq!(readiness["stories_ordered"].as_bool(), Some(true));
+        assert_eq!(
+            readiness["dev_ok"].as_bool(),
+            Some(true),
+            "the dev-OK derives dev_ok=true, exposed for #1704 to consume"
+        );
     }
 
     #[tokio::test]

@@ -222,6 +222,8 @@ pub struct Story {
     #[serde(default)]
     pub iteration_review_closed_by: Vec<String>,
     #[serde(default)]
+    pub iteration_dev_ok_by: Vec<String>,
+    #[serde(default)]
     pub is_current: bool,
     #[serde(default)]
     pub acceptor: Option<Acceptor>,
@@ -258,6 +260,7 @@ impl Story {
             iteration_membership: None,
             iteration_order: None,
             iteration_review_closed_by: Vec::new(),
+            iteration_dev_ok_by: Vec::new(),
             is_current: false,
             acceptor: None,
         }

@@ -17,7 +17,7 @@ pub fn bundled_default() -> WorkflowConfig {
             },
             Role {
                 id: "dev".into(),
-                purposes: vec!["dev".into()],
+                purposes: vec!["dev".into(), "iteration-builder".into()],
             },
         ],
         section: vec![

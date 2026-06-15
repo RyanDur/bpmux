@@ -62,6 +62,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.iteration_membership = iteration_membership_from_labels(&labels);
     story.iteration_order = iteration_order_from_labels(&labels);
     story.iteration_review_closed_by = iteration_review_closers_from_labels(&labels);
+    story.iteration_dev_ok_by = iteration_dev_ok_by_from_labels(&labels);
     story.is_current = is_current_from_labels(&labels);
     story.acceptor = acceptor_from_labels(&labels);
     story.raw_labels = labels;
@@ -98,6 +99,15 @@ pub fn iteration_review_closers_from_labels(labels: &[String]) -> Vec<String> {
         .iter()
         .filter_map(|l| {
             crate::board::adapters::gh_label_codec::GhLabelCodec.decode_iteration_review_closer(l)
+        })
+        .collect()
+}
+
+pub fn iteration_dev_ok_by_from_labels(labels: &[String]) -> Vec<String> {
+    labels
+        .iter()
+        .filter_map(|l| {
+            crate::board::adapters::gh_label_codec::GhLabelCodec.decode_iteration_dev_ok(l)
         })
         .collect()
 }

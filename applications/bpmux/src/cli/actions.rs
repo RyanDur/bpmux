@@ -56,6 +56,13 @@ pub(crate) enum IterationAction {
         #[arg(help = "Iteration entity issue number")]
         number: u64,
     },
+    #[command(
+        about = "Record dev-OK-at-IPM for an iteration (iteration-builders only; derives the dev-OK readiness check)"
+    )]
+    DevOk {
+        #[arg(help = "Iteration entity issue number")]
+        number: u64,
+    },
 }
 
 #[derive(Subcommand)]

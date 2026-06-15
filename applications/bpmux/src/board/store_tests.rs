@@ -406,6 +406,38 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
 }
 
 #[test]
+fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "Iteration Vela".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Iteration,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("dev", 2026, "local"),
+        number: 1,
+        label: "iteration-dev-ok.dev".to_string(),
+    });
+    assert_eq!(
+        store.story(1).unwrap().iteration_dev_ok_by,
+        vec!["dev".to_string()],
+        "the dev-OK label add re-derives the approver-set from the recorded act"
+    );
+    store.apply(&BoardEvent::TagRemoved {
+        meta: meta("dev", 2026, "local"),
+        number: 1,
+        label: "iteration-dev-ok.dev".to_string(),
+    });
+    assert!(
+        store.story(1).unwrap().iteration_dev_ok_by.is_empty(),
+        "removing the dev-OK label clears the approver — derived, never stale"
+    );
+}
+
+#[test]
 fn tag_added_unknown_label_is_dropped() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
