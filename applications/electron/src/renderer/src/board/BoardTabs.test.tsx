@@ -45,6 +45,19 @@ const featureStory = (overrides: Partial<BoardStory>): BoardStory => ({
   ...overrides
 })
 
+const outcomeStory = (overrides: Partial<BoardStory>): BoardStory => ({
+  number: 7000,
+  title: 'The team runs on its own infra',
+  state: 'icebox',
+  gh_state: 'open',
+  labels: ['outcome'],
+  assignees: [],
+  created_at: '2026-06-15T00:00:00Z',
+  body: '**Benefit:** any agent plugs in',
+  horizon: 'now',
+  ...overrides
+})
+
 const buildProps = (stories: BoardStory[]): Parameters<typeof BoardTabs>[0] => {
   const epics = stories.filter((s) => s.labels.includes('epic'))
   const epicTitleByNumber = new Map(epics.map((e) => [e.number, e.title]))
@@ -79,11 +92,12 @@ const buildProps = (stories: BoardStory[]): Parameters<typeof BoardTabs>[0] => {
   }
 }
 
-describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
-  test('Scenario 1: renders 3 tabs with canonical labels Now / Plan / Done', () => {
+describe('#1704 BoardTabs — 4-tab Now/Plan/Roadmap/Done shape (additive Roadmap)', () => {
+  test('Scenario 1: renders 4 tabs with canonical labels Now / Plan / 🗺 Roadmap / Done', () => {
     const { getByTestId } = render(<BoardTabs {...buildProps([])} />)
     expect(getByTestId('board-tab-now').textContent).toBe('Now')
     expect(getByTestId('board-tab-plan').textContent).toBe('Plan')
+    expect(getByTestId('board-tab-roadmap').textContent).toBe('🗺 Roadmap')
     expect(getByTestId('board-tab-done').textContent).toBe('Done')
   })
 
@@ -95,12 +109,32 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     const planRadio = getByTestId('board-tab-plan').querySelector(
       'input[type="radio"]'
     ) as HTMLInputElement
+    const roadmapRadio = getByTestId('board-tab-roadmap').querySelector(
+      'input[type="radio"]'
+    ) as HTMLInputElement
     const doneRadio = getByTestId('board-tab-done').querySelector(
       'input[type="radio"]'
     ) as HTMLInputElement
     expect(nowRadio.checked).toBe(true)
     expect(planRadio.checked).toBe(false)
+    expect(roadmapRadio.checked).toBe(false)
     expect(doneRadio.checked).toBe(false)
+  })
+
+  test('#1704: Roadmap tab mounts the outcome-roadmap overview, grouped by horizon', () => {
+    const { getByTestId } = render(<BoardTabs {...buildProps([outcomeStory({ number: 7000 })])} />)
+    const roadmapPanel = getByTestId('board-tabpanel-roadmap')
+    expect(roadmapPanel.querySelector('[data-test="board-tabpanel-roadmap-content"]')).toBeTruthy()
+    expect(roadmapPanel.querySelector('[data-test="roadmap-band-now"]')).toBeTruthy()
+    expect(roadmapPanel.querySelector('[data-test="roadmap-outcome-7000"]')).toBeTruthy()
+  })
+
+  test('#1704: the Plan tab survives the additive Roadmap (icebox + iterations still mounted)', () => {
+    const iter = iterationStory({ number: 1500, title: 'Iteration Sextans' })
+    const { getByTestId } = render(<BoardTabs {...buildProps([iter])} />)
+    const planPanel = getByTestId('board-tabpanel-plan')
+    expect(planPanel.querySelector('[data-test="board-group-icebox"]')).toBeTruthy()
+    expect(planPanel.querySelector('[data-test="board-iteration-1500"]')).toBeTruthy()
   })
 
   test('#1549: NOW sections show the current iteration members per state, not the global ready column', () => {

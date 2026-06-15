@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import Epic from './Epic'
 import Iteration from './Iteration'
+import Roadmap from './Roadmap'
 import BoardGroup from './BoardGroup'
 import Tabs, { type TabDef } from './Tabs'
 import { useTabStorage } from '../lib/useTabStorage'
@@ -16,10 +17,10 @@ import {
 } from './types'
 import './BoardTabs.css'
 
-export type BoardTabId = 'now' | 'plan' | 'done'
+export type BoardTabId = 'now' | 'plan' | 'roadmap' | 'done'
 
 const BOARD_TAB_STORAGE_PREFIX = 'bpmux-board-active-tab'
-const VALID_TAB_IDS: ReadonlyArray<BoardTabId> = ['now', 'plan', 'done'] as const
+const VALID_TAB_IDS: ReadonlyArray<BoardTabId> = ['now', 'plan', 'roadmap', 'done'] as const
 
 const DONE_STATES: ReadonlyArray<ColumnState> = ['accepted', 'retired']
 
@@ -97,6 +98,12 @@ const BoardTabs = ({
         tabTestId: 'board-tab-plan',
         panelTestId: 'board-tabpanel-plan'
       },
+      {
+        id: 'roadmap',
+        label: '🗺 Roadmap',
+        tabTestId: 'board-tab-roadmap',
+        panelTestId: 'board-tabpanel-roadmap'
+      },
       { id: 'done', label: 'Done', tabTestId: 'board-tab-done', panelTestId: 'board-tabpanel-done' }
     ],
     []
@@ -172,6 +179,12 @@ const BoardTabs = ({
     )
   }
 
+  const renderRoadmap = (): React.JSX.Element => (
+    <section className="board-tabpanel-content" data-test="board-tabpanel-roadmap-content">
+      <Roadmap stories={stories} />
+    </section>
+  )
+
   const renderDone = (): React.JSX.Element => (
     <section className="board-tabpanel-content" data-test="board-tabpanel-done-content">
       {groupsFor(DONE_STATES).map((group) => renderGroup(group))}
@@ -184,6 +197,8 @@ const BoardTabs = ({
         return renderNow()
       case 'plan':
         return renderPlan()
+      case 'roadmap':
+        return renderRoadmap()
       case 'done':
         return renderDone()
     }

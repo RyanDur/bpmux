@@ -42,13 +42,21 @@ export const columnFor = (
   }
 }
 
-export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'iteration' | 'unknown'
+export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'iteration' | 'outcome' | 'unknown'
 
 export type Acceptor = 'team' | 'owner' | 'dev'
+
+export type Horizon = 'now' | 'next' | 'later'
 
 export interface IterationMembership {
   iteration_number: number
   position: number
+}
+
+export interface OutcomeReadiness {
+  iteration_count: number
+  gap_count: number
+  all_ready: boolean
 }
 
 export interface BoardStory {
@@ -66,6 +74,8 @@ export interface BoardStory {
   is_current?: boolean
   acceptor?: Acceptor | null
   rework_comment?: string | null
+  horizon?: Horizon | null
+  outcome_readiness?: OutcomeReadiness | null
 }
 
 export interface BoardResponse {
@@ -101,6 +111,7 @@ export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
 
 export const storyTypeFromLabels = (labels: string[]): StoryType => {
   const normalized = labels.map((l) => l.toLowerCase())
+  if (normalized.includes('outcome')) return 'outcome'
   if (normalized.includes('iteration')) return 'iteration'
   if (normalized.includes('epic')) return 'epic'
   if (normalized.includes('feature')) return 'feature'
