@@ -230,11 +230,8 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
     });
 }
 
-/// AC (#203): designer calling fail_desk_check fires a signal
-/// addressed to dev with the reason. ryan's notification stream
-/// does NOT contain the signal.
 #[test]
-fn fail_desk_check_signal_routes_to_dev_not_ryan() {
+fn fail_desk_check_signal_reaches_dev_and_the_owner_but_not_other_peers() {
     use harness::mock_gh::{issue_json, mock_story_mutations};
     use httpmock::{Method, MockServer};
     use serde_json::Value;
@@ -256,6 +253,7 @@ fn fail_desk_check_signal_routes_to_dev_not_ryan() {
         let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
         let ryan = TestBridge::connect_with_mock_gh(&bpmux, "ryan", &base_url).await;
         let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -275,17 +273,21 @@ fn fail_desk_check_signal_routes_to_dev_not_ryan() {
         dev.capture
             .wait_for("missing negative test", WAIT_PRESENCE_TIMEOUT)
             .await;
+        ryan.capture
+            .wait_for("missing negative test", WAIT_PRESENCE_TIMEOUT)
+            .await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
-        let ryan_seen = ryan.capture.received().join("\n");
+        let pm_seen = pm.capture.received().join("\n");
         assert!(
-            !ryan_seen.contains("missing negative test"),
-            "ryan should NOT receive the dev-addressed fail signal. got:\n{ryan_seen}"
+            !pm_seen.contains("missing negative test"),
+            "#1733: the owner is unfilterable — dev (addressed) AND ryan (the omniscient owner) both receive the fail signal, but pm (a non-owner not in --to) must NOT — owner-omniscience does not loosen peer scoping. got:\n{pm_seen}"
         );
 
         designer.close().await;
         ryan.close().await;
         dev.close().await;
+        pm.close().await;
     });
 }
 

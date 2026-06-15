@@ -181,17 +181,10 @@ pub(crate) async fn run_ws_connection(
             }
 
             let current_name = name.lock().await;
-            let relevant = match &to {
-                None => true,
-                Some(recipients)
-                    if recipients
-                        .iter()
-                        .any(|r| r == crate::session::message::BROADCAST_ALL) =>
-                {
-                    true
-                }
-                Some(recipients) => recipients.iter().any(|r| r == current_name.as_str()),
-            };
+            let relevant = crate::bridge::chat_relevance::scope_reaches_live_stream(
+                to.as_deref(),
+                &current_name,
+            );
             let channel = match &to {
                 None => "broadcast".to_string(),
                 Some(recipients)

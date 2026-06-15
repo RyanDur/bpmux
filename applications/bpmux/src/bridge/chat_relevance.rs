@@ -15,12 +15,69 @@ pub(crate) fn chat_class_reaches_live_stream(
     declared_chat_classes.iter().any(|c| c == message_class)
 }
 
+pub(crate) fn scope_reaches_live_stream(to: Option<&[String]>, recipient_short: &str) -> bool {
+    if matches!(
+        crate::transport::ws::role_from_short_name(recipient_short),
+        crate::orchestrator::stores::RosterRole::Owner
+    ) {
+        return true;
+    }
+    match to {
+        None => true,
+        Some(recipients) => {
+            recipients
+                .iter()
+                .any(|r| r == crate::session::message::BROADCAST_ALL)
+                || recipients.iter().any(|r| r == recipient_short)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::chat_class_reaches_live_stream;
+    use super::{chat_class_reaches_live_stream, scope_reaches_live_stream};
 
     fn classes(values: &[&str]) -> Vec<String> {
         values.iter().map(|v| v.to_string()).collect()
+    }
+
+    fn recipients(values: &[&str]) -> Vec<String> {
+        values.iter().map(|v| v.to_string()).collect()
+    }
+
+    #[test]
+    fn owner_bridge_stream_receives_a_conversation_scoped_to_other_peers() {
+        let to = recipients(&["pm", "designer"]);
+        assert!(
+            scope_reaches_live_stream(Some(&to), "ryan"),
+            "#1733-rework: the owner's live-notification stream sees a chat scoped to:[pm,designer] — the bridge scope-gate is unfilterable for the owner, mirroring should_deliver. --to is peer-attention, never owner-hiding"
+        );
+    }
+
+    #[test]
+    fn bridge_scope_gate_does_not_loosen_peer_scoping_for_non_owners() {
+        let to = recipients(&["pm", "designer"]);
+        assert!(
+            !scope_reaches_live_stream(Some(&to), "dev"),
+            "the owner-exemption does NOT loosen scope for peers — a non-owner not named in --to is still excluded at the bridge scope-gate"
+        );
+    }
+
+    #[test]
+    fn bridge_scope_gate_passes_broadcasts_to_every_stream() {
+        assert!(scope_reaches_live_stream(None, "dev"));
+        assert!(scope_reaches_live_stream(
+            Some(&recipients(&["all"])),
+            "dev"
+        ));
+    }
+
+    #[test]
+    fn bridge_scope_gate_passes_a_message_naming_the_recipient() {
+        assert!(scope_reaches_live_stream(
+            Some(&recipients(&["dev"])),
+            "dev"
+        ));
     }
 
     #[test]
