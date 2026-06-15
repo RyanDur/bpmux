@@ -74,7 +74,7 @@ export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersR
       if (ao !== null && bo !== null) return ao - bo
       if (ao !== null) return -1
       if (bo !== null) return 1
-      return 0
+      return a.number - b.number
     }
     return [...stories.filter(isIterationStory)].sort(compare)
   }, [stories, effectivePendingIterationOrder])

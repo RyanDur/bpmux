@@ -37,4 +37,16 @@ describe('useIterationMembers sortedIterations — order is backend-canonical', 
     const { result } = renderHook(() => useIterationMembers(stories))
     expect(result.current.sortedIterations.map((s) => s.number)).toEqual([500, 100])
   })
+
+  test('order-less iterations fall back to a deterministic issue-number tiebreak', () => {
+    const stories = [iteration(9803, null), iteration(9801, null), iteration(9802, null)]
+    const { result } = renderHook(() => useIterationMembers(stories))
+    expect(result.current.sortedIterations.map((s) => s.number)).toEqual([9801, 9802, 9803])
+  })
+
+  test('a present backend order outranks an order-less iteration (no Fornax regression)', () => {
+    const stories = [iteration(100, null), iteration(500, 200)]
+    const { result } = renderHook(() => useIterationMembers(stories))
+    expect(result.current.sortedIterations.map((s) => s.number)).toEqual([500, 100])
+  })
 })
