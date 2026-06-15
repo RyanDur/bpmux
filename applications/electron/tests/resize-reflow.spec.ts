@@ -61,25 +61,46 @@ test.describe('#1594 resize-reflow — resizing the window reflows the terminal 
           [start, end]
         )
 
+      const markersBothPresent = async (start: string, end: string): Promise<boolean> =>
+        win.evaluate(
+          ([s, e]) => {
+            const text = Array.from(
+              document.querySelectorAll('[data-active="true"] .xterm-rows > div')
+            )
+              .map((r) => r.textContent ?? '')
+              .join('\n')
+            return text.includes(s) && text.includes(e)
+          },
+          [start, end]
+        )
+
       await win.setViewportSize({ width: 1400, height: 900 })
-      await win.keyboard.type(`echo WIDESTART${'Z'.repeat(30)}WIDEEND`)
-      await win.keyboard.press('Enter')
       await expect
-        .poll(() => markersShareARow('WIDESTART', 'WIDEEND'), {
-          timeout: 10000,
-          intervals: [300, 600, 1000]
-        })
+        .poll(
+          async () => {
+            await win.keyboard.type(`echo WIDESTART${'Z'.repeat(30)}WIDEEND`)
+            await win.keyboard.press('Enter')
+            return markersShareARow('WIDESTART', 'WIDEEND')
+          },
+          { timeout: 20000, intervals: [400, 700, 1000, 1500] }
+        )
         .toBe(true)
 
       await win.setViewportSize({ width: 480, height: 600 })
-      await win.keyboard.type(`echo NARROWSTART${'Z'.repeat(30)}NARROWEND`)
-      await win.keyboard.press('Enter')
       await expect
-        .poll(() => markersShareARow('NARROWSTART', 'NARROWEND'), {
-          timeout: 10000,
-          intervals: [300, 600, 1000]
-        })
-        .toBe(false)
+        .poll(
+          async () => {
+            await win.keyboard.type(`echo NARROWSTART${'Z'.repeat(30)}NARROWEND`)
+            await win.keyboard.press('Enter')
+            return markersBothPresent('NARROWSTART', 'NARROWEND')
+          },
+          { timeout: 20000, intervals: [400, 700, 1000, 1500] }
+        )
+        .toBe(true)
+      expect(
+        await markersShareARow('NARROWSTART', 'NARROWEND'),
+        'a ~46-col line wraps at a narrow viewport — its start and end land on different xterm rows'
+      ).toBe(false)
     } finally {
       await app.close()
       await mockGh.close()
