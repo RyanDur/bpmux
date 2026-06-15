@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, render } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import BoardRoadmapSwitcher from './BoardRoadmapSwitcher'
 
@@ -62,9 +63,9 @@ describe('#1704 BoardRoadmapSwitcher — header-as-Board-tab sibling-switcher (d
     ).toBeTruthy()
   })
 
-  test('clicking 🗺 Roadmap activates roadmap; Board becomes inactive', () => {
+  test('clicking 🗺 Roadmap activates roadmap; Board becomes inactive', async () => {
     const { getByTestId } = renderSwitcher()
-    fireEvent.click(getByTestId('board-roadmap-tab-roadmap'))
+    await userEvent.click(getByTestId('board-roadmap-tab-roadmap'))
     expect(getByTestId('board-roadmap-panel-roadmap').hasAttribute('hidden')).toBe(false)
     expect(getByTestId('board-roadmap-panel-board').hasAttribute('hidden')).toBe(true)
   })
