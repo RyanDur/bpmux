@@ -18,6 +18,7 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
             {"name": "iteration-#200"},
             {"name": "blocked"},
             {"name": "awaiting owner"},
+            {"name": "iteration-review-closed.designer"},
         ],
         "created_at": "2026-05-15T01:00:00+00:00",
         "user": {"login": "FIELD_COMPLETENESS_SENTINEL_FILER"},
@@ -46,6 +47,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         body_etag,
         iteration_membership: _,
         iteration_order: _,
+        iteration_review_closed_by,
         is_current: _,
         acceptor,
     } = decoded;
@@ -101,6 +103,11 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         *acceptor,
         Some(crate::board::domain::Acceptor::Owner),
         "acceptor must decode from the 'awaiting owner' label"
+    );
+    assert_eq!(
+        iteration_review_closed_by.as_slice(),
+        ["designer".to_string()],
+        "iteration_review_closed_by must decode the closer role from the review-close label"
     );
 
     let _ = free_comments;

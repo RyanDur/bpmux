@@ -3,6 +3,7 @@
 mod acceptance_test_path_tests;
 mod add_story_to_iteration_tests;
 mod atp_validator_tests;
+mod close_pre_pickup_review_tests;
 mod designate_current_iteration_tests;
 mod handler_unit_tests;
 mod integration_drain_tests;

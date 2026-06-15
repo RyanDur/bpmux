@@ -36,7 +36,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
                 mutation_id,
                 server_story,
             } => {
-                self.middleware_mutation_rolled_back(mutation_id, server_story)
+                self.middleware_mutation_rolled_back(mutation_id, server_story.map(|b| *b))
                     .await;
             }
         }

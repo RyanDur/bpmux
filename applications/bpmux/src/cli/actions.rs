@@ -49,6 +49,13 @@ pub(crate) enum IterationAction {
         #[arg(long, help = "Iteration entity issue number")]
         iteration: u64,
     },
+    #[command(
+        about = "Close the pre-pickup review for an iteration (iteration-reviewers only; derives the review-readiness check)"
+    )]
+    CloseReview {
+        #[arg(help = "Iteration entity issue number")]
+        number: u64,
+    },
 }
 
 #[derive(Subcommand)]

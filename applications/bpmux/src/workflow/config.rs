@@ -89,6 +89,14 @@ impl WorkflowConfig {
             .map(|r| r.id.as_str())
     }
 
+    pub fn role_ids_for_purpose(&self, purpose: &str) -> Vec<&str> {
+        self.role
+            .iter()
+            .filter(|r| r.purposes.iter().any(|p| p == purpose))
+            .map(|r| r.id.as_str())
+            .collect()
+    }
+
     pub fn owner_role_id(&self) -> Option<&str> {
         self.role_id_for_purpose("owner")
     }
@@ -327,6 +335,41 @@ mod role_resolver_tests {
     }
 
     #[test]
+    fn role_ids_for_purpose_collects_all_roles_carrying_it() {
+        let workflow = workflow_with_roles(vec![
+            Role {
+                id: "designer".into(),
+                purposes: vec!["designer".into(), "iteration-reviewer".into()],
+            },
+            Role {
+                id: "lead".into(),
+                purposes: vec!["dev".into(), "iteration-reviewer".into()],
+            },
+            Role {
+                id: "pm".into(),
+                purposes: vec!["pm".into()],
+            },
+        ]);
+        assert_eq!(
+            workflow.role_ids_for_purpose("iteration-reviewer"),
+            vec!["designer", "lead"]
+        );
+    }
+
+    #[test]
+    fn role_ids_for_purpose_empty_when_none_carry_it() {
+        let workflow = workflow_with_roles(vec![Role {
+            id: "pm".into(),
+            purposes: vec!["pm".into()],
+        }]);
+        assert!(
+            workflow
+                .role_ids_for_purpose("iteration-reviewer")
+                .is_empty()
+        );
+    }
+
+    #[test]
     fn owner_role_id_resolves_via_owner_purpose() {
         let workflow = workflow_with_roles(vec![
             Role {
@@ -358,5 +401,14 @@ mod role_resolver_tests {
         assert_eq!(workflow.role_id_for_purpose("designer"), Some("designer"));
         assert_eq!(workflow.role_id_for_purpose("dev"), Some("dev"));
         assert_eq!(workflow.owner_role_id(), Some("ryan"));
+    }
+
+    #[test]
+    fn bundled_default_designates_designer_as_iteration_reviewer() {
+        let workflow = crate::workflow::bundled_default::bundled_default();
+        assert_eq!(
+            workflow.role_ids_for_purpose("iteration-reviewer"),
+            vec!["designer"]
+        );
     }
 }

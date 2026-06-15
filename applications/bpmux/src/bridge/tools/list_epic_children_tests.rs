@@ -25,6 +25,7 @@ fn epic(number: u64) -> Story {
         body_etag: None,
         iteration_membership: None,
         iteration_order: None,
+        iteration_review_closed_by: Vec::new(),
         is_current: false,
         acceptor: None,
     }
@@ -49,6 +50,7 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         body_etag: None,
         iteration_membership: None,
         iteration_order: None,
+        iteration_review_closed_by: Vec::new(),
         is_current: false,
         acceptor: None,
     }

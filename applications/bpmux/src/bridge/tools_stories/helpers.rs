@@ -126,6 +126,19 @@ pub(crate) fn require_purpose(
     require_role(agent_name, &allowed_refs, operation)
 }
 
+pub(crate) fn require_purpose_any(
+    agent_name: &str,
+    purpose: &str,
+    operation: &str,
+) -> Result<(), String> {
+    let workflow = crate::workflow::current_workflow();
+    let allowed = workflow.role_ids_for_purpose(purpose);
+    if allowed.is_empty() {
+        return Err(format!("{operation} has no configured {purpose} role"));
+    }
+    require_role(agent_name, &allowed, operation)
+}
+
 pub(crate) fn compose_iteration_body(theme_name: &str) -> String {
     let today = chrono::Utc::now().format("%Y-%m-%d");
     format!(

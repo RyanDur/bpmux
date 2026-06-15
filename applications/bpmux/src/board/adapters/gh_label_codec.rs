@@ -63,6 +63,18 @@ impl GhLabelCodec {
         format!("iteration-order.{position}")
     }
 
+    pub fn decode_iteration_review_closer(&self, label: &str) -> Option<String> {
+        let role = label.strip_prefix("iteration-review-closed.")?;
+        if role.is_empty() {
+            return None;
+        }
+        Some(role.to_string())
+    }
+
+    pub fn encode_iteration_review_closed(&self, role: &str) -> String {
+        format!("iteration-review-closed.{role}")
+    }
+
     pub fn is_iteration_position_label(&self, label: &str) -> bool {
         let Some(rest) = label.strip_prefix("iteration-") else {
             return false;
@@ -152,6 +164,29 @@ mod tests {
             GhLabelCodec.decode_parent_iteration("parent-epic-#1495"),
             None
         );
+    }
+
+    #[test]
+    fn iteration_review_closed_round_trips_role() {
+        let encoded = GhLabelCodec.encode_iteration_review_closed("designer");
+        assert_eq!(encoded, "iteration-review-closed.designer");
+        assert_eq!(
+            GhLabelCodec.decode_iteration_review_closer(&encoded),
+            Some("designer".to_string())
+        );
+    }
+
+    #[test]
+    fn decode_iteration_review_closer_rejects_other_labels() {
+        assert_eq!(
+            GhLabelCodec.decode_iteration_review_closer("iteration-order.3"),
+            None
+        );
+        assert_eq!(
+            GhLabelCodec.decode_iteration_review_closer("iteration-review-closed."),
+            None
+        );
+        assert_eq!(GhLabelCodec.decode_iteration_review_closer("feature"), None);
     }
 
     #[test]

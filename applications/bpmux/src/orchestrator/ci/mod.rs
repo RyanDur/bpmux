@@ -55,7 +55,7 @@ pub enum OrchestratorAction {
     },
     MutationRolledBack {
         mutation_id: MutationId,
-        server_story: Option<crate::board::domain::Story>,
+        server_story: Option<Box<crate::board::domain::Story>>,
     },
 }
 

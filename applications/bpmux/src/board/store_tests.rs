@@ -370,6 +370,42 @@ fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
 }
 
 #[test]
+fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "Iteration Vela".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Iteration,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("designer", 2026, "local"),
+        number: 1,
+        label: "iteration-review-closed.designer".to_string(),
+    });
+    assert_eq!(
+        store.story(1).unwrap().iteration_review_closed_by,
+        vec!["designer".to_string()],
+        "the review-close label add re-derives the closer-set from the recorded act"
+    );
+    store.apply(&BoardEvent::TagRemoved {
+        meta: meta("designer", 2026, "local"),
+        number: 1,
+        label: "iteration-review-closed.designer".to_string(),
+    });
+    assert!(
+        store
+            .story(1)
+            .unwrap()
+            .iteration_review_closed_by
+            .is_empty(),
+        "removing the review-close label clears the closer — derived, never stale"
+    );
+}
+
+#[test]
 fn tag_added_unknown_label_is_dropped() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {

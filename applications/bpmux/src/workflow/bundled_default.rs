@@ -13,7 +13,7 @@ pub fn bundled_default() -> WorkflowConfig {
             },
             Role {
                 id: "designer".into(),
-                purposes: vec!["designer".into()],
+                purposes: vec!["designer".into(), "iteration-reviewer".into()],
             },
             Role {
                 id: "dev".into(),

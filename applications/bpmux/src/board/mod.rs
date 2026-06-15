@@ -4,6 +4,7 @@ pub mod domain;
 pub mod events;
 pub mod iteration_label;
 pub mod iteration_order_backfill;
+pub mod iteration_readiness;
 pub mod label_codec;
 pub mod orchestrator;
 pub mod peer;

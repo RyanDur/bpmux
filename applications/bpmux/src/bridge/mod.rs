@@ -40,8 +40,9 @@ pub(crate) use polling::{
 
 pub(crate) use dispatch::{
     dispatch_test_accept_story, dispatch_test_add_story_to_iteration,
-    dispatch_test_close_iteration, dispatch_test_close_story, dispatch_test_comment_on_story,
-    dispatch_test_create_iteration, dispatch_test_create_story, dispatch_test_deliver_story,
+    dispatch_test_close_iteration, dispatch_test_close_pre_pickup_review,
+    dispatch_test_close_story, dispatch_test_comment_on_story, dispatch_test_create_iteration,
+    dispatch_test_create_story, dispatch_test_deliver_story,
     dispatch_test_designate_current_iteration, dispatch_test_dev_in_flight,
     dispatch_test_edit_story, dispatch_test_fail_desk_check, dispatch_test_get_story,
     dispatch_test_label_story, dispatch_test_list_epic_children, dispatch_test_list_ready,
