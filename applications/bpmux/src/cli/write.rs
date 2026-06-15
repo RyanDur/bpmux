@@ -273,6 +273,14 @@ pub(crate) fn run_outcome_create(
     dispatch_write("create_outcome", args)
 }
 
+pub(crate) fn run_outcome_add(outcome: u64, iteration: u64, position: u64) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("outcome_number".to_string(), serde_json::json!(outcome));
+    args.insert("iteration_number".to_string(), serde_json::json!(iteration));
+    args.insert("position".to_string(), serde_json::json!(position));
+    dispatch_write("map_iteration_to_outcome", args)
+}
+
 pub(crate) fn run_epic_set_parent(number: u64, epic: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(number));

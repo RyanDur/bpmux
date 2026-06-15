@@ -47,6 +47,12 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
                 "position": position,
             })
         });
+    let outcome_membership = story.outcome_membership.map(|(outcome_number, position)| {
+        serde_json::json!({
+            "outcome_number": outcome_number,
+            "position": position,
+        })
+    });
     serde_json::json!({
         "number": story.number,
         "title": story.title,
@@ -55,6 +61,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         "labels": labels,
         "parent_epic": story.parent_epic,
         "iteration_membership": iteration_membership,
+        "outcome_membership": outcome_membership,
         "iteration_order": story.iteration_order,
         "iteration_review_closed_by": story.iteration_review_closed_by,
         "iteration_dev_ok_by": story.iteration_dev_ok_by,

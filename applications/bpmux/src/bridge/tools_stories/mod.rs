@@ -27,7 +27,8 @@ pub(crate) use helpers::{
 pub(crate) use metadata::{
     handle_add_story_to_iteration, handle_close_pre_pickup_review, handle_comment_on_story,
     handle_designate_current_iteration, handle_dev_ok_iteration, handle_edit_story,
-    handle_label_story, handle_set_parent_epic, handle_unset_parent_epic,
+    handle_label_story, handle_map_iteration_to_outcome, handle_set_parent_epic,
+    handle_unset_parent_epic,
 };
 pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
 pub use signals::SYNC_STATUS_UPDATE_MARKER;

@@ -76,6 +76,17 @@ pub(crate) enum OutcomeAction {
         #[arg(long, help = "Outcome body markdown (why-fields); optional")]
         body: Option<String>,
     },
+    #[command(
+        about = "Map an iteration to an outcome at a position (the iterations that build it, in order)"
+    )]
+    Add {
+        #[arg(long, help = "Outcome entity issue number")]
+        outcome: u64,
+        #[arg(long, help = "Iteration entity issue number that builds the outcome")]
+        iteration: u64,
+        #[arg(long, help = "1-indexed position in the outcome's iteration-sequence")]
+        position: u64,
+    },
 }
 
 #[derive(Subcommand)]

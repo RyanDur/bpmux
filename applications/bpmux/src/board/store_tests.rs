@@ -470,6 +470,30 @@ fn tag_added_horizon_label_rederives_horizon_then_removal_clears_it_1738() {
 }
 
 #[test]
+fn outcome_membership_set_event_records_the_mapping_1738() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 710,
+        title: "Iteration Vela".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Icebox,
+        story_type: StoryType::Iteration,
+    });
+    store.apply(&BoardEvent::OutcomeMembershipSet {
+        meta: meta("pm", 2026, "local"),
+        number: 710,
+        outcome_number: 700,
+        position: 2,
+    });
+    assert_eq!(
+        store.story(710).unwrap().outcome_membership,
+        Some((700, 2)),
+        "the event records which outcome the iteration builds, and at what position"
+    );
+}
+
+#[test]
 fn tag_added_unknown_label_is_dropped() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {

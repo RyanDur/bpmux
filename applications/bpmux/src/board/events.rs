@@ -88,6 +88,12 @@ pub enum BoardEvent {
         iteration_number: u64,
         position: u32,
     },
+    OutcomeMembershipSet {
+        meta: EventMeta,
+        number: u64,
+        outcome_number: u64,
+        position: u32,
+    },
     CurrentIterationDesignated {
         meta: EventMeta,
         number: u64,
@@ -135,6 +141,7 @@ impl BoardEvent {
             | BoardEvent::ParentEpicSet { meta, .. }
             | BoardEvent::ParentEpicUnset { meta, .. }
             | BoardEvent::IterationMembershipSet { meta, .. }
+            | BoardEvent::OutcomeMembershipSet { meta, .. }
             | BoardEvent::CurrentIterationDesignated { meta, .. }
             | BoardEvent::CurrentIterationCleared { meta, .. }
             | BoardEvent::StoryRefreshed { meta, .. }
@@ -160,6 +167,7 @@ impl BoardEvent {
             | BoardEvent::ParentEpicSet { number, .. }
             | BoardEvent::ParentEpicUnset { number, .. }
             | BoardEvent::IterationMembershipSet { number, .. }
+            | BoardEvent::OutcomeMembershipSet { number, .. }
             | BoardEvent::CurrentIterationDesignated { number, .. }
             | BoardEvent::CurrentIterationCleared { number, .. }
             | BoardEvent::StoryRefreshed { number, .. }

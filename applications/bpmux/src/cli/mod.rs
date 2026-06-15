@@ -29,9 +29,9 @@ pub(crate) use write::{
     run_accept, run_backlog, run_close, run_comment, run_comments, run_commit_diff, run_create,
     run_deliver, run_edit, run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_fail,
     run_iteration_add, run_iteration_close, run_iteration_close_review, run_iteration_create,
-    run_iteration_designate, run_iteration_dev_ok, run_label, run_move, run_outcome_create,
-    run_pass, run_reject, run_start, run_story_commits, run_timeline, run_velocity, run_verdict,
-    run_verdicts,
+    run_iteration_designate, run_iteration_dev_ok, run_label, run_move, run_outcome_add,
+    run_outcome_create, run_pass, run_reject, run_start, run_story_commits, run_timeline,
+    run_velocity, run_verdict, run_verdicts,
 };
 
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
@@ -340,6 +340,11 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
                 horizon,
                 body,
             } => run_outcome_create(title, horizon, body.as_deref()),
+            OutcomeAction::Add {
+                outcome,
+                iteration,
+                position,
+            } => run_outcome_add(*outcome, *iteration, *position),
         }),
         Command::Epic { action } => Some(match action {
             EpicAction::SetParent { number, epic } => run_epic_set_parent(*number, *epic),

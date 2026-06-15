@@ -308,6 +308,16 @@ impl SourceAdapter for InMemorySourceAdapter {
                     story.iteration_membership = Some((*iteration_number, *position));
                 }
             }
+            BoardEvent::OutcomeMembershipSet {
+                number,
+                outcome_number,
+                position,
+                ..
+            } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.outcome_membership = Some((*outcome_number, *position));
+                }
+            }
             _ => {}
         }
         Ok(None)

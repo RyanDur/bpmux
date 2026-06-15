@@ -325,6 +325,56 @@ pub(crate) async fn handle_dev_ok_iteration(
     Ok(format!("iteration #{iteration_number} dev-OK'd by {role}"))
 }
 
+pub(crate) async fn handle_map_iteration_to_outcome(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    require_purpose(agent_name, &["pm"], "map an iteration to an outcome")?;
+    let outcome_number = args
+        .get("outcome_number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'outcome_number' argument")?;
+    let iteration_number = args
+        .get("iteration_number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'iteration_number' argument")?;
+    let position = args
+        .get("position")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'position' argument")? as u32;
+    let r = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
+    let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
+    if iteration.story_type != crate::board::domain::StoryType::Iteration {
+        return Err(format!(
+            "story #{iteration_number} is not an Iteration (story_type={:?}); only iterations build outcomes",
+            iteration.story_type
+        ));
+    }
+    let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
+    if outcome.story_type != crate::board::domain::StoryType::Outcome {
+        return Err(format!(
+            "story #{outcome_number} is not an Outcome (story_type={:?}); iterations map only to outcomes",
+            outcome.story_type
+        ));
+    }
+    let meta = crate::board::events::EventMeta {
+        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    r.mutate_sync(crate::board::BoardEvent::OutcomeMembershipSet {
+        meta,
+        number: iteration_number,
+        outcome_number,
+        position,
+    })
+    .map_err(|e| format!("#{iteration_number} outcome-membership enqueue failed: {e}"))?;
+    Ok(format!(
+        "iteration #{iteration_number} maps to outcome #{outcome_number} at position {position}"
+    ))
+}
+
 pub(crate) async fn handle_unset_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

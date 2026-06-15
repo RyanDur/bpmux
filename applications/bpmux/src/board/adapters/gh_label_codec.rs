@@ -55,6 +55,12 @@ impl GhLabelCodec {
         Some((number.parse().ok()?, position.parse().ok()?))
     }
 
+    pub fn decode_parent_outcome(&self, label: &str) -> Option<(u64, u32)> {
+        let rest = label.strip_prefix("parent-outcome-#")?;
+        let (number, position) = rest.split_once('.')?;
+        Some((number.parse().ok()?, position.parse().ok()?))
+    }
+
     pub fn decode_iteration_order(&self, label: &str) -> Option<u32> {
         label.strip_prefix("iteration-order.")?.parse().ok()
     }

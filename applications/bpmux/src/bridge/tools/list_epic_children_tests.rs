@@ -28,6 +28,7 @@ fn epic(number: u64) -> Story {
         iteration_review_closed_by: Vec::new(),
         iteration_dev_ok_by: Vec::new(),
         horizon: None,
+        outcome_membership: None,
         is_current: false,
         acceptor: None,
     }
@@ -55,6 +56,7 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         iteration_review_closed_by: Vec::new(),
         iteration_dev_ok_by: Vec::new(),
         horizon: None,
+        outcome_membership: None,
         is_current: false,
         acceptor: None,
     }

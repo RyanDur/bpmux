@@ -299,6 +299,31 @@ impl SourceAdapter for GitHubSourceAdapter {
                     labels,
                 }))
             }
+            BoardEvent::OutcomeMembershipSet {
+                number,
+                outcome_number,
+                position,
+                ..
+            } => {
+                let current = self.inner.get_story_labels(*number).await;
+                for l in current.iter().filter(|l| l.starts_with("parent-outcome-#")) {
+                    self.inner
+                        .remove_label(*number, l)
+                        .await
+                        .map_err(SyncError::Other)?;
+                }
+                let label = format!("parent-outcome-#{outcome_number}.{position}");
+                let labels = self
+                    .inner
+                    .add_label(*number, &label)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(Some(BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
+            }
             BoardEvent::CurrentIterationDesignated { number, .. } => {
                 let labels = self
                     .inner

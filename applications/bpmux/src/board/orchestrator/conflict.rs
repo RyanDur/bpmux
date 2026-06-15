@@ -25,6 +25,7 @@ pub fn classify_conflict(
         | BoardEvent::ParentEpicSet { .. }
         | BoardEvent::ParentEpicUnset { .. }
         | BoardEvent::IterationMembershipSet { .. }
+        | BoardEvent::OutcomeMembershipSet { .. }
         | BoardEvent::CurrentIterationDesignated { .. }
         | BoardEvent::CurrentIterationCleared { .. } => None,
         BoardEvent::StoryCreated { .. }

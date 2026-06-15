@@ -35,6 +35,15 @@ pub(crate) fn ordered_board_stories(
                     map.insert("readiness".to_string(), value);
                 }
             }
+            if s.story_type == crate::board::domain::StoryType::Outcome
+                && let serde_json::Value::Object(map) = &mut json
+            {
+                let rolled =
+                    crate::board::iteration_readiness::outcome_readiness(s, &all, workflow);
+                if let Ok(value) = serde_json::to_value(rolled) {
+                    map.insert("outcome_readiness".to_string(), value);
+                }
+            }
             json
         })
         .collect();
@@ -100,6 +109,50 @@ mod tests {
             .iter()
             .find(|s| s["number"].as_u64() == Some(number))
             .expect("story present in snapshot")
+    }
+
+    fn outcome(number: u64) -> Story {
+        let mut s = Story::new_minimal(
+            number,
+            "An outcome".to_string(),
+            StoryState::Icebox,
+            Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+            "pm".into(),
+        );
+        s.story_type = StoryType::Outcome;
+        s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
+        s
+    }
+
+    fn building_iteration(number: u64, outcome_number: u64, position: u32) -> Story {
+        let mut s = iteration(number);
+        s.outcome_membership = Some((outcome_number, position));
+        s.raw_labels
+            .push(format!("parent-outcome-#{outcome_number}.{position}"));
+        s
+    }
+
+    #[tokio::test]
+    async fn outcome_snapshot_carries_rolled_up_readiness_1738() {
+        let orch = orchestrator(vec![
+            outcome(3000),
+            building_iteration(3010, 3000, 1),
+            member(3011, 3010, 100),
+        ])
+        .await;
+        let stories = ordered_board_stories(&orch);
+        let rolled = &find(&stories, 3000)["outcome_readiness"];
+        assert_eq!(
+            rolled["iteration_count"].as_u64(),
+            Some(1),
+            "one iteration builds the outcome"
+        );
+        assert_eq!(rolled["gap_count"].as_u64(), Some(0));
+        assert_eq!(
+            rolled["all_ready"].as_bool(),
+            Some(true),
+            "the building iteration is fully ready → the outcome's readiness rolls up to ready, exposed for #1704/#1737"
+        );
     }
 
     #[tokio::test]

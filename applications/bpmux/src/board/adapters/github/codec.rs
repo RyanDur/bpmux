@@ -60,6 +60,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.is_closed = is_closed;
     story.parent_epic = parent_epic_from_labels(&labels);
     story.iteration_membership = iteration_membership_from_labels(&labels);
+    story.outcome_membership = outcome_membership_from_labels(&labels);
     story.iteration_order = iteration_order_from_labels(&labels);
     story.iteration_review_closed_by = iteration_review_closers_from_labels(&labels);
     story.iteration_dev_ok_by = iteration_dev_ok_by_from_labels(&labels);
@@ -84,6 +85,12 @@ pub fn iteration_membership_from_labels(labels: &[String]) -> Option<(u64, u32)>
     labels.iter().find_map(|l| {
         crate::board::adapters::gh_label_codec::GhLabelCodec.decode_parent_iteration(l)
     })
+}
+
+pub fn outcome_membership_from_labels(labels: &[String]) -> Option<(u64, u32)> {
+    labels
+        .iter()
+        .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_parent_outcome(l))
 }
 
 pub fn iteration_order_from_labels(labels: &[String]) -> Option<u32> {

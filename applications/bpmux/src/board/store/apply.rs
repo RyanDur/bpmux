@@ -49,6 +49,7 @@ impl BoardStore {
                     iteration_review_closed_by: Vec::new(),
                     iteration_dev_ok_by: Vec::new(),
                     horizon: None,
+                    outcome_membership: None,
                     is_current: false,
                     acceptor: None,
                 };
@@ -174,6 +175,15 @@ impl BoardStore {
                     story.iteration_membership = Some((*iteration_number, *position));
                 }
             }
+            BoardEvent::OutcomeMembershipSet {
+                outcome_number,
+                position,
+                ..
+            } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.outcome_membership = Some((*outcome_number, *position));
+                }
+            }
             BoardEvent::CurrentIterationDesignated { .. } => {
                 if let Some(story) = w.get_mut(&number) {
                     story.is_current = true;
@@ -193,6 +203,7 @@ impl BoardStore {
                     existing.is_closed = story.is_closed;
                     existing.parent_epic = story.parent_epic;
                     existing.iteration_membership = story.iteration_membership;
+                    existing.outcome_membership = story.outcome_membership;
                     existing.iteration_order = story.iteration_order;
                     existing.iteration_review_closed_by = story.iteration_review_closed_by.clone();
                     existing.iteration_dev_ok_by = story.iteration_dev_ok_by.clone();
@@ -223,6 +234,8 @@ impl BoardStore {
                         crate::board::adapters::github::parent_epic_from_labels(labels);
                     existing.iteration_membership =
                         crate::board::adapters::github::iteration_membership_from_labels(labels);
+                    existing.outcome_membership =
+                        crate::board::adapters::github::outcome_membership_from_labels(labels);
                     existing.iteration_order =
                         crate::board::adapters::github::iteration_order_from_labels(labels);
                     existing.iteration_review_closed_by =

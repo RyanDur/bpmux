@@ -21,6 +21,7 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
             {"name": "iteration-review-closed.designer"},
             {"name": "iteration-dev-ok.dev"},
             {"name": "horizon.next"},
+            {"name": "parent-outcome-#700.2"},
         ],
         "created_at": "2026-05-15T01:00:00+00:00",
         "user": {"login": "FIELD_COMPLETENESS_SENTINEL_FILER"},
@@ -52,6 +53,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         iteration_review_closed_by,
         iteration_dev_ok_by,
         horizon,
+        outcome_membership,
         is_current: _,
         acceptor,
     } = decoded;
@@ -122,6 +124,11 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         *horizon,
         Some(crate::board::domain::Horizon::Next),
         "horizon must decode from the horizon.next label"
+    );
+    assert_eq!(
+        *outcome_membership,
+        Some((700, 2)),
+        "outcome_membership must decode (outcome_number, position) from the parent-outcome label"
     );
 
     let _ = free_comments;

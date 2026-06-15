@@ -18,6 +18,50 @@ impl IterationReadiness {
     pub fn all_met(&self) -> bool {
         self.drafted && self.stories_ordered && self.review_closed && self.dev_ok
     }
+
+    pub fn unmet_count(&self) -> u32 {
+        u32::from(!self.drafted)
+            + u32::from(!self.stories_ordered)
+            + u32::from(!self.review_closed)
+            + u32::from(!self.dev_ok)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct OutcomeReadiness {
+    pub iteration_count: u32,
+    pub gap_count: u32,
+    pub all_ready: bool,
+}
+
+pub fn outcome_readiness(
+    outcome: &Story,
+    all: &[Story],
+    workflow: &WorkflowConfig,
+) -> OutcomeReadiness {
+    let building: Vec<&Story> = all
+        .iter()
+        .filter(|s| {
+            s.story_type == crate::board::domain::StoryType::Iteration
+                && s.outcome_membership.map(|(o, _)| o) == Some(outcome.number)
+        })
+        .collect();
+    let gap_count = building
+        .iter()
+        .map(|iteration| {
+            let members: Vec<&Story> = all
+                .iter()
+                .filter(|m| m.iteration_membership.map(|(it, _)| it) == Some(iteration.number))
+                .collect();
+            iteration_readiness(iteration, &members, workflow).unmet_count()
+        })
+        .sum();
+    let iteration_count = building.len() as u32;
+    OutcomeReadiness {
+        iteration_count,
+        gap_count,
+        all_ready: iteration_count > 0 && gap_count == 0,
+    }
 }
 
 pub fn iteration_readiness(
@@ -307,6 +351,71 @@ mod tests {
         assert!(
             !iteration_readiness(&it, &[], &bundled_default()).review_closed,
             "an owner-close is recorded but does not spoof review_closed — the derive validates the closer is a configured reviewer"
+        );
+    }
+
+    fn building_iteration(number: u64, outcome_number: u64, position: u32) -> Story {
+        let mut s = iteration(number);
+        s.outcome_membership = Some((outcome_number, position));
+        s
+    }
+
+    #[test]
+    fn outcome_readiness_rolls_up_gaps_from_building_iterations() {
+        let outcome = iteration(700);
+        let mut ready_it = building_iteration(710, 700, 1);
+        ready_it.iteration_review_closed_by = vec!["designer".to_string()];
+        ready_it.iteration_dev_ok_by = vec!["dev".to_string()];
+        let ready_member = member(7101, 710, 100);
+        let gappy_it = building_iteration(720, 700, 2);
+        let gappy_member = member(7201, 720, 100);
+        let all = vec![
+            outcome.clone(),
+            ready_it,
+            ready_member,
+            gappy_it,
+            gappy_member,
+        ];
+        let rolled = outcome_readiness(&outcome, &all, &bundled_default());
+        assert_eq!(
+            rolled.iteration_count, 2,
+            "two iterations build this outcome"
+        );
+        assert_eq!(
+            rolled.gap_count, 2,
+            "the second iteration lacks review-close + dev-OK = exactly 2 gaps rolled up"
+        );
+        assert!(
+            !rolled.all_ready,
+            "an outcome is not ready while a building iteration has gaps"
+        );
+    }
+
+    #[test]
+    fn outcome_readiness_all_ready_when_every_building_iteration_is_met() {
+        let outcome = iteration(700);
+        let mut it = building_iteration(710, 700, 1);
+        it.iteration_review_closed_by = vec!["designer".to_string()];
+        it.iteration_dev_ok_by = vec!["dev".to_string()];
+        let m = member(7101, 710, 100);
+        let all = vec![outcome.clone(), it, m];
+        let rolled = outcome_readiness(&outcome, &all, &bundled_default());
+        assert_eq!(rolled.gap_count, 0);
+        assert!(
+            rolled.all_ready,
+            "every building iteration met → the outcome's readiness rolls up to ready"
+        );
+    }
+
+    #[test]
+    fn outcome_readiness_not_ready_with_no_building_iterations() {
+        let outcome = iteration(700);
+        let rolled =
+            outcome_readiness(&outcome, std::slice::from_ref(&outcome), &bundled_default());
+        assert_eq!(rolled.iteration_count, 0);
+        assert!(
+            !rolled.all_ready,
+            "an outcome with no iterations building it is not ready (no false-positive)"
         );
     }
 }

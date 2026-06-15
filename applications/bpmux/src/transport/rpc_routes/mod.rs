@@ -42,6 +42,7 @@ fn known_tools() -> &'static [&'static str] {
         "designate_current_iteration",
         "close_pre_pickup_review",
         "dev_ok_iteration",
+        "map_iteration_to_outcome",
         "reorder_story",
         "edit_story",
         "view_board",
@@ -167,6 +168,9 @@ async fn dispatch(
         }
         "dev_ok_iteration" => {
             bridge::dispatch_test_dev_ok_iteration(args, agent, refresh_ref).await
+        }
+        "map_iteration_to_outcome" => {
+            bridge::dispatch_test_map_iteration_to_outcome(args, agent, refresh_ref).await
         }
         "reorder_story" => bridge::dispatch_test_reorder_story(args, agent, refresh_ref).await,
         "move_story" => bridge::dispatch_test_move_story(args, agent, refresh_ref).await,

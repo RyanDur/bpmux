@@ -3,10 +3,11 @@
 
 use crate::board::RefreshDriver;
 use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Horizon, Story, StoryType};
+use crate::board::domain::{Horizon, Story, StoryState, StoryType};
 use crate::board::orchestrator::SyncOrchestrator;
 use crate::board::store::BoardStore;
-use crate::bridge::tools_stories::handle_create_outcome;
+use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
+use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
@@ -16,6 +17,35 @@ async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
     orch
+}
+
+fn typed_seed(number: u64, story_type: StoryType, label: &str) -> Story {
+    let mut s = Story::new_minimal(
+        number,
+        format!("#{number}"),
+        StoryState::Icebox,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    s.story_type = story_type;
+    s.raw_labels = vec![label.to_string()];
+    s
+}
+
+async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(stories);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
+    orch.refresh_all().await.unwrap();
+    orch
+}
+
+fn map_args(outcome: u64, iteration: u64, position: u64) -> Map<String, Value> {
+    json!({ "outcome_number": outcome, "iteration_number": iteration, "position": position })
+        .as_object()
+        .cloned()
+        .unwrap_or_default()
 }
 
 fn args(title: &str, horizon: &str) -> Map<String, Value> {
@@ -76,5 +106,54 @@ async fn create_outcome_rejects_invalid_horizon_1738() {
     assert!(
         err.contains("invalid horizon"),
         "refusal explains the horizon must be now/next/later: {err}"
+    );
+}
+
+#[tokio::test]
+async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
+    let refresh = build_refresh(vec![
+        typed_seed(700, StoryType::Outcome, "outcome"),
+        typed_seed(710, StoryType::Iteration, "iteration"),
+    ])
+    .await;
+    handle_map_iteration_to_outcome(&map_args(700, 710, 1), "pm:claude-code", Some(&refresh))
+        .await
+        .expect("pm maps the iteration to the outcome");
+    let iteration = refresh.story(710).expect("iteration present");
+    assert_eq!(
+        iteration.outcome_membership,
+        Some((700, 1)),
+        "the iteration carries its outcome-membership (outcome 700 at position 1) — the drill-mapping"
+    );
+}
+
+#[tokio::test]
+async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused_1738() {
+    let refresh = build_refresh(vec![
+        typed_seed(700, StoryType::Outcome, "outcome"),
+        typed_seed(710, StoryType::Iteration, "iteration"),
+    ])
+    .await;
+    let err =
+        handle_map_iteration_to_outcome(&map_args(700, 710, 1), "dev:claude-code", Some(&refresh))
+            .await
+            .expect_err("dev cannot map (pm-lane)");
+    assert!(err.contains("pm"), "refusal names pm-lane: {err}");
+}
+
+#[tokio::test]
+async fn map_rejects_non_outcome_target_1738() {
+    let refresh = build_refresh(vec![
+        typed_seed(700, StoryType::Epic, "epic"),
+        typed_seed(710, StoryType::Iteration, "iteration"),
+    ])
+    .await;
+    let err =
+        handle_map_iteration_to_outcome(&map_args(700, 710, 1), "pm:claude-code", Some(&refresh))
+            .await
+            .expect_err("an epic is not an outcome — iterations map only to outcomes");
+    assert!(
+        err.contains("not an Outcome"),
+        "refusal explains the target must be an Outcome: {err}"
     );
 }
