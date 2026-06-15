@@ -43,9 +43,6 @@ const PRESENCE_LABEL: Record<Presence, string> = {
 
 const groupKey = (names: readonly string[]): string => [...names].sort().join('+')
 
-const isAllMembersGroup = (names: readonly string[], combinableRoles: readonly string[]): boolean =>
-  names.length === combinableRoles.length && names.every((n) => combinableRoles.includes(n))
-
 const recipientMatches = (recipient: string[] | null, names: readonly string[]): boolean => {
   if (recipient === null) return false
   if (recipient.length !== names.length) return false
@@ -105,7 +102,6 @@ const Sidebar = ({
   }, [roster])
 
   const noTerminalActive = activeTerminalKey === null
-  const allMembersGroupSelected = !allView && recipient === null && noTerminalActive
   const allActive = allView && noTerminalActive
 
   const goAll = (): void => {
@@ -117,11 +113,7 @@ const Sidebar = ({
     filter.reset()
   }
   const goGroup = (names: string[]): void => {
-    if (isAllMembersGroup(names, combinableRoles)) {
-      onSelectRecipient(null)
-    } else {
-      onSelectRecipient(names)
-    }
+    onSelectRecipient(names)
     filter.reset()
   }
 
@@ -186,10 +178,7 @@ const Sidebar = ({
         ) : (
           partialGroups.map((names) => {
             const key = groupKey(names)
-            const isAllMembers = isAllMembersGroup(names, combinableRoles)
-            const active = isAllMembers
-              ? allMembersGroupSelected
-              : noTerminalActive && !allView && recipientMatches(recipient, names)
+            const active = noTerminalActive && !allView && recipientMatches(recipient, names)
             return (
               <button
                 key={key}

@@ -157,6 +157,30 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
     expect([...onSelectRecipient.mock.calls[0][0]].sort()).toEqual(['designer', 'dev'])
   })
 
+  test('#1733: a 2-peer roster scopes its only group to that exact pair, not broadcast', () => {
+    const onSelectRecipient = vi.fn()
+    const TWO_PEER_ROSTER: RosterMemberWire[] = [
+      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev' }),
+      wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' })
+    ]
+    const { getByTestId } = render(
+      <Sidebar
+        recipient={null}
+        allView
+        onSelectRecipient={onSelectRecipient}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={TWO_PEER_ROSTER}
+      />
+    )
+    fireEvent.click(getByTestId('sidebar-group-dev+pm'))
+    expect(onSelectRecipient).toHaveBeenCalledTimes(1)
+    expect(onSelectRecipient.mock.calls[0][0]).not.toBeNull()
+    expect([...onSelectRecipient.mock.calls[0][0]].sort()).toEqual(['dev', 'pm'])
+  })
+
   test('clicking a direct role scopes the recipient to that role', () => {
     const onSelectRecipient = vi.fn()
     const { getByTestId } = render(
