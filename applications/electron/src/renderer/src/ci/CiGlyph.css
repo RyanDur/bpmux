@@ -12,7 +12,7 @@
   }
 
   &.ci-glyph--success {
-    color: var(--accent-success);
+    color: var(--accent-success-text);
   }
 
   &.ci-glyph--failure {
