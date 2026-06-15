@@ -54,6 +54,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         "labels": labels,
         "parent_epic": story.parent_epic,
         "iteration_membership": iteration_membership,
+        "iteration_order": story.iteration_order,
         "is_current": story.is_current,
         "acceptor": story.acceptor.map(|a| a.as_str()),
         "assignees": Vec::<String>::new(),

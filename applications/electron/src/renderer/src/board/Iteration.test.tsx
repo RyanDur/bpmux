@@ -436,13 +436,15 @@ describe('#1517 iteration-row drag-sort adopts the shared useDragReorder (real p
       number: 9001,
       title: 'Iteration A',
       gh_state: 'open',
-      labels: ['Iteration', iterationOrderLabel(100)]
+      labels: ['Iteration', iterationOrderLabel(100)],
+      iteration_order: 100
     })
     const b = iterationStory({
       number: 9002,
       title: 'Iteration B',
       gh_state: 'open',
-      labels: ['Iteration', iterationOrderLabel(200)]
+      labels: ['Iteration', iterationOrderLabel(200)],
+      iteration_order: 200
     })
     render(<Iteration stories={[a, b]} onOpen={() => {}} />)
 
@@ -467,13 +469,15 @@ describe('#1517 iteration-row drag-sort adopts the shared useDragReorder (real p
       number: 9001,
       title: 'Iteration A',
       gh_state: 'open',
-      labels: ['Iteration', iterationOrderLabel(100)]
+      labels: ['Iteration', iterationOrderLabel(100)],
+      iteration_order: 100
     })
     const b = iterationStory({
       number: 9002,
       title: 'Iteration B',
       gh_state: 'open',
-      labels: ['Iteration', iterationOrderLabel(200)]
+      labels: ['Iteration', iterationOrderLabel(200)],
+      iteration_order: 200
     })
     render(<Iteration stories={[a, b]} onOpen={() => {}} />)
     expect(activeIterationNumbers()).toEqual([9001, 9002])

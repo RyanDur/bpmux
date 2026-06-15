@@ -62,6 +62,7 @@ export interface BoardStory {
   body: string
   parent_epic?: number
   iteration_membership?: IterationMembership | null
+  iteration_order?: number | null
   is_current?: boolean
   acceptor?: Acceptor | null
   rework_comment?: string | null

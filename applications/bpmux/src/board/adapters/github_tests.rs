@@ -6,8 +6,8 @@ use crate::board::adapters::github::is_iteration_position_label_for_test as is_i
 use crate::board::adapters::github::is_position_label_for_test as is_position_label;
 use crate::board::adapters::github::{
     classify_gate, decode_gate_comments, decode_story_metadata, iteration_membership_from_labels,
-    parent_epic_from_labels, state_from_labels, state_to_label, tags_from_labels,
-    warn_on_inconsistent_state_labels,
+    iteration_order_from_labels, parent_epic_from_labels, state_from_labels, state_to_label,
+    tags_from_labels, warn_on_inconsistent_state_labels,
 };
 use crate::board::domain::story_type_from_labels_or_title;
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
@@ -621,6 +621,39 @@ fn iteration_membership_from_labels_picks_first_well_formed_match_1399() {
         "parent-iteration-#1398.200".to_string(),
     ];
     assert_eq!(iteration_membership_from_labels(&labels), Some((1397, 100)));
+}
+
+#[test]
+fn iteration_order_from_labels_extracts_position_1735() {
+    let labels = vec!["iteration".to_string(), "iteration-order.300".to_string()];
+    assert_eq!(iteration_order_from_labels(&labels), Some(300));
+}
+
+#[test]
+fn iteration_order_from_labels_returns_none_when_absent_1735() {
+    let labels = vec!["iteration-Octans.3".to_string(), "ready".to_string()];
+    assert_eq!(iteration_order_from_labels(&labels), None);
+}
+
+#[test]
+fn iteration_order_from_labels_picks_lowest_when_multiple_1735() {
+    let labels = vec![
+        "iteration-order.300".to_string(),
+        "iteration-order.100".to_string(),
+        "iteration-order.500".to_string(),
+    ];
+    assert_eq!(iteration_order_from_labels(&labels), Some(100));
+}
+
+#[test]
+fn decode_story_metadata_sets_iteration_order_from_label_1735() {
+    let v = serde_json::json!({
+        "number": 1397,
+        "title": "Iteration Fornax",
+        "labels": [{"name": "iteration-Fornax.100"}, {"name": "iteration-order.200"}],
+    });
+    let story = decode_story_metadata(&v).expect("decodes");
+    assert_eq!(story.iteration_order, Some(200));
 }
 
 #[test]

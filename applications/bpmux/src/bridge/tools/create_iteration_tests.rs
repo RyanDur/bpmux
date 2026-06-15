@@ -164,6 +164,51 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
 }
 
 #[tokio::test]
+async fn create_iteration_assigns_order_at_birth_1735() {
+    let refresh = build_empty_refresh().await;
+    handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
+        .await
+        .expect("create_iteration succeeds");
+    let stories = refresh.all_stories();
+    let iteration = stories
+        .iter()
+        .find(|s| s.title == "Iteration Aquila")
+        .expect("iteration persisted");
+    assert!(
+        iteration.iteration_order.is_some(),
+        "a freshly-created iteration is born with a canonical order (no order-less iteration → no Fornax-last); got {:?}",
+        iteration.iteration_order
+    );
+}
+
+#[tokio::test]
+async fn create_iteration_appends_order_after_existing_1735() {
+    let mut existing = seed_iteration_story(42, "Aquila", false);
+    existing.iteration_order = Some(100);
+    existing.raw_labels = vec!["iteration".to_string(), "iteration-order.100".to_string()];
+    let refresh = build_refresh_with_stories(vec![existing]).await;
+    handle_create_iteration(&args("Pegasus"), "pm:claude-code", Some(&refresh))
+        .await
+        .expect("create succeeds");
+    let stories = refresh.all_stories();
+    let pegasus = stories
+        .iter()
+        .find(|s| s.title == "Iteration Pegasus")
+        .expect("Pegasus persisted");
+    let aquila = stories
+        .iter()
+        .find(|s| s.title == "Iteration Aquila")
+        .expect("Aquila persisted");
+    assert!(
+        pegasus.iteration_order.expect("Pegasus has order")
+            > aquila.iteration_order.expect("Aquila has order"),
+        "new iteration appends AFTER existing in canonical order (Pegasus {:?} > Aquila {:?})",
+        pegasus.iteration_order,
+        aquila.iteration_order
+    );
+}
+
+#[tokio::test]
 async fn create_iteration_rejects_non_pm_role() {
     let refresh = build_empty_refresh().await;
     let err = handle_create_iteration(&args("Lyra"), "dev:claude-code", Some(&refresh))

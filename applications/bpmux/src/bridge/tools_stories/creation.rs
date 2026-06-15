@@ -205,10 +205,30 @@ pub(crate) async fn handle_create_iteration(
     })
     .map_err(|e| format!("#{number} iteration created but enqueue failed: {e}"))?;
     r.mutate_sync(crate::board::BoardEvent::TagAdded {
-        meta,
+        meta: meta.clone(),
         number,
         label: "iteration".to_string(),
     })
     .map_err(|e| format!("#{number} iteration label enqueue failed: {e}"))?;
+    let next_order = r
+        .all_stories()
+        .into_iter()
+        .filter(|s| {
+            s.story_type == crate::board::domain::StoryType::Iteration
+                && !s.is_closed
+                && s.number != number
+        })
+        .filter_map(|s| s.iteration_order)
+        .max()
+        .map_or(crate::board::iteration_label::DEFAULT_FIRST_POSITION, |m| {
+            m + crate::board::iteration_label::DEFAULT_STEP
+        });
+    r.mutate_sync(crate::board::BoardEvent::TagAdded {
+        meta,
+        number,
+        label: crate::board::adapters::gh_label_codec::GhLabelCodec
+            .encode_iteration_order(next_order),
+    })
+    .map_err(|e| format!("#{number} iteration-order label enqueue failed: {e}"))?;
     Ok(format!("iteration created: #{number} {title}"))
 }

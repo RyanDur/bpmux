@@ -45,6 +45,7 @@ impl BoardStore {
                     raw_labels: Vec::new(),
                     body_etag: None,
                     iteration_membership: None,
+                    iteration_order: None,
                     is_current: false,
                     acceptor: None,
                 };
@@ -63,6 +64,10 @@ impl BoardStore {
                         story.tags.push(tag);
                     }
                     sync_raw_labels_on_tag_added(story, label);
+                    story.iteration_order =
+                        crate::board::adapters::github::iteration_order_from_labels(
+                            &story.raw_labels,
+                        );
                 }
             }
             BoardEvent::TagRemoved { label, .. } => {
@@ -71,6 +76,10 @@ impl BoardStore {
                         story.tags.retain(|t| *t != tag);
                     }
                     sync_raw_labels_on_tag_removed(story, label);
+                    story.iteration_order =
+                        crate::board::adapters::github::iteration_order_from_labels(
+                            &story.raw_labels,
+                        );
                 }
             }
             BoardEvent::GateCommentAppended {
@@ -161,6 +170,7 @@ impl BoardStore {
                     existing.is_closed = story.is_closed;
                     existing.parent_epic = story.parent_epic;
                     existing.iteration_membership = story.iteration_membership;
+                    existing.iteration_order = story.iteration_order;
                     existing.is_current = story.is_current;
                     existing.acceptor = story.acceptor;
                     if story.body.is_some() {
@@ -187,6 +197,8 @@ impl BoardStore {
                         crate::board::adapters::github::parent_epic_from_labels(labels);
                     existing.iteration_membership =
                         crate::board::adapters::github::iteration_membership_from_labels(labels);
+                    existing.iteration_order =
+                        crate::board::adapters::github::iteration_order_from_labels(labels);
                     existing.is_current =
                         crate::board::adapters::github::is_current_from_labels(labels);
                     existing.acceptor =

@@ -24,6 +24,7 @@ fn epic(number: u64) -> Story {
         raw_labels: vec!["Epic".to_string(), "icebox".to_string()],
         body_etag: None,
         iteration_membership: None,
+        iteration_order: None,
         is_current: false,
         acceptor: None,
     }
@@ -47,6 +48,7 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         raw_labels: vec![],
         body_etag: None,
         iteration_membership: None,
+        iteration_order: None,
         is_current: false,
         acceptor: None,
     }

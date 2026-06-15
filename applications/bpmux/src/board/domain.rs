@@ -218,6 +218,8 @@ pub struct Story {
     #[serde(default)]
     pub iteration_membership: Option<(u64, u32)>,
     #[serde(default)]
+    pub iteration_order: Option<u32>,
+    #[serde(default)]
     pub is_current: bool,
     #[serde(default)]
     pub acceptor: Option<Acceptor>,
@@ -252,6 +254,7 @@ impl Story {
             raw_labels,
             body_etag: None,
             iteration_membership: None,
+            iteration_order: None,
             is_current: false,
             acceptor: None,
         }

@@ -55,6 +55,14 @@ impl GhLabelCodec {
         Some((number.parse().ok()?, position.parse().ok()?))
     }
 
+    pub fn decode_iteration_order(&self, label: &str) -> Option<u32> {
+        label.strip_prefix("iteration-order.")?.parse().ok()
+    }
+
+    pub fn encode_iteration_order(&self, position: u32) -> String {
+        format!("iteration-order.{position}")
+    }
+
     pub fn is_iteration_position_label(&self, label: &str) -> bool {
         let Some(rest) = label.strip_prefix("iteration-") else {
             return false;
@@ -142,6 +150,35 @@ mod tests {
         );
         assert_eq!(
             GhLabelCodec.decode_parent_iteration("parent-epic-#1495"),
+            None
+        );
+    }
+
+    #[test]
+    fn decode_iteration_order_parses_position() {
+        assert_eq!(
+            GhLabelCodec.decode_iteration_order("iteration-order.300"),
+            Some(300)
+        );
+        assert_eq!(
+            GhLabelCodec.decode_iteration_order("iteration-order.1"),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn decode_iteration_order_rejects_non_order_labels() {
+        assert_eq!(
+            GhLabelCodec.decode_iteration_order("iteration-Octans.3"),
+            None
+        );
+        assert_eq!(
+            GhLabelCodec.decode_iteration_order("iteration-order.x"),
+            None
+        );
+        assert_eq!(GhLabelCodec.decode_iteration_order("ready-order.5"), None);
+        assert_eq!(
+            GhLabelCodec.decode_iteration_order("parent-iteration-#9.3"),
             None
         );
     }

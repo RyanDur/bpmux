@@ -60,6 +60,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.is_closed = is_closed;
     story.parent_epic = parent_epic_from_labels(&labels);
     story.iteration_membership = iteration_membership_from_labels(&labels);
+    story.iteration_order = iteration_order_from_labels(&labels);
     story.is_current = is_current_from_labels(&labels);
     story.acceptor = acceptor_from_labels(&labels);
     story.raw_labels = labels;
@@ -80,6 +81,15 @@ pub fn iteration_membership_from_labels(labels: &[String]) -> Option<(u64, u32)>
     labels.iter().find_map(|l| {
         crate::board::adapters::gh_label_codec::GhLabelCodec.decode_parent_iteration(l)
     })
+}
+
+pub fn iteration_order_from_labels(labels: &[String]) -> Option<u32> {
+    labels
+        .iter()
+        .filter_map(|l| {
+            crate::board::adapters::gh_label_codec::GhLabelCodec.decode_iteration_order(l)
+        })
+        .min()
 }
 
 pub fn is_current_from_labels(labels: &[String]) -> bool {

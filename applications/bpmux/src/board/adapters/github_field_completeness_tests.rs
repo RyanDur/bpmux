@@ -45,6 +45,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         raw_labels,
         body_etag,
         iteration_membership: _,
+        iteration_order: _,
         is_current: _,
         acceptor,
     } = decoded;

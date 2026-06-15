@@ -163,6 +163,7 @@ pub(super) async fn build_prod_orchestrator(
                     "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
                     attempt + 1
                 ));
+                crate::board::iteration_order_backfill::backfill_iteration_order(orch.as_ref());
                 if let Err(e) = store.persist_to_storage(session.storage.as_ref()) {
                     crate::session::diag::log_diag(&format!(
                         "server: post-ingest snapshot to storage failed: {e}"
