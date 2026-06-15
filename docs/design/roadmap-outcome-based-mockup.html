@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!--
+  OUTCOME-BASED ROADMAP — the design-of-record for #1704/#1737. Designer 2026-06-15.
+  Per the labspractices outcome-oriented-roadmap practice (Ryan-confirmed): the roadmap's ONLY unit is the
+  OUTCOME ("a measurable change in behavior"), sequenced by TIME-HORIZON (Now / Near-Term / Future), each
+  carrying the WHY (benefit · success-criteria · confidence · value) + readiness-to-convene. NOT epics, NOT
+  features, NOT iterations — those are the "how" (the board/work).
+
+  WORK-GROUPING (Ryan-corrected 2026-06-15, twice): an OUTCOME is produced by a SEQUENCE OF ITERATIONS — the
+  iterations build up to the outcome. Drill an outcome → its ITERATIONS (in order) + the next iteration's
+  convene-readiness. EPICS are a BOARD artifact — the dev-flow work-grouping that groups STORIES for
+  feature-coherence (they still have use) — and are NOT surfaced in the roadmap. So: Roadmap = OUTCOMES
+  (value, by sequence — Now/Next/Later) → drill → ITERATIONS (the build-up). Board = EPICS + STORIES in
+  ITERATIONS. The roadmap rolls up via ITERATIONS (sequence → outcome); the board groups via EPICS
+  (feature-area). Epics exist (retained, useful) but are a board unit, never a roadmap unit — putting them in
+  the roadmap drill was an over-correction (epic-belongs-on-board got mistaken for epic-belongs-in-roadmap).
+  Chrome = roadmap-board-tab-switcher-mockup.html (Ryan's tabs). Dual-theme.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Outcome-based roadmap — #1704/#1737</title>
+<style>
+  :root{
+    --bg-base:#1a1a1a;--bg-elevated:#252525;--bg-highlighted:#333;--fg-primary:#e8e8e8;--fg-secondary:#b0b0b0;--fg-dim:#9d9d9d;--fg-dimmer:#808080;
+    --accent-brand:#6aa0ff;--accent-success:#3fb950;--accent-warning:#d4a13c;--border-subtle:#333;--border-strong:#555;
+  }
+  [data-theme="light"]{
+    --bg-base:#fff;--bg-elevated:#f5f5f5;--bg-highlighted:#e5e8ef;--fg-primary:#1a1a1a;--fg-secondary:#4a5568;--fg-dim:#5a6578;--fg-dimmer:#718096;
+    --accent-brand:#2563eb;--accent-success:#1a7f37;--accent-warning:#b45309;--border-subtle:#e2e8f0;--border-strong:#cbd5e0;
+  }
+  *{box-sizing:border-box}
+  body{background:#0e0e0e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:20px;line-height:1.45}
+  h1{font-size:16px;margin:0 0 3px}.sub{color:var(--fg-dim);font-size:12px;margin:0 0 14px;max-width:1000px}.sub b{color:var(--fg-secondary)}
+  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 10px;cursor:pointer;margin:0 0 16px}
+  .pair{display:flex;gap:18px;flex-wrap:wrap}
+  .stack{display:flex;flex-direction:column;gap:6px;width:430px}
+  .lbl{font-size:11px;color:var(--fg-dim)}.lbl b{color:var(--fg-secondary)}
+  .col{border:1px solid var(--border-strong);border-radius:7px;overflow:hidden;background:var(--bg-elevated)}
+  .tabs{display:flex;border-bottom:1px solid var(--border-subtle)}
+  .tab{flex:1;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:2px solid transparent;margin-bottom:-1px;min-width:0}
+  .tab.on{border-bottom-color:var(--accent-brand)}
+  .iter{flex:1 1 auto;min-width:0;font-size:.9375rem;font-weight:600;color:var(--fg-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tab.on .iter{color:var(--fg-primary)}.tab.on .rm{color:var(--fg-primary)}
+  .blabel{flex-shrink:0;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--fg-dim)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent-success);flex-shrink:0}
+  .rm{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--fg-dim);display:flex;align-items:center;gap:6px}
+  .pane{padding:10px 12px;min-height:360px}
+  .live{display:inline-flex;align-items:center;gap:5px;font-size:9px;color:var(--fg-dimmer);margin-bottom:6px}.live .d{width:5px;height:5px;border-radius:50%;background:var(--accent-success)}
+
+  /* HORIZON bands (the roadmap's spine) */
+  .horizon{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-dimmer);font-weight:700;margin:13px 0 6px;display:flex;align-items:center;gap:8px}
+  .horizon:first-of-type{margin-top:0}.horizon .ln{flex:1;height:1px;background:var(--border-subtle)}.horizon .when{color:var(--fg-dim);font-weight:500;letter-spacing:0;text-transform:none;font-size:9.5px}
+
+  /* OUTCOME card (the roadmap's only unit) */
+  .oc{border:1px solid var(--border-subtle);border-radius:6px;background:var(--bg-base);margin:0 0 7px;overflow:hidden}
+  .oc.now{border-left:3px solid var(--accent-brand)}.oc.ready{border-left:3px solid var(--accent-success)}.oc.gap{border-left:3px solid var(--accent-warning)}.oc.future{border-left:3px solid var(--fg-dimmer)}
+  .och{display:flex;align-items:center;gap:8px;padding:8px 10px 4px}
+  .dis{color:var(--fg-dim);font-size:10px;width:9px;flex-shrink:0}
+  .ocnm{flex:1;min-width:0;color:var(--fg-primary);font-weight:600;font-size:12.5px;line-height:1.25}
+  .attn{color:var(--accent-warning);flex-shrink:0;font-size:12px}.rdy{color:var(--accent-success);flex-shrink:0;font-size:11px}
+  /* the WHY line (what makes it an outcome, not a work-item) */
+  .why{font-size:10.5px;color:var(--fg-secondary);padding:0 10px 7px 27px;line-height:1.4}.why b{color:var(--fg-primary)}
+  .meta{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:9px;color:var(--fg-dim);padding:0 10px 8px 27px}
+  .meta span b{color:var(--fg-secondary);font-weight:600}
+  .conf{color:var(--accent-success)}.conf.med{color:var(--accent-warning)}
+
+  /* drill: outcome → its iterations (work-grouping) → convene-checks */
+  .drillbody{border-top:1px solid var(--border-subtle);background:color-mix(in srgb,var(--accent-brand) 5%,var(--bg-base));padding:6px 10px 9px 24px}
+  .convene{font-size:10px;color:var(--accent-warning);background:color-mix(in srgb,var(--accent-warning) 9%,transparent);border:1px dashed color-mix(in srgb,var(--accent-warning) 50%,transparent);border-radius:5px;padding:5px 9px;margin:3px 0 7px}.convene b{color:var(--fg-primary)}
+  .driltt{font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-dimmer);font-weight:700;margin:0 0 4px}
+  .itrow{border:1px solid var(--border-subtle);border-radius:5px;background:var(--bg-elevated);margin:0 0 5px;overflow:hidden}
+  .itrh{display:flex;align-items:center;gap:7px;padding:5px 9px}.itord{font-size:8.5px;font-weight:700;color:var(--accent-brand);min-width:32px}.itnm{color:var(--fg-primary);font-weight:600;font-size:11px}.spacer{flex:1}
+  .itstate{font-size:8.5px;font-weight:700;padding:1px 7px;border-radius:9px}.itstate.gap{color:var(--accent-warning);background:color-mix(in srgb,var(--accent-warning) 14%,transparent)}.itstate.ns{color:var(--fg-dimmer);background:var(--bg-highlighted)}
+  .checks{display:flex;flex-wrap:wrap;gap:2px 9px;padding:0 9px 5px 41px;font-size:9px}.chk{color:var(--fg-dim)}.chk b.y{color:var(--accent-success)}.chk b.n{color:var(--accent-warning)}
+  .cap{font-size:12px;color:var(--fg-dim);margin:14px 0 0;max-width:1000px;line-height:1.6}.cap b{color:var(--fg-secondary)}
+</style></head>
+<body id="b">
+  <h1>Outcome-based roadmap — outcomes by sequence (the why), drill → the work</h1>
+  <p class="sub">The roadmap's only unit is the <b>OUTCOME</b> (a measurable behavior-change), sequenced <b>Now / Next / Later</b> (commitment-order, not calendar), each with its <b>why</b> (benefit · success-criteria · confidence) + readiness-to-convene. Drill an outcome → the <b>iterations</b> that build up to produce it (in order) → <b>convene-checks</b>. <b>Epics</b> are a <b>board</b> artifact (the work-grouping for stories) — not surfaced in the roadmap; <b>outcomes</b> are the roadmap unit (the why), produced by a sequence of <b>iterations</b> (the build-up).</p>
+  <p class="toggle"><button onclick="b.setAttribute('data-theme',b.getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
+
+  <div class="pair">
+    <!-- OVERVIEW: outcomes by horizon -->
+    <div class="stack">
+      <p class="lbl"><b>Roadmap overview</b> — outcomes sequenced by horizon, each carrying its why + rolled-up readiness.</p>
+      <div class="col">
+        <div class="tabs">
+          <span class="tab"><span class="iter">Crux</span><span class="blabel">Board</span><span class="dot"></span></span>
+          <span class="tab on"><span class="rm">🗺 Roadmap</span></span>
+        </div>
+        <div class="pane">
+          <span class="live"><span class="d"></span> live · always current</span>
+
+          <div class="horizon">Now<span class="ln"></span></div>
+          <div class="oc now">
+            <div class="och"><span class="dis">▸</span><span class="ocnm">The team runs on its own infra, off Channels</span><span class="rdy">in progress</span></div>
+            <div class="why">So agents collaborate without Claude-specific glue — <b>any agent plugs in</b>.</div>
+            <div class="meta"><span><b>Metric:</b> 0 Claude-only paths</span><span><b>Confidence:</b> <span class="conf">high</span></span></div>
+          </div>
+          <div class="oc gap">
+            <div class="och"><span class="dis">▸</span><span class="ocnm">You see what's coming — and whether it's ready</span><span class="attn">◐</span></div>
+            <div class="why">So you steer the next iterations <b>before</b> convening — no stay-ahead misses.</div>
+            <div class="meta"><span><b>Metric:</b> next-iter ready at convene</span><span><b>Confidence:</b> <span class="conf">high</span></span><span><b>Readiness:</b> 1 gap</span></div>
+          </div>
+
+          <div class="horizon">Next<span class="ln"></span></div>
+          <div class="oc ready">
+            <div class="och"><span class="dis">▸</span><span class="ocnm">The app looks like one designed thing</span><span class="rdy">✓ ready</span></div>
+            <div class="why">So every surface is coherent + accessible by construction (Darcula).</div>
+            <div class="meta"><span><b>Value:</b> high</span><span><b>Confidence:</b> <span class="conf">high</span></span></div>
+          </div>
+          <div class="oc future">
+            <div class="och"><span class="dis">▸</span><span class="ocnm">Agents diagnose their own failed builds</span></div>
+            <div class="why">So a red build self-explains — less owner-firefighting.</div>
+            <div class="meta"><span><b>Value:</b> med</span><span><b>Confidence:</b> <span class="conf med">medium</span></span></div>
+          </div>
+
+          <div class="horizon">Later<span class="ln"></span></div>
+          <div class="oc future"><div class="och"><span class="dis">▸</span><span class="ocnm">Remote humans + agents collaborate over P2P</span></div></div>
+        </div>
+      </div>
+      <p class="lbl">↑ outcomes are <b>behavior-changes</b> (the why), ordered by horizon — not work-items. Value/confidence ride each card (the 2×2 inputs).</p>
+    </div>
+
+    <!-- DRILL: an outcome → its iterations (work) → convene-checks -->
+    <div class="stack">
+      <p class="lbl"><b>Drill an outcome</b> → the <b>iterations</b> that build up to produce it (in order) + the next iteration's convene-readiness. Epics stay a board artifact — not surfaced here.</p>
+      <div class="col">
+        <div class="tabs">
+          <span class="tab"><span class="iter">Crux</span><span class="blabel">Board</span><span class="dot"></span></span>
+          <span class="tab on"><span class="rm">🗺 Roadmap</span></span>
+        </div>
+        <div class="pane">
+          <div class="oc gap">
+            <div class="och"><span class="dis">▾</span><span class="ocnm">You see what's coming — and whether it's ready</span><span class="attn">◐</span></div>
+            <div class="why">So you steer the next iterations <b>before</b> convening — no stay-ahead misses.</div>
+            <div class="meta"><span><b>Metric:</b> next-iter ready at convene</span><span><b>Confidence:</b> <span class="conf">high</span></span></div>
+            <div class="drillbody">
+              <div class="convene"><b>CONVENE?</b> next iteration <b>Crux</b> — 1 gap (designer-review open); then Lyra.</div>
+              <div class="driltt">The build-up — iterations producing this outcome (in order)</div>
+              <div class="itrow">
+                <div class="itrh"><span class="itord">01 ▸</span><span class="itnm">Crux</span><span class="spacer"></span><span class="itstate gap">next · 1 gap</span></div>
+                <div class="checks"><span class="chk"><b class="y">✓</b> shaped</span><span class="chk"><b class="y">✓</b> drafted</span><span class="chk"><b class="y">✓</b> stories ordered</span><span class="chk"><b class="n">✗</b> designer-review</span><span class="chk">○ dev-OK</span></div>
+              </div>
+              <div class="itrow">
+                <div class="itrh"><span class="itord">02 ▸</span><span class="itnm">Lyra</span><span class="spacer"></span><span class="itstate ns">not started</span></div>
+              </div>
+            </div>
+          </div>
+          <p class="lbl" style="margin-top:4px">↓ drill an iteration (one more level) → its stories — grouped on the <b>board</b> by epic (the board's work-grouping).</p>
+        </div>
+      </div>
+      <p class="lbl">↑ the outcome answers <b>"is it ready to convene?"</b>; the iterations building to it carry the per-iteration convene-checks (#1703) in order (#1735). Drill an iteration → its stories (board-grouped by epic).</p>
+    </div>
+  </div>
+
+  <p class="cap"><b>The shape:</b> roadmap = <b>OUTCOMES</b> (behavior-changes) by <b>SEQUENCE</b> (Now / Next / Later — commitment-order, not calendar; a calculated date-projection is a future add when we can compute it from velocity), each with the why (benefit · success-criteria · confidence · value) + readiness. <b>Drill an outcome</b> → the <b>ITERATIONS</b> that build up to produce it (in order) → per-iteration convene-checks; drill an iteration → its stories. <b>Board</b> executes the work (stories, grouped by <b>epic</b>, in iterations); <b>Roadmap</b> steers the value (outcomes, produced by iterations). Epics are a <i>board</i> work-grouping (still useful) — <b>not</b> surfaced in the roadmap; the roadmap rolls up via <i>iterations</i>, the build-up to each outcome.</p>
+</body></html>
