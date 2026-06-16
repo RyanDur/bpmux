@@ -709,7 +709,7 @@ test.describe('real-backend', () => {
   // dot color + text within latency. Uses the multi-party peer-post
   // pattern (POST from test process → WS broadcast → renderer
   // derives + renders).
-  test('presence: a registered agent with no live-terminal signal holds present — never offline, never a false green-idle (#1719 reshaped by #1721)', async () => {
+  test('presence: a registered agent with no live-terminal signal holds UNKNOWN — hollow/no-signal-yet, never offline, never a false green-idle (#1719 reshaped by #1721; #1739/#1747 remapped Online→Unknown — honest un-signaled state)', async () => {
     const fs = await import('fs')
     const os = await import('os')
     const path = await import('path')
@@ -731,7 +731,7 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
 
     const devDot = win.locator('[data-test="presence-dot-dev"]')
-    await expect(devDot).toHaveAttribute('data-presence', 'present', {
+    await expect(devDot).toHaveAttribute('data-presence', 'unknown', {
       timeout: 15_000
     })
     await expect(devDot).not.toHaveAttribute('data-presence', 'offline')

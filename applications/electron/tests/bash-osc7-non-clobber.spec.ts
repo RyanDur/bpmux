@@ -37,10 +37,14 @@ test.describe('#1606 bash OSC-7 non-clobbering — a bash terminal whose own .ba
         )
         .toContain(targetMarker)
 
-      expect(
-        (await activeTerminal.textContent()) ?? '',
-        'the user PROMPT_COMMAND (echo BPMUX_USER_PC_MARKER) must still run after cd — our OSC-7 rcfile sources the user rc then APPENDS to PROMPT_COMMAND, so it must never clobber the user prompt-command'
-      ).toContain('BPMUX_USER_PC_MARKER')
+      await expect
+        .poll(async () => (await activeTerminal.textContent()) ?? '', {
+          timeout: 15000,
+          intervals: [300, 500, 800, 1200],
+          message:
+            'the user PROMPT_COMMAND (echo BPMUX_USER_PC_MARKER) must still run after cd — our OSC-7 rcfile sources the user rc then APPENDS to PROMPT_COMMAND, so it must never clobber the user prompt-command'
+        })
+        .toContain('BPMUX_USER_PC_MARKER')
     } finally {
       await app.close()
       await mockGh.close()

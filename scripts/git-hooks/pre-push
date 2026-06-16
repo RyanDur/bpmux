@@ -10,20 +10,18 @@ if [ ! -d "$REPO_ROOT/applications/electron/node_modules" ]; then
     exit 1
 fi
 
-echo "Running pre-push quality gates (serial heavy specs at workers=1, then 6 main shards at workers=1)..."
+echo "Running pre-push quality gates (serial heavy specs at workers=1, main at workers=4 parallel)..."
 
-# Every e2e spec launches its own electron+backend pair, so ANY
-# within-shard parallelism (workers>1) means N concurrent pairs
-# contending for the host. On a loaded dev machine that manufactured
-# intermittent timeout + worker-crash ("1 error not part of any test")
-# + notification-timing-race false-fails — a different spec each run.
-# workers=3->2 reduced it but didn't eliminate it; workers=1 is the
-# reliable floor (no within-shard contention -> races pass, no crash).
-# The 6 shards run SEQUENTIALLY (#1303), so workers=1 keeps coverage at
-# ~7-10min (not the 50min single batch). The durable fast-cure is a
-# SHARED backend (specs share one instead of each spawning a pair),
-# tracked as an Octans prevention item. The `serial` heavy specs
-# already run workers=1; this brings `main` to the same floor.
+# Main e2e now runs PARALLEL (workers=4, unsharded). Each spec launches
+# its own electron+backend pair; workers>1 was historically flaky from
+# per-test-pair contention — but grounding it (full main at workers=4:
+# 301/1) showed the only failure was a terminal-restore fetch that gave
+# up on a transient failure, FIXED in f6feb009 (it now retries). With
+# that nature-flake cured + retries=1 absorbing rare timing blips, the
+# owner accepted the reliability tradeoff to reclaim the ~3-4x: a full
+# main run is ~2.2min at workers=4 vs ~7-10min at the old sequential
+# workers=1. The `serial` heavy specs (real-backend/a11y/canary) stay
+# workers=1 — they're CPU-heavy + intentionally isolated.
 
 serial_log=$(mktemp)
 set +e
@@ -33,33 +31,21 @@ set +e
 serial_exit=$?
 set -e
 
-declare -a shard_logs shard_exits
-total_shards=6
-for i in $(seq 1 $total_shards); do
-    shard_logs[$i]=$(mktemp)
-    shard_exits[$i]=0
-done
-
-for i in $(seq 1 $total_shards); do
-    log="${shard_logs[$i]}"
-    set +e
-    (cd "$REPO_ROOT/applications/electron" \
-      && npx playwright test --reporter=dot --project=main \
-           --shard="$i/$total_shards" --workers=1) \
-      >"$log" 2>&1
-    shard_exits[$i]=$?
-    set -e
-done
+main_log=$(mktemp)
+set +e
+(cd "$REPO_ROOT/applications/electron" \
+  && npx playwright test --reporter=dot --project=main --workers=4) \
+  >"$main_log" 2>&1
+main_exit=$?
+set -e
 
 echo "--- serial (workers=1) ---"
 cat "$serial_log"
 rm -f "$serial_log"
 
-for i in $(seq 1 $total_shards); do
-    echo "--- shard $i/$total_shards ---"
-    cat "${shard_logs[$i]}"
-    rm -f "${shard_logs[$i]}"
-done
+echo "--- main (workers=4) ---"
+cat "$main_log"
+rm -f "$main_log"
 
 for_each_exit_check() {
     local label=$1 code=$2
@@ -73,9 +59,7 @@ for_each_exit_check() {
 }
 
 for_each_exit_check "e2e serial (workers=1)" "$serial_exit"
-for i in $(seq 1 $total_shards); do
-    for_each_exit_check "e2e shard $i/$total_shards" "${shard_exits[$i]}"
-done
+for_each_exit_check "e2e main (workers=4)" "$main_exit"
 
 MAX_LINES=400
 echo "Checking file sizes..."
