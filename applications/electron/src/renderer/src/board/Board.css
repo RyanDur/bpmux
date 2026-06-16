@@ -31,14 +31,6 @@
     box-shadow: inset 2px 0 0 var(--accent-brand);
   }
 
-  & .board-header {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-8);
-    padding: var(--space-8) var(--space-16);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
   & .board-iteration-name {
     flex: 1;
     color: var(--fg-primary);

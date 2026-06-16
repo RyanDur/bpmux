@@ -107,7 +107,8 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
     // Observation-falsifier: "I would reject if comments unreachable
     // by natural scroll." Scroll the drill-in container to the
     // bottom, then check comments are visible in the viewport.
-    await drillIn.evaluate((el: HTMLElement) => {
+    const scrollPanel = win.locator('[data-test="board-roadmap-panel-board"]')
+    await scrollPanel.evaluate((el: HTMLElement) => {
       el.scrollTop = el.scrollHeight
     })
 

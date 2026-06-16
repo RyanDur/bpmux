@@ -53,7 +53,7 @@ test.describe('#1510 board-header iteration-context', () => {
         .poll(() => win.evaluate(() => document.documentElement.dataset.theme))
         .toBe('dark')
 
-      const header = win.locator('.board-header')
+      const header = win.locator('[data-test="board-roadmap-tab-board"]')
       const iteration = win.locator('[data-test="board-header-iteration"]')
       const title = header.locator('.board-title')
       const glyph = header.locator('[data-test="sync-status-glyph"]')
