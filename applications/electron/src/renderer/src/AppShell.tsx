@@ -295,34 +295,48 @@ const AppShell = ({
   useEffect(() => {
     if (restored || status !== 'connected' || !bridge) return
     let cancelled = false
-    void fetch(`${bridge.apiBase}/api/terminals`, {
-      headers: { authorization: `Bearer ${bridge.authToken}` }
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`terminals list failed (${res.status})`)
-        const body = (await res.json()) as {
-          terminals?: { terminal_id: string; cwd?: string }[]
+    const restoreTerminals = async (): Promise<void> => {
+      const maxAttempts = 4
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          const res = await fetch(`${bridge.apiBase}/api/terminals`, {
+            headers: { authorization: `Bearer ${bridge.authToken}` }
+          })
+          if (cancelled) return
+          if (!res.ok) throw new Error(`terminals list failed (${res.status})`)
+          const body = (await res.json()) as {
+            terminals?: { terminal_id: string; cwd?: string }[]
+          }
+          if (cancelled) return
+          const live = body.terminals ?? []
+          const cwdById = new Map(live.map((t) => [t.terminal_id, t.cwd ?? '']))
+          const { orderedIds, activeId } = restoreTerminalLayout(
+            live.map((t) => t.terminal_id),
+            readTerminalLayout(RENDERER_IDENTITY)
+          )
+          const entries: TerminalEntry[] = orderedIds.map((id) => ({
+            key: crypto.randomUUID(),
+            id,
+            state: 'ready',
+            cwd: cwdById.get(id) ?? ''
+          }))
+          if (entries.length > 0) {
+            setTerminals(entries)
+            setActiveKey(entries.find((e) => e.id === activeId)?.key ?? null)
+          }
+          setRestored(true)
+          return
+        } catch (e: unknown) {
+          if (cancelled) return
+          if (attempt === maxAttempts) {
+            console.error('bpmux: terminal restore failed', e)
+            return
+          }
+          await new Promise((resolve) => setTimeout(resolve, 150 * 2 ** (attempt - 1)))
         }
-        if (cancelled) return
-        const live = body.terminals ?? []
-        const cwdById = new Map(live.map((t) => [t.terminal_id, t.cwd ?? '']))
-        const { orderedIds, activeId } = restoreTerminalLayout(
-          live.map((t) => t.terminal_id),
-          readTerminalLayout(RENDERER_IDENTITY)
-        )
-        const entries: TerminalEntry[] = orderedIds.map((id) => ({
-          key: crypto.randomUUID(),
-          id,
-          state: 'ready',
-          cwd: cwdById.get(id) ?? ''
-        }))
-        if (entries.length > 0) {
-          setTerminals(entries)
-          setActiveKey(entries.find((e) => e.id === activeId)?.key ?? null)
-        }
-        setRestored(true)
-      })
-      .catch((e: unknown) => console.error('bpmux: terminal restore failed', e))
+      }
+    }
+    void restoreTerminals()
     return () => {
       cancelled = true
     }
