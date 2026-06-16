@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
 import { type MessageFilter } from '../hooks/useMessageFilter'
 import { PRESENCE, type Presence } from '../hooks/usePresence'
@@ -41,6 +41,14 @@ const PRESENCE_LABEL: Record<Presence, string> = {
   unknown: 'unknown'
 }
 
+const IO_FLICKER_WINDOW_MS = 2100
+const EMPTY_ROLE_SET: ReadonlySet<string> = new Set()
+
+const rolesInMessage = (msg: ChatMessage, peers: readonly string[]): ReadonlySet<string> => {
+  const recipients = msg.to && msg.to.length > 0 ? msg.to : peers
+  return new Set<string>([msg.from.split(':')[0], ...recipients])
+}
+
 const groupKey = (names: readonly string[]): string => [...names].sort().join('+')
 
 const recipientMatches = (recipient: string[] | null, names: readonly string[]): boolean => {
@@ -61,6 +69,7 @@ const Sidebar = ({
   onCloseTerminal = () => {},
   terminalNames = {},
   onRenameTerminal = () => {},
+  messages,
   filter,
   mirrorRoster
 }: Props): React.JSX.Element => {
@@ -100,6 +109,23 @@ const Sidebar = ({
     for (const entry of roster) out.set(entry.role, entry.presence)
     return out
   }, [roster])
+
+  const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null
+  const latestMessageId = latestMessage?.id ?? null
+  const [baselineMessageId] = useState(() => latestMessageId)
+  const [expiredMessageId, setExpiredMessageId] = useState<string | null>(null)
+  useEffect(() => {
+    if (latestMessageId === null || latestMessageId === baselineMessageId) return
+    const timer = setTimeout(() => setExpiredMessageId(latestMessageId), IO_FLICKER_WINDOW_MS)
+    return () => clearTimeout(timer)
+  }, [latestMessageId, baselineMessageId])
+  const ioActiveRoles = useMemo(() => {
+    const live =
+      latestMessage !== null &&
+      latestMessageId !== baselineMessageId &&
+      latestMessageId !== expiredMessageId
+    return live ? rolesInMessage(latestMessage, directRoles) : EMPTY_ROLE_SET
+  }, [latestMessage, latestMessageId, baselineMessageId, expiredMessageId, directRoles])
 
   const noTerminalActive = activeTerminalKey === null
   const allActive = allView && noTerminalActive
@@ -143,6 +169,7 @@ const Sidebar = ({
           const status = rosterPresenceByRole.get(role) ?? PRESENCE.Unknown
           const statusLabel = PRESENCE_LABEL[status]
           const showStatusLabel = status !== PRESENCE.Available && status !== PRESENCE.Present
+          const ioActive = ioActiveRoles.has(role)
           return (
             <button
               key={role}
@@ -153,7 +180,7 @@ const Sidebar = ({
               onClick={() => goDirect(role)}
             >
               <i
-                className={`presence-dot presence-dot--${status}`}
+                className={`presence-dot presence-dot--${status}${ioActive ? ' presence-dot--io' : ''}`}
                 data-test={`presence-dot-${role}`}
                 data-presence={status}
                 aria-label={`${role} ${statusLabel}`}

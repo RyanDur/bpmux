@@ -118,6 +118,10 @@
       background: var(--accent-success);
     }
 
+    &.presence-dot--io {
+      animation: presence-dot-io-flicker 2.1s steps(1, end) infinite;
+    }
+
     &.presence-dot--blocked {
       background: var(--accent-error);
       animation: presence-dot-pulse-soft 2.4s var(--motion-ease-in-out) infinite;
@@ -125,6 +129,7 @@
 
     &.presence-dot--help {
       background: var(--accent-error);
+      animation: presence-dot-pulse-strong 0.7s var(--motion-ease-in-out) infinite;
     }
 
     &.presence-dot--unknown {
@@ -137,9 +142,20 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
+      &.presence-dot--io {
+        animation: none;
+      }
+
       &.presence-dot--blocked {
         animation: none;
         box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-error) 35%, transparent);
+      }
+
+      &.presence-dot--help {
+        animation: none;
+        box-shadow:
+          0 0 0 2px var(--accent-error),
+          0 0 0 4px color-mix(in srgb, var(--accent-error) 40%, transparent);
       }
     }
   }
@@ -152,6 +168,32 @@
 
     50% {
       opacity: 0.45;
+    }
+  }
+
+  @keyframes presence-dot-pulse-strong {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.3;
+      transform: scale(0.82);
+    }
+  }
+
+  @keyframes presence-dot-io-flicker {
+    0%,
+    86%,
+    100% {
+      opacity: 1;
+    }
+
+    90%,
+    94% {
+      opacity: 0.5;
     }
   }
 

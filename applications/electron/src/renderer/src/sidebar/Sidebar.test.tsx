@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import Sidebar from './Sidebar'
 import type { MessageFilter } from '../hooks/useMessageFilter'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
@@ -524,5 +524,120 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
       />
     )
     expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="busy"/)
+  })
+})
+
+describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (motion keyed off messages, never colour)', () => {
+  const baseProps = {
+    recipient: null,
+    allView: false,
+    onSelectRecipient: () => {},
+    onSelectAllView: () => {},
+    filter,
+    mirrorRoster: ROSTER_FIXTURE
+  }
+
+  test('a directed message flickers BOTH sender and recipient, then clears after the window', () => {
+    vi.useFakeTimers()
+    try {
+      const { getByTestId, rerender } = render(<Sidebar {...baseProps} messages={[]} />)
+      expect(getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
+
+      const msg: ChatMessage = {
+        id: 'io-1',
+        from: 'dev:claude-code',
+        text: 'on it',
+        ts: '2026-06-16T12:00:00Z',
+        to: ['pm'],
+        addressee: 'pm',
+        messageType: 'chat'
+      }
+      rerender(<Sidebar {...baseProps} messages={[msg]} />)
+      expect(getByTestId('presence-dot-dev').className).toContain('presence-dot--io')
+      expect(getByTestId('presence-dot-pm').className).toContain('presence-dot--io')
+      expect(getByTestId('presence-dot-designer').className).not.toContain('presence-dot--io')
+
+      act(() => {
+        vi.advanceTimersByTime(2100)
+      })
+      expect(getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
+      expect(getByTestId('presence-dot-pm').className).not.toContain('presence-dot--io')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('a broadcast (to=null) flickers every peer dot — it flows to all', () => {
+    vi.useFakeTimers()
+    try {
+      const { getByTestId, rerender } = render(<Sidebar {...baseProps} messages={[]} />)
+      const msg: ChatMessage = {
+        id: 'b-1',
+        from: 'ryan:electron',
+        text: 'team sync',
+        ts: '2026-06-16T12:00:01Z',
+        to: null,
+        addressee: null,
+        messageType: 'chat'
+      }
+      rerender(<Sidebar {...baseProps} messages={[msg]} />)
+      expect(getByTestId('presence-dot-dev').className).toContain('presence-dot--io')
+      expect(getByTestId('presence-dot-pm').className).toContain('presence-dot--io')
+      expect(getByTestId('presence-dot-designer').className).toContain('presence-dot--io')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('flicker is orthogonal to colour: a Busy dot that flickers keeps its busy colour', () => {
+    vi.useFakeTimers()
+    try {
+      const BUSY_ROSTER: RosterMemberWire[] = [
+        wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+        wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Busy' }),
+        wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' })
+      ]
+      const { getByTestId, rerender } = render(
+        <Sidebar {...baseProps} mirrorRoster={BUSY_ROSTER} messages={[]} />
+      )
+      const msg: ChatMessage = {
+        id: 'io-2',
+        from: 'dev:claude-code',
+        text: 'shipping',
+        ts: '2026-06-16T12:00:02Z',
+        to: ['pm'],
+        addressee: 'pm',
+        messageType: 'chat'
+      }
+      rerender(<Sidebar {...baseProps} mirrorRoster={BUSY_ROSTER} messages={[msg]} />)
+      const dot = getByTestId('presence-dot-dev')
+      expect(dot.className).toContain('presence-dot--busy')
+      expect(dot.className).toContain('presence-dot--io')
+      expect(dot.getAttribute('data-presence')).toBe('busy')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('message-history at mount does NOT flicker — flicker is a live event, not a replay', () => {
+    vi.useFakeTimers()
+    try {
+      const history: ChatMessage[] = [
+        {
+          id: 'hist-1',
+          from: 'dev:claude-code',
+          text: 'earlier',
+          ts: '2026-06-16T11:00:00Z',
+          to: ['pm'],
+          addressee: 'pm',
+          messageType: 'chat'
+        }
+      ]
+      const { getByTestId } = render(<Sidebar {...baseProps} messages={history} />)
+      expect(getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
+      expect(getByTestId('presence-dot-pm').className).not.toContain('presence-dot--io')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
