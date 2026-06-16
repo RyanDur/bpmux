@@ -141,11 +141,6 @@ fn hook_is_silent_when_only_ryan_messages_are_new() {
     );
 }
 
-/// GIVEN a messages log where new messages are activity-type (not
-///   chat), e.g. status updates from set-status-available.sh
-/// WHEN the hook runs
-/// THEN no systemMessage is emitted — activity is operational
-///   noise, not content the agent needs in its context
 #[test]
 fn hook_is_silent_when_only_activity_messages_are_new() {
     let messages = r#"[
