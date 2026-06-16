@@ -59,6 +59,18 @@ export interface OutcomeReadiness {
   all_ready: boolean
 }
 
+export interface IterationReadiness {
+  drafted: boolean
+  stories_ordered: boolean
+  review_closed: boolean
+  dev_ok: boolean
+}
+
+export interface OutcomeMembership {
+  outcome_number: number
+  position: number
+}
+
 export interface BoardStory {
   number: number
   title: string
@@ -76,6 +88,8 @@ export interface BoardStory {
   rework_comment?: string | null
   horizon?: Horizon | null
   outcome_readiness?: OutcomeReadiness | null
+  outcome_membership?: OutcomeMembership | null
+  readiness?: IterationReadiness | null
 }
 
 export interface BoardResponse {

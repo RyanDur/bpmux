@@ -1,5 +1,7 @@
-import { Fragment, useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { deriveRoadmapView, type OutcomeWhy, type RoadmapOutcome } from './deriveRoadmapView'
+import { deriveOutcomeDrillIn } from './deriveOutcomeDrillIn'
+import OutcomeDrillBody from './OutcomeDrillBody'
 import type { BoardStory } from './types'
 import './Roadmap.css'
 
@@ -27,7 +29,17 @@ const readinessText = (outcome: RoadmapOutcome): string | null => {
 const fieldText = (value: string | undefined): string =>
   value === '' || value === undefined ? '—' : value
 
-const RoadmapOutcomeCard = ({ outcome }: { outcome: RoadmapOutcome }): React.JSX.Element => {
+const RoadmapOutcomeCard = ({
+  outcome,
+  stories,
+  focused,
+  onToggle
+}: {
+  outcome: RoadmapOutcome
+  stories: BoardStory[]
+  focused: boolean
+  onToggle: (outcomeNumber: number) => void
+}): React.JSX.Element => {
   const readiness = readinessText(outcome)
   const presentMeta = META_FIELDS.filter(({ key }) => key in outcome.why)
   return (
@@ -35,9 +47,20 @@ const RoadmapOutcomeCard = ({ outcome }: { outcome: RoadmapOutcome }): React.JSX
       className="roadmap-outcome"
       data-test={`roadmap-outcome-${outcome.number}`}
       data-tone={outcome.tone}
+      data-focused={focused || undefined}
     >
       <header className="roadmap-outcome-head">
-        <h4 className="roadmap-outcome-name">{outcome.name}</h4>
+        <h4 className="roadmap-outcome-name">
+          <button
+            type="button"
+            className="roadmap-outcome-toggle"
+            data-test={`roadmap-outcome-toggle-${outcome.number}`}
+            aria-expanded={focused}
+            onClick={() => onToggle(outcome.number)}
+          >
+            {outcome.name}
+          </button>
+        </h4>
         {readiness !== null && (
           <data
             className="roadmap-outcome-readiness"
@@ -63,12 +86,21 @@ const RoadmapOutcomeCard = ({ outcome }: { outcome: RoadmapOutcome }): React.JSX
           ))}
         </dl>
       )}
+      {focused && (
+        <OutcomeDrillBody
+          outcomeNumber={outcome.number}
+          drill={deriveOutcomeDrillIn(outcome.number, stories)}
+        />
+      )}
     </article>
   )
 }
 
 const Roadmap = ({ stories }: RoadmapProps): React.JSX.Element => {
   const bands = useMemo(() => deriveRoadmapView(stories), [stories])
+  const [focusedNumber, setFocusedNumber] = useState<number | null>(null)
+  const toggle = (outcomeNumber: number): void =>
+    setFocusedNumber((current) => (current === outcomeNumber ? null : outcomeNumber))
   return (
     <section className="roadmap" data-test="roadmap">
       <p className="roadmap-live" data-test="roadmap-live">
@@ -90,7 +122,12 @@ const Roadmap = ({ stories }: RoadmapProps): React.JSX.Element => {
             <ul className="roadmap-band-outcomes">
               {band.outcomes.map((outcome) => (
                 <li key={outcome.number}>
-                  <RoadmapOutcomeCard outcome={outcome} />
+                  <RoadmapOutcomeCard
+                    outcome={outcome}
+                    stories={stories}
+                    focused={focusedNumber === outcome.number}
+                    onToggle={toggle}
+                  />
                 </li>
               ))}
             </ul>
