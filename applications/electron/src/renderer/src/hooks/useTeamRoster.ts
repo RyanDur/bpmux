@@ -8,7 +8,7 @@ export interface RosterEntry {
 }
 
 const WIRE_TO_PRESENCE: Record<PresenceWire, Presence> = {
-  Online: PRESENCE.Present,
+  Online: PRESENCE.Unknown,
   Busy: PRESENCE.Busy,
   Idle: PRESENCE.Idle,
   Offline: PRESENCE.Offline,

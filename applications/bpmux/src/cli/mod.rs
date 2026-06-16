@@ -30,8 +30,8 @@ pub(crate) use write::{
     run_deliver, run_edit, run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_fail,
     run_iteration_add, run_iteration_close, run_iteration_close_review, run_iteration_create,
     run_iteration_designate, run_iteration_dev_ok, run_label, run_move, run_outcome_add,
-    run_outcome_create, run_pass, run_reject, run_start, run_story_commits, run_timeline,
-    run_velocity, run_verdict, run_verdicts,
+    run_outcome_create, run_pass, run_reject, run_signal, run_start, run_story_commits,
+    run_timeline, run_velocity, run_verdict, run_verdicts,
 };
 
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
@@ -271,6 +271,7 @@ pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
         } => Some(run_deliver(*number, observation)),
         Command::Fail { number, reason } => Some(run_fail(*number, reason)),
         Command::Reject { number, reason } => Some(run_reject(*number, reason)),
+        Command::Signal { state } => Some(run_signal(state)),
         Command::Verdict {
             number,
             verdict,

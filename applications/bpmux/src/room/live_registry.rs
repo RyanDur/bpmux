@@ -29,14 +29,6 @@ impl LivePtyRegistry {
             .contains_key(role)
     }
 
-    pub fn quiet_for(&self, role: &str) -> Option<std::time::Duration> {
-        self.rooms
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(role)
-            .map(|live| live.quiet_for())
-    }
-
     pub fn subscribe_for(&self, role: &str) -> Option<broadcast::Receiver<Vec<u8>>> {
         self.rooms
             .lock()

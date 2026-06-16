@@ -65,6 +65,25 @@ pub(crate) async fn dispatch_roster_leave(
         .await;
 }
 
+pub(crate) async fn dispatch_roster_presence(
+    orchestrator: &Arc<
+        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
+    >,
+    routing_id: &str,
+    presence: crate::orchestrator::stores::Presence,
+) {
+    use crate::orchestrator::OrchestratorAction;
+    use crate::orchestrator::stores::RosterAction;
+    orchestrator
+        .dispatch(OrchestratorAction::Roster(
+            RosterAction::RosterPresenceChanged {
+                routing_id: routing_id.to_string(),
+                presence,
+            },
+        ))
+        .await;
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
@@ -85,5 +104,52 @@ mod tests {
             "agent roles (dev/pm/designer) are LEGITIMATE names the real agents use — peer-vs-peer name collisions are a display/#1714 concern, not an owner-forgery this blocks"
         );
         assert!(!is_reserved_display("pm") && !is_reserved_display("designer"));
+    }
+
+    fn fresh_orchestrator()
+    -> Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>
+    {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (tx, _rx) = tokio::sync::broadcast::channel::<crate::session::Message>(64);
+        let session = Arc::new(crate::session::Session::new(
+            dir.path().to_path_buf(),
+            "local".to_string(),
+            tx,
+        ));
+        std::mem::forget(dir);
+        Arc::new(crate::orchestrator::Orchestrator::new(
+            session,
+            None,
+            crate::transport::ci_state_store::CiStateStore::new(),
+            tokio_util::sync::CancellationToken::new(),
+        ))
+    }
+
+    #[tokio::test]
+    async fn an_agent_pushes_busy_idle_help_setting_its_own_roster_presence() {
+        use crate::orchestrator::stores::Presence;
+        let orch = fresh_orchestrator();
+        dispatch_roster_join(&orch, "sess-dev", "dev").await;
+
+        dispatch_roster_presence(&orch, "sess-dev", Presence::Busy).await;
+        assert_eq!(
+            orch.roster_store().members()[0].presence,
+            Presence::Busy,
+            "an agent pushing busy sets its OWN roster presence — the agent-driven colour-source #1739 adds (the dot reads roster Presence)"
+        );
+
+        dispatch_roster_presence(&orch, "sess-dev", Presence::Help).await;
+        assert_eq!(
+            orch.roster_store().members()[0].presence,
+            Presence::Help,
+            "help is reachable BY THE AGENT — previously unsettable (owner-park set only Blocked); pushing help closes the Help-never-set gap"
+        );
+
+        dispatch_roster_presence(&orch, "sess-dev", Presence::Idle).await;
+        assert_eq!(
+            orch.roster_store().members()[0].presence,
+            Presence::Idle,
+            "idle (the Stop-hook's definitive turn-end) is pushable, winning over any prior state"
+        );
     }
 }

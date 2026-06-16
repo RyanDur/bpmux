@@ -174,44 +174,6 @@ pub async fn run_server(
             }
         });
     }
-    {
-        let activity_orchestrator = orchestrator.clone();
-        let activity_registry = pty_registry.clone();
-        let activity_routing = routing_store.clone();
-        let activity_ct = ct.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
-            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-            loop {
-                tokio::select! {
-                    _ = activity_ct.cancelled() => return,
-                    _ = interval.tick() => {
-                        let roster = activity_orchestrator.roster_store().members();
-                        let changes = crate::orchestrator::activity_presence::activity_presence_changes(
-                            &roster,
-                            |routing_id| {
-                                crate::orchestrator::activity_presence::terminal_quiet_for_id(
-                                    &activity_routing,
-                                    &activity_registry,
-                                    routing_id,
-                                )
-                            },
-                        );
-                        for (routing_id, presence) in changes {
-                            activity_orchestrator
-                                .dispatch(crate::orchestrator::OrchestratorAction::Roster(
-                                    crate::orchestrator::RosterAction::RosterPresenceChanged {
-                                        routing_id,
-                                        presence,
-                                    },
-                                ))
-                                .await;
-                        }
-                    }
-                }
-            }
-        });
-    }
     orchestrator
         .dispatch(crate::orchestrator::OrchestratorAction::StartCiPolling)
         .await;
@@ -317,6 +279,10 @@ pub async fn run_server(
         .route(
             "/api/rpc/{tool}",
             axum::routing::post(transport::rpc_routes::post_rpc_tool),
+        )
+        .route(
+            "/api/presence",
+            axum::routing::post(transport::rest::post_presence),
         )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,

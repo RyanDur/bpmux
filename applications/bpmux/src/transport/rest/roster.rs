@@ -10,6 +10,7 @@ use super::shared::{err_body, json_headers};
 pub struct RosterEntry {
     pub identity: String,
     pub role: String,
+    pub presence: crate::orchestrator::stores::Presence,
 }
 
 pub async fn get_roster(
@@ -24,6 +25,7 @@ pub async fn get_roster(
         .map(|member| RosterEntry {
             identity: member.identity,
             role: member.name,
+            presence: member.presence,
         })
         .collect();
     let body = serde_json::json!({

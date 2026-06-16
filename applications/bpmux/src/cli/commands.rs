@@ -192,6 +192,13 @@ pub(crate) enum Command {
         observation: String,
     },
     #[command(
+        about = "Signal your own collaboration state off Claude's MCP — pushes busy|idle|help to the gated /api/presence (the same endpoint the agent-hooks use), setting your roster presence + collaboration-dot and winning over the server's terminal-quiet inference. needs-help is reachable here."
+    )]
+    Signal {
+        #[arg(help = "Your collaboration state: busy | idle | help")]
+        state: String,
+    },
+    #[command(
         about = "Fail a story's desk-check as this agent off Claude's MCP — fires the same gated /api/rpc/fail_desk_check path the bridge uses (pm/designer role-guard; owner bypasses)."
     )]
     Fail {

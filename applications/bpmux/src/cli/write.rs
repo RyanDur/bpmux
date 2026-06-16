@@ -90,6 +90,40 @@ pub(crate) fn run_deliver(number: u64, observation: &str) -> anyhow::Result<()> 
     dispatch_write("deliver_story", args)
 }
 
+pub(crate) fn run_signal(state: &str) -> anyhow::Result<()> {
+    let role = crate::resolve_role(&None);
+    let port = crate::resolve_bpmux_port();
+    let token_path = crate::session::auth_token::default_auth_token_path()
+        .ok_or_else(|| anyhow::anyhow!("cannot resolve auth-token path (HOME unset?)"))?;
+    let token = crate::session::auth_token::read(&token_path)
+        .map_err(|e| anyhow::anyhow!("read auth-token from {}: {e}", token_path.display()))?;
+    let url = crate::transport::local_url::api_url(port, "/api/presence");
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let (status, text) = rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(5_000))
+            .build()?;
+        let response = client
+            .post(&url)
+            .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
+            .header(crate::transport::rpc_routes::AGENT_HEADER, role.as_str())
+            .json(&serde_json::json!({ "state": state }))
+            .send()
+            .await?;
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        Ok::<_, reqwest::Error>((status, text))
+    })?;
+    if status.is_success() {
+        println!("{text}");
+        Ok(())
+    } else {
+        anyhow::bail!("bpmux signal rejected ({status}): {text}")
+    }
+}
+
 pub(crate) fn run_fail(number: u64, reason: &str) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(number));

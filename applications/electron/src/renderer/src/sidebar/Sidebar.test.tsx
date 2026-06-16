@@ -436,7 +436,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
 })
 
 describe('Sidebar — presence dot honestly reflects wire roster state, never green from mere connection (#1719)', () => {
-  test('wire presence Online (connected, activity-unknown) shows present-neutral, NEVER available/green', () => {
+  test('wire presence Online (connected, no signal yet) shows UNKNOWN hollow, NEVER available/green (#1739 S1: the dot reflects a pushed state; mere connection is unknown)', () => {
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -448,7 +448,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         mirrorRoster={ROSTER_FIXTURE}
       />
     )
-    expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="present"/)
+    expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="unknown"/)
     expect(html).not.toMatch(/data-test="presence-dot-dev"[^>]*data-presence="available"/)
   })
 

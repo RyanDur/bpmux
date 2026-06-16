@@ -7,6 +7,7 @@ mod labels;
 mod lessons;
 mod messages;
 mod metrics;
+mod presence;
 mod reactions;
 mod register;
 mod room;
@@ -33,6 +34,7 @@ pub use messages::{
     DEFAULT_MESSAGE_LIMIT, GetMessagesParams, PostMessage, get_messages, post_message,
 };
 pub use metrics::get_metrics;
+pub use presence::{PresenceRequest, post_presence};
 pub use reactions::{ReactionToggle, ReactionsChannelQuery, get_reactions, post_reaction};
 #[cfg(test)]
 pub(crate) use reactions::{
