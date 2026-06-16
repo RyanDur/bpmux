@@ -209,8 +209,6 @@ mod self_update_e2e;
 mod send_claude_response_hook;
 #[path = "integration_main_modules/send_message_e2e.rs"]
 mod send_message_e2e;
-#[path = "integration_main_modules/server_restart_roster_rederive_e2e.rs"]
-mod server_restart_roster_rederive_e2e;
 #[path = "integration_main_modules/session_persistence.rs"]
 mod session_persistence;
 #[path = "integration_main_modules/set_name_e2e.rs"]

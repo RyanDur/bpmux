@@ -12,14 +12,3 @@ pub fn free_port() -> u16 {
         .expect("local addr")
         .port()
 }
-
-pub fn wait_for_port_bindable(port: u16, deadline: std::time::Duration) -> bool {
-    let start = std::time::Instant::now();
-    while start.elapsed() < deadline {
-        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
-            return true;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
-    false
-}

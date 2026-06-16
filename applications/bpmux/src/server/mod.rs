@@ -154,10 +154,6 @@ pub async fn run_server(
         let routing_id = startup_routing_id(&routing_store, &identity);
         crate::transport::ws::dispatch_roster_join(&orchestrator, &routing_id, &identity).await;
     }
-    for (routing_id, identity) in routing_store.registered_identities() {
-        crate::transport::ws::dispatch_roster_rederived(&orchestrator, &routing_id, &identity)
-            .await;
-    }
     if let Some(refresh) = test_refresh.as_ref().cloned() {
         let owner_park =
             crate::orchestrator::OwnerParkBroadcaster::new(orchestrator.clone(), refresh.store());
