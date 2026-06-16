@@ -7,20 +7,16 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/send-user-message.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/signal-presence.sh busy",
+            "timeout": 5
           }
         ]
       }
     ],
     "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/set-status-busy.sh",
-            "timeout": 5
-          }
-        ]
-      },
       {
         "matcher": "mcp__bpmux-bridge__start_story",
         "hooks": [
@@ -82,23 +78,12 @@
         ]
       }
     ],
-    "PermissionRequest": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/set-status-help.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/set-status-available.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/signal-presence.sh idle",
             "timeout": 5
           },
           {
@@ -115,6 +100,17 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/receive-broadcast.sh",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/signal-presence.sh help",
+            "timeout": 5
           }
         ]
       }

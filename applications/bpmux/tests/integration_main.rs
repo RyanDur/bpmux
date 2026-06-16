@@ -57,6 +57,8 @@ mod bpmux_iteration_close_cli_parity_e2e;
 mod bpmux_lesson_cli_parity_e2e;
 #[path = "integration_main_modules/bpmux_pass_cli_substrate_parity_e2e.rs"]
 mod bpmux_pass_cli_substrate_parity_e2e;
+#[path = "integration_main_modules/bpmux_presence_hooks_e2e.rs"]
+mod bpmux_presence_hooks_e2e;
 #[path = "integration_main_modules/bpmux_principle_cli_parity_e2e.rs"]
 mod bpmux_principle_cli_parity_e2e;
 #[path = "integration_main_modules/bpmux_project_reads_cli_parity_e2e.rs"]
