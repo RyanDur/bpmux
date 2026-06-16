@@ -155,6 +155,15 @@ impl RoutingStore {
         identity.reap_unclaimed_duplicates_of(display);
         let _ = identity.save(&self.dir);
     }
+
+    pub fn registered_identities(&self) -> Vec<(String, String)> {
+        let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
+        identity
+            .all_ids()
+            .into_iter()
+            .filter_map(|id| identity.display_for(&id).map(|display| (id, display)))
+            .collect()
+    }
 }
 
 fn parse_ts(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
