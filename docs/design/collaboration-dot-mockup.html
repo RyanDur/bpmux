@@ -10,12 +10,35 @@
   Mockup-FIRST → Ryan feels the motion + converges before dev builds (#1721). The FELT is the point:
   the pulse-RATE carries the attention-gradient, the dim-flicker carries live I/O. Static prose can't validate it.
 
-  THREE LAYERS (all real-time, all reduced-motion-safe):
-    1. BASE STATE  — idle=green(free, talk-to-me) · busy=amber(heads-down) · need-attention=red · offline=dim · unknown=hollow
-    2. ATTENTION GRADIENT (only on need-attention) — soft "consider talking"=slow gentle pulse · strong "needs help"=fast insistent pulse
-    3. I/O MODULATION (any state, on send/receive) — a brief dim-flicker = "communicating now" (like a network-activity light)
+  THREE LAYERS (all real-time, all reduced-motion-safe). STORY-SCOPE tags (2026-06-15): layers 1+3 = #1739
+  (the agent-hook-driven base states + flicker); layer 2 = #1731 (the RICH two-level needs-help) — builds ON
+  #1739's affordance, its own scope, NOT built under #1739:
+    1. BASE STATE  [#1739] — idle=green(free, talk-to-me) · busy=amber(heads-down) · need-attention=red (single-level) · offline=dim · unknown=hollow
+    2. ATTENTION GRADIENT [#1731 — builds on #1739] — soft "consider talking"=slow gentle pulse · strong "needs help"=fast insistent pulse (two-level)
+    3. I/O MODULATION [#1739] (any state, on send/receive) — a brief dim-flicker = "communicating now" (like a network-activity light)
   Look-preserve per elevation-map.md (familiar-developer / IntelliJ-Darcula feel, NOT the retired warm #2b2b2b flatten).
+
+  ⚖️ MODEL CORRECTED 2026-06-15 (Ryan — SUPERSEDES the terminal-output model that follows): the dot's
+    COLOR-STATES come from the AGENT'S OWN HOOKS, not from terminal-output inference. Two layers, two owners:
+    • TERMINAL (bpmux-owned): being in a bpmux terminal IS registration → CONNECTED (membership); any terminal
+      I/O → a coarse FLICKER (layer-3, state-independent). bpmux honors terminal-presence on its OWN restart —
+      zero manual register. Terminal-output is good ONLY for connection + flicker, NEVER the color-states.
+    • COLOR-STATES (agent-owned, via the agent's hooks → a bpmux signal path):
+        UserPromptSubmit → BUSY (turn starts) · Stop → IDLE (turn ENDED = confident-free, the DEFINITIVE signal,
+        not quiet-inferred) · Notification / agent-declared → NEEDS-HELP (Presence::Help, reachable by the AGENT,
+        not only owner-park). bpmux ships a per-agent-type HOOK-BUNDLE (zero-setup, customizable); the agent
+        registers its own events.
+    WHY this supersedes terminal-quiet: terminal-quiet can't tell thinking-mid-turn from free (false-IDLE on a
+      long tool-wait) and has NO needs-help signal. The Stop-hook fires exactly at turn-end → definitive idle;
+      Notification/declared → real need. This re-grounds the old "#1732 turn-active follow" (lost in the churn)
+      as the primary model. AFFORDANCE GAP (grounded 2026-06-15): bpmux has NO agent-push presence path today —
+      presence = a server-side 1s terminal-quiet poll (activity_presence::terminal_quiet_for_id); Presence::Help
+      only from owner-park; no /api endpoint an agent's hook can POST its own state to. THAT is the ready-queue
+      story (hook→signal verb + per-agent pushed-state the dot reads + the shipped hook-bundle); dev builds it.
+    (Churn provenance — the WS/MCP→UNKNOWN→terminal-quiet zigzag — lives in the designer decision-log, NOT here:
+     a design-of-record shows the LIVE model only; keep it tidy.)
 -->
+
 <html lang="en"><head><meta charset="utf-8"><title>Collaboration dot — real-time mockup</title>
 <style>
   :root{
@@ -88,12 +111,12 @@
     <!-- LAYER 1 + 2: the vocabulary -->
     <div class="card legend">
       <h2>The states (base color + attention gradient)</h2>
-      <div class="lrow"><span class="dot idle"></span><span class="label">Idle</span><span class="gloss">— free, has a moment · <b>talk to me</b></span></div>
+      <div class="lrow"><span class="dot idle"></span><span class="label">Idle</span><span class="gloss">— free, has a moment · <b>talk to me</b> · <i>(idle = the Stop-hook fired — the turn actually ended, confident-free; a long mid-turn tool-wait stays Busy, never false-idle)</i></span></div>
       <div class="lrow"><span class="dot busy"></span><span class="label">Busy</span><span class="gloss">— heads-down, working</span></div>
       <div class="lrow"><span class="dot attn-soft"></span><span class="label">Need attention · soft</span><span class="gloss">— slow pulse · <b>consider talking</b></span></div>
       <div class="lrow"><span class="dot attn-strong"></span><span class="label">Need attention · strong</span><span class="gloss">— fast pulse · <b>needs your help</b></span></div>
       <div class="lrow"><span class="dot offline"></span><span class="label">Offline</span><span class="gloss">— not here</span></div>
-      <div class="lrow"><span class="dot unknown"></span><span class="label">Unknown</span><span class="gloss">— no signal yet (honest-hollow)</span></div>
+      <div class="lrow"><span class="dot unknown"></span><span class="label">Unknown</span><span class="gloss">— no signal yet (honest-hollow) · <i>brief initial state before the agent's first hook-signal (turn-start / turn-end) resolves it</i></span></div>
       <p class="rm">The urgency rides the pulse <b>rate</b> (slow→fast), not just hue — so it reads at a glance and color-blind-safe.</p>
     </div>
 
@@ -124,7 +147,7 @@
     <ul>
       <li><b>Soft vs strong</b> — does the slow pulse read as "consider talking" and the fast one as "needs help"? (rate is the knob — I can make the gap wider/narrower.)</li>
       <li><b>The dim-flicker</b> — too subtle / too busy / about right for "communicating now"?</li>
-      <li><b>Idle = green</b> — green now means "free to talk" (earned by real quiet, not connection). Does green-for-idle sit right, or should idle be calmer (neutral) and green reserved?</li>
+      <li><b>Idle = green</b> — green-IDLE is in v1, earned by the <b>Stop-hook</b> (the turn actually ended = confident-free), NOT a quiet-terminal guess — so a long mid-turn tool-wait stays Busy and never reads false-idle. (Model corrected 2026-06-15: the color-states are agent-hook-driven, superseding the terminal-quiet inference.) Open felt-Q: does green-for-idle sit right, or should idle be a calmer neutral?</li>
     </ul>
     <p class="rm">Reduced-motion fallback is built in (soft = single halo ring, strong = double ring) — since the motion is load-bearing, the no-motion encoding is first-class, not just "off."</p>
   </div>
