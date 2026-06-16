@@ -39,8 +39,8 @@ describe('#1704 BoardRoadmapSwitcher — header-as-Board-tab sibling-switcher (d
     expect(getByTestId('board-roadmap-tab-board').contains(syncMarker)).toBe(true)
   })
 
-  test('defaults to Board — board panel visible, roadmap hidden', () => {
-    const { getByTestId } = renderSwitcher()
+  test('defaults to Board — board panel mounted + visible; the roadmap panel is NOT in the DOM (render-on-demand)', () => {
+    const { getByTestId, queryByTestId } = renderSwitcher()
     const boardRadio = getByTestId('board-roadmap-tab-board').querySelector(
       'input[type="radio"]'
     ) as HTMLInputElement
@@ -50,23 +50,27 @@ describe('#1704 BoardRoadmapSwitcher — header-as-Board-tab sibling-switcher (d
     expect(boardRadio.checked).toBe(true)
     expect(roadmapRadio.checked).toBe(false)
     expect(getByTestId('board-roadmap-panel-board').hasAttribute('hidden')).toBe(false)
-    expect(getByTestId('board-roadmap-panel-roadmap').hasAttribute('hidden')).toBe(true)
+    expect(queryByTestId('board-roadmap-panel-roadmap')).toBeNull()
   })
 
-  test('Board panel mounts the board content; Roadmap panel mounts the roadmap content', () => {
-    const { getByTestId } = renderSwitcher()
+  test('render-on-demand: only the active panel is in the DOM — board content present, roadmap mounts on toggle', async () => {
+    const { getByTestId, queryByTestId } = renderSwitcher()
     expect(
       getByTestId('board-roadmap-panel-board').querySelector('[data-test="board-marker"]')
     ).toBeTruthy()
+    expect(queryByTestId('board-roadmap-panel-roadmap')).toBeNull()
+    await userEvent.click(getByTestId('board-roadmap-tab-roadmap'))
     expect(
       getByTestId('board-roadmap-panel-roadmap').querySelector('[data-test="roadmap-marker"]')
     ).toBeTruthy()
   })
 
-  test('clicking 🗺 Roadmap activates roadmap; Board becomes inactive', async () => {
+  test('toggling to Roadmap mounts it and HIDES the board panel — the board panel stays mounted so its state survives natively', async () => {
     const { getByTestId } = renderSwitcher()
     await userEvent.click(getByTestId('board-roadmap-tab-roadmap'))
     expect(getByTestId('board-roadmap-panel-roadmap').hasAttribute('hidden')).toBe(false)
-    expect(getByTestId('board-roadmap-panel-board').hasAttribute('hidden')).toBe(true)
+    const boardPanel = getByTestId('board-roadmap-panel-board')
+    expect(boardPanel.hasAttribute('hidden')).toBe(true)
+    expect(boardPanel.querySelector('[data-test="board-marker"]')).toBeTruthy()
   })
 })

@@ -71,13 +71,14 @@ const BoardRoadmapSwitcher = ({
       >
         {board}
       </article>
-      <article
-        className="tabs-panel board-roadmap-panel"
-        data-test="board-roadmap-panel-roadmap"
-        hidden={activeId !== 'roadmap'}
-      >
-        {roadmap}
-      </article>
+      {activeId === 'roadmap' && (
+        <article
+          className="tabs-panel board-roadmap-panel"
+          data-test="board-roadmap-panel-roadmap"
+        >
+          {roadmap}
+        </article>
+      )}
     </section>
   )
 }
