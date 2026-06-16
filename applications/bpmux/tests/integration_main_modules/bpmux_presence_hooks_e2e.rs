@@ -41,6 +41,27 @@ async fn roster_presence_for_role(port: u16, secret: &str, role: &str) -> Option
     })
 }
 
+async fn wait_for_role_presence(
+    port: u16,
+    secret: &str,
+    role: &str,
+    want: &str,
+    deadline: Duration,
+) -> bool {
+    let start = Instant::now();
+    while start.elapsed() < deadline {
+        if roster_presence_for_role(port, secret, role)
+            .await
+            .as_deref()
+            == Some(want)
+        {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    false
+}
+
 #[test]
 fn the_shipped_hook_bundle_wires_the_1739_presence_model_with_zero_per_agent_setup() {
     let hooks_dir = plugin_hooks_dir();
@@ -151,5 +172,66 @@ async fn running_the_real_presence_hook_script_sets_the_agents_roster_dot() {
         got.as_deref(),
         Some("Busy"),
         "running the REAL UserPromptSubmit hook (signal-presence.sh busy) set dev's roster dot to Busy via S1's /api/presence — the shipped bundle auto-pushes presence through the actual script, off the chat stream"
+    );
+}
+
+#[tokio::test]
+async fn the_notification_hook_signals_help_only_for_a_permission_prompt_never_idle() {
+    let bpmux = TestBpmux::start();
+    let port = bpmux.port();
+    let secret = bpmux.simulate_secret();
+    let token_path = bpmux.auth_token_path();
+
+    let registered = bpmux
+        .authed_post(
+            "/api/register",
+            serde_json::json!({ "session_id": "sess-dev-notif", "display": "dev" }),
+        )
+        .await;
+    assert!(
+        registered.status().is_success(),
+        "precondition: dev registered so the roster has a member to colour"
+    );
+
+    let shim = tempfile::TempDir::new().expect("shim dir");
+    std::os::unix::fs::symlink(env!("CARGO_BIN_EXE_bpmux"), shim.path().join("bpmux"))
+        .expect("symlink the freshly-built bin onto PATH as `bpmux`");
+    let path_env = format!(
+        "{}:{}",
+        shim.path().display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let script = plugin_hooks_dir().join("signal-presence.sh");
+
+    let run_notification = |payload: &str| {
+        let piped = format!("printf '%s' '{}' | '{}' help", payload, script.display());
+        tokio::process::Command::new("bash")
+            .arg("-c")
+            .arg(piped)
+            .env("PATH", &path_env)
+            .env("BPMUX_PORT", port.to_string())
+            .env("BPMUX_ROLE", "dev")
+            .env("BPMUX_AUTH_TOKEN_PATH", &token_path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+    };
+
+    run_notification(r#"{"hook_event_name":"Notification","notification_type":"idle_prompt"}"#)
+        .await
+        .expect("run the idle_prompt Notification hook");
+    assert!(
+        wait_for_role_presence(port, &secret, "dev", "Idle", Duration::from_secs(5)).await,
+        "an idle_prompt Notification (the 60s idle-waiting) keeps the dot Idle/green — never the false needs-you red that the old unconditional Notification->help mapping produced"
+    );
+
+    run_notification(
+        r#"{"hook_event_name":"Notification","notification_type":"permission_prompt"}"#,
+    )
+    .await
+    .expect("run the permission_prompt Notification hook");
+    assert!(
+        wait_for_role_presence(port, &secret, "dev", "Help", Duration::from_secs(5)).await,
+        "a permission_prompt Notification (genuine attention) still signals needs-help — only the idle false-red is removed; the reachable Help path stays intact"
     );
 }
