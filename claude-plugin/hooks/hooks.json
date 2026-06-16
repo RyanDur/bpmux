@@ -10,7 +10,7 @@
           },
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/signal-presence.sh busy",
+            "command": "bpmux signal busy >/dev/null 2>&1 || true",
             "timeout": 5
           }
         ]
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/signal-presence.sh idle",
+            "command": "bpmux signal idle >/dev/null 2>&1 || true",
             "timeout": 5
           },
           {
@@ -104,12 +104,12 @@
         ]
       }
     ],
-    "Notification": [
+    "PermissionRequest": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/signal-presence.sh help",
+            "command": "bpmux signal help >/dev/null 2>&1 || true",
             "timeout": 5
           }
         ]
