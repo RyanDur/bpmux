@@ -16,6 +16,13 @@ The team's decisions live *in bpmux* — durable, with provenance, linked to the
 
 dev = the crew (sails the sea / builds) · PM = the navigator (plots the route = the roadmap) · designer = the **map-maker** (charts the territory) · Ryan = the **captain** (picks the destination). The **map** is the possibility-territory — what's chosen, what's ruled-out-and-why, what's contested, what's uncharted — distinct from the roadmap (the route *through* it). The captain reads the map to set a heading; the navigator routes; the crew sails.
 
+## The deeper frame (the why, and how it connects)
+
+- **The map = go-wide made DURABLE.** The design-guide's "go wide" (explore the possibility-space before converging) has always been EPHEMERAL — Design-Studio sketches, conversations, mockups that clear. So we re-chart the same territory each iteration = the continuity-problem itself. The map makes go-wide durable: chosen / ruled-out-with-reason / contested / uncharted, persisted.
+- **The connected system: MAP → ROADMAP → BOARD.** The map is the territory (designer / possibilities), the roadmap is the route through it (PM / outcomes), the board is the work (dev / stories — each carrying its linked decision). Chat threads through all three. One fabric, three views.
+- **Research-grounding (Ryan's refs).** Figma = the canvas-TOOL shape (the surface) · design-systems (Darcula) = the legend/LANGUAGE (the shared vocabulary the map is drawn in) · Pivotal-labs designer = the DESIRABILITY lens the map charts (feasibility = the crew's, viability = the captain's).
+- **The review-surface is the ITERATE-phase sibling.** `in-bpmux-review-surface.md` (the downstream review-LOOP: present→render→react→flow-back) is the same canvas-FAMILY but a different JOB — commenting a CONVERGED design (ITERATE) vs steering the possibility-space (this layer's DISCOVER/FRAME phase). Related; kept on the radar.
+
 ## It reconciles to the context-canvas we already designed
 
 The surface exists on paper (committed 426cd3da, 2026-06-06): `in-bpmux-context-canvas-mockup.html` — a board you draw on, with conversations **bound to contexts**, story-tied. That's the vessel: **a context IS a decision; the bound conversation carries the WHY + the ratification; the story-tie IS the link.** The decision layer is that canvas used for decisions, not only review. Companion: `in-bpmux-review-surface.md` (the downstream review-loop). *Do not re-ideate the surface — extend it.*

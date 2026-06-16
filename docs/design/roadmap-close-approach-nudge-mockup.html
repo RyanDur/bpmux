@@ -1,34 +1,36 @@
 <!DOCTYPE html>
 <!--
-  CLOSE-APPROACH READINESS NUDGE — design-of-record for #1705. Designer 2026-06-12.
+  CLOSE-APPROACH READINESS NUDGE — design-of-record for #1705. Designer 2026-06-12, motion-spec added 2026-06-15.
 
-  #1705 user-job: when the current iteration nears close and the NEXT iteration isn't
-  ready-to-convene, surface a GENTLE, DISMISSIBLE nudge — so the stay-ahead gap surfaces
-  PROACTIVELY (push), not relying on Ryan remembering to open the roadmap (pull).
+  CHROME: the 50/50 Board|Roadmap TAB-SWITCHER (Ryan: "these are the tabs I want" 2026-06-15;
+  roadmap-board-tab-switcher-mockup.html). The strip lives beneath the switcher; the standing-cue ◐
+  rides the 🗺 Roadmap TAB (the way the sync ● rides the Board tab).
 
-  DESIGN THESIS — reuse, don't invent. The nudge is the PUSH counterpart of an EXISTING
-  PULL surface: #1704's roadmap-outcome-drillin already renders a CONVENE? banner (dashed
-  --accent-warning border, warn-tinted bg, ◐ not-ready glyph) for "next iteration is one
-  gap from ready." This nudge re-uses that exact grammar — the same signal, surfaced at the
-  close-approach moment without opening the roadmap. And ◐ is the canonical ATTENTION state
-  in the Darcula unified signaling language (darcula-foundation §2: ●good ◌working ◐needs-you
-  ✗broken ○unknown). So zero new vocabulary; "gentle, not-alarm" falls out of the warn-amber
-  tier (distinct from error-red) by construction.
+  #1705 user-job: when the current iteration nears close and the NEXT iteration isn't ready-to-convene,
+  surface a GENTLE, DISMISSIBLE nudge — so the stay-ahead gap surfaces PROACTIVELY (push), not relying
+  on Ryan remembering to open the roadmap (pull).
+
+  DESIGN THESIS — reuse, don't invent. The nudge is the PUSH counterpart of #1704's PULL CONVENE?
+  banner (dashed --accent-warning, warn-tinted bg, ◐ not-ready). Re-uses that exact grammar at the
+  close-approach moment without opening the roadmap. ◐ is the canonical ATTENTION state in the unified
+  signaling language (●good ◌working ◐needs-you ✗broken ○unknown). Zero new vocabulary; "gentle,
+  not-alarm" falls out of the warn-amber tier (distinct from error-red) by construction.
 
   TWO SURFACES, graduated:
-    1. The STRIP (active push) — a slim dismissible banner-strip at the top of the board-panel,
-       directly beneath the Board|Roadmap switcher (roadmap-board-tab-switcher-mockup.html).
-       Appears ONLY at close-approach AND next-not-ready. Carries ◐ + the plain-language gap +
-       a "View roadmap →" click-through (to #1704) + a dismiss ×. Never modal, never blocks.
-    2. The TAB-BADGE (passive standing-cue) — the 🗺 Roadmap tab gains a ◐ at close-approach,
-       the way the sync ● rides the Board tab. SURVIVES dismissing the strip → the gap stays
-       reachable (recognition-over-recall) without nagging. Clears when next becomes ready.
+    1. The STRIP (active push) — a slim dismissible banner beneath the Board|Roadmap switcher. Appears
+       ONLY at close-approach AND next-not-ready. Carries ◐ + the plain gap + a "View roadmap →"
+       click-through (to the Roadmap tab) + a dismiss ×. Never modal, never blocks.
+    2. The TAB-BADGE (passive standing-cue) — the 🗺 Roadmap tab gains a ◐. SURVIVES dismissing the
+       strip → the gap stays reachable (recognition-over-recall) without nagging. Clears when next ready.
 
-  Grounded firsthand: real tokens + the real board-header structure (switcher mockup rev-2:
-  .board-iteration-name 15px/600 · .board-title uppercase 12px/.05em · the underline-tab
-  grammar · sync ● rides the Board tab) + the Darcula signaling palette (foundation mockup:
-  --accent-warning #cc7832 Darcula / #d4a13c interim, ◐ = ATTENTION) + the CONVENE? banner
-  treatment (drillin mockup: dashed warn border, warn 8% bg). Dual-theme. Mockup-first — proposed.
+  MOTION (#1705's motion-live-verification half): the strip ENTERS gently — a short slide-down + fade
+  (~220ms ease-out), pushing board content down rather than popping over it; DISMISS reverses (fade +
+  height-collapse, ~180ms). The tab-badge ◐ does NOT animate (a quiet standing-cue). Honors
+  prefers-reduced-motion (instant, no slide). The desk-check must OBSERVE the slide play in a live frame
+  — a static strip + a passing property-e2e are proxies; press "▶ replay entrance" below to see it.
+
+  Grounded: real tokens + the real switcher (roadmap-board-tab-switcher-mockup.html) + the Darcula
+  signaling palette (--accent-warning, ◐ = ATTENTION) + the CONVENE? banner treatment. Dual-theme. Proposed.
 -->
 <html lang="en"><head><meta charset="utf-8"><title>Close-approach readiness nudge — #1705</title>
 <style>
@@ -48,12 +50,13 @@
   body{background:#0e0e0e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:22px;line-height:1.5}
   h1{font-size:16px;margin:0 0 3px}h2{font-size:13px;margin:22px 0 8px;color:var(--fg-secondary);font-weight:600}
   .sub{color:var(--fg-dim);font-size:12px;margin:0 0 16px;max-width:880px}.sub b{color:var(--fg-secondary)}
-  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 10px;cursor:pointer;margin:0 0 18px}
+  .toggle button,.replay{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 10px;cursor:pointer}
+  .toggle{margin:0 0 18px}
   .case{margin:0 0 18px}.lbl{font-size:11px;color:var(--fg-dim);margin:0 0 6px}.lbl b{color:var(--fg-secondary)}
 
   /* board-panel column (the slot the nudge lives in) */
   .col{width:430px;border:1px solid var(--border-strong);border-radius:7px;overflow:hidden;background:var(--bg-elevated)}
-  /* board-header switcher (from roadmap-board-tab-switcher-mockup.html) */
+  /* board-header 50/50 Board|Roadmap tab-switcher (roadmap-board-tab-switcher-mockup.html) */
   .tabs{display:flex;border-bottom:1px solid var(--border-subtle)}
   .tab{flex:1;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:2px solid transparent;margin-bottom:-1px;min-width:0}
   .tab.on{border-bottom-color:var(--accent-brand)}
@@ -65,11 +68,24 @@
   /* the standing-cue: ◐ ATTENTION rides the Roadmap tab */
   .attn{color:var(--accent-warning);font-size:.8125rem;line-height:1;flex-shrink:0}
 
-  /* THE STRIP — reuses the CONVENE? banner grammar (dashed warn border, warn-tinted bg) */
-  .strip{display:flex;align-items:center;gap:9px;margin:0;padding:8px 12px;
+  /* THE STRIP — reuses the CONVENE? banner grammar (warn-tinted, ◐). Slides in gently. */
+  .strip{display:flex;align-items:center;gap:9px;padding:8px 12px;overflow:hidden;
     border-bottom:1px solid var(--border-subtle);
     background:color-mix(in srgb,var(--accent-warning) 9%,var(--bg-elevated));
     font-size:12px;color:var(--fg-secondary)}
+  .strip.enter{animation:nudge-in 220ms ease-out both}
+  .strip.leaving{animation:nudge-out 180ms ease-in both}
+  @keyframes nudge-in{
+    from{opacity:0;transform:translateY(-6px);max-height:0;padding-top:0;padding-bottom:0}
+    to{opacity:1;transform:translateY(0);max-height:64px;padding-top:8px;padding-bottom:8px}
+  }
+  @keyframes nudge-out{
+    from{opacity:1;max-height:64px;padding-top:8px;padding-bottom:8px}
+    to{opacity:0;max-height:0;padding-top:0;padding-bottom:0;border-bottom-width:0}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .strip.enter,.strip.leaving{animation:none}
+  }
   .strip .g{color:var(--accent-warning);font-size:13px;line-height:1;flex-shrink:0}
   .strip .msg{flex:1 1 auto;min-width:0;line-height:1.4}
   .strip .msg b{color:var(--fg-primary);font-weight:600}
@@ -84,25 +100,28 @@
   th,td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--border-subtle);vertical-align:top}
   th{color:var(--fg-dim);font-weight:600}td b{color:var(--fg-primary)}
   .fls{color:var(--accent-warning)}
+  .mspec{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--fg-secondary);margin-top:4px}
+  .mspec div{border:1px solid var(--border-subtle);border-radius:6px;padding:8px 11px;background:var(--bg-elevated);min-width:150px}
+  .mspec b{color:var(--fg-primary)}.mspec .k{color:var(--fg-dim);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
 </style></head>
 <body id="b">
   <h1>Close-approach readiness nudge — #1705 design-of-record</h1>
-  <p class="sub">The <b>push</b> counterpart of #1704's <b>pull</b> CONVENE? banner: when the current iteration nears close and the NEXT isn't ready, the gap comes to Ryan instead of waiting to be looked up. Reuses the established <b>◐ ATTENTION</b> grammar + the CONVENE?-banner treatment — no new vocabulary. Two graduated surfaces: an active dismissible <b>strip</b> + a passive <b>tab-badge</b> standing-cue.</p>
+  <p class="sub">The <b>push</b> counterpart of #1704's <b>pull</b> CONVENE? banner: when the current iteration nears close and the NEXT isn't ready, the gap comes to Ryan instead of waiting to be looked up. Reuses the established <b>◐ ATTENTION</b> grammar + the CONVENE?-banner treatment — no new vocabulary. Two graduated surfaces: an active dismissible <b>strip</b> + a passive <b>tab-badge</b> standing-cue. On the Board/Roadmap tab-switcher, with the gentle <b>motion-spec</b> baked in.</p>
   <p class="toggle"><button onclick="b.setAttribute('data-theme',b.getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
 
-  <!-- State 1: close-approach + NEXT not-ready → strip shown, tab-badge on -->
+  <!-- State 1: close-approach + NEXT not-ready → strip shown, tab-badge on. LIVE: replayable entrance. -->
   <div class="case">
-    <p class="lbl"><b>1 · Close-approach, NEXT not-ready</b> — the active nudge: strip beneath the switcher + ◐ on the Roadmap tab.</p>
+    <p class="lbl"><b>1 · Close-approach, NEXT not-ready</b> — the active nudge: strip slides in beneath the switcher + ◐ on the Roadmap tab. <button class="replay" onclick="(function(){var s=document.getElementById('liveStrip');s.classList.remove('enter');void s.offsetWidth;s.style.display='flex';s.classList.add('enter')})()">▶ replay entrance</button></p>
     <div class="col">
       <div class="tabs">
         <span class="tab on"><span class="iter">Lupus</span><span class="blabel">Board</span><span class="dot"></span></span>
         <span class="tab"><span class="rm">🗺 Roadmap</span><span class="attn">◐</span></span>
       </div>
-      <div class="strip">
+      <div class="strip enter" id="liveStrip">
         <span class="g">◐</span>
         <span class="msg"><b>Lupus</b> closes soon — the next iteration <b>Fornax</b> isn't ready (designer-review open).</span>
         <a href="#">View roadmap →</a>
-        <button class="x" title="Dismiss">×</button>
+        <button class="x" title="Dismiss" onclick="(function(s){s.classList.remove('enter');s.classList.add('leaving');setTimeout(function(){s.style.display='none';s.classList.remove('leaving')},190)})(this.parentNode)">×</button>
       </div>
       <div class="body">board content</div>
     </div>
@@ -110,7 +129,7 @@
 
   <!-- State 2: dismissed → strip gone, tab-badge REMAINS as the quiet standing-cue -->
   <div class="case">
-    <p class="lbl"><b>2 · After dismissing the strip</b> — the strip is gone (not nagging), but the ◐ standing-cue stays on the Roadmap tab → the gap is still reachable (recognition-over-recall).</p>
+    <p class="lbl"><b>2 · After dismissing the strip</b> — the strip collapses away (not nagging), but the ◐ standing-cue stays on the Roadmap tab → the gap is still reachable (recognition-over-recall).</p>
     <div class="col">
       <div class="tabs">
         <span class="tab on"><span class="iter">Lupus</span><span class="blabel">Board</span><span class="dot"></span></span>
@@ -132,16 +151,26 @@
     </div>
   </div>
 
+  <h2>Motion-spec (#1705 motion-live-verification half — what the desk-check must OBSERVE play)</h2>
+  <div class="mspec">
+    <div><span class="k">Enter</span><br><b>slide-down + fade</b><br>translateY(-6px)→0, opacity 0→1, height 0→auto<br><b>220ms ease-out</b></div>
+    <div><span class="k">Dismiss</span><br><b>fade + collapse</b><br>opacity→0, height→0 (pushes board back up)<br><b>180ms ease-in</b></div>
+    <div><span class="k">Tab-badge ◐</span><br><b>no animation</b><br>a quiet standing-cue, appears/clears instantly</div>
+    <div><span class="k">Reduced-motion</span><br><b>instant</b><br>prefers-reduced-motion: no slide, strip just present/absent</div>
+    <div><span class="k">Gate</span><br><b>it must PLAY</b><br>a static strip + a passing property-e2e are proxies — verify the slide in a live frame-sequence</div>
+  </div>
+
   <h2>Falsifier → design mapping (#1705)</h2>
   <table>
     <tr><th>#1705 would-reject-if</th><th>how this design satisfies it</th></tr>
     <tr><td class="fls">a not-ready NEXT raises NO signal at close-approach (look-only — the missed-check recurs)</td><td>The <b>strip</b> is a PROACTIVE push at the close-approach moment + the <b>tab-badge</b> standing-cue — no remembering-to-look required.</td></tr>
     <tr><td class="fls">the nudge HARD-BLOCKS the close/open (gate, not steer)</td><td>Strip + badge only; NEVER modal, never gates close/open. "View roadmap →" is opt-in, × dismisses. A steer.</td></tr>
     <tr><td class="fls">false-alarms on the far horizon (a dim +3 reads as a problem)</td><td>Trips ONLY on close-approach AND next-not-ready (state 3). A ready NEXT or a merely-dim +3 → nothing. Warn-amber ◐ = "needs-you", never error-red.</td></tr>
-    <tr><td class="fls">it nags (persistent/modal rather than gentle + dismissible)</td><td>The strip is slim, inline, dismissible (×); once dismissed it does NOT return for the same gap — only the quiet tab-badge persists. Gentle by the warn (not error) tier.</td></tr>
+    <tr><td class="fls">it nags (persistent/modal rather than gentle + dismissible)</td><td>The strip is slim, inline, dismissible (×); once dismissed it does NOT return for the same gap — only the quiet tab-badge persists. Gentle by the warn (not error) tier AND the soft 220ms slide (not a pop).</td></tr>
+    <tr><td class="fls">wired to the #1525 chat-nudge-class (owner-EXCLUDED → the owner it warns never sees it)</td><td>This is an IN-FRAME surface (strip + tab-badge in the board-panel), NOT the chat-nudge — visible to the owner by construction. (Why #1525-revisit isn't needed for #1705.)</td></tr>
   </table>
 
   <div class="note">
-    <b>Why two surfaces.</b> The strip is the active catch at the actionable moment (dismissible so it can't nag); the tab-badge is the passive residue so dismissing doesn't lose the gap — the same graduated push→standing-cue pattern as a desktop banner that collapses to a menu-bar dot. <b>Reuse, not invention:</b> ◐ + warn-amber + the dashed-warn CONVENE? treatment are all already in the system (darcula-foundation §2 signaling language + roadmap-outcome-drillin's CONVENE? banner), so this reads as the roadmap's own signal surfaced proactively. <b>Plain language</b> (never "Epic #N" / "iteration not parent-ready" jargon) — names + the human gap ("designer-review open"). <b>Trigger boundary</b> (mechanism = dev's, #1703 readiness + the close-approach window): close-approach = current iteration within the close→open band; not-ready = NEXT fails a convene-check (#1703). <b>Taste-calls for Ryan</b> (at the owner-walk): the strip placement (beneath the switcher, in the board-panel, vs a top-of-window banner) · whether dismissal should re-surface if the gap is STILL open at the next session-start (my lean: re-surface once per session, never within a session) · ◐ vs a softer cue on the tab. Tell me the taste; I re-synthesize.
+    <b>Why two surfaces.</b> The strip is the active catch at the actionable moment (dismissible so it can't nag); the tab-badge is the passive residue so dismissing doesn't lose the gap — push→standing-cue, like a desktop banner collapsing to a menu-bar dot. <b>Reuse, not invention:</b> ◐ + warn-amber + the CONVENE? treatment are already in the system, so this reads as the roadmap's own signal surfaced proactively. <b>Plain language</b> (never "Epic #N" jargon) — names + the human gap ("designer-review open"). <b>Trigger</b> (mechanism = dev's): close-approach = the current iteration DRAINING toward done (members nearly all accepted — no time substrate; iterations close manually); not-ready = NEXT fails a convene-check (#1703); which-is-NEXT = the single-source order (#1735). The drain-gate maps to the far-horizon clause — a +3 can't fire. <b>Taste-calls for Ryan</b> (at the owner-walk): strip placement (beneath the switcher, in the panel, vs a top-of-window banner) · whether dismissal re-surfaces if the gap is STILL open at next session-start (my lean: re-surface once per session, never within one) · the 220ms slide feel · ◐ vs a softer cue on the tab. Tell me the taste; I re-synthesize.
   </div>
 </body></html>
