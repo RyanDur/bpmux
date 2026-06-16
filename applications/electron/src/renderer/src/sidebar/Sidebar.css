@@ -160,43 +160,6 @@
     }
   }
 
-  @keyframes presence-dot-pulse-soft {
-    0%,
-    100% {
-      opacity: 1;
-    }
-
-    50% {
-      opacity: 0.45;
-    }
-  }
-
-  @keyframes presence-dot-pulse-strong {
-    0%,
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    50% {
-      opacity: 0.3;
-      transform: scale(0.82);
-    }
-  }
-
-  @keyframes presence-dot-io-flicker {
-    0%,
-    86%,
-    100% {
-      opacity: 1;
-    }
-
-    90%,
-    94% {
-      opacity: 0.5;
-    }
-  }
-
   & .sidebar-terminal-list {
     display: flex;
     flex-direction: column;
@@ -256,5 +219,42 @@
         outline: none;
       }
     }
+  }
+}
+
+@keyframes presence-dot-pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes presence-dot-pulse-strong {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.3;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes presence-dot-io-flicker {
+  0%,
+  86%,
+  100% {
+    opacity: 1;
+  }
+
+  90%,
+  94% {
+    opacity: 0.5;
   }
 }
