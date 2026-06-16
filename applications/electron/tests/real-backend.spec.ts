@@ -71,7 +71,16 @@ test.describe('real-backend', () => {
         // Skip .sr-only utility: visually hidden, not visible text
         // and not subject to the 12px floor (screen-reader-only).
         if (el.classList.contains('sr-only')) continue
-        const fontSize = parseFloat(window.getComputedStyle(el).fontSize)
+        const cs = window.getComputedStyle(el)
+        const rect = el.getBoundingClientRect()
+        if (
+          cs.display === 'none' ||
+          cs.visibility === 'hidden' ||
+          rect.width === 0 ||
+          rect.height === 0
+        )
+          continue
+        const fontSize = parseFloat(cs.fontSize)
         results.push({
           tag: el.tagName.toLowerCase(),
           fontSize,
