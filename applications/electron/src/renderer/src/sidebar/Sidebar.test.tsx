@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Sidebar from './Sidebar'
 import type { MessageFilter } from '../hooks/useMessageFilter'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
@@ -147,10 +148,10 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
 })
 
 describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-walk regression)', () => {
-  test('clicking a group scopes the recipient to that group', () => {
+  test('clicking a group scopes the recipient to that group', async () => {
     pushRoster(ROSTER_FIXTURE)
     const onSelectRecipient = vi.fn()
-    const { getByTestId } = render(
+    render(
       <Sidebar
         recipient={null}
         allView={false}
@@ -160,12 +161,12 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         filter={filter}
       />
     )
-    fireEvent.click(getByTestId('sidebar-group-designer+dev'))
+    await userEvent.click(screen.getByTestId('sidebar-group-designer+dev'))
     expect(onSelectRecipient).toHaveBeenCalledTimes(1)
     expect([...onSelectRecipient.mock.calls[0][0]].sort()).toEqual(['designer', 'dev'])
   })
 
-  test('#1733: a 2-peer roster scopes its only group to that exact pair, not broadcast', () => {
+  test('#1733: a 2-peer roster scopes its only group to that exact pair, not broadcast', async () => {
     const onSelectRecipient = vi.fn()
     const TWO_PEER_ROSTER: RosterMemberWire[] = [
       wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
@@ -173,7 +174,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
       wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' })
     ]
     pushRoster(TWO_PEER_ROSTER)
-    const { getByTestId } = render(
+    render(
       <Sidebar
         recipient={null}
         allView
@@ -183,16 +184,16 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         filter={filter}
       />
     )
-    fireEvent.click(getByTestId('sidebar-group-dev+pm'))
+    await userEvent.click(screen.getByTestId('sidebar-group-dev+pm'))
     expect(onSelectRecipient).toHaveBeenCalledTimes(1)
     expect(onSelectRecipient.mock.calls[0][0]).not.toBeNull()
     expect([...onSelectRecipient.mock.calls[0][0]].sort()).toEqual(['dev', 'pm'])
   })
 
-  test('clicking a direct role scopes the recipient to that role', () => {
+  test('clicking a direct role scopes the recipient to that role', async () => {
     pushRoster(ROSTER_FIXTURE)
     const onSelectRecipient = vi.fn()
-    const { getByTestId } = render(
+    render(
       <Sidebar
         recipient={null}
         allView={false}
@@ -202,7 +203,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         filter={filter}
       />
     )
-    fireEvent.click(getByTestId('sidebar-direct-dev'))
+    await userEvent.click(screen.getByTestId('sidebar-direct-dev'))
     expect(onSelectRecipient).toHaveBeenCalledWith(['dev'])
   })
 })
@@ -548,8 +549,8 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
     vi.useFakeTimers()
     try {
       pushRoster(ROSTER_FIXTURE)
-      const { getByTestId, rerender } = render(<Sidebar {...baseProps} messages={[]} />)
-      expect(getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
+      const { rerender } = render(<Sidebar {...baseProps} messages={[]} />)
+      expect(screen.getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
 
       const msg: ChatMessage = {
         id: 'io-1',
@@ -561,15 +562,17 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
         messageType: 'chat'
       }
       rerender(<Sidebar {...baseProps} messages={[msg]} />)
-      expect(getByTestId('presence-dot-dev').className).toContain('presence-dot--io')
-      expect(getByTestId('presence-dot-pm').className).toContain('presence-dot--io')
-      expect(getByTestId('presence-dot-designer').className).not.toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-dev').className).toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-pm').className).toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-designer').className).not.toContain(
+        'presence-dot--io'
+      )
 
       act(() => {
         vi.advanceTimersByTime(2100)
       })
-      expect(getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
-      expect(getByTestId('presence-dot-pm').className).not.toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-pm').className).not.toContain('presence-dot--io')
     } finally {
       vi.useRealTimers()
     }
@@ -579,7 +582,7 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
     vi.useFakeTimers()
     try {
       pushRoster(ROSTER_FIXTURE)
-      const { getByTestId, rerender } = render(<Sidebar {...baseProps} messages={[]} />)
+      const { rerender } = render(<Sidebar {...baseProps} messages={[]} />)
       const msg: ChatMessage = {
         id: 'b-1',
         from: 'ryan:electron',
@@ -590,9 +593,9 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
         messageType: 'chat'
       }
       rerender(<Sidebar {...baseProps} messages={[msg]} />)
-      expect(getByTestId('presence-dot-dev').className).toContain('presence-dot--io')
-      expect(getByTestId('presence-dot-pm').className).toContain('presence-dot--io')
-      expect(getByTestId('presence-dot-designer').className).toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-dev').className).toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-pm').className).toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-designer').className).toContain('presence-dot--io')
     } finally {
       vi.useRealTimers()
     }
@@ -607,7 +610,7 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
         wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' })
       ]
       pushRoster(BUSY_ROSTER)
-      const { getByTestId, rerender } = render(<Sidebar {...baseProps} messages={[]} />)
+      const { rerender } = render(<Sidebar {...baseProps} messages={[]} />)
       const msg: ChatMessage = {
         id: 'io-2',
         from: 'dev:claude-code',
@@ -618,7 +621,7 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
         messageType: 'chat'
       }
       rerender(<Sidebar {...baseProps} messages={[msg]} />)
-      const dot = getByTestId('presence-dot-dev')
+      const dot = screen.getByTestId('presence-dot-dev')
       expect(dot.className).toContain('presence-dot--busy')
       expect(dot.className).toContain('presence-dot--io')
       expect(dot.getAttribute('data-presence')).toBe('busy')
@@ -642,9 +645,9 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
           messageType: 'chat'
         }
       ]
-      const { getByTestId } = render(<Sidebar {...baseProps} messages={history} />)
-      expect(getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
-      expect(getByTestId('presence-dot-pm').className).not.toContain('presence-dot--io')
+      render(<Sidebar {...baseProps} messages={history} />)
+      expect(screen.getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
+      expect(screen.getByTestId('presence-dot-pm').className).not.toContain('presence-dot--io')
     } finally {
       vi.useRealTimers()
     }
