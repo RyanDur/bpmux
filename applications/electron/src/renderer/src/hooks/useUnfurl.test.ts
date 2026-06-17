@@ -19,8 +19,9 @@ describe('#1499 useUnfurl surfaces resolved data without a mounted-guard ref', (
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => payload
+        status: 200,
+        json: async () => payload,
+        text: async () => ''
       } as unknown as Response)
     )
     const { result } = renderHook(() =>

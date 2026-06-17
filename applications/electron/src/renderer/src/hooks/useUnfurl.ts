@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { http } from '../api/http'
 
 const URL_RE = /https?:\/\/[^\s<>"')(]+/g
 const TRAILING_PUNCT_RE = /[.,!?;:)\]'"*]+$/
@@ -52,26 +53,16 @@ export const useUnfurl = ({
       const existing = cache.get(url)
       if (existing) continue
       cache.set(url, { state: 'loading' })
-      ;(async () => {
-        try {
-          const res = await fetch(`${apiBase}/api/unfurl?url=${encodeURIComponent(url)}`, {
-            headers: { Authorization: `Bearer ${authToken ?? ''}` }
-          })
-          let data: UnfurlData = { url }
-          if (res.ok) {
-            try {
-              data = (await res.json()) as UnfurlData
-            } catch {
-              data = { url }
-            }
-          }
+      http
+        .get<UnfurlData>({ apiBase, authToken }, `/api/unfurl?url=${encodeURIComponent(url)}`)
+        .onSuccess((data) => {
           cache.set(url, { state: 'resolved', data })
           bump()
-        } catch {
+        })
+        .onFailure(() => {
           cache.set(url, { state: 'resolved', data: { url } })
           bump()
-        }
-      })()
+        })
     }
   }, [apiBase, authToken, urls])
 
