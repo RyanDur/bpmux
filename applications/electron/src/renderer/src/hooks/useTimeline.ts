@@ -39,7 +39,7 @@ export interface UseTimelineResult {
   events: ClassifiedEvent[] | null
   loading: boolean
   error: string | null
-  refetch: () => Promise<void>
+  refetch: () => void
 }
 
 export const classifyEvent = (e: TimelineEvent): TimelineGate | null => {
@@ -105,23 +105,19 @@ export const useTimeline = ({
     apiBase !== undefined &&
     authToken !== undefined
 
-  const refetch = useCallback(async (): Promise<void> => {
+  const refetch = useCallback((): void => {
     if (!apiBase || !authToken || storyNumber === null) return
-    try {
-      const res = await fetch(`${apiBase}/api/stories/${storyNumber}/timeline`, {
-        headers: { Authorization: `Bearer ${authToken}` }
+    http
+      .get<TimelineEvent[]>({ apiBase, authToken }, `/api/stories/${storyNumber}/timeline`)
+      .onSuccess((raw) => {
+        const classified: ClassifiedEvent[] = raw.map((r) => ({
+          raw: r,
+          gate: classifyEvent(r)
+        }))
+        setEvents(markReworkCycles(classified))
+        setError(null)
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const raw = (await res.json()) as TimelineEvent[]
-      const classified: ClassifiedEvent[] = raw.map((r) => ({
-        raw: r,
-        gate: classifyEvent(r)
-      }))
-      setEvents(markReworkCycles(classified))
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    }
+      .onFailure((err) => setError(describeHttpError(err)))
   }, [apiBase, authToken, storyNumber])
 
   useEffect(() => {
@@ -153,7 +149,7 @@ export const useTimeline = ({
 
   useEffect(() => {
     if (boardInvalidateTick === 0) return
-    const id = setTimeout(() => void refetch(), 0)
+    const id = setTimeout(() => refetch(), 0)
     return () => clearTimeout(id)
   }, [boardInvalidateTick, refetch])
 
