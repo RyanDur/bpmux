@@ -3,12 +3,8 @@ import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessag
 import { useReactions } from '../hooks/useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
-import type {
-  ChatMessage,
-  ConnectionStatus,
-  ReactionAggregateWire,
-  RosterMemberWire
-} from '../transport/types'
+import { useConnectionStatus } from '../transport/session'
+import type { ChatMessage, ReactionAggregateWire, RosterMemberWire } from '../transport/types'
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
@@ -18,7 +14,6 @@ import './Chat.css'
 
 interface Props {
   messages: ChatMessage[]
-  status: ConnectionStatus
   recipient: string[] | null
   allView: boolean
   activeKey: string | null
@@ -48,7 +43,6 @@ const channelKey = (recipient: string[] | null): string => {
 
 const Chat = ({
   messages,
-  status,
   recipient,
   allView,
   activeKey,
@@ -70,6 +64,7 @@ const Chat = ({
   mirrorReactions,
   mirrorRoster
 }: Props): React.JSX.Element => {
+  const status = useConnectionStatus()
   const showReconnect = status !== 'connected'
   const reactionsChannel = channelKey(recipient)
   const reactions = useReactions({

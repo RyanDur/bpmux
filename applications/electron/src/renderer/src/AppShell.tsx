@@ -159,7 +159,6 @@ const AppShell = ({
         />
         <Chat
           messages={messages}
-          status={status}
           recipient={recipient}
           allView={allView}
           activeKey={activeKey}
