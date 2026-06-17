@@ -23,7 +23,7 @@ const report = {
   startup_fail: false
 }
 
-const okResponse = (): unknown => ({ ok: true, json: async () => report })
+const okResponse = (): unknown => ({ status: 200, json: async () => report })
 
 beforeEach(() => {
   fetchSpy.mockReset()

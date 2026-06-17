@@ -1,3 +1,5 @@
+import { describeHttpError, http } from '../api/http'
+
 export interface DroppedEvent {
   story_number: number
   error: string
@@ -31,42 +33,30 @@ export interface SyncStatusConfig {
   authToken: string | undefined
 }
 
-const fetchSyncStatus = async (
+const fetchSyncStatus = (
   apiBase: string,
   authToken: string,
   signal?: AbortSignal
-): Promise<FetchResult<SyncStatusReport>> => {
-  const res = await fetch(`${apiBase}/api/sync-status`, {
-    headers: { Authorization: `Bearer ${authToken}` },
-    signal
-  })
-  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
-  const data = (await res.json()) as SyncStatusReport
-  return { ok: true, data }
-}
+): Promise<FetchResult<SyncStatusReport>> =>
+  http.get<SyncStatusReport>({ apiBase, authToken }, '/api/sync-status', signal).mapEither(
+    (data): FetchResult<SyncStatusReport> => ({ ok: true, data }),
+    (err): FetchResult<SyncStatusReport> => ({
+      ok: false,
+      error: signal?.aborted ? '' : describeHttpError(err)
+    })
+  )
 
-const postForceSync = async (apiBase: string, authToken: string): Promise<FetchResult<null>> => {
-  const res = await fetch(`${apiBase}/api/sync-status/force-sync`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${authToken}` }
-  })
-  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
-  return { ok: true, data: null }
-}
+const postForceSync = (apiBase: string, authToken: string): Promise<FetchResult<null>> =>
+  http.post({ apiBase, authToken }, '/api/sync-status/force-sync').mapEither(
+    (): FetchResult<null> => ({ ok: true, data: null }),
+    (err): FetchResult<null> => ({ ok: false, error: describeHttpError(err) })
+  )
 
-const postAcknowledge = async (apiBase: string, authToken: string): Promise<FetchResult<null>> => {
-  const res = await fetch(`${apiBase}/api/sync-status/acknowledge`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${authToken}` }
-  })
-  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
-  return { ok: true, data: null }
-}
-
-const networkErrorToResult = (err: unknown): FetchErr => ({
-  ok: false,
-  error: (err as Error)?.name === 'AbortError' ? '' : String(err)
-})
+const postAcknowledge = (apiBase: string, authToken: string): Promise<FetchResult<null>> =>
+  http.post({ apiBase, authToken }, '/api/sync-status/acknowledge').mapEither(
+    (): FetchResult<null> => ({ ok: true, data: null }),
+    (err): FetchResult<null> => ({ ok: false, error: describeHttpError(err) })
+  )
 
 interface ServiceState {
   config: SyncStatusConfig | null
@@ -98,7 +88,7 @@ const fetchNow = async (): Promise<void> => {
     config.apiBase,
     config.authToken ?? '',
     state.controller?.signal
-  ).catch(networkErrorToResult)
+  )
   if (result.ok) {
     patch({ report: result.data, error: null })
   } else if (result.error.length > 0) {
@@ -139,7 +129,7 @@ const runAction = async (
 ): Promise<void> => {
   const config = state.config
   if (!config?.apiBase) return
-  const result = await post(config.apiBase, config.authToken ?? '').catch(networkErrorToResult)
+  const result = await post(config.apiBase, config.authToken ?? '')
   if (!result.ok && result.error.length > 0) {
     patch({ error: result.error })
   }

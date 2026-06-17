@@ -22,7 +22,7 @@ const report = {
 
 beforeEach(() => {
   fetchSpy.mockReset()
-  fetchSpy.mockResolvedValue({ ok: true, json: async () => report } as unknown as Response)
+  fetchSpy.mockResolvedValue({ status: 200, json: async () => report } as unknown as Response)
   vi.stubGlobal('fetch', fetchSpy)
   __resetSyncStatusForTest()
 })
