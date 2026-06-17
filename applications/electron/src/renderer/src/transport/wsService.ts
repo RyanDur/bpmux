@@ -10,11 +10,12 @@ import {
   type ChatMessage,
   type ClientMessage,
   type ConnectionStatus,
-  type ServerMessage
+  type ServerChatMessage
 } from './types'
 import type { BoardResponse, BoardStory } from '../board/types'
 import {
   errorDecoder,
+  messageDecoder,
   pongDecoder,
   ptyExitDecoder,
   ptyOutputDecoder,
@@ -140,6 +141,52 @@ const sendJson = (msg: ClientMessage): void => {
   sock.send(JSON.stringify(msg))
 }
 
+const handleChatMessage = (message: ServerChatMessage): void => {
+  if (message.message_type === MESSAGE_TYPE.StateSnapshot) {
+    if (message.state_snapshot) {
+      patch({ mirror: applyStateSnapshot(state.snapshot.mirror, message.state_snapshot) })
+    }
+    return
+  }
+  if (message.message_type === MESSAGE_TYPE.StateDelta) {
+    if (message.state_delta) {
+      const delta = message.state_delta
+      const next: Partial<WsSnapshot> = {
+        mirror: applyStateDelta(state.snapshot.mirror, delta)
+      }
+      if (delta.domain === 'board_snapshot') {
+        next.boardSnapshot = {
+          stories: delta.stories as BoardStory[],
+          fetched_at: message.ts
+        }
+      }
+      if (delta.domain === 'board_invalidated') {
+        next.boardInvalidateTick = state.snapshot.boardInvalidateTick + 1
+      }
+      patch(next)
+    }
+    return
+  }
+  if (message.text === SYNC_STATUS_UPDATE_MARKER) {
+    patch({ syncStatusTick: state.snapshot.syncStatusTick + 1 })
+    return
+  }
+  state.msgCounter += 1
+  const chat: ChatMessage = {
+    id: `${message.ts}-${state.msgCounter}`,
+    from: message.from,
+    text: message.text,
+    ts: message.ts,
+    to: message.to ?? null,
+    addressee: message.addressee ?? null,
+    messageType: asMessageType(message.message_type)
+  }
+  const key = messageKey(chat)
+  if (state.snapshot.messages.some((m) => messageKey(m) === key)) return
+  patch({ messages: [...state.snapshot.messages, chat] })
+  emitLiveMessage(chat)
+}
+
 const handleServerMessage = (raw: string): void => {
   const parseResult = tryCatch(
     () => JSON.parse(raw) as unknown,
@@ -171,54 +218,9 @@ const handleServerMessage = (raw: string): void => {
         emitPtyExit(exit.terminal_id)
       })
     )
-  if (!handled.isNothing) return
-
-  const parsed = frame as ServerMessage
-  switch (parsed.type) {
-    case 'message': {
-      if (parsed.message_type === MESSAGE_TYPE.StateSnapshot && parsed.state_snapshot) {
-        patch({ mirror: applyStateSnapshot(state.snapshot.mirror, parsed.state_snapshot) })
-        break
-      }
-      if (parsed.message_type === MESSAGE_TYPE.StateDelta && parsed.state_delta) {
-        const delta = parsed.state_delta
-        const next: Partial<WsSnapshot> = {
-          mirror: applyStateDelta(state.snapshot.mirror, delta)
-        }
-        if (delta.domain === 'board_snapshot') {
-          next.boardSnapshot = {
-            stories: delta.stories as BoardStory[],
-            fetched_at: parsed.ts
-          }
-        }
-        if (delta.domain === 'board_invalidated') {
-          next.boardInvalidateTick = state.snapshot.boardInvalidateTick + 1
-        }
-        patch(next)
-        break
-      }
-      if (parsed.text === SYNC_STATUS_UPDATE_MARKER) {
-        patch({ syncStatusTick: state.snapshot.syncStatusTick + 1 })
-        break
-      }
-      state.msgCounter += 1
-      const chat: ChatMessage = {
-        id: `${parsed.ts}-${state.msgCounter}`,
-        from: parsed.from,
-        text: parsed.text,
-        ts: parsed.ts,
-        to: parsed.to ?? null,
-        addressee: parsed.addressee ?? null,
-        messageType: asMessageType(parsed.message_type)
-      }
-      const key = messageKey(chat)
-      if (state.snapshot.messages.some((m) => messageKey(m) === key)) break
-      patch({ messages: [...state.snapshot.messages, chat] })
-      emitLiveMessage(chat)
-      break
-    }
-    default:
-      console.error('bpmux ws: unknown frame', parsed)
+    .or(() => maybe(messageDecoder.decode(frame)).map(handleChatMessage))
+  if (handled.isNothing) {
+    console.error('bpmux ws: unknown frame', frame)
   }
 }
 

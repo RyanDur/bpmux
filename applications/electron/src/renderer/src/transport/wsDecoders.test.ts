@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   errorDecoder,
+  messageDecoder,
   pongDecoder,
   ptyExitDecoder,
   ptyOutputDecoder,
@@ -64,5 +65,57 @@ describe('ptyExitDecoder', () => {
     expect(ptyExitDecoder.validate({ type: 'pty_output', terminal_id: 't1', data: 'x' }).type).toBe(
       'error'
     )
+  })
+})
+
+describe('messageDecoder', () => {
+  test('decodes a plain chat message', () => {
+    const result = messageDecoder.validate({
+      type: 'message',
+      from: 'pm',
+      text: 'hi',
+      ts: '2026-06-17T00:00:00Z'
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') expect(result.data.from).toBe('pm')
+  })
+
+  test('decodes a message carrying a known state_delta', () => {
+    const result = messageDecoder.validate({
+      type: 'message',
+      from: 'bpmux',
+      text: '',
+      ts: 't',
+      message_type: 'state-delta',
+      state_delta: { domain: 'board_invalidated', reason: 'changed' }
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') expect(result.data.state_delta?.domain).toBe('board_invalidated')
+  })
+
+  test('tolerates an unknown state_delta domain — decodes to null, not a reject (fork b)', () => {
+    const result = messageDecoder.validate({
+      type: 'message',
+      from: 'bpmux',
+      text: '',
+      ts: 't',
+      message_type: 'state-delta',
+      state_delta: { domain: 'story_transition', transition: {} }
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') expect(result.data.state_delta).toBeNull()
+  })
+
+  test('decodes a message carrying a state_snapshot', () => {
+    const result = messageDecoder.validate({
+      type: 'message',
+      from: 'bpmux',
+      text: '',
+      ts: 't',
+      message_type: 'state-snapshot',
+      state_snapshot: { reactions: [], roster: [] }
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') expect(result.data.state_snapshot).not.toBeNull()
   })
 })
