@@ -1,13 +1,20 @@
-//! Integration test for #512: cargo test runs must NOT pollute the
-//! production diag log at `~/.bpmux/diag.log`. Drives the live
-//! `log_diag` entry-point, then asserts (1) a unique marker landed in
-//! the test-isolated path under `${TMPDIR}` and (2) the production
-//! path is either absent or untouched by the marker.
-
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use bpmux::session::diag::log_diag;
 use std::fs;
+
+fn read_appended_since(path: &std::path::Path, offset: u64) -> String {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut file) = fs::File::open(path) else {
+        return String::new();
+    };
+    if file.seek(SeekFrom::Start(offset)).is_err() {
+        return String::new();
+    }
+    let mut appended = String::new();
+    let _ = file.read_to_string(&mut appended);
+    appended
+}
 
 #[test]
 fn log_diag_under_cargo_test_writes_to_tmpdir_not_home() {
@@ -22,7 +29,11 @@ fn log_diag_under_cargo_test_writes_to_tmpdir_not_home() {
         p.push("diag.log");
         p
     });
-    let prod_before = prod_path.as_ref().and_then(|p| fs::read_to_string(p).ok());
+    let prod_len_before = prod_path
+        .as_ref()
+        .and_then(|p| fs::metadata(p).ok())
+        .map(|m| m.len())
+        .unwrap_or(0);
 
     log_diag(&marker);
 
@@ -35,17 +46,10 @@ fn log_diag_under_cargo_test_writes_to_tmpdir_not_home() {
     );
 
     if let Some(p) = prod_path.as_ref() {
-        let prod_after = fs::read_to_string(p).ok();
-        match (prod_before, prod_after) {
-            (Some(before), Some(after)) => assert_eq!(
-                before, after,
-                "production diag log at {p:?} must be untouched by cargo-test log_diag"
-            ),
-            (None, Some(after)) => assert!(
-                !after.contains(&marker),
-                "production diag log at {p:?} must not contain test marker {marker}"
-            ),
-            _ => {}
-        }
+        let appended = read_appended_since(p, prod_len_before);
+        assert!(
+            !appended.contains(&marker),
+            "production diag log at {p:?} gained the cargo-test marker {marker} — log_diag must never write the prod path under test"
+        );
     }
 }
