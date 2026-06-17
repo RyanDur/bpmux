@@ -3,7 +3,12 @@ import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessag
 import { useReactions } from '../hooks/useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
-import type { ChatMessage, ConnectionStatus, ReactionAggregateWire } from '../transport/types'
+import type {
+  ChatMessage,
+  ConnectionStatus,
+  ReactionAggregateWire,
+  RosterMemberWire
+} from '../transport/types'
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
@@ -33,6 +38,7 @@ interface Props {
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
+  mirrorRoster?: readonly RosterMemberWire[]
 }
 
 const channelKey = (recipient: string[] | null): string => {
@@ -61,7 +67,8 @@ const Chat = ({
   hasMoreOlder,
   hasError,
   onAtBottomChange,
-  mirrorReactions
+  mirrorReactions,
+  mirrorRoster
 }: Props): React.JSX.Element => {
   const showReconnect = status !== 'connected'
   const reactionsChannel = channelKey(recipient)
@@ -174,6 +181,7 @@ const Chat = ({
             hasMoreOlder={hasMoreOlder}
             hasError={hasError}
             onAtBottomChange={onAtBottomChange}
+            mirrorRoster={mirrorRoster}
           />
           <Metrics
             apiBase={apiBase}

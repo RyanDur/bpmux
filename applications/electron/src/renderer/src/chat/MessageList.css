@@ -406,10 +406,6 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
 
-    &.avatar-tooltip-status--available {
-      color: var(--accent-success);
-    }
-
     &.avatar-tooltip-status--busy {
       color: var(--accent-warning);
     }

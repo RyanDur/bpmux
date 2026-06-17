@@ -31,8 +31,6 @@ interface Props {
 }
 
 const PRESENCE_LABEL: Record<Presence, string> = {
-  available: 'available',
-  present: 'present',
   busy: 'busy',
   blocked: 'blocked',
   idle: 'idle',
@@ -168,7 +166,6 @@ const Sidebar = ({
             recipient[0] === role
           const status = rosterPresenceByRole.get(role) ?? PRESENCE.Unknown
           const statusLabel = PRESENCE_LABEL[status]
-          const showStatusLabel = status !== PRESENCE.Available && status !== PRESENCE.Present
           const ioActive = ioActiveRoles.has(role)
           return (
             <button
@@ -187,11 +184,9 @@ const Sidebar = ({
                 title={`${role} — ${statusLabel}`}
               />
               {role}
-              {showStatusLabel && (
-                <small className="sidebar-item-status" data-test={`presence-label-${role}`}>
-                  {statusLabel}
-                </small>
-              )}
+              <small className="sidebar-item-status" data-test={`presence-label-${role}`}>
+                {statusLabel}
+              </small>
             </button>
           )
         })}

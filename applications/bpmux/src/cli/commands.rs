@@ -192,7 +192,7 @@ pub(crate) enum Command {
         observation: String,
     },
     #[command(
-        about = "Signal your own collaboration state off Claude's MCP — pushes busy|idle|help to the gated /api/presence (the same endpoint the agent-hooks use), setting your roster presence + collaboration-dot and winning over the server's terminal-quiet inference. needs-help is reachable here."
+        about = "Signal your own collaboration state off Claude's MCP — pushes busy|idle|help to the gated /api/presence (the same endpoint the agent-hooks use), setting your roster presence + collaboration-dot. needs-help is reachable here."
     )]
     Signal {
         #[arg(help = "Your collaboration state: busy | idle | help")]

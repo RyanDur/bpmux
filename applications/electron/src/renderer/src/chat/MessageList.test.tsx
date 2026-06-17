@@ -2,7 +2,8 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import MessageList from './MessageList'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
-import type { ChatMessage } from '../transport/types'
+import { MESSAGE_TYPE } from '../transport/messageType'
+import type { ChatMessage, RosterMemberWire } from '../transport/types'
 
 const VISIBLE: ReadonlySet<MessageClass> = new Set([classOf(undefined)])
 
@@ -12,6 +13,17 @@ const msg = (id: string, ts: string): ChatMessage => ({
   text: `body-${id}`,
   ts
 })
+
+const rosterMember = (name: string, presence: RosterMemberWire['presence']): RosterMemberWire => ({
+  routing_id: `rt-${name}`,
+  name,
+  identity: `${name}:claude-code`,
+  role: 'Dev',
+  presence
+})
+
+const avatarStatus = (root: HTMLElement): HTMLElement | null =>
+  root.querySelector('[data-test="avatar-tooltip-status"]')
 
 const enteringRows = (root: HTMLElement): string[] =>
   Array.from(root.querySelectorAll('[data-test="message-row"][data-entering="true"]')).map(
@@ -69,5 +81,46 @@ describe('#1487 message rise-from-below — gated to genuinely-new arrivals', ()
       />
     )
     expect(enteringRows(container)).toEqual([])
+  })
+})
+
+describe('#1750 chat presence reads the single /api/presence roster source — not the legacy activity-message keyword-scan', () => {
+  afterEach(cleanup)
+
+  test('a chat sender avatar reflects the ROSTER presence (mirrorRoster), not a seeded offline', () => {
+    const { container } = render(
+      <MessageList
+        messages={[msg('m1', '2026-06-05T10:00:00Z')]}
+        visibleClasses={VISIBLE}
+        allView
+        mirrorRoster={[rosterMember('dev', 'Busy')]}
+      />
+    )
+    const status = avatarStatus(container)
+    expect(status?.textContent).toBe('busy')
+    expect(status?.className).toContain('avatar-tooltip-status--busy')
+  })
+
+  test('an activity-message keyword does NOT drive chat presence — the roster wins (keyword-scan retired)', () => {
+    const { container } = render(
+      <MessageList
+        messages={[
+          {
+            id: 'act',
+            from: 'dev',
+            text: 'idle',
+            ts: '2026-06-05T09:59:00Z',
+            messageType: MESSAGE_TYPE.Activity
+          },
+          msg('m1', '2026-06-05T10:00:00Z')
+        ]}
+        visibleClasses={VISIBLE}
+        allView
+        mirrorRoster={[rosterMember('dev', 'Busy')]}
+      />
+    )
+    const status = avatarStatus(container)
+    expect(status?.textContent).toBe('busy')
+    expect(status?.textContent).not.toBe('idle')
   })
 })

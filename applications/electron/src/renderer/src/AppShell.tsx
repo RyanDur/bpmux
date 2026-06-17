@@ -449,6 +449,7 @@ const AppShell = ({
           hasError={hasError}
           onAtBottomChange={onAtBottomChange}
           mirrorReactions={mirrorReactions}
+          mirrorRoster={mirrorRoster}
         />
         {boardOpen ? (
           <BoardResizeHandle

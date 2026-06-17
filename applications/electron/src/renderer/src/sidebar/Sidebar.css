@@ -102,14 +102,6 @@
     background: var(--fg-dimmer);
     transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
 
-    &.presence-dot--available {
-      background: var(--accent-success);
-    }
-
-    &.presence-dot--present {
-      background: var(--fg-dim);
-    }
-
     &.presence-dot--busy {
       background: var(--accent-warning);
     }
