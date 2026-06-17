@@ -113,7 +113,7 @@ export default defineConfig(
     ],
     rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
   },
-  // jsx-a11y/no-autofocus waiver — Sidebar terminal-rename focus lifecycle only. Two
+  // jsx-a11y/no-autofocus waiver — TerminalList terminal-rename focus lifecycle only. Two
   // autoFocus uses, both gated on an explicit user edit-action (F2 / double-click): the
   // rename <input> autoFocuses on OPEN (focus lands in the field), and the terminal
   // <button> autoFocuses on its re-mount on SUBMIT (focus RETURNS to the item, so a
@@ -123,7 +123,7 @@ export default defineConfig(
   // ref, no no-refs exception spent (Ryan-canon: never spend the no-refs exception when an
   // obvious different solution exists; waive the lesser misfiring lint instead).
   {
-    files: ['src/renderer/src/sidebar/Sidebar.tsx'],
+    files: ['src/renderer/src/sidebar/TerminalList.tsx'],
     rules: { 'jsx-a11y/no-autofocus': 'off' }
   },
   {
