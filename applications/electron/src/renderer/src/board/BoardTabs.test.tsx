@@ -123,10 +123,13 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(now.querySelector('[data-test="board-story-9999"]')).toBeNull()
   })
 
-  test('#1549: NOW shows "No iteration designated" when none is current', () => {
+  test('#1684: NOW shows the roadmap-view (what is coming) when none is current — not a dead board', () => {
     const open = iterationStory({ number: 1, title: 'A', gh_state: 'open' })
-    const { getByTestId } = render(<BoardTabs {...buildProps([open])} />)
-    expect(getByTestId('board-now-empty').textContent).toContain('No iteration designated')
+    const { getByTestId, queryByTestId } = render(<BoardTabs {...buildProps([open])} />)
+    expect(
+      getByTestId('board-tabpanel-now-content').querySelector('[data-test="roadmap"]')
+    ).toBeTruthy()
+    expect(queryByTestId('board-now-empty')).toBeNull()
   })
 
   test('#1510: Now tab no longer renders the dedicated anchor-box (iteration-context relocated to the board-header)', () => {

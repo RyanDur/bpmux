@@ -78,13 +78,14 @@ test.describe('#1737 roadmap outcome drill-in — focus an outcome → its itera
         .toBe('dark')
 
       await win.locator('[data-test="board-roadmap-tab-roadmap"]').click()
-      await expect(win.locator('[data-test="board-roadmap-panel-roadmap"]')).toBeVisible()
+      const roadmapPanel = win.locator('[data-test="board-roadmap-panel-roadmap"]')
+      await expect(roadmapPanel).toBeVisible()
 
-      const outcome = win.locator('[data-test="roadmap-outcome-100"]')
+      const outcome = roadmapPanel.locator('[data-test="roadmap-outcome-100"]')
       await expect(outcome).toBeVisible()
-      await expect(win.locator('[data-test="roadmap-drill-100"]')).toHaveCount(0)
+      await expect(roadmapPanel.locator('[data-test="roadmap-drill-100"]')).toHaveCount(0)
 
-      await win.locator('[data-test="roadmap-outcome-toggle-100"]').click()
+      await roadmapPanel.locator('[data-test="roadmap-outcome-toggle-100"]').click()
 
       const drill = win.locator('[data-test="roadmap-drill-100"]')
       await expect(drill).toBeVisible()

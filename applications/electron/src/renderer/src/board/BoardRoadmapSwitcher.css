@@ -51,7 +51,7 @@
   color: var(--fg-primary);
 }
 
-.board-roadmap-tab--board {
+.board-roadmap-tab--board:has(.board-iteration-name) {
   justify-content: flex-start;
 }
 

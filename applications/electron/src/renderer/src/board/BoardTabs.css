@@ -11,11 +11,4 @@
     flex-direction: column;
     gap: var(--space-8);
   }
-
-  & .board-now-empty {
-    padding: var(--space-8);
-    text-align: center;
-    color: var(--fg-dim);
-  }
-
 }

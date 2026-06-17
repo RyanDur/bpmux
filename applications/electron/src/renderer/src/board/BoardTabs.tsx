@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import Epic from './Epic'
 import Iteration from './Iteration'
 import BoardGroup from './BoardGroup'
+import Roadmap from './Roadmap'
 import Tabs, { type TabDef } from './Tabs'
 import { useTabStorage } from '../lib/useTabStorage'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -132,9 +133,7 @@ const BoardTabs = ({
     if (currentIteration === null) {
       return (
         <section className="board-tabpanel-content" data-test="board-tabpanel-now-content">
-          <p className="board-now-empty" data-test="board-now-empty">
-            No iteration designated
-          </p>
+          <Roadmap stories={stories} />
         </section>
       )
     }
