@@ -1,4 +1,5 @@
-import { describeHttpError, http } from '../api/http'
+import { type ApiContext, type HttpError, describeHttpError, http } from '../api/http'
+import { type AsyncResult, asyncSuccess } from '../lib/asyncResult'
 
 export interface DroppedEvent {
   story_number: number
@@ -17,10 +18,6 @@ export interface SyncStatusReport {
   startup_fail: boolean
 }
 
-type FetchOk<T> = { ok: true; data: T }
-type FetchErr = { ok: false; error: string }
-type FetchResult<T> = FetchOk<T> | FetchErr
-
 const POLL_MS = 5_000
 
 export interface SyncStatusSnapshot {
@@ -32,31 +29,6 @@ export interface SyncStatusConfig {
   apiBase: string | undefined
   authToken: string | undefined
 }
-
-const fetchSyncStatus = (
-  apiBase: string,
-  authToken: string,
-  signal?: AbortSignal
-): Promise<FetchResult<SyncStatusReport>> =>
-  http.get<SyncStatusReport>({ apiBase, authToken }, '/api/sync-status', signal).mapEither(
-    (data): FetchResult<SyncStatusReport> => ({ ok: true, data }),
-    (err): FetchResult<SyncStatusReport> => ({
-      ok: false,
-      error: signal?.aborted ? '' : describeHttpError(err)
-    })
-  )
-
-const postForceSync = (apiBase: string, authToken: string): Promise<FetchResult<null>> =>
-  http.post({ apiBase, authToken }, '/api/sync-status/force-sync').mapEither(
-    (): FetchResult<null> => ({ ok: true, data: null }),
-    (err): FetchResult<null> => ({ ok: false, error: describeHttpError(err) })
-  )
-
-const postAcknowledge = (apiBase: string, authToken: string): Promise<FetchResult<null>> =>
-  http.post({ apiBase, authToken }, '/api/sync-status/acknowledge').mapEither(
-    (): FetchResult<null> => ({ ok: true, data: null }),
-    (err): FetchResult<null> => ({ ok: false, error: describeHttpError(err) })
-  )
 
 interface ServiceState {
   config: SyncStatusConfig | null
@@ -81,20 +53,13 @@ const patch = (changes: Partial<SyncStatusSnapshot>): void => {
   for (const listener of state.listeners) listener()
 }
 
-const fetchNow = async (): Promise<void> => {
-  const config = state.config
-  if (!config?.apiBase) return
-  const result = await fetchSyncStatus(
-    config.apiBase,
-    config.authToken ?? '',
-    state.controller?.signal
-  )
-  if (result.ok) {
-    patch({ report: result.data, error: null })
-  } else if (result.error.length > 0) {
-    patch({ error: result.error })
-  }
-}
+const fetchNow = (ctx: ApiContext): AsyncResult<SyncStatusReport, HttpError> =>
+  http
+    .get<SyncStatusReport>(ctx, '/api/sync-status', state.controller?.signal)
+    .onSuccess((report) => patch({ report, error: null }))
+    .onFailure((err) => {
+      if (!state.controller?.signal.aborted) patch({ error: describeHttpError(err) })
+    })
 
 const sameConfig = (a: SyncStatusConfig | null, b: SyncStatusConfig): boolean =>
   a !== null && a.apiBase === b.apiBase && a.authToken === b.authToken
@@ -114,31 +79,33 @@ export const ensureSyncStatusStarted = (config: SyncStatusConfig): void => {
   state.config = config
   if (!config.apiBase) return
   state.controller = new AbortController()
-  void fetchNow()
-  state.pollTimer = setInterval(() => {
-    void fetchNow()
-  }, POLL_MS)
+  const ctx: ApiContext = { apiBase: config.apiBase, authToken: config.authToken }
+  fetchNow(ctx)
+  state.pollTimer = setInterval(() => fetchNow(ctx), POLL_MS)
 }
 
 export const refreshSyncStatusNow = (): void => {
-  void fetchNow()
-}
-
-const runAction = async (
-  post: (apiBase: string, authToken: string) => Promise<FetchResult<null>>
-): Promise<void> => {
   const config = state.config
   if (!config?.apiBase) return
-  const result = await post(config.apiBase, config.authToken ?? '')
-  if (!result.ok && result.error.length > 0) {
-    patch({ error: result.error })
-  }
-  await fetchNow()
+  fetchNow({ apiBase: config.apiBase, authToken: config.authToken })
 }
 
-export const forceSync = (): Promise<void> => runAction(postForceSync)
+const runAction = (endpoint: string): void => {
+  const config = state.config
+  if (!config?.apiBase) return
+  const ctx: ApiContext = { apiBase: config.apiBase, authToken: config.authToken }
+  http
+    .post(ctx, endpoint)
+    .or((err) => {
+      patch({ error: describeHttpError(err) })
+      return asyncSuccess<void, HttpError>(undefined)
+    })
+    .andThen(() => fetchNow(ctx))
+}
 
-export const acknowledge = (): Promise<void> => runAction(postAcknowledge)
+export const forceSync = (): void => runAction('/api/sync-status/force-sync')
+
+export const acknowledge = (): void => runAction('/api/sync-status/acknowledge')
 
 export const subscribeSyncStatus = (listener: () => void): (() => void) => {
   state.listeners.add(listener)
