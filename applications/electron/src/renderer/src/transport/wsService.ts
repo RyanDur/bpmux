@@ -1,6 +1,7 @@
 import { describeHttpError, http } from '../api/http'
 import { asyncTryCatch } from '../lib/asyncResult'
 import { tryCatch } from '../lib/result'
+import { maybe } from '../lib/maybe'
 import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-delta'
 import type { MirrorState } from './state-delta'
 import { MESSAGE_TYPE, asMessageType } from './messageType'
@@ -12,6 +13,13 @@ import {
   type ServerMessage
 } from './types'
 import type { BoardResponse, BoardStory } from '../board/types'
+import {
+  errorDecoder,
+  pongDecoder,
+  ptyExitDecoder,
+  ptyOutputDecoder,
+  welcomeDecoder
+} from './wsDecoders'
 
 export const RENDERER_IDENTITY = 'ryan'
 const RENDERER_TOOL = 'electron'
@@ -134,18 +142,39 @@ const sendJson = (msg: ClientMessage): void => {
 
 const handleServerMessage = (raw: string): void => {
   const parseResult = tryCatch(
-    () => JSON.parse(raw) as ServerMessage,
+    () => JSON.parse(raw) as unknown,
     (err) => err
   )
   if (parseResult.kind === 'failure') {
     console.error('bpmux ws: non-JSON frame', parseResult.reason, raw)
     return
   }
-  const parsed = parseResult.value
+  const frame = parseResult.value
+
+  const handled = maybe(welcomeDecoder.decode(frame))
+    .map((welcome) => {
+      patch({ sessionId: welcome.session_id })
+    })
+    .or(() =>
+      maybe(errorDecoder.decode(frame)).map((error) => {
+        console.error('bpmux ws: server error', error.reason)
+      })
+    )
+    .or(() => maybe(pongDecoder.decode(frame)).map(() => undefined))
+    .or(() =>
+      maybe(ptyOutputDecoder.decode(frame)).map((out) => {
+        emitPtyOutput(out.terminal_id, out.data)
+      })
+    )
+    .or(() =>
+      maybe(ptyExitDecoder.decode(frame)).map((exit) => {
+        emitPtyExit(exit.terminal_id)
+      })
+    )
+  if (!handled.isNothing) return
+
+  const parsed = frame as ServerMessage
   switch (parsed.type) {
-    case 'welcome':
-      patch({ sessionId: parsed.session_id })
-      break
     case 'message': {
       if (parsed.message_type === MESSAGE_TYPE.StateSnapshot && parsed.state_snapshot) {
         patch({ mirror: applyStateSnapshot(state.snapshot.mirror, parsed.state_snapshot) })
@@ -188,17 +217,6 @@ const handleServerMessage = (raw: string): void => {
       emitLiveMessage(chat)
       break
     }
-    case 'error':
-      console.error('bpmux ws: server error', parsed.reason)
-      break
-    case 'pty_output':
-      emitPtyOutput(parsed.terminal_id, parsed.data)
-      break
-    case 'pty_exit':
-      emitPtyExit(parsed.terminal_id)
-      break
-    case 'pong':
-      break
     default:
       console.error('bpmux ws: unknown frame', parsed)
   }
