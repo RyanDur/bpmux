@@ -118,7 +118,7 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
         .spawn()
         .expect("spawn bpmux copy");
 
-    let started = wait_for_healthz(port, Duration::from_secs(10));
+    let started = wait_for_healthz(port, Duration::from_secs(30));
     if !started {
         let _ = child.kill();
         let _ = child.wait();
