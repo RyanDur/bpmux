@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { http } from '../api/http'
 import type { ReactionAggregateWire } from '../transport/types'
 
 export interface AggregatedReaction {
@@ -17,7 +18,7 @@ interface UseReactionsArgs {
 
 export interface UseReactionsResult {
   byMessage: Map<string, AggregatedReaction[]>
-  toggle: (messageKey: string, emoji: string, user: string) => Promise<void>
+  toggle: (messageKey: string, emoji: string, user: string) => void
 }
 
 export const useReactions = ({
@@ -29,20 +30,14 @@ export const useReactions = ({
   const fromMirror = mirrorReactions?.get(channel) ?? []
 
   const toggle = useCallback(
-    async (messageKey: string, emoji: string, user: string): Promise<void> => {
+    (messageKey: string, emoji: string, user: string): void => {
       if (!apiBase) return
-      try {
-        await fetch(`${apiBase}/api/reactions`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${authToken ?? ''}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ channel, message_key: messageKey, emoji, user })
-        })
-      } catch (_e) {
-        void _e
-      }
+      http.post({ apiBase, authToken }, '/api/reactions', {
+        channel,
+        message_key: messageKey,
+        emoji,
+        user
+      })
     },
     [apiBase, authToken, channel]
   )

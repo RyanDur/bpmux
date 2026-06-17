@@ -167,9 +167,7 @@ const Chat = ({
             messages={messages}
             visibleClasses={filter.visible}
             reactionsByMessage={reactions.byMessage}
-            onToggleReaction={(key, emoji) => {
-              void reactions.toggle(key, emoji, RENDERER_IDENTITY)
-            }}
+            onToggleReaction={(key, emoji) => reactions.toggle(key, emoji, RENDERER_IDENTITY)}
             viewer={RENDERER_IDENTITY}
             recipient={recipient}
             allView={allView}
