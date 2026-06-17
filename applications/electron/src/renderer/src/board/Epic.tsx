@@ -3,79 +3,23 @@ import MiniBoard from './MiniBoard'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useEpicCollapse } from './useEpicCollapse'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
-import { deriveEpicState, type BoardStory, type StoryState } from './types'
+import { deriveEpicState, type BoardStory } from './types'
+import {
+  breakdownAriaLabel,
+  breakdownFor,
+  extractDescription,
+  isOpenByDefault,
+  progressDenominatorFor,
+  sortEpics,
+  stripEpicPrefix,
+  type EpicSort
+} from './epicSummary'
 
 interface Props {
   epics: BoardStory[]
   stories: BoardStory[]
   onOpen: (n: number) => void
 }
-
-type EpicSort = 'progress' | 'created'
-
-interface StateBreakdown {
-  total: number
-  accepted: number
-  retired: number
-  delivered: number
-  inProgress: number
-  deskCheck: number
-  ready: number
-  icebox: number
-}
-
-const breakdownFor = (epic: BoardStory, all: BoardStory[]): StateBreakdown => {
-  const children = all.filter((s) => s.parent_epic === epic.number)
-  const count = (state: StoryState): number => children.filter((s) => s.state === state).length
-  return {
-    total: children.length,
-    accepted: count('accepted'),
-    retired: count('retired'),
-    delivered: count('delivered') + count('ready-for-accept'),
-    inProgress: count('in-progress') + count('needs-fixes'),
-    deskCheck: count('desk-check'),
-    ready: count('ready') + count('rejected'),
-    icebox: count('icebox')
-  }
-}
-
-const progressDenominatorFor = (b: StateBreakdown): number =>
-  b.accepted + b.delivered + b.inProgress + b.deskCheck + b.ready + b.icebox
-
-const extractDescription = (body: string): string => {
-  if (!body.trim()) return ''
-  const userJobMatch = body.match(/##\s+User job\s*\n+([\s\S]+?)(?:\n##\s|$)/i)
-  if (userJobMatch && userJobMatch[1]) {
-    const para = userJobMatch[1].trim().split(/\n{2,}/)[0]
-    if (para) return para.trim()
-  }
-  const firstPara = body.trim().split(/\n{2,}/)[0]
-  return firstPara ? firstPara.trim() : ''
-}
-
-const EPIC_TITLE_PREFIX_RE = /^\s*\[\s*epic\s*\]\s*/i
-
-const stripEpicPrefix = (title: string): string => title.replace(EPIC_TITLE_PREFIX_RE, '')
-
-const breakdownAriaLabel = (b: StateBreakdown): string => {
-  const denom = progressDenominatorFor(b)
-  return `Progress: ${b.accepted} of ${denom} children needing completion accepted; ${b.delivered} delivered, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox, ${b.retired} retired (scope-removed; excluded from progress denominator)`
-}
-
-const isOpenByDefault = (derived: StoryState): boolean =>
-  derived !== 'accepted' && derived !== 'icebox'
-
-const progressRatioFor = (epic: BoardStory, all: BoardStory[]): number => {
-  const breakdown = breakdownFor(epic, all)
-  const denom = progressDenominatorFor(breakdown)
-  return denom === 0 ? 0 : breakdown.accepted / denom
-}
-
-const sortEpics = (epics: BoardStory[], sort: EpicSort, all: BoardStory[]): BoardStory[] =>
-  [...epics].sort((a, b) => {
-    if (sort === 'created') return a.created_at.localeCompare(b.created_at)
-    return progressRatioFor(b, all) - progressRatioFor(a, all)
-  })
 
 const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
   const collapse = useEpicCollapse(RENDERER_IDENTITY)
