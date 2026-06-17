@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { ChatMessage, RosterMemberWire } from '../transport/types'
+import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import { useMentionScoping } from '../hooks/useMentionScoping'
@@ -28,7 +28,6 @@ interface Props {
   hasMoreOlder?: boolean
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
-  mirrorRoster?: readonly RosterMemberWire[]
 }
 
 const GROUP_THRESHOLD_MS = 5 * 60 * 1000
@@ -60,8 +59,7 @@ const MessageList = ({
   isLoadingOlder = false,
   hasMoreOlder = true,
   hasError = false,
-  onAtBottomChange,
-  mirrorRoster
+  onAtBottomChange
 }: Props): React.JSX.Element => {
   const visible = messages.filter(
     (m) =>
@@ -71,7 +69,7 @@ const MessageList = ({
     () => deriveTeamRoles(messages, viewer ?? RENDERER_IDENTITY),
     [messages, viewer]
   )
-  const presence = usePresence(mirrorRoster)
+  const presence = usePresence()
   const { mentionRoles, handleMention } = useMentionScoping(presenceRoles, onSelectRecipient)
 
   const { listRef, handleScroll, newCount, scrollToBottom } = useScrollGutter({

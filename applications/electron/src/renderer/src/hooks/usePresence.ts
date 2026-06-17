@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import type { PresenceWire, RosterMemberWire } from '../transport/types'
+import type { PresenceWire } from '../transport/types'
+import { useRoster } from '../transport/session'
 
 export const PRESENCE = {
   Busy: 'busy',
@@ -24,11 +25,11 @@ const WIRE_TO_PRESENCE: Record<PresenceWire, Presence> = {
 export const presenceFromWire = (presence: PresenceWire | undefined): Presence =>
   presence === undefined ? PRESENCE.Unknown : (WIRE_TO_PRESENCE[presence] ?? PRESENCE.Unknown)
 
-export const usePresence = (
-  mirrorRoster: readonly RosterMemberWire[] | undefined
-): Map<string, Presence> =>
-  useMemo(() => {
+export const usePresence = (): Map<string, Presence> => {
+  const roster = useRoster()
+  return useMemo(() => {
     const out = new Map<string, Presence>()
-    for (const wire of mirrorRoster ?? []) out.set(wire.name, presenceFromWire(wire.presence))
+    for (const wire of roster) out.set(wire.name, presenceFromWire(wire.presence))
     return out
-  }, [mirrorRoster])
+  }, [roster])
+}

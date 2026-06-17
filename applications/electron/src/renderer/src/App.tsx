@@ -19,7 +19,6 @@ const App = (): React.JSX.Element => {
     status,
     messages: liveRaw,
     sendChat,
-    mirror,
     boardSnapshot,
     boardInvalidateTick,
     syncStatusTick
@@ -50,7 +49,6 @@ const App = (): React.JSX.Element => {
       hasMoreOlder={hasMoreOlder}
       hasError={hasError}
       onAtBottomChange={setAtBottom}
-      mirrorRoster={mirror.roster}
       boardSnapshot={boardSnapshot}
       boardInvalidateTick={boardInvalidateTick}
       syncStatusTick={syncStatusTick}

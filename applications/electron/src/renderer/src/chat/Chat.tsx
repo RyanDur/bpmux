@@ -4,7 +4,7 @@ import { useReactions } from '../hooks/useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
 import { useConnectionStatus } from '../transport/session'
-import type { ChatMessage, RosterMemberWire } from '../transport/types'
+import type { ChatMessage } from '../transport/types'
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
@@ -32,7 +32,6 @@ interface Props {
   hasMoreOlder?: boolean
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
-  mirrorRoster?: readonly RosterMemberWire[]
 }
 
 const channelKey = (recipient: string[] | null): string => {
@@ -59,8 +58,7 @@ const Chat = ({
   isLoadingOlder,
   hasMoreOlder,
   hasError,
-  onAtBottomChange,
-  mirrorRoster
+  onAtBottomChange
 }: Props): React.JSX.Element => {
   const status = useConnectionStatus()
   const showReconnect = status !== 'connected'
@@ -171,7 +169,6 @@ const Chat = ({
             hasMoreOlder={hasMoreOlder}
             hasError={hasError}
             onAtBottomChange={onAtBottomChange}
-            mirrorRoster={mirrorRoster}
           />
           <Metrics
             apiBase={apiBase}

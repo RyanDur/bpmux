@@ -4,6 +4,8 @@ import MessageList from './MessageList'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
+import { dispatchSession, resetSessionForTest } from '../transport/session/store'
+import { mirrorDeltaReceived } from '../transport/session/actions'
 
 const VISIBLE: ReadonlySet<MessageClass> = new Set([classOf(undefined)])
 
@@ -21,6 +23,9 @@ const rosterMember = (name: string, presence: RosterMemberWire['presence']): Ros
   role: 'Dev',
   presence
 })
+
+const pushRoster = (members: RosterMemberWire[]): void =>
+  dispatchSession(mirrorDeltaReceived({ domain: 'roster', members }, '2026-01-01T00:00:00Z'))
 
 const avatarStatus = (root: HTMLElement): HTMLElement | null =>
   root.querySelector('[data-test="avatar-tooltip-status"]')
@@ -85,16 +90,15 @@ describe('#1487 message rise-from-below — gated to genuinely-new arrivals', ()
 })
 
 describe('#1750 chat presence reads the single /api/presence roster source — not the legacy activity-message keyword-scan', () => {
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    resetSessionForTest()
+  })
 
-  test('a chat sender avatar reflects the ROSTER presence (mirrorRoster), not a seeded offline', () => {
+  test('a chat sender avatar reflects the ROSTER presence, not a seeded offline', () => {
+    pushRoster([rosterMember('dev', 'Busy')])
     const { container } = render(
-      <MessageList
-        messages={[msg('m1', '2026-06-05T10:00:00Z')]}
-        visibleClasses={VISIBLE}
-        allView
-        mirrorRoster={[rosterMember('dev', 'Busy')]}
-      />
+      <MessageList messages={[msg('m1', '2026-06-05T10:00:00Z')]} visibleClasses={VISIBLE} allView />
     )
     const status = avatarStatus(container)
     expect(status?.textContent).toBe('busy')
@@ -102,6 +106,7 @@ describe('#1750 chat presence reads the single /api/presence roster source — n
   })
 
   test('an activity-message keyword does NOT drive chat presence — the roster wins (keyword-scan retired)', () => {
+    pushRoster([rosterMember('dev', 'Busy')])
     const { container } = render(
       <MessageList
         messages={[
@@ -116,7 +121,6 @@ describe('#1750 chat presence reads the single /api/presence roster source — n
         ]}
         visibleClasses={VISIBLE}
         allView
-        mirrorRoster={[rosterMember('dev', 'Busy')]}
       />
     )
     const status = avatarStatus(container)
