@@ -8,6 +8,11 @@ import {
   writeTerminalLayout
 } from '../lib/terminalLayout'
 import { readTerminalNames, writeTerminalNames } from '../lib/terminalNames'
+import {
+  closeTerminalRequest,
+  listTerminalsRequest,
+  spawnTerminalRequest
+} from '../lib/terminalApi'
 
 export type TerminalState = 'spawning' | 'ready' | 'spawn-failed' | 'exited'
 
@@ -51,26 +56,13 @@ export const useTerminals = (
   )
   const [confirmClose, setConfirmClose] = useState<ConfirmClose | null>(null)
 
-  const postClose = (id: string, force: boolean): Promise<Response> =>
-    fetch(`${bridge?.apiBase}/api/terminals/close`, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${bridge?.authToken}`,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({ terminal_id: id, force })
-    })
-
   const requestSpawn = (key: string): void => {
     if (!bridge) return
     const markFailed = (error: string): void =>
       setTerminals((prev) =>
         prev.map((t) => (t.key === key ? { ...t, state: 'spawn-failed', error } : t))
       )
-    void fetch(`${bridge.apiBase}/api/terminals/spawn`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${bridge.authToken}` }
-    })
+    void spawnTerminalRequest(bridge)
       .then(async (res) => {
         if (!res.ok) {
           const detail = await res.text().catch(() => '')
@@ -85,7 +77,7 @@ export const useTerminals = (
         const id = body.terminal_id
         setTerminals((prev) => {
           if (!prev.some((t) => t.key === key)) {
-            void postClose(id, true).catch((err: unknown) =>
+            void closeTerminalRequest(bridge, id, true).catch((err: unknown) =>
               console.error('bpmux: orphaned terminal reap failed', err)
             )
             return prev
@@ -146,7 +138,7 @@ export const useTerminals = (
       return
     }
     const id = closing.id
-    void postClose(id, false)
+    void closeTerminalRequest(bridge, id, false)
       .then((res) => {
         if (res.status === 409) {
           setConfirmClose({ key, id })
@@ -164,7 +156,7 @@ export const useTerminals = (
     if (!confirmClose) return
     const { key, id } = confirmClose
     setConfirmClose(null)
-    void postClose(id, true).catch((e: unknown) =>
+    void closeTerminalRequest(bridge, id, true).catch((e: unknown) =>
       console.error('bpmux: terminal force-close failed', e)
     )
     removePane(key)
@@ -183,9 +175,7 @@ export const useTerminals = (
       const maxAttempts = 4
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         try {
-          const res = await fetch(`${bridge.apiBase}/api/terminals`, {
-            headers: { authorization: `Bearer ${bridge.authToken}` }
-          })
+          const res = await listTerminalsRequest(bridge)
           if (cancelled) return
           if (!res.ok) throw new Error(`terminals list failed (${res.status})`)
           const body = (await res.json()) as {
