@@ -1,6 +1,8 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { useTabStorage } from '../lib/useTabStorage'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import CloseApproachNudge from './CloseApproachNudge'
+import type { CloseApproachNudge as CloseApproachNudgeData } from './deriveCloseApproachNudge'
 import './BoardRoadmapSwitcher.css'
 
 export type BoardRoadmapView = 'board' | 'roadmap'
@@ -13,13 +15,17 @@ interface BoardRoadmapSwitcherProps {
   mock?: React.ReactNode
   board: React.ReactNode
   roadmap: React.ReactNode
+  nudge?: CloseApproachNudgeData | null
+  currentIterationName?: string | null
 }
 
 const BoardRoadmapSwitcher = ({
   boardLabel,
   mock,
   board,
-  roadmap
+  roadmap,
+  nudge,
+  currentIterationName
 }: BoardRoadmapSwitcherProps): React.JSX.Element => {
   const { activeId, setActiveId } = useTabStorage<BoardRoadmapView>(
     STORAGE_PREFIX,
@@ -28,6 +34,7 @@ const BoardRoadmapSwitcher = ({
     'board'
   )
   const groupName = useId()
+  const [dismissedNextNumber, setDismissedNextNumber] = useState<number | null>(null)
   return (
     <section className="board-roadmap-switcher tabs">
       <header className="board-roadmap-tabrow">
@@ -60,10 +67,26 @@ const BoardRoadmapSwitcher = ({
               className="tabs-radio"
             />
             🗺 Roadmap
+            {nudge != null && (
+              <i className="board-roadmap-attn" data-test="board-roadmap-attn" aria-hidden="true">
+                ◐
+              </i>
+            )}
           </label>
           {mock}
         </fieldset>
       </header>
+      {nudge != null && currentIterationName != null && (
+        <CloseApproachNudge
+          currentIterationName={currentIterationName}
+          nextIterationName={nudge.nextIterationName}
+          activeGapLabel={nudge.activeGapLabel}
+          dismissed={nudge.nextIterationNumber === dismissedNextNumber}
+          hidden={activeId !== 'board'}
+          onViewRoadmap={() => setActiveId('roadmap')}
+          onDismiss={() => setDismissedNextNumber(nudge.nextIterationNumber)}
+        />
+      )}
       <article
         className="tabs-panel board-roadmap-panel"
         data-test="board-roadmap-panel-board"
@@ -72,10 +95,7 @@ const BoardRoadmapSwitcher = ({
         {board}
       </article>
       {activeId === 'roadmap' && (
-        <article
-          className="tabs-panel board-roadmap-panel"
-          data-test="board-roadmap-panel-roadmap"
-        >
+        <article className="tabs-panel board-roadmap-panel" data-test="board-roadmap-panel-roadmap">
           {roadmap}
         </article>
       )}

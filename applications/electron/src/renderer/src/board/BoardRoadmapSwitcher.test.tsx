@@ -74,3 +74,55 @@ describe('#1704 BoardRoadmapSwitcher — header-as-Board-tab sibling-switcher (d
     expect(boardPanel.querySelector('[data-test="board-marker"]')).toBeTruthy()
   })
 })
+
+const NUDGE = {
+  nextIterationNumber: 200,
+  nextIterationName: 'Fornax',
+  activeGapLabel: 'designer-review'
+}
+
+const renderWithNudge = (): ReturnType<typeof render> =>
+  render(
+    <BoardRoadmapSwitcher
+      boardLabel={<small>Board</small>}
+      board={<p data-test="board-marker">board-content</p>}
+      roadmap={<p data-test="roadmap-marker">roadmap-content</p>}
+      nudge={NUDGE}
+      currentIterationName="Lupus"
+    />
+  )
+
+describe('#1705 close-approach readiness nudge — strip + tab-badge', () => {
+  test('renders the close-approach strip (plain gap) + the ◐ tab-badge when a nudge is present', () => {
+    const { getByTestId } = renderWithNudge()
+    const strip = getByTestId('close-approach-nudge')
+    expect(strip.textContent).toContain('Lupus')
+    expect(strip.textContent).toContain('Fornax')
+    expect(strip.textContent).toContain('designer-review')
+    expect(getByTestId('board-roadmap-attn')).toBeTruthy()
+  })
+
+  test('no nudge → neither the strip nor the tab-badge render (signal-honesty)', () => {
+    const { queryByTestId } = renderSwitcher()
+    expect(queryByTestId('close-approach-nudge')).toBeNull()
+    expect(queryByTestId('board-roadmap-attn')).toBeNull()
+  })
+
+  test('dismissing the strip collapses it (data-dismissed) but the ◐ tab-badge survives (recognition-over-recall)', async () => {
+    const { getByTestId } = renderWithNudge()
+    expect(getByTestId('close-approach-nudge').getAttribute('data-dismissed')).toBeNull()
+    await userEvent.click(getByTestId('close-approach-nudge-dismiss'))
+    expect(getByTestId('close-approach-nudge').getAttribute('data-dismissed')).toBe('true')
+    expect(getByTestId('board-roadmap-attn')).toBeTruthy()
+  })
+
+  test('View roadmap → switches to the roadmap tab (a steer, not a gate) and hides the board-tab strip', async () => {
+    const { getByTestId } = renderWithNudge()
+    await userEvent.click(getByTestId('close-approach-nudge-view'))
+    const roadmapRadio = getByTestId('board-roadmap-tab-roadmap').querySelector(
+      'input[type="radio"]'
+    ) as HTMLInputElement
+    expect(roadmapRadio.checked).toBe(true)
+    expect(getByTestId('close-approach-nudge').hasAttribute('hidden')).toBe(true)
+  })
+})

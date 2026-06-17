@@ -11,6 +11,7 @@ import { useBoardFetch } from './useBoardFetch'
 import { useBoardReorder } from './useBoardReorder'
 import { usePendingReadyOrder } from './usePendingReadyOrder'
 import { findCurrentIteration } from './currentIteration'
+import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
 import { themeNameFromTitle } from './labelSchema'
 import { GROUP_ORDER, type BoardResponse, type BoardStory, type ColumnState } from './types'
 import './Board.css'
@@ -75,6 +76,7 @@ const Board = ({
   const currentIteration = findCurrentIteration(stories)
   const currentIterationName =
     currentIteration !== null ? themeNameFromTitle(currentIteration.title) : null
+  const closeApproachNudge = useMemo(() => deriveCloseApproachNudge(stories), [stories])
 
   const effectiveSelected =
     selectedNumber !== null && navOrder.includes(selectedNumber)
@@ -204,6 +206,8 @@ const Board = ({
       )}
 
       <BoardRoadmapSwitcher
+        nudge={closeApproachNudge}
+        currentIterationName={currentIterationName}
         boardLabel={
           <>
             {currentIterationName !== null && (

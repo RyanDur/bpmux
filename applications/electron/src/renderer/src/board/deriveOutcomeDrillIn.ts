@@ -1,5 +1,12 @@
 import type { BoardStory, IterationReadiness } from './types'
 import { storyTypeFromLabels } from './types'
+import {
+  CHECK_ORDER,
+  firstUnmetLabel,
+  nothingDone,
+  readinessOf,
+  unmetCount
+} from './iterationReadiness'
 
 export type ConveneCheckState = 'met' | 'gap' | 'pending'
 
@@ -31,32 +38,6 @@ export interface OutcomeDrillIn {
   iterations: DrillIteration[]
   convene: ConveneBanner | null
 }
-
-const CHECK_ORDER: ReadonlyArray<{ key: keyof IterationReadiness; label: string }> = [
-  { key: 'drafted', label: 'drafted' },
-  { key: 'stories_ordered', label: 'stories ordered' },
-  { key: 'review_closed', label: 'designer-review' },
-  { key: 'dev_ok', label: 'dev-OK' }
-]
-
-const NOTHING_DONE: IterationReadiness = {
-  drafted: false,
-  stories_ordered: false,
-  review_closed: false,
-  dev_ok: false
-}
-
-const readinessOf = (iteration: BoardStory): IterationReadiness =>
-  iteration.readiness ?? NOTHING_DONE
-
-const unmetCount = (readiness: IterationReadiness): number =>
-  CHECK_ORDER.filter(({ key }) => !readiness[key]).length
-
-const nothingDone = (readiness: IterationReadiness): boolean =>
-  CHECK_ORDER.every(({ key }) => !readiness[key])
-
-const firstUnmetLabel = (readiness: IterationReadiness): string | null =>
-  CHECK_ORDER.find(({ key }) => !readiness[key])?.label ?? null
 
 const checksOf = (readiness: IterationReadiness): ConveneCheck[] => {
   let activeGapTaken = false

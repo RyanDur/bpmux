@@ -74,3 +74,11 @@
 .board-roadmap-tab--board .board-title {
   flex-shrink: 0;
 }
+
+.board-roadmap-attn {
+  flex-shrink: 0;
+  color: var(--accent-warning);
+  font-size: var(--font-size-13);
+  font-style: normal;
+  line-height: 1;
+}
