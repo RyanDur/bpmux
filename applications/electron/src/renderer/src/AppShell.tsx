@@ -156,7 +156,6 @@ const AppShell = ({
           onRenameTerminal={renameTerminal}
           messages={messages}
           filter={filter}
-          mirrorRoster={mirrorRoster}
         />
         <Chat
           messages={messages}

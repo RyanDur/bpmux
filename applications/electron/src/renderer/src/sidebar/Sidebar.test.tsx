@@ -4,6 +4,8 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import Sidebar from './Sidebar'
 import type { MessageFilter } from '../hooks/useMessageFilter'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
+import { dispatchSession, resetSessionForTest } from '../transport/session/store'
+import { mirrorDeltaReceived } from '../transport/session/actions'
 
 const filter: MessageFilter = {
   visible: new Set(['chat']),
@@ -28,6 +30,9 @@ const ROSTER_FIXTURE: RosterMemberWire[] = [
   wire({ name: 'designer', identity: 'designer:claude-code', role: 'Designer' })
 ]
 
+const pushRoster = (members: RosterMemberWire[]): void =>
+  dispatchSession(mirrorDeltaReceived({ domain: 'roster', members }, '2026-01-01T00:00:00Z'))
+
 const RYAN_ONLY_MESSAGES: ChatMessage[] = [
   {
     id: 'msg-1',
@@ -40,10 +45,14 @@ const RYAN_ONLY_MESSAGES: ChatMessage[] = [
   }
 ]
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  resetSessionForTest()
+})
 
 describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-check-402.spec.ts)', () => {
   test('non-speaking peer roles from mirror.roster render as direct entries', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -52,7 +61,6 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).toContain('data-test="sidebar-direct-dev"')
@@ -61,6 +69,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
   })
 
   test('viewer (ryan) excluded from sidebar-direct entries (#393 AC1 self-filter)', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -69,7 +78,6 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).not.toContain('data-test="sidebar-direct-ryan"')
@@ -79,6 +87,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
     const SELF_ONLY: RosterMemberWire[] = [
       wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' })
     ]
+    pushRoster(SELF_ONLY)
     const messages: ChatMessage[] = [
       {
         id: 'm1',
@@ -98,7 +107,6 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
         onSelectAllView={() => {}}
         messages={messages}
         filter={filter}
-        mirrorRoster={SELF_ONLY}
       />
     )
     expect(html).not.toContain('data-test="sidebar-direct-dev"')
@@ -120,6 +128,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
   })
 
   test('combinatorial groups derive from peer roster (excludes self)', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -128,7 +137,6 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).toContain('data-test="sidebar-group-designer+dev"')
@@ -140,6 +148,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
 
 describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-walk regression)', () => {
   test('clicking a group scopes the recipient to that group', () => {
+    pushRoster(ROSTER_FIXTURE)
     const onSelectRecipient = vi.fn()
     const { getByTestId } = render(
       <Sidebar
@@ -149,7 +158,6 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     fireEvent.click(getByTestId('sidebar-group-designer+dev'))
@@ -164,6 +172,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
       wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev' }),
       wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' })
     ]
+    pushRoster(TWO_PEER_ROSTER)
     const { getByTestId } = render(
       <Sidebar
         recipient={null}
@@ -172,7 +181,6 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={TWO_PEER_ROSTER}
       />
     )
     fireEvent.click(getByTestId('sidebar-group-dev+pm'))
@@ -182,6 +190,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
   })
 
   test('clicking a direct role scopes the recipient to that role', () => {
+    pushRoster(ROSTER_FIXTURE)
     const onSelectRecipient = vi.fn()
     const { getByTestId } = render(
       <Sidebar
@@ -191,7 +200,6 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     fireEvent.click(getByTestId('sidebar-direct-dev'))
@@ -240,6 +248,7 @@ describe('#1246 Sidebar — roster is source-of-truth; no message-history fallba
       wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
       wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev' })
     ]
+    pushRoster(ROSTER_HAS_DEV_ONLY)
     const messages: ChatMessage[] = [
       {
         id: 'm-pm',
@@ -259,7 +268,6 @@ describe('#1246 Sidebar — roster is source-of-truth; no message-history fallba
         onSelectAllView={() => {}}
         messages={messages}
         filter={filter}
-        mirrorRoster={ROSTER_HAS_DEV_ONLY}
       />
     )
     expect(html).toContain('data-test="sidebar-direct-dev"')
@@ -303,6 +311,7 @@ describe('#1246 Sidebar — roster is source-of-truth; no message-history fallba
 
 describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX section', () => {
   test('Scenario 1: GROUP rows do NOT carry +ryan affordance (owner-is-constant; canon-cite 18:31 UTC "I am already here")', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -311,7 +320,6 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).not.toContain('+ryan')
@@ -321,6 +329,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
   })
 
   test('Scenario 2: BPMUX section retired entirely (filter pills handle bpmux class)', () => {
+    pushRoster(ROSTER_FIXTURE)
     const messages: ChatMessage[] = [
       {
         id: 'sys-1',
@@ -340,7 +349,6 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         onSelectAllView={() => {}}
         messages={messages}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).not.toContain('<h3 class="sidebar-heading">bpmux</h3>')
@@ -351,6 +359,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
   })
 
   test('Scenario 3: 3-role all-members group retired (subsumed by "all conversations")', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -359,7 +368,6 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).not.toMatch(/data-test="sidebar-group-designer\+dev\+pm"/)
@@ -367,6 +375,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
   })
 
   test('Scenario 4: 2-role GROUP rooms preserved with member-list-naming', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -375,7 +384,6 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).not.toContain('>broadcast<')
@@ -385,6 +393,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
   })
 
   test('Scenario 5: "all conversations" entry preserved with explanatory title', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -393,7 +402,6 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).toContain('data-test="sidebar-all"')
@@ -402,6 +410,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
   })
 
   test('Scenario 6 canon: zero <div> + zero <span> in rendered sidebar (feedback_html5_semantic_no_divs_spans)', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -410,7 +419,6 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).not.toMatch(/<div\b/)
@@ -418,6 +426,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
   })
 
   test('Scenario 7: presence-dot still renders per DIRECT role (semantic refactored to <i>)', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -426,7 +435,6 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).toMatch(/data-test="presence-dot-designer"/)
@@ -437,6 +445,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
 
 describe('Sidebar — presence dot honestly reflects wire roster state, never green from mere connection (#1719)', () => {
   test('wire presence Online (connected, no signal yet) shows UNKNOWN hollow, NEVER available/green (#1739 S1: the dot reflects a pushed state; mere connection is unknown)', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -445,7 +454,6 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="unknown"/)
@@ -457,6 +465,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
       wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
       wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Blocked' })
     ]
+    pushRoster(BLOCKED_ROSTER)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -465,7 +474,6 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={BLOCKED_ROSTER}
       />
     )
     expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="blocked"/)
@@ -477,6 +485,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
       wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
       { name: 'dev', identity: 'dev:claude-code', role: 'Dev' } as RosterMemberWire
     ]
+    pushRoster(NO_PRESENCE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -485,7 +494,6 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={NO_PRESENCE}
       />
     )
     expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="unknown"/)
@@ -493,6 +501,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
   })
 
   test('no path yields data-presence="available" from connection alone in S1', () => {
+    pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -501,7 +510,6 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
       />
     )
     expect(html).not.toMatch(/data-presence="available"/)
@@ -512,6 +520,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
       wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
       wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Busy' })
     ]
+    pushRoster(BUSY_ROSTER)
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -520,7 +529,6 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         onSelectAllView={() => {}}
         messages={RYAN_ONLY_MESSAGES}
         filter={filter}
-        mirrorRoster={BUSY_ROSTER}
       />
     )
     expect(html).toMatch(/data-test="presence-dot-dev"[^>]*data-presence="busy"/)
@@ -533,13 +541,13 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
     allView: false,
     onSelectRecipient: () => {},
     onSelectAllView: () => {},
-    filter,
-    mirrorRoster: ROSTER_FIXTURE
+    filter
   }
 
   test('a directed message flickers BOTH sender and recipient, then clears after the window', () => {
     vi.useFakeTimers()
     try {
+      pushRoster(ROSTER_FIXTURE)
       const { getByTestId, rerender } = render(<Sidebar {...baseProps} messages={[]} />)
       expect(getByTestId('presence-dot-dev').className).not.toContain('presence-dot--io')
 
@@ -570,6 +578,7 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
   test('a broadcast (to=null) flickers every peer dot — it flows to all', () => {
     vi.useFakeTimers()
     try {
+      pushRoster(ROSTER_FIXTURE)
       const { getByTestId, rerender } = render(<Sidebar {...baseProps} messages={[]} />)
       const msg: ChatMessage = {
         id: 'b-1',
@@ -597,9 +606,8 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
         wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Busy' }),
         wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' })
       ]
-      const { getByTestId, rerender } = render(
-        <Sidebar {...baseProps} mirrorRoster={BUSY_ROSTER} messages={[]} />
-      )
+      pushRoster(BUSY_ROSTER)
+      const { getByTestId, rerender } = render(<Sidebar {...baseProps} messages={[]} />)
       const msg: ChatMessage = {
         id: 'io-2',
         from: 'dev:claude-code',
@@ -609,7 +617,7 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
         addressee: 'pm',
         messageType: 'chat'
       }
-      rerender(<Sidebar {...baseProps} mirrorRoster={BUSY_ROSTER} messages={[msg]} />)
+      rerender(<Sidebar {...baseProps} messages={[msg]} />)
       const dot = getByTestId('presence-dot-dev')
       expect(dot.className).toContain('presence-dot--busy')
       expect(dot.className).toContain('presence-dot--io')
@@ -622,6 +630,7 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
   test('message-history at mount does NOT flicker — flicker is a live event, not a replay', () => {
     vi.useFakeTimers()
     try {
+      pushRoster(ROSTER_FIXTURE)
       const history: ChatMessage[] = [
         {
           id: 'hist-1',

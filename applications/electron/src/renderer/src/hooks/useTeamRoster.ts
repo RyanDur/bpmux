@@ -1,4 +1,5 @@
 import type { RosterMemberWire } from '../transport/types'
+import { useRoster } from '../transport/session'
 import { presenceFromWire, type Presence } from './usePresence'
 
 export interface RosterEntry {
@@ -13,11 +14,4 @@ export const wireToRosterEntry = (wire: RosterMemberWire): RosterEntry => ({
   presence: presenceFromWire(wire.presence)
 })
 
-interface Props {
-  mirrorRoster?: readonly RosterMemberWire[]
-}
-
-export const useTeamRoster = ({ mirrorRoster }: Props): readonly RosterEntry[] => {
-  if (!mirrorRoster || mirrorRoster.length === 0) return []
-  return mirrorRoster.map(wireToRosterEntry)
-}
+export const useTeamRoster = (): readonly RosterEntry[] => useRoster().map(wireToRosterEntry)
