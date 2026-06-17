@@ -92,7 +92,7 @@ const BoardGroup = ({
                 <StoryRow
                   story={story}
                   parentEpicTitle={
-                    story.parent_epic !== undefined
+                    typeof story.parent_epic === 'number'
                       ? epicTitleByNumber.get(story.parent_epic)
                       : undefined
                   }
@@ -106,7 +106,8 @@ const BoardGroup = ({
                       ? (direction) => {
                           if (direction === 'up' && index === 0) return
                           if (direction === 'down' && index === stories.length - 1) return
-                          const target = direction === 'up' ? stories[index - 1] : stories[index + 1]
+                          const target =
+                            direction === 'up' ? stories[index - 1] : stories[index + 1]
                           onReorder(group.state, story.number, target.number)
                         }
                       : undefined

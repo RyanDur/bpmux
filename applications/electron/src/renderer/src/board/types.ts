@@ -80,7 +80,7 @@ export interface BoardStory {
   assignees: string[]
   created_at: string
   body: string
-  parent_epic?: number
+  parent_epic?: number | null
   iteration_membership?: IterationMembership | null
   iteration_order?: number | null
   is_current?: boolean

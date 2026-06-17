@@ -16,7 +16,7 @@ export const epicNumbersInIteration = (stories: BoardStory[], iteration: BoardSt
   const epicSet = new Set<number>()
   for (const s of stories) {
     if (!isMemberOfIteration(s, iteration)) continue
-    if (s.parent_epic !== undefined) epicSet.add(s.parent_epic)
+    if (typeof s.parent_epic === 'number') epicSet.add(s.parent_epic)
   }
   return Array.from(epicSet).sort((a, b) => a - b)
 }

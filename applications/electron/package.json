@@ -32,7 +32,8 @@
     "react-error-boundary": "^6.1.1",
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "schemawax": "^1.0.12"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",
