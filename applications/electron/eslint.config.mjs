@@ -107,7 +107,7 @@ export default defineConfig(
       'src/renderer/src/board/DrillInActions.tsx', // textareaRef .focus + rejectDialogRef .showModal/.close (modal — Ryan's exemplar); no declarative API
       'src/renderer/src/AppShell.tsx', // confirmDialogRef — dialog.showModal() for the confirm-before-close modal (focus-trap + Esc-cancel + top-layer); no declarative API
       'src/renderer/src/board/Timeline.tsx', // detailsRef — DOM .open + .scrollIntoView; no declarative API
-      'src/renderer/src/board/Board.tsx', // asideRef — DOM .querySelector focus mgmt; no declarative API
+      'src/renderer/src/board/useBoardNavigation.ts', // asideRef — DOM .querySelector focus mgmt (board keyboard-nav owns the region ref); no declarative API
       'src/renderer/src/board/Comments.tsx', // commentsListRef/commentTextareaRef — DOM scroll-measure/focus; wasAtBottomRef — reads scroll-position off the component's own element (state = stale-closure/render-storm)
       'src/renderer/src/hooks/useScrollGutter.ts' // listRef — DOM scroll-measure; atBottomRef — own-scroll-position read in handler; lastLengthRef — component-local list-grew detector (no service home)
     ],
