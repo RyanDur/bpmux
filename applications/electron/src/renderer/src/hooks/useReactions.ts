@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { http } from '../api/http'
-import type { ReactionAggregateWire } from '../transport/types'
+import { useReactionsByChannel } from '../transport/session'
 
 export interface AggregatedReaction {
   message_key: string
@@ -13,7 +13,6 @@ interface UseReactionsArgs {
   apiBase: string | undefined
   authToken: string | undefined
   channel: string
-  mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
 }
 
 export interface UseReactionsResult {
@@ -24,10 +23,9 @@ export interface UseReactionsResult {
 export const useReactions = ({
   apiBase,
   authToken,
-  channel,
-  mirrorReactions
+  channel
 }: UseReactionsArgs): UseReactionsResult => {
-  const fromMirror = mirrorReactions?.get(channel) ?? []
+  const fromMirror = useReactionsByChannel().get(channel) ?? []
 
   const toggle = useCallback(
     (messageKey: string, emoji: string, user: string): void => {

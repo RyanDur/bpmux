@@ -4,7 +4,7 @@ import { useReactions } from '../hooks/useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
 import { useConnectionStatus } from '../transport/session'
-import type { ChatMessage, ReactionAggregateWire, RosterMemberWire } from '../transport/types'
+import type { ChatMessage, RosterMemberWire } from '../transport/types'
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
@@ -32,7 +32,6 @@ interface Props {
   hasMoreOlder?: boolean
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
-  mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
   mirrorRoster?: readonly RosterMemberWire[]
 }
 
@@ -61,7 +60,6 @@ const Chat = ({
   hasMoreOlder,
   hasError,
   onAtBottomChange,
-  mirrorReactions,
   mirrorRoster
 }: Props): React.JSX.Element => {
   const status = useConnectionStatus()
@@ -70,8 +68,7 @@ const Chat = ({
   const reactions = useReactions({
     apiBase,
     authToken,
-    channel: reactionsChannel,
-    mirrorReactions
+    channel: reactionsChannel
   })
 
   const { hiddenCounts, visibleCounts } = useMemo((): {

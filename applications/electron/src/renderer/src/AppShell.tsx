@@ -9,12 +9,7 @@ import { useTerminals } from './hooks/useTerminals'
 import { useTheme } from './hooks/useTheme'
 import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
 import Sidebar from './sidebar/Sidebar'
-import type {
-  ChatMessage,
-  ConnectionStatus,
-  ReactionAggregateWire,
-  RosterMemberWire
-} from './transport/types'
+import type { ChatMessage, ConnectionStatus, RosterMemberWire } from './transport/types'
 import { type SendOptions } from './transport/useWebSocket'
 import type { BoardResponse } from './board/types'
 import './AppShell.css'
@@ -28,7 +23,6 @@ interface Props {
   hasMoreOlder?: boolean
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
-  mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
   mirrorRoster?: readonly RosterMemberWire[]
   boardSnapshot?: BoardResponse | null
   boardInvalidateTick: number
@@ -44,7 +38,6 @@ const AppShell = ({
   hasMoreOlder,
   hasError,
   onAtBottomChange,
-  mirrorReactions,
   mirrorRoster,
   boardSnapshot,
   boardInvalidateTick,
@@ -177,7 +170,6 @@ const AppShell = ({
           hasMoreOlder={hasMoreOlder}
           hasError={hasError}
           onAtBottomChange={onAtBottomChange}
-          mirrorReactions={mirrorReactions}
           mirrorRoster={mirrorRoster}
         />
         {boardOpen ? (
