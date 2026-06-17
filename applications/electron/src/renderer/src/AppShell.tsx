@@ -1,18 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Board from './board/Board'
 import BoardResizeHandle from './board/BoardResizeHandle'
-import {
-  BOARD_DEFAULT_WIDTH,
-  clampBoardWidth,
-  computeCollapseToggle
-} from './board/BoardResizeHandle.utils'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
-import { useMessageFilter } from './hooks/useMessageFilter'
+import { useBoardLayout } from './hooks/useBoardLayout'
+import { useScope } from './hooks/useScope'
 import { useTerminals } from './hooks/useTerminals'
 import { useTheme } from './hooks/useTheme'
 import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
-import { useBoardWidthStorage } from './lib/useBoardWidthStorage'
 import Sidebar from './sidebar/Sidebar'
 import type {
   ChatMessage,
@@ -21,9 +16,8 @@ import type {
   ReactionAggregateWire,
   RosterMemberWire
 } from './transport/types'
-import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
+import { type SendOptions } from './transport/useWebSocket'
 import type { BoardResponse } from './board/types'
-import { readScope, writeScope } from './lib/scopeStorage'
 import './AppShell.css'
 
 interface Props {
@@ -59,43 +53,16 @@ const AppShell = ({
   boardInvalidateTick,
   syncStatusTick
 }: Props): React.JSX.Element => {
-  const [boardOpen, setBoardOpen] = useState<boolean>(true)
-  const boardWidthStorage = useBoardWidthStorage(
-    'bpmux-board-width',
-    RENDERER_IDENTITY,
-    BOARD_DEFAULT_WIDTH
-  )
-  const [restoreWidth, setRestoreWidth] = useState<number>(boardWidthStorage.width)
-  const setBoardWidth = (next: number): void => {
-    if (typeof window === 'undefined') {
-      boardWidthStorage.setWidth(next)
-      return
-    }
-    boardWidthStorage.setWidth(clampBoardWidth(next, window.innerWidth))
-  }
-  const toggleBoardCollapse = (viewportWidth: number): void => {
-    const { nextWidth, nextRestoreWidth } = computeCollapseToggle(
-      boardWidthStorage.width,
-      restoreWidth,
-      viewportWidth
-    )
-    setRestoreWidth(nextRestoreWidth)
-    boardWidthStorage.setWidth(nextWidth)
-  }
-  const initialScope = readScope()
-  const [recipient, setRecipient] = useState<string[] | null>(
-    initialScope?.kind === 'scoped' ? initialScope.value : null
-  )
-  const [allView, setAllView] = useState<boolean>(initialScope?.kind !== 'scoped')
+  const {
+    boardOpen,
+    toggleBoardOpen,
+    width: boardWidth,
+    setBoardWidth,
+    toggleBoardCollapse
+  } = useBoardLayout()
   const confirmDialogRef = useRef<HTMLDialogElement>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
-  const channelKey = allView
-    ? 'all'
-    : recipient && recipient.length > 0
-      ? `scoped:${[...recipient].sort().join(',')}`
-      : 'broadcast'
-  const filter = useMessageFilter(channelKey)
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
   const {
@@ -113,19 +80,8 @@ const AppShell = ({
     clearActiveTerminal
   } = useTerminals(status, bridge)
 
-  const selectRecipient = (r: string[] | null): void => {
-    clearActiveTerminal()
-    setAllView(false)
-    setRecipient(r)
-    writeScope(r && r.length > 0 ? { kind: 'scoped', value: r } : { kind: 'broadcast' })
-  }
-
-  const selectAllView = (): void => {
-    clearActiveTerminal()
-    setAllView(true)
-    setRecipient(null)
-    writeScope({ kind: 'all' })
-  }
+  const { recipient, allView, filter, selectRecipient, selectAllView } =
+    useScope(clearActiveTerminal)
 
   useEffect(() => {
     if (confirmClose) confirmDialogRef.current?.showModal()
@@ -150,12 +106,12 @@ const AppShell = ({
       if (event.key === 'p' || event.key === 'P') {
         if (inEditable) return
         event.preventDefault()
-        setBoardOpen((prev) => !prev)
+        toggleBoardOpen()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [toggleBoardOpen])
 
   return (
     <main className="app" data-test="app-root">
@@ -231,7 +187,7 @@ const AppShell = ({
         />
         {boardOpen ? (
           <BoardResizeHandle
-            width={boardWidthStorage.width}
+            width={boardWidth}
             setWidth={setBoardWidth}
             onToggleCollapse={toggleBoardCollapse}
             controlsId="board-region"
@@ -242,7 +198,7 @@ const AppShell = ({
           boardInvalidateTick={boardInvalidateTick}
           syncStatusTick={syncStatusTick}
           hidden={!boardOpen}
-          width={boardWidthStorage.width}
+          width={boardWidth}
         />
       </section>
       {confirmClose && (
