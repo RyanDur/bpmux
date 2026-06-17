@@ -13,7 +13,7 @@ import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
 import { TerminalView } from './TerminalView'
-import type { TerminalEntry } from '../AppShell'
+import type { TerminalEntry } from '../hooks/useTerminals'
 import './Chat.css'
 
 interface Props {

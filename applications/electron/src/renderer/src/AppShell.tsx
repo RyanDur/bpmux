@@ -9,6 +9,7 @@ import {
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import { useMessageFilter } from './hooks/useMessageFilter'
+import { useTerminals } from './hooks/useTerminals'
 import { useTheme } from './hooks/useTheme'
 import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
 import { useBoardWidthStorage } from './lib/useBoardWidthStorage'
@@ -22,25 +23,8 @@ import type {
 } from './transport/types'
 import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
 import type { BoardResponse } from './board/types'
-import { subscribeWsPtyExit } from './transport/wsService'
-import {
-  readTerminalLayout,
-  restoreTerminalLayout,
-  writeTerminalLayout
-} from './lib/terminalLayout'
-import { readTerminalNames, writeTerminalNames } from './lib/terminalNames'
 import { readScope, writeScope } from './lib/scopeStorage'
 import './AppShell.css'
-
-export type TerminalState = 'spawning' | 'ready' | 'spawn-failed' | 'exited'
-
-export interface TerminalEntry {
-  key: string
-  state: TerminalState
-  id?: string
-  cwd?: string
-  error?: string
-}
 
 interface Props {
   status: ConnectionStatus
@@ -103,13 +87,6 @@ const AppShell = ({
     initialScope?.kind === 'scoped' ? initialScope.value : null
   )
   const [allView, setAllView] = useState<boolean>(initialScope?.kind !== 'scoped')
-  const [terminals, setTerminals] = useState<TerminalEntry[]>([])
-  const [activeKey, setActiveKey] = useState<string | null>(null)
-  const [restored, setRestored] = useState<boolean>(false)
-  const [terminalNames, setTerminalNames] = useState<Record<string, string>>(() =>
-    readTerminalNames(RENDERER_IDENTITY)
-  )
-  const [confirmClose, setConfirmClose] = useState<{ key: string; id: string } | null>(null)
   const confirmDialogRef = useRef<HTMLDialogElement>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
@@ -121,201 +98,34 @@ const AppShell = ({
   const filter = useMessageFilter(channelKey)
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
+  const {
+    terminals,
+    activeKey,
+    terminalNames,
+    confirmClose,
+    spawnTerminal,
+    restartTerminal,
+    selectTerminal,
+    renameTerminal,
+    closeTerminal,
+    confirmCloseTerminal,
+    clearConfirmClose,
+    clearActiveTerminal
+  } = useTerminals(status, bridge)
+
   const selectRecipient = (r: string[] | null): void => {
-    setActiveKey(null)
+    clearActiveTerminal()
     setAllView(false)
     setRecipient(r)
     writeScope(r && r.length > 0 ? { kind: 'scoped', value: r } : { kind: 'broadcast' })
   }
 
   const selectAllView = (): void => {
-    setActiveKey(null)
+    clearActiveTerminal()
     setAllView(true)
     setRecipient(null)
     writeScope({ kind: 'all' })
   }
-
-  const requestSpawn = (key: string): void => {
-    if (!bridge) return
-    const markFailed = (error: string): void =>
-      setTerminals((prev) =>
-        prev.map((t) => (t.key === key ? { ...t, state: 'spawn-failed', error } : t))
-      )
-    void fetch(`${bridge.apiBase}/api/terminals/spawn`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${bridge.authToken}` }
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const detail = await res.text().catch(() => '')
-          markFailed(detail.length > 0 ? detail : `spawn failed (${res.status})`)
-          return
-        }
-        const body = (await res.json()) as { terminal_id?: string; cwd?: string }
-        if (!body.terminal_id) {
-          markFailed('spawn response missing terminal_id')
-          return
-        }
-        const id = body.terminal_id
-        setTerminals((prev) => {
-          if (!prev.some((t) => t.key === key)) {
-            void postClose(id, true).catch((err: unknown) =>
-              console.error('bpmux: orphaned terminal reap failed', err)
-            )
-            return prev
-          }
-          return prev.map((t) =>
-            t.key === key ? { ...t, state: 'ready', id, cwd: body.cwd ?? '' } : t
-          )
-        })
-      })
-      .catch((e: unknown) => markFailed(String(e)))
-  }
-
-  const spawnTerminal = (): void => {
-    if (!bridge) return
-    const key = crypto.randomUUID()
-    setTerminals((prev) => [...prev, { key, state: 'spawning' }])
-    setActiveKey(key)
-    requestSpawn(key)
-  }
-
-  const restartTerminal = (key: string): void => {
-    if (!bridge) return
-    setTerminals((prev) => prev.map((t) => (t.key === key ? { key, state: 'spawning' } : t)))
-    setActiveKey(key)
-    requestSpawn(key)
-  }
-
-  const selectTerminal = (key: string): void => {
-    setActiveKey(key)
-  }
-
-  const renameTerminal = (id: string, name: string): void => {
-    setTerminalNames((prev) => {
-      const next = { ...prev }
-      const trimmed = name.trim()
-      if (trimmed.length > 0) {
-        next[id] = trimmed
-      } else {
-        delete next[id]
-      }
-      writeTerminalNames(RENDERER_IDENTITY, next)
-      return next
-    })
-  }
-
-  const removePane = (key: string): void => {
-    const remaining = terminals.filter((t) => t.key !== key)
-    setTerminals(remaining)
-    if (activeKey === key) {
-      setActiveKey(remaining.length > 0 ? remaining[remaining.length - 1].key : null)
-    }
-  }
-
-  const postClose = (id: string, force: boolean): Promise<Response> =>
-    fetch(`${bridge?.apiBase}/api/terminals/close`, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${bridge?.authToken}`,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({ terminal_id: id, force })
-    })
-
-  const closeTerminal = (key: string): void => {
-    const closing = terminals.find((t) => t.key === key)
-    if (!closing?.id || !bridge) {
-      removePane(key)
-      return
-    }
-    const id = closing.id
-    void postClose(id, false)
-      .then((res) => {
-        if (res.status === 409) {
-          setConfirmClose({ key, id })
-          return
-        }
-        removePane(key)
-      })
-      .catch((e: unknown) => {
-        console.error('bpmux: terminal close failed', e)
-        removePane(key)
-      })
-  }
-
-  const confirmCloseTerminal = (): void => {
-    if (!confirmClose) return
-    const { key, id } = confirmClose
-    setConfirmClose(null)
-    void postClose(id, true).catch((e: unknown) =>
-      console.error('bpmux: terminal force-close failed', e)
-    )
-    removePane(key)
-  }
-
-  useEffect(() => {
-    return subscribeWsPtyExit((terminalId) => {
-      setTerminals((prev) => prev.map((t) => (t.id === terminalId ? { ...t, state: 'exited' } : t)))
-    })
-  }, [])
-
-  useEffect(() => {
-    if (restored || status !== 'connected' || !bridge) return
-    let cancelled = false
-    const restoreTerminals = async (): Promise<void> => {
-      const maxAttempts = 4
-      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        try {
-          const res = await fetch(`${bridge.apiBase}/api/terminals`, {
-            headers: { authorization: `Bearer ${bridge.authToken}` }
-          })
-          if (cancelled) return
-          if (!res.ok) throw new Error(`terminals list failed (${res.status})`)
-          const body = (await res.json()) as {
-            terminals?: { terminal_id: string; cwd?: string }[]
-          }
-          if (cancelled) return
-          const live = body.terminals ?? []
-          const cwdById = new Map(live.map((t) => [t.terminal_id, t.cwd ?? '']))
-          const { orderedIds, activeId } = restoreTerminalLayout(
-            live.map((t) => t.terminal_id),
-            readTerminalLayout(RENDERER_IDENTITY)
-          )
-          const entries: TerminalEntry[] = orderedIds.map((id) => ({
-            key: crypto.randomUUID(),
-            id,
-            state: 'ready',
-            cwd: cwdById.get(id) ?? ''
-          }))
-          if (entries.length > 0) {
-            setTerminals(entries)
-            setActiveKey(entries.find((e) => e.id === activeId)?.key ?? null)
-          }
-          setRestored(true)
-          return
-        } catch (e: unknown) {
-          if (cancelled) return
-          if (attempt === maxAttempts) {
-            console.error('bpmux: terminal restore failed', e)
-            return
-          }
-          await new Promise((resolve) => setTimeout(resolve, 150 * 2 ** (attempt - 1)))
-        }
-      }
-    }
-    void restoreTerminals()
-    return () => {
-      cancelled = true
-    }
-  }, [status, restored, bridge])
-
-  useEffect(() => {
-    if (!restored) return
-    const order = terminals.filter((t) => t.id).map((t) => t.id as string)
-    const active = terminals.find((t) => t.key === activeKey)
-    writeTerminalLayout(RENDERER_IDENTITY, { order, activeId: active?.id ?? null })
-  }, [terminals, activeKey, restored])
 
   useEffect(() => {
     if (confirmClose) confirmDialogRef.current?.showModal()
@@ -440,7 +250,7 @@ const AppShell = ({
           ref={confirmDialogRef}
           className="confirm-close"
           data-test="confirm-close-dialog"
-          onCancel={() => setConfirmClose(null)}
+          onCancel={clearConfirmClose}
         >
           <p className="confirm-close-message">
             A process is running in this terminal. Close it anyway?
@@ -450,7 +260,7 @@ const AppShell = ({
               type="button"
               className="confirm-close-action"
               data-test="confirm-close-cancel"
-              onClick={() => setConfirmClose(null)}
+              onClick={clearConfirmClose}
             >
               cancel
             </button>

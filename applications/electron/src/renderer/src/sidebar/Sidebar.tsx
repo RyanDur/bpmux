@@ -9,7 +9,7 @@ import {
   deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
-import type { TerminalEntry } from '../AppShell'
+import type { TerminalEntry } from '../hooks/useTerminals'
 import { resolveTerminalName } from '../lib/terminalNames'
 import './Sidebar.css'
 
