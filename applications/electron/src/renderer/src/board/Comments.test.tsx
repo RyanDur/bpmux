@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { cleanup, render, waitFor } from '@testing-library/react'
+import { act, cleanup, render, waitFor } from '@testing-library/react'
 import Comments from './Comments'
+import { dispatchSession, resetSessionForTest } from '../transport/session/store'
+import { mirrorDeltaReceived } from '../transport/session/actions'
+
+const bumpBoard = (): void =>
+  dispatchSession(
+    mirrorDeltaReceived({ domain: 'board_invalidated', reason: 'board changed' }, '2026-01-01T00:00:00Z')
+  )
 
 const getStoryComments = vi.fn()
 const postStoryComment = vi.fn()
@@ -25,11 +32,13 @@ const baseProps = {
   apiBase: undefined,
   authToken: undefined,
   usingMock: false,
-  boardInvalidateTick: 0,
   onError: () => {}
 }
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  resetSessionForTest()
+})
 
 describe('#1355 Comments independence', () => {
   test('renders standalone (substrate-axis) — no DrillIn.tsx parent required', () => {
@@ -77,18 +86,19 @@ describe('#1456 Comments — refetch survives the ingest-strip (tick replaces ma
     apiBase: 'http://127.0.0.1:9',
     authToken: 'tok',
     usingMock: false,
-    boardInvalidateTick: 0,
     onError: (): void => {}
   }
 
   test('a board-invalidate tick increment triggers a comments refetch (silent-regression guard)', async () => {
     getStoryComments.mockReset()
     getStoryComments.mockImplementation(() => chainable())
-    const { rerender } = render(<Comments {...liveProps} />)
+    render(<Comments {...liveProps} />)
     await waitFor(() => expect(getStoryComments).toHaveBeenCalled())
     const before = getStoryComments.mock.calls.length
 
-    rerender(<Comments {...liveProps} boardInvalidateTick={1} />)
+    act(() => {
+      bumpBoard()
+    })
 
     await waitFor(() => expect(getStoryComments.mock.calls.length).toBe(before + 1))
   })

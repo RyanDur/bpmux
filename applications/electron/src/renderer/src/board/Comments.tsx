@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import { describeHttpError } from '../api/http'
 import { getStoryComments, postStoryComment, type Comment } from '../api/storiesClient'
+import { useBoardInvalidateTick } from '../transport/session'
 
 const OPTIMISTIC_ID_BASE = -1_000_000_000
 
@@ -17,7 +18,6 @@ interface Props {
   apiBase: string | undefined
   authToken: string | undefined
   usingMock: boolean
-  boardInvalidateTick: number
   onError: (msg: string) => void
 }
 
@@ -26,9 +26,9 @@ const Comments = ({
   apiBase,
   authToken,
   usingMock,
-  boardInvalidateTick,
   onError
 }: Props): React.JSX.Element => {
+  const boardInvalidateTick = useBoardInvalidateTick()
   const [fetchedComments, setFetchedComments] = useState<Comment[] | null>(null)
   const [optimistic, setOptimistic] = useState<Comment[]>([])
   const [commentDraft, setCommentDraft] = useState<string>('')

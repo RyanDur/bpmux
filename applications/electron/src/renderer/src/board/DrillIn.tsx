@@ -155,7 +155,6 @@ const DrillIn = ({
         apiBase={apiBase}
         authToken={authToken}
         usingMock={usingMock}
-        boardInvalidateTick={boardInvalidateTick}
         onError={setToast}
       />
 
