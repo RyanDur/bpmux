@@ -13,6 +13,17 @@ import { startSentFrameCapture } from './testCapture'
 import type { ClientMessage } from '../types'
 
 export { getSessionSnapshot, subscribeSession, resetSessionForTest } from './store'
+export {
+  useConnectionStatus,
+  useSessionId,
+  useLiveMessages,
+  useRoster,
+  useReactionsByChannel,
+  useCiSnapshot,
+  useBoardSnapshot,
+  useBoardInvalidateTick,
+  useSyncStatusTick
+} from './hooks'
 export { subscribeLiveMessages, subscribePtyOutput, subscribePtyExit } from './emitter'
 export { encodeKeystroke, decodePtyData } from './ptyCodec'
 export { RENDERER_IDENTITY } from './constants'
