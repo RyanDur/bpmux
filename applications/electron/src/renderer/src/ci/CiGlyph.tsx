@@ -1,7 +1,8 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useState } from 'react'
 import { describeHttpError, http } from '../api/http'
-import type { CiSnapshotWire, CiStateWire } from '../transport/types'
+import { useCiSnapshot } from '../transport/session'
+import type { CiStateWire } from '../transport/types'
 import {
   derivedClassName,
   derivedDataState,
@@ -65,11 +66,8 @@ const conclusionAriaLabel = (conclusion: string): string => {
   }
 }
 
-interface Props {
-  ciSnapshot?: CiSnapshotWire | null
-}
-
-const CiGlyph = ({ ciSnapshot }: Props): React.JSX.Element => {
+const CiGlyph = (): React.JSX.Element => {
+  const ciSnapshot = useCiSnapshot()
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [state, setState] = useState<CiStateReport | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)

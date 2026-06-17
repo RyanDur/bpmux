@@ -50,7 +50,6 @@ const App = (): React.JSX.Element => {
       hasMoreOlder={hasMoreOlder}
       hasError={hasError}
       onAtBottomChange={setAtBottom}
-      ciSnapshot={mirror.ci}
       mirrorReactions={mirror.reactions}
       mirrorRoster={mirror.roster}
       boardSnapshot={boardSnapshot}

@@ -11,7 +11,6 @@ import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
 import Sidebar from './sidebar/Sidebar'
 import type {
   ChatMessage,
-  CiSnapshotWire,
   ConnectionStatus,
   ReactionAggregateWire,
   RosterMemberWire
@@ -29,7 +28,6 @@ interface Props {
   hasMoreOlder?: boolean
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
-  ciSnapshot?: CiSnapshotWire | null
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
   mirrorRoster?: readonly RosterMemberWire[]
   boardSnapshot?: BoardResponse | null
@@ -46,7 +44,6 @@ const AppShell = ({
   hasMoreOlder,
   hasError,
   onAtBottomChange,
-  ciSnapshot,
   mirrorReactions,
   mirrorRoster,
   boardSnapshot,
@@ -141,7 +138,7 @@ const AppShell = ({
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
         <output data-test="titlebar-ci">
-          <CiGlyph ciSnapshot={ciSnapshot} />
+          <CiGlyph />
         </output>
       </header>
       <section className="app-body">

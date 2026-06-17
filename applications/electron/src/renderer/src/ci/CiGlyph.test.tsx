@@ -1,6 +1,8 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import CiGlyph from './CiGlyph'
+import { dispatchSession, resetSessionForTest } from '../transport/session/store'
+import { mirrorDeltaReceived } from '../transport/session/actions'
 import type { CiSnapshotWire } from '../transport/types'
 
 const snap = (state: CiSnapshotWire['state']): CiSnapshotWire => ({
@@ -10,23 +12,30 @@ const snap = (state: CiSnapshotWire['state']): CiSnapshotWire => ({
   display_title: 'test commit'
 })
 
+const pushCi = (ci: CiSnapshotWire): void =>
+  dispatchSession(mirrorDeltaReceived({ domain: 'ci', snapshot: ci }, '2026-01-01T00:00:00Z'))
+
+afterEach(() => resetSessionForTest())
+
 describe('CiGlyph — mirror.ci.state derivation (slice 5b canonical archetype)', () => {
-  test('renders ✓ + data-conclusion="success" when ciSnapshot.state === "green"', () => {
-    const html = renderToStaticMarkup(<CiGlyph ciSnapshot={snap('green')} />)
+  test('renders ✓ + data-conclusion="success" when ci state === "green"', () => {
+    pushCi(snap('green'))
+    const html = renderToStaticMarkup(<CiGlyph />)
     expect(html).toContain('data-conclusion="success"')
     expect(html).toContain('CI ✓')
     expect(html).toContain('ci-glyph--success')
   })
 
-  test('renders ✗ + data-conclusion="failure" when ciSnapshot.state === "red"', () => {
-    const html = renderToStaticMarkup(<CiGlyph ciSnapshot={snap('red')} />)
+  test('renders ✗ + data-conclusion="failure" when ci state === "red"', () => {
+    pushCi(snap('red'))
+    const html = renderToStaticMarkup(<CiGlyph />)
     expect(html).toContain('data-conclusion="failure"')
     expect(html).toContain('CI ✗')
     expect(html).toContain('ci-glyph--failure')
   })
 
-  test('falls back to REST conclusion path when ciSnapshot is null (renders unknown until REST resolves)', () => {
-    const html = renderToStaticMarkup(<CiGlyph ciSnapshot={null} />)
+  test('falls back to unknown when no ci snapshot has been mirrored yet', () => {
+    const html = renderToStaticMarkup(<CiGlyph />)
     expect(html).toContain('data-conclusion="unknown"')
     expect(html).toContain('CI ?')
   })
