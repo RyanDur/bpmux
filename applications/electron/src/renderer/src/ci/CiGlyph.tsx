@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useState } from 'react'
+import { describeHttpError, http } from '../api/http'
 import type { CiSnapshotWire, CiStateWire } from '../transport/types'
 import {
   derivedClassName,
@@ -73,31 +74,27 @@ const CiGlyph = ({ ciSnapshot }: Props): React.JSX.Element => {
   const [state, setState] = useState<CiStateReport | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const error = bridge?.apiBase ? fetchError : 'no backend'
-  const setError = setFetchError
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const buildFetch = useCallback(
-    (signal: AbortSignal, cancelledCheck: () => boolean) => async (): Promise<void> => {
+    (signal: AbortSignal, cancelledCheck: () => boolean) => (): void => {
       if (!bridge?.apiBase) return
-      try {
-        const res = await fetch(`${bridge.apiBase}/api/ci`, {
-          headers: { Authorization: `Bearer ${bridge.authToken ?? ''}` },
+      http
+        .get<CiStateReport>(
+          { apiBase: bridge.apiBase, authToken: bridge.authToken },
+          '/api/ci',
           signal
-        })
-        if (!res.ok) {
-          if (!cancelledCheck()) setError(`HTTP ${res.status}`)
-          return
-        }
-        const json = (await res.json()) as CiStateReport
-        if (!cancelledCheck()) {
+        )
+        .onSuccess((json) => {
+          if (cancelledCheck()) return
           setState(json)
-          setError(null)
+          setFetchError(null)
           setLastUpdated(new Date())
-        }
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return
-        if (!cancelledCheck()) setError(err instanceof Error ? err.message : String(err))
-      }
+        })
+        .onFailure((err) => {
+          if (cancelledCheck()) return
+          setFetchError(describeHttpError(err))
+        })
     },
     [bridge?.apiBase, bridge?.authToken]
   )
@@ -107,9 +104,9 @@ const CiGlyph = ({ ciSnapshot }: Props): React.JSX.Element => {
     let cancelled = false
     const controller = new AbortController()
     const fetchOnce = buildFetch(controller.signal, () => cancelled)
-    void fetchOnce()
+    fetchOnce()
     const id = setInterval(() => {
-      void fetchOnce()
+      fetchOnce()
     }, DISCONNECT_RECONNECT_SAFETY_POLL_MS)
     return () => {
       cancelled = true

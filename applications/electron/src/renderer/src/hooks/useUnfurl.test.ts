@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { extractUrls, useUnfurl } from './useUnfurl'
+import { respondJson, startTestHttpServer } from '../../../../test/httpTestServer'
 
 describe('extractUrls', () => {
   it('extracts and dedups urls, stripping trailing punctuation', () => {
@@ -9,24 +10,17 @@ describe('extractUrls', () => {
 })
 
 describe('#1499 useUnfurl surfaces resolved data without a mounted-guard ref', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
   it('resolves unfurl data after fetch (bump fires on resolve)', async () => {
     const url = `https://example.test/${Math.random().toString(36).slice(2)}`
     const payload = { url, title: 'Title', description: 'desc' }
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        status: 200,
-        json: async () => payload,
-        text: async () => ''
-      } as unknown as Response)
-    )
-    const { result } = renderHook(() =>
-      useUnfurl({ apiBase: 'http://api', authToken: 't', urls: [url] })
-    )
-    await waitFor(() => expect(result.current.get(url)).toEqual(payload))
+    const server = await startTestHttpServer((_req, res) => respondJson(res, 200, payload))
+    try {
+      const { result } = renderHook(() =>
+        useUnfurl({ apiBase: server.baseUrl, authToken: 't', urls: [url] })
+      )
+      await waitFor(() => expect(result.current.get(url)).toEqual(payload))
+    } finally {
+      await server.close()
+    }
   })
 })
