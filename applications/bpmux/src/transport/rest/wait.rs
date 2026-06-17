@@ -106,6 +106,17 @@ fn event_for_role(message: &session::Message, role: &str) -> Option<serde_json::
     if short_name(&message.from) == short_name(role) {
         return None;
     }
+    if let Some(delta) = &message.state_delta {
+        let ts = message
+            .ts
+            .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true);
+        let (event_class, payload) = delta.to_subscription_event(&ts)?;
+        return Some(serde_json::json!({
+            "event_class": event_class,
+            "payload": payload,
+            "cursor": ts,
+        }));
+    }
     if !message.is_chat() || !should_deliver(message, role) {
         return None;
     }

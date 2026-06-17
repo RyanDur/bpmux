@@ -178,3 +178,59 @@ async fn an_agents_own_broadcast_is_not_delivered_back_to_it() {
     let event = body_json(router.oneshot(request).await.expect("response")).await;
     assert_eq!(event["timed_out"], true);
 }
+
+fn state_delta_message(delta: session::message::StateDeltaPayload) -> session::Message {
+    session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(delta),
+        ..session::Message::default()
+    }
+}
+
+#[tokio::test]
+async fn delivers_a_story_transition_state_delta_as_a_subscription_event() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, router) = wait_app(&dir);
+    session
+        .broadcast(&state_delta_message(
+            session::message::StateDeltaPayload::StoryTransition {
+                transition: session::message::StoryTransitionWire {
+                    story_id: 42,
+                    from_state: "ready".to_string(),
+                    target_state: "in-progress".to_string(),
+                    actor: "dev".to_string(),
+                },
+            },
+        ))
+        .expect("broadcast");
+    let request = Request::builder()
+        .uri("/api/wait-for-event?as=designer&timeout_ms=2000")
+        .body(Body::empty())
+        .expect("request");
+    let event = body_json(router.oneshot(request).await.expect("response")).await;
+    assert_eq!(event["event_class"], "story_state_transition");
+    assert_eq!(event["payload"]["story_id"], 42);
+    assert_eq!(event["payload"]["target_state"], "in-progress");
+}
+
+#[tokio::test]
+async fn a_gui_only_delta_is_not_delivered_as_an_agent_event() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, router) = wait_app(&dir);
+    session
+        .broadcast(&state_delta_message(
+            session::message::StateDeltaPayload::Roster { members: vec![] },
+        ))
+        .expect("broadcast");
+    let request = Request::builder()
+        .uri("/api/wait-for-event?as=designer&timeout_ms=200")
+        .body(Body::empty())
+        .expect("request");
+    let event = body_json(router.oneshot(request).await.expect("response")).await;
+    assert_eq!(event["timed_out"], true);
+}

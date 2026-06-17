@@ -113,61 +113,12 @@ pub(crate) async fn run_ws_connection(
             if state_delta.is_some() {
                 subscriptions.advance_cursor(&ts).await;
             }
-            match state_delta.as_deref() {
-                Some(crate::session::message::StateDeltaPayload::BoardInvalidated { reason }) => {
-                    subscriptions
-                        .dispatch("board_invalidated", json!({ "reason": reason }))
-                        .await;
-                    continue;
-                }
-                Some(crate::session::message::StateDeltaPayload::Ci { snapshot }) => {
-                    subscriptions
-                        .dispatch(
-                            "ci_state_changed",
-                            json!({
-                                "conclusion": serde_json::to_value(snapshot.state)
-                                    .unwrap_or(serde_json::Value::Null),
-                                "run_id": snapshot.run_id,
-                                "head_sha": snapshot.head_sha,
-                                "display_title": snapshot.display_title,
-                                "url": crate::ci::github_actions_url(),
-                            }),
-                        )
-                        .await;
-                    continue;
-                }
-                Some(crate::session::message::StateDeltaPayload::Sync { transition }) => {
-                    subscriptions
-                        .dispatch(
-                            "sync_status_changed",
-                            json!({
-                                "status": transition.status,
-                                "why": transition.why,
-                                "pending_events": transition.pending_events,
-                                "conflicts_pending": transition.conflicts_pending,
-                            }),
-                        )
-                        .await;
-                    continue;
-                }
-                Some(crate::session::message::StateDeltaPayload::StoryTransition {
-                    transition,
-                }) => {
-                    subscriptions
-                        .dispatch(
-                            "story_state_transition",
-                            json!({
-                                "story_id": transition.story_id,
-                                "from_state": transition.from_state,
-                                "target_state": transition.target_state,
-                                "actor": transition.actor,
-                                "ts": ts,
-                            }),
-                        )
-                        .await;
-                    continue;
-                }
-                _ => {}
+            if let Some((event, payload)) = state_delta
+                .as_deref()
+                .and_then(|delta| delta.to_subscription_event(&ts))
+            {
+                subscriptions.dispatch(event, payload).await;
+                continue;
             }
             let from_short = from.split(':').next().unwrap_or(&from);
             let current_name = name.lock().await;

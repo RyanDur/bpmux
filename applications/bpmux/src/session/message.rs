@@ -103,6 +103,47 @@ pub enum StateDeltaPayload {
     BoardSnapshot { stories: serde_json::Value },
 }
 
+impl StateDeltaPayload {
+    pub fn to_subscription_event(&self, ts: &str) -> Option<(&'static str, serde_json::Value)> {
+        match self {
+            StateDeltaPayload::BoardInvalidated { reason } => {
+                Some(("board_invalidated", serde_json::json!({ "reason": reason })))
+            }
+            StateDeltaPayload::Ci { snapshot } => Some((
+                "ci_state_changed",
+                serde_json::json!({
+                    "conclusion": serde_json::to_value(snapshot.state)
+                        .unwrap_or(serde_json::Value::Null),
+                    "run_id": snapshot.run_id,
+                    "head_sha": snapshot.head_sha,
+                    "display_title": snapshot.display_title,
+                    "url": crate::ci::github_actions_url(),
+                }),
+            )),
+            StateDeltaPayload::Sync { transition } => Some((
+                "sync_status_changed",
+                serde_json::json!({
+                    "status": transition.status,
+                    "why": transition.why,
+                    "pending_events": transition.pending_events,
+                    "conflicts_pending": transition.conflicts_pending,
+                }),
+            )),
+            StateDeltaPayload::StoryTransition { transition } => Some((
+                "story_state_transition",
+                serde_json::json!({
+                    "story_id": transition.story_id,
+                    "from_state": transition.from_state,
+                    "target_state": transition.target_state,
+                    "actor": transition.actor,
+                    "ts": ts,
+                }),
+            )),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IterationCloseBlockerPayload {
     pub number: u64,
