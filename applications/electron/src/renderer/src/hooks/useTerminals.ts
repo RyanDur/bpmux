@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { type ApiContext, describeHttpError } from '../api/http'
 import type { ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { subscribeWsPtyExit } from '../transport/wsService'
@@ -58,18 +59,13 @@ export const useTerminals = (
 
   const requestSpawn = (key: string): void => {
     if (!bridge) return
+    const ctx: ApiContext = { apiBase: bridge.apiBase, authToken: bridge.authToken }
     const markFailed = (error: string): void =>
       setTerminals((prev) =>
         prev.map((t) => (t.key === key ? { ...t, state: 'spawn-failed', error } : t))
       )
-    void spawnTerminalRequest(bridge)
-      .then(async (res) => {
-        if (!res.ok) {
-          const detail = await res.text().catch(() => '')
-          markFailed(detail.length > 0 ? detail : `spawn failed (${res.status})`)
-          return
-        }
-        const body = (await res.json()) as { terminal_id?: string; cwd?: string }
+    spawnTerminalRequest(ctx)
+      .onSuccess((body) => {
         if (!body.terminal_id) {
           markFailed('spawn response missing terminal_id')
           return
@@ -77,7 +73,7 @@ export const useTerminals = (
         const id = body.terminal_id
         setTerminals((prev) => {
           if (!prev.some((t) => t.key === key)) {
-            void closeTerminalRequest(bridge, id, true).catch((err: unknown) =>
+            closeTerminalRequest(ctx, id, true).onFailure((err) =>
               console.error('bpmux: orphaned terminal reap failed', err)
             )
             return prev
@@ -87,7 +83,7 @@ export const useTerminals = (
           )
         })
       })
-      .catch((e: unknown) => markFailed(String(e)))
+      .onFailure((err) => markFailed(describeHttpError(err)))
   }
 
   const spawnTerminal = (): void => {
@@ -138,16 +134,15 @@ export const useTerminals = (
       return
     }
     const id = closing.id
-    void closeTerminalRequest(bridge, id, false)
-      .then((res) => {
-        if (res.status === 409) {
+    const ctx: ApiContext = { apiBase: bridge.apiBase, authToken: bridge.authToken }
+    closeTerminalRequest(ctx, id, false)
+      .onSuccess(() => removePane(key))
+      .onFailure((err) => {
+        if (err.kind === 'http' && err.status === 409) {
           setConfirmClose({ key, id })
           return
         }
-        removePane(key)
-      })
-      .catch((e: unknown) => {
-        console.error('bpmux: terminal close failed', e)
+        console.error('bpmux: terminal close failed', err)
         removePane(key)
       })
   }
@@ -156,9 +151,12 @@ export const useTerminals = (
     if (!confirmClose) return
     const { key, id } = confirmClose
     setConfirmClose(null)
-    void closeTerminalRequest(bridge, id, true).catch((e: unknown) =>
-      console.error('bpmux: terminal force-close failed', e)
-    )
+    if (bridge) {
+      const ctx: ApiContext = { apiBase: bridge.apiBase, authToken: bridge.authToken }
+      closeTerminalRequest(ctx, id, true).onFailure((e) =>
+        console.error('bpmux: terminal force-close failed', e)
+      )
+    }
     removePane(key)
   }
 
@@ -171,17 +169,15 @@ export const useTerminals = (
   useEffect(() => {
     if (restored || status !== 'connected' || !bridge) return
     let cancelled = false
+    const ctx: ApiContext = { apiBase: bridge.apiBase, authToken: bridge.authToken }
     const restoreTerminals = async (): Promise<void> => {
       const maxAttempts = 4
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         try {
-          const res = await listTerminalsRequest(bridge)
+          const result = await listTerminalsRequest(ctx).value
           if (cancelled) return
-          if (!res.ok) throw new Error(`terminals list failed (${res.status})`)
-          const body = (await res.json()) as {
-            terminals?: { terminal_id: string; cwd?: string }[]
-          }
-          if (cancelled) return
+          if (result.kind === 'failure') throw new Error(describeHttpError(result.reason))
+          const body = result.value
           const live = body.terminals ?? []
           const cwdById = new Map(live.map((t) => [t.terminal_id, t.cwd ?? '']))
           const { orderedIds, activeId } = restoreTerminalLayout(

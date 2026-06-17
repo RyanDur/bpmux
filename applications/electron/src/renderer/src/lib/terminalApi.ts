@@ -1,26 +1,26 @@
-type Bridge = Window['bpmux']
+import { type ApiContext, type HttpError, http } from '../api/http'
+import { type AsyncResult } from '../lib/asyncResult'
 
-export const spawnTerminalRequest = (bridge: Bridge): Promise<Response> =>
-  fetch(`${bridge?.apiBase}/api/terminals/spawn`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${bridge?.authToken}` }
-  })
+export interface SpawnResponse {
+  terminal_id?: string
+  cwd?: string
+}
+
+export interface TerminalsListResponse {
+  terminals?: { terminal_id: string; cwd?: string }[]
+}
+
+export const spawnTerminalRequest = (ctx: ApiContext): AsyncResult<SpawnResponse, HttpError> =>
+  http.post<SpawnResponse>(ctx, '/api/terminals/spawn')
 
 export const closeTerminalRequest = (
-  bridge: Bridge,
+  ctx: ApiContext,
   id: string,
   force: boolean
-): Promise<Response> =>
-  fetch(`${bridge?.apiBase}/api/terminals/close`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${bridge?.authToken}`,
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({ terminal_id: id, force })
-  })
+): AsyncResult<void, HttpError> =>
+  http.post(ctx, '/api/terminals/close', { terminal_id: id, force })
 
-export const listTerminalsRequest = (bridge: Bridge): Promise<Response> =>
-  fetch(`${bridge?.apiBase}/api/terminals`, {
-    headers: { authorization: `Bearer ${bridge?.authToken}` }
-  })
+export const listTerminalsRequest = (
+  ctx: ApiContext
+): AsyncResult<TerminalsListResponse, HttpError> =>
+  http.get<TerminalsListResponse>(ctx, '/api/terminals')
