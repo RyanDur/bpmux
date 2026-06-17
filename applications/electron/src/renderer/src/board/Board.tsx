@@ -32,7 +32,6 @@ const initialCollapseState: CollapseState = (() => {
 interface BoardProps {
   boardSnapshot?: BoardResponse | null
   boardInvalidateTick: number
-  syncStatusTick: number
   hidden?: boolean
   width?: number
 }
@@ -40,7 +39,6 @@ interface BoardProps {
 const Board = ({
   boardSnapshot,
   boardInvalidateTick,
-  syncStatusTick,
   hidden,
   width
 }: BoardProps): React.JSX.Element => {
@@ -151,11 +149,7 @@ const Board = ({
               </strong>
             )}
             <small className="board-title">Board</small>
-            <SyncStatusGlyph
-              apiBase={bridge?.apiBase}
-              authToken={bridge?.authToken}
-              syncStatusTick={syncStatusTick}
-            />
+            <SyncStatusGlyph apiBase={bridge?.apiBase} authToken={bridge?.authToken} />
           </>
         }
         mock={

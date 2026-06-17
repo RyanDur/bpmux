@@ -5,13 +5,7 @@ import type { ConnectionStatus } from './transport/types'
 
 const renderHeader = (status: ConnectionStatus): string => {
   return renderToStaticMarkup(
-    <AppShell
-      status={status}
-      messages={[]}
-      onSend={() => {}}
-      boardInvalidateTick={0}
-      syncStatusTick={0}
-    />
+    <AppShell status={status} messages={[]} onSend={() => {}} boardInvalidateTick={0} />
   )
 }
 

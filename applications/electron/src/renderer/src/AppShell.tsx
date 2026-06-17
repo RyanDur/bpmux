@@ -25,7 +25,6 @@ interface Props {
   onAtBottomChange?: (atBottom: boolean) => void
   boardSnapshot?: BoardResponse | null
   boardInvalidateTick: number
-  syncStatusTick: number
 }
 
 const AppShell = ({
@@ -38,8 +37,7 @@ const AppShell = ({
   hasError,
   onAtBottomChange,
   boardSnapshot,
-  boardInvalidateTick,
-  syncStatusTick
+  boardInvalidateTick
 }: Props): React.JSX.Element => {
   const {
     boardOpen,
@@ -180,7 +178,6 @@ const AppShell = ({
         <Board
           boardSnapshot={boardSnapshot}
           boardInvalidateTick={boardInvalidateTick}
-          syncStatusTick={syncStatusTick}
           hidden={!boardOpen}
           width={boardWidth}
         />

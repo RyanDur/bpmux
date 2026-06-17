@@ -7,6 +7,7 @@ import {
   subscribeSyncStatus,
   type SyncStatusReport
 } from './syncStatusService'
+import { useSyncStatusTick } from '../transport/session'
 import { type SyncState, deriveState, stateAriaLabel, stateGlyph } from './syncState'
 
 const buildTooltip = (state: SyncState, report: SyncStatusReport | null): string => {
@@ -54,10 +55,10 @@ const buildTooltip = (state: SyncState, report: SyncStatusReport | null): string
 interface Props {
   apiBase?: string
   authToken?: string
-  syncStatusTick?: number
 }
 
-const SyncStatusGlyph = ({ apiBase, authToken, syncStatusTick }: Props): React.JSX.Element => {
+const SyncStatusGlyph = ({ apiBase, authToken }: Props): React.JSX.Element => {
+  const syncStatusTick = useSyncStatusTick()
   useEffect(() => {
     ensureSyncStatusStarted({ apiBase, authToken })
   }, [apiBase, authToken])

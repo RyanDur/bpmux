@@ -20,8 +20,7 @@ const App = (): React.JSX.Element => {
     messages: liveRaw,
     sendChat,
     boardSnapshot,
-    boardInvalidateTick,
-    syncStatusTick
+    boardInvalidateTick
   } = useWebSocket(bridge?.wsUrl, {
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
@@ -51,7 +50,6 @@ const App = (): React.JSX.Element => {
       onAtBottomChange={setAtBottom}
       boardSnapshot={boardSnapshot}
       boardInvalidateTick={boardInvalidateTick}
-      syncStatusTick={syncStatusTick}
     />
   )
 }
