@@ -56,7 +56,9 @@ test.describe('desk-check #353 WS board invalidate', () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]')).toBeVisible()
+    await expect(
+      win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]')
+    ).toBeVisible()
     await win.waitForTimeout(300)
     await win.locator('[data-test="board-region"]').screenshot({
       path: join(EVIDENCE_DIR, '80-board-live-refresh-baseline.png')
@@ -75,7 +77,9 @@ test.describe('desk-check #353 WS board invalidate', () => {
     // grows past the last-seen ref. We can't simulate that from the
     // test process without the multi-party-peer-post harness per
     // dev's commit-body note + #345 precedent.
-    const mounted = await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]').isVisible()
+    const mounted = await win
+      .locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]')
+      .isVisible()
     console.log(`#353 mount: story row present = ${mounted}`)
 
     // Confirm Board.tsx is exported + wired in the bundle by checking

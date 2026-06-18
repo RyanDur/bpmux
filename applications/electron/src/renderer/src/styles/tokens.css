@@ -78,7 +78,7 @@
   }
 }
 
-[data-theme="light"] {
+[data-theme='light'] {
   --bg-base: rgb(255 255 255);
   --bg-elevated: rgb(245 245 245);
   --bg-highlighted: rgb(229 232 239);
@@ -100,4 +100,3 @@
   --role-dev: rgb(3 105 161);
   --role-pm: rgb(21 128 61);
 }
-

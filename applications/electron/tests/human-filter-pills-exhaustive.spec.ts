@@ -35,7 +35,10 @@ test.describe('human-side E2E #476 — direct-action — filter pills exhaustive
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await expect(win.locator('[data-test="filter-pill-chat"]')).toHaveAttribute('data-state', 'on')
+      await expect(win.locator('[data-test="filter-pill-chat"]')).toHaveAttribute(
+        'data-state',
+        'on'
+      )
       await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
         'data-state',
         'off'

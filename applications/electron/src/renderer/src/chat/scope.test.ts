@@ -14,7 +14,12 @@ describe('isMessageInScope — owner-omniscience scoping (#1733)', () => {
 
   test('the owner GROUP room stays scoped: an out-of-group message does NOT leak in', () => {
     expect(
-      isMessageInScope(msg('dev:claude-code', ['dev', 'pm']), ['designer', 'dev'], 'ryan:human', false)
+      isMessageInScope(
+        msg('dev:claude-code', ['dev', 'pm']),
+        ['designer', 'dev'],
+        'ryan:human',
+        false
+      )
     ).toBe(false)
   })
 

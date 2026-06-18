@@ -31,11 +31,10 @@ describe('human-side E2E #476 — persistence-class — message filter (#1456 3-
     expect(eventsInput.checked).toBe(false)
 
     eventsPill.click()
-    await waitFor(
-      () =>
-        expect(
-          (eventsPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked
-        ).toBe(true)
+    await waitFor(() =>
+      expect((eventsPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
+        true
+      )
     )
 
     rendered.cleanup()
@@ -65,11 +64,10 @@ describe('human-side E2E #476 — persistence-class — message filter (#1456 3-
     )
 
     chatPill.click()
-    await waitFor(
-      () =>
-        expect((chatPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
-          false
-        )
+    await waitFor(() =>
+      expect((chatPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
+        false
+      )
     )
 
     rendered.cleanup()

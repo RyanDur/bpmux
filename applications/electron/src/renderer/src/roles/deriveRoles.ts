@@ -62,9 +62,7 @@ export const deriveCombinatorialGroups = (roles: readonly string[]): string[][] 
   return combinations(roles, 2, roles.length)
 }
 
-export const deriveTeamRolesFromRoster = (
-  roster: readonly RosterIdentity[]
-): readonly string[] => {
+export const deriveTeamRolesFromRoster = (roster: readonly RosterIdentity[]): readonly string[] => {
   const set = new Set<string>()
   for (const entry of roster) set.add(entry.role)
   return Array.from(set).sort()

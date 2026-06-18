@@ -1,9 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
-import {
-  addStoryToIterationViaRpc,
-  seedCurrentIterationViaRpc
-} from './helpers/iteration-fixture'
+import { addStoryToIterationViaRpc, seedCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 test.describe('human-side E2E #476 — direct-action — board keyboard navigation', () => {
   test('board is a roving-tabindex composite: one tab-stop, arrows rove, native-button Enter opens', async () => {

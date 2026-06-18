@@ -98,7 +98,11 @@ describe('#1750 chat presence reads the single /api/presence roster source — n
   test('a chat sender avatar reflects the ROSTER presence, not a seeded offline', () => {
     pushRoster([rosterMember('dev', 'Busy')])
     const { container } = render(
-      <MessageList messages={[msg('m1', '2026-06-05T10:00:00Z')]} visibleClasses={VISIBLE} allView />
+      <MessageList
+        messages={[msg('m1', '2026-06-05T10:00:00Z')]}
+        visibleClasses={VISIBLE}
+        allView
+      />
     )
     const status = avatarStatus(container)
     expect(status?.textContent).toBe('busy')

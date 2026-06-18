@@ -102,15 +102,21 @@ test.describe('desk-check #376 color-differentiate awaiting vs accepted', () => 
     await openGroup(win, 'accepted')
 
     await expect(
-      win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-950"] [data-test="story-badge"]')
+      win.locator(
+        '[data-test="board-tabpanel-now-content"] [data-test="board-story-950"] [data-test="story-badge"]'
+      )
     ).toHaveAttribute('data-state', 'delivered')
 
     await expect(
-      win.locator('[data-test="board-tabpanel-done-content"] [data-test="board-story-951"] [data-test="story-badge"]')
+      win.locator(
+        '[data-test="board-tabpanel-done-content"] [data-test="board-story-951"] [data-test="story-badge"]'
+      )
     ).toHaveAttribute('data-state', 'accepted')
 
     await expect(
-      win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-952"] [data-test="story-badge"]')
+      win.locator(
+        '[data-test="board-tabpanel-now-content"] [data-test="board-story-952"] [data-test="story-badge"]'
+      )
     ).toHaveAttribute('data-state', 'delivered')
     await app.close()
   })
@@ -128,7 +134,9 @@ test.describe('desk-check #376 color-differentiate awaiting vs accepted', () => 
     // assertion wouldn't catch a CSS rule deleted.
     const readBorderColor = async (n: number, panel: 'now' | 'done'): Promise<string> =>
       win
-        .locator(`[data-test="board-tabpanel-${panel}-content"] [data-test="board-story-${n}"] [data-test="story-badge"]`)
+        .locator(
+          `[data-test="board-tabpanel-${panel}-content"] [data-test="board-story-${n}"] [data-test="story-badge"]`
+        )
         .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
 
     const deliveredColor = await readBorderColor(950, 'now')

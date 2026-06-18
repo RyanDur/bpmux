@@ -51,7 +51,6 @@ const MIXED_CLASS_MESSAGES = [
   }
 ]
 
-
 const launchWithFixture = async (
   userDataDir?: string
 ): Promise<{
@@ -87,7 +86,10 @@ test.describe('desk-check #349 richer filter', () => {
       'data-state',
       'off'
     )
-    await expect(win.locator('[data-test="filter-pill-bpmux"]')).toHaveAttribute('data-state', 'off')
+    await expect(win.locator('[data-test="filter-pill-bpmux"]')).toHaveAttribute(
+      'data-state',
+      'off'
+    )
 
     await pillContainer.screenshot({
       path: join(EVIDENCE_DIR, '10-filter-default-chat-only.png')

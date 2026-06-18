@@ -22,7 +22,10 @@ const chainableSuccess = (): unknown => {
 
 const pushSnapshot = (snapshot: BoardResponse): void =>
   dispatchSession(
-    mirrorDeltaReceived({ domain: 'board_snapshot', stories: snapshot.stories }, snapshot.fetched_at)
+    mirrorDeltaReceived(
+      { domain: 'board_snapshot', stories: snapshot.stories },
+      snapshot.fetched_at
+    )
   )
 
 beforeEach(() => {

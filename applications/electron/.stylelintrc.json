@@ -9,7 +9,9 @@
     "declaration-property-unit-allowed-list": {
       "font-size": ["rem"],
       "/^border(-(top|right|bottom|left|inline|block))?(-width)?$/": ["px"],
-      "/^border-(top|bottom|left|right|inline|block)?-?(left|right|top|bottom|start|end|inline|block)?-radius$/": ["px"],
+      "/^border-(top|bottom|left|right|inline|block)?-?(left|right|top|bottom|start|end|inline|block)?-radius$/": [
+        "px"
+      ],
       "outline-width": ["px"],
       "outline-offset": ["px"]
     },

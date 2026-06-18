@@ -61,11 +61,7 @@
   border-radius: 4px;
   font-weight: 600;
   color: var(--fg-primary);
-  background: color-mix(
-    in srgb,
-    var(--fg-primary) 15%,
-    transparent
-  );
+  background: color-mix(in srgb, var(--fg-primary) 15%, transparent);
   white-space: nowrap;
   line-height: 1.3;
 }

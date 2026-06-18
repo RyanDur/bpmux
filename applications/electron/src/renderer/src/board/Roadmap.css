@@ -14,7 +14,7 @@
 }
 
 .roadmap-live::before {
-  content: "";
+  content: '';
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -48,7 +48,7 @@
 }
 
 .roadmap-band-label::after {
-  content: "";
+  content: '';
   flex: 1;
   height: 1px;
   background: var(--border-subtle);
@@ -72,19 +72,19 @@
   padding: var(--space-8) var(--space-12);
 }
 
-.roadmap-outcome[data-tone="now"] {
+.roadmap-outcome[data-tone='now'] {
   border-left-color: var(--accent-brand);
 }
 
-.roadmap-outcome[data-tone="ready"] {
+.roadmap-outcome[data-tone='ready'] {
   border-left-color: var(--accent-success);
 }
 
-.roadmap-outcome[data-tone="gap"] {
+.roadmap-outcome[data-tone='gap'] {
   border-left-color: var(--accent-warning);
 }
 
-.roadmap-outcome[data-tone="future"] {
+.roadmap-outcome[data-tone='future'] {
   border-left-color: var(--fg-dimmer);
 }
 
@@ -95,14 +95,14 @@
 }
 
 .roadmap-outcome-head::before {
-  content: "\25b8";
+  content: '\25b8';
   flex-shrink: 0;
   color: var(--fg-dim);
   font-size: var(--font-size-12);
 }
 
 .roadmap-outcome[data-focused] .roadmap-outcome-head::before {
-  content: "\25be";
+  content: '\25be';
 }
 
 .roadmap-outcome-name {
@@ -136,20 +136,20 @@
   font-weight: 600;
 }
 
-.roadmap-outcome-readiness[value="ready"] {
+.roadmap-outcome-readiness[value='ready'] {
   color: var(--accent-success);
 }
 
-.roadmap-outcome-readiness[value="ready"]::before {
-  content: "\2713\00a0";
+.roadmap-outcome-readiness[value='ready']::before {
+  content: '\2713\00a0';
 }
 
-.roadmap-outcome-readiness[value="gap"] {
+.roadmap-outcome-readiness[value='gap'] {
   color: var(--accent-warning);
 }
 
-.roadmap-outcome-readiness[value="gap"]::before {
-  content: "\25d0\00a0";
+.roadmap-outcome-readiness[value='gap']::before {
+  content: '\25d0\00a0';
 }
 
 .roadmap-outcome-why {
@@ -175,7 +175,7 @@
 }
 
 .roadmap-outcome-meta-label::after {
-  content: ":\00a0";
+  content: ':\00a0';
 }
 
 .roadmap-outcome-meta-value {
@@ -244,7 +244,7 @@
 }
 
 .roadmap-drill-iteration-head::before {
-  content: counter(drill-iteration, decimal-leading-zero) "\00a0\25b8";
+  content: counter(drill-iteration, decimal-leading-zero) '\00a0\25b8';
   flex-shrink: 0;
   color: var(--fg-dimmer);
   font-variant-numeric: tabular-nums;
@@ -263,11 +263,11 @@
   color: var(--fg-dim);
 }
 
-.roadmap-drill-iteration[data-state="next"] .roadmap-drill-iteration-state {
+.roadmap-drill-iteration[data-state='next'] .roadmap-drill-iteration-state {
   color: var(--accent-warning);
 }
 
-.roadmap-drill-iteration[data-state="ready"] .roadmap-drill-iteration-state {
+.roadmap-drill-iteration[data-state='ready'] .roadmap-drill-iteration-state {
   color: var(--accent-success-text);
 }
 
@@ -293,25 +293,25 @@
   font-weight: 700;
 }
 
-.roadmap-drill-check[data-state="met"] {
+.roadmap-drill-check[data-state='met'] {
   color: var(--fg-secondary);
 }
 
-.roadmap-drill-check[data-state="met"]::before {
-  content: "\2713";
+.roadmap-drill-check[data-state='met']::before {
+  content: '\2713';
   color: var(--accent-success-text);
 }
 
-.roadmap-drill-check[data-state="gap"] {
+.roadmap-drill-check[data-state='gap'] {
   color: var(--accent-warning);
 }
 
-.roadmap-drill-check[data-state="gap"]::before {
-  content: "\2717";
+.roadmap-drill-check[data-state='gap']::before {
+  content: '\2717';
   color: var(--accent-warning);
 }
 
-.roadmap-drill-check[data-state="pending"]::before {
-  content: "\25cb";
+.roadmap-drill-check[data-state='pending']::before {
+  content: '\25cb';
   color: var(--fg-dimmer);
 }

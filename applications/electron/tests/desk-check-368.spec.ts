@@ -162,7 +162,9 @@ test.describe('desk-check #368 team-accept badge', () => {
     }
 
     const badge = win
-      .locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-800"] [data-test="story-badge"]')
+      .locator(
+        '[data-test="board-tabpanel-now-content"] [data-test="board-story-800"] [data-test="story-badge"]'
+      )
       .first()
     await badge.click()
 

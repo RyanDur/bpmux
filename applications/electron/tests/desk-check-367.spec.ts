@@ -117,7 +117,9 @@ test.describe('desk-check #367 timeline audit-trail', () => {
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    const storyButton = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-367"] .board-story-navigate')
+    const storyButton = win.locator(
+      '[data-test="board-tabpanel-now-content"] [data-test="board-story-367"] .board-story-navigate'
+    )
     await storyButton.click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
@@ -161,7 +163,9 @@ test.describe('desk-check #367 timeline audit-trail', () => {
   test('show-all toggle reveals non-gate events', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const storyButton = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-367"] .board-story-navigate')
+    const storyButton = win.locator(
+      '[data-test="board-tabpanel-now-content"] [data-test="board-story-367"] .board-story-navigate'
+    )
     await storyButton.click()
     const timeline = win.locator('[data-test="drill-in-timeline"]')
     await timeline.locator('summary').click()

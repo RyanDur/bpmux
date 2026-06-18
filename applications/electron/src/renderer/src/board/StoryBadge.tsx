@@ -12,7 +12,8 @@ const tooltipFor = (
       : 'blocked — (no blocker specified)'
   }
   if (kind === 'rework') return 'rework cycle — awaiting re-delivery'
-  if (kind === 'pending') return 'delivered — awaiting desk-check verdict (acceptor not yet assigned)'
+  if (kind === 'pending')
+    return 'delivered — awaiting desk-check verdict (acceptor not yet assigned)'
   const accepted = state === 'accepted'
   if (kind === 'team-accepted') return accepted ? 'accepted by team' : 'awaiting team accept'
   if (kind === 'dev-accepted') return accepted ? 'accepted by dev' : 'awaiting dev accept'

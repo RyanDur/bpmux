@@ -21,7 +21,9 @@ test.describe('#1564 — live-walk harness slice 1/2: boot + seed + drive create
       })
       expect(create.ok, 'create_iteration must return 200; got ' + create.status).toBe(true)
       const body = await create.json()
-      expect(body.message, body.error ?? 'no message in response').toMatch(/iteration created: #\d+ Iteration /)
+      expect(body.message, body.error ?? 'no message in response').toMatch(
+        /iteration created: #\d+ Iteration /
+      )
 
       await win.locator('label[data-test="board-tab-plan"]').first().click()
       await win

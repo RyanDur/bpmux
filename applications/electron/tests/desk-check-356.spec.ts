@@ -51,7 +51,11 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
   test('Cmd+Enter (or Ctrl+Enter) fires POST + clears draft', async () => {
     const { app } = await launchBoard()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate').click()
+    await win
+      .locator(
+        '[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate'
+      )
+      .click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 
@@ -74,7 +78,11 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
   test('Shift+Enter still inserts newline (does NOT submit)', async () => {
     const { app } = await launchBoard()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate').click()
+    await win
+      .locator(
+        '[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate'
+      )
+      .click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 

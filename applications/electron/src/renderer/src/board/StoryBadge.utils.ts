@@ -1,6 +1,12 @@
 import { type BoardStory } from './types'
 
-export type BadgeKind = 'team-accepted' | 'accepted' | 'dev-accepted' | 'pending' | 'rework' | 'blocked'
+export type BadgeKind =
+  | 'team-accepted'
+  | 'accepted'
+  | 'dev-accepted'
+  | 'pending'
+  | 'rework'
+  | 'blocked'
 
 const DESK_CHECK_FAIL_LABEL = 'desk-check-fail'
 const BLOCKED_LABEL = 'blocked'

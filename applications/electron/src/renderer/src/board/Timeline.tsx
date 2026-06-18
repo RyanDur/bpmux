@@ -97,12 +97,7 @@ interface Props {
   focusTimeline?: boolean
 }
 
-const Timeline = ({
-  story,
-  apiBase,
-  authToken,
-  focusTimeline
-}: Props): React.JSX.Element => {
+const Timeline = ({ story, apiBase, authToken, focusTimeline }: Props): React.JSX.Element => {
   const [showAll, setShowAll] = useState<boolean>(false)
   const timeline = useTimeline({
     apiBase,
