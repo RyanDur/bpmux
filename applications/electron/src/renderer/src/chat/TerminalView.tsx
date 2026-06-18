@@ -118,14 +118,16 @@ export const TerminalView = ({
       data-test={`terminal-${terminalId}`}
       aria-label={`terminal ${terminalId}`}
     >
-      <header className="terminal-header" data-test="terminal-header">
-        <small className="terminal-header-meta">{`${liveCwd} · ${dims.cols}×${dims.rows} · ${TERM_NAME}`}</small>
+      <header className="terminal-header">
+        <small
+          className="terminal-header-meta"
+          aria-label="terminal location and size"
+        >{`${liveCwd} · ${dims.cols}×${dims.rows} · ${TERM_NAME}`}</small>
         <button
           type="button"
           className="terminal-header-close"
           aria-label="close terminal"
           title="close terminal"
-          data-test="terminal-header-close"
           onClick={onClose}
         >
           ✕

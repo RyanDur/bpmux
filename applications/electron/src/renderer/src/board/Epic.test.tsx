@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, render } from '@testing-library/react'
 import Epic from './Epic'
+import { epic as epicPage } from './Epic.page'
 import { isActiveEpic, type BoardStory } from './types'
 
 beforeEach(() => {
@@ -183,17 +184,15 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     expect(html).toContain('data-sort="progress"')
   })
 
-  test('clicking "view epic details" fires onOpen with the epic number', () => {
+  test('clicking "view epic details" fires onOpen with the epic number', async () => {
     const epic = story({ number: 1100 })
     let opened: number | null = null
-    const { getByTestId } = render(
-      <Epic epics={[epic]} stories={[epic]} onOpen={(n) => (opened = n)} />
-    )
-    fireEvent.click(getByTestId('board-epic-1100-view-details'))
+    render(<Epic epics={[epic]} stories={[epic]} onOpen={(n) => (opened = n)} />)
+    await epicPage.viewDetails(1100)
     expect(opened).toBe(1100)
   })
 
-  test('sort defaults progress-desc (more-accepted epic first); toggling switches to created-ascending', () => {
+  test('sort defaults progress-desc (more-accepted epic first); toggling switches to created-ascending', async () => {
     const epicCreatedEarlierLowerProgress = story({
       number: 1100,
       title: 'epic-A',
@@ -215,21 +214,17 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
       epicCreatedLaterHigherProgress,
       acceptedChildOf1200
     ]
-    const { getByTestId, container } = render(
+    render(
       <Epic
         epics={[epicCreatedEarlierLowerProgress, epicCreatedLaterHigherProgress]}
         stories={stories}
         onOpen={() => {}}
       />
     )
-    const idsInOrder = (): number[] =>
-      Array.from(container.querySelectorAll('[data-test^="board-epic-"][data-test$="00"]')).map(
-        (el) => Number(el.getAttribute('data-test')!.replace('board-epic-', ''))
-      )
-    expect(idsInOrder()).toEqual([1200, 1100])
-    fireEvent.click(getByTestId('board-epics-sort'))
-    expect(getByTestId('board-epics-sort').getAttribute('data-sort')).toBe('created')
-    expect(idsInOrder()).toEqual([1100, 1200])
+    expect(epicPage.cardOrder()).toEqual([1200, 1100])
+    await epicPage.toggleSort()
+    expect(epicPage.sortMode()).toBe('created')
+    expect(epicPage.cardOrder()).toEqual([1100, 1200])
   })
 })
 

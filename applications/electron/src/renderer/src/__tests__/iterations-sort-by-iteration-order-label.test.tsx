@@ -2,6 +2,7 @@ import { afterEach, describe, expect, inject, it } from 'vitest'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard } from '../board/iterationBoard.page'
 
 describe('#1339 step 2g-a — iteration containers sort by iteration-order.{N} label', () => {
   let rendered: RenderAppResult | null = null
@@ -49,19 +50,12 @@ describe('#1339 step 2g-a — iteration containers sort by iteration-order.{N} l
 
     rendered = renderApp()
 
-    await rendered.findByTestId('board-iteration-8001', undefined, { timeout: 15_000 })
-    await rendered.findByTestId('board-iteration-8002', undefined, { timeout: 15_000 })
+    await iterationBoard.container(8001, undefined, { timeout: 15_000 })
+    await iterationBoard.container(8002, undefined, { timeout: 15_000 })
 
-    const iterationsList = document.querySelector('.board-iterations-list')
-    expect(iterationsList).toBeTruthy()
-    const renderedIterationIds = Array.from(
-      iterationsList!.querySelectorAll('[data-test^="board-iteration-"]')
-    )
-      .map((el) => el.getAttribute('data-test'))
-      .filter((t) => t !== null && /^board-iteration-\d+$/.test(t)) as string[]
-
-    const hydraIdx = renderedIterationIds.indexOf('board-iteration-8002')
-    const lynxIdx = renderedIterationIds.indexOf('board-iteration-8001')
+    const order = iterationBoard.iterationOrder()
+    const hydraIdx = order.indexOf(8002)
+    const lynxIdx = order.indexOf(8001)
     expect(hydraIdx).toBeGreaterThanOrEqual(0)
     expect(lynxIdx).toBeGreaterThanOrEqual(0)
     expect(hydraIdx).toBeLessThan(lynxIdx)

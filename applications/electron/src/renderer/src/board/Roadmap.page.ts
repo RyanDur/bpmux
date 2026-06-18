@@ -1,26 +1,41 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-const card = (n: number): HTMLElement => screen.getByTestId(`roadmap-outcome-${n}`)
-const drill = (n: number): HTMLElement => screen.getByTestId(`roadmap-drill-${n}`)
+const toggle = (name: string): HTMLElement => screen.getByRole('button', { name })
+
+const card = (name: string): HTMLElement => toggle(name).closest('.roadmap-outcome') as HTMLElement
+
+const iterationNameEls = (): HTMLElement[] =>
+  Array.from(document.querySelectorAll<HTMLElement>('.roadmap-drill-iteration-name'))
+
+const drillRow = (iterationName: string): HTMLElement => {
+  const nameEl = iterationNameEls().find((el) => el.textContent === iterationName)
+  return nameEl?.closest('.roadmap-drill-iteration') as HTMLElement
+}
 
 export const roadmap = {
   bandHeadings: (): (string | null)[] =>
     screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
-  band: (horizon: string): HTMLElement => screen.getByTestId(`roadmap-band-${horizon}`),
+  band: (label: string): HTMLElement =>
+    screen.getByRole('heading', { level: 3, name: label }).closest('.roadmap-band') as HTMLElement,
   card,
-  why: (n: number): HTMLElement | null => within(card(n)).queryByTestId('roadmap-outcome-why'),
-  readiness: (n: number): HTMLElement | null =>
-    within(card(n)).queryByTestId('roadmap-outcome-readiness'),
-  isShown: (id: string): boolean => screen.queryByTestId(id) !== null,
-  focus: (n: number): Promise<void> =>
-    userEvent.click(screen.getByTestId(`roadmap-outcome-toggle-${n}`)),
-  drill,
-  drillIteration: (n: number): HTMLElement => screen.getByTestId(`roadmap-drill-iteration-${n}`),
-  drillIterationNames: (n: number): (string | null)[] =>
-    within(drill(n))
-      .getAllByTestId(/roadmap-drill-iteration-\d+/)
-      .map((row) => within(row).getByTestId('roadmap-drill-iteration-name').textContent),
-  convene: (n: number): string =>
-    within(drill(n)).getByTestId(`roadmap-convene-${n}`).textContent ?? ''
+  hasBenefit: (name: string): boolean => card(name).querySelector('.roadmap-outcome-why') !== null,
+  readiness: (name: string): HTMLElement | null =>
+    within(card(name)).queryByText(/^(ready|\d+ gaps?)$/),
+  liveShown: (): boolean => screen.queryByText('live · always current') !== null,
+  emptyShown: (): boolean => screen.queryByText('No outcomes on the roadmap yet') !== null,
+  focus: (name: string): Promise<void> => userEvent.click(toggle(name)),
+  drill: (name: string): HTMLElement => card(name).querySelector('.roadmap-drill') as HTMLElement,
+  drillShown: (name: string): boolean => card(name).querySelector('.roadmap-drill') !== null,
+  iterationShown: (iterationName: string): boolean =>
+    iterationNameEls().some((el) => el.textContent === iterationName),
+  drillIteration: drillRow,
+  checksShown: (iterationName: string): boolean =>
+    within(drillRow(iterationName)).queryByLabelText(/: (met|gap|pending)$/) !== null,
+  drillIterationNames: (outcomeName: string): string[] =>
+    Array.from(card(outcomeName).querySelectorAll('.roadmap-drill-iteration-name')).map(
+      (el) => el.textContent ?? ''
+    ),
+  convene: (outcomeName: string): string =>
+    card(outcomeName).querySelector('.roadmap-convene')?.textContent ?? ''
 }

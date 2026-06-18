@@ -1,23 +1,15 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
-const getCaret = (win: import('@playwright/test').Page): Promise<number> =>
-  win.evaluate(() => {
-    const ta = document.querySelector(
-      '[data-test="chat-input-textarea"]'
-    ) as HTMLTextAreaElement | null
-    return ta?.selectionStart ?? -1
-  })
+const getCaret = (input: Locator): Promise<number> =>
+  input.evaluate((el) => (el as HTMLTextAreaElement).selectionStart ?? -1)
 
-const setCaret = (win: import('@playwright/test').Page, pos: number): Promise<void> =>
-  win.evaluate((p) => {
-    const ta = document.querySelector(
-      '[data-test="chat-input-textarea"]'
-    ) as HTMLTextAreaElement | null
-    if (ta) {
-      ta.focus()
-      ta.setSelectionRange(p, p)
-    }
+const setCaret = (input: Locator, pos: number): Promise<void> =>
+  input.evaluate((el, p) => {
+    const ta = el as HTMLTextAreaElement
+    ta.focus()
+    ta.setSelectionRange(p, p)
   }, pos)
 
 test.describe('human-side E2E #476 — direct-action — chat input emacs word-motion', () => {
@@ -31,16 +23,17 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs word-m
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill('hello big world')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await setCaret(win, 'hello big world'.length)
+      await setCaret(ta, 'hello big world'.length)
       await ta.press('Alt+b')
-      expect(await getCaret(win)).toBe('hello big '.length)
+      expect(await getCaret(ta)).toBe('hello big '.length)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
@@ -60,16 +53,17 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs word-m
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill('hello big world')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await setCaret(win, 0)
+      await setCaret(ta, 0)
       await ta.press('Alt+f')
-      expect(await getCaret(win)).toBe('hello'.length)
+      expect(await getCaret(ta)).toBe('hello'.length)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
@@ -89,14 +83,15 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs word-m
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill('hello big world')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await setCaret(win, 'hello '.length)
+      await setCaret(ta, 'hello '.length)
       await ta.press('Alt+d')
       await expect(ta).toHaveValue('hello  world')
 

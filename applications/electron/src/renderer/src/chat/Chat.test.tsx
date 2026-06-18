@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { cleanup, render, screen } from '@testing-library/react'
 import Chat from './Chat'
 import type { MessageFilter } from '../hooks/useMessageFilter'
 import { dispatchSession, resetSessionForTest } from '../transport/session/store'
@@ -12,8 +12,8 @@ const filter: MessageFilter = {
   setOnly: () => {}
 }
 
-const renderChat = (): string =>
-  renderToStaticMarkup(
+const renderChat = (): void => {
+  render(
     <Chat
       messages={[]}
       recipient={null}
@@ -28,26 +28,28 @@ const renderChat = (): string =>
       onSend={() => {}}
     />
   )
+}
 
-afterEach(() => resetSessionForTest())
+afterEach(() => {
+  cleanup()
+  resetSessionForTest()
+})
 
 describe('Chat — reconnect warning reflects the session connection status (useConnectionStatus selector)', () => {
   test('a disconnected session shows the reconnecting warning', () => {
-    const html = renderChat()
-    expect(html).toContain('data-test="chat-warning"')
-    expect(html).toContain('reconnecting…')
+    renderChat()
+    expect(screen.getByText('reconnecting…')).toBeTruthy()
   })
 
   test('a connecting session shows the connecting warning', () => {
     dispatchSession(connecting())
-    const html = renderChat()
-    expect(html).toContain('data-test="chat-warning"')
-    expect(html).toContain('connecting…')
+    renderChat()
+    expect(screen.getByText('connecting…')).toBeTruthy()
   })
 
   test('a connected session shows no reconnect warning', () => {
     dispatchSession(connected())
-    const html = renderChat()
-    expect(html).not.toContain('data-test="chat-warning"')
+    renderChat()
+    expect(screen.queryByText(/^(connecting|reconnecting)…$/)).toBeNull()
   })
 })

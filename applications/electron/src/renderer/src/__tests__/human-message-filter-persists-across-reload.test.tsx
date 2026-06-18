@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { resetMessages } from '../../../../test/fixtures/seedMessages'
+import { humanMessage } from '../chat/humanMessage.page'
 
 describe('human-side E2E #476 — persistence-class — message filter (#1456 3-class mute-toggle)', () => {
   let rendered: RenderAppResult | null = null
@@ -21,31 +22,19 @@ describe('human-side E2E #476 — persistence-class — message filter (#1456 3-
 
     rendered = renderApp()
 
-    const filterPills = await rendered.findByTestId('filter-pills', undefined, {
-      timeout: 15_000
-    })
-    expect(filterPills).toBeTruthy()
+    expect(await humanMessage.filterPills()).toBeTruthy()
 
-    const eventsPill = await rendered.findByTestId('filter-pill-events')
-    const eventsInput = eventsPill.querySelector('input[type="checkbox"]') as HTMLInputElement
-    expect(eventsInput.checked).toBe(false)
+    const eventsPill = await humanMessage.pill('events')
+    expect(humanMessage.pillChecked('events')).toBe(false)
 
-    eventsPill.click()
-    await waitFor(() =>
-      expect((eventsPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
-        true
-      )
-    )
+    await humanMessage.togglePill(eventsPill)
+    await waitFor(() => expect(humanMessage.pillChecked('events')).toBe(true))
 
     rendered.cleanup()
     rendered = renderApp()
 
-    const eventsAfterReload = await rendered.findByTestId('filter-pill-events', undefined, {
-      timeout: 15_000
-    })
-    expect(
-      (eventsAfterReload.querySelector('input[type="checkbox"]') as HTMLInputElement).checked
-    ).toBe(true)
+    await humanMessage.pill('events')
+    expect(humanMessage.pillChecked('events')).toBe(true)
   }, 20_000)
 
   it('toggling chat-class off persists across reload', async () => {
@@ -56,28 +45,16 @@ describe('human-side E2E #476 — persistence-class — message filter (#1456 3-
 
     rendered = renderApp()
 
-    const chatPill = await rendered.findByTestId('filter-pill-chat', undefined, {
-      timeout: 15_000
-    })
-    expect((chatPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
-      true
-    )
+    const chatPill = await humanMessage.pill('chat')
+    expect(humanMessage.pillChecked('chat')).toBe(true)
 
-    chatPill.click()
-    await waitFor(() =>
-      expect((chatPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
-        false
-      )
-    )
+    await humanMessage.togglePill(chatPill)
+    await waitFor(() => expect(humanMessage.pillChecked('chat')).toBe(false))
 
     rendered.cleanup()
     rendered = renderApp()
 
-    const chatAfterReload = await rendered.findByTestId('filter-pill-chat', undefined, {
-      timeout: 15_000
-    })
-    expect(
-      (chatAfterReload.querySelector('input[type="checkbox"]') as HTMLInputElement).checked
-    ).toBe(false)
+    await humanMessage.pill('chat')
+    expect(humanMessage.pillChecked('chat')).toBe(false)
   }, 20_000)
 })

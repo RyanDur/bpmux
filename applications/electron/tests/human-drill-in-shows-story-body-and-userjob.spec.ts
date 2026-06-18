@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // #1127 sub-slice 3: drill-in family — body content rendering.
 
@@ -7,6 +9,8 @@ test.describe('human-side E2E #476 — read-class — drill-in body content', ()
   test('drill-in renders the story user_job + observation_falsifier markers from the body', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
+      const board = new BoardPage(win)
+      const drill = new DrillInPage(win)
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
       win.on('console', (m) => {
@@ -14,7 +18,7 @@ test.describe('human-side E2E #476 — read-class — drill-in body content', ()
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -36,21 +40,18 @@ test.describe('human-side E2E #476 — read-class — drill-in body content', ()
       expect(createResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Plan')
+      await expect(board.storyNavigate(1)).toHaveAccessibleName(/drill-body-target/)
 
-      const storyRow = win.locator('[data-test="board-story-1"]').first()
-      await expect(storyRow).toContainText('drill-body-target')
-
-      await storyRow.locator('.board-story-navigate').click()
-      const drillIn = win.locator('[data-test="board-drill-in"]')
-      await expect(drillIn).toBeVisible()
+      await board.openStory(1)
+      await expect(drill.panel()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await expect(drillIn).toContainText(userJobMarker, { timeout: 10000 })
-      await expect(drillIn).toContainText(falsifierMarker)
+      await expect(drill.panel()).toContainText(userJobMarker, { timeout: 10000 })
+      await expect(drill.panel()).toContainText(falsifierMarker)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

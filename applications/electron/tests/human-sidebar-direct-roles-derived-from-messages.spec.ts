@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
+import { SidebarPage } from './pages/sidebarPage'
 
 test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', () => {
   test('seeded messages from multiple roles populate sidebar direct-role buttons', async () => {
@@ -34,14 +35,15 @@ test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+      const sidebar = new SidebarPage(win)
+      await expect(sidebar.nav()).toBeVisible()
       await waitForMessagesLoaded(win, 'pm broadcasts to seed direct-role')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
       for (const role of ['pm', 'dev', 'designer']) {
-        const button = win.locator(`[data-test="sidebar-direct-${role}"]`)
+        const button = sidebar.directChannel(role)
         await expect(button).toBeVisible({ timeout: 20000 })
         await expect(button).toContainText(role)
       }
@@ -80,16 +82,17 @@ test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+      const sidebar = new SidebarPage(win)
+      await expect(sidebar.nav()).toBeVisible()
       await waitForMessagesLoaded(win, 'pm broadcast')
 
-      const allButton = win.locator('[data-test="sidebar-all"]')
+      const allButton = sidebar.allChannel()
       await expect(allButton).toHaveAttribute('aria-current', 'true')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const devButton = win.locator('[data-test="sidebar-direct-dev"]')
+      const devButton = sidebar.directChannel('dev')
       await expect(devButton).toBeVisible({ timeout: 20000 })
       await devButton.click()
       await expect(devButton).toHaveAttribute('aria-current', 'true')

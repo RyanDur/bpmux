@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1598 copy (S7) — Cmd-C copies the terminal selection; Ctrl-C still interrupts', () => {
   test('select output + Cmd-C copies it to the OS clipboard, and Ctrl-C still raises SIGINT (not shadowed)', async () => {
@@ -10,16 +11,13 @@ test.describe('#1598 copy (S7) — Cmd-C copies the terminal selection; Ctrl-C s
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const item = win.locator('[data-test="sidebar-terminal-item"]')
-      await expect(item).toHaveAttribute('data-state', 'ready', { timeout: 15000 })
+      await expect(term.output()).toBeVisible({ timeout: 15000 })
 
-      const activeScreen = win.locator(
-        '[data-test^="terminal-slot-"][data-active="true"] .terminal-screen'
-      )
+      const activeScreen = term.output()
       await activeScreen.click()
       await win.keyboard.type('echo COPYMARKER_8s7x')
       await win.keyboard.press('Enter')

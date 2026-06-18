@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
 
 describe('#1339 step 2d — dragged member carries data-dragging during drag gesture', () => {
   let rendered: RenderAppResult | null = null
@@ -35,30 +35,18 @@ describe('#1339 step 2d — dragged member carries data-dragging during drag ges
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-7801', undefined, {
-      timeout: 15_000
-    })
-    const member = within(container).getByTestId('board-story-7811') as HTMLLIElement
+    const container = await iterationBoard.container(7801, undefined, { timeout: 15_000 })
+    const member = iterationBoard.storyRow(container, 7811)
     expect(member).toBeTruthy()
-    const memberGrip = member.querySelector('[data-test="story-grip"]') as HTMLElement
+    const memberGrip = iterationBoard.grip(member)
     expect(memberGrip).toBeTruthy()
     expect(member.getAttribute('data-dragging')).toBeNull()
 
-    const dataStore: Record<string, string> = {}
-    const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
-      {
-        setData: (type: string, value: string) => {
-          dataStore[type] = value
-        },
-        getData: (type: string) => dataStore[type] ?? '',
-        types: [] as unknown as readonly string[],
-        effectAllowed: 'move',
-        dropEffect: 'move'
-      }
-    fireEvent.dragStart(memberGrip, { dataTransfer: dt })
+    const drag = newDragGesture()
+    drag.start(memberGrip)
     expect(member.getAttribute('data-dragging')).toBe('true')
 
-    fireEvent.dragEnd(memberGrip, { dataTransfer: dt })
+    drag.end(memberGrip)
     expect(member.getAttribute('data-dragging')).toBeNull()
   }, 20_000)
 })

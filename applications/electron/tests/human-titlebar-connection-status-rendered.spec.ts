@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 test.describe('human-side E2E #476 — read-class — titlebar connection status', () => {
   test('connection status renders with one of online/connecting/offline label', async () => {
@@ -12,16 +13,8 @@ test.describe('human-side E2E #476 — read-class — titlebar connection status
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const titlebar = win.locator('[data-test="titlebar"]')
-      await expect(titlebar).toBeVisible()
-
-      consoleErrors.length = 0
-      pageErrors.length = 0
-
-      const connection = win.locator('[data-test="titlebar-app"]')
-      await expect(connection).toBeVisible()
-
-      const label = win.locator('[data-test="titlebar-app-state"]')
+      const chat = new ChatPage(win)
+      const label = chat.connectionState()
       await expect(label).toBeVisible()
       const labelText = (await label.textContent())?.trim() ?? ''
       expect(['online', 'reconnecting', 'offline']).toContain(labelText)
@@ -44,13 +37,8 @@ test.describe('human-side E2E #476 — read-class — titlebar connection status
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="titlebar"]')).toBeVisible()
-
-      consoleErrors.length = 0
-      pageErrors.length = 0
-
-      const label = win.locator('[data-test="titlebar-app-state"]')
-      await expect(label).toContainText('online', { timeout: 10000 })
+      const chat = new ChatPage(win)
+      await expect(chat.connectionState()).toHaveText('online', { timeout: 10000 })
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

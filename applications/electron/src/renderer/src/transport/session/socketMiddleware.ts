@@ -30,7 +30,7 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
   const send = (msg: ClientMessage): void => {
     captureSentFrame(msg)
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.error('bpmux session: send dropped, socket not open', msg)
+      console.warn('bpmux session: send dropped, socket not open', msg)
       return
     }
     socket.send(JSON.stringify(msg))

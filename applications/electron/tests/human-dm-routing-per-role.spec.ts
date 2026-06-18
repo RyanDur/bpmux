@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
+import { SidebarPage } from './pages/sidebarPage'
 
 const SEED_DIRECT_ROLES = [
   {
@@ -32,16 +34,17 @@ test.describe('human-side #1595 — selecting a direct role opens its scoped CHA
         seedRoster: ['pm:claude-code', 'dev:claude-code', 'designer:claude-code']
       })
       try {
-        const sidebar = win.locator('[data-test="sidebar"]')
-        await expect(sidebar).toBeVisible()
+        const chat = new ChatPage(win)
+        const sidebar = new SidebarPage(win)
+        await expect(sidebar.nav()).toBeVisible()
         await waitForMessagesLoaded(win, 'pm broadcast')
 
-        const directButton = win.locator(`[data-test="sidebar-direct-${target}"]`)
+        const directButton = sidebar.directChannel(target)
         await expect(directButton).toBeVisible({ timeout: 20000 })
         await directButton.click()
 
-        await expect(win.locator('[data-test="message-list"]')).toBeVisible({ timeout: 10000 })
-        await expect(win.locator(`[data-test="terminal-${target}"]`)).toHaveCount(0)
+        await expect(chat.messageLog()).toBeVisible({ timeout: 10000 })
+        await expect(chat.terminalOutput()).toHaveCount(0)
       } finally {
         await app.close()
         await mockGh.close()

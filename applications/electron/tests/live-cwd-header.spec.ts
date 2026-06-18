@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1597 live-cwd header (S6) — the terminal HEADER tracks cwd as you cd, the SIDEBAR label stays static', () => {
   test('cd in a real $SHELL drives OSC-7 → the active header follows to the new dir while the sidebar label keeps its stable spawn-dir identity', async () => {
@@ -15,16 +16,16 @@ test.describe('#1597 live-cwd header (S6) — the terminal HEADER tracks cwd as 
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const activeTerminal = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
       await activeTerminal.click()
 
-      const activeHeader = activeTerminal.locator('[data-test="terminal-header"]')
-      const sidebarLabel = win.locator('[data-test="sidebar-terminal-item"]')
+      const activeHeader = term.headerStatus()
+      const sidebarLabel = term.item(1)
       const spawnDirLabel = (await sidebarLabel.textContent()) ?? ''
 
       await expect

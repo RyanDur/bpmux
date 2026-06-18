@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor, within } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
 
 describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', () => {
   let rendered: RenderAppResult | null = null
@@ -49,42 +50,21 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-7701', undefined, {
-      timeout: 15_000
+    const container = await iterationBoard.container(7701, undefined, { timeout: 15_000 })
+    expect(iterationBoard.memberOrder(container)).toEqual([7711, 7712, 7713])
+
+    const source = iterationBoard.storyRow(container, 7713)
+    const sourceGrip = iterationBoard.grip(source)
+    const target = iterationBoard.storyRow(container, 7711)
+    const drag = newDragGesture()
+    drag.start(sourceGrip)
+    drag.over(target)
+    drag.drop(target)
+    drag.end(sourceGrip)
+
+    await waitFor(() => expect(iterationBoard.memberOrder(container)[0]).toBe(7713), {
+      timeout: 2_000,
+      interval: 50
     })
-    const queryOrder = (): number[] =>
-      within(container)
-        .getAllByTestId(/^board-story-\d+$/)
-        .map((el) => Number(el.getAttribute('data-iteration-member')))
-    const orderBefore = queryOrder()
-    expect(orderBefore).toEqual([7711, 7712, 7713])
-
-    const source = within(container).getByTestId('board-story-7713') as HTMLLIElement
-    const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
-    const target = within(container).getByTestId('board-story-7711') as HTMLLIElement
-    const dataStore: Record<string, string> = {}
-    const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
-      {
-        setData: (type: string, value: string) => {
-          dataStore[type] = value
-        },
-        getData: (type: string) => dataStore[type] ?? '',
-        types: [] as unknown as readonly string[],
-        effectAllowed: 'move',
-        dropEffect: 'move'
-      }
-    fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
-    Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
-    fireEvent.dragOver(target, { dataTransfer: dt })
-    fireEvent.drop(target, { dataTransfer: dt })
-    fireEvent.dragEnd(sourceGrip, { dataTransfer: dt })
-
-    await waitFor(
-      () => {
-        const orderAfter = queryOrder()
-        expect(orderAfter[0]).toBe(7713)
-      },
-      { timeout: 2_000, interval: 50 }
-    )
   }, 20_000)
 })

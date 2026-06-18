@@ -5,6 +5,7 @@ import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { computeMemberDropMutation } from './iterationPosition'
 import { parseParentIterationLabel } from './labelSchema'
+import { storyNavigateLabel } from './storyNavigateLabel'
 import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
 import { type DragPayload, postLabelMutation } from './iterationMembers'
 import { ITERATION_MEMBER_DRAG } from './sortableDragConfigs'
@@ -79,8 +80,7 @@ const MemberList = ({
           <button
             type="button"
             className="board-iteration-member-navigate board-story-navigate"
-            data-test="board-iteration-member-button"
-            aria-label={`open #${story.number} ${story.title}`}
+            aria-label={storyNavigateLabel(story)}
             onClick={() => onOpen(story.number)}
             onKeyDown={(event) => {
               if (!event.ctrlKey || !event.shiftKey) return

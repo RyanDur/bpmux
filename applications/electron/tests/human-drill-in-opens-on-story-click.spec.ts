@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // #1127 sub-slice 3: drill-in family migration. Setup: create_story
 // only (story lands in ICEBOX). Gate under test: row-click → drill-in
@@ -11,6 +13,8 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
   test('clicking a story row opens the drill-in panel with title + body', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
+      const board = new BoardPage(win)
+      const drill = new DrillInPage(win)
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
       win.on('console', (m) => {
@@ -18,7 +22,7 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -39,20 +43,18 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
       expect(createResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Plan')
 
-      const storyRow = win.locator('[data-test="board-story-1"]').first()
-      await expect(storyRow).toContainText(titleMarker)
+      await expect(board.storyNavigate(1)).toHaveAccessibleName(new RegExp(titleMarker))
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await storyRow.locator('.board-story-navigate').click()
+      await board.openStory(1)
 
-      const drillIn = win.locator('[data-test="board-drill-in"]')
-      await expect(drillIn).toBeVisible()
-      await expect(drillIn).toContainText(titleMarker)
+      await expect(drill.panel()).toBeVisible()
+      await expect(drill.panel()).toContainText(titleMarker)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

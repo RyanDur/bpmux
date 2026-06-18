@@ -117,7 +117,12 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
       style={width !== undefined && !hidden ? { flex: `0 0 ${width}px` } : undefined}
       inert={hidden ? true : undefined}
     >
-      <output className="sr-only" aria-live="polite" data-test="board-reorder-announce">
+      <output
+        className="sr-only"
+        aria-live="polite"
+        aria-label="Reorder announcements"
+        data-test="board-reorder-announce"
+      >
         {reorderAnnounce}
       </output>
 

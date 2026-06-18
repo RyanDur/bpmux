@@ -35,19 +35,13 @@ const FilterPills = ({ filter, hiddenCounts, visibleCounts }: Props): React.JSX.
                 aria-label={`${cls} messages ${active ? 'shown' : 'hidden'}; ${count} message${count === 1 ? '' : 's'}`}
               />
               {cls}
-              <small className="filter-pill-count" data-test={`filter-pill-${cls}-count`}>
-                ({count})
-              </small>
+              <small className="filter-pill-count">({count})</small>
             </label>
           )
         })}
       </fieldset>
       {allMuted && (
-        <output
-          className="filter-pills-empty-hint"
-          aria-live="polite"
-          data-test="filter-pills-empty-hint"
-        >
+        <output className="filter-pills-empty-hint" aria-live="polite">
           All categories muted — click a pill to re-enable.
         </output>
       )}

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1594 resize-reflow — resizing the window reflows the terminal (live cols×rows in the header)', () => {
   test('resizing the window changes the header live cols×rows (not a fixed 80×24)', async () => {
@@ -9,11 +10,11 @@ test.describe('#1594 resize-reflow — resizing the window reflows the terminal 
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const header = win.locator('[data-test="terminal-header"]')
+      const header = term.headerStatus()
       await expect(header).toBeVisible({ timeout: 10000 })
       await expect(header).not.toContainText('0×0', { timeout: 10000 })
       const before = (await header.textContent()) ?? ''
@@ -39,11 +40,11 @@ test.describe('#1594 resize-reflow — resizing the window reflows the terminal 
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const activeTerminal = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
       await activeTerminal.click()
 

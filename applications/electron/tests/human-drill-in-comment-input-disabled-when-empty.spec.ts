@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // #1127 sub-slice 3: drill-in family — comment send button gating.
 
@@ -7,6 +9,8 @@ test.describe('human-side E2E #476 — direct-action — drill-in comment input'
   test('comment send button is disabled when input is empty, enabled when typed', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
+      const board = new BoardPage(win)
+      const drill = new DrillInPage(win)
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
       win.on('console', (m) => {
@@ -14,7 +18,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in comment input'
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -35,24 +39,21 @@ test.describe('human-side E2E #476 — direct-action — drill-in comment input'
       expect(createResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Plan')
+      await expect(board.storyNavigate(1)).toHaveAccessibleName(/comment-input-target/)
 
-      const storyRow = win.locator('[data-test="board-story-1"]').first()
-      await expect(storyRow).toContainText('comment-input-target')
-
-      await storyRow.locator('.board-story-navigate').click()
-      const drillIn = win.locator('[data-test="board-drill-in"]')
-      await expect(drillIn).toBeVisible()
+      await board.openStory(1)
+      await expect(drill.panel()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const sendButton = win.locator('[data-test="drill-in-comment-send"]')
+      const sendButton = drill.commentSend()
       await expect(sendButton).toBeVisible()
       await expect(sendButton).toBeDisabled()
 
-      const commentInput = win.locator('[data-test="drill-in-comment-input"]')
+      const commentInput = drill.commentInput()
       await commentInput.fill('Some non-trivial comment text.')
       await expect(sendButton).toBeEnabled()
 

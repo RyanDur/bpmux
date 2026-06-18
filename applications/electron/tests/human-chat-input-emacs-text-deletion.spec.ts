@@ -1,15 +1,12 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
-const setCaret = (win: import('@playwright/test').Page, pos: number): Promise<void> =>
-  win.evaluate((p) => {
-    const ta = document.querySelector(
-      '[data-test="chat-input-textarea"]'
-    ) as HTMLTextAreaElement | null
-    if (ta) {
-      ta.focus()
-      ta.setSelectionRange(p, p)
-    }
+const setCaret = (input: Locator, pos: number): Promise<void> =>
+  input.evaluate((el, p) => {
+    const ta = el as HTMLTextAreaElement
+    ta.focus()
+    ta.setSelectionRange(p, p)
   }, pos)
 
 test.describe('human-side E2E #476 — direct-action — chat input emacs text-deletion', () => {
@@ -23,14 +20,15 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs text-d
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill('hello world')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await setCaret(win, 5)
+      await setCaret(ta, 5)
       await ta.press('Control+d')
       await expect(ta).toHaveValue('helloworld')
 
@@ -52,7 +50,8 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs text-d
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill('alpha\nbeta\ngamma')
 
@@ -60,7 +59,7 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs text-d
       pageErrors.length = 0
 
       const middleOfBeta = 'alpha\nbe'.length
-      await setCaret(win, middleOfBeta)
+      await setCaret(ta, middleOfBeta)
 
       await ta.press('Control+k')
       await expect(ta).toHaveValue('alpha\nbe\ngamma')
@@ -83,7 +82,8 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs text-d
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill('alpha\nbeta\ngamma')
 
@@ -91,7 +91,7 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs text-d
       pageErrors.length = 0
 
       const middleOfBeta = 'alpha\nbe'.length
-      await setCaret(win, middleOfBeta)
+      await setCaret(ta, middleOfBeta)
 
       await ta.press('Control+u')
       await expect(ta).toHaveValue('alpha\nta\ngamma')
@@ -114,14 +114,15 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs text-d
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill('hello big world')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await setCaret(win, 'hello big'.length)
+      await setCaret(ta, 'hello big'.length)
 
       await ta.press('Control+w')
       await expect(ta).toHaveValue('hello  world')

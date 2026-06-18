@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
+import { SidebarPage } from './pages/sidebarPage'
 
 const SEED_MULTI_ROLE_MESSAGES = [
   {
@@ -43,24 +45,25 @@ test.describe('human-side E2E #476 — channel routing matrix', () => {
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const sidebar = win.locator('[data-test="sidebar"]')
-      await expect(sidebar).toBeVisible()
+      const chat = new ChatPage(win)
+      const sidebar = new SidebarPage(win)
+      await expect(sidebar.nav()).toBeVisible()
       await waitForMessagesLoaded(win, 'designer broadcast to derive direct-role')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const groupButton = win.locator('[data-test^="sidebar-group-"]').first()
+      const groupButton = sidebar.groupChannels().first()
       await expect(groupButton).toBeVisible({ timeout: 10000 })
       await groupButton.click()
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const textarea = chat.input()
       const groupMarker = 'GROUP_ROUTING_MARKER_BPF20'
       await textarea.fill(groupMarker)
       await textarea.press('Enter')
       await expect(textarea).toHaveValue('')
 
-      const list = win.locator('[data-test="message-list"]')
+      const list = chat.messageLog()
       await expect(list).toContainText(groupMarker, { timeout: 10000 })
 
       const fetchAs = async (
@@ -118,23 +121,23 @@ test.describe('human-side E2E #476 — channel routing matrix', () => {
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const list = win.locator('[data-test="message-list"]')
+      const chat = new ChatPage(win)
+      const list = chat.messageLog()
       await expect(list).toBeVisible()
       await expect(list).toContainText('a normal chat message', { timeout: 10000 })
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const eventsPill = win.locator('[data-test="filter-pill-events"]')
-      await expect(eventsPill).toHaveAttribute('data-state', 'off')
+      await expect(chat.filterPill('events')).not.toBeChecked()
       await expect(list).not.toContainText('EVENTS_FILTER_MARKER_BPF20')
 
-      await eventsPill.click()
-      await expect(eventsPill).toHaveAttribute('data-state', 'on')
+      await chat.toggleFilter('events')
+      await expect(chat.filterPill('events')).toBeChecked()
       await expect(list).toContainText('EVENTS_FILTER_MARKER_BPF20')
 
-      await eventsPill.click()
-      await expect(eventsPill).toHaveAttribute('data-state', 'off')
+      await chat.toggleFilter('events')
+      await expect(chat.filterPill('events')).not.toBeChecked()
       await expect(list).not.toContainText('EVENTS_FILTER_MARKER_BPF20')
 
       expect(consoleErrors).toEqual([])

@@ -1,25 +1,17 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 const FILL_TEXT = 'first line\nsecond line\nthird line'
 
-const getCaret = (win: import('@playwright/test').Page): Promise<number> =>
-  win.evaluate(() => {
-    const ta = document.querySelector(
-      '[data-test="chat-input-textarea"]'
-    ) as HTMLTextAreaElement | null
-    return ta?.selectionStart ?? -1
-  })
+const getCaret = (input: Locator): Promise<number> =>
+  input.evaluate((el) => (el as HTMLTextAreaElement).selectionStart ?? -1)
 
-const setCaret = (win: import('@playwright/test').Page, pos: number): Promise<void> =>
-  win.evaluate((p) => {
-    const ta = document.querySelector(
-      '[data-test="chat-input-textarea"]'
-    ) as HTMLTextAreaElement | null
-    if (ta) {
-      ta.focus()
-      ta.setSelectionRange(p, p)
-    }
+const setCaret = (input: Locator, pos: number): Promise<void> =>
+  input.evaluate((el, p) => {
+    const ta = el as HTMLTextAreaElement
+    ta.focus()
+    ta.setSelectionRange(p, p)
   }, pos)
 
 test.describe('human-side E2E #476 — direct-action — chat input emacs cursor-motion', () => {
@@ -33,7 +25,8 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs cursor
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill(FILL_TEXT)
 
@@ -41,10 +34,10 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs cursor
       pageErrors.length = 0
 
       const middleOfSecondLine = 'first line\nsecond'.length
-      await setCaret(win, middleOfSecondLine)
+      await setCaret(ta, middleOfSecondLine)
 
       await ta.press('Control+a')
-      expect(await getCaret(win)).toBe('first line\n'.length)
+      expect(await getCaret(ta)).toBe('first line\n'.length)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
@@ -64,7 +57,8 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs cursor
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill(FILL_TEXT)
 
@@ -72,10 +66,10 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs cursor
       pageErrors.length = 0
 
       const startOfSecondLine = 'first line\n'.length
-      await setCaret(win, startOfSecondLine)
+      await setCaret(ta, startOfSecondLine)
 
       await ta.press('Control+e')
-      expect(await getCaret(win)).toBe('first line\nsecond line'.length)
+      expect(await getCaret(ta)).toBe('first line\nsecond line'.length)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
@@ -95,16 +89,17 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs cursor
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill(FILL_TEXT)
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await setCaret(win, 5)
+      await setCaret(ta, 5)
       await ta.press('Control+b')
-      expect(await getCaret(win)).toBe(4)
+      expect(await getCaret(ta)).toBe(4)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
@@ -124,16 +119,17 @@ test.describe('human-side E2E #476 — direct-action — chat input emacs cursor
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const ta = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const ta = chat.input()
       await expect(ta).toBeVisible()
       await ta.fill(FILL_TEXT)
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await setCaret(win, 5)
+      await setCaret(ta, 5)
       await ta.press('Control+f')
-      expect(await getCaret(win)).toBe(6)
+      expect(await getCaret(ta)).toBe(6)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

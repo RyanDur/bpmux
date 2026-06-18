@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, chmodSync, readFileSync, existsSync } from 
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 const isAlive = (pid: number): boolean => {
   try {
@@ -32,12 +33,11 @@ test.describe('#1596 close/kill (S5) — closing a terminal mid-spawn does not o
         await route.fulfill({ response })
       })
 
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const item = win.locator('[data-test="sidebar-terminal-item"]')
-      await expect(item).toHaveAttribute('data-state', 'spawning', { timeout: 5000 })
+      await expect(term.item(1)).toContainText('spawning', { timeout: 5000 })
 
       await expect
         .poll(() => (existsSync(pidFile) ? Number(readFileSync(pidFile, 'utf8').trim()) : 0), {
@@ -48,8 +48,8 @@ test.describe('#1596 close/kill (S5) — closing a terminal mid-spawn does not o
       const pid = Number(readFileSync(pidFile, 'utf8').trim())
       expect(isAlive(pid), `the spawned agent (pid ${pid}) is alive mid-spawn`).toBe(true)
 
-      await win.locator('[data-test="sidebar-terminal-close"]').click()
-      await expect(item).toHaveCount(0, { timeout: 10000 })
+      await term.closeButton(1).click()
+      await expect(term.items()).toHaveCount(0, { timeout: 10000 })
 
       await expect
         .poll(() => isAlive(pid), { timeout: 20000, intervals: [400, 700, 1000, 1500] })

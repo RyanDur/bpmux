@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
 
 describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu pattern)', () => {
   let rendered: RenderAppResult | null = null
@@ -49,36 +49,17 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-7901', undefined, {
-      timeout: 15_000
-    })
-    const orderBefore = within(container)
-      .getAllByTestId(/^board-story-\d+$/)
-      .map((el) => Number(el.getAttribute('data-iteration-member')))
-    expect(orderBefore).toEqual([7911, 7912, 7913])
+    const container = await iterationBoard.container(7901, undefined, { timeout: 15_000 })
+    expect(iterationBoard.memberOrder(container)).toEqual([7911, 7912, 7913])
 
-    const source = within(container).getByTestId('board-story-7913') as HTMLLIElement
-    const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
-    const target = within(container).getByTestId('board-story-7911') as HTMLLIElement
+    const source = iterationBoard.storyRow(container, 7913)
+    const sourceGrip = iterationBoard.grip(source)
+    const target = iterationBoard.storyRow(container, 7911)
 
-    const dataStore: Record<string, string> = {}
-    const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
-      {
-        setData: (type: string, value: string) => {
-          dataStore[type] = value
-        },
-        getData: (type: string) => dataStore[type] ?? '',
-        types: [] as unknown as readonly string[],
-        effectAllowed: 'move',
-        dropEffect: 'move'
-      }
-    fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
-    Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
-    fireEvent.dragOver(target, { dataTransfer: dt })
+    const drag = newDragGesture()
+    drag.start(sourceGrip)
+    drag.over(target)
 
-    const orderDuringDrag = within(container)
-      .getAllByTestId(/^board-story-\d+$/)
-      .map((el) => Number(el.getAttribute('data-iteration-member')))
-    expect(orderDuringDrag).toEqual([7913, 7911, 7912])
+    expect(iterationBoard.memberOrder(container)).toEqual([7913, 7911, 7912])
   }, 20_000)
 })

@@ -4,8 +4,8 @@ import './Tabs.css'
 export interface TabDef<TabId extends string> {
   id: TabId
   label: string
-  panelTestId?: string
   tabTestId?: string
+  panelTestId?: string
 }
 
 export interface TabsProps<TabId extends string> {
@@ -49,6 +49,7 @@ export const Tabs = <TabId extends string>({
       {tabs.map((tab) => (
         <article
           key={tab.id}
+          aria-label={tab.label}
           className={`tabs-panel${panelClassName ? ` ${panelClassName}` : ''}`}
           data-test={tab.panelTestId}
           hidden={tab.id !== activeId}

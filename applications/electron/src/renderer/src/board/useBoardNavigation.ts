@@ -35,7 +35,7 @@ export const useBoardNavigation = (
     if (number === null) return
     requestAnimationFrame(() => {
       asideRef.current
-        ?.querySelector<HTMLElement>(`[data-test="board-story-${number}"] .board-story-navigate`)
+        ?.querySelector<HTMLElement>(`.board-story-navigate[aria-label^="Open story #${number} "]`)
         ?.focus()
     })
   }, [])

@@ -7,6 +7,46 @@ export class ChatPage {
     return this.win.locator('[data-test="app-root"]')
   }
 
+  input(): Locator {
+    return this.win.getByRole('textbox', { name: 'chat message' })
+  }
+
+  messageLog(): Locator {
+    return this.win.getByRole('log', { name: 'Chat messages' })
+  }
+
+  connectionState(): Locator {
+    return this.win.getByText(/^(online|reconnecting|offline)$/)
+  }
+
+  connectionWarning(): Locator {
+    return this.win.getByText(/^(connecting|reconnecting)…$/)
+  }
+
+  addresseeMarkers(): Locator {
+    return this.messageLog().getByTitle(/^attention: @/)
+  }
+
+  isearchIndicator(): Locator {
+    return this.win.getByText(/i-search:/)
+  }
+
+  terminalOutput(): Locator {
+    return this.win.getByRole('region', { name: 'terminal output' })
+  }
+
+  filterPill(cls: string): Locator {
+    return this.win.getByRole('checkbox', { name: new RegExp(`^${cls} messages`) })
+  }
+
+  async toggleFilter(cls: string): Promise<void> {
+    await this.filterPill(cls).locator('..').click()
+  }
+
+  filterEmptyHint(): Locator {
+    return this.win.getByText(/All categories muted/i)
+  }
+
   async reactToFirstMessage(emoji: string): Promise<void> {
     const row = this.win.locator('[data-test="message-row"]').first()
     await row.hover()

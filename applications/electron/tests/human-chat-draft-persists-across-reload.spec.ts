@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 test.describe('human-side E2E #476 — persistence-class — chat draft', () => {
   test('typed-but-unsent draft survives window reload, per-channel', async () => {
@@ -12,7 +13,8 @@ test.describe('human-side E2E #476 — persistence-class — chat draft', () => 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0
@@ -24,7 +26,7 @@ test.describe('human-side E2E #476 — persistence-class — chat draft', () => 
 
       await win.reload()
 
-      const textareaAfterReload = win.locator('[data-test="chat-input-textarea"]')
+      const textareaAfterReload = chat.input()
       await expect(textareaAfterReload).toBeVisible()
       await expect(textareaAfterReload).toHaveValue(draftMarker)
 
@@ -46,7 +48,8 @@ test.describe('human-side E2E #476 — persistence-class — chat draft', () => 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0
@@ -59,7 +62,7 @@ test.describe('human-side E2E #476 — persistence-class — chat draft', () => 
 
       await win.reload()
 
-      const textareaAfterReload = win.locator('[data-test="chat-input-textarea"]')
+      const textareaAfterReload = chat.input()
       await expect(textareaAfterReload).toBeVisible()
       await expect(textareaAfterReload).toHaveValue('')
 

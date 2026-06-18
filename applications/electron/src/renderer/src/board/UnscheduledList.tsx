@@ -1,6 +1,7 @@
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
+import { storyNavigateLabel } from './storyNavigateLabel'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
 interface Props {
@@ -38,7 +39,7 @@ const UnscheduledList = ({ stories, open, onToggle, onOpen }: Props): React.JSX.
               <button
                 type="button"
                 className="board-iteration-member-navigate board-story-navigate"
-                aria-label={`open #${story.number} ${story.title}`}
+                aria-label={storyNavigateLabel(story)}
                 onClick={() => onOpen(story.number)}
               />
               <small className="board-story-number">#{story.number}</small>

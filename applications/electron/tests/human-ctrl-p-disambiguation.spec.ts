@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
 
 test.describe('human-side E2E #476 — Ctrl+P context-dependent disambiguation', () => {
   test('Ctrl+P with chat-input focused recalls history (NOT toggle board)', async () => {
@@ -12,13 +14,14 @@ test.describe('human-side E2E #476 — Ctrl+P context-dependent disambiguation',
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const board = win.locator('[data-test="board-region"]')
-      await expect(board).toBeVisible()
+      const board = new BoardPage(win)
+      const chat = new ChatPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const textarea = chat.input()
       const marker = 'CTRL_P_HISTORY_MARKER_BPF24'
       await textarea.fill(marker)
       await textarea.press('Enter')
@@ -26,7 +29,7 @@ test.describe('human-side E2E #476 — Ctrl+P context-dependent disambiguation',
 
       await textarea.press('Control+p')
       await expect(textarea).toHaveValue(marker)
-      await expect(board).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
@@ -46,20 +49,20 @@ test.describe('human-side E2E #476 — Ctrl+P context-dependent disambiguation',
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const board = win.locator('[data-test="board-region"]')
-      await expect(board).toBeVisible()
+      const board = new BoardPage(win)
+      const chat = new ChatPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const titlebar = win.locator('[data-test="titlebar"]')
-      await titlebar.click()
+      await chat.connectionState().click()
 
       await win.keyboard.press('Control+p')
-      await expect(board).toBeHidden()
+      await expect(board.region()).toBeHidden()
 
       await win.keyboard.press('Control+p')
-      await expect(board).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

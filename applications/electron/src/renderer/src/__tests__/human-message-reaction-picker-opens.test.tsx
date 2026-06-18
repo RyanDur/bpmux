@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -7,6 +7,7 @@ import {
   seedMessages,
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
+import { humanMessage } from '../chat/humanMessage.page'
 
 const SEED: SeedMessage[] = [
   {
@@ -34,28 +35,20 @@ describe('human-side E2E #476 — direct-action — message reaction picker', ()
 
     rendered = renderApp()
 
-    await rendered.findByText(/reactable test message/, undefined, { timeout: 15_000 })
+    await humanMessage.waitForText(/reactable test message/)
 
-    const addButton = (await rendered.findAllByTestId('reaction-add-first'))[0] as HTMLElement
-    expect(addButton.getAttribute('aria-expanded')).toBe('false')
+    const addButton = await humanMessage.reactionAddButton()
+    expect(humanMessage.reactionPickerOpen(addButton)).toBe(false)
 
-    addButton.click()
-    await waitFor(() => expect(addButton.getAttribute('aria-expanded')).toBe('true'))
+    await humanMessage.openReactionPicker(addButton)
+    await waitFor(() => expect(humanMessage.reactionPickerOpen(addButton)).toBe(true))
 
-    const picker = await rendered.findByTestId('reaction-picker', undefined, {
-      timeout: 5_000
-    })
-    expect(picker).toBeTruthy()
+    expect(await humanMessage.reactionPicker()).toBeTruthy()
 
-    const thumbsUp = await rendered.findByTestId('reaction-picker-👍', undefined, {
-      timeout: 5_000
-    })
-    ;(thumbsUp as HTMLElement).click()
+    await humanMessage.pickReaction('👍')
 
-    await waitFor(() => {
-      expect(screen.queryAllByTestId('reaction-picker').length).toBe(0)
-    })
+    await waitFor(() => expect(humanMessage.reactionPickerCount()).toBe(0))
 
-    await rendered.findByTestId('reaction-pill-👍', undefined, { timeout: 15_000 })
+    await humanMessage.reactionPill('👍')
   }, 20_000)
 })

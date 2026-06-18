@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
+import { SidebarPage } from './pages/sidebarPage'
 
 // #463: when Ryan-as-viewer selects a group view (e.g., dev+designer),
 // agent-only conversations within that group must be visible — Ryan
@@ -51,17 +53,19 @@ test.describe('human-side E2E #463 — group view shows agent-only history', () 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+      const chat = new ChatPage(win)
+      const sidebar = new SidebarPage(win)
+      await expect(sidebar.nav()).toBeVisible()
       await waitForMessagesLoaded(win, 'designer broadcast to seed direct-role')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const groupButton = win.locator('[data-test^="sidebar-group-"]').first()
+      const groupButton = sidebar.groupChannels().first()
       await expect(groupButton).toBeVisible({ timeout: 20000 })
       await groupButton.click()
 
-      const list = win.locator('[data-test="message-list"]')
+      const list = chat.messageLog()
       await expect(list).toContainText('AGENT_ONLY_GROUP_HISTORY_BPF463', {
         timeout: 10000
       })

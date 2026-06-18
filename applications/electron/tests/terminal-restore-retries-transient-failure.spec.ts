@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchIsolatedWithWindow } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('terminal-restore resilience (#1751) — a transient /api/terminals failure is retried', () => {
   test('a first-attempt network failure is retried and does NOT surface a restore error', async () => {
@@ -27,7 +28,7 @@ test.describe('terminal-restore resilience (#1751) — a transient /api/terminal
       })
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(new BoardPage(win).region()).toBeVisible()
 
       await expect.poll(() => calls, { timeout: 8000 }).toBeGreaterThanOrEqual(2)
       expect(restoreErrors).toEqual([])

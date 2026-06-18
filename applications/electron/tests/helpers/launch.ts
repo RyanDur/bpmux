@@ -435,8 +435,9 @@ export const waitForBoardLoaded = async (win: Page): Promise<void> => {
 // history actually arriving — message-list visibility alone races
 // against hydration under workers=2 contention.
 export const waitForMessagesLoaded = async (win: Page, anchorText?: string): Promise<void> => {
-  await expect(win.locator('[data-test="message-list"]')).toBeVisible()
+  const log = win.getByRole('log', { name: 'Chat messages' })
+  await expect(log).toBeVisible()
   if (anchorText) {
-    await expect(win.locator('[data-test="message-list"]')).toContainText(anchorText)
+    await expect(log).toContainText(anchorText)
   }
 }

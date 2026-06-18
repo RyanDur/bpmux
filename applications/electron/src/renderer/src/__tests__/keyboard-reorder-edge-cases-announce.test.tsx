@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor, within } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
+import { keyboardReorder } from '../board/keyboardReorder.page'
 
 describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR users', () => {
   let rendered: RenderAppResult | null = null
@@ -44,18 +45,13 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-8201', undefined, {
-      timeout: 15_000
-    })
-    const alphaRow = within(container).getByTestId('board-story-8211') as HTMLLIElement
-    const alphaButton = within(alphaRow).getByTestId(
-      'board-iteration-member-button'
-    ) as HTMLButtonElement
+    const container = await keyboardReorder.iterationCard(8201, { timeout: 15_000 })
+    const alphaButton = keyboardReorder.memberButton(container, 8211)
 
     const user = userEvent.setup()
     await pressReorderShortcut(user, alphaButton, 'ArrowUp')
 
-    const announce = rendered.getByTestId('board-reorder-announce')
+    const announce = keyboardReorder.announce()
     await waitFor(
       () => {
         expect(announce.textContent).toBe(
@@ -108,18 +104,13 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-8301', undefined, {
-      timeout: 15_000
-    })
-    const bravoRow = within(container).getByTestId('board-story-8312') as HTMLLIElement
-    const bravoButton = within(bravoRow).getByTestId(
-      'board-iteration-member-button'
-    ) as HTMLButtonElement
+    const container = await keyboardReorder.iterationCard(8301, { timeout: 15_000 })
+    const bravoButton = keyboardReorder.memberButton(container, 8312)
 
     const user = userEvent.setup()
     await pressReorderShortcut(user, bravoButton, 'ArrowDown')
 
-    const announce = rendered.getByTestId('board-reorder-announce')
+    const announce = keyboardReorder.announce()
     await waitFor(
       () => {
         expect(announce.textContent).toBe(

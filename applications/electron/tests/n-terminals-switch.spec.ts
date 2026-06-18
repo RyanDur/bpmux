@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1595 N terminals — spawn two, switch, and neither is disposed (scrollback/running-state persist)', () => {
   test('＋ spawns distinct id-keyed terminals; switching toggles active and keeps BOTH mounted (not disposed)', async () => {
@@ -9,36 +10,35 @@ test.describe('#1595 N terminals — spawn two, switch, and neither is disposed 
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
 
-      await addTerminal.click()
-      const firstActive = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      await term.addButton().click()
+      const firstActive = term.activePane()
       await expect(firstActive).toBeVisible({ timeout: 10000 })
-      const term1Slot = await firstActive.getAttribute('data-test')
+      const term1Key = (await firstActive.getAttribute('data-terminal-key')) ?? ''
 
-      await addTerminal.click()
-      await expect(win.locator('[data-test="sidebar-terminal-item"]')).toHaveCount(2)
+      await term.addButton().click()
+      await expect(term.items()).toHaveCount(2)
 
-      const secondActive = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      const secondActive = term.activePane()
       await expect(secondActive).toBeVisible()
-      const term2Slot = await secondActive.getAttribute('data-test')
-      expect(term2Slot).not.toBe(term1Slot)
+      const term2Key = (await secondActive.getAttribute('data-terminal-key')) ?? ''
+      expect(term2Key).not.toBe(term1Key)
 
-      const term1 = win.locator(`[data-test="${term1Slot}"]`)
+      const term1 = term.pane(term1Key)
       await expect(term1).toBeAttached()
       await expect(term1).toHaveAttribute('data-active', 'false')
 
-      await win.locator('[data-test="sidebar-terminal-item"]').nth(0).click()
+      await term.item(1).click()
       await expect(term1).toHaveAttribute('data-active', 'true')
 
-      const term2 = win.locator(`[data-test="${term2Slot}"]`)
+      const term2 = term.pane(term2Key)
       await expect(term2).toBeAttached()
       await expect(term2).toHaveAttribute('data-active', 'false')
 
-      const items = win.locator('[data-test="sidebar-terminal-item"]')
-      const label1 = (await items.nth(0).textContent()) ?? ''
-      const label2 = (await items.nth(1).textContent()) ?? ''
+      const label1 = (await term.item(1).textContent()) ?? ''
+      const label2 = (await term.item(2).textContent()) ?? ''
       expect(label1).toContain('1 · ')
       expect(label2).toContain('2 · ')
       expect(label1).not.toBe(label2)
@@ -55,14 +55,14 @@ test.describe('#1595 N terminals — spawn two, switch, and neither is disposed 
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
 
-      await addTerminal.click()
-      const firstActive = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      await term.addButton().click()
+      const firstActive = term.activePane()
       await expect(firstActive).toBeVisible({ timeout: 10000 })
-      const term1Slot = await firstActive.getAttribute('data-test')
-      const term1 = win.locator(`[data-test="${term1Slot}"]`)
+      const term1Key = (await firstActive.getAttribute('data-terminal-key')) ?? ''
+      const term1 = term.pane(term1Key)
 
       await firstActive.click()
       await win.keyboard.type('echo READY_A')
@@ -77,14 +77,14 @@ test.describe('#1595 N terminals — spawn two, switch, and neither is disposed 
       await win.keyboard.type('for i in 1 2 3 4 5 6; do echo BG_LINE_A_$i; sleep 0.3; done')
       await win.keyboard.press('Enter')
 
-      await addTerminal.click()
-      const secondActive = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      await term.addButton().click()
+      const secondActive = term.activePane()
       await expect(secondActive).toBeVisible()
       await expect(term1).toHaveAttribute('data-active', 'false')
 
       await win.waitForTimeout(2600)
 
-      await win.locator('[data-test="sidebar-terminal-item"]').nth(0).click()
+      await term.item(1).click()
       await expect(term1).toHaveAttribute('data-active', 'true')
 
       await expect

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { screen } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -7,6 +6,7 @@ import {
   seedMessages,
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
+import { keyboardReorder } from '../board/keyboardReorder.page'
 
 const SEED_MESSAGES: SeedMessage[] = [
   {
@@ -40,13 +40,13 @@ describe('human-side E2E #476 — read-class — message list (RTL+real-backend 
 
     rendered = renderApp()
 
-    await rendered.findByText(/SEED_CHAT_MARKER_BPF13_FIRST/, undefined, { timeout: 15_000 })
-    await rendered.findByText(/SEED_CHAT_MARKER_BPF13_SECOND/, undefined, { timeout: 15_000 })
+    await keyboardReorder.findText(/SEED_CHAT_MARKER_BPF13_FIRST/, { timeout: 15_000 })
+    await keyboardReorder.findText(/SEED_CHAT_MARKER_BPF13_SECOND/, { timeout: 15_000 })
 
-    const list = screen.getByTestId('message-list')
+    const list = keyboardReorder.messageList()
     expect(list).toBeTruthy()
 
-    const rows = screen.getAllByTestId('message-row')
+    const rows = keyboardReorder.messageRows()
     expect(rows.length).toBeGreaterThanOrEqual(2)
   }, 20_000)
 })

@@ -4,6 +4,7 @@ import StoryBadge from './StoryBadge'
 import { deriveBadge } from './StoryBadge.utils'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { type GripDragProps, type RowDragProps } from './useDragReorder'
+import { storyNavigateLabel } from './storyNavigateLabel'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
 export interface StoryRowProps {
@@ -44,7 +45,7 @@ const StoryRow = ({
     onKeyboardReorder !== undefined
       ? ' — press Ctrl+Shift+Up to move up, Ctrl+Shift+Down to move down'
       : ''
-  const ariaLabel = `Story #${story.number} ${story.title}, position ${position} of ${total}${reorderHint}`
+  const ariaLabel = `${storyNavigateLabel(story)}, position ${position} of ${total}${reorderHint}`
   const parentEpic = story.parent_epic
   const epicAriaLabel =
     parentEpicTitle !== undefined

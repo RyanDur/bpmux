@@ -176,25 +176,19 @@ const AppShell = ({
         <dialog
           ref={confirmDialogRef}
           className="confirm-close"
-          data-test="confirm-close-dialog"
+          aria-label="Close terminal?"
           onCancel={clearConfirmClose}
         >
           <p className="confirm-close-message">
             A process is running in this terminal. Close it anyway?
           </p>
           <form method="dialog" className="confirm-close-actions">
-            <button
-              type="button"
-              className="confirm-close-action"
-              data-test="confirm-close-cancel"
-              onClick={clearConfirmClose}
-            >
+            <button type="button" className="confirm-close-action" onClick={clearConfirmClose}>
               cancel
             </button>
             <button
               type="button"
               className="confirm-close-action confirm-close-confirm"
-              data-test="confirm-close-confirm"
               onClick={confirmCloseTerminal}
             >
               close anyway

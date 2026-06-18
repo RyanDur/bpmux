@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor, within } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
 
 describe('#1339 Sc1 user-axis — drop on displaced source row still posts label mutation', () => {
   let rendered: RenderAppResult | null = null
@@ -49,31 +50,18 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-9501', undefined, {
-      timeout: 15_000
-    })
-    const source = within(container).getByTestId('board-story-9513') as HTMLLIElement
-    const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
-    const target = within(container).getByTestId('board-story-9511') as HTMLLIElement
+    const container = await iterationBoard.container(9501, undefined, { timeout: 15_000 })
+    const source = iterationBoard.storyRow(container, 9513)
+    const sourceGrip = iterationBoard.grip(source)
+    const target = iterationBoard.storyRow(container, 9511)
     expect(source).toBeTruthy()
     expect(sourceGrip).toBeTruthy()
     expect(target).toBeTruthy()
 
-    const dataStore: Record<string, string> = {}
-    const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
-      {
-        setData: (type: string, value: string) => {
-          dataStore[type] = value
-        },
-        getData: (type: string) => dataStore[type] ?? '',
-        types: [] as unknown as readonly string[],
-        effectAllowed: 'move',
-        dropEffect: 'move'
-      }
-    fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
-    Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
-    fireEvent.dragOver(target, { dataTransfer: dt })
-    fireEvent.drop(source, { dataTransfer: dt })
+    const drag = newDragGesture()
+    drag.start(sourceGrip)
+    drag.over(target)
+    drag.drop(source)
 
     expect(source.getAttribute('data-dragging')).not.toBe('true')
 

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 test.describe('human-side E2E #476 — cross-process — typed message reaches other agent', () => {
   test('human-typed broadcast appears in /api/messages?as=<peer-role> visibility-filter', async () => {
@@ -12,7 +13,8 @@ test.describe('human-side E2E #476 — cross-process — typed message reaches o
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0
@@ -23,7 +25,7 @@ test.describe('human-side E2E #476 — cross-process — typed message reaches o
       await textarea.press('Enter')
       await expect(textarea).toHaveValue('')
 
-      const list = win.locator('[data-test="message-list"]')
+      const list = chat.messageLog()
       await expect(list).toContainText(broadcastMarker, { timeout: 10000 })
 
       for (const peer of ['dev', 'pm', 'designer']) {

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 test.describe('human-side E2E #476 — direct-action — chat input Enter to send', () => {
   test('typing text + pressing Enter posts the message and clears the input', async () => {
@@ -12,7 +13,8 @@ test.describe('human-side E2E #476 — direct-action — chat input Enter to sen
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0
@@ -26,7 +28,7 @@ test.describe('human-side E2E #476 — direct-action — chat input Enter to sen
 
       await expect(textarea).toHaveValue('')
 
-      const list = win.locator('[data-test="message-list"]')
+      const list = chat.messageLog()
       await expect(list).toContainText(sendMarker, { timeout: 10000 })
 
       expect(consoleErrors).toEqual([])
@@ -47,7 +49,8 @@ test.describe('human-side E2E #476 — direct-action — chat input Enter to sen
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0

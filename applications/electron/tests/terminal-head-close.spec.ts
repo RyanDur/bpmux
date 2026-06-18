@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1596 close/kill (S5) — the term-head close (✕ in the header)', () => {
   test('the ✕ in the terminal header tears down a ready terminal (the second close affordance)', async () => {
@@ -9,21 +11,20 @@ test.describe('#1596 close/kill (S5) — the term-head close (✕ in the header)
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      const chat = new ChatPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const item = win.locator('[data-test="sidebar-terminal-item"]')
-      await expect(item).toHaveAttribute('data-state', 'ready', { timeout: 15000 })
+      await expect(term.output()).toBeVisible({ timeout: 15000 })
 
-      const headerClose = win.locator('[data-test="terminal-header-close"]')
-      await expect(headerClose).toBeVisible()
+      await expect(term.headerClose()).toBeVisible()
       await win.waitForTimeout(2000)
-      await headerClose.click()
+      await term.headerClose().click()
 
-      await expect(item).toHaveCount(0, { timeout: 10000 })
-      await expect(win.locator('[data-test^="terminal-slot-"]')).toHaveCount(0)
-      await expect(win.locator('[data-test="message-list"]')).toBeVisible()
+      await expect(term.items()).toHaveCount(0, { timeout: 10000 })
+      await expect(term.output()).toHaveCount(0)
+      await expect(chat.messageLog()).toBeVisible()
     } finally {
       await app.close()
       await mockGh.close()

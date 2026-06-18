@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
 import { waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -9,6 +8,7 @@ import {
   seedRoster,
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
+import { humanMessage } from '../chat/humanMessage.page'
 
 const SEED: SeedMessage[] = [
   {
@@ -43,25 +43,19 @@ describe('human-side E2E #476 — direct-action — message @mention click', () 
 
     rendered = renderApp()
 
-    await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
+    await humanMessage.waitForText(/please look at this/)
 
-    const initialAll = await rendered.findByTestId('sidebar-all', undefined, {
-      timeout: 15_000
-    })
+    const initialAll = await humanMessage.sidebarAll()
     expect(initialAll.getAttribute('aria-current')).toBe('true')
 
-    await rendered.findAllByTestId('message-mention', undefined, { timeout: 15_000 })
+    await humanMessage.mentions()
 
-    const r = rendered
-    const user = userEvent.setup()
-    await user.click(r.getAllByTestId('message-mention')[0])
+    await humanMessage.clickFirstMention()
 
     await waitFor(
       () => {
-        const dev = r.getByTestId('sidebar-direct-dev')
-        const all = r.getByTestId('sidebar-all')
-        expect(dev.getAttribute('aria-current')).toBe('true')
-        expect(all.getAttribute('aria-current')).toBeNull()
+        expect(humanMessage.directChannelCurrent('dev')).toBe('true')
+        expect(humanMessage.allChannelCurrent()).toBeNull()
       },
       { timeout: 15_000 }
     )

@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1606 bash OSC-7 non-clobbering — a bash terminal whose own .bashrc sets PROMPT_COMMAND keeps BOTH the live-cwd header AND the user prompt-command on cd', () => {
   test('with /bin/bash and a user PROMPT_COMMAND in .bashrc, cd drives the header to follow (our OSC-7 survived the user rc) while the user prompt-command still runs (our append did not clobber it)', async () => {
@@ -16,15 +17,15 @@ test.describe('#1606 bash OSC-7 non-clobbering — a bash terminal whose own .ba
       extraEnv: { BPMUX_ROOM_AGENT: bash, HOME: home }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const activeTerminal = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
       await activeTerminal.click()
 
-      const activeHeader = activeTerminal.locator('[data-test="terminal-header"]')
+      const activeHeader = term.headerStatus()
 
       await expect
         .poll(

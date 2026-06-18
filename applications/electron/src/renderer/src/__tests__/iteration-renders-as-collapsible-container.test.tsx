@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor, within } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard } from '../board/iterationBoard.page'
 
 describe('#1297 — iteration renders as a collapsible container in the icebox', () => {
   let rendered: RenderAppResult | null = null
@@ -36,11 +37,9 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-7101', undefined, {
-      timeout: 15_000
-    })
+    const container = await iterationBoard.container(7101, undefined, { timeout: 15_000 })
     expect(container.tagName.toLowerCase()).toBe('details')
-    const summary = within(container).getByTestId('board-iteration-summary')
+    const summary = iterationBoard.summary(container)
     expect(summary).toBeTruthy()
     expect(summary?.textContent).toContain('Cassiopeia')
   }, 25_000)
@@ -68,12 +67,12 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
 
     rendered = renderApp()
 
-    const container = (await rendered.findByTestId('board-iteration-7102', undefined, {
+    const container = (await iterationBoard.container(7102, undefined, {
       timeout: 15_000
     })) as HTMLDetailsElement
 
     const initiallyOpen = container.open
-    const summary = within(container).getByTestId('board-iteration-summary')
+    const summary = iterationBoard.summary(container)
     expect(summary).toBeTruthy()
     const user = userEvent.setup()
     await user.click(summary as HTMLElement)
@@ -81,7 +80,7 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
 
     rendered.cleanup()
     rendered = renderApp()
-    const remounted = (await rendered.findByTestId('board-iteration-7102', undefined, {
+    const remounted = (await iterationBoard.container(7102, undefined, {
       timeout: 15_000
     })) as HTMLDetailsElement
     expect(remounted.open).toBe(!initiallyOpen)
@@ -103,9 +102,7 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
 
     rendered = renderApp()
 
-    const unscheduled = await rendered.findByTestId('board-iteration-unscheduled', undefined, {
-      timeout: 15_000
-    })
+    const unscheduled = await iterationBoard.unscheduled(undefined, { timeout: 15_000 })
     expect(unscheduled.tagName.toLowerCase()).toBe('details')
     expect(unscheduled.textContent).toContain('Unscheduled')
     expect(unscheduled.getAttribute('data-iteration-kind')).toBe('unscheduled')

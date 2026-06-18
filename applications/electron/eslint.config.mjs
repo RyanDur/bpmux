@@ -127,7 +127,7 @@ export default defineConfig(
     rules: { 'jsx-a11y/no-autofocus': 'off' }
   },
   {
-    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
     plugins: {
       'testing-library': eslintPluginTestingLibrary,
       'jest-dom': eslintPluginJestDom

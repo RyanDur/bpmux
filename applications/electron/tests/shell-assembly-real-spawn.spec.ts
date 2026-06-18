@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1466/#1595 real-$SHELL via ＋ — spawning a terminal from the terminals section runs a REAL shell whose executed output renders', () => {
   test('clicking ＋ spawns a real $SHELL terminal: a typed command executes and its output renders (not a printf double, not a blank pane)', async () => {
@@ -9,11 +10,11 @@ test.describe('#1466/#1595 real-$SHELL via ＋ — spawning a terminal from the 
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const activeTerminal = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
       await activeTerminal.click()
 

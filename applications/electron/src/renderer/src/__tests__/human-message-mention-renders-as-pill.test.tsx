@@ -6,6 +6,7 @@ import {
   seedMessages,
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
+import { humanMessage } from '../chat/humanMessage.page'
 
 const SEED: SeedMessage[] = [
   {
@@ -39,12 +40,10 @@ describe('human-side E2E #476 — read-class — message @mention pill', () => {
 
     rendered = renderApp()
 
-    await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
+    await humanMessage.waitForText(/please look at this/)
 
-    const mentions = await rendered.findAllByTestId('message-mention', undefined, {
-      timeout: 15_000
-    })
+    const mentions = await humanMessage.mentions()
     expect(mentions.length).toBeGreaterThanOrEqual(1)
-    expect(mentions[0].textContent).toContain('@dev')
+    expect(humanMessage.mentionText(mentions[0])).toContain('@dev')
   }, 20_000)
 })

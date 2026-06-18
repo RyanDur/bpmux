@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { keyboardReorder } from '../board/keyboardReorder.page'
 
 describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
   let rendered: RenderAppResult | null = null
@@ -36,29 +37,27 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
 
     rendered = renderApp()
 
-    const row = await rendered.findByTestId('board-story-8811', undefined, {
-      timeout: 15_000
-    })
+    const row = await keyboardReorder.storyRow(8811, { timeout: 15_000 })
     expect(row.tagName.toLowerCase()).toBe('li')
     expect(row.getAttribute('draggable')).not.toBe('true')
 
-    const grip = row.querySelector('[data-test="story-grip"]') as HTMLElement
+    const grip = keyboardReorder.grip(row) as HTMLElement
     expect(grip).toBeTruthy()
     expect(grip.getAttribute('draggable')).toBe('true')
     expect(grip.getAttribute('aria-label')).toMatch(/drag.*8811/i)
 
-    expect(rendered.queryByTestId('board-drill-in')).toBeNull()
+    expect(keyboardReorder.drillIn()).toBeNull()
 
     const user = userEvent.setup()
     await user.click(grip)
-    expect(rendered.queryByTestId('board-drill-in')).toBeNull()
+    expect(keyboardReorder.drillIn()).toBeNull()
 
-    const button = row.querySelector('.board-story-navigate') as HTMLElement
+    const button = keyboardReorder.navigate(row) as HTMLElement
     expect(button).toBeTruthy()
     await user.click(button)
     await waitFor(
       () => {
-        expect(rendered!.queryByTestId('board-drill-in')).toBeTruthy()
+        expect(keyboardReorder.drillIn()).toBeTruthy()
       },
       { timeout: 5_000 }
     )
@@ -88,10 +87,8 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
 
     rendered = renderApp()
 
-    const row = await rendered.findByTestId('board-story-8812', undefined, {
-      timeout: 15_000
-    })
-    const grip = row.querySelector('[data-test="story-grip"]')
+    const row = await keyboardReorder.storyRow(8812, { timeout: 15_000 })
+    const grip = keyboardReorder.grip(row)
     expect(grip).toBeNull()
   }, 30_000)
 })

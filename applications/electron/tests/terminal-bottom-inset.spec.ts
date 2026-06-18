@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1611 terminal bottom inset — the bottom row is not clipped past the screen edge', () => {
   test('with the terminal filled past the bottom, the xterm rows fit inside the screen (no row cut by overflow:hidden)', async () => {
@@ -9,10 +10,10 @@ test.describe('#1611 terminal bottom inset — the bottom row is not clipped pas
       extraEnv: { BPMUX_ROOM_AGENT: realShell }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
-      const active = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
+      const active = term.output()
       await expect(active).toBeVisible({ timeout: 10000 })
       await active.click()
 

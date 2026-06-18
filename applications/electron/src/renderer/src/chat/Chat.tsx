@@ -90,7 +90,7 @@ const Chat = ({
   return (
     <section className="chat" data-test="chat-region">
       {showReconnect && (
-        <output className="chat-warning" aria-live="polite" data-test="chat-warning">
+        <output className="chat-warning" aria-live="polite">
           {status === 'connecting' ? 'connecting…' : 'reconnecting…'}
         </output>
       )}
@@ -100,7 +100,7 @@ const Chat = ({
             key={t.key}
             className="terminal-layer"
             data-active={activeKey === t.key}
-            data-test={`terminal-slot-${t.key}`}
+            data-terminal-key={t.key}
           >
             {t.state === 'ready' && t.id ? (
               <TerminalView
@@ -110,11 +110,7 @@ const Chat = ({
                 onClose={() => onCloseTerminal(t.key)}
               />
             ) : (
-              <section
-                className="terminal-state"
-                data-test={`terminal-state-${t.key}`}
-                data-state={t.state}
-              >
+              <section className="terminal-state" data-state={t.state}>
                 <p className="terminal-state-label">
                   {t.state === 'spawning'
                     ? 'spawning…'
@@ -127,7 +123,6 @@ const Chat = ({
                     <button
                       type="button"
                       className="terminal-state-action"
-                      data-test={`terminal-restart-${t.key}`}
                       onClick={() => onRestartTerminal(t.key)}
                     >
                       {t.state === 'exited' ? 'restart' : 'retry'}
@@ -135,7 +130,6 @@ const Chat = ({
                     <button
                       type="button"
                       className="terminal-state-action terminal-state-action--close"
-                      data-test={`terminal-pane-close-${t.key}`}
                       onClick={() => onCloseTerminal(t.key)}
                     >
                       close

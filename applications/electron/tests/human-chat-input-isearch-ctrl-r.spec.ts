@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 test.describe('human-side E2E #476 — direct-action — chat input incremental search', () => {
   test('Ctrl+R activates i-search; typing matches a prior message', async () => {
@@ -12,7 +13,8 @@ test.describe('human-side E2E #476 — direct-action — chat input incremental 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0
@@ -24,7 +26,7 @@ test.describe('human-side E2E #476 — direct-action — chat input incremental 
       await expect(textarea).toHaveValue('')
 
       await textarea.press('Control+r')
-      const isearch = win.locator('[data-test="chat-input-isearch"]')
+      const isearch = chat.isearchIndicator()
       await expect(isearch).toBeVisible()
       await expect(isearch).toContainText('i-search:')
 
@@ -51,7 +53,8 @@ test.describe('human-side E2E #476 — direct-action — chat input incremental 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0
@@ -61,7 +64,7 @@ test.describe('human-side E2E #476 — direct-action — chat input incremental 
       await textarea.press('Enter')
 
       await textarea.press('Control+r')
-      const isearch = win.locator('[data-test="chat-input-isearch"]')
+      const isearch = chat.isearchIndicator()
       await expect(isearch).toBeVisible()
 
       await textarea.pressSequentially('zzznotpresent')

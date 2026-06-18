@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
 
 describe('#1339 — drag-across-iteration retags member with new iteration prefix', () => {
   let rendered: RenderAppResult | null = null
@@ -48,34 +49,19 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
 
     rendered = renderApp()
 
-    const velaContainer = await rendered.findByTestId('board-iteration-7701', undefined, {
-      timeout: 15_000
-    })
-    const cygnusContainer = await rendered.findByTestId('board-iteration-7702', undefined, {
-      timeout: 15_000
-    })
-    const source = velaContainer.querySelector('[data-iteration-member="7711"]') as HTMLLIElement
-    const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
-    const target = cygnusContainer.querySelector('[data-iteration-member="7721"]') as HTMLLIElement
+    const velaContainer = await iterationBoard.container(7701, undefined, { timeout: 15_000 })
+    const cygnusContainer = await iterationBoard.container(7702, undefined, { timeout: 15_000 })
+    const source = iterationBoard.memberRow(velaContainer, 7711)
+    const sourceGrip = iterationBoard.grip(source)
+    const target = iterationBoard.memberRow(cygnusContainer, 7721)
     expect(source).toBeTruthy()
     expect(sourceGrip).toBeTruthy()
     expect(target).toBeTruthy()
 
-    const dataStore: Record<string, string> = {}
-    const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
-      {
-        setData: (type: string, value: string) => {
-          dataStore[type] = value
-        },
-        getData: (type: string) => dataStore[type] ?? '',
-        types: [] as unknown as readonly string[],
-        effectAllowed: 'move',
-        dropEffect: 'move'
-      }
-    fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
-    Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
-    fireEvent.dragOver(target, { dataTransfer: dt })
-    fireEvent.drop(target, { dataTransfer: dt })
+    const drag = newDragGesture()
+    drag.start(sourceGrip)
+    drag.over(target)
+    drag.drop(target)
 
     await waitFor(
       async () => {

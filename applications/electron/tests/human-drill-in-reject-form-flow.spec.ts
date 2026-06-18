@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // #1127 sub-slice 3: drill-in family — reject form gating. Setup
 // chain: create→start→deliver→pass_desk_check lands story in
@@ -14,6 +16,8 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
   test('reject button opens textarea + send is gated on non-empty trimmed note', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
+      const board = new BoardPage(win)
+      const drill = new DrillInPage(win)
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
       win.on('console', (m) => {
@@ -21,7 +25,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -65,29 +69,21 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       expect(passResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-
-      const storyRow = win.locator(
-        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
-      )
-      await expect(storyRow).toContainText('reject-form-target')
+      await expect(board.region()).toBeVisible()
+      await expect(board.storyNavigate(1)).toHaveAccessibleName(/reject-form-target/)
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await storyRow.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
-      await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+      await board.openStory(1)
+      await expect(drill.panel()).toBeVisible()
 
-      await win.locator('[data-test="drill-in-reject"]').click()
+      await drill.rejectButton().click()
 
-      const noteInput = win.locator('[data-test="drill-in-reject-note"]')
+      const noteInput = drill.rejectNote()
       await expect(noteInput).toBeVisible()
-      await expect(win.locator('#drill-in-reject-title')).toHaveText('Reject story')
-      await expect(win.locator('dialog.drill-in-reject-form')).toHaveAttribute(
-        'aria-labelledby',
-        'drill-in-reject-title'
-      )
-      const sendButton = win.locator('[data-test="drill-in-reject-send"]')
+      await expect(drill.rejectDialog()).toBeVisible()
+      const sendButton = drill.rejectSend()
       await expect(sendButton).toBeDisabled()
 
       await noteInput.fill('needs rework — accessibility regression on the touched surface')
@@ -107,6 +103,8 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
   test('#498 native dialog migration: showModal opens form, escape closes + restores focus, cancel does NOT fire reject', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
+      const board = new BoardPage(win)
+      const drill = new DrillInPage(win)
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
       win.on('console', (m) => {
@@ -114,7 +112,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       const acceptanceTestPath =
         'applications/electron/tests/human-drill-in-reject-form-flow.spec.ts'
@@ -147,24 +145,21 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
         'designer'
       )
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const storyRow = win.locator(
-        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
-      )
-      await storyRow.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
-      await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+      await expect(board.storyNavigate(1)).toHaveAccessibleName(/dialog-migration-target/)
+      await board.openStory(1)
+      await expect(drill.panel()).toBeVisible()
 
-      const rejectButton = win.locator('[data-test="drill-in-reject"]')
-      await rejectButton.click()
+      await drill.rejectButton().click()
 
-      const dialog = win.locator('dialog.drill-in-reject-form')
+      const dialog = drill.rejectDialog()
       await expect(dialog).toHaveAttribute('open', '')
 
-      const noteInput = win.locator('[data-test="drill-in-reject-note"]')
+      const noteInput = drill.rejectNote()
       await expect(noteInput).toBeVisible()
       await expect(noteInput).toBeFocused()
 
@@ -218,8 +213,8 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       ).toHaveAttribute('open', '')
 
       await noteInput.fill('cancel-path test note')
-      await win.locator('dialog.drill-in-reject-form button:has-text("Cancel")').click()
-      await expect(dialog).not.toHaveAttribute('open', '')
+      await drill.cancelReject().click()
+      await expect(drill.rejectDialog()).toHaveCount(0)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

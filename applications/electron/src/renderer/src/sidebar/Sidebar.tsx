@@ -177,9 +177,7 @@ const Sidebar = ({
       <section className="sidebar-section">
         <h3 className="sidebar-heading">groups</h3>
         {partialGroups.length === 0 ? (
-          <p className="sidebar-empty" data-test="sidebar-groups-empty">
-            none yet
-          </p>
+          <p className="sidebar-empty">none yet</p>
         ) : (
           partialGroups.map((names) => {
             const key = groupKey(names)

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { screen } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -7,6 +6,7 @@ import {
   seedMessages,
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
+import { humanMessage } from '../chat/humanMessage.page'
 
 const GROUPED_SEED: SeedMessage[] = [
   {
@@ -55,15 +55,11 @@ describe('human-side E2E #476 — read-class — message grouping 5-min threshol
 
     rendered = renderApp()
 
-    await rendered.findByText(/GROUPED_FIRST_MARKER_BPF18/, undefined, { timeout: 15_000 })
-    await rendered.findByText(/GROUPED_SECOND_MARKER_BPF18/, undefined, { timeout: 15_000 })
+    await humanMessage.waitForText(/GROUPED_FIRST_MARKER_BPF18/)
+    await humanMessage.waitForText(/GROUPED_SECOND_MARKER_BPF18/)
 
-    const list = screen.getByTestId('message-list')
-
-    const firstRows = list.querySelectorAll('.message-row--first')
-    const groupedRows = list.querySelectorAll('.message-row--grouped')
-    expect(firstRows.length).toBe(1)
-    expect(groupedRows.length).toBe(1)
+    expect(humanMessage.firstRowCount()).toBe(1)
+    expect(humanMessage.groupedRowCount()).toBe(1)
   }, 20_000)
 
   it('two same-author chat messages 6min apart render as two first-rows, not grouped', async () => {
@@ -75,13 +71,9 @@ describe('human-side E2E #476 — read-class — message grouping 5-min threshol
 
     rendered = renderApp()
 
-    await rendered.findByText(/NONGROUPED_SECOND_MARKER_BPF18/, undefined, { timeout: 15_000 })
+    await humanMessage.waitForText(/NONGROUPED_SECOND_MARKER_BPF18/)
 
-    const list = screen.getByTestId('message-list')
-
-    const firstRows = list.querySelectorAll('.message-row--first')
-    const groupedRows = list.querySelectorAll('.message-row--grouped')
-    expect(firstRows.length).toBe(2)
-    expect(groupedRows.length).toBe(0)
+    expect(humanMessage.firstRowCount()).toBe(2)
+    expect(humanMessage.groupedRowCount()).toBe(0)
   }, 20_000)
 })

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 test.describe('human-side E2E #476 — direct-action — chat input addressee parsing', () => {
   test('text starting @<role> renders the addressee marker on the sent message', async () => {
@@ -12,7 +13,8 @@ test.describe('human-side E2E #476 — direct-action — chat input addressee pa
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0
@@ -22,10 +24,10 @@ test.describe('human-side E2E #476 — direct-action — chat input addressee pa
       await textarea.press('Enter')
       await expect(textarea).toHaveValue('')
 
-      const list = win.locator('[data-test="message-list"]')
+      const list = chat.messageLog()
       await expect(list).toContainText('addressee parsing test marker BPF15', { timeout: 10000 })
 
-      const addresseeMarker = list.locator('.message-addressee').first()
+      const addresseeMarker = chat.addresseeMarkers().first()
       await expect(addresseeMarker).toBeVisible()
       await expect(addresseeMarker).toHaveText('@dev')
 
@@ -47,7 +49,8 @@ test.describe('human-side E2E #476 — direct-action — chat input addressee pa
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
+      const chat = new ChatPage(win)
+      const textarea = chat.input()
       await expect(textarea).toBeVisible()
 
       consoleErrors.length = 0
@@ -57,11 +60,10 @@ test.describe('human-side E2E #476 — direct-action — chat input addressee pa
       await textarea.fill(marker)
       await textarea.press('Enter')
 
-      const list = win.locator('[data-test="message-list"]')
+      const list = chat.messageLog()
       await expect(list).toContainText(marker, { timeout: 10000 })
 
-      const addresseeMarkers = list.locator('.message-addressee')
-      await expect(addresseeMarkers).toHaveCount(0)
+      await expect(chat.addresseeMarkers()).toHaveCount(0)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

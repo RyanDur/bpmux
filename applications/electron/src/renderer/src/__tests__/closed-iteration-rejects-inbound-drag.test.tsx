@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
 
 describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual feedback', () => {
   let rendered: RenderAppResult | null = null
@@ -42,37 +42,22 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
 
     rendered = renderApp()
 
-    const carina = await rendered.findByTestId('board-iteration-8501', undefined, {
-      timeout: 15_000
-    })
-    const eridanus = await rendered.findByTestId('board-iteration-8502', undefined, {
-      timeout: 15_000
-    })
+    const carina = await iterationBoard.container(8501, undefined, { timeout: 15_000 })
+    const eridanus = await iterationBoard.container(8502, undefined, { timeout: 15_000 })
     expect(eridanus.getAttribute('data-closed')).toBe('true')
 
-    const source = carina.querySelector('[data-iteration-member="8511"]') as HTMLLIElement
+    const source = iterationBoard.memberRow(carina, 8511)
     expect(source).toBeTruthy()
-    const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
+    const sourceGrip = iterationBoard.grip(source)
     expect(sourceGrip).toBeTruthy()
 
-    const dataStore: Record<string, string> = {}
-    const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
-      {
-        setData: (type: string, value: string) => {
-          dataStore[type] = value
-        },
-        getData: (type: string) => dataStore[type] ?? '',
-        types: [] as unknown as readonly string[],
-        effectAllowed: 'move',
-        dropEffect: 'move'
-      }
-    fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
-    Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
-    fireEvent.dragOver(eridanus, { dataTransfer: dt })
-    expect(dt.dropEffect).toBe('none')
+    const drag = newDragGesture()
+    drag.start(sourceGrip)
+    drag.over(eridanus)
+    expect(drag.dropEffect()).toBe('none')
     expect(eridanus.getAttribute('data-drag-rejected')).toBe('true')
 
-    fireEvent.drop(eridanus, { dataTransfer: dt })
+    drag.drop(eridanus)
 
     const boardRes = await fetch(`${apiBase}/api/board`, {
       headers: { Authorization: `Bearer ${authToken}` }

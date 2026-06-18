@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, chmodSync, readFileSync, existsSync } from 
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1592/#1595 interact-assembly — typed keystrokes reach the ＋-spawned terminal PTY stdin', () => {
   test('typing into a ＋-spawned terminal round-trips onData → WS → backend → the PTY stdin', async () => {
@@ -16,11 +17,11 @@ test.describe('#1592/#1595 interact-assembly — typed keystrokes reach the ＋-
       extraEnv: { BPMUX_ROOM_AGENT: agent, BPMUX_ROOM_TEE_FILE: teeFile }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const activeTerminal = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
+      const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
       await activeTerminal.click()
 

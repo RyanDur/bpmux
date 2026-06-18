@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 const SEED_MIXED_CLASS_MESSAGES = [
   {
@@ -29,24 +30,16 @@ test.describe('human-side E2E #476 — direct-action — filter pills exhaustive
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const list = win.locator('[data-test="message-list"]')
+      const chat = new ChatPage(win)
+      const list = chat.messageLog()
       await expect(list).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await expect(win.locator('[data-test="filter-pill-chat"]')).toHaveAttribute(
-        'data-state',
-        'on'
-      )
-      await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
-        'data-state',
-        'off'
-      )
-      await expect(win.locator('[data-test="filter-pill-bpmux"]')).toHaveAttribute(
-        'data-state',
-        'off'
-      )
+      await expect(chat.filterPill('chat')).toBeChecked()
+      await expect(chat.filterPill('events')).not.toBeChecked()
+      await expect(chat.filterPill('bpmux')).not.toBeChecked()
 
       await expect(list).toContainText('CHAT_CLASS_MARKER_BPF21', { timeout: 10000 })
       await expect(list).not.toContainText('EVENTS_CLASS_MARKER_BPF21')
@@ -71,22 +64,22 @@ test.describe('human-side E2E #476 — direct-action — filter pills exhaustive
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const list = win.locator('[data-test="message-list"]')
+      const chat = new ChatPage(win)
+      const list = chat.messageLog()
       await expect(list).toBeVisible()
       await expect(list).toContainText('CHAT_CLASS_MARKER_BPF21', { timeout: 10000 })
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const eventsPill = win.locator('[data-test="filter-pill-events"]')
-      await expect(eventsPill).toHaveAttribute('data-state', 'off')
+      await expect(chat.filterPill('events')).not.toBeChecked()
 
-      await eventsPill.click()
-      await expect(eventsPill).toHaveAttribute('data-state', 'on')
+      await chat.toggleFilter('events')
+      await expect(chat.filterPill('events')).toBeChecked()
       await expect(list).toContainText('EVENTS_CLASS_MARKER_BPF21')
 
-      await eventsPill.click()
-      await expect(eventsPill).toHaveAttribute('data-state', 'off')
+      await chat.toggleFilter('events')
+      await expect(chat.filterPill('events')).not.toBeChecked()
       await expect(list).not.toContainText('EVENTS_CLASS_MARKER_BPF21')
 
       expect(consoleErrors).toEqual([])
@@ -109,18 +102,18 @@ test.describe('human-side E2E #476 — direct-action — filter pills exhaustive
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const list = win.locator('[data-test="message-list"]')
+      const chat = new ChatPage(win)
+      const list = chat.messageLog()
       await expect(list).toBeVisible()
       await expect(list).toContainText('CHAT_CLASS_MARKER_BPF21', { timeout: 10000 })
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const chatPill = win.locator('[data-test="filter-pill-chat"]')
-      await chatPill.click()
-      await expect(chatPill).toHaveAttribute('data-state', 'off')
+      await chat.toggleFilter('chat')
+      await expect(chat.filterPill('chat')).not.toBeChecked()
 
-      await expect(win.locator('[data-test="filter-pills-empty-hint"]')).toBeVisible()
+      await expect(chat.filterEmptyHint()).toBeVisible()
       await expect(list).not.toContainText('CHAT_CLASS_MARKER_BPF21')
 
       expect(consoleErrors).toEqual([])
@@ -143,21 +136,19 @@ test.describe('human-side E2E #476 — direct-action — filter pills exhaustive
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const list = win.locator('[data-test="message-list"]')
+      const chat = new ChatPage(win)
+      const list = chat.messageLog()
       await expect(list).toBeVisible()
       await expect(list).toContainText('CHAT_CLASS_MARKER_BPF21', { timeout: 10000 })
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await win.locator('[data-test="filter-pill-events"]').click()
-      await win.locator('[data-test="filter-pill-bpmux"]').click()
+      await chat.toggleFilter('events')
+      await chat.toggleFilter('bpmux')
 
       for (const cls of ['chat', 'events', 'bpmux']) {
-        await expect(win.locator(`[data-test="filter-pill-${cls}"]`)).toHaveAttribute(
-          'data-state',
-          'on'
-        )
+        await expect(chat.filterPill(cls)).toBeChecked()
       }
       await expect(list).toContainText('CHAT_CLASS_MARKER_BPF21')
       await expect(list).toContainText('EVENTS_CLASS_MARKER_BPF21')

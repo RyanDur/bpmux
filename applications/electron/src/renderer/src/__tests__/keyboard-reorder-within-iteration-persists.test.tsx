@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor, within } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
+import { keyboardReorder } from '../board/keyboardReorder.page'
 
 describe('#1339 step 2h-1 — keyboard-reorder within iteration container persists via label mutation', () => {
   let rendered: RenderAppResult | null = null
@@ -51,13 +52,8 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-7801', undefined, {
-      timeout: 15_000
-    })
-    const alphaRow = within(container).getByTestId('board-story-7811') as HTMLLIElement
-    const alphaButton = within(alphaRow).getByTestId(
-      'board-iteration-member-button'
-    ) as HTMLButtonElement
+    const container = await keyboardReorder.iterationCard(7801, { timeout: 15_000 })
+    const alphaButton = keyboardReorder.memberButton(container, 7811)
 
     const user = userEvent.setup()
     await pressReorderShortcut(user, alphaButton, 'ArrowDown')
@@ -117,19 +113,10 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
 
     rendered = renderApp()
 
-    const container = await rendered.findByTestId('board-iteration-7701', undefined, {
-      timeout: 15_000
-    })
-    const orderBefore = within(container)
-      .getAllByTestId(/^board-story-\d+$/)
-      .map((el) => Number(el.getAttribute('data-iteration-member')))
-    expect(orderBefore).toEqual([7711, 7712, 7713])
+    const container = await keyboardReorder.iterationCard(7701, { timeout: 15_000 })
+    expect(keyboardReorder.memberOrder(container)).toEqual([7711, 7712, 7713])
 
-    const charlieRow = within(container).getByTestId('board-story-7713') as HTMLLIElement
-    expect(charlieRow).toBeTruthy()
-    const charlieButton = within(charlieRow).getByTestId(
-      'board-iteration-member-button'
-    ) as HTMLButtonElement
+    const charlieButton = keyboardReorder.memberButton(container, 7713)
     expect(charlieButton).toBeTruthy()
 
     const user = userEvent.setup()

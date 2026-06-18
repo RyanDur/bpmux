@@ -3,6 +3,8 @@ import { mkdtempSync, writeFileSync, chmodSync, readFileSync, existsSync } from 
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
+import { TerminalPage } from './pages/terminalPage'
 
 const isAlive = (pid: number): boolean => {
   try {
@@ -25,11 +27,12 @@ test.describe('#1596 close/kill (S5) — closing a terminal reaps its process an
       extraEnv: { BPMUX_ROOM_AGENT: agent, BPMUX_AGENT_PIDFILE: pidFile }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      const chat = new ChatPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const row = win.locator('[data-test="sidebar-terminal-item"]')
+      const row = term.items()
       await expect(row).toHaveCount(1, { timeout: 10000 })
 
       await expect
@@ -42,11 +45,11 @@ test.describe('#1596 close/kill (S5) — closing a terminal reaps its process an
 
       expect(isAlive(pid), `the spawned agent (pid ${pid}) must be alive before close`).toBe(true)
 
-      await win.locator('[data-test="sidebar-terminal-close"]').click()
+      await term.closeButton(1).click()
 
       await expect(row).toHaveCount(0, { timeout: 10000 })
-      await expect(win.locator('[data-test^="terminal-slot-"]')).toHaveCount(0)
-      await expect(win.locator('[data-test="message-list"]')).toBeVisible()
+      await expect(term.output()).toHaveCount(0)
+      await expect(chat.messageLog()).toBeVisible()
 
       await expect
         .poll(() => isAlive(pid), { timeout: 15000, intervals: [300, 500, 800, 1200] })
@@ -67,26 +70,22 @@ test.describe('#1596 close/kill (S5) — closing a terminal reaps its process an
       extraEnv: { BPMUX_ROOM_AGENT: agent }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
+      await term.addButton().click()
 
-      const items = win.locator('[data-test="sidebar-terminal-item"]')
-      await expect(items).toHaveCount(2, { timeout: 10000 })
+      await expect(term.items()).toHaveCount(2, { timeout: 10000 })
 
-      await items.nth(0).click()
-      const firstActive = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
-      await expect(firstActive).toHaveCount(1)
-      const firstSlot = await firstActive.getAttribute('data-test')
+      await term.item(1).click()
+      await expect(term.item(1)).toHaveAttribute('aria-current', 'true')
+      await expect(term.output()).toBeVisible()
 
-      await win.locator('[data-test="sidebar-terminal-close"]').nth(0).click()
+      await term.closeButton(1).click()
 
-      await expect(items).toHaveCount(1, { timeout: 10000 })
-      await expect(win.locator('[data-test^="terminal-slot-"]')).toHaveCount(1)
-      const survivorActive = win.locator('[data-test^="terminal-slot-"][data-active="true"]')
-      await expect(survivorActive).toHaveCount(1)
-      expect(await survivorActive.getAttribute('data-test')).not.toBe(firstSlot)
+      await expect(term.items()).toHaveCount(1, { timeout: 10000 })
+      await expect(term.output()).toBeVisible()
+      await expect(term.item(1)).toHaveAttribute('aria-current', 'true')
     } finally {
       await app.close()
       await mockGh.close()

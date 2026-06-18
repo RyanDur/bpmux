@@ -1,12 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { TerminalPage } from './pages/terminalPage'
 
 const realShell = (): string =>
   process.env.SHELL && process.env.SHELL.length > 0 ? process.env.SHELL : '/bin/bash'
-
-const slots = '[data-test^="terminal-slot-"]'
-const activeSlot = '[data-test^="terminal-slot-"][data-active="true"]'
-const sidebarItems = '[data-test="sidebar-terminal-item"]'
 
 test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no vanish, no resurrect)', () => {
   test('after a window reload a terminal re-attaches as the SAME live session: its cwd and its background job persist (re-attach, not reap+respawn)', async () => {
@@ -14,11 +11,11 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       extraEnv: { BPMUX_ROOM_AGENT: realShell() }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
-      await addTerminal.click()
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
+      await term.addButton().click()
 
-      const active = win.locator(activeSlot)
+      const active = term.output()
       await expect(active).toBeVisible({ timeout: 10000 })
       await active.click()
 
@@ -46,9 +43,9 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
 
       await win.reload()
 
-      const reattachedAsSameLiveSession = win.locator(slots).first()
+      const reattachedAsSameLiveSession = term.output()
       await expect(reattachedAsSameLiveSession).toBeVisible({ timeout: 20000 })
-      await expect(win.locator(sidebarItems)).toHaveCount(1)
+      await expect(term.items()).toHaveCount(1)
       await reattachedAsSameLiveSession.click()
 
       await win.keyboard.type('pwd')
@@ -79,11 +76,11 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       extraEnv: { BPMUX_ROOM_AGENT: realShell() }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
 
-      await addTerminal.click()
-      const terminalA = win.locator(activeSlot)
+      await term.addButton().click()
+      const terminalA = term.output()
       await expect(terminalA).toBeVisible({ timeout: 10000 })
       await terminalA.click()
       await win.keyboard.type(
@@ -97,21 +94,19 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
         })
         .toContain('A_READY_1608')
 
-      await addTerminal.click()
-      await expect(win.locator(sidebarItems)).toHaveCount(2)
-      const terminalBExitingDuringSession = win.locator(activeSlot)
+      await term.addButton().click()
+      await expect(term.items()).toHaveCount(2)
+      const terminalBExitingDuringSession = term.output()
       await terminalBExitingDuringSession.click()
       await win.keyboard.type('exit')
       await win.keyboard.press('Enter')
-      await expect(win.locator('[data-test^="terminal-state-"][data-state="exited"]')).toBeVisible({
-        timeout: 15000
-      })
+      await expect(term.item(2)).toContainText('exited', { timeout: 15000 })
 
       await win.reload()
 
-      const survivor = win.locator(slots).first()
+      const survivor = term.output()
       await expect(survivor).toBeVisible({ timeout: 20000 })
-      await expect(win.locator(sidebarItems)).toHaveCount(1)
+      await expect(term.items()).toHaveCount(1)
 
       await survivor.click()
       await win.keyboard.type('pwd')
@@ -133,11 +128,11 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       extraEnv: { BPMUX_ROOM_AGENT: realShell() }
     })
     try {
-      const addTerminal = win.locator('[data-test="sidebar-add-terminal"]')
-      await expect(addTerminal).toBeVisible({ timeout: 20000 })
+      const term = new TerminalPage(win)
+      await expect(term.addButton()).toBeVisible({ timeout: 20000 })
 
-      await addTerminal.click()
-      const firstSpawned = win.locator(activeSlot)
+      await term.addButton().click()
+      const firstSpawned = term.output()
       await expect(firstSpawned).toBeVisible({ timeout: 10000 })
       await firstSpawned.click()
       await win.keyboard.type(
@@ -151,9 +146,9 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
         })
         .toContain('FIRST_READY_1608')
 
-      await addTerminal.click()
-      await expect(win.locator(sidebarItems)).toHaveCount(2)
-      const secondSpawned = win.locator(activeSlot)
+      await term.addButton().click()
+      await expect(term.items()).toHaveCount(2)
+      const secondSpawned = term.output()
       await expect(secondSpawned).toBeVisible()
       await secondSpawned.click()
       await win.keyboard.type(
@@ -167,14 +162,14 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
         })
         .toContain('SECOND_READY_1608')
 
-      await expect(win.locator(slots).first()).toHaveAttribute('data-active', 'false')
+      await expect(term.item(1)).not.toHaveAttribute('aria-current', 'true')
 
       await win.reload()
 
-      await expect(win.locator(sidebarItems)).toHaveCount(2, { timeout: 20000 })
-      const restoredActive = win.locator(activeSlot)
+      await expect(term.items()).toHaveCount(2, { timeout: 20000 })
+      const restoredActive = term.output()
       await expect(restoredActive).toBeVisible({ timeout: 20000 })
-      await expect(win.locator(slots).first()).toHaveAttribute('data-active', 'false')
+      await expect(term.item(1)).not.toHaveAttribute('aria-current', 'true')
 
       await restoredActive.click()
       await win.keyboard.type('pwd')

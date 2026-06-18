@@ -46,16 +46,13 @@ const TerminalList = ({
           type="button"
           aria-label="spawn a new terminal"
           title="spawn a new terminal"
-          data-test="sidebar-add-terminal"
           onClick={onAddTerminal}
         >
           ＋
         </button>
       </h3>
       {terminals.length === 0 ? (
-        <p className="sidebar-empty" data-test="sidebar-terminals-empty">
-          none yet
-        </p>
+        <p className="sidebar-empty">none yet</p>
       ) : (
         <ul className="sidebar-terminal-list">
           {terminals.map((t, i) => {
@@ -79,7 +76,6 @@ const TerminalList = ({
                     {`${i + 1} · `}
                     <input
                       className="sidebar-terminal-rename-input"
-                      data-test="sidebar-terminal-rename-input"
                       data-terminal-key={t.key}
                       aria-label={`rename terminal ${i + 1}`}
                       value={draft}
@@ -103,7 +99,6 @@ const TerminalList = ({
                     type="button"
                     autoFocus={returnFocusKey === t.key}
                     aria-current={active || undefined}
-                    data-test="sidebar-terminal-item"
                     data-terminal-key={t.key}
                     data-state={t.state}
                     title={t.cwd ?? t.state}
@@ -129,7 +124,6 @@ const TerminalList = ({
                   type="button"
                   aria-label={`close terminal ${i + 1}`}
                   title="close terminal"
-                  data-test="sidebar-terminal-close"
                   data-terminal-key={t.key}
                   onClick={() => onCloseTerminal(t.key)}
                 >

@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor, within } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
+import { keyboardReorder } from '../board/keyboardReorder.page'
 
 describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via iteration-order label mutation', () => {
   let rendered: RenderAppResult | null = null
@@ -61,11 +62,7 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
 
     rendered = renderApp()
 
-    const dracoCard = await rendered.findByTestId('board-iteration-8402', undefined, {
-      timeout: 15_000
-    })
-    const dracoRow = dracoCard.closest('.board-iteration-row') as HTMLElement
-    const dracoGrip = within(dracoRow).getByTestId('iteration-grip') as HTMLButtonElement
+    const dracoGrip = await keyboardReorder.iterationGrip(8402, { timeout: 15_000 })
     expect(dracoGrip).toBeTruthy()
 
     const user = userEvent.setup()
@@ -91,7 +88,7 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
       { timeout: 10_000, interval: 200 }
     )
 
-    const announce = rendered.getByTestId('board-reorder-announce')
+    const announce = keyboardReorder.announce()
     expect(announce.textContent).toMatch(
       /^Moved Iteration Draco to position \d+ of \d+ among iterations$/
     )

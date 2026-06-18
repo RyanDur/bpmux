@@ -2,6 +2,7 @@ import { afterEach, describe, expect, inject, it } from 'vitest'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { iterationBoard } from '../board/iterationBoard.page'
 
 describe('#1300 — closed iteration renders "(closed)" badge as JSX sibling (no strikethrough inheritance)', () => {
   let rendered: RenderAppResult | null = null
@@ -27,11 +28,9 @@ describe('#1300 — closed iteration renders "(closed)" badge as JSX sibling (no
     ])
 
     rendered = renderApp()
-    const row = await rendered.findByTestId('board-iteration-9201', undefined, {
-      timeout: 15_000
-    })
+    const row = await iterationBoard.container(9201, undefined, { timeout: 15_000 })
     expect(row.getAttribute('data-closed')).toBe('true')
-    const badge = row.querySelector('.board-iteration-closed-badge')
+    const badge = iterationBoard.closedBadge(row)
     expect(badge).toBeTruthy()
     expect(badge?.textContent).toBe('(closed)')
   }, 20_000)
