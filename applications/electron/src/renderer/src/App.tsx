@@ -15,12 +15,7 @@ const App = (): React.JSX.Element => {
 
   const [atBottom, setAtBottom] = useState<boolean>(true)
 
-  const {
-    status,
-    messages: liveRaw,
-    sendChat,
-    boardSnapshot
-  } = useWebSocket(bridge?.wsUrl, {
+  const { status, messages: liveRaw, sendChat } = useWebSocket(bridge?.wsUrl, {
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })
@@ -47,7 +42,6 @@ const App = (): React.JSX.Element => {
       hasMoreOlder={hasMoreOlder}
       hasError={hasError}
       onAtBottomChange={setAtBottom}
-      boardSnapshot={boardSnapshot}
     />
   )
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { describeHttpError } from '../api/http'
 import { getBoard } from '../api/boardClient'
+import { useBoardSnapshot } from '../transport/session'
 import { MOCK_BOARD_RESPONSE } from './mockBoard'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import type { BoardResponse } from './types'
@@ -8,7 +9,6 @@ import type { BoardResponse } from './types'
 const RETRY_DELAYS_MS = [0, 200, 500] as const
 
 export interface UseBoardFetchOptions {
-  boardSnapshot?: BoardResponse | null
   apiBase: string | undefined
   authToken: string | undefined
 }
@@ -24,10 +24,10 @@ export interface UseBoardFetchResult {
 }
 
 export const useBoardFetch = ({
-  boardSnapshot,
   apiBase,
   authToken
 }: UseBoardFetchOptions): UseBoardFetchResult => {
+  const boardSnapshot = useBoardSnapshot()
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)

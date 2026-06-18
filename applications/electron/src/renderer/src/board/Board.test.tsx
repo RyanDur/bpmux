@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const getBoard = vi.fn()
@@ -18,6 +18,13 @@ vi.mock('../sync/syncStatusService', () => {
 
 import Board from './Board'
 import type { BoardResponse, BoardStory } from './types'
+import { dispatchSession, resetSessionForTest } from '../transport/session/store'
+import { mirrorDeltaReceived } from '../transport/session/actions'
+
+const pushSnapshot = (snapshot: BoardResponse): void =>
+  dispatchSession(
+    mirrorDeltaReceived({ domain: 'board_snapshot', stories: snapshot.stories }, snapshot.fetched_at)
+  )
 
 const inertChain = (): unknown => {
   const chain = { onSuccess: () => chain, onFailure: () => chain }
@@ -57,8 +64,10 @@ const NO_ITERATION: BoardResponse = {
   ]
 }
 
-const renderBoard = (snapshot: BoardResponse): ReturnType<typeof render> =>
-  render(<Board boardSnapshot={snapshot} />)
+const renderBoard = (snapshot: BoardResponse): ReturnType<typeof render> => {
+  pushSnapshot(snapshot)
+  return render(<Board />)
+}
 
 const boardPanel = (): HTMLElement => screen.getByTestId('board-roadmap-panel-board')
 
@@ -71,6 +80,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  resetSessionForTest()
   delete window.bpmux
 })
 
@@ -99,19 +109,19 @@ describe('#1684 no active iteration → the board panel defaults to the #1704 ro
   })
 
   test('LIVE on iteration-CLOSE: a pushed snapshot with no current iteration switches the board to the roadmap with no reload (#1720 freshness)', async () => {
-    const { rerender } = renderBoard(ITERATION_ACTIVE)
+    renderBoard(ITERATION_ACTIVE)
     expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeNull()
 
-    rerender(<Board boardSnapshot={NO_ITERATION} />)
+    act(() => pushSnapshot(NO_ITERATION))
 
     await waitFor(() => expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeTruthy())
   })
 
   test('LIVE on iteration-OPEN: a pushed snapshot with a current iteration switches the roadmap fallback back to the board with no reload', async () => {
-    const { rerender } = renderBoard(NO_ITERATION)
+    renderBoard(NO_ITERATION)
     expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeTruthy()
 
-    rerender(<Board boardSnapshot={ITERATION_ACTIVE} />)
+    act(() => pushSnapshot(ITERATION_ACTIVE))
 
     await waitFor(() => expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeNull())
   })

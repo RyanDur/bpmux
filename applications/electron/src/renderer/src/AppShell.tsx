@@ -11,7 +11,6 @@ import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
 import { type SendOptions } from './transport/useWebSocket'
-import type { BoardResponse } from './board/types'
 import './AppShell.css'
 
 interface Props {
@@ -23,7 +22,6 @@ interface Props {
   hasMoreOlder?: boolean
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
-  boardSnapshot?: BoardResponse | null
 }
 
 const AppShell = ({
@@ -34,8 +32,7 @@ const AppShell = ({
   isLoadingOlder,
   hasMoreOlder,
   hasError,
-  onAtBottomChange,
-  boardSnapshot
+  onAtBottomChange
 }: Props): React.JSX.Element => {
   const {
     boardOpen,
@@ -173,7 +170,7 @@ const AppShell = ({
             controlsId="board-region"
           />
         ) : null}
-        <Board boardSnapshot={boardSnapshot} hidden={!boardOpen} width={boardWidth} />
+        <Board hidden={!boardOpen} width={boardWidth} />
       </section>
       {confirmClose && (
         <dialog

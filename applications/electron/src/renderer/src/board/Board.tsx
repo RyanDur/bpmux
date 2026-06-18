@@ -14,7 +14,7 @@ import { usePendingReadyOrder } from './usePendingReadyOrder'
 import { findCurrentIteration } from './currentIteration'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
 import { themeNameFromTitle } from './labelSchema'
-import { GROUP_ORDER, type BoardResponse, type BoardStory, type ColumnState } from './types'
+import { GROUP_ORDER, type BoardStory, type ColumnState } from './types'
 import './Board.css'
 
 type CollapseState = Record<ColumnState, boolean>
@@ -30,15 +30,13 @@ const initialCollapseState: CollapseState = (() => {
 })()
 
 interface BoardProps {
-  boardSnapshot?: BoardResponse | null
   hidden?: boolean
   width?: number
 }
 
-const Board = ({ boardSnapshot, hidden, width }: BoardProps): React.JSX.Element => {
+const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const { data, setData, loading, error, setError, usingMock, refetch } = useBoardFetch({
-    boardSnapshot,
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })
