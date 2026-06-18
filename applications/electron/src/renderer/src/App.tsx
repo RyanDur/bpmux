@@ -19,8 +19,7 @@ const App = (): React.JSX.Element => {
     status,
     messages: liveRaw,
     sendChat,
-    boardSnapshot,
-    boardInvalidateTick
+    boardSnapshot
   } = useWebSocket(bridge?.wsUrl, {
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
@@ -49,7 +48,6 @@ const App = (): React.JSX.Element => {
       hasError={hasError}
       onAtBottomChange={setAtBottom}
       boardSnapshot={boardSnapshot}
-      boardInvalidateTick={boardInvalidateTick}
     />
   )
 }

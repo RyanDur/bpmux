@@ -29,7 +29,6 @@ interface Props {
   apiBase: string | undefined
   authToken: string | undefined
   usingMock: boolean
-  boardInvalidateTick: number
   visible: boolean
   focusTimeline?: boolean
   onBack: () => void
@@ -45,7 +44,6 @@ const DrillIn = ({
   apiBase,
   authToken,
   usingMock,
-  boardInvalidateTick,
   visible,
   focusTimeline,
   onBack,
@@ -162,7 +160,6 @@ const DrillIn = ({
         story={story}
         apiBase={apiBase}
         authToken={authToken}
-        boardInvalidateTick={boardInvalidateTick}
         focusTimeline={focusTimeline}
       />
 

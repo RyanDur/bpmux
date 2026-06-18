@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { describeHttpError, http } from '../api/http'
+import { useBoardInvalidateTick } from '../transport/session'
 
 export interface TimelineEvent {
   event: string
@@ -32,7 +33,6 @@ interface UseTimelineArgs {
   apiBase: string | undefined
   authToken: string | undefined
   storyNumber: number | null
-  boardInvalidateTick: number
 }
 
 export interface UseTimelineResult {
@@ -93,9 +93,9 @@ const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
 export const useTimeline = ({
   apiBase,
   authToken,
-  storyNumber,
-  boardInvalidateTick
+  storyNumber
 }: UseTimelineArgs): UseTimelineResult => {
+  const boardInvalidateTick = useBoardInvalidateTick()
   const [events, setEvents] = useState<ClassifiedEvent[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loading =

@@ -31,17 +31,11 @@ const initialCollapseState: CollapseState = (() => {
 
 interface BoardProps {
   boardSnapshot?: BoardResponse | null
-  boardInvalidateTick: number
   hidden?: boolean
   width?: number
 }
 
-const Board = ({
-  boardSnapshot,
-  boardInvalidateTick,
-  hidden,
-  width
-}: BoardProps): React.JSX.Element => {
+const Board = ({ boardSnapshot, hidden, width }: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const { data, setData, loading, error, setError, usingMock, refetch } = useBoardFetch({
     boardSnapshot,
@@ -171,7 +165,6 @@ const Board = ({
               apiBase={bridge?.apiBase}
               authToken={bridge?.authToken}
               usingMock={usingMock}
-              boardInvalidateTick={boardInvalidateTick}
               visible={drilledStory !== null}
               focusTimeline={focusTimelineFor === renderedDrill.number}
               onBack={handleBack}

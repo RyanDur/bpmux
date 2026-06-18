@@ -94,7 +94,6 @@ interface Props {
   story: BoardStory
   apiBase: string | undefined
   authToken: string | undefined
-  boardInvalidateTick: number
   focusTimeline?: boolean
 }
 
@@ -102,15 +101,13 @@ const Timeline = ({
   story,
   apiBase,
   authToken,
-  boardInvalidateTick,
   focusTimeline
 }: Props): React.JSX.Element => {
   const [showAll, setShowAll] = useState<boolean>(false)
   const timeline = useTimeline({
     apiBase,
     authToken,
-    storyNumber: story.number,
-    boardInvalidateTick
+    storyNumber: story.number
   })
   const detailsRef = useRef<HTMLDetailsElement | null>(null)
 

@@ -58,7 +58,7 @@ const NO_ITERATION: BoardResponse = {
 }
 
 const renderBoard = (snapshot: BoardResponse): ReturnType<typeof render> =>
-  render(<Board boardSnapshot={snapshot} boardInvalidateTick={0} />)
+  render(<Board boardSnapshot={snapshot} />)
 
 const boardPanel = (): HTMLElement => screen.getByTestId('board-roadmap-panel-board')
 
@@ -102,7 +102,7 @@ describe('#1684 no active iteration → the board panel defaults to the #1704 ro
     const { rerender } = renderBoard(ITERATION_ACTIVE)
     expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeNull()
 
-    rerender(<Board boardSnapshot={NO_ITERATION} boardInvalidateTick={1} />)
+    rerender(<Board boardSnapshot={NO_ITERATION} />)
 
     await waitFor(() => expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeTruthy())
   })
@@ -111,7 +111,7 @@ describe('#1684 no active iteration → the board panel defaults to the #1704 ro
     const { rerender } = renderBoard(NO_ITERATION)
     expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeTruthy()
 
-    rerender(<Board boardSnapshot={ITERATION_ACTIVE} boardInvalidateTick={1} />)
+    rerender(<Board boardSnapshot={ITERATION_ACTIVE} />)
 
     await waitFor(() => expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeNull())
   })

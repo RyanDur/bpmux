@@ -24,7 +24,6 @@ interface Props {
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
   boardSnapshot?: BoardResponse | null
-  boardInvalidateTick: number
 }
 
 const AppShell = ({
@@ -36,8 +35,7 @@ const AppShell = ({
   hasMoreOlder,
   hasError,
   onAtBottomChange,
-  boardSnapshot,
-  boardInvalidateTick
+  boardSnapshot
 }: Props): React.JSX.Element => {
   const {
     boardOpen,
@@ -175,12 +173,7 @@ const AppShell = ({
             controlsId="board-region"
           />
         ) : null}
-        <Board
-          boardSnapshot={boardSnapshot}
-          boardInvalidateTick={boardInvalidateTick}
-          hidden={!boardOpen}
-          width={boardWidth}
-        />
+        <Board boardSnapshot={boardSnapshot} hidden={!boardOpen} width={boardWidth} />
       </section>
       {confirmClose && (
         <dialog
