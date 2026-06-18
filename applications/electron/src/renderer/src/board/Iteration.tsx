@@ -1,6 +1,6 @@
 import { useIterationCollapse } from './useIterationCollapse'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { RENDERER_IDENTITY } from '../transport/session'
 import { findCurrentIteration } from './currentIteration'
 import type { BoardStory } from './types'
 import { type IterationDragPayload } from './iterationMembers'

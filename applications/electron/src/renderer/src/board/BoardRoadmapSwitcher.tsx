@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { useTabStorage } from '../lib/useTabStorage'
-import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { RENDERER_IDENTITY } from '../transport/session'
 import CloseApproachNudge from './CloseApproachNudge'
 import type { CloseApproachNudge as CloseApproachNudgeData } from './deriveCloseApproachNudge'
 import './BoardRoadmapSwitcher.css'

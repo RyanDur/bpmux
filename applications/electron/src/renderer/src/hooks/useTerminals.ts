@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { type ApiContext, describeHttpError } from '../api/http'
 import type { ConnectionStatus } from '../transport/types'
-import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { RENDERER_IDENTITY } from '../transport/session'
 import { subscribeWsPtyExit } from '../transport/wsService'
 import {
   readTerminalLayout,

@@ -5,7 +5,7 @@ import BoardGroup from './BoardGroup'
 import Roadmap from './Roadmap'
 import Tabs, { type TabDef } from './Tabs'
 import { useTabStorage } from '../lib/useTabStorage'
-import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { RENDERER_IDENTITY } from '../transport/session'
 import { epicNumbersInIteration } from './currentIteration'
 import { deriveNowView } from './deriveNowView'
 import {

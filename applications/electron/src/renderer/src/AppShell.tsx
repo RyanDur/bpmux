@@ -10,7 +10,7 @@ import { useTheme } from './hooks/useTheme'
 import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
-import { type SendOptions } from './transport/useWebSocket'
+import { type SendOptions } from './transport/session'
 import './AppShell.css'
 
 interface Props {

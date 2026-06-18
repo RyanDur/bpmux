@@ -1,4 +1,4 @@
-import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { RENDERER_IDENTITY } from '../transport/session'
 
 export type PersistedScope =
   | { kind: 'all' }

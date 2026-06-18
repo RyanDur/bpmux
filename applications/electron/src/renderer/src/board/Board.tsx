@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { RENDERER_IDENTITY } from '../transport/session'
 import SyncStatusGlyph from '../sync/SyncStatusGlyph'
 import DrillIn from './DrillIn'
 import BoardTabs from './BoardTabs'

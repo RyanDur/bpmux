@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { tryCatch } from '../lib/result'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage } from '../transport/types'
-import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { RENDERER_IDENTITY } from '../transport/session'
 import { subscribeWsLiveMessages } from '../transport/wsService'
 
 const shortName = (identity: string): string => {

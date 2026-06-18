@@ -18,7 +18,7 @@ vi.mock('../transport/wsService', () => ({
 }))
 
 import { isRelevant, useNotifications } from './useNotifications'
-import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { RENDERER_IDENTITY } from '../transport/session'
 
 const SELF = 'dev'
 
