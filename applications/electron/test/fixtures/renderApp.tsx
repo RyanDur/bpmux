@@ -2,7 +2,7 @@ import { render, type RenderResult } from '@testing-library/react'
 import { inject } from 'vitest'
 
 import App from '@renderer/App'
-import { __resetWsForTest } from '@renderer/transport/wsService'
+import { resetSessionForTest } from '@renderer/transport/session'
 import { __resetSyncStatusForTest } from '@renderer/sync/syncStatusService'
 
 import { installBpmuxShim, uninstallBpmuxShim } from './bpmuxShim'
@@ -27,7 +27,7 @@ export const renderApp = (opts: RenderAppOptions = {}): RenderAppResult => {
   const apiBase = opts.apiBase ?? `http://127.0.0.1:${port}`
   const wsUrl = opts.wsUrl ?? `ws://127.0.0.1:${port}/ws`
 
-  __resetWsForTest()
+  resetSessionForTest()
   __resetSyncStatusForTest()
   installBpmuxShim({ wsUrl, authToken, apiBase })
   const result = render(<App />)
@@ -38,7 +38,7 @@ export const renderApp = (opts: RenderAppOptions = {}): RenderAppResult => {
     apiBase,
     cleanup: () => {
       result.unmount()
-      __resetWsForTest()
+      resetSessionForTest()
       __resetSyncStatusForTest()
       uninstallBpmuxShim()
     }
