@@ -1,4 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  BrowserWebSocket,
+  startTestWsServer,
+  type TestWsConnection,
+  type TestWsServer
+} from '../../../../test/wsTestServer'
 
 let historyResponse: unknown[] = []
 const httpGet = vi.fn((..._args: unknown[]) => ({
@@ -18,47 +24,6 @@ import {
   resetSessionForTest
 } from './session'
 
-class MockWebSocket {
-  static instances: MockWebSocket[] = []
-  static OPEN = 1
-  static CONNECTING = 0
-  static CLOSING = 2
-  static CLOSED = 3
-  url: string
-  readyState = 0
-  onopen: (() => void) | null = null
-  onmessage: ((ev: { data: string }) => void) | null = null
-  onerror: ((ev: unknown) => void) | null = null
-  onclose: ((ev: { code: number; reason: string }) => void) | null = null
-  sent: string[] = []
-  closed = false
-  constructor(url: string) {
-    this.url = url
-    MockWebSocket.instances.push(this)
-  }
-  send(data: string): void {
-    this.sent.push(data)
-  }
-  close(): void {
-    this.closed = true
-    this.readyState = MockWebSocket.CLOSED
-  }
-  open(): void {
-    this.readyState = MockWebSocket.OPEN
-    this.onopen?.()
-  }
-  receive(data: string): void {
-    this.onmessage?.({ data })
-  }
-  drop(code = 1006, reason = 'lost'): void {
-    this.readyState = MockWebSocket.CLOSED
-    this.onclose?.({ code, reason })
-  }
-  static latest(): MockWebSocket {
-    return MockWebSocket.instances[MockWebSocket.instances.length - 1]
-  }
-}
-
 const serverMessage = (over: Record<string, unknown> = {}): string =>
   JSON.stringify({
     type: 'message',
@@ -68,95 +33,109 @@ const serverMessage = (over: Record<string, unknown> = {}): string =>
     ...over
   })
 
-beforeEach(() => {
-  vi.stubGlobal('WebSocket', MockWebSocket)
-  MockWebSocket.instances = []
+let server: TestWsServer
+
+const connect = async (apiBase?: string, authToken?: string): Promise<TestWsConnection> => {
+  startSession({ url: server.url, apiBase, authToken })
+  const conn = await server.waitForConnection()
+  await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+  return conn
+}
+
+beforeEach(async () => {
+  vi.stubGlobal('WebSocket', BrowserWebSocket)
+  server = await startTestWsServer()
   historyResponse = []
   httpGet.mockClear()
   resetSessionForTest()
 })
 
-afterEach(() => {
+afterEach(async () => {
   resetSessionForTest()
+  await server.close()
   vi.unstubAllGlobals()
-  vi.useRealTimers()
 })
 
 describe('#1537 session — connection lifecycle as a module singleton', () => {
-  test('startSession opens a socket, surfaces connecting then connected, and identifies on open', () => {
-    startSession({ url: 'ws://test' })
+  test('startSession opens a socket, surfaces connecting then connected, and identifies on open', async () => {
+    startSession({ url: server.url })
     expect(getSessionSnapshot().status).toBe('connecting')
-    expect(MockWebSocket.instances.length).toBe(1)
 
-    MockWebSocket.latest().open()
-    expect(getSessionSnapshot().status).toBe('connected')
-    const identify = MockWebSocket.latest().sent.map((s) => JSON.parse(s))
-    expect(identify[0]).toMatchObject({ type: 'identify', name: 'ryan', tool: 'electron' })
+    const conn = await server.waitForConnection()
+    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await vi.waitFor(() => expect(conn.received.length).toBeGreaterThan(0))
+    expect(JSON.parse(conn.received[0])).toMatchObject({
+      type: 'identify',
+      name: 'ryan',
+      tool: 'electron'
+    })
   })
 
-  test('startSession is idempotent — a second call with the same url does NOT open a second socket (StrictMode-once)', () => {
-    startSession({ url: 'ws://test' })
-    startSession({ url: 'ws://test' })
-    expect(MockWebSocket.instances.length).toBe(1)
+  test('startSession is idempotent — a second call with the same url does NOT open a second socket', async () => {
+    startSession({ url: server.url })
+    startSession({ url: server.url })
+    await server.waitForConnection()
+    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    expect(server.connectionCount()).toBe(1)
   })
 
-  test('getSessionSnapshot returns a STABLE reference until state actually changes (useSyncExternalStore safety)', () => {
-    startSession({ url: 'ws://test' })
+  test('getSessionSnapshot returns a STABLE reference until state actually changes', async () => {
+    startSession({ url: server.url })
     const a = getSessionSnapshot()
-    const b = getSessionSnapshot()
-    expect(a).toBe(b)
-    MockWebSocket.latest().open()
+    expect(getSessionSnapshot()).toBe(a)
+    await server.waitForConnection()
+    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
     const c = getSessionSnapshot()
     expect(c).not.toBe(a)
     expect(getSessionSnapshot()).toBe(c)
   })
 
-  test('subscribers are notified on state change and stop after unsubscribe', () => {
-    startSession({ url: 'ws://test' })
+  test('subscribers are notified on state change and stop after unsubscribe', async () => {
     let hits = 0
     const unsub = subscribeSession(() => {
       hits += 1
     })
-    MockWebSocket.latest().open()
+    const conn = await connect()
     expect(hits).toBeGreaterThan(0)
     const afterOpen = hits
+
     unsub()
-    MockWebSocket.latest().receive(serverMessage({ ts: '2026-05-24T00:00:01.000Z' }))
+    conn.send(serverMessage({ ts: '2026-05-24T00:00:01.000Z' }))
+    await vi.waitFor(() => expect(getSessionSnapshot().messages.length).toBe(1))
     expect(hits).toBe(afterOpen)
   })
 })
 
 describe('#1537 session — message dedup + live-append subscription', () => {
-  test('a chat message lands in messages; an identical duplicate (same ts|from|text) is deduped', () => {
-    startSession({ url: 'ws://test' })
-    MockWebSocket.latest().open()
-    MockWebSocket.latest().receive(serverMessage())
-    MockWebSocket.latest().receive(serverMessage())
+  test('a chat message lands in messages; an identical duplicate (same ts|from|text) is deduped', async () => {
+    const conn = await connect()
+    conn.send(serverMessage())
+    conn.send(serverMessage())
+    await vi.waitFor(() => expect(getSessionSnapshot().messages.length).toBe(1))
     expect(getSessionSnapshot().messages.length).toBe(1)
   })
 
-  test('subscribeLiveMessages fires once per newly-appended live message, not for dedup-dropped ones', () => {
-    startSession({ url: 'ws://test' })
-    MockWebSocket.latest().open()
+  test('subscribeLiveMessages fires once per newly-appended live message, not for dedup-dropped ones', async () => {
+    const conn = await connect()
     const seen: string[] = []
     subscribeLiveMessages((m) => seen.push(m.text))
-    MockWebSocket.latest().receive(serverMessage({ text: 'one', ts: '2026-05-24T00:00:01.000Z' }))
-    MockWebSocket.latest().receive(serverMessage({ text: 'one', ts: '2026-05-24T00:00:01.000Z' }))
-    MockWebSocket.latest().receive(serverMessage({ text: 'two', ts: '2026-05-24T00:00:02.000Z' }))
-    expect(seen).toEqual(['one', 'two'])
+    conn.send(serverMessage({ text: 'one', ts: '2026-05-24T00:00:01.000Z' }))
+    conn.send(serverMessage({ text: 'one', ts: '2026-05-24T00:00:01.000Z' }))
+    conn.send(serverMessage({ text: 'two', ts: '2026-05-24T00:00:02.000Z' }))
+    await vi.waitFor(() => expect(seen).toEqual(['one', 'two']))
   })
 })
 
 describe('#1537 session — history load-once + merge (no live-notify on history)', () => {
   test('history is fetched once at init and merged into messages; a duplicate start does NOT refetch', async () => {
     historyResponse = [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }]
-    startSession({ url: 'ws://test', apiBase: 'http://api', authToken: 'tok' })
-    startSession({ url: 'ws://test', apiBase: 'http://api', authToken: 'tok' })
+    startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
+    startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
     )
     const startCalls = httpGet.mock.calls.length
-    startSession({ url: 'ws://test', apiBase: 'http://api', authToken: 'tok' })
+    startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
     expect(httpGet.mock.calls.length).toBe(startCalls)
   })
 
@@ -164,7 +143,7 @@ describe('#1537 session — history load-once + merge (no live-notify on history
     historyResponse = [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }]
     const seen: string[] = []
     subscribeLiveMessages((m) => seen.push(m.text))
-    startSession({ url: 'ws://test', apiBase: 'http://api', authToken: 'tok' })
+    startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
     )
@@ -173,101 +152,84 @@ describe('#1537 session — history load-once + merge (no live-notify on history
 })
 
 describe('#1537 session — reconnect with backoff', () => {
-  test('on close, status goes disconnected and a reconnect is scheduled with growing backoff', () => {
-    vi.useFakeTimers()
-    startSession({ url: 'ws://test' })
-    MockWebSocket.latest().open()
-    expect(getSessionSnapshot().status).toBe('connected')
+  test('on close, status goes disconnected and a reconnect opens a second socket', async () => {
+    const conn = await connect()
+    conn.drop()
+    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('disconnected'))
+    expect(server.connectionCount()).toBe(1)
 
-    MockWebSocket.latest().drop()
-    expect(getSessionSnapshot().status).toBe('disconnected')
-    expect(MockWebSocket.instances.length).toBe(1)
+    await server.waitForConnection()
+    expect(server.connectionCount()).toBe(2)
+  }, 10000)
 
-    vi.advanceTimersByTime(1000)
-    expect(MockWebSocket.instances.length).toBe(2)
-  })
-
-  test('reconnectTick increments on each disconnect→connect transition', () => {
-    vi.useFakeTimers()
-    startSession({ url: 'ws://test' })
-    MockWebSocket.latest().open()
+  test('reconnectTick increments on each disconnect→connect transition', async () => {
+    const conn = await connect()
     expect(getSessionSnapshot().reconnectTick).toBe(0)
 
-    MockWebSocket.latest().drop()
-    vi.advanceTimersByTime(1000)
-    MockWebSocket.latest().open()
-    expect(getSessionSnapshot().reconnectTick).toBe(1)
-  })
+    conn.drop()
+    await server.waitForConnection()
+    await vi.waitFor(() => expect(getSessionSnapshot().reconnectTick).toBe(1))
+  }, 10000)
 
-  test('a transient ws close logs at warn, not error — keeps the e2e zero-console-error invariant robust under load', () => {
+  test('a transient ws close logs at warn, not error — keeps the e2e zero-console-error invariant robust under load', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.useFakeTimers()
-    startSession({ url: 'ws://test' })
-    MockWebSocket.latest().open()
-    MockWebSocket.latest().drop()
+    const conn = await connect()
+    conn.drop()
+    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('disconnected'))
     expect(errorSpy).not.toHaveBeenCalled()
-    expect(warnSpy).toHaveBeenCalledWith('bpmux ws: closed, reconnecting', 1006, 'lost')
+    expect(warnSpy).toHaveBeenCalledWith('bpmux ws: closed, reconnecting', 1006, expect.any(String))
     errorSpy.mockRestore()
     warnSpy.mockRestore()
   })
 })
 
 describe('#1319 session — reconnect re-fetches history to recover the disconnect gap', () => {
-  test('on reconnect, history is re-fetched so a group/broadcast message sent during the gap appears after recovery', async () => {
-    vi.useFakeTimers()
+  test('on reconnect, history is re-fetched so a message sent during the gap appears after recovery', async () => {
     historyResponse = [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }]
-    startSession({ url: 'ws://test', apiBase: 'http://api', authToken: 'tok' })
-    MockWebSocket.latest().open()
+    const conn = await connect('http://api', 'tok')
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
     )
     const callsBeforeDrop = httpGet.mock.calls.length
 
-    MockWebSocket.latest().drop()
-    expect(getSessionSnapshot().status).toBe('disconnected')
+    conn.drop()
+    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('disconnected'))
 
     historyResponse = [
       { from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' },
       { from: 'designer', text: 'sent-during-gap', ts: '2026-05-28T00:01:00.000Z' }
     ]
 
-    vi.advanceTimersByTime(1000)
-    expect(MockWebSocket.instances.length).toBe(2)
-    MockWebSocket.latest().open()
-
+    await server.waitForConnection()
     await vi.waitFor(() => expect(httpGet.mock.calls.length).toBeGreaterThan(callsBeforeDrop))
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'sent-during-gap')).toBe(true)
     )
-  })
+  }, 10000)
 
   test('on reconnect-refetch, a duplicate pre-gap message (already in state) does not appear twice', async () => {
-    vi.useFakeTimers()
     historyResponse = [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }]
-    startSession({ url: 'ws://test', apiBase: 'http://api', authToken: 'tok' })
-    MockWebSocket.latest().open()
+    const conn = await connect('http://api', 'tok')
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
     )
+    const callsBeforeDrop = httpGet.mock.calls.length
 
-    MockWebSocket.latest().drop()
-    vi.advanceTimersByTime(1000)
-    MockWebSocket.latest().open()
-
-    await vi.waitFor(() => expect(httpGet.mock.calls.length).toBeGreaterThan(2))
+    conn.drop()
+    await server.waitForConnection()
+    await vi.waitFor(() => expect(httpGet.mock.calls.length).toBeGreaterThan(callsBeforeDrop))
 
     const preGapCount = getSessionSnapshot().messages.filter((m) => m.text === 'pre-gap').length
     expect(preGapCount).toBe(1)
-  })
+  }, 10000)
 })
 
-describe('#1618 session — board-refresh migrates from the text-marker to the board_invalidated state-delta', () => {
-  test('a board_invalidated state-delta bumps boardInvalidateTick (the structured board-refresh trigger)', () => {
-    startSession({ url: 'ws://test' })
-    MockWebSocket.latest().open()
+describe('#1618 session — board-refresh via the board_invalidated state-delta', () => {
+  test('a board_invalidated state-delta bumps boardInvalidateTick (the structured board-refresh trigger)', async () => {
+    const conn = await connect()
     expect(getSessionSnapshot().boardInvalidateTick).toBe(0)
-    MockWebSocket.latest().receive(
+    conn.send(
       serverMessage({
         from: 'bpmux',
         text: '',
@@ -275,14 +237,13 @@ describe('#1618 session — board-refresh migrates from the text-marker to the b
         state_delta: { domain: 'board_invalidated', reason: 'board changed' }
       })
     )
-    expect(getSessionSnapshot().boardInvalidateTick).toBe(1)
+    await vi.waitFor(() => expect(getSessionSnapshot().boardInvalidateTick).toBe(1))
   })
 
-  test('a board_invalidated state-delta leaves the mirror reactions/ci/roster untouched', () => {
-    startSession({ url: 'ws://test' })
-    MockWebSocket.latest().open()
+  test('a board_invalidated state-delta leaves the mirror reactions/ci/roster untouched', async () => {
+    const conn = await connect()
     const before = getSessionSnapshot().mirror
-    MockWebSocket.latest().receive(
+    conn.send(
       serverMessage({
         from: 'bpmux',
         text: '',
@@ -290,6 +251,7 @@ describe('#1618 session — board-refresh migrates from the text-marker to the b
         state_delta: { domain: 'board_invalidated', reason: 'board changed' }
       })
     )
+    await vi.waitFor(() => expect(getSessionSnapshot().boardInvalidateTick).toBe(1))
     expect(getSessionSnapshot().mirror).toBe(before)
   })
 })
