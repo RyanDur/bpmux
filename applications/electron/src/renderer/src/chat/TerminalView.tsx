@@ -7,8 +7,8 @@ import {
   sendPtyInput,
   sendPtyResize,
   sendPtySubscribe,
-  subscribeWsPtyOutput
-} from '../transport/wsService'
+  subscribePtyOutput
+} from '../transport/session'
 import { composeTerminalFontFamily } from '../lib/terminalFont'
 import './TerminalView.css'
 
@@ -84,7 +84,7 @@ export const TerminalView = ({
     syncSize()
     term.focus()
 
-    const unsubscribe = subscribeWsPtyOutput(terminalId, (data) => {
+    const unsubscribe = subscribePtyOutput(terminalId, (data) => {
       term.write(decodePtyData(data))
     })
     const osc7 = term.parser.registerOscHandler(7, (payload) => {

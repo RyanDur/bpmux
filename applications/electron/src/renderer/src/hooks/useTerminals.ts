@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { type ApiContext, describeHttpError } from '../api/http'
 import type { ConnectionStatus } from '../transport/types'
-import { RENDERER_IDENTITY } from '../transport/session'
-import { subscribeWsPtyExit } from '../transport/wsService'
+import { RENDERER_IDENTITY, subscribePtyExit } from '../transport/session'
 import {
   readTerminalLayout,
   restoreTerminalLayout,
@@ -161,7 +160,7 @@ export const useTerminals = (
   }
 
   useEffect(() => {
-    return subscribeWsPtyExit((terminalId) => {
+    return subscribePtyExit((terminalId) => {
       setTerminals((prev) => prev.map((t) => (t.id === terminalId ? { ...t, state: 'exited' } : t)))
     })
   }, [])
