@@ -141,7 +141,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
               </strong>
             )}
             <small className="board-title">Board</small>
-            <SyncStatusGlyph apiBase={bridge?.apiBase} authToken={bridge?.authToken} />
+            <SyncStatusGlyph />
           </>
         }
         mock={

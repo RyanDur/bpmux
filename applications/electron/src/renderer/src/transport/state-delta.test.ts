@@ -110,6 +110,30 @@ describe('applyStateDelta', () => {
     expect(next.ci?.run_id).toBe(9)
   })
 
+  test('sync_poll heartbeat stores the full sync status in the mirror', () => {
+    const seeded = applyStateSnapshot(emptyMirrorState(), {
+      reactions: [],
+      ci: null,
+      roster: []
+    })
+    const next = applyStateDelta(seeded, {
+      domain: 'sync_poll',
+      status: {
+        last_ingest_at: '2026-06-18T12:00:00Z',
+        last_push_at: null,
+        pending_events: 2,
+        last_error: null,
+        dropped_events: [],
+        recovering_from_corruption: false,
+        stale: false,
+        startup_fail: false,
+        conflicts_pending: 0
+      }
+    })
+    expect(next.sync?.pending_events).toBe(2)
+    expect(next.sync?.last_ingest_at).toBe('2026-06-18T12:00:00Z')
+  })
+
   test('ci_poll heartbeat refreshes the ci snapshot incl. last_successful_poll_at', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
       reactions: [],

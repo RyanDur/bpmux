@@ -669,8 +669,8 @@ mod ingest_poll_loop_tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn drain_loop_broadcasts_sync_status_marker_when_drain_changes_state() {
-        use crate::bridge::{SYNC_STATUS_UPDATE_MARKER, run_drain_loop};
+    async fn drain_loop_heartbeats_sync_status_each_tick() {
+        use crate::bridge::run_drain_loop;
         use tempfile::TempDir;
         let dir = TempDir::new().expect("tmp");
         let (tx, mut rx) = tokio::sync::broadcast::channel(16);
@@ -688,23 +688,21 @@ mod ingest_poll_loop_tests {
         ));
         let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await
-            .expect("marker must broadcast within 500ms when drain returns Ok(n>0)")
+            .expect("a sync-status heartbeat must broadcast within 500ms of the first tick")
             .expect("broadcast channel still open");
         handle.abort();
-        assert_eq!(
-            received.text, SYNC_STATUS_UPDATE_MARKER,
-            "broadcast text must be SYNC_STATUS_UPDATE_MARKER on state-changed tick; got: {received:?}"
-        );
-        assert_eq!(
-            received.message_type,
-            crate::session::MessageType::System,
-            "marker is System message_type so bridge filter routes correctly"
-        );
         assert_eq!(received.from, "bpmux");
+        assert!(
+            matches!(
+                received.state_delta,
+                Some(crate::session::message::StateDeltaPayload::SyncPoll { .. })
+            ),
+            "the per-tick heartbeat is a sync_poll state-delta carrying the full status; got: {received:?}"
+        );
     }
 
     #[tokio::test(start_paused = true)]
-    async fn drain_loop_does_not_broadcast_when_drain_returns_zero() {
+    async fn drain_loop_heartbeats_even_when_drain_returns_zero() {
         use crate::bridge::run_drain_loop;
         use tempfile::TempDir;
         let dir = TempDir::new().expect("tmp");
@@ -721,11 +719,17 @@ mod ingest_poll_loop_tests {
             session,
             Duration::from_millis(50),
         ));
-        let result = tokio::time::timeout(Duration::from_millis(200), rx.recv()).await;
+        let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
+            .await
+            .expect("heartbeat must fire on a zero-drain tick — the frontend stale-watch depends on it with no frontend poll")
+            .expect("broadcast channel still open");
         handle.abort();
         assert!(
-            result.is_err(),
-            "no marker should broadcast when drain returns Ok(0); got: {result:?}"
+            matches!(
+                received.state_delta,
+                Some(crate::session::message::StateDeltaPayload::SyncPoll { .. })
+            ),
+            "zero-drain ticks still heartbeat sync_poll; got: {received:?}"
         );
     }
 }

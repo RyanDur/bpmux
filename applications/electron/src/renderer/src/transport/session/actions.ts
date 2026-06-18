@@ -30,7 +30,6 @@ export const SessionActionType = {
   HistoryLoaded: 'session/historyLoaded',
   MirrorSnapshotReceived: 'session/mirrorSnapshotReceived',
   MirrorDeltaReceived: 'session/mirrorDeltaReceived',
-  SyncStatusBumped: 'session/syncStatusBumped',
   PtyOutputReceived: 'session/ptyOutputReceived',
   PtyExitReceived: 'session/ptyExitReceived',
   StartRequested: 'session/startRequested',
@@ -52,7 +51,6 @@ export type SessionAction =
   | { type: typeof SessionActionType.HistoryLoaded; history: HistoryMessage[] }
   | { type: typeof SessionActionType.MirrorSnapshotReceived; payload: StateSnapshotPayload }
   | { type: typeof SessionActionType.MirrorDeltaReceived; delta: StateDeltaPayload; ts: string }
-  | { type: typeof SessionActionType.SyncStatusBumped }
   | { type: typeof SessionActionType.PtyOutputReceived; terminalId: string; data: string }
   | { type: typeof SessionActionType.PtyExitReceived; terminalId: string }
   | { type: typeof SessionActionType.StartRequested; config: SessionConfig }
@@ -98,8 +96,6 @@ export const mirrorDeltaReceived = (delta: StateDeltaPayload, ts: string): Sessi
   delta,
   ts
 })
-
-export const syncStatusBumped = (): SessionAction => ({ type: SessionActionType.SyncStatusBumped })
 
 export const ptyOutputReceived = (terminalId: string, data: string): SessionAction => ({
   type: SessionActionType.PtyOutputReceived,

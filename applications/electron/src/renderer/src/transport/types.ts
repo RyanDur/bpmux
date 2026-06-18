@@ -34,6 +34,24 @@ export interface CiSnapshotWire {
   last_successful_poll_at?: string | null
 }
 
+export interface DroppedEventWire {
+  story_number: number
+  error: string
+  ts: string
+}
+
+export interface SyncStatusWire {
+  last_ingest_at: string | null
+  last_push_at: string | null
+  pending_events: number
+  last_error: string | null
+  dropped_events: DroppedEventWire[]
+  recovering_from_corruption: boolean
+  stale: boolean
+  startup_fail: boolean
+  conflicts_pending: number
+}
+
 export type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
 
 export type PresenceWire = 'Online' | 'Busy' | 'Idle' | 'Offline' | 'Blocked' | 'Help'
@@ -50,6 +68,7 @@ export type StateDeltaPayload =
   | { domain: 'reactions'; channel: string; aggregated: ReactionAggregateWire[] }
   | { domain: 'ci'; snapshot: CiSnapshotWire }
   | { domain: 'ci_poll'; snapshot: CiSnapshotWire }
+  | { domain: 'sync_poll'; status: SyncStatusWire }
   | { domain: 'roster'; members: RosterMemberWire[] }
   | {
       domain: 'iteration_close'
@@ -149,5 +168,3 @@ export interface ChatMessage {
 }
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
-
-export const SYNC_STATUS_UPDATE_MARKER = '__BPMUX_SYNC_STATUS_UPDATE__'

@@ -3,23 +3,26 @@ import type {
   ReactionAggregateWire,
   RosterMemberWire,
   StateDeltaPayload,
-  StateSnapshotPayload
+  StateSnapshotPayload,
+  SyncStatusWire
 } from './types'
 
 export interface MirrorState {
   reactions: ReadonlyMap<string, ReactionAggregateWire[]>
   ci: CiSnapshotWire | null
+  sync: SyncStatusWire | null
   roster: RosterMemberWire[]
 }
 
 export const emptyMirrorState = (): MirrorState => ({
   reactions: new Map(),
   ci: null,
+  sync: null,
   roster: []
 })
 
 export const applyStateSnapshot = (
-  _prev: MirrorState,
+  prev: MirrorState,
   snapshot: StateSnapshotPayload
 ): MirrorState => {
   const reactions = new Map<string, ReactionAggregateWire[]>()
@@ -29,6 +32,7 @@ export const applyStateSnapshot = (
   return {
     reactions,
     ci: snapshot.ci ?? null,
+    sync: prev.sync,
     roster: snapshot.roster
   }
 }
@@ -45,6 +49,8 @@ export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): Mi
       return { ...prev, ci: delta.snapshot }
     case 'ci_poll':
       return { ...prev, ci: delta.snapshot }
+    case 'sync_poll':
+      return { ...prev, sync: delta.status }
     case 'roster':
       return { ...prev, roster: delta.members }
     default:

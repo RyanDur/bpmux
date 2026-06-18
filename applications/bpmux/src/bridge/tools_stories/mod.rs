@@ -31,7 +31,6 @@ pub(crate) use metadata::{
     handle_unset_parent_epic,
 };
 pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
-pub use signals::SYNC_STATUS_UPDATE_MARKER;
 #[cfg(test)]
 pub(crate) use signals::{
     addressee_for_pass_desk_check, build_iteration_close_signal,

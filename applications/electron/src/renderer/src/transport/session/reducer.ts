@@ -12,7 +12,6 @@ export interface SessionSnapshot {
   mirror: MirrorState
   boardSnapshot: BoardResponse | null
   boardInvalidateTick: number
-  syncStatusTick: number
   reconnectTick: number
 }
 
@@ -26,7 +25,6 @@ export const emptySnapshot = (url: string | undefined): SessionSnapshot => ({
   mirror: emptyMirrorState(),
   boardSnapshot: null,
   boardInvalidateTick: 0,
-  syncStatusTick: 0,
   reconnectTick: 0
 })
 
@@ -94,8 +92,6 @@ export const sessionReducer = (state: SessionSnapshot, action: SessionAction): S
       }
       return next
     }
-    case SessionActionType.SyncStatusBumped:
-      return { ...state, syncStatusTick: state.syncStatusTick + 1 }
     default:
       return state
   }

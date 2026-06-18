@@ -457,7 +457,8 @@ pub async fn post_test_fire_sync_status(
         let status = handle.lock().unwrap_or_else(|e| e.into_inner());
         status.clone()
     };
-    crate::bridge::polling::broadcast_sync_status_update(&session, &snapshot);
+    crate::bridge::polling::broadcast_sync_status_heartbeat(&session, &snapshot);
+    crate::bridge::polling::broadcast_sync_status_transition(&session, &snapshot);
     (
         StatusCode::OK,
         Json(serde_json::json!({ "dispatched": true })),

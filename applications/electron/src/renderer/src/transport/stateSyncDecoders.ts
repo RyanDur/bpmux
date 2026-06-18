@@ -5,7 +5,8 @@ import {
   type ReactionsChannelSnapshot,
   type RosterMemberWire,
   type StateDeltaPayload,
-  type StateSnapshotPayload
+  type StateSnapshotPayload,
+  type SyncStatusWire
 } from './types'
 
 const ciState = D.literalUnion('unknown', 'green', 'red', 'running', 'quota_exhausted')
@@ -15,7 +16,26 @@ const ciSnapshot: D.Decoder<CiSnapshotWire> = D.object({
   optional: {
     run_id: D.nullable(D.number),
     head_sha: D.nullable(D.string),
-    display_title: D.nullable(D.string)
+    display_title: D.nullable(D.string),
+    last_successful_poll_at: D.nullable(D.string)
+  }
+})
+
+const droppedEvent = D.object({
+  required: { story_number: D.number, error: D.string, ts: D.string }
+})
+
+const syncStatus: D.Decoder<SyncStatusWire> = D.object({
+  required: {
+    last_ingest_at: D.nullable(D.string),
+    last_push_at: D.nullable(D.string),
+    pending_events: D.number,
+    last_error: D.nullable(D.string),
+    dropped_events: D.array(droppedEvent),
+    recovering_from_corruption: D.boolean,
+    stale: D.boolean,
+    startup_fail: D.boolean,
+    conflicts_pending: D.number
   }
 })
 
@@ -59,6 +79,8 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
     }
   }),
   D.object({ required: { domain: D.literal('ci'), snapshot: ciSnapshot } }),
+  D.object({ required: { domain: D.literal('ci_poll'), snapshot: ciSnapshot } }),
+  D.object({ required: { domain: D.literal('sync_poll'), status: syncStatus } }),
   D.object({ required: { domain: D.literal('roster'), members: D.array(rosterMember) } }),
   D.object({
     required: {

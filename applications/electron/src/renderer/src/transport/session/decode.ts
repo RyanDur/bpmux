@@ -17,10 +17,9 @@ import {
   ptyExitReceived,
   ptyOutputReceived,
   sessionIdentified,
-  syncStatusBumped,
   type SessionAction
 } from './actions'
-import { SYNC_STATUS_UPDATE_MARKER, type ChatMessage, type ServerChatMessage } from '../types'
+import { type ChatMessage, type ServerChatMessage } from '../types'
 
 const chatFrameToAction = (
   message: ServerChatMessage,
@@ -31,9 +30,6 @@ const chatFrameToAction = (
   }
   if (message.message_type === MESSAGE_TYPE.StateDelta) {
     return message.state_delta ? mirrorDeltaReceived(message.state_delta, message.ts) : null
-  }
-  if (message.text === SYNC_STATUS_UPDATE_MARKER) {
-    return syncStatusBumped()
   }
   const chat: ChatMessage = {
     id: `${message.ts}-${nextSeq()}`,

@@ -5,7 +5,8 @@ import type {
   CiSnapshotWire,
   ConnectionStatus,
   ReactionAggregateWire,
-  RosterMemberWire
+  RosterMemberWire,
+  SyncStatusWire
 } from '../types'
 import type { BoardResponse } from '../../board/types'
 
@@ -27,8 +28,8 @@ export const useReactionsByChannel = (): ReadonlyMap<string, ReactionAggregateWi
 
 export const useCiSnapshot = (): CiSnapshotWire | null => useSelector((s) => s.mirror.ci)
 
+export const useSyncStatus = (): SyncStatusWire | null => useSelector((s) => s.mirror.sync)
+
 export const useBoardSnapshot = (): BoardResponse | null => useSelector((s) => s.boardSnapshot)
 
 export const useBoardInvalidateTick = (): number => useSelector((s) => s.boardInvalidateTick)
-
-export const useSyncStatusTick = (): number => useSelector((s) => s.syncStatusTick)

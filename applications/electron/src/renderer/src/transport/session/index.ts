@@ -20,9 +20,9 @@ export {
   useRoster,
   useReactionsByChannel,
   useCiSnapshot,
+  useSyncStatus,
   useBoardSnapshot,
-  useBoardInvalidateTick,
-  useSyncStatusTick
+  useBoardInvalidateTick
 } from './hooks'
 export { subscribeLiveMessages, subscribePtyOutput, subscribePtyExit } from './emitter'
 export { encodeKeystroke, decodePtyData } from './ptyCodec'

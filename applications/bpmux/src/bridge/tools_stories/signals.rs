@@ -7,8 +7,6 @@ fn role_id_for_purpose(purpose: &str) -> String {
         .unwrap_or_else(|| purpose.to_string())
 }
 
-pub const SYNC_STATUS_UPDATE_MARKER: &str = "__BPMUX_SYNC_STATUS_UPDATE__";
-
 pub(crate) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMessage> {
     let designer = role_id_for_purpose("designer");
     let pm = role_id_for_purpose("pm");

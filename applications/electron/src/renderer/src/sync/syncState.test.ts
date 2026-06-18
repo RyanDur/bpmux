@@ -4,7 +4,6 @@ import { stateAriaLabel, stateGlyph, type SyncState } from './syncState'
 const ALL_STATES: SyncState[] = [
   'connected',
   'loading',
-  'unreachable',
   'syncing',
   'offline-queued',
   'drained-permanent-failure',
@@ -17,7 +16,6 @@ describe('#1636 stateGlyph — each state maps to its own distinct glyph', () =>
   const cases: Array<[SyncState, string]> = [
     ['connected', '●'],
     ['loading', '○'],
-    ['unreachable', '?'],
     ['syncing', '◌'],
     ['offline-queued', '⚠'],
     ['drained-permanent-failure', '✗'],
@@ -41,7 +39,6 @@ describe('#1636 stateAriaLabel — each state announces its true condition', () 
   const fixedCases: Array<[SyncState, string]> = [
     ['connected', 'Sync state: connected'],
     ['loading', 'Sync state: loading — awaiting first report'],
-    ['unreachable', 'Sync state: unknown — sync status unreachable'],
     ['recovering', 'Sync state: recovering from local-cache corruption; rehydrating from GitHub'],
     ['stale', 'Sync state: stale; last successful sync exceeded the staleness threshold'],
     [

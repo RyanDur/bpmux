@@ -58,7 +58,6 @@ pub(crate) use dispatch::{
 pub(crate) mod test_fixtures;
 
 pub use tools::VIEW_BACKLOG_MARKER;
-pub use tools_stories::SYNC_STATUS_UPDATE_MARKER;
 pub use tools_stories::parse_acceptance_test_path;
 
 type McpError = ErrorData;

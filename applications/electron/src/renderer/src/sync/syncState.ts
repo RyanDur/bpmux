@@ -1,9 +1,8 @@
-import type { SyncStatusReport } from './syncStatusService'
+import type { SyncStatusWire } from '../transport/types'
 
 export type SyncState =
   | 'connected'
   | 'loading'
-  | 'unreachable'
   | 'syncing'
   | 'offline-queued'
   | 'drained-permanent-failure'
@@ -11,8 +10,8 @@ export type SyncState =
   | 'stale'
   | 'startup-fail'
 
-export const deriveState = (report: SyncStatusReport | null, error: string | null): SyncState => {
-  if (!report) return error ? 'unreachable' : 'loading'
+export const deriveState = (report: SyncStatusWire | null): SyncState => {
+  if (!report) return 'loading'
   if (report.dropped_events.length > 0) return 'drained-permanent-failure'
   if (report.recovering_from_corruption) return 'recovering'
   if (report.startup_fail) return 'startup-fail'
@@ -28,8 +27,6 @@ export const stateGlyph = (state: SyncState): string => {
       return '●'
     case 'loading':
       return '○'
-    case 'unreachable':
-      return '?'
     case 'syncing':
       return '◌'
     case 'offline-queued':
@@ -51,8 +48,6 @@ export const stateAriaLabel = (state: SyncState, count: number): string => {
       return 'Sync state: connected'
     case 'loading':
       return 'Sync state: loading — awaiting first report'
-    case 'unreachable':
-      return 'Sync state: unknown — sync status unreachable'
     case 'syncing':
       return `Sync state: syncing ${count} pending`
     case 'offline-queued':

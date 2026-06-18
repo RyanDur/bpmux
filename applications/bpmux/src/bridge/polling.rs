@@ -217,28 +217,34 @@ pub(crate) async fn run_drain_loop(
                 true
             }
         };
+        let snapshot = refresh.snapshot_status();
+        broadcast_sync_status_heartbeat(&session, &snapshot);
         if state_changed {
-            broadcast_sync_status_update(&session, &refresh.snapshot_status());
+            broadcast_sync_status_transition(&session, &snapshot);
         }
     }
 }
 
-pub(crate) fn broadcast_sync_status_update(
+pub(crate) fn broadcast_sync_status_heartbeat(
     session: &crate::session::Session,
     snapshot: &crate::board::SyncStatus,
 ) {
+    let status = serde_json::to_value(snapshot).unwrap_or(serde_json::Value::Null);
     let msg = crate::session::Message {
         from: "bpmux".to_string(),
-        text: super::SYNC_STATUS_UPDATE_MARKER.to_string(),
+        text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: crate::session::MessageType::System,
+        message_type: crate::session::MessageType::StateDelta,
+        state_delta: Some(crate::session::message::StateDeltaPayload::SyncPoll { status }),
         ..crate::session::Message::default()
     };
-    if let Err(e) = session.broadcast(&msg) {
-        crate::session::diag::log_diag(&format!(
-            "run_drain_loop: sync-status marker broadcast failed: {e}"
-        ));
-    }
+    session.broadcast_ephemeral(&msg);
+}
+
+pub(crate) fn broadcast_sync_status_transition(
+    session: &crate::session::Session,
+    snapshot: &crate::board::SyncStatus,
+) {
     if let Some(transition) = crate::board::sync_transition(snapshot) {
         let delta = crate::session::Message {
             from: "bpmux".to_string(),

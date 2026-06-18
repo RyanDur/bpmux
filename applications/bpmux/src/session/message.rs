@@ -86,6 +86,8 @@ pub enum StateDeltaPayload {
     CiPoll { snapshot: CiSnapshotWire },
     #[serde(rename = "sync")]
     Sync { transition: SyncTransitionWire },
+    #[serde(rename = "sync_poll")]
+    SyncPoll { status: serde_json::Value },
     #[serde(rename = "story_transition")]
     StoryTransition { transition: StoryTransitionWire },
     #[serde(rename = "roster")]

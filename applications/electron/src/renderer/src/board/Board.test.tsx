@@ -6,16 +6,6 @@ vi.mock('../api/boardClient', () => ({
   getBoard: (...args: unknown[]) => getBoard(...args)
 }))
 
-vi.mock('../sync/syncStatusService', () => {
-  const snapshot = { report: null, error: null }
-  return {
-    ensureSyncStatusStarted: () => {},
-    refreshSyncStatusNow: () => {},
-    getSyncStatusSnapshot: () => snapshot,
-    subscribeSyncStatus: () => () => {}
-  }
-})
-
 import Board from './Board'
 import type { BoardResponse, BoardStory } from './types'
 import { dispatchSession, resetSessionForTest } from '../transport/session/store'
@@ -23,7 +13,10 @@ import { mirrorDeltaReceived } from '../transport/session/actions'
 
 const pushSnapshot = (snapshot: BoardResponse): void =>
   dispatchSession(
-    mirrorDeltaReceived({ domain: 'board_snapshot', stories: snapshot.stories }, snapshot.fetched_at)
+    mirrorDeltaReceived(
+      { domain: 'board_snapshot', stories: snapshot.stories },
+      snapshot.fetched_at
+    )
   )
 
 const inertChain = (): unknown => {

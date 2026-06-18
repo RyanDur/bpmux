@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { dispatchSession, resetSessionForTest } from './store'
-import { connected, mirrorDeltaReceived, sessionIdentified, syncStatusBumped } from './actions'
-import { useConnectionStatus, useRoster, useSessionId, useSyncStatusTick } from './hooks'
+import { connected, mirrorDeltaReceived, sessionIdentified } from './actions'
+import { useConnectionStatus, useRoster, useSessionId, useSyncStatus } from './hooks'
 
 afterEach(() => resetSessionForTest())
 
@@ -40,10 +40,30 @@ describe('session selector hooks', () => {
     expect(result.current.map((m) => m.role)).toEqual(['Pm'])
   })
 
-  it('useSyncStatusTick increments on a sync-status bump', () => {
-    const { result } = renderHook(() => useSyncStatusTick())
-    expect(result.current).toBe(0)
-    act(() => dispatchSession(syncStatusBumped()))
-    expect(result.current).toBe(1)
+  it('useSyncStatus reflects a sync_poll mirror-delta', () => {
+    const { result } = renderHook(() => useSyncStatus())
+    expect(result.current).toBeNull()
+    act(() =>
+      dispatchSession(
+        mirrorDeltaReceived(
+          {
+            domain: 'sync_poll',
+            status: {
+              last_ingest_at: '2026-01-01T00:00:00Z',
+              last_push_at: null,
+              pending_events: 2,
+              last_error: null,
+              dropped_events: [],
+              recovering_from_corruption: false,
+              stale: false,
+              startup_fail: false,
+              conflicts_pending: 0
+            }
+          },
+          '2026-01-01T00:00:00Z'
+        )
+      )
+    )
+    expect(result.current?.pending_events).toBe(2)
   })
 })

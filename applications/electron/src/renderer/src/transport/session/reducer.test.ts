@@ -7,8 +7,7 @@ import {
   disconnected,
   historyLoaded,
   messageReceived,
-  reconnected,
-  syncStatusBumped
+  reconnected
 } from './actions'
 import type { ChatMessage } from '../types'
 
@@ -66,11 +65,6 @@ describe('sessionReducer — history merge', () => {
 })
 
 describe('sessionReducer — ticks and command pass-through', () => {
-  it('syncStatusBumped increments syncStatusTick', () => {
-    const s = emptySnapshot('ws://x')
-    expect(sessionReducer(s, syncStatusBumped()).syncStatusTick).toBe(1)
-  })
-
   it('a command action (no state meaning) returns the same state reference', () => {
     const s: SessionSnapshot = emptySnapshot('ws://x')
     expect(sessionReducer(s, chatSendRequested('hi'))).toBe(s)
