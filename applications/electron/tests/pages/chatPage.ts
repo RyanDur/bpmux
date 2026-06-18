@@ -15,6 +15,22 @@ export class ChatPage {
     return this.win.getByRole('log', { name: 'Chat messages' })
   }
 
+  messageScroller(): Locator {
+    return this.messageLog().getByRole('list')
+  }
+
+  messageRow(text: string): Locator {
+    return this.messageLog().getByRole('listitem').filter({ hasText: text })
+  }
+
+  newMessagesPill(): Locator {
+    return this.win.getByRole('button', { name: /new message/i })
+  }
+
+  filterRegion(): Locator {
+    return this.win.getByRole('complementary', { name: 'Message class filter' })
+  }
+
   connectionState(): Locator {
     return this.win.getByText(/^(online|reconnecting|offline)$/)
   }

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 const SEED_COUNT = 60
 const CENTER_TOLERANCE_PX = 8
@@ -18,7 +19,7 @@ const seedMessages = (count: number): Array<Record<string, unknown>> =>
   })
 
 const scrollToVisualTopAwayFromBottom = async (win: Page): Promise<void> => {
-  const ul = win.locator('[data-test="message-list"]')
+  const ul = new ChatPage(win).messageScroller()
   await expect(ul).toBeVisible()
   await ul.evaluate((el) => {
     el.scrollTop = -(el.scrollHeight - el.clientHeight)
@@ -42,11 +43,12 @@ interface PillGeometry {
 }
 
 const measurePillGeometry = async (win: Page): Promise<PillGeometry> => {
-  const pill = win.locator('[data-test="new-messages-pill"]')
+  const chat = new ChatPage(win)
+  const pill = chat.newMessagesPill()
   await expect(pill).toBeVisible()
   const pillBox = await pill.boundingBox()
-  const wrapBox = await win.locator('[data-test="message-list-wrap"]').boundingBox()
-  const filterPillsBox = await win.locator('[data-test="filter-pills"]').boundingBox()
+  const wrapBox = await win.locator('.message-list-wrap').boundingBox()
+  const filterPillsBox = await chat.filterRegion().boundingBox()
   if (pillBox === null || wrapBox === null) {
     throw new Error('pill or message-list-wrap has no bounding box')
   }
@@ -74,10 +76,10 @@ const driveScrolledUpWithNewMessageBelow = async (
   marker: string
 ): Promise<void> => {
   await waitForMessagesLoaded(win, 'seed message 59')
-  await expect(win.locator('[data-test="filter-pills"]')).toBeVisible()
+  await expect(new ChatPage(win).filterRegion()).toBeVisible()
   await scrollToVisualTopAwayFromBottom(win)
   await broadcastLivePeerMessage(backendPort, marker)
-  await expect(win.locator('[data-test="new-messages-pill"]')).toBeVisible({ timeout: 5000 })
+  await expect(new ChatPage(win).newMessagesPill()).toBeVisible({ timeout: 5000 })
 }
 
 test.describe('#1512 new-messages pill — bottom-center, never top-left/overlapping filter-pills', () => {

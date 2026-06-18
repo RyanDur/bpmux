@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 type TransitionRecord = { cls: string; prop: string }
 
@@ -32,7 +33,7 @@ test.describe('#1487 chat-message mount is a pure grid-fr height-grow (no fade)'
         )
       })
       await win.reload()
-      await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+      await expect(new ChatPage(win).input()).toBeVisible()
       await waitForMessagesLoaded(win, 'mount-animation probe message')
       await win.waitForTimeout(300)
 
@@ -91,7 +92,7 @@ test.describe('#1487 chat-message mount is a pure grid-fr height-grow (no fade)'
         )
       })
       await win.reload()
-      await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+      await expect(new ChatPage(win).input()).toBeVisible()
       await waitForMessagesLoaded(win, 'seed baseline message')
       await win.waitForTimeout(300)
 
@@ -119,9 +120,9 @@ test.describe('#1487 chat-message mount is a pure grid-fr height-grow (no fade)'
       })
       expect(sent.ok).toBe(true)
 
-      await expect(
-        win.locator('[data-test="message-row"]', { hasText: 'genuinely-new rise probe' })
-      ).toBeVisible({ timeout: 10_000 })
+      await expect(new ChatPage(win).messageRow('genuinely-new rise probe')).toBeVisible({
+        timeout: 10_000
+      })
       await win.waitForTimeout(300)
 
       const afterNew = await win.evaluate(

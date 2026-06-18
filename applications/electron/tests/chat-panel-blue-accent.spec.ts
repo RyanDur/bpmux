@@ -37,7 +37,7 @@ test.describe('#1511 chat-panel blue accent + scope-text retired', () => {
 
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))
       await win.reload()
-      const chat = win.locator('[data-test="chat-region"]')
+      const chat = win.locator('.chat')
       await expect(chat).toBeVisible()
       await expect
         .poll(() => win.evaluate(() => document.documentElement.dataset.theme))
