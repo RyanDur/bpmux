@@ -2,8 +2,7 @@ import { useEffect } from 'react'
 import { tryCatch } from '../lib/result'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage } from '../transport/types'
-import { RENDERER_IDENTITY } from '../transport/session'
-import { subscribeWsLiveMessages } from '../transport/wsService'
+import { RENDERER_IDENTITY, subscribeLiveMessages } from '../transport/session'
 
 const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
@@ -59,5 +58,5 @@ export const useNotifications = (): void => {
     }
   }, [])
 
-  useEffect(() => subscribeWsLiveMessages(notify), [])
+  useEffect(() => subscribeLiveMessages(notify), [])
 }

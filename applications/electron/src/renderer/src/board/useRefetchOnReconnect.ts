@@ -1,9 +1,13 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { getWsSnapshot, subscribeWs } from '../transport/wsService'
+import { getSessionSnapshot, subscribeSession } from '../transport/session'
 
 export const useRefetchOnReconnect = (refetch: () => void): void => {
-  const readReconnectTick = (): number => getWsSnapshot().reconnectTick
-  const reconnectTick = useSyncExternalStore(subscribeWs, readReconnectTick, readReconnectTick)
+  const readReconnectTick = (): number => getSessionSnapshot().reconnectTick
+  const reconnectTick = useSyncExternalStore(
+    subscribeSession,
+    readReconnectTick,
+    readReconnectTick
+  )
   useEffect(() => {
     if (reconnectTick > 0) refetch()
   }, [reconnectTick, refetch])

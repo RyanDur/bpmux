@@ -6,9 +6,9 @@ const { liveHandlers } = vi.hoisted(() => ({
   liveHandlers: [] as ((m: ChatMessage) => void)[]
 }))
 
-vi.mock('../transport/wsService', () => ({
+vi.mock('../transport/session', () => ({
   RENDERER_IDENTITY: 'ryan',
-  subscribeWsLiveMessages: (h: (m: ChatMessage) => void) => {
+  subscribeLiveMessages: (h: (m: ChatMessage) => void) => {
     liveHandlers.push(h)
     return () => {
       const i = liveHandlers.indexOf(h)
