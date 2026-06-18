@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { CAP_TRIGGER_THRESHOLD, capMessages, capPerPush, MAX_MESSAGES } from './useWebSocket'
+import { CAP_TRIGGER_THRESHOLD, capMessages, capPerPush, MAX_MESSAGES } from './messageCap'
 import type { ChatMessage } from './types'
 
 const mkMsg = (i: number): ChatMessage => ({

@@ -152,14 +152,12 @@ test.describe('real-backend', () => {
         message_type: 'chat'
       }
     ]
-    // Hydration endpoint returns reverse-chronological per server
-    // convention (newest first) — see useWebSocket.ts:155 where the
-    // renderer reverses it back to chronological before rendering.
+    const newestFirstHydration = [...fixture].reverse()
     await win.route('**/api/messages**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([...fixture].reverse())
+        body: JSON.stringify(newestFirstHydration)
       })
     })
 

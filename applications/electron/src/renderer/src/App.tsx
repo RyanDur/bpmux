@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AppShell from './AppShell'
 import { useMessageHistory } from './hooks/useMessageHistory'
 import { useNotifications } from './hooks/useNotifications'
-import { capPerPush, useWebSocket } from './transport/useWebSocket'
+import { capPerPush } from './transport/messageCap'
+import { sendChat, startSession, useConnectionStatus, useLiveMessages } from './transport/session'
 
 const App = (): React.JSX.Element => {
   const bridge = window.bpmux
@@ -15,11 +16,12 @@ const App = (): React.JSX.Element => {
 
   const [atBottom, setAtBottom] = useState<boolean>(true)
 
-  const { status, messages: liveRaw, sendChat } = useWebSocket(bridge?.wsUrl, {
-    apiBase: bridge?.apiBase,
-    authToken: bridge?.authToken
-  })
+  useEffect(() => {
+    startSession({ url: bridge?.wsUrl, apiBase: bridge?.apiBase, authToken: bridge?.authToken })
+  }, [bridge?.wsUrl, bridge?.apiBase, bridge?.authToken])
 
+  const status = useConnectionStatus()
+  const liveRaw = useLiveMessages()
   const liveMessages = useMemo(() => capPerPush(liveRaw, atBottom), [liveRaw, atBottom])
 
   const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder, hasError } = useMessageHistory(

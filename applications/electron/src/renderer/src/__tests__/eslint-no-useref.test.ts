@@ -8,7 +8,6 @@ const STUB_TEST_TSX = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/__useref_stub
 const WAIVED_FILE = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/chat/Input.tsx')
 const WAIVED_TSX = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/board/Comments.tsx')
 const ENFORCED_DISCHARGED_FILES = [
-  'src/renderer/src/transport/useWebSocket.ts',
   'src/renderer/src/board/useRefetchOnReconnect.ts',
   'src/renderer/src/hooks/useNotifications.ts',
   'src/renderer/src/board/BoardResizeHandle.tsx',
@@ -50,7 +49,7 @@ describe('#1499 ESLint no-useRef substrate — Ryan-canon "no refs unless no oth
     expect(refViolations(result.messages)).toEqual([])
   })
 
-  test('#1537+#1538+#1539: the formerly-waived WS + width-collapse + sync-status files now ENFORCE no-useRef (waivers discharged)', async () => {
+  test('#1537+#1538+#1539: the formerly-waived width-collapse + sync-status files now ENFORCE no-useRef (waivers discharged)', async () => {
     const code = `import { useRef } from 'react'\nexport const C = () => { const r = useRef(0); return r.current }\n`
     for (const file of ENFORCED_DISCHARGED_FILES) {
       const [result] = await lintAs(code, file)
