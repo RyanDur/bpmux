@@ -135,6 +135,10 @@ impl Session {
         Ok(())
     }
 
+    pub fn broadcast_ephemeral(&self, msg: &Message) {
+        let _ = self.wake_tx.send(msg.clone());
+    }
+
     pub fn read_messages(&self) -> Result<Vec<Message>, LogError> {
         self.storage.read_messages()
     }

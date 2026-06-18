@@ -43,6 +43,8 @@ export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): Mi
     }
     case 'ci':
       return { ...prev, ci: delta.snapshot }
+    case 'ci_poll':
+      return { ...prev, ci: delta.snapshot }
     case 'roster':
       return { ...prev, roster: delta.members }
     default:

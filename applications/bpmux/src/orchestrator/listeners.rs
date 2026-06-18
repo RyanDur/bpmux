@@ -116,6 +116,7 @@ fn ci_to_wire(snap: &CiSnapshot) -> CiSnapshotWire {
         run_id: snap.run_id,
         head_sha: snap.head_sha.clone(),
         display_title: snap.display_title.clone(),
+        last_successful_poll_at: None,
     }
 }
 

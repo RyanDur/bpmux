@@ -228,6 +228,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
             run_id: s.run_id,
             head_sha: s.head_sha,
             display_title: s.display_title,
+            last_successful_poll_at: None,
         });
         let roster = self
             .roster_store
@@ -286,6 +287,31 @@ impl<T: CiPollFetch> Orchestrator<T> {
 
     pub fn session(&self) -> Arc<session::Session> {
         Arc::clone(&self.session)
+    }
+
+    pub fn broadcast_ci_poll(&self, last_successful_poll_at: Option<String>) {
+        let snap = self.ci_store.snapshot();
+        let wire = crate::session::message::CiSnapshotWire {
+            state: snap
+                .as_ref()
+                .map(|s| s.state)
+                .unwrap_or(crate::ci::CiState::Unknown),
+            run_id: snap.as_ref().and_then(|s| s.run_id),
+            head_sha: snap.as_ref().and_then(|s| s.head_sha.clone()),
+            display_title: snap.as_ref().and_then(|s| s.display_title.clone()),
+            last_successful_poll_at,
+        };
+        let msg = session::Message {
+            from: "bpmux".to_string(),
+            text: String::new(),
+            ts: chrono::Utc::now(),
+            message_type: session::MessageType::StateDelta,
+            state_delta: Some(crate::session::message::StateDeltaPayload::CiPoll {
+                snapshot: wire,
+            }),
+            ..session::Message::default()
+        };
+        self.session.broadcast_ephemeral(&msg);
     }
 
     pub fn add_ci_listener(&self, listener: Arc<dyn CiBroadcastListener>) {

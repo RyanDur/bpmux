@@ -31,6 +31,7 @@ export interface CiSnapshotWire {
   run_id?: number | null
   head_sha?: string | null
   display_title?: string | null
+  last_successful_poll_at?: string | null
 }
 
 export type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
@@ -48,6 +49,7 @@ export interface RosterMemberWire {
 export type StateDeltaPayload =
   | { domain: 'reactions'; channel: string; aggregated: ReactionAggregateWire[] }
   | { domain: 'ci'; snapshot: CiSnapshotWire }
+  | { domain: 'ci_poll'; snapshot: CiSnapshotWire }
   | { domain: 'roster'; members: RosterMemberWire[] }
   | {
       domain: 'iteration_close'

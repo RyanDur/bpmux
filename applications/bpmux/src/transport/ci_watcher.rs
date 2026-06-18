@@ -42,6 +42,8 @@ pub fn spawn<T: CiPollFetch>(
         let base_backoff = Duration::from_secs(60);
         let max_backoff = MAX_BACKOFF;
         let mut backoff = base_backoff;
+        let poll_time =
+            |store: &CiStateStore| store.last_successful_poll_at().map(|t| t.to_rfc3339());
         loop {
             tokio::select! {
                 _ = ct.cancelled() => break,
@@ -54,6 +56,7 @@ pub fn spawn<T: CiPollFetch>(
                 Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
+                    orchestrator.broadcast_ci_poll(poll_time(&ci_state_store));
                     continue;
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entries, etag }) => {
@@ -64,9 +67,11 @@ pub fn spawn<T: CiPollFetch>(
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
+                    orchestrator.broadcast_ci_poll(poll_time(&ci_state_store));
                     continue;
                 }
                 Err(e) => {
+                    orchestrator.broadcast_ci_poll(poll_time(&ci_state_store));
                     if let Some(decision) = crate::github::classify_and_decide(
                         &e,
                         observer.snapshot(),
@@ -118,6 +123,8 @@ pub fn spawn<T: CiPollFetch>(
                 workflows: classified.workflows.clone(),
             };
             orchestrator.dispatch(CiAction::CiUpdated(snapshot)).await;
+            ci_state_store.mark_poll_succeeded();
+            orchestrator.broadcast_ci_poll(poll_time(&ci_state_store));
         }
     });
 }

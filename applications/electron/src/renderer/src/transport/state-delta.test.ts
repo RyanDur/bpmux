@@ -110,6 +110,20 @@ describe('applyStateDelta', () => {
     expect(next.ci?.run_id).toBe(9)
   })
 
+  test('ci_poll heartbeat refreshes the ci snapshot incl. last_successful_poll_at', () => {
+    const seeded = applyStateSnapshot(emptyMirrorState(), {
+      reactions: [],
+      ci: { state: 'green', last_successful_poll_at: '2026-01-01T00:00:00Z' },
+      roster: []
+    })
+    const next = applyStateDelta(seeded, {
+      domain: 'ci_poll',
+      snapshot: { state: 'green', last_successful_poll_at: '2026-06-18T12:00:00Z' }
+    })
+    expect(next.ci?.state).toBe('green')
+    expect(next.ci?.last_successful_poll_at).toBe('2026-06-18T12:00:00Z')
+  })
+
   test('replaces roster wholesale', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
       reactions: [],

@@ -82,6 +82,8 @@ pub enum StateDeltaPayload {
     },
     #[serde(rename = "ci")]
     Ci { snapshot: CiSnapshotWire },
+    #[serde(rename = "ci_poll")]
+    CiPoll { snapshot: CiSnapshotWire },
     #[serde(rename = "sync")]
     Sync { transition: SyncTransitionWire },
     #[serde(rename = "story_transition")]
@@ -197,6 +199,8 @@ pub struct CiSnapshotWire {
     pub run_id: Option<u64>,
     pub head_sha: Option<String>,
     pub display_title: Option<String>,
+    #[serde(default)]
+    pub last_successful_poll_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

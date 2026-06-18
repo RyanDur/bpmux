@@ -422,6 +422,71 @@ async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
     assert!(!orch.is_running(PollKind::Ci).await);
 }
 
+#[tokio::test]
+async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
+    use crate::session::message::StateDeltaPayload;
+
+    let (session, _dir) = fresh_session();
+    let mut frames = session.subscribe();
+    let tracker = Arc::new(FakeCiTracker::with_responses(
+        vec![default_modified_entry()],
+    ));
+    let parent = CancellationToken::new();
+    let ci_state_store = CiStateStore::new();
+    let orch: Arc<Orchestrator<FakeCiTracker>> = Arc::new(Orchestrator::new(
+        session,
+        Some(tracker.clone()),
+        ci_state_store.clone(),
+        parent.clone(),
+    ));
+
+    tokio::time::pause();
+    orch.dispatch(CiAction::StartCiPolling).await;
+    assert!(orch.is_running(PollKind::Ci).await);
+
+    tokio::time::advance(Duration::from_secs(10)).await;
+    tokio::task::yield_now().await;
+    tokio::time::advance(Duration::from_millis(50)).await;
+    tokio::task::yield_now().await;
+    tokio::time::advance(Duration::from_secs(10)).await;
+    tokio::task::yield_now().await;
+    tracker.notify.notify_one();
+    tokio::task::yield_now().await;
+    tokio::time::resume();
+
+    let mut ci_poll_times: Vec<Option<String>> = Vec::new();
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while std::time::Instant::now() < deadline && ci_poll_times.len() < 2 {
+        match frames.try_recv() {
+            Ok(msg) => {
+                if let Some(StateDeltaPayload::CiPoll { snapshot }) = msg.state_delta {
+                    ci_poll_times.push(snapshot.last_successful_poll_at);
+                }
+            }
+            Err(_) => tokio::time::sleep(Duration::from_millis(10)).await,
+        }
+    }
+
+    orch.dispatch(CiAction::StopCiPolling).await;
+
+    assert!(
+        ci_poll_times.len() >= 2,
+        "success-poll AND failure-poll each broadcast a ci frame; \
+         the failure heartbeat is what lets the frontend stale-watch re-render"
+    );
+    let success_poll_at = ci_poll_times[0].clone();
+    let failure_poll_at = ci_poll_times[1].clone();
+    assert!(
+        success_poll_at.is_some(),
+        "the success poll stamps + broadcasts a real poll-time"
+    );
+    assert_eq!(
+        failure_poll_at, success_poll_at,
+        "on failure the broadcast carries the FROZEN last_successful_poll_at — \
+         the poll-time does not advance, so the stale-watch can detect staleness"
+    );
+}
+
 fn refresh_for_tests() -> Arc<dyn crate::board::RefreshDriver> {
     let store = Arc::new(crate::board::BoardStore::new());
     let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
