@@ -49,7 +49,7 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
       (err) => err
     )
     if (constructResult.kind === 'failure') {
-      console.error('bpmux ws: construct failed', constructResult.reason)
+      console.warn('bpmux ws: construct failed, retrying', constructResult.reason)
       scheduleReconnect(url)
       return
     }
@@ -74,11 +74,11 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
     }
     sock.onerror = (ev) => {
       if (socket !== sock) return
-      console.error('bpmux ws: socket error', ev)
+      console.warn('bpmux ws: socket error', ev)
     }
     sock.onclose = (ev) => {
       if (socket !== sock) return
-      console.error('bpmux ws: closed', ev.code, ev.reason)
+      console.warn('bpmux ws: closed, reconnecting', ev.code, ev.reason)
       socket = null
       awaitingReconnect = true
       api.dispatch(disconnected())

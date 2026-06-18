@@ -60,7 +60,7 @@ export const useBoardFetch = ({
               return
             }
             const message = describeHttpError(reason)
-            console.error('bpmux board: fetch failed, falling back to mock', message)
+            console.warn('bpmux board: fetch failed, falling back to mock', message)
             setData((prev) => prev ?? MOCK_BOARD_RESPONSE)
             setUsingMock((prev) => prev || !prev)
             setError(message)

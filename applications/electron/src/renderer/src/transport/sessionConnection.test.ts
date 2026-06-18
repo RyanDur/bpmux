@@ -198,6 +198,19 @@ describe('#1537 session — reconnect with backoff', () => {
     MockWebSocket.latest().open()
     expect(getSessionSnapshot().reconnectTick).toBe(1)
   })
+
+  test('a transient ws close logs at warn, not error — keeps the e2e zero-console-error invariant robust under load', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.useFakeTimers()
+    startSession({ url: 'ws://test' })
+    MockWebSocket.latest().open()
+    MockWebSocket.latest().drop()
+    expect(errorSpy).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalledWith('bpmux ws: closed, reconnecting', 1006, 'lost')
+    errorSpy.mockRestore()
+    warnSpy.mockRestore()
+  })
 })
 
 describe('#1319 session — reconnect re-fetches history to recover the disconnect gap', () => {

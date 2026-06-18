@@ -56,7 +56,7 @@ export const historyMiddleware: Middleware<SessionSnapshot, SessionAction> = (ap
       })
       .onFailure((err) => {
         if (err.name === 'AbortError' || err.message === 'aborted') return
-        console.error('bpmux session: history fetch failed', err)
+        console.warn('bpmux session: history fetch failed, will retry on reconnect', err)
       }).value
   }
 
