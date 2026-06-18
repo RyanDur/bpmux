@@ -41,6 +41,27 @@ pub async fn post_reaction(
     >,
     axum::Json(body): axum::Json<ReactionToggle>,
 ) -> impl IntoResponse {
+    match apply_reaction_toggle(&session, &orchestrator, &body).await {
+        Ok(present) => (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::json!({ "present": present }).to_string(),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&e),
+        ),
+    }
+}
+
+pub async fn apply_reaction_toggle(
+    session: &session::Session,
+    orchestrator: &Arc<
+        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
+    >,
+    body: &ReactionToggle,
+) -> Result<bool, String> {
     let mut store = session::reactions::load(&session.dir);
     let now = chrono::Utc::now().to_rfc3339();
     let present = session::reactions::toggle_reaction(
@@ -51,13 +72,7 @@ pub async fn post_reaction(
         &body.user,
         &now,
     );
-    if let Err(e) = session::reactions::save(&session.dir, &store) {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json_headers(),
-            err_body(&format!("save reactions: {e}")),
-        );
-    }
+    session::reactions::save(&session.dir, &store).map_err(|e| format!("save reactions: {e}"))?;
     orchestrator
         .dispatch(crate::orchestrator::OrchestratorAction::Reactions(
             crate::orchestrator::ReactionsAction::ReactionToggled {
@@ -76,12 +91,8 @@ pub async fn post_reaction(
     let scope = msgs
         .as_deref()
         .and_then(|m| message_scope_from_key(m, &body.message_key));
-    broadcast_reaction_event(&session, &body, present, excerpt.as_deref(), scope);
-    (
-        StatusCode::OK,
-        json_headers(),
-        serde_json::json!({ "present": present }).to_string(),
-    )
+    broadcast_reaction_event(session, body, present, excerpt.as_deref(), scope);
+    Ok(present)
 }
 
 pub(crate) const EXCERPT_MAX_LEN: usize = 40;

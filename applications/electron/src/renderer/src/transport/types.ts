@@ -149,6 +149,14 @@ export interface ClientPtyResize {
   rows: number
 }
 
+export interface ClientReactionToggle {
+  type: 'reaction_toggle'
+  channel: string
+  message_key: string
+  emoji: string
+  user: string
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -156,6 +164,7 @@ export type ClientMessage =
   | ClientPtySubscribe
   | ClientPtyInput
   | ClientPtyResize
+  | ClientReactionToggle
 
 export interface ChatMessage {
   id: string

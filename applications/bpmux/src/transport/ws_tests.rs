@@ -2,7 +2,31 @@
 
 use super::ws::*;
 use crate::session;
+use crate::transport::protocol::ClientMessage;
 use chrono::Utc;
+
+#[test]
+fn reaction_toggle_frame_deserializes_with_snake_case_fields() {
+    let wire = r#"{"type":"reaction_toggle","channel":"broadcast","message_key":"2026-04-22T18:30:00Z|dev:claude-code","emoji":"👍","user":"ryan"}"#;
+    let parsed: ClientMessage =
+        serde_json::from_str(wire).expect("renderer reaction_toggle frame must deserialize");
+    assert!(
+        matches!(&parsed, ClientMessage::ReactionToggle { .. }),
+        "expected ReactionToggle, got {parsed:?}"
+    );
+    if let ClientMessage::ReactionToggle {
+        channel,
+        message_key,
+        emoji,
+        user,
+    } = parsed
+    {
+        assert_eq!(channel, "broadcast");
+        assert_eq!(message_key, "2026-04-22T18:30:00Z|dev:claude-code");
+        assert_eq!(emoji, "👍");
+        assert_eq!(user, "ryan");
+    }
+}
 
 fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
     session::Message {

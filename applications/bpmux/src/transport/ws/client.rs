@@ -9,13 +9,20 @@ use crate::session;
 use crate::session::MessageType;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
+pub(crate) struct ClientCtx<'a> {
+    pub session: &'a session::Session,
+    pub orchestrator: &'a Arc<
+        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
+    >,
+    pub pty_registry: &'a crate::room::LivePtyRegistry,
+    pub pty_tx: &'a tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
+}
+
 pub(crate) async fn handle_client_message(
     text: &str,
     identity: &str,
-    session: &session::Session,
+    ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
-    pty_registry: &crate::room::LivePtyRegistry,
-    pty_tx: &tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
     pty_readers: &mut std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
 ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
     if !message_size_ok(text) {
@@ -53,7 +60,7 @@ pub(crate) async fn handle_client_message(
                 explicit_privacy,
                 ..session::Message::default()
             };
-            session.broadcast(&msg)?;
+            ctx.session.broadcast(&msg)?;
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;
@@ -87,11 +94,12 @@ pub(crate) async fn handle_client_message(
             let already_streaming = pty_readers
                 .get(&terminal_id)
                 .is_some_and(|stop| !stop.load(std::sync::atomic::Ordering::Relaxed));
-            if !already_streaming && let Some(mut output) = pty_registry.subscribe_for(&terminal_id)
+            if !already_streaming
+                && let Some(mut output) = ctx.pty_registry.subscribe_for(&terminal_id)
             {
                 let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
                 pty_readers.insert(terminal_id.clone(), stop.clone());
-                let sink = pty_tx.clone();
+                let sink = ctx.pty_tx.clone();
                 tokio::spawn(async move {
                     use tokio::sync::broadcast::error::RecvError;
                     loop {
@@ -120,7 +128,7 @@ pub(crate) async fn handle_client_message(
         }
         Ok(ClientMessage::PtyInput { terminal_id, data }) => {
             if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data) {
-                pty_registry.write_to(&terminal_id, &bytes);
+                ctx.pty_registry.write_to(&terminal_id, &bytes);
             }
         }
         Ok(ClientMessage::PtyResize {
@@ -128,7 +136,32 @@ pub(crate) async fn handle_client_message(
             cols,
             rows,
         }) => {
-            pty_registry.resize(&terminal_id, rows, cols);
+            ctx.pty_registry.resize(&terminal_id, rows, cols);
+        }
+        Ok(ClientMessage::ReactionToggle {
+            channel,
+            message_key,
+            emoji,
+            user,
+        }) => {
+            let body = crate::transport::rest::ReactionToggle {
+                channel,
+                message_key,
+                emoji,
+                user,
+            };
+            if let Err(e) =
+                crate::transport::rest::apply_reaction_toggle(ctx.session, ctx.orchestrator, &body)
+                    .await
+            {
+                send_json(
+                    tx,
+                    &ServerMessage::Error {
+                        reason: format!("reaction toggle failed: {e}"),
+                    },
+                )
+                .await?;
+            }
         }
         Err(e) => {
             send_json(

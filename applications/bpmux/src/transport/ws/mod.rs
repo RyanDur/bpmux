@@ -146,7 +146,13 @@ async fn run_ws_session(
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
-                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx, &pty_registry, &pty_tx, &mut pty_readers).await? {
+                            let client_ctx = client::ClientCtx {
+                                session: &session,
+                                orchestrator: &orchestrator,
+                                pty_registry: &pty_registry,
+                                pty_tx: &pty_tx,
+                            };
+                            if let Some(new_identity) = handle_client_message(&text, &identity, &client_ctx, &mut tx, &mut pty_readers).await? {
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
                                 identity = new_identity;
                                 if let Some(ref session_id) = routing_session_id {

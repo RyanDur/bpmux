@@ -62,11 +62,7 @@ const Chat = ({
   const status = useConnectionStatus()
   const showReconnect = status !== 'connected'
   const reactionsChannel = channelKey(recipient)
-  const reactions = useReactions({
-    apiBase,
-    authToken,
-    channel: reactionsChannel
-  })
+  const reactions = useReactions({ channel: reactionsChannel })
 
   const { hiddenCounts, visibleCounts } = useMemo((): {
     hiddenCounts: Partial<Record<MessageClass, number>>

@@ -5,6 +5,7 @@ import {
   ptyInputRequested,
   ptyResizeRequested,
   ptySubscribeRequested,
+  reactionToggleRequested,
   startRequested,
   type SendOptions,
   type SessionConfig
@@ -34,6 +35,13 @@ export const startSession = (config: SessionConfig): void => dispatchSession(sta
 
 export const sendChat = (text: string, opts?: SendOptions): void =>
   dispatchSession(chatSendRequested(text, opts))
+
+export const toggleReaction = (
+  channel: string,
+  messageKey: string,
+  emoji: string,
+  user: string
+): void => dispatchSession(reactionToggleRequested(channel, messageKey, emoji, user))
 
 export const sendPtySubscribe = (terminalId: string): void =>
   dispatchSession(ptySubscribeRequested(terminalId))

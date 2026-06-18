@@ -3,6 +3,7 @@ import { cleanup, renderHook } from '@testing-library/react'
 import { useReactions } from './useReactions'
 import { dispatchSession, resetSessionForTest } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
+import { captureSentFramesForTest } from '../transport/session'
 import type { ReactionAggregateWire } from '../transport/types'
 
 const pushReactions = (channel: string, aggregated: ReactionAggregateWire[]): void =>
@@ -22,18 +23,30 @@ describe('useReactions — channel-scoped aggregation from the session store', (
       { message_key: 'm1', emoji: '🎉', count: 1, users: ['designer'] },
       { message_key: 'm2', emoji: '🚀', count: 1, users: ['dev'] }
     ])
-    const { result } = renderHook(() =>
-      useReactions({ apiBase: undefined, authToken: undefined, channel: 'broadcast' })
-    )
+    const { result } = renderHook(() => useReactions({ channel: 'broadcast' }))
     expect(result.current.byMessage.get('m1')?.map((r) => r.emoji)).toEqual(['👍', '🎉'])
     expect(result.current.byMessage.get('m2')?.map((r) => r.emoji)).toEqual(['🚀'])
   })
 
   test('a different channel sees none of another channel’s reactions', () => {
     pushReactions('broadcast', [{ message_key: 'm1', emoji: '👍', count: 1, users: ['ryan'] }])
-    const { result } = renderHook(() =>
-      useReactions({ apiBase: undefined, authToken: undefined, channel: 'dev+pm' })
-    )
+    const { result } = renderHook(() => useReactions({ channel: 'dev+pm' }))
     expect(result.current.byMessage.size).toBe(0)
+  })
+})
+
+describe('useReactions — toggle sends a reaction_toggle over the WS (no REST)', () => {
+  test('toggle dispatches a reaction_toggle frame carrying channel/message_key/emoji/user', () => {
+    const frames = captureSentFramesForTest()
+    const { result } = renderHook(() => useReactions({ channel: 'broadcast' }))
+    result.current.toggle('m1', '👍', 'dev')
+    const toggleFrame = frames.find((f) => f.type === 'reaction_toggle')
+    expect(toggleFrame).toEqual({
+      type: 'reaction_toggle',
+      channel: 'broadcast',
+      message_key: 'm1',
+      emoji: '👍',
+      user: 'dev'
+    })
   })
 })

@@ -34,6 +34,7 @@ export const SessionActionType = {
   PtyExitReceived: 'session/ptyExitReceived',
   StartRequested: 'session/startRequested',
   ChatSendRequested: 'session/chatSendRequested',
+  ReactionToggleRequested: 'session/reactionToggleRequested',
   PtySubscribeRequested: 'session/ptySubscribeRequested',
   PtyInputRequested: 'session/ptyInputRequested',
   PtyResizeRequested: 'session/ptyResizeRequested',
@@ -55,6 +56,13 @@ export type SessionAction =
   | { type: typeof SessionActionType.PtyExitReceived; terminalId: string }
   | { type: typeof SessionActionType.StartRequested; config: SessionConfig }
   | { type: typeof SessionActionType.ChatSendRequested; text: string; opts?: SendOptions }
+  | {
+      type: typeof SessionActionType.ReactionToggleRequested
+      channel: string
+      messageKey: string
+      emoji: string
+      user: string
+    }
   | { type: typeof SessionActionType.PtySubscribeRequested; terminalId: string }
   | { type: typeof SessionActionType.PtyInputRequested; terminalId: string; keystroke: string }
   | {
@@ -117,6 +125,19 @@ export const chatSendRequested = (text: string, opts?: SendOptions): SessionActi
   type: SessionActionType.ChatSendRequested,
   text,
   opts
+})
+
+export const reactionToggleRequested = (
+  channel: string,
+  messageKey: string,
+  emoji: string,
+  user: string
+): SessionAction => ({
+  type: SessionActionType.ReactionToggleRequested,
+  channel,
+  messageKey,
+  emoji,
+  user
 })
 
 export const ptySubscribeRequested = (terminalId: string): SessionAction => ({

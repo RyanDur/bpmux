@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron as launchWithIsolatedSession } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { ChatPage } from './pages/chatPage'
 
 // Real-backend test harness — launches Electron without `win.route`
 // stubs, so the renderer exercises the actual network layer:
@@ -534,6 +535,27 @@ test.describe('real-backend', () => {
     const pill = win.locator('[data-test="reaction-pill-👍"]').first()
     await expect(pill).toBeVisible({ timeout: 10_000 })
     await expect(pill).toHaveAttribute('aria-label', /👍 1 reactions from dev/)
+
+    await app.close()
+  })
+
+  test('reactions: clicking a picker emoji toggles over the WS (no REST) → pill appears', async () => {
+    const seedMessages = [
+      {
+        from: 'dev:claude-code',
+        text: 'react to me via the UI',
+        ts: '2026-04-22T18:30:00Z',
+        message_type: 'chat'
+      }
+    ]
+    const { app } = await launchWithIsolatedSession({ seedMessages })
+    const win = await app.firstWindow()
+    const chat = new ChatPage(win)
+    await expect(chat.appRoot()).toBeVisible()
+
+    await chat.reactToFirstMessage('👍')
+
+    await expect(chat.reactionPill('👍 1 reactions from ryan')).toBeVisible({ timeout: 10_000 })
 
     await app.close()
   })

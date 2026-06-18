@@ -35,7 +35,9 @@ pub use messages::{
 };
 pub use metrics::get_metrics;
 pub use presence::{PresenceRequest, post_presence};
-pub use reactions::{ReactionToggle, ReactionsChannelQuery, get_reactions, post_reaction};
+pub use reactions::{
+    ReactionToggle, ReactionsChannelQuery, apply_reaction_toggle, get_reactions, post_reaction,
+};
 #[cfg(test)]
 pub(crate) use reactions::{
     build_reaction_event_text_with_excerpt, find_message_excerpt, message_scope_from_key,

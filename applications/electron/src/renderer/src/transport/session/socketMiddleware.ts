@@ -132,6 +132,15 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
         send(frame)
         return
       }
+      case SessionActionType.ReactionToggleRequested:
+        send({
+          type: 'reaction_toggle',
+          channel: action.channel,
+          message_key: action.messageKey,
+          emoji: action.emoji,
+          user: action.user
+        })
+        return
       case SessionActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return

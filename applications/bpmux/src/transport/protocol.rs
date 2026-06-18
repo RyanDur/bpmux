@@ -37,6 +37,13 @@ pub enum ClientMessage {
         cols: u16,
         rows: u16,
     },
+    #[serde(rename = "reaction_toggle")]
+    ReactionToggle {
+        channel: String,
+        message_key: String,
+        emoji: String,
+        user: String,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
