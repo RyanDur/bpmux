@@ -27,3 +27,40 @@ mediaHost.matchMedia = (query: string): MediaQueryList =>
     removeEventListener: () => {},
     dispatchEvent: () => false
   }) as unknown as MediaQueryList
+
+const canvasCtor = (globalThis as unknown as { HTMLCanvasElement?: typeof HTMLCanvasElement })
+  .HTMLCanvasElement
+if (canvasCtor !== undefined) {
+  const stub2dContext = {
+    fillRect: () => {},
+    clearRect: () => {},
+    strokeRect: () => {},
+    fillText: () => {},
+    strokeText: () => {},
+    measureText: () => ({ width: 8 }),
+    getImageData: () => ({ data: new Uint8ClampedArray(4) }),
+    putImageData: () => {},
+    createImageData: () => ({ data: new Uint8ClampedArray(4) }),
+    createLinearGradient: () => ({ addColorStop: () => {} }),
+    setTransform: () => {},
+    resetTransform: () => {},
+    getTransform: () => ({}),
+    drawImage: () => {},
+    save: () => {},
+    restore: () => {},
+    beginPath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    closePath: () => {},
+    stroke: () => {},
+    translate: () => {},
+    scale: () => {},
+    rotate: () => {},
+    arc: () => {},
+    fill: () => {},
+    rect: () => {},
+    clip: () => {}
+  }
+  canvasCtor.prototype.getContext = (() =>
+    stub2dContext) as unknown as HTMLCanvasElement['getContext']
+}
