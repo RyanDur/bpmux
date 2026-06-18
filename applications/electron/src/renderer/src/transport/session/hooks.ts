@@ -3,6 +3,7 @@ import { getSessionSnapshot, subscribeSession } from './store'
 import type {
   ChatMessage,
   CiSnapshotWire,
+  CommentWire,
   ConnectionStatus,
   ReactionAggregateWire,
   RosterMemberWire,
@@ -33,3 +34,6 @@ export const useSyncStatus = (): SyncStatusWire | null => useSelector((s) => s.m
 export const useBoardSnapshot = (): BoardResponse | null => useSelector((s) => s.boardSnapshot)
 
 export const useBoardInvalidateTick = (): number => useSelector((s) => s.boardInvalidateTick)
+
+export const useComments = (storyNumber: number): CommentWire[] | null =>
+  useSelector((s) => s.commentsByStory.get(storyNumber) ?? null)

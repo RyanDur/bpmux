@@ -2,7 +2,7 @@
 
 use super::ws::*;
 use crate::session;
-use crate::transport::protocol::ClientMessage;
+use crate::transport::protocol::{ClientMessage, ServerMessage};
 use chrono::Utc;
 
 #[test]
@@ -26,6 +26,46 @@ fn reaction_toggle_frame_deserializes_with_snake_case_fields() {
         assert_eq!(emoji, "👍");
         assert_eq!(user, "ryan");
     }
+}
+
+#[test]
+fn comments_hydrate_frame_deserializes_with_snake_case_story_number() {
+    let wire = r#"{"type":"comments_hydrate","story_number":366}"#;
+    let parsed: ClientMessage =
+        serde_json::from_str(wire).expect("renderer comments_hydrate frame must deserialize");
+    assert!(
+        matches!(
+            &parsed,
+            ClientMessage::CommentsHydrate { story_number: 366 }
+        ),
+        "expected CommentsHydrate{{366}}, got {parsed:?}"
+    );
+}
+
+#[test]
+fn comments_hydrated_reply_serializes_to_the_caller_only_frame() {
+    let msg = ServerMessage::CommentsHydrated {
+        story_number: 366,
+        comments: vec![serde_json::json!({
+            "id": 7700,
+            "author": "designer",
+            "body": "selection-based quoting",
+            "created_at": "2026-04-22T15:20:00Z"
+        })],
+    };
+    let json = serde_json::to_string(&msg).expect("serialize CommentsHydrated");
+    assert!(
+        json.contains(r#""type":"comments_hydrated""#),
+        "missing type tag: {json}"
+    );
+    assert!(
+        json.contains(r#""story_number":366"#),
+        "missing story_number: {json}"
+    );
+    assert!(
+        json.contains(r#""author":"designer""#),
+        "missing comment payload: {json}"
+    );
 }
 
 fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {

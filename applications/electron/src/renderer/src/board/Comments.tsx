@@ -2,12 +2,16 @@ import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import { describeHttpError } from '../api/http'
-import { getStoryComments, postStoryComment, type Comment } from '../api/storiesClient'
-import { useBoardInvalidateTick } from '../transport/session'
+import { postStoryComment } from '../api/storiesClient'
+import { useBoardInvalidateTick, useComments, requestCommentsHydrate } from '../transport/session'
+import type { CommentWire } from '../transport/types'
 
 const OPTIMISTIC_ID_BASE = -1_000_000_000
 
-const mergeComments = (server: readonly Comment[], optimistic: readonly Comment[]): Comment[] => {
+const mergeComments = (
+  server: readonly CommentWire[],
+  optimistic: readonly CommentWire[]
+): CommentWire[] => {
   const seen = new Set(server.map((c) => `${c.author}|${c.body}`))
   const keepOptimistic = optimistic.filter((o) => !seen.has(`${o.author}|${o.body}`))
   return [...server, ...keepOptimistic].sort((a, b) => a.created_at.localeCompare(b.created_at))
@@ -29,8 +33,8 @@ const Comments = ({
   onError
 }: Props): React.JSX.Element => {
   const boardInvalidateTick = useBoardInvalidateTick()
-  const [fetchedComments, setFetchedComments] = useState<Comment[] | null>(null)
-  const [optimistic, setOptimistic] = useState<Comment[]>([])
+  const hydratedComments = useComments(storyNumber)
+  const [optimistic, setOptimistic] = useState<CommentWire[]>([])
   const [commentDraft, setCommentDraft] = useState<string>('')
   const [commentBusy, setCommentBusy] = useState<boolean>(false)
   const commentsListRef = useRef<HTMLUListElement | null>(null)
@@ -38,7 +42,7 @@ const Comments = ({
   const wasAtBottomRef = useRef<boolean>(true)
 
   const offline = usingMock || apiBase === undefined
-  const serverComments: readonly Comment[] | null = offline ? [] : fetchedComments
+  const serverComments: readonly CommentWire[] | null = offline ? [] : hydratedComments
   const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
 
   const captureScroll = useCallback((): void => {
@@ -48,43 +52,11 @@ const Comments = ({
     wasAtBottomRef.current = max <= 0 || el.scrollTop >= max - 4
   }, [])
 
-  const fetchComments = useCallback(
-    async (signal?: AbortSignal): Promise<void> => {
-      captureScroll()
-      if (offline) {
-        return
-      }
-      await getStoryComments({ apiBase, authToken }, storyNumber, signal)
-        .onSuccess((c) => setFetchedComments(c))
-        .onFailure((error) => {
-          if (error.kind === 'network' && error.message.includes('abort')) return
-          setFetchedComments([])
-        }).value
-    },
-    [apiBase, authToken, captureScroll, storyNumber, offline]
-  )
-
   useEffect(() => {
     if (offline) return
     captureScroll()
-    const controller = new AbortController()
-    getStoryComments({ apiBase, authToken }, storyNumber, controller.signal)
-      .onSuccess((c) => {
-        if (controller.signal.aborted) return
-        setFetchedComments(c)
-      })
-      .onFailure((error) => {
-        if (controller.signal.aborted) return
-        if (error.kind === 'network' && error.message.includes('abort')) return
-        setFetchedComments([])
-      })
-    return () => controller.abort()
-  }, [apiBase, authToken, captureScroll, storyNumber, offline])
-
-  useEffect(() => {
-    if (boardInvalidateTick === 0) return
-    void fetchComments()
-  }, [boardInvalidateTick, fetchComments])
+    requestCommentsHydrate(storyNumber)
+  }, [storyNumber, offline, boardInvalidateTick, captureScroll])
 
   useEffect(() => {
     if (!wasAtBottomRef.current) return
@@ -97,7 +69,7 @@ const Comments = ({
     const trimmed = commentDraft.trim()
     if (!trimmed || commentBusy) return
     setCommentBusy(true)
-    const optimisticEntry: Comment = {
+    const optimisticEntry: CommentWire = {
       id: OPTIMISTIC_ID_BASE - Date.now(),
       author: 'ryan',
       body: trimmed,

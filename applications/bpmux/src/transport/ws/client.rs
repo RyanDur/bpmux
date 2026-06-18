@@ -16,6 +16,8 @@ pub(crate) struct ClientCtx<'a> {
     >,
     pub pty_registry: &'a crate::room::LivePtyRegistry,
     pub pty_tx: &'a tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
+    pub tracker: &'a crate::transport::rest::TrackerHandle,
+    pub reply_tx: &'a tokio::sync::mpsc::UnboundedSender<ServerMessage>,
 }
 
 pub(crate) async fn handle_client_message(
@@ -163,6 +165,32 @@ pub(crate) async fn handle_client_message(
                 .await?;
             }
         }
+        Ok(ClientMessage::CommentsHydrate { story_number }) => match ctx.tracker.clone() {
+            Some(tracker) => {
+                let reply_tx = ctx.reply_tx.clone();
+                tokio::spawn(async move {
+                    let reply = match tracker.list_story_comments(story_number).await {
+                        Ok(comments) => ServerMessage::CommentsHydrated {
+                            story_number,
+                            comments,
+                        },
+                        Err(e) => ServerMessage::Error {
+                            reason: format!("list comments failed: {e}"),
+                        },
+                    };
+                    let _ = reply_tx.send(reply);
+                });
+            }
+            None => {
+                send_json(
+                    tx,
+                    &ServerMessage::Error {
+                        reason: "tracker not configured".to_string(),
+                    },
+                )
+                .await?;
+            }
+        },
         Err(e) => {
             send_json(
                 tx,

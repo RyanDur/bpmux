@@ -3,6 +3,7 @@ import { tryCatch } from '../../lib/result'
 import type { Dispatch } from '../../lib/redux'
 import { MESSAGE_TYPE, asMessageType } from '../messageType'
 import {
+  commentsHydratedDecoder,
   errorDecoder,
   messageDecoder,
   pongDecoder,
@@ -11,6 +12,7 @@ import {
   welcomeDecoder
 } from '../wsDecoders'
 import {
+  commentsHydrated,
   messageReceived,
   mirrorDeltaReceived,
   mirrorSnapshotReceived,
@@ -73,6 +75,11 @@ export const dispatchServerFrame = (
     )
     .or(() =>
       maybe(ptyExitDecoder.decode(frame)).map((exit) => dispatch(ptyExitReceived(exit.terminal_id)))
+    )
+    .or(() =>
+      maybe(commentsHydratedDecoder.decode(frame)).map((hydrated) =>
+        dispatch(commentsHydrated(hydrated.story_number, hydrated.comments))
+      )
     )
     .or(() =>
       maybe(messageDecoder.decode(frame)).map((message) => {

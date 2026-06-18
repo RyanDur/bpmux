@@ -44,6 +44,8 @@ pub enum ClientMessage {
         emoji: String,
         user: String,
     },
+    #[serde(rename = "comments_hydrate")]
+    CommentsHydrate { story_number: u64 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -77,6 +79,11 @@ pub enum ServerMessage {
     PtyOutput { terminal_id: String, data: String },
     #[serde(rename = "pty_exit")]
     PtyExit { terminal_id: String },
+    #[serde(rename = "comments_hydrated")]
+    CommentsHydrated {
+        story_number: u64,
+        comments: Vec<serde_json::Value>,
+    },
 }
 
 impl From<Message> for ServerMessage {

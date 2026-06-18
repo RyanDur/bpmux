@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { commentJson } from './helpers/mock_gh'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 // Playwright can't interact with native Electron Menus — menu.popup()
@@ -43,7 +44,7 @@ const launchWithFixture = async (): Promise<{
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-371-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-371-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app, mockGh } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/board', async (route) => {
     await route.fulfill({
@@ -52,12 +53,12 @@ const launchWithFixture = async (): Promise<{
       body: JSON.stringify(MOCK_BOARD)
     })
   })
-  await win.route('**/api/stories/371/comments', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_COMMENTS)
-    })
+  mockGh.on({
+    method: 'GET',
+    match: /\/repos\/acme\/bpmux\/issues\/371\/comments/,
+    bodyJson: MOCK_COMMENTS.map((c) =>
+      commentJson(c.body, { id: c.id, author: c.author, created_at: c.created_at })
+    )
   })
   await win.route('**/api/stories/371/timeline', async (route) => {
     await route.fulfill({
@@ -74,7 +75,9 @@ test.describe('desk-check #371 right-click quote context menu', () => {
   test('simulated Quote-in-reply IPC inserts blockquote into draft', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const storyCard = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-371"]')
+    const storyCard = win.locator(
+      '[data-test="board-tabpanel-now-content"] [data-test="board-story-371"]'
+    )
     await storyCard.first().click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await expect(win.locator('[data-test="drill-in-comment"]').first()).toBeVisible()

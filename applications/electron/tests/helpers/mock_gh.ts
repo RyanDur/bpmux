@@ -33,15 +33,18 @@ export const labelJson = (name: string): Record<string, unknown> => {
 // Octocrab's Comment deserializer needs more than `{id}` — without
 // the full shape it silently fails on drain-push, manifesting as a
 // hard-to-debug log_diag warning instead of a test failure.
-export const commentJson = (body: string): Record<string, unknown> => ({
-  id: 1,
+export const commentJson = (
+  body: string,
+  over: { id?: number; author?: string; created_at?: string } = {}
+): Record<string, unknown> => ({
+  id: over.id ?? 1,
   node_id: 'MDEyOklzc3VlQ29tbWVudDE=',
   url: 'https://example.test/comments/1',
   html_url: 'https://example.test/web/comment/1',
   body,
   author_association: 'OWNER',
-  user: ghUser(),
-  created_at: '2026-04-30T00:00:00Z'
+  user: ghUser(over.author),
+  created_at: over.created_at ?? '2026-04-30T00:00:00Z'
 })
 
 export const issueJson = (
@@ -77,8 +80,8 @@ export const issueJson = (
   locked: false
 })
 
-const ghUser = (): Record<string, unknown> => ({
-  login: 'actor',
+const ghUser = (login = 'actor'): Record<string, unknown> => ({
+  login,
   id: 1,
   node_id: 'MDQ6VXNlcjE=',
   avatar_url: 'https://example.test/avatar.png',

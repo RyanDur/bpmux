@@ -1,6 +1,7 @@
 import { dispatchSession } from './store'
 import {
   chatSendRequested,
+  commentsHydrateRequested,
   frameReceived,
   ptyInputRequested,
   ptyResizeRequested,
@@ -23,7 +24,8 @@ export {
   useCiSnapshot,
   useSyncStatus,
   useBoardSnapshot,
-  useBoardInvalidateTick
+  useBoardInvalidateTick,
+  useComments
 } from './hooks'
 export { subscribeLiveMessages, subscribePtyOutput, subscribePtyExit } from './emitter'
 export { encodeKeystroke, decodePtyData } from './ptyCodec'
@@ -42,6 +44,9 @@ export const toggleReaction = (
   emoji: string,
   user: string
 ): void => dispatchSession(reactionToggleRequested(channel, messageKey, emoji, user))
+
+export const requestCommentsHydrate = (storyNumber: number): void =>
+  dispatchSession(commentsHydrateRequested(storyNumber))
 
 export const sendPtySubscribe = (terminalId: string): void =>
   dispatchSession(ptySubscribeRequested(terminalId))

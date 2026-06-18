@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { commentJson } from './helpers/mock_gh'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
@@ -44,7 +45,7 @@ const launchWithFixture = async (): Promise<{
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-366-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-366-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app, mockGh } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/board', async (route) => {
     await route.fulfill({
@@ -53,12 +54,12 @@ const launchWithFixture = async (): Promise<{
       body: JSON.stringify(MOCK_BOARD)
     })
   })
-  await win.route('**/api/stories/366/comments', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_COMMENTS)
-    })
+  mockGh.on({
+    method: 'GET',
+    match: /\/repos\/acme\/bpmux\/issues\/366\/comments/,
+    bodyJson: MOCK_COMMENTS.map((c) =>
+      commentJson(c.body, { id: c.id, author: c.author, created_at: c.created_at })
+    )
   })
   await win.reload()
   return { app }
@@ -68,7 +69,9 @@ const openStoryDrillIn = async (
   win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>
 ): Promise<void> => {
   await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-  const storyButton = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-366"] .board-story-navigate')
+  const storyButton = win.locator(
+    '[data-test="board-tabpanel-now-content"] [data-test="board-story-366"] .board-story-navigate'
+  )
   await storyButton.click()
   await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
   await expect(win.locator('[data-test="drill-in-comment"]').first()).toBeVisible()

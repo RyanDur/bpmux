@@ -1,31 +1,16 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { act, cleanup, render, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import Comments from './Comments'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
+import {
+  BrowserWebSocket,
+  startTestWsServer,
+  type TestWsConnection,
+  type TestWsServer
+} from '../../../../test/wsTestServer'
+import { startSession, getSessionSnapshot, resetSessionForTest } from '../transport/session'
+import { dispatchSession } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
-
-const bumpBoard = (): void =>
-  dispatchSession(
-    mirrorDeltaReceived({ domain: 'board_invalidated', reason: 'board changed' }, '2026-01-01T00:00:00Z')
-  )
-
-const getStoryComments = vi.fn()
-const postStoryComment = vi.fn()
-
-vi.mock('../api/storiesClient', () => ({
-  getStoryComments: (...args: unknown[]) => getStoryComments(...args),
-  postStoryComment: (...args: unknown[]) => postStoryComment(...args)
-}))
-
-const chainable = (): unknown => {
-  const c = {
-    onSuccess: () => c,
-    onFailure: () => c,
-    value: Promise.resolve()
-  }
-  return c
-}
 
 const baseProps = {
   storyNumber: 999,
@@ -80,26 +65,78 @@ describe('#1355 Comments independence', () => {
   })
 })
 
-describe('#1456 Comments — refetch survives the ingest-strip (tick replaces marker-scan)', () => {
+describe('Comments reads over the live session (real socket + store)', () => {
   const liveProps = {
     storyNumber: 700,
-    apiBase: 'http://127.0.0.1:9',
+    apiBase: 'http://backend.invalid',
     authToken: 'tok',
     usingMock: false,
     onError: (): void => {}
   }
 
-  test('a board-invalidate tick increment triggers a comments refetch (silent-regression guard)', async () => {
-    getStoryComments.mockReset()
-    getStoryComments.mockImplementation(() => chainable())
+  const comment = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: 7700,
+    author: 'designer',
+    body: 'the selection-based proposal',
+    created_at: '2026-04-22T15:20:00Z',
+    ...over
+  })
+
+  let server: TestWsServer
+  let conn: TestWsConnection
+  let answered = 0
+
+  const serveComments = async (comments: Record<string, unknown>[]): Promise<void> => {
+    await waitFor(() => expect(conn.received.length).toBeGreaterThan(answered))
+    answered = conn.received.length
+    act(() => {
+      conn.send(JSON.stringify({ type: 'comments_hydrated', story_number: 700, comments }))
+    })
+  }
+
+  beforeEach(async () => {
+    vi.stubGlobal('WebSocket', BrowserWebSocket)
+    server = await startTestWsServer()
+    resetSessionForTest()
+    startSession({ url: server.url })
+    conn = await server.waitForConnection()
+    await waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await waitFor(() => expect(conn.received.length).toBeGreaterThanOrEqual(1))
+    answered = conn.received.length
+  })
+
+  afterEach(async () => {
+    resetSessionForTest()
+    await server.close()
+    vi.unstubAllGlobals()
+  })
+
+  test('displays the comments the backend serves for this story', async () => {
     render(<Comments {...liveProps} />)
-    await waitFor(() => expect(getStoryComments).toHaveBeenCalled())
-    const before = getStoryComments.mock.calls.length
+    await serveComments([comment()])
+    expect(await screen.findByText('the selection-based proposal')).toBeTruthy()
+    expect(screen.getByText('designer')).toBeTruthy()
+  })
+
+  test('re-reads the latest comments when the board changes (cross-client freshness)', async () => {
+    render(<Comments {...liveProps} />)
+    await serveComments([comment({ id: 1, body: 'first proposal' })])
+    expect(await screen.findByText('first proposal')).toBeTruthy()
 
     act(() => {
-      bumpBoard()
+      dispatchSession(
+        mirrorDeltaReceived(
+          { domain: 'board_invalidated', reason: 'board changed' },
+          '2026-01-01T00:00:00Z'
+        )
+      )
     })
 
-    await waitFor(() => expect(getStoryComments.mock.calls.length).toBe(before + 1))
+    await serveComments([
+      comment({ id: 1, body: 'first proposal' }),
+      comment({ id: 2, body: 'second proposal' })
+    ])
+    expect(await screen.findByText('second proposal')).toBeTruthy()
+    expect(screen.getByText('first proposal')).toBeTruthy()
   })
 })

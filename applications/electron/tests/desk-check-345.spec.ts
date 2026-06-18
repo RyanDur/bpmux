@@ -3,7 +3,13 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { commentJson } from './helpers/mock_gh'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+
+const seedComments = (
+  comments: ReadonlyArray<{ id: number; author: string; body: string; created_at: string }>
+): unknown[] =>
+  comments.map((c) => commentJson(c.body, { id: c.id, author: c.author, created_at: c.created_at }))
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -44,7 +50,7 @@ const launchWithFixture = async (): Promise<{
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-345-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-345-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app, mockGh } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/board', async (route) => {
     await route.fulfill({
@@ -52,6 +58,11 @@ const launchWithFixture = async (): Promise<{
       contentType: 'application/json',
       body: JSON.stringify(MOCK_BOARD)
     })
+  })
+  mockGh.on({
+    method: 'GET',
+    match: /\/repos\/acme\/bpmux\/issues\/345\/comments/,
+    bodyJson: seedComments(INITIAL_COMMENTS)
   })
   await win.route('**/api/stories/345/comments', async (route) => {
     if (route.request().method() === 'POST') {
@@ -61,11 +72,7 @@ const launchWithFixture = async (): Promise<{
         body: JSON.stringify({ ok: true })
       })
     } else {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(INITIAL_COMMENTS)
-      })
+      await route.continue()
     }
   })
   await win.reload()
@@ -77,7 +84,11 @@ test.describe('desk-check #345 live comment refresh', () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate').click()
+    await win
+      .locator(
+        '[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate'
+      )
+      .click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 
@@ -99,7 +110,11 @@ test.describe('desk-check #345 live comment refresh', () => {
   test('optimistic render: typed comment appears immediately on submit', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate').click()
+    await win
+      .locator(
+        '[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate'
+      )
+      .click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 
@@ -133,7 +148,7 @@ test.describe('desk-check #345 live comment refresh', () => {
   test('rollback: POST failure restores draft + toast fires', async () => {
     const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-345-fail-'))
     const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-345-fail-'))
-    const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+    const { app, mockGh } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
     const win = await app.firstWindow()
     await win.route('**/api/board', async (route) => {
       await route.fulfill({
@@ -142,20 +157,25 @@ test.describe('desk-check #345 live comment refresh', () => {
         body: JSON.stringify(MOCK_BOARD)
       })
     })
+    mockGh.on({
+      method: 'GET',
+      match: /\/repos\/acme\/bpmux\/issues\/345\/comments/,
+      bodyJson: seedComments(INITIAL_COMMENTS)
+    })
     await win.route('**/api/stories/345/comments', async (route) => {
       if (route.request().method() === 'POST') {
         await route.fulfill({ status: 500, body: 'server error' })
       } else {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(INITIAL_COMMENTS)
-        })
+        await route.continue()
       }
     })
     await win.reload()
 
-    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate').click()
+    await win
+      .locator(
+        '[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate'
+      )
+      .click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 

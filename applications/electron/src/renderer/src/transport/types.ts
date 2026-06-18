@@ -93,6 +93,19 @@ export interface StateSnapshotPayload {
   roster: RosterMemberWire[]
 }
 
+export interface CommentWire {
+  id: number
+  author: string
+  body: string
+  created_at: string
+}
+
+export interface ServerCommentsHydrated {
+  type: 'comments_hydrated'
+  story_number: number
+  comments: CommentWire[]
+}
+
 export interface ServerError {
   type: 'error'
   reason: string
@@ -157,6 +170,11 @@ export interface ClientReactionToggle {
   user: string
 }
 
+export interface ClientCommentsHydrate {
+  type: 'comments_hydrate'
+  story_number: number
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -165,6 +183,7 @@ export type ClientMessage =
   | ClientPtyInput
   | ClientPtyResize
   | ClientReactionToggle
+  | ClientCommentsHydrate
 
 export interface ChatMessage {
   id: string

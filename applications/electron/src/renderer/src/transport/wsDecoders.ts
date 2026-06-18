@@ -1,6 +1,7 @@
 import * as D from 'schemawax'
 import {
   type ServerChatMessage,
+  type ServerCommentsHydrated,
   type ServerError,
   type ServerPong,
   type ServerPtyExit,
@@ -27,6 +28,23 @@ export const ptyOutputDecoder: D.Decoder<ServerPtyOutput> = D.object({
 
 export const ptyExitDecoder: D.Decoder<ServerPtyExit> = D.object({
   required: { type: D.literal('pty_exit'), terminal_id: D.string }
+})
+
+export const commentsHydratedDecoder: D.Decoder<ServerCommentsHydrated> = D.object({
+  required: {
+    type: D.literal('comments_hydrated'),
+    story_number: D.number,
+    comments: D.array(
+      D.object({
+        required: {
+          id: D.number,
+          author: D.string,
+          body: D.string,
+          created_at: D.string
+        }
+      })
+    )
+  }
 })
 
 export const messageDecoder: D.Decoder<ServerChatMessage> = D.object({

@@ -31,8 +31,18 @@ pub async fn ws_handler(
     >,
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
     axum::Extension(routing): axum::Extension<Arc<crate::session::routing_identity::RoutingStore>>,
+    axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
 ) -> Response {
-    ws.on_upgrade(move |socket| handle_ws(socket, session, orchestrator, pty_registry, routing))
+    ws.on_upgrade(move |socket| {
+        handle_ws(
+            socket,
+            session,
+            orchestrator,
+            pty_registry,
+            routing,
+            tracker,
+        )
+    })
 }
 
 async fn handle_ws(
@@ -43,9 +53,20 @@ async fn handle_ws(
     >,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
     routing: Arc<crate::session::routing_identity::RoutingStore>,
+    tracker: crate::transport::rest::TrackerHandle,
 ) {
     let (tx, rx) = socket.split();
-    if let Err(e) = run_ws_session(tx, rx, session, orchestrator, pty_registry, routing).await {
+    if let Err(e) = run_ws_session(
+        tx,
+        rx,
+        session,
+        orchestrator,
+        pty_registry,
+        routing,
+        tracker,
+    )
+    .await
+    {
         crate::session::diag::log_diag(&format!("ws: session error: {e}"));
     }
 }
@@ -59,6 +80,7 @@ async fn run_ws_session(
     >,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
     routing: Arc<crate::session::routing_identity::RoutingStore>,
+    tracker: crate::transport::rest::TrackerHandle,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
     let routing_session_id = routing.resolve(short_name(&identity)).into_iter().next();
@@ -93,6 +115,7 @@ async fn run_ws_session(
         }
     }
     let (pty_tx, mut pty_rx) = tokio::sync::mpsc::unbounded_channel::<(String, Vec<u8>)>();
+    let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<ServerMessage>();
     let mut pty_readers: std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>> =
         std::collections::HashMap::new();
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
@@ -143,6 +166,11 @@ async fn run_ws_session(
                         }
                     }
                 }
+                reply = reply_rx.recv() => {
+                    if let Some(msg) = reply {
+                        send_json(&mut tx, &msg).await?;
+                    }
+                }
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
@@ -151,6 +179,8 @@ async fn run_ws_session(
                                 orchestrator: &orchestrator,
                                 pty_registry: &pty_registry,
                                 pty_tx: &pty_tx,
+                                tracker: &tracker,
+                                reply_tx: &reply_tx,
                             };
                             if let Some(new_identity) = handle_client_message(&text, &identity, &client_ctx, &mut tx, &mut pty_readers).await? {
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
