@@ -108,6 +108,43 @@ fn timeline_hydrated_reply_serializes_to_the_caller_only_frame() {
     );
 }
 
+#[test]
+fn history_hydrate_frame_deserializes_with_snake_case_limits() {
+    let wire = r#"{"type":"history_hydrate","chat_limit":200,"activity_limit":50}"#;
+    let parsed: ClientMessage =
+        serde_json::from_str(wire).expect("renderer history_hydrate frame must deserialize");
+    assert!(
+        matches!(
+            &parsed,
+            ClientMessage::HistoryHydrate {
+                chat_limit: 200,
+                activity_limit: 50
+            }
+        ),
+        "expected HistoryHydrate{{200,50}}, got {parsed:?}"
+    );
+}
+
+#[test]
+fn history_hydrated_reply_serializes_to_the_caller_only_frame() {
+    let msg = ServerMessage::HistoryHydrated {
+        messages: vec![serde_json::json!({
+            "from": "dev",
+            "text": "hello",
+            "ts": "2026-04-22T15:20:00Z"
+        })],
+    };
+    let json = serde_json::to_string(&msg).expect("serialize HistoryHydrated");
+    assert!(
+        json.contains(r#""type":"history_hydrated""#),
+        "missing type tag: {json}"
+    );
+    assert!(
+        json.contains(r#""text":"hello""#),
+        "missing history message payload: {json}"
+    );
+}
+
 fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
     session::Message {
         from: from.to_string(),

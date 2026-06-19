@@ -6,16 +6,6 @@ import {
   type TestWsServer
 } from '../../../../test/wsTestServer'
 
-let historyResponse: unknown[] = []
-const httpGet = vi.fn((..._args: unknown[]) => ({
-  value: Promise.resolve({ kind: 'success', value: historyResponse })
-}))
-
-vi.mock('../api/http', () => ({
-  http: { get: (...args: unknown[]) => httpGet(...args) },
-  describeHttpError: (e: unknown) => String(e)
-}))
-
 import {
   startSession,
   getSessionSnapshot,
@@ -33,6 +23,26 @@ const serverMessage = (over: Record<string, unknown> = {}): string =>
     ...over
   })
 
+const WELCOME = JSON.stringify({ type: 'welcome', session_id: 'test-session' })
+
+const historyHydrateCount = (conn: TestWsConnection): number =>
+  conn.received.filter((r) => {
+    try {
+      return (JSON.parse(r) as { type?: string }).type === 'history_hydrate'
+    } catch {
+      return false
+    }
+  }).length
+
+const serveHistory = async (
+  conn: TestWsConnection,
+  messages: Record<string, unknown>[]
+): Promise<void> => {
+  conn.send(WELCOME)
+  await vi.waitFor(() => expect(historyHydrateCount(conn)).toBeGreaterThan(0))
+  conn.send(JSON.stringify({ type: 'history_hydrated', messages }))
+}
+
 let server: TestWsServer
 
 const connect = async (apiBase?: string, authToken?: string): Promise<TestWsConnection> => {
@@ -45,8 +55,6 @@ const connect = async (apiBase?: string, authToken?: string): Promise<TestWsConn
 beforeEach(async () => {
   vi.stubGlobal('WebSocket', BrowserWebSocket)
   server = await startTestWsServer()
-  historyResponse = []
-  httpGet.mockClear()
   resetSessionForTest()
 })
 
@@ -126,24 +134,23 @@ describe('#1537 session — message dedup + live-append subscription', () => {
   })
 })
 
-describe('#1537 session — history load-once + merge (no live-notify on history)', () => {
-  test('history is fetched once at init and merged into messages; a duplicate start does NOT refetch', async () => {
-    historyResponse = [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }]
-    startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
-    startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
+describe('#1537 session — history hydrate-on-identify + merge (no live-notify on history)', () => {
+  test('history hydrates over WS on identify and merges; a duplicate start does NOT re-hydrate', async () => {
+    const conn = await connect('http://api', 'tok')
+    await serveHistory(conn, [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }])
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
     )
-    const startCalls = httpGet.mock.calls.length
+    const hydrateFrames = historyHydrateCount(conn)
     startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
-    expect(httpGet.mock.calls.length).toBe(startCalls)
+    expect(historyHydrateCount(conn)).toBe(hydrateFrames)
   })
 
   test('history-merge emits ZERO live-message append-events (only live frames notify)', async () => {
-    historyResponse = [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }]
     const seen: string[] = []
     subscribeLiveMessages((m) => seen.push(m.text))
-    startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
+    const conn = await connect('http://api', 'tok')
+    await serveHistory(conn, [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }])
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
     )
@@ -184,41 +191,45 @@ describe('#1537 session — reconnect with backoff', () => {
   })
 })
 
-describe('#1319 session — reconnect re-fetches history to recover the disconnect gap', () => {
-  test('on reconnect, history is re-fetched so a message sent during the gap appears after recovery', async () => {
-    historyResponse = [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }]
+describe('#1319 session — reconnect re-hydrates history to recover the disconnect gap', () => {
+  test('on reconnect, history re-hydrates so a message sent during the gap appears after recovery', async () => {
     const conn = await connect('http://api', 'tok')
+    await serveHistory(conn, [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }])
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
     )
-    const callsBeforeDrop = httpGet.mock.calls.length
 
     conn.drop()
     await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('disconnected'))
 
-    historyResponse = [
+    const conn2 = await server.waitForConnection()
+    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await serveHistory(conn2, [
       { from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' },
       { from: 'designer', text: 'sent-during-gap', ts: '2026-05-28T00:01:00.000Z' }
-    ]
-
-    await server.waitForConnection()
-    await vi.waitFor(() => expect(httpGet.mock.calls.length).toBeGreaterThan(callsBeforeDrop))
+    ])
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'sent-during-gap')).toBe(true)
     )
   }, 10000)
 
-  test('on reconnect-refetch, a duplicate pre-gap message (already in state) does not appear twice', async () => {
-    historyResponse = [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }]
+  test('on reconnect-rehydrate, a duplicate pre-gap message (already in state) does not appear twice', async () => {
     const conn = await connect('http://api', 'tok')
+    await serveHistory(conn, [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }])
     await vi.waitFor(() =>
       expect(getSessionSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
     )
-    const callsBeforeDrop = httpGet.mock.calls.length
 
     conn.drop()
-    await server.waitForConnection()
-    await vi.waitFor(() => expect(httpGet.mock.calls.length).toBeGreaterThan(callsBeforeDrop))
+    const conn2 = await server.waitForConnection()
+    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await serveHistory(conn2, [
+      { from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' },
+      { from: 'designer', text: 'post-recovery', ts: '2026-05-28T00:02:00.000Z' }
+    ])
+    await vi.waitFor(() =>
+      expect(getSessionSnapshot().messages.some((m) => m.text === 'post-recovery')).toBe(true)
+    )
 
     const preGapCount = getSessionSnapshot().messages.filter((m) => m.text === 'pre-gap').length
     expect(preGapCount).toBe(1)

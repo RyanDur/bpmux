@@ -5,6 +5,7 @@ import { MESSAGE_TYPE, asMessageType } from '../messageType'
 import {
   commentsHydratedDecoder,
   errorDecoder,
+  historyHydratedDecoder,
   messageDecoder,
   pongDecoder,
   ptyExitDecoder,
@@ -14,6 +15,7 @@ import {
 } from '../wsDecoders'
 import {
   commentsHydrated,
+  historyLoaded,
   messageReceived,
   mirrorDeltaReceived,
   mirrorSnapshotReceived,
@@ -86,6 +88,11 @@ export const dispatchServerFrame = (
     .or(() =>
       maybe(timelineHydratedDecoder.decode(frame)).map((hydrated) =>
         dispatch(timelineHydrated(hydrated.story_number, hydrated.events))
+      )
+    )
+    .or(() =>
+      maybe(historyHydratedDecoder.decode(frame)).map((hydrated) =>
+        dispatch(historyLoaded(hydrated.messages))
       )
     )
     .or(() =>

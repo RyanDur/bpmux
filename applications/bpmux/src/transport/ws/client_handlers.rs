@@ -140,6 +140,46 @@ pub(super) async fn handle_comments_hydrate(
     Ok(())
 }
 
+pub(super) async fn handle_history_hydrate(
+    ctx: &ClientCtx<'_>,
+    tx: &mut SplitSink<WebSocket, WsMessage>,
+    chat_limit: usize,
+    activity_limit: usize,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let reply = match ctx.session.read_messages() {
+        Ok(messages) => {
+            let mut combined: Vec<session::Message> = messages
+                .iter()
+                .filter(|m| m.is_chat())
+                .rev()
+                .take(chat_limit)
+                .cloned()
+                .collect();
+            combined.extend(
+                messages
+                    .iter()
+                    .filter(|m| m.message_type == MessageType::Activity)
+                    .rev()
+                    .take(activity_limit)
+                    .cloned(),
+            );
+            combined.sort_by_key(|m| m.ts);
+            let serialized: Vec<serde_json::Value> = combined
+                .iter()
+                .map(|m| serde_json::to_value(m).unwrap_or(serde_json::Value::Null))
+                .collect();
+            ServerMessage::HistoryHydrated {
+                messages: serialized,
+            }
+        }
+        Err(e) => ServerMessage::Error {
+            reason: format!("read history failed: {e}"),
+        },
+    };
+    send_json(tx, &reply).await?;
+    Ok(())
+}
+
 pub(super) async fn handle_timeline_hydrate(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,

@@ -4,8 +4,8 @@ use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::stream::SplitSink;
 
 use super::client_handlers::{
-    handle_comments_hydrate, handle_pty_input, handle_pty_subscribe, handle_reaction_toggle,
-    handle_send, handle_timeline_hydrate,
+    handle_comments_hydrate, handle_history_hydrate, handle_pty_input, handle_pty_subscribe,
+    handle_reaction_toggle, handle_send, handle_timeline_hydrate,
 };
 use super::{MAX_MESSAGE_SIZE, message_size_ok, send_json};
 use crate::session;
@@ -109,6 +109,12 @@ pub(crate) async fn handle_client_message(
         }
         Ok(ClientMessage::TimelineHydrate { story_number }) => {
             handle_timeline_hydrate(ctx, tx, story_number).await?;
+        }
+        Ok(ClientMessage::HistoryHydrate {
+            chat_limit,
+            activity_limit,
+        }) => {
+            handle_history_hydrate(ctx, tx, chat_limit, activity_limit).await?;
         }
         Err(e) => {
             send_json(

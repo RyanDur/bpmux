@@ -120,6 +120,20 @@ export interface ServerTimelineHydrated {
   events: TimelineEventWire[]
 }
 
+export interface HistoryMessageWire {
+  from: string
+  text: string
+  ts: string
+  to?: string[] | null
+  addressee?: string | null
+  message_type?: string | null
+}
+
+export interface ServerHistoryHydrated {
+  type: 'history_hydrated'
+  messages: HistoryMessageWire[]
+}
+
 export interface ServerError {
   type: 'error'
   reason: string
@@ -194,6 +208,12 @@ export interface ClientTimelineHydrate {
   story_number: number
 }
 
+export interface ClientHistoryHydrate {
+  type: 'history_hydrate'
+  chat_limit: number
+  activity_limit: number
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -204,6 +224,7 @@ export type ClientMessage =
   | ClientReactionToggle
   | ClientCommentsHydrate
   | ClientTimelineHydrate
+  | ClientHistoryHydrate
 
 export interface ChatMessage {
   id: string
