@@ -14,7 +14,7 @@ const measureStateTextContrast = async (
 ): Promise<Record<string, StateContrast>> => {
   await win.evaluate((t) => window.localStorage.setItem('bpmux-theme', t), theme)
   await win.reload()
-  await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+  await expect(win.getByRole('main')).toBeVisible()
   await expect.poll(() => win.evaluate(() => document.documentElement.dataset.theme)).toBe(theme)
 
   return win.evaluate(

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { TitlebarPage } from './pages/titlebarPage'
 
 test.describe('human-side E2E #476 — read-class — CI glyph', () => {
   test('CI glyph renders in titlebar with a conclusion attribute', async () => {
@@ -12,9 +13,10 @@ test.describe('human-side E2E #476 — read-class — CI glyph', () => {
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="titlebar"]')).toBeVisible()
+      const titlebar = new TitlebarPage(win)
+      await expect(titlebar.connectionStatus()).toBeVisible()
 
-      const glyph = win.locator('[data-test="ci-glyph"]')
+      const glyph = titlebar.ciGlyph()
       await expect(glyph).toBeVisible()
       const conclusion = await glyph.getAttribute('data-conclusion')
       expect(conclusion).not.toBeNull()
