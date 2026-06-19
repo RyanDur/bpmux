@@ -1,5 +1,7 @@
+use super::label_sync::{
+    sync_raw_labels_on_tag_added, sync_raw_labels_on_tag_removed, tag_from_label_string,
+};
 use super::*;
-use super::{sync_raw_labels_on_tag_added, sync_raw_labels_on_tag_removed, tag_from_label_string};
 use crate::board::domain::{FreeComment, GateComment, Story};
 use crate::board::events::BoardEvent;
 use std::sync::atomic::Ordering;
