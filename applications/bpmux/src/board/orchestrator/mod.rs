@@ -9,12 +9,14 @@ use chrono::Utc;
 use super::domain::{FreeComment, GateComment, Story};
 use super::events::BoardEvent;
 use super::store::{BoardStore, PersistError};
-use super::sync::{ConditionalBody, SourceAdapter, SyncError};
+use super::sync::{SourceAdapter, SyncError};
 
 mod coalesce;
 mod conflict;
 mod drain;
 mod driver;
+mod fetch;
+mod ingest;
 mod outbox;
 mod race_window;
 mod status;
@@ -30,8 +32,8 @@ pub use status::{
     mark_recovering_from_corruption, staleness_threshold_secs, sync_transition,
 };
 use status::{
-    decrement_pending, record_conflicts_pending, record_dropped, record_error,
-    record_ingest_success, record_push_success, set_pending_events,
+    decrement_pending, record_conflicts_pending, record_dropped, record_error, record_push_success,
+    set_pending_events,
 };
 pub use types::*;
 
@@ -74,166 +76,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     pub fn store(&self) -> Arc<BoardStore> {
         Arc::clone(&self.store)
-    }
-
-    pub async fn ingest_once(&self) -> Result<(), SyncError> {
-        self.ingest_once_since(None).await
-    }
-
-    pub async fn ingest_once_since(
-        &self,
-        since: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> Result<(), SyncError> {
-        match self.adapter.ingest_metadata_since(since).await {
-            Ok(stories) => {
-                let in_flight_label_stories = self.with_pending(|p| {
-                    p.iter()
-                        .filter(|q| {
-                            matches!(
-                                q.event,
-                                BoardEvent::TagAdded { .. } | BoardEvent::TagRemoved { .. }
-                            )
-                        })
-                        .map(|q| q.event.story_number())
-                        .collect::<Vec<u64>>()
-                });
-                let stories = stories
-                    .into_iter()
-                    .filter(|s| !in_flight_label_stories.contains(&s.number))
-                    .collect::<Vec<_>>();
-                self.store.seed_all(stories);
-                let purge = super::adapters::github::iteration_numbers_to_purge_as_retired_empty(
-                    &self.store.all_stories(),
-                );
-                for n in purge {
-                    self.store.remove(n);
-                }
-                record_ingest_success(&self.status);
-                Ok(())
-            }
-            Err(e) => {
-                record_error(&self.status, &format!("ingest: {e}"));
-                Err(e)
-            }
-        }
-    }
-
-    pub async fn refresh_story(
-        &self,
-        number: u64,
-    ) -> Result<Option<super::domain::Story>, SyncError> {
-        match self.adapter.fetch_story_metadata(number).await {
-            Ok(Some(story)) => {
-                self.store.seed_all(vec![story.clone()]);
-                record_ingest_success(&self.status);
-                Ok(Some(story))
-            }
-            Ok(None) => {
-                record_ingest_success(&self.status);
-                Ok(None)
-            }
-            Err(e) => {
-                record_error(&self.status, &format!("refresh_story({number}): {e}"));
-                Err(e)
-            }
-        }
-    }
-
-    pub async fn refresh_all(&self) -> Result<(), SyncError> {
-        self.ingest_once().await
-    }
-
-    pub async fn fetch_body(&self, number: u64) -> Result<String, SyncError> {
-        match self.adapter.fetch_story_body(number).await {
-            Ok(body) => {
-                let event = BoardEvent::BodyFetched {
-                    meta: cache_fill_meta(),
-                    number,
-                    body: body.clone(),
-                    etag: None,
-                };
-                self.store.apply(&event);
-                record_ingest_success(&self.status);
-                Ok(body)
-            }
-            Err(e) => {
-                record_error(&self.status, &format!("fetch_body({number}): {e}"));
-                Err(e)
-            }
-        }
-    }
-
-    pub async fn fetch_body_conditional(
-        &self,
-        number: u64,
-        prior_etag: Option<String>,
-    ) -> Result<ConditionalBody, SyncError> {
-        match self
-            .adapter
-            .fetch_story_body_conditional(number, prior_etag)
-            .await
-        {
-            Ok(ConditionalBody::NotModified) => {
-                record_ingest_success(&self.status);
-                Ok(ConditionalBody::NotModified)
-            }
-            Ok(ConditionalBody::Modified { body, etag }) => {
-                let event = BoardEvent::BodyFetched {
-                    meta: cache_fill_meta(),
-                    number,
-                    body: body.clone(),
-                    etag: etag.clone(),
-                };
-                self.store.apply(&event);
-                record_ingest_success(&self.status);
-                Ok(ConditionalBody::Modified { body, etag })
-            }
-            Err(e) => {
-                record_error(
-                    &self.status,
-                    &format!("fetch_body_conditional({number}): {e}"),
-                );
-                Err(e)
-            }
-        }
-    }
-
-    pub async fn fetch_free_comments(&self, number: u64) -> Result<Vec<FreeComment>, SyncError> {
-        match self.adapter.fetch_free_comments(number).await {
-            Ok(comments) => {
-                let event = BoardEvent::FreeCommentsFetched {
-                    meta: cache_fill_meta(),
-                    number,
-                    comments: comments.clone(),
-                };
-                self.store.apply(&event);
-                record_ingest_success(&self.status);
-                Ok(comments)
-            }
-            Err(e) => {
-                record_error(&self.status, &format!("fetch_free_comments({number}): {e}"));
-                Err(e)
-            }
-        }
-    }
-
-    pub async fn fetch_gate_comments(&self, number: u64) -> Result<Vec<GateComment>, SyncError> {
-        match self.adapter.fetch_gate_comments(number).await {
-            Ok(comments) => {
-                let event = BoardEvent::GateCommentsFetched {
-                    meta: cache_fill_meta(),
-                    number,
-                    comments: comments.clone(),
-                };
-                self.store.apply(&event);
-                record_ingest_success(&self.status);
-                Ok(comments)
-            }
-            Err(e) => {
-                record_error(&self.status, &format!("fetch_gate_comments({number}): {e}"));
-                Err(e)
-            }
-        }
     }
 
     pub fn apply_server_rollback(&self, story: Story) {
