@@ -18,25 +18,21 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
       ])
 
       await expect(win.getByRole('main')).toBeVisible()
-      await new BoardPage(win).openTab('Plan')
-
-      const orderIn = async (): Promise<number[]> =>
-        win.evaluate(() =>
-          Array.from(document.querySelectorAll('[aria-label^="Reorder iteration #"]'))
-            .map((el) => (el.getAttribute('aria-label') ?? '').match(/Reorder iteration #(\d+)/))
-            .filter((m): m is RegExpMatchArray => m !== null)
-            .map((m) => Number(m[1]))
-        )
-
-      await expect.poll(orderIn, { timeout: 20_000, intervals: [250] }).toEqual([9701, 9702])
-
       const board = new BoardPage(win)
+      await board.openTab('Plan')
+
+      await expect
+        .poll(() => board.iterationOrder(), { timeout: 20_000, intervals: [250] })
+        .toEqual([9701, 9702])
+
       const grip = board.iterationGrip(9702)
       const target = board.iterationRow(9701)
       await expect(grip).toBeVisible()
       await grip.dragTo(target)
 
-      await expect.poll(orderIn, { timeout: 5_000, intervals: [100] }).toEqual([9702, 9701])
+      await expect
+        .poll(() => board.iterationOrder(), { timeout: 5_000, intervals: [100] })
+        .toEqual([9702, 9701])
 
       const labelRequestCount = (): number =>
         mockGh.requestLog().filter((r) => /\/issues\/9702\/labels/.test(r.path)).length
@@ -58,9 +54,11 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
       await new Promise((resolve) => setTimeout(resolve, 3_000))
       await win.reload()
       await expect(win.getByRole('main')).toBeVisible()
-      await new BoardPage(win).openTab('Plan')
+      await board.openTab('Plan')
 
-      await expect.poll(orderIn, { timeout: 20_000, intervals: [250] }).toEqual([9702, 9701])
+      await expect
+        .poll(() => board.iterationOrder(), { timeout: 20_000, intervals: [250] })
+        .toEqual([9702, 9701])
     } finally {
       await app.close()
     }
@@ -81,17 +79,9 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
       ])
 
       await expect(win.getByRole('main')).toBeVisible()
-      await new BoardPage(win).openTab('Plan')
-
-      const orderIn = async (): Promise<number[]> =>
-        win.evaluate(() =>
-          Array.from(document.querySelectorAll('[aria-label^="Reorder iteration #"]'))
-            .map((el) => (el.getAttribute('aria-label') ?? '').match(/Reorder iteration #(\d+)/))
-            .filter((m): m is RegExpMatchArray => m !== null)
-            .map((m) => Number(m[1]))
-        )
-
       const board = new BoardPage(win)
+      await board.openTab('Plan')
+
       const gripFor = (n: number): Locator => board.iterationGrip(n)
       const rowOf = (n: number): Locator => board.iterationRow(n)
 
@@ -110,13 +100,19 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
         return out
       }
 
-      await expect.poll(orderIn, { timeout: 20_000, intervals: [250] }).toEqual([9801, 9802, 9803])
+      await expect
+        .poll(() => board.iterationOrder(), { timeout: 20_000, intervals: [250] })
+        .toEqual([9801, 9802, 9803])
 
       await gripFor(9803).dragTo(rowOf(9801))
-      await expect.poll(orderIn, { timeout: 5_000, intervals: [100] }).toEqual([9803, 9801, 9802])
+      await expect
+        .poll(() => board.iterationOrder(), { timeout: 5_000, intervals: [100] })
+        .toEqual([9803, 9801, 9802])
 
       await gripFor(9803).dragTo(rowOf(9802))
-      await expect.poll(orderIn, { timeout: 5_000, intervals: [100] }).toEqual([9801, 9802, 9803])
+      await expect
+        .poll(() => board.iterationOrder(), { timeout: 5_000, intervals: [100] })
+        .toEqual([9801, 9802, 9803])
 
       await new Promise((resolve) => setTimeout(resolve, 9_000))
 
@@ -126,8 +122,10 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
 
       await win.reload()
       await expect(win.getByRole('main')).toBeVisible()
-      await new BoardPage(win).openTab('Plan')
-      await expect.poll(orderIn, { timeout: 20_000, intervals: [250] }).toEqual([9801, 9802, 9803])
+      await board.openTab('Plan')
+      await expect
+        .poll(() => board.iterationOrder(), { timeout: 20_000, intervals: [250] })
+        .toEqual([9801, 9802, 9803])
     } finally {
       await app.close()
     }
