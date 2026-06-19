@@ -1,23 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { act, renderHook } from '@testing-library/react'
-import { failure, success } from '../lib/result'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { useMessageHistory } from './useMessageHistory'
+import {
+  BrowserWebSocket,
+  startTestWsServer,
+  type TestWsConnection,
+  type TestWsServer
+} from '../../../../test/wsTestServer'
+import { startSession, getSessionSnapshot, resetSessionForTest } from '../transport/session'
 import type { ChatMessage } from '../transport/types'
-
-vi.mock('../api/http', async () => {
-  const actual = await vi.importActual<typeof import('../api/http')>('../api/http')
-  return {
-    ...actual,
-    http: {
-      get: vi.fn(),
-      post: actual.http.post,
-      put: actual.http.put,
-      delete: actual.http.delete
-    }
-  }
-})
-
-import { http } from '../api/http'
 
 const live = (i: number): ChatMessage => ({
   id: `live-${i}`,
@@ -29,97 +20,107 @@ const live = (i: number): ChatMessage => ({
   messageType: null
 })
 
-beforeEach(() => {
-  vi.mocked(http.get).mockReset()
+let server: TestWsServer
+let conn: TestWsConnection
+
+const pageRequestId = (): number | null => {
+  for (let i = conn.received.length - 1; i >= 0; i -= 1) {
+    try {
+      const frame = JSON.parse(conn.received[i]) as { type?: string; request_id?: number }
+      if (frame.type === 'history_page') return frame.request_id ?? null
+    } catch {
+      continue
+    }
+  }
+  return null
+}
+
+const props = { liveMessages: [live(0)], apiBase: 'http://test' }
+
+beforeEach(async () => {
+  vi.stubGlobal('WebSocket', BrowserWebSocket)
+  server = await startTestWsServer()
+  resetSessionForTest()
+  startSession({ url: server.url })
+  conn = await server.waitForConnection()
+  await waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
 })
 
-afterEach(() => {
-  vi.restoreAllMocks()
+afterEach(async () => {
+  resetSessionForTest()
+  await server.close()
+  vi.unstubAllGlobals()
 })
 
-const makeAsyncResult = <S, F>(
-  result: ReturnType<typeof success<S, F>> | ReturnType<typeof failure<F, S>>
-): {
-  value: Promise<typeof result>
-  map: ReturnType<typeof vi.fn>
-  andThen: ReturnType<typeof vi.fn>
-  or: ReturnType<typeof vi.fn>
-  onSuccess: ReturnType<typeof vi.fn>
-  onFailure: ReturnType<typeof vi.fn>
-  either: ReturnType<typeof vi.fn>
-  mapEither: ReturnType<typeof vi.fn>
-} => ({
-  value: Promise.resolve(result),
-  map: vi.fn(),
-  andThen: vi.fn(),
-  or: vi.fn(),
-  onSuccess: vi.fn(),
-  onFailure: vi.fn(),
-  either: vi.fn(),
-  mapEither: vi.fn()
-})
-
-describe('#1359 useMessageHistory — Result-chain boundary behavior', () => {
-  test('http.get failure flips hasError=true via Result.failure branch (not raw throw)', async () => {
-    vi.mocked(http.get).mockReturnValueOnce(
-      makeAsyncResult(failure({ kind: 'http', status: 500, body: 'oops' })) as never
-    )
-    const { result } = renderHook(() =>
-      useMessageHistory({
-        liveMessages: [live(0)],
-        apiBase: 'http://test',
-        authToken: 't0k'
-      })
-    )
+describe('#1359 useMessageHistory — WS older-history boundary behavior', () => {
+  test('a socket drop mid-request flips hasError=true (request rejected, not a raw throw)', async () => {
+    const { result } = renderHook(() => useMessageHistory(props))
     expect(result.current.hasError).toBe(false)
-    await act(async () => {
-      await result.current.loadOlder()
+
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.loadOlder()
     })
+    await waitFor(() => expect(pageRequestId()).not.toBeNull())
+
+    await act(async () => {
+      conn.drop()
+      await pending
+    })
+
     expect(result.current.hasError).toBe(true)
     expect(result.current.isLoadingOlder).toBe(false)
   })
 
-  test('http.get success with empty payload flips hasMoreOlder=false', async () => {
-    vi.mocked(http.get).mockReturnValueOnce(makeAsyncResult(success([])) as never)
-    const { result } = renderHook(() =>
-      useMessageHistory({
-        liveMessages: [live(0)],
-        apiBase: 'http://test',
-        authToken: 't0k'
-      })
-    )
-    await act(async () => {
-      await result.current.loadOlder()
+  test('an empty page reply flips hasMoreOlder=false', async () => {
+    const { result } = renderHook(() => useMessageHistory(props))
+
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.loadOlder()
     })
+    await waitFor(() => expect(pageRequestId()).not.toBeNull())
+
+    await act(async () => {
+      conn.send(
+        JSON.stringify({ type: 'history_page_loaded', request_id: pageRequestId(), messages: [] })
+      )
+      await pending
+    })
+
     expect(result.current.hasMoreOlder).toBe(false)
     expect(result.current.hasError).toBe(false)
   })
 
-  test('http.get success with rows prepends history without raising', async () => {
-    vi.mocked(http.get).mockReturnValueOnce(
-      makeAsyncResult(
-        success([
-          {
-            from: 'pm',
-            text: 'older message',
-            ts: '2026-05-03T03:00:00.000Z',
-            to: null,
-            addressee: null,
-            message_type: null
-          }
-        ])
-      ) as never
-    )
-    const { result } = renderHook(() =>
-      useMessageHistory({
-        liveMessages: [live(0)],
-        apiBase: 'http://test',
-        authToken: 't0k'
-      })
-    )
-    await act(async () => {
-      await result.current.loadOlder()
+  test('a page reply with rows prepends older history without raising', async () => {
+    const { result } = renderHook(() => useMessageHistory(props))
+
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.loadOlder()
     })
+    await waitFor(() => expect(pageRequestId()).not.toBeNull())
+
+    await act(async () => {
+      conn.send(
+        JSON.stringify({
+          type: 'history_page_loaded',
+          request_id: pageRequestId(),
+          messages: [
+            {
+              from: 'pm',
+              text: 'older message',
+              ts: '2026-05-03T03:00:00.000Z',
+              to: null,
+              addressee: null,
+              message_type: null
+            }
+          ]
+        })
+      )
+      await pending
+    })
+
     expect(result.current.combinedMessages.length).toBeGreaterThanOrEqual(2)
     expect(result.current.hasError).toBe(false)
     expect(result.current.combinedMessages.some((m) => m.text === 'older message')).toBe(true)

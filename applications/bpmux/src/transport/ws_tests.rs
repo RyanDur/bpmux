@@ -145,6 +145,50 @@ fn history_hydrated_reply_serializes_to_the_caller_only_frame() {
     );
 }
 
+#[test]
+fn history_page_frame_deserializes_with_request_id_and_cursor() {
+    let wire =
+        r#"{"type":"history_page","request_id":7,"before":"2026-05-03T03:00:00Z","limit":200}"#;
+    let parsed: ClientMessage =
+        serde_json::from_str(wire).expect("renderer history_page frame must deserialize");
+    assert!(
+        matches!(
+            &parsed,
+            ClientMessage::HistoryPage {
+                request_id: 7,
+                limit: 200,
+                ..
+            }
+        ),
+        "expected HistoryPage{{7,...,200}}, got {parsed:?}"
+    );
+}
+
+#[test]
+fn history_page_loaded_reply_echoes_request_id_caller_only() {
+    let msg = ServerMessage::HistoryPageLoaded {
+        request_id: 7,
+        messages: vec![serde_json::json!({
+            "from": "pm",
+            "text": "older",
+            "ts": "2026-05-03T03:00:00Z"
+        })],
+    };
+    let json = serde_json::to_string(&msg).expect("serialize HistoryPageLoaded");
+    assert!(
+        json.contains(r#""type":"history_page_loaded""#),
+        "missing type tag: {json}"
+    );
+    assert!(
+        json.contains(r#""request_id":7"#),
+        "missing request_id echo: {json}"
+    );
+    assert!(
+        json.contains(r#""text":"older""#),
+        "missing page payload: {json}"
+    );
+}
+
 fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
     session::Message {
         from: from.to_string(),

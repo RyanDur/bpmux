@@ -27,8 +27,7 @@ const App = (): React.JSX.Element => {
   const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder, hasError } = useMessageHistory(
     {
       liveMessages,
-      apiBase: bridge?.apiBase,
-      authToken: bridge?.authToken
+      apiBase: bridge?.apiBase
     }
   )
 

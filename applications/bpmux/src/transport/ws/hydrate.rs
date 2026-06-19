@@ -81,6 +81,42 @@ pub(super) async fn handle_history_hydrate(
     Ok(())
 }
 
+pub(super) async fn handle_history_page(
+    ctx: &ClientCtx<'_>,
+    tx: &mut SplitSink<WebSocket, WsMessage>,
+    request_id: u64,
+    before: String,
+    limit: usize,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let messages: Vec<serde_json::Value> = match (
+        ctx.session.read_messages(),
+        before.parse::<chrono::DateTime<chrono::Utc>>(),
+    ) {
+        (Ok(all), Ok(before_ts)) => {
+            let older: Vec<session::Message> = all
+                .into_iter()
+                .filter(|m| m.is_chat() && m.ts < before_ts)
+                .collect();
+            let start = older.len().saturating_sub(limit);
+            older
+                .iter()
+                .skip(start)
+                .map(|m| serde_json::to_value(m).unwrap_or(serde_json::Value::Null))
+                .collect()
+        }
+        _ => Vec::new(),
+    };
+    send_json(
+        tx,
+        &ServerMessage::HistoryPageLoaded {
+            request_id,
+            messages,
+        },
+    )
+    .await?;
+    Ok(())
+}
+
 pub(super) async fn handle_timeline_hydrate(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,

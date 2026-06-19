@@ -134,6 +134,12 @@ export interface ServerHistoryHydrated {
   messages: HistoryMessageWire[]
 }
 
+export interface ServerHistoryPageLoaded {
+  type: 'history_page_loaded'
+  request_id: number
+  messages: HistoryMessageWire[]
+}
+
 export interface ServerError {
   type: 'error'
   reason: string
@@ -214,6 +220,13 @@ export interface ClientHistoryHydrate {
   activity_limit: number
 }
 
+export interface ClientHistoryPage {
+  type: 'history_page'
+  request_id: number
+  before: string
+  limit: number
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -225,6 +238,7 @@ export type ClientMessage =
   | ClientCommentsHydrate
   | ClientTimelineHydrate
   | ClientHistoryHydrate
+  | ClientHistoryPage
 
 export interface ChatMessage {
   id: string

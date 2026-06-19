@@ -6,7 +6,9 @@ use futures::stream::SplitSink;
 use super::client_handlers::{
     handle_pty_input, handle_pty_subscribe, handle_reaction_toggle, handle_send,
 };
-use super::hydrate::{handle_comments_hydrate, handle_history_hydrate, handle_timeline_hydrate};
+use super::hydrate::{
+    handle_comments_hydrate, handle_history_hydrate, handle_history_page, handle_timeline_hydrate,
+};
 use super::{MAX_MESSAGE_SIZE, message_size_ok, send_json};
 use crate::session;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
@@ -115,6 +117,13 @@ pub(crate) async fn handle_client_message(
             activity_limit,
         }) => {
             handle_history_hydrate(ctx, tx, chat_limit, activity_limit).await?;
+        }
+        Ok(ClientMessage::HistoryPage {
+            request_id,
+            before,
+            limit,
+        }) => {
+            handle_history_page(ctx, tx, request_id, before, limit).await?;
         }
         Err(e) => {
             send_json(

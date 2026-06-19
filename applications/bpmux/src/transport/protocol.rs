@@ -53,6 +53,12 @@ pub enum ClientMessage {
         chat_limit: usize,
         activity_limit: usize,
     },
+    #[serde(rename = "history_page")]
+    HistoryPage {
+        request_id: u64,
+        before: String,
+        limit: usize,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -98,6 +104,11 @@ pub enum ServerMessage {
     },
     #[serde(rename = "history_hydrated")]
     HistoryHydrated { messages: Vec<serde_json::Value> },
+    #[serde(rename = "history_page_loaded")]
+    HistoryPageLoaded {
+        request_id: u64,
+        messages: Vec<serde_json::Value>,
+    },
 }
 
 impl From<Message> for ServerMessage {

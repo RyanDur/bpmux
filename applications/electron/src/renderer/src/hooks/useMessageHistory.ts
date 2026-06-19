@@ -1,23 +1,15 @@
 import { useCallback, useMemo, useState } from 'react'
-import { http } from '../api/http'
+import { requestOlderHistory } from '../transport/session'
 import { asMessageType } from '../transport/messageType'
-import type { ChatMessage } from '../transport/types'
+import type { ChatMessage, HistoryMessageWire } from '../transport/types'
 
 const DEFAULT_PAGE_SIZE = 200
 
-interface HistoryMessage {
-  from: string
-  text: string
-  ts: string
-  to?: string[] | null
-  addressee?: string | null
-  message_type?: string | null
-}
+type HistoryMessage = HistoryMessageWire
 
 export interface UseMessageHistoryOptions {
   liveMessages: ChatMessage[]
   apiBase?: string
-  authToken?: string
   pageSize?: number
 }
 
@@ -63,7 +55,6 @@ export const mergeOlderHistory = (
 export const useMessageHistory = ({
   liveMessages,
   apiBase,
-  authToken,
   pageSize = DEFAULT_PAGE_SIZE
 }: UseMessageHistoryOptions): UseMessageHistoryResult => {
   const [prependedHistory, setPrependedHistory] = useState<ChatMessage[]>([])
@@ -85,22 +76,23 @@ export const useMessageHistory = ({
     if (!oldest) return
 
     setIsLoadingOlder(true)
-    const endpoint = `/api/messages?chat_only=true&before=${encodeURIComponent(oldest)}&limit=${pageSize}`
-    const result = await http.get<HistoryMessage[]>({ apiBase, authToken }, endpoint).value
-    if (result.kind === 'failure') {
+    let rows: HistoryMessage[]
+    try {
+      rows = await requestOlderHistory(oldest, pageSize)
+    } catch {
       setHasError(true)
       setIsLoadingOlder(false)
       return
     }
     setHasError(false)
-    if (result.value.length === 0) {
+    if (rows.length === 0) {
       setHasMoreOlder(false)
       setIsLoadingOlder(false)
       return
     }
-    setPrependedHistory((prev) => mergeOlderHistory(prev, result.value, liveMessages))
+    setPrependedHistory((prev) => mergeOlderHistory(prev, rows, liveMessages))
     setIsLoadingOlder(false)
-  }, [apiBase, authToken, hasMoreOlder, isLoadingOlder, liveMessages, pageSize, prependedHistory])
+  }, [apiBase, hasMoreOlder, isLoadingOlder, liveMessages, pageSize, prependedHistory])
 
   return {
     combinedMessages,

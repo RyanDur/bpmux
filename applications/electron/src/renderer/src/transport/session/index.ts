@@ -3,6 +3,7 @@ import {
   chatSendRequested,
   commentsHydrateRequested,
   frameReceived,
+  olderHistoryRequested,
   ptyInputRequested,
   ptyResizeRequested,
   ptySubscribeRequested,
@@ -12,6 +13,8 @@ import {
   type SendOptions,
   type SessionConfig
 } from './actions'
+import { nextOlderHistoryRequest } from './olderHistory'
+import type { HistoryMessageWire } from '../types'
 import { startSentFrameCapture } from './testCapture'
 import type { ClientMessage } from '../types'
 
@@ -52,6 +55,15 @@ export const requestCommentsHydrate = (storyNumber: number): void =>
 
 export const requestTimelineHydrate = (storyNumber: number): void =>
   dispatchSession(timelineHydrateRequested(storyNumber))
+
+export const requestOlderHistory = (
+  before: string,
+  limit: number
+): Promise<HistoryMessageWire[]> => {
+  const { requestId, promise } = nextOlderHistoryRequest()
+  dispatchSession(olderHistoryRequested(requestId, before, limit))
+  return promise
+}
 
 export const sendPtySubscribe = (terminalId: string): void =>
   dispatchSession(ptySubscribeRequested(terminalId))

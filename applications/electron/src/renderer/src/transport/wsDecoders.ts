@@ -4,6 +4,7 @@ import {
   type ServerCommentsHydrated,
   type ServerError,
   type ServerHistoryHydrated,
+  type ServerHistoryPageLoaded,
   type ServerPong,
   type ServerPtyExit,
   type ServerPtyOutput,
@@ -72,6 +73,23 @@ export const timelineHydratedDecoder: D.Decoder<ServerTimelineHydrated> = D.obje
 export const historyHydratedDecoder: D.Decoder<ServerHistoryHydrated> = D.object({
   required: {
     type: D.literal('history_hydrated'),
+    messages: D.array(
+      D.object({
+        required: { from: D.string, text: D.string, ts: D.string },
+        optional: {
+          to: D.nullable(D.array(D.string)),
+          addressee: D.nullable(D.string),
+          message_type: D.nullable(D.string)
+        }
+      })
+    )
+  }
+})
+
+export const historyPageLoadedDecoder: D.Decoder<ServerHistoryPageLoaded> = D.object({
+  required: {
+    type: D.literal('history_page_loaded'),
+    request_id: D.number,
     messages: D.array(
       D.object({
         required: { from: D.string, text: D.string, ts: D.string },

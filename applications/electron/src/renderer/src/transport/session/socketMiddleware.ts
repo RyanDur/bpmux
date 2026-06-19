@@ -11,6 +11,7 @@ import {
   type SessionConfig
 } from './actions'
 import { dispatchServerFrame } from './decode'
+import { rejectPendingOlderHistory } from './olderHistory'
 import { encodeKeystroke } from './ptyCodec'
 import { INITIAL_BACKOFF_MS, MAX_BACKOFF_MS, RENDERER_IDENTITY, RENDERER_TOOL } from './constants'
 import { captureSentFrame } from './testCapture'
@@ -81,6 +82,7 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
       console.warn('bpmux ws: closed, reconnecting', ev.code, ev.reason)
       socket = null
       awaitingReconnect = true
+      rejectPendingOlderHistory('socket closed')
       api.dispatch(disconnected())
       scheduleReconnect(url)
     }
@@ -152,6 +154,14 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           type: 'history_hydrate',
           chat_limit: action.chatLimit,
           activity_limit: action.activityLimit
+        })
+        return
+      case SessionActionType.OlderHistoryRequested:
+        send({
+          type: 'history_page',
+          request_id: action.requestId,
+          before: action.before,
+          limit: action.limit
         })
         return
       case SessionActionType.PtySubscribeRequested:

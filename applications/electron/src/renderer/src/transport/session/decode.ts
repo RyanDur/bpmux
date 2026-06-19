@@ -6,6 +6,7 @@ import {
   commentsHydratedDecoder,
   errorDecoder,
   historyHydratedDecoder,
+  historyPageLoadedDecoder,
   messageDecoder,
   pongDecoder,
   ptyExitDecoder,
@@ -13,6 +14,7 @@ import {
   timelineHydratedDecoder,
   welcomeDecoder
 } from '../wsDecoders'
+import { resolveOlderHistory } from './olderHistory'
 import {
   commentsHydrated,
   historyLoaded,
@@ -93,6 +95,11 @@ export const dispatchServerFrame = (
     .or(() =>
       maybe(historyHydratedDecoder.decode(frame)).map((hydrated) =>
         dispatch(historyLoaded(hydrated.messages))
+      )
+    )
+    .or(() =>
+      maybe(historyPageLoadedDecoder.decode(frame)).map((page) =>
+        resolveOlderHistory(page.request_id, page.messages)
       )
     )
     .or(() =>

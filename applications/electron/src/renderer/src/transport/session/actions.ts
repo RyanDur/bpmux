@@ -46,6 +46,7 @@ export const SessionActionType = {
   TimelineHydrateRequested: 'session/timelineHydrateRequested',
   TimelineHydrated: 'session/timelineHydrated',
   HistoryHydrateRequested: 'session/historyHydrateRequested',
+  OlderHistoryRequested: 'session/olderHistoryRequested',
   PtySubscribeRequested: 'session/ptySubscribeRequested',
   PtyInputRequested: 'session/ptyInputRequested',
   PtyResizeRequested: 'session/ptyResizeRequested',
@@ -90,6 +91,12 @@ export type SessionAction =
       type: typeof SessionActionType.HistoryHydrateRequested
       chatLimit: number
       activityLimit: number
+    }
+  | {
+      type: typeof SessionActionType.OlderHistoryRequested
+      requestId: number
+      before: string
+      limit: number
     }
   | { type: typeof SessionActionType.PtySubscribeRequested; terminalId: string }
   | { type: typeof SessionActionType.PtyInputRequested; terminalId: string; keystroke: string }
@@ -200,6 +207,17 @@ export const historyHydrateRequested = (
   type: SessionActionType.HistoryHydrateRequested,
   chatLimit,
   activityLimit
+})
+
+export const olderHistoryRequested = (
+  requestId: number,
+  before: string,
+  limit: number
+): SessionAction => ({
+  type: SessionActionType.OlderHistoryRequested,
+  requestId,
+  before,
+  limit
 })
 
 export const ptySubscribeRequested = (terminalId: string): SessionAction => ({
