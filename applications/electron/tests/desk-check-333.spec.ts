@@ -4,6 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
 
 // #333 rework: drag-to-reorder in the Ready column must persist
 // (no snap-back) + the dragged row must hide during the drag
@@ -111,11 +113,12 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     // simulation accuracy.
     const { app } = await launchWithFixture({ postReorderBody: MOCK_BOARD_BEFORE })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-group-ready"]').first()).toBeVisible()
+    const board = new BoardPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
+    await expect(board.group('Ready')).toBeVisible()
 
-    const row = win.locator('#board-group-ready-content [data-test="board-story-701"]')
-    const grip = row.locator('[data-test="story-grip"]')
+    const row = board.storyRow(701)
+    const grip = board.storyGrip(701)
     await expect(row).toBeVisible()
     await expect(grip).toBeVisible()
     await expect(row).not.toHaveAttribute('data-dragging', 'true')
@@ -141,25 +144,16 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     // next /api/board response reset the order.
     const { app } = await launchWithFixture({ postReorderBody: MOCK_BOARD_AFTER })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const board = new BoardPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
 
     // Before reorder: rows render in filed order 701/702/703.
-    // #1128: stories live in `<details id="board-group-{state}-content">`,
-    // not as descendants of `<summary data-test="board-group-{state}">`.
-    // Pre-#1128 selector matched 0 elements (post-#516 details/summary).
-    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
-    await expect(rows).toHaveCount(3)
-    const initialOrder = await rows.evaluateAll((els) =>
-      els.map((el) => el.getAttribute('data-test'))
-    )
-    expect(initialOrder).toEqual(['board-story-701', 'board-story-702', 'board-story-703'])
+    expect(await board.storyOrder('Ready')).toEqual([701, 702, 703])
 
     // Simulate keyboard reorder — the same handleReorder path fires
     // the POST. Ctrl+Shift+Down on the first row bumps it past the
     // second, matching the existing keyboard-reorder contract (#357).
-    const firstRow = win.locator(
-      '#board-group-ready-content [data-test="board-story-701"] .board-story-navigate'
-    )
+    const firstRow = board.storyNavigate(701)
     await firstRow.focus()
     await firstRow.press('Control+Shift+ArrowDown')
 
@@ -169,11 +163,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     // on the eventual-consistency state (post-invalidate) since
     // that's what Ryan's walk observes.
     await expect(async () => {
-      const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
-      // Either the optimistic result (701 moved) or the post-refetch
-      // priority-applied result — both satisfy the falsifier that
-      // the order changed + didn't snap back to original.
-      expect(order).not.toEqual(['board-story-701', 'board-story-702', 'board-story-703'])
+      expect(await board.storyOrder('Ready')).not.toEqual([701, 702, 703])
     }).toPass({ timeout: 5_000 })
 
     await app.close()
@@ -191,24 +181,14 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     }
     const { app } = await launchWithFixture({ postReorderBody: adjacentDownBoard })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
-    await expect(rows).toHaveCount(3)
-    expect(await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))).toEqual([
-      'board-story-701',
-      'board-story-702',
-      'board-story-703'
-    ])
+    const board = new BoardPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
+    expect(await board.storyOrder('Ready')).toEqual([701, 702, 703])
 
-    const grip = win.locator(
-      '#board-group-ready-content [data-test="board-story-701"] [data-test="story-grip"]'
-    )
-    await grip.dragTo(win.locator('#board-group-ready-content [data-test="board-story-702"]'))
+    await board.storyGrip(701).dragTo(board.storyRow(702))
 
     await expect(async () => {
-      expect(
-        await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
-      ).toEqual(['board-story-702', 'board-story-701', 'board-story-703'])
+      expect(await board.storyOrder('Ready')).toEqual([702, 701, 703])
     }).toPass({ timeout: 5_000 })
 
     await app.close()

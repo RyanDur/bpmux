@@ -36,6 +36,12 @@ export class BoardPage {
     return this.storyNavigate(storyNumber).locator('xpath=ancestor::li[1]')
   }
 
+  storyGrip(storyNumber: number): Locator {
+    return this.win.getByRole('button', {
+      name: new RegExp(`Drag to reorder #${storyNumber}\\b`)
+    })
+  }
+
   nowContent(): Locator {
     return this.win.getByRole('article', { name: 'Now' })
   }

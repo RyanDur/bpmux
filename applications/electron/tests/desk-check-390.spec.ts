@@ -4,6 +4,9 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
+import { DrillInPage } from './pages/drillInPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -100,40 +103,26 @@ const launchWithFixture = async (): Promise<{
   return { app }
 }
 
-const openDelivered = async (
-  win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>
-): Promise<void> => {
-  // Post-#516: data-test on summary, not details. See desk-check-375.
-  const summary = win.locator('[data-test="board-group-delivered"]').first()
-  const isOpen = await summary.evaluate((el: Element) => {
-    const details = el.closest('details')
-    return details ? (details as HTMLDetailsElement).open : false
-  })
-  if (!isOpen) {
-    await summary.click()
-  }
+const openDelivered = async (board: BoardPage): Promise<void> => {
+  await board.openColumn('Acceptance')
 }
 
 test.describe('desk-check #390 blocked visual indicator', () => {
   test('blocked label renders distinct badge + tooltip with blocker reference', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await openDelivered(win)
+    const board = new BoardPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
+    await openDelivered(board)
 
-    const blocked = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-990"] [data-test="story-badge"]'
-    )
-    await expect(blocked).toHaveAttribute('data-badge-kind', 'blocked')
+    const blocked = board.storyStateBadge(990)
+    await expect(blocked).toHaveClass(/story-badge--blocked\b/)
     await expect(blocked).toContainText('blocked')
     await expect(blocked).toHaveAttribute('title', /waiting on #337/)
     await expect(blocked).toHaveAttribute('aria-label', /waiting on #337/)
     await expect(blocked).toHaveAttribute('aria-label', /open blocker/)
 
-    const row = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-990"]'
-    )
-    await expect(row).toHaveClass(/board-story-row--blocked/)
+    await expect(board.storyRow(990)).toHaveClass(/board-story-row--blocked/)
 
     await win.screenshot({
       path: join(EVIDENCE_DIR, '99-blocked-badge-with-reference.png'),
@@ -145,21 +134,17 @@ test.describe('desk-check #390 blocked visual indicator', () => {
   test('blocked without blocked-by falls back to no-reference text — still visible', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await openDelivered(win)
+    const board = new BoardPage(win)
+    await openDelivered(board)
 
-    const blocked = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-991"] [data-test="story-badge"]'
-    )
-    await expect(blocked).toHaveAttribute('data-badge-kind', 'blocked')
+    const blocked = board.storyStateBadge(991)
+    await expect(blocked).toHaveClass(/story-badge--blocked\b/)
     await expect(blocked).toContainText('blocked')
     await expect(blocked).toHaveAttribute('title', /no blocker specified/)
 
     // Row still carries the dim class — nothing-hidden principle:
     // block-state is visible even when the reference isn't captured.
-    const row = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-991"]'
-    )
-    await expect(row).toHaveClass(/board-story-row--blocked/)
+    await expect(board.storyRow(991)).toHaveClass(/board-story-row--blocked/)
 
     await app.close()
   })
@@ -167,18 +152,14 @@ test.describe('desk-check #390 blocked visual indicator', () => {
   test('unblocked delivered row has no blocked class or blocked badge', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await openDelivered(win)
+    const board = new BoardPage(win)
+    await openDelivered(board)
 
-    const baseline = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-992"] [data-test="story-badge"]'
-    )
-    await expect(baseline).toHaveAttribute('data-badge-kind', 'accepted')
+    const baseline = board.storyStateBadge(992)
+    await expect(baseline).toHaveClass(/story-badge--accepted\b/)
     await expect(baseline).toContainText('awaiting owner')
 
-    const row = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-992"]'
-    )
-    await expect(row).not.toHaveClass(/board-story-row--blocked/)
+    await expect(board.storyRow(992)).not.toHaveClass(/board-story-row--blocked/)
 
     await app.close()
   })
@@ -186,16 +167,15 @@ test.describe('desk-check #390 blocked visual indicator', () => {
   test('click on blocked badge opens the blocker drill-in', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await openDelivered(win)
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await openDelivered(board)
 
-    const badge = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-990"] [data-test="story-badge"]'
-    )
-    await badge.click()
+    await board.storyStateBadge(990).click()
 
     // Drill-in for the blocker (#337), not #990 — the click routes
     // through onOpenBlocker with the parsed blocked-by:<N> number.
-    const drill = win.locator('[data-test="board-drill-in"]')
+    const drill = drillIn.panel()
     await expect(drill).toBeVisible()
     await expect(drill).toContainText('#337')
 
