@@ -54,4 +54,8 @@ export class DrillInPage {
   commentSend(): Locator {
     return this.win.getByRole('button', { name: 'Comment', exact: true })
   }
+
+  toast(): Locator {
+    return this.panel().getByRole('status')
+  }
 }

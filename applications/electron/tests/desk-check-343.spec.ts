@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -90,15 +91,13 @@ test.describe('desk-check #343 URL unfurls', () => {
   test('messages with URLs render unfurl cards below body', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="message-row"]').first()).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.messageRows().first()).toBeVisible()
     await win.waitForTimeout(1500)
 
     // Enumerate unfurl-related DOM.
     const unfurlElts = await win.evaluate(() =>
-      Array.from(
-        document.querySelectorAll('[data-test*="unfurl" i], .unfurl-card, .unfurl-cards')
-      ).map((el) => ({
-        dataTest: el.getAttribute('data-test'),
+      Array.from(document.querySelectorAll('.unfurl-card, .unfurl-cards')).map((el) => ({
         className: el.className,
         text: (el.textContent ?? '').trim().slice(0, 100)
       }))
@@ -106,7 +105,7 @@ test.describe('desk-check #343 URL unfurls', () => {
     console.log(`#343 unfurl elements found: ${unfurlElts.length}`)
     unfurlElts.forEach((e, i) => console.log(`  [${i}] ${JSON.stringify(e)}`))
 
-    await win.locator('[data-test="chat-region"]').screenshot({
+    await chat.region().screenshot({
       path: join(EVIDENCE_DIR, 'b0-unfurl-cards-in-chat.png')
     })
     await app.close()
@@ -115,14 +114,13 @@ test.describe('desk-check #343 URL unfurls', () => {
   test('no URL → no cards (AC5 graceful empty elision)', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="message-row"]').first()).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.messageRows().first()).toBeVisible()
     await win.waitForTimeout(1500)
 
     // Find the pm message (no URL).
-    const pmRow = win.locator('[data-test="message-row"]').filter({
-      hasText: 'No URL in this message.'
-    })
-    const pmCards = await pmRow.locator('.unfurl-card, [data-test*="unfurl" i]').count()
+    const pmRow = chat.messageRow('No URL in this message.')
+    const pmCards = await pmRow.locator('.unfurl-card').count()
     console.log(`#343 AC5 pm message (no URL) unfurl element count: ${pmCards}`)
     expect(pmCards).toBe(0)
     await app.close()
@@ -131,13 +129,12 @@ test.describe('desk-check #343 URL unfurls', () => {
   test('multiple URLs in one message render multiple cards (AC4)', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="message-row"]').first()).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.messageRows().first()).toBeVisible()
     await win.waitForTimeout(1500)
 
     // dev message has 2 URLs.
-    const devRow = win.locator('[data-test="message-row"]').filter({
-      hasText: 'Two URLs here'
-    })
+    const devRow = chat.messageRow('Two URLs here')
     const devCards = await devRow.locator('.unfurl-card').count()
     console.log(`#343 AC4 dev message (2 URLs) unfurl card count: ${devCards}`)
     // One URL has no metadata (AC5 elides). Expect 1 card rendered.
@@ -152,7 +149,8 @@ test.describe('desk-check #343 URL unfurls', () => {
   test('unfurl card link has target=_blank (AC3 — opens in OS browser)', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="message-row"]').first()).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.messageRows().first()).toBeVisible()
     await win.waitForTimeout(1500)
 
     const linkAttrs = await win.evaluate(() =>

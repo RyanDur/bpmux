@@ -47,6 +47,14 @@ export class ChatPage {
     return this.win.locator('.message-list-wrap')
   }
 
+  unfurlContainer(): Locator {
+    return this.messageLog().locator('.unfurl-cards')
+  }
+
+  unfurlCards(): Locator {
+    return this.messageLog().locator('.unfurl-card')
+  }
+
   newMessagesPill(): Locator {
     return this.win.getByRole('button', { name: /new message/i })
   }

@@ -5,6 +5,8 @@ import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 const seedComments = (
   comments: ReadonlyArray<{ id: number; author: string; body: string; created_at: string }>
@@ -83,21 +85,18 @@ test.describe('desk-check #345 live comment refresh', () => {
   test('drill-in opens + comments hydrate on mount', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await expect(board.region()).toBeVisible()
+    await board.storyNavigate(345).click()
+    await expect(drillIn.panel()).toBeVisible()
     await win.waitForTimeout(500)
 
-    const drillIn = win.locator('[data-test="board-drill-in"]')
-    await drillIn.screenshot({
+    await drillIn.panel().screenshot({
       path: join(EVIDENCE_DIR, '30-drillin-with-comments.png')
     })
 
-    const comments = win.locator('.drill-in-comment')
+    const comments = drillIn.commentItems()
     const count = await comments.count()
     console.log(`#345 AC comments on mount: ${count} rendered`)
     for (let i = 0; i < count; i++) {
@@ -110,27 +109,25 @@ test.describe('desk-check #345 live comment refresh', () => {
   test('optimistic render: typed comment appears immediately on submit', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await board.storyNavigate(345).click()
+    await expect(drillIn.panel()).toBeVisible()
     await win.waitForTimeout(500)
 
     // Type in the comment textarea.
-    const textarea = win.locator('[data-test="drill-in-comment-input"]')
+    const textarea = drillIn.commentInput()
     await textarea.fill('Optimistic comment from the desk-check walk.')
 
     // Count before submit.
-    const before = await win.locator('.drill-in-comment').count()
+    const before = await drillIn.commentItems().count()
     console.log(`#345 optimistic: ${before} comments before submit`)
 
-    await win.locator('[data-test="drill-in-comment-send"]').click()
+    await drillIn.commentSend().click()
 
     // Optimistic should add immediately (before server round trip).
     await win.waitForTimeout(150)
-    const afterImmediate = await win.locator('.drill-in-comment').count()
+    const afterImmediate = await drillIn.commentItems().count()
     console.log(`  immediately after submit: ${afterImmediate} comments (expect before+1)`)
 
     // Draft should clear.
@@ -138,7 +135,7 @@ test.describe('desk-check #345 live comment refresh', () => {
     console.log(`  draft after submit: "${draftAfter}" (expect empty)`)
 
     // Screenshot the optimistic state.
-    await win.locator('[data-test="board-drill-in"]').screenshot({
+    await drillIn.panel().screenshot({
       path: join(EVIDENCE_DIR, '31-drillin-optimistic-add.png')
     })
 
@@ -171,24 +168,22 @@ test.describe('desk-check #345 live comment refresh', () => {
     })
     await win.reload()
 
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await board.storyNavigate(345).click()
+    await expect(drillIn.panel()).toBeVisible()
     await win.waitForTimeout(500)
 
-    const textarea = win.locator('[data-test="drill-in-comment-input"]')
+    const textarea = drillIn.commentInput()
     const draft = 'This one will fail — draft should restore.'
     await textarea.fill(draft)
-    await win.locator('[data-test="drill-in-comment-send"]').click()
+    await drillIn.commentSend().click()
     await win.waitForTimeout(500)
 
     const draftAfter = await textarea.inputValue()
     console.log(`#345 rollback: draft after 500 error: "${draftAfter}" (expect restored)`)
 
-    const toast = win.locator('[data-test="drill-in-toast"]')
+    const toast = drillIn.toast()
     const toastVisible = await toast.isVisible()
     console.log(`  toast visible: ${toastVisible}`)
     if (toastVisible) {
@@ -196,7 +191,7 @@ test.describe('desk-check #345 live comment refresh', () => {
       console.log(`  toast text: "${toastText}"`)
     }
 
-    await win.locator('[data-test="board-drill-in"]').screenshot({
+    await drillIn.panel().screenshot({
       path: join(EVIDENCE_DIR, '32-drillin-rollback-toast.png')
     })
 
