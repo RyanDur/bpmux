@@ -16,14 +16,21 @@ short in-terminal note for your own session record, but the reply the sender act
 `bpmux send`.
 
 ## 2. Mirror the originating SCOPE — read the `<scope>▸` marker
-The inbound line self-labels its scope just before `▸`:
-- `<sender> broadcast▸ …`  → reply broadcast:                  `bpmux send "…"`
-- `<sender> →you▸ …`  (a DM to you)  → reply to that sender:   `bpmux send --to <sender> "…"`
-- a role/group-scoped message  → reply to that same set:       `bpmux send --to <role1>,<role2> "…"`
+The framer (`session::terminal_inject::frame_team_message`) renders scope PER-RECIPIENT, so as a
+recipient you only ever see two markers:
+- `<sender> broadcast▸ …`  (sent to everyone; to=None)  → reply broadcast:  `bpmux send "…"`
+- `<sender> →you▸ …`  (you were a matched recipient of a scoped/DM message)  → reply to the sender:
+  `bpmux send --to <sender> "…"`
 
-Match what arrived — don't widen a DM into a broadcast or narrow a broadcast into a DM. When an
-exchange only concerns a subset (e.g. dev↔pm, designer not needed), scope with `--to` so you don't
-flood uninvolved roles; the owner still sees scoped messages.
+You never see the raw recipient list — a `to:[dev,pm]` message shows each matched recipient `→you`,
+not `→dev,pm`. `--to` takes a comma-separated role list (`bpmux send --to dev,pm "…"`); broadcast is
+the no-`--to` default. Match what arrived — don't widen a `→you` into a broadcast or narrow a
+broadcast into a DM. When an exchange only concerns a subset, scope with `--to` so you don't flood
+uninvolved roles; the owner sees scoped messages too.
+
+SYSTEM/CI signals arrive as sender `bpmux` (e.g. `⟦bpmux⟧ bpmux →you▸ 🟢 CI green …`) — these are
+informational pushes from the bridge, not a peer asking; do NOT reply (a `--to bpmux` goes nowhere
+useful). Relay a CI signal onward only if you own that relay to a waiting teammate.
 
 ## 3. Gate WHO answers — route by responsibility, no pile-on
 Before replying, ask "is this mine to answer?" Route by domain: PM owns product / WHAT, designer
@@ -43,7 +50,8 @@ Inbound `⟦bpmux⟧ X <scope>▸ msg` → is it mine? → `bpmux send [--to …
 no prefix, lists-as-lists, cause-named.
 
 ---
-DRAFT seeded by dev (2026-06-19) at Ryan's direction ("you all need it; work on it together").
-Open questions for the team: should this fold into / replace the stale `send` skill (which still
-references the retired MCP `send_message`)? what scope-markers does the TUI actually emit beyond
-`broadcast▸` / `→you▸`? add examples per role.
+Seeded by dev (2026-06-19) at Ryan's direction; scope-markers grounded against
+`session::terminal_inject` (only `broadcast▸` / `→you▸` reach a recipient). TEAM TO DECIDE: fold this
+into / replace the stale `send` skill (it still invokes the retired MCP `send_message` instead of
+`bpmux send`); add per-role worked examples (pm answering a product Q on broadcast; designer DMing a
+spec back to dev; dev relaying a CI signal).
