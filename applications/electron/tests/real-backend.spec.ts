@@ -5,6 +5,10 @@ import { join } from 'path'
 import { launchIsolatedElectron as launchWithIsolatedSession } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 import { ChatPage } from './pages/chatPage'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
+import { SidebarPage } from './pages/sidebarPage'
+import { TitlebarPage } from './pages/titlebarPage'
 
 // Real-backend test harness — launches Electron without `win.route`
 // stubs, so the renderer exercises the actual network layer:
@@ -23,11 +27,11 @@ test.describe('real-backend', () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
 
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
+    await expect(new BoardPage(win).region()).toBeVisible()
 
-    await expect(win.locator('[data-test="board-error"]')).toBeHidden({
+    await expect(new BoardPage(win).errorBanner()).toBeHidden({
       timeout: 10_000
     })
     await expect(win.locator('.board-mock-flag')).toHaveCount(0)
@@ -42,11 +46,11 @@ test.describe('real-backend', () => {
   test('a11y substrate: chat role=log, every text element ≥12px, i-search failing ✗ glyph', async () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
+    const chat = new ChatPage(win)
 
     // AC9(a): chat-region is a live log region.
-    const chatRegion = win.locator('[data-test="chat-region"]')
-    await expect(chatRegion).toBeVisible()
-    const messageList = win.locator('[data-test="message-list"]')
+    await expect(chat.region()).toBeVisible()
+    const messageList = chat.messageLog()
     await expect(messageList).toHaveAttribute('role', 'log')
     await expect(messageList).toHaveAttribute('aria-live', 'polite')
 
@@ -102,12 +106,12 @@ test.describe('real-backend', () => {
     // opens the strip regardless of history state (post-347 product
     // behavior), so the test stays self-contained — no need to seed
     // a sent message first. A uuid-tagged query guarantees no match.
-    const textarea = win.locator('[data-test="chat-input-textarea"]')
+    const textarea = chat.input()
     await textarea.focus()
     await textarea.press('Control+r')
     const noMatchQuery = 'zzznevermatchesxyzzy-' + Date.now()
     await win.keyboard.type(noMatchQuery)
-    const isearchStrip = win.locator('[data-test="chat-input-isearch"]')
+    const isearchStrip = chat.isearchIndicator()
     await expect(isearchStrip).toBeVisible({ timeout: 3_000 })
     await expect(isearchStrip).toContainText('✗')
 
@@ -162,16 +166,16 @@ test.describe('real-backend', () => {
       })
     })
 
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    const messageList = win.locator('[data-test="message-list"]')
-    await expect(messageList).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(win.getByRole('main')).toBeVisible()
+    await expect(chat.messageLog()).toBeVisible()
 
     // AC9(a): three consecutive designer messages + one ryan message
     // render four rows total, but only TWO avatars — the first
     // designer row anchors the 3-message group, the ryan row anchors
     // its own single-row group. Avatars 2 and 3 (grouped
     // continuations) are hidden.
-    const avatars = win.locator('[data-test="message-avatar"]')
+    const avatars = chat.avatars()
     await expect(avatars).toHaveCount(2, { timeout: 5_000 })
     // MessageList renders newest-first via `buildReversed` (column-
     // reverse style DOM order — see MessageList.tsx:360). DOM order
@@ -238,23 +242,15 @@ test.describe('real-backend', () => {
           body: JSON.stringify([...fixture].reverse())
         })
       })
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-      await expect(win.locator('[data-test="filter-pills"]')).toBeVisible()
+      const chat = new ChatPage(win)
+      await expect(win.getByRole('main')).toBeVisible()
+      await expect(chat.filterRegion()).toBeVisible()
 
-      await expect(win.locator('[data-test="filter-pill-chat"]')).toHaveAttribute(
-        'data-state',
-        'on'
-      )
-      await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
-        'data-state',
-        'off'
-      )
+      await expect(chat.filterPill('chat')).toBeChecked()
+      await expect(chat.filterPill('events')).not.toBeChecked()
 
-      await win.locator('[data-test="filter-pill-events"]').click()
-      await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
-        'data-state',
-        'on'
-      )
+      await chat.toggleFilter('events')
+      await expect(chat.filterPill('events')).toBeChecked()
 
       await app.close()
     }
@@ -272,11 +268,9 @@ test.describe('real-backend', () => {
           body: JSON.stringify([...fixture].reverse())
         })
       })
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-      await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
-        'data-state',
-        'on'
-      )
+      const chat = new ChatPage(win)
+      await expect(win.getByRole('main')).toBeVisible()
+      await expect(chat.filterPill('events')).toBeChecked()
       await app.close()
     }
   })
@@ -325,14 +319,15 @@ test.describe('real-backend', () => {
       seedRoster: ['dev:claude-code', 'designer:claude-code', 'pm:claude-code']
     })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    const sidebar = new SidebarPage(win)
+    await expect(win.getByRole('main')).toBeVisible()
 
-    const group1 = win.locator('[data-test="sidebar-group-designer+dev"]')
+    const group1 = sidebar.groupChannel('designer + dev')
     await expect(group1).toBeVisible({ timeout: 10_000 })
     await expect(group1).toHaveText('designer + dev')
 
-    await expect(win.locator('[data-test="sidebar-group-designer+dev+pm"]')).toHaveCount(0)
-    await expect(win.locator('[data-test="sidebar-system"]')).toHaveCount(0)
+    await expect(sidebar.groupChannel('designer + dev + pm')).toHaveCount(0)
+    await expect(sidebar.nav().getByRole('button', { name: /system/i })).toHaveCount(0)
 
     await group1.click()
     await expect(group1).toHaveAttribute('aria-current', 'true')
@@ -347,7 +342,7 @@ test.describe('real-backend', () => {
   test('motion substrate: --motion-duration-fast resolves to 150ms / 0ms under reduced-motion', async () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
 
     // Default media: token resolves to the declared 150ms.
     const defaultDuration = await win.evaluate(() =>
@@ -386,7 +381,7 @@ test.describe('real-backend', () => {
   test('high-signal transitions: theme + board-toggle use motion tokens; reduced-motion zeros them', async () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
 
     // Theme toggle lives on body → color + background-color transition.
     const bodyDuration = await win.evaluate(
@@ -400,13 +395,10 @@ test.describe('real-backend', () => {
     // state which has no transition declared (browser default
     // returns `all 0s`). Drive the Ctrl+P toggle so the hidden-class
     // is active, then read computed transition.
-    const titlebar = win.locator('[data-test="titlebar"]')
-    await titlebar.click()
+    await new TitlebarPage(win).connectionStatus().click()
     await win.keyboard.press('Control+p')
     const boardTransition = await win.evaluate(
-      () =>
-        window.getComputedStyle(document.querySelector('[data-test="board-region"]') as Element)
-          .transition
+      () => window.getComputedStyle(document.querySelector('.board') as Element).transition
     )
     expect(boardTransition).toContain('flex-basis')
     expect(boardTransition).toContain('0.15s')
@@ -432,14 +424,14 @@ test.describe('real-backend', () => {
   test('micro-interactions: filter pill transitions bg-color, message-row transitions grid-template-rows', async () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
 
     // Filter pill: transition-duration on background-color should match
     // --motion-duration-instant (80ms). Reading the shorthand
     // transition computed style + parsing is fragile; assert the
     // longhand transition-property includes background-color instead.
     const pillTransition = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="filter-pill-chat"]')
+      const el = document.querySelector('.filter-pill')
       if (!el) return null
       const s = window.getComputedStyle(el)
       return {
@@ -471,7 +463,7 @@ test.describe('real-backend', () => {
       })
     })
     await win.reload()
-    const row = win.locator('[data-test="message-row"]').first()
+    const row = new ChatPage(win).messageRows().first()
     await expect(row).toBeVisible({ timeout: 5_000 })
     const rowTransition = await row.evaluate((el) => {
       const s = window.getComputedStyle(el)
@@ -510,7 +502,7 @@ test.describe('real-backend', () => {
       extraEnv: { BPMUX_AUTH_TOKEN_PATH: authTokenPath }
     })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
 
     const authToken = fs.readFileSync(authTokenPath, 'utf8').trim()
     // Toggle on a 👍 from 'dev' via the backend REST. The WS broadcast
@@ -532,7 +524,7 @@ test.describe('real-backend', () => {
 
     // Pill appears on the message with count=1 + users='dev' in
     // the aria-label.
-    const pill = win.locator('[data-test="reaction-pill-👍"]').first()
+    const pill = new ChatPage(win).reactionPill('👍 1 reactions from dev')
     await expect(pill).toBeVisible({ timeout: 10_000 })
     await expect(pill).toHaveAttribute('aria-label', /👍 1 reactions from dev/)
 
@@ -582,7 +574,7 @@ test.describe('real-backend', () => {
       seedMessages
     })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
     await win.route('**/api/unfurl**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -597,7 +589,7 @@ test.describe('real-backend', () => {
     // (even in loading state). Rendering this container proves
     // URL extraction + the hook's initial fetch kick-off; the
     // fetched-data render is covered by code-review + unit tests.
-    const cardsContainer = win.locator('[data-test="unfurl-cards"]')
+    const cardsContainer = new ChatPage(win).unfurlContainer()
     await expect(cardsContainer).toBeVisible({ timeout: 10_000 })
 
     await app.close()
@@ -606,17 +598,18 @@ test.describe('real-backend', () => {
   test('titlebar disambiguation: connection + CI indicators are distinct', async () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
 
-    const titlebarApp = win.locator('[data-test="titlebar-app"]')
-    const titlebarCi = win.locator('[data-test="titlebar-ci"]')
+    const titlebar = new TitlebarPage(win)
+    const titlebarApp = titlebar.connectionStatus()
+    const titlebarCi = titlebar.ciGlyph()
     await expect(titlebarApp).toBeVisible()
     await expect(titlebarCi).toBeVisible()
 
     const appAria = await titlebarApp.getAttribute('aria-label')
     expect(appAria).toMatch(/^bpmux /)
 
-    const appState = await win.locator('[data-test="titlebar-app-state"]').textContent()
+    const appState = await titlebar.appStateText().textContent()
     expect(appState).not.toBeNull()
     expect(appState?.startsWith('CI ')).toBe(false)
     expect(['online', 'reconnecting', 'offline']).toContain(appState)
@@ -705,13 +698,9 @@ test.describe('real-backend', () => {
       })
     })
 
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    const nowStory701 = win.locator(
-      '[data-test="board-tabpanel-now"] [data-test="board-story-701"]'
-    )
-    await expect(nowStory701).toBeVisible({ timeout: 30_000 })
-
-    const firstRow = nowStory701.locator('.board-story-navigate')
+    await expect(win.getByRole('main')).toBeVisible()
+    const firstRow = new BoardPage(win).storyNavigate(701)
+    await expect(firstRow).toBeVisible({ timeout: 30_000 })
     await firstRow.waitFor({ state: 'attached' })
     await firstRow.focus()
     await expect(firstRow).toBeFocused()
@@ -748,9 +737,9 @@ test.describe('real-backend', () => {
       ]
     })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
 
-    const devDot = win.locator('[data-test="presence-dot-dev"]')
+    const devDot = new SidebarPage(win).presenceDot('dev')
     await expect(devDot).toHaveAttribute('data-presence', 'unknown', {
       timeout: 15_000
     })
@@ -765,7 +754,7 @@ test.describe('real-backend', () => {
   test('presence: a blocked need-state dot applies the soft 2.4s infinite pulse CSS and stills to a static ring under reduced-motion (#1721 L2; headless attests the CSS is applied, not that it visually animates)', async () => {
     const { app, backendPort } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
 
     const seeded = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_roster`, {
       method: 'POST',
@@ -774,7 +763,7 @@ test.describe('real-backend', () => {
     })
     expect(seeded.ok).toBe(true)
 
-    const dot = win.locator('[data-test="presence-dot-dev"]')
+    const dot = new SidebarPage(win).presenceDot('dev')
     await expect(dot).toHaveAttribute('data-presence', 'blocked', { timeout: 15_000 })
 
     await expect
@@ -822,16 +811,16 @@ test.describe('real-backend', () => {
     ]
     const { app } = await launchWithIsolatedSession({ seedMessages })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
 
     // Hover the message row to reveal the +😊 button, then click to
     // open the picker.
-    const row = win.locator('[data-test="message-row"]').first()
+    const chat = new ChatPage(win)
+    const row = chat.messageRows().first()
     await row.hover()
-    const addBtn = win.locator('[data-test="reaction-add-first"]').first()
-    await addBtn.click()
+    await chat.reactionAddButton().first().click()
 
-    const picker = win.locator('[data-test="reaction-picker"]')
+    const picker = chat.reactionPicker()
     await expect(picker).toBeVisible({ timeout: 3_000 })
 
     // AC1/AC4: picker has data-position set to above or below.
@@ -911,22 +900,20 @@ test.describe('real-backend', () => {
       }
     })
 
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await expect(win.getByRole('main')).toBeVisible()
     // Open drill-in via board row click.
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now"] [data-test="board-story-356"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    await board.storyNavigate(356).click()
+    await expect(drillIn.panel()).toBeVisible()
 
     // Type a comment + Cmd+Enter. Playwright's 'Meta+Enter' maps to
     // metaKey+Enter which our handler catches.
-    const textarea = win.locator('[data-test="drill-in-comment-input"]')
+    const textarea = drillIn.commentInput()
     await textarea.fill('hello from Cmd+Enter')
     await textarea.press('Meta+Enter')
     await expect(
-      win.locator('[data-test="drill-in-comment"]', { hasText: 'hello from Cmd+Enter' })
+      drillIn.commentItems().filter({ hasText: 'hello from Cmd+Enter' })
     ).toBeVisible({ timeout: 3_000 })
 
     await app.close()

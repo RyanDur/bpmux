@@ -99,11 +99,22 @@ export class ChatPage {
     return this.win.getByText(/All categories muted/i)
   }
 
+  reactionAddButton(): Locator {
+    return this.messageLog().getByRole('button', { name: 'Add reaction' })
+  }
+
+  reactionPicker(): Locator {
+    return this.win.getByRole('menu', { name: 'Pick a reaction' })
+  }
+
+  reactionPickerItem(emoji: string): Locator {
+    return this.reactionPicker().getByRole('menuitem', { name: `React with ${emoji}` })
+  }
+
   async reactToFirstMessage(emoji: string): Promise<void> {
-    const row = this.win.locator('[data-test="message-row"]').first()
-    await row.hover()
-    await this.win.locator('[data-test="reaction-add-first"]').first().click()
-    await this.win.locator(`[data-test="reaction-picker-${emoji}"]`).first().click()
+    await this.messageRows().first().hover()
+    await this.reactionAddButton().first().click()
+    await this.reactionPickerItem(emoji).first().click()
   }
 
   reactionPill(accessibleName: string): Locator {

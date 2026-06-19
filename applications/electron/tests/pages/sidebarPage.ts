@@ -19,6 +19,14 @@ export class SidebarPage {
     return this.nav().getByRole('button', { name: /^scope chat to / })
   }
 
+  groupChannel(label: string): Locator {
+    return this.nav().getByRole('button', { name: `scope chat to ${label}` })
+  }
+
+  presenceDot(role: string): Locator {
+    return this.directChannel(role).locator('.presence-dot')
+  }
+
   groupsEmpty(): Locator {
     return this.nav().getByRole('heading', { name: 'groups' }).locator('..').getByText('none yet')
   }

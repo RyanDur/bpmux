@@ -7,6 +7,10 @@ export class TitlebarPage {
     return this.win.getByLabel(/^bpmux (online|reconnecting|offline)$/)
   }
 
+  appStateText(): Locator {
+    return this.win.locator('.titlebar-app-state')
+  }
+
   ciGlyph(): Locator {
     return this.win.getByRole('link', { name: /^CI/ })
   }
