@@ -13,3 +13,8 @@ pub use paste_mode::*;
 pub use process::*;
 pub use provisioning::*;
 pub use pty::*;
+
+#[cfg(test)]
+mod agent_detect_tests;
+#[cfg(test)]
+mod pty_tests;
