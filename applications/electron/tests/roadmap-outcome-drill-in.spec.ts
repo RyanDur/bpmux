@@ -3,6 +3,8 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
+import { RoadmapPage } from './pages/roadmapPage'
 
 const MOCK_BOARD = {
   fetched_at: '2026-06-15T00:00:00Z',
@@ -72,56 +74,41 @@ test.describe('#1737 roadmap outcome drill-in — focus an outcome → its itera
       })
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      const roadmap = new RoadmapPage(win)
+      await expect(board.region()).toBeVisible()
       await expect
         .poll(() => win.evaluate(() => document.documentElement.dataset.theme))
         .toBe('dark')
 
-      await win.locator('[data-test="board-roadmap-tab-roadmap"]').click()
-      const roadmapPanel = win.locator('[data-test="board-roadmap-panel-roadmap"]')
-      await expect(roadmapPanel).toBeVisible()
+      await roadmap.selectView('Roadmap')
+      await expect(roadmap.panel()).toBeVisible()
 
-      const outcome = roadmapPanel.locator('[data-test="roadmap-outcome-100"]')
-      await expect(outcome).toBeVisible()
-      await expect(roadmapPanel.locator('[data-test="roadmap-drill-100"]')).toHaveCount(0)
+      const outcomeTitle = 'You see what is coming, and whether it is ready'
+      await expect(roadmap.outcome(outcomeTitle)).toBeVisible()
+      await expect(roadmap.drill()).toHaveCount(0)
 
-      await roadmapPanel.locator('[data-test="roadmap-outcome-toggle-100"]').click()
+      await roadmap.outcome(outcomeTitle).click()
 
-      const drill = win.locator('[data-test="roadmap-drill-100"]')
-      await expect(drill).toBeVisible()
+      await expect(roadmap.drill()).toBeVisible()
 
-      const names = await drill
-        .locator('[data-test="roadmap-drill-iteration-name"]')
-        .allTextContents()
+      const names = await roadmap.iterationOrder().allTextContents()
       expect(names, 'the iterations building the outcome render IN ORDER').toEqual(['Crux', 'Lyra'])
 
-      const convene = win.locator('[data-test="roadmap-convene-100"]')
+      const convene = roadmap.convene()
       await expect(convene).toContainText('CONVENE?')
       await expect(convene).toContainText('Crux')
       await expect(convene).toContainText('designer-review')
 
-      await expect(win.locator('[data-test="roadmap-drill-checks-10"]')).toBeVisible()
-      await expect(win.locator('[data-test="roadmap-drill-checks-20"]')).toHaveCount(0)
-      await expect(win.locator('[data-test="roadmap-drill-iteration-20"]')).toHaveAttribute(
-        'data-state',
-        'not-started'
-      )
+      await expect(roadmap.checks('Crux')).not.toHaveCount(0)
+      await expect(roadmap.checks('Lyra')).toHaveCount(0)
+      await expect(roadmap.iterationRow('Lyra')).toHaveAttribute('data-state', 'not-started')
 
       await expect
-        .poll(() =>
-          beforeContent(
-            win,
-            '[data-test="roadmap-drill-checks-10"] .roadmap-drill-check[data-state="met"]'
-          )
-        )
+        .poll(() => beforeContent(win, '.roadmap-drill-check[data-state="met"]'))
         .toContain('✓')
       await expect
-        .poll(() =>
-          beforeContent(
-            win,
-            '[data-test="roadmap-drill-checks-10"] .roadmap-drill-check[data-state="gap"]'
-          )
-        )
+        .poll(() => beforeContent(win, '.roadmap-drill-check[data-state="gap"]'))
         .toContain('✗')
 
       expect(consoleErrors, 'no console errors while drilling an outcome').toEqual([])

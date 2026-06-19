@@ -4,6 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron, launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { seedCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { RoadmapPage } from './pages/roadmapPage'
 
 const NO_ITERATION_BOARD = {
   fetched_at: '2026-06-16T00:00:00Z',
@@ -36,16 +38,15 @@ test.describe('#1684 — no active iteration → the board defaults to the roadm
         })
       })
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      const roadmap = new RoadmapPage(win)
+      await expect(board.region()).toBeVisible()
 
-      const nowContent = win.locator('[data-test="board-tabpanel-now-content"]')
-      await expect(nowContent.locator('[data-test="roadmap"]')).toBeVisible()
-      await expect(win.locator('[data-test="board-now-empty"]')).toHaveCount(0)
+      await expect(roadmap.nowRoadmap()).toBeVisible()
 
-      const boardTab = win.locator('[data-test="board-roadmap-tab-board"]')
-      await expect(win.locator('[data-test="board-header-iteration"]')).toHaveCount(0)
+      await expect(roadmap.headerIteration()).toHaveCount(0)
       await expect
-        .poll(() => boardTab.evaluate((el) => getComputedStyle(el).justifyContent))
+        .poll(() => roadmap.boardTabLabel().evaluate((el) => getComputedStyle(el).justifyContent))
         .toBe('center')
     } finally {
       await app.close()
@@ -65,9 +66,9 @@ test.describe('#1684 — no active iteration → the board defaults to the roadm
       await win.reload()
       await waitForBoardLoaded(win)
 
-      const nowContent = win.locator('[data-test="board-tabpanel-now-content"]')
-      await expect(win.locator('[data-test="board-header-iteration"]')).toHaveText('Crux1684')
-      await expect(nowContent.locator('[data-test="roadmap"]')).toHaveCount(0)
+      const roadmap = new RoadmapPage(win)
+      await expect(roadmap.headerIteration()).toHaveText('Crux1684')
+      await expect(roadmap.nowRoadmap()).toHaveCount(0)
 
       const closeRes = await fetch(`http://127.0.0.1:${backendPort}/api/close_iteration`, {
         method: 'POST',
@@ -79,14 +80,10 @@ test.describe('#1684 — no active iteration → the board defaults to the roadm
       })
       expect(closeRes.ok).toBe(true)
 
-      await expect(nowContent.locator('[data-test="roadmap"]')).toBeVisible({ timeout: 15_000 })
-      await expect(win.locator('[data-test="board-header-iteration"]')).toHaveCount(0)
+      await expect(roadmap.nowRoadmap()).toBeVisible({ timeout: 15_000 })
+      await expect(roadmap.headerIteration()).toHaveCount(0)
       await expect
-        .poll(() =>
-          win
-            .locator('[data-test="board-roadmap-tab-board"]')
-            .evaluate((el) => getComputedStyle(el).justifyContent)
-        )
+        .poll(() => roadmap.boardTabLabel().evaluate((el) => getComputedStyle(el).justifyContent))
         .toBe('center')
 
       expect(consoleErrors).toEqual([])
