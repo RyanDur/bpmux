@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // #1127 sub-slice 3: owner-action buttons must NOT surface on
 // non-delivered stories. Setup: create only (story stays in icebox).
@@ -15,7 +17,9 @@ test.describe('human-side E2E #476 — owner-specific — actions hidden on non-
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -36,22 +40,20 @@ test.describe('human-side E2E #476 — owner-specific — actions hidden on non-
       expect(createResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Plan')
 
-      const storyRow = win.locator('[data-test="board-story-1"]').first()
-      await expect(storyRow).toContainText('icebox-not-actionable')
+      await expect(board.storyRow(1)).toContainText('icebox-not-actionable')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await storyRow.locator('.board-story-navigate').click()
+      await board.storyNavigate(1).click()
 
-      const drillIn = win.locator('[data-test="board-drill-in"]')
-      await expect(drillIn).toBeVisible()
+      await expect(drillIn.panel()).toBeVisible()
 
-      await expect(win.locator('[data-test="drill-in-accept"]')).toHaveCount(0)
-      await expect(win.locator('[data-test="drill-in-reject"]')).toHaveCount(0)
+      await expect(drillIn.acceptButton()).toHaveCount(0)
+      await expect(drillIn.rejectButton()).toHaveCount(0)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
