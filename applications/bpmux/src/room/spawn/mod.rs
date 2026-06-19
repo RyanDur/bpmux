@@ -17,4 +17,6 @@ pub use pty::*;
 #[cfg(test)]
 mod agent_detect_tests;
 #[cfg(test)]
+mod provisioning_tests;
+#[cfg(test)]
 mod pty_tests;

@@ -9,6 +9,10 @@ pub mod spawn;
 
 #[cfg(test)]
 mod agnostic_delivery_tests;
+#[cfg(test)]
+mod file_storage_tests;
+#[cfg(test)]
+mod live_registry_tests;
 
 pub use agnostic_delivery::{deliver_to_terminals, drain_missed, spawn_terminal_delivery_loop};
 pub use file_storage::FileRoomStorage;
