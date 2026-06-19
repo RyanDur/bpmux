@@ -1,20 +1,10 @@
 use std::path::PathBuf;
 
-const SOURCE_EXTENSIONS: &[&str] = &["rs", "tsx", "ts", "js", "jsx"];
+mod classify;
 
-const ASSERTION_MARKERS: &[&str] = &[
-    "expect(",
-    "assert_eq!",
-    "assert_ne!",
-    "assert!(",
-    "assert_matches!",
-    "assert_throws",
-    ".toBe(",
-    ".toEqual(",
-    ".toMatch",
-    ".toContain",
-    ".toHaveBeenCalled",
-];
+use classify::{ASSERTION_MARKERS, AtpVerdict, classify_atp_path, default_candidate_roots};
+
+const SOURCE_EXTENSIONS: &[&str] = &["rs", "tsx", "ts", "js", "jsx"];
 
 pub(super) fn extract_atp_paths(body: &str) -> Vec<String> {
     let Some(section) = extract_atp_section(body) else {
@@ -52,56 +42,6 @@ fn has_source_extension(path: &str) -> bool {
     SOURCE_EXTENSIONS
         .iter()
         .any(|ext| path.ends_with(&format!(".{ext}")) || path.ends_with(&format!(".test.{ext}")))
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub(super) enum AtpVerdict {
-    Substantive,
-    Stub,
-    NotFound,
-}
-
-pub(super) fn classify_atp_path(path: &str, candidate_roots: &[PathBuf]) -> AtpVerdict {
-    for root in candidate_roots {
-        let resolved = root.join(path);
-        if resolved.exists()
-            && let Ok(contents) = std::fs::read_to_string(&resolved)
-        {
-            return if has_assertion(&contents) {
-                AtpVerdict::Substantive
-            } else {
-                AtpVerdict::Stub
-            };
-        }
-    }
-    AtpVerdict::NotFound
-}
-
-fn has_assertion(contents: &str) -> bool {
-    ASSERTION_MARKERS.iter().any(|m| contents.contains(m))
-}
-
-pub(super) fn default_candidate_roots() -> Vec<PathBuf> {
-    let mut roots = Vec::new();
-    if let Ok(cwd) = std::env::current_dir() {
-        let mut walker = cwd.as_path();
-        loop {
-            if walker.join("Cargo.toml").exists()
-                && std::fs::read_to_string(walker.join("Cargo.toml"))
-                    .map(|c| c.contains("[workspace]"))
-                    .unwrap_or(false)
-            {
-                roots.push(walker.to_path_buf());
-                break;
-            }
-            match walker.parent() {
-                Some(p) => walker = p,
-                None => break,
-            }
-        }
-        roots.push(cwd);
-    }
-    roots
 }
 
 pub(super) fn verify_atp_substantive(body: &str) -> Result<(), String> {
@@ -204,5 +144,5 @@ pub(super) fn verify_atp_pre_filing_with_roots(
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
-#[path = "atp_substantive_gate_tests.rs"]
+#[path = "tests.rs"]
 mod tests;
