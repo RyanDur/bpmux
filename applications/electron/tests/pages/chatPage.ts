@@ -19,6 +19,10 @@ export class ChatPage {
     return this.messageLog().getByRole('list')
   }
 
+  loadingOlderPill(): Locator {
+    return this.win.getByText(/loading older messages/i)
+  }
+
   messageRow(text: string): Locator {
     return this.messageLog().getByRole('listitem').filter({ hasText: text })
   }

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 // #1153 rework — visual-class falsifier per
 // `feedback_visual_class_falsifier_needs_visual_assertion`. The
@@ -62,7 +63,7 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
       // Under column-reverse, |scrollTop| grows toward
       // (scrollHeight - clientHeight). Setting scrollTop near that
       // limit puts the user inside the 200px near-top trigger zone.
-      const ul = win.locator('[data-test="message-list"]')
+      const ul = new ChatPage(win).messageScroller()
       await expect(ul).toBeVisible()
       await ul.evaluate((el) => {
         const target = -(el.scrollHeight - el.clientHeight)
@@ -72,7 +73,7 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
 
       // Falsifier: loading-pill must appear BEFORE the response lands
       // (no-jank — fetch is in flight before user reaches boundary).
-      const loadingPill = win.locator('output[data-test="loading-older-pill"]')
+      const loadingPill = new ChatPage(win).loadingOlderPill()
       await expect(loadingPill).toBeVisible({ timeout: 2000 })
 
       // Release the held fetch so the merge path runs.

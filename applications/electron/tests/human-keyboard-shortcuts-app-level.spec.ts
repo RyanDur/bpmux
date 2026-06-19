@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
 
 // #1127 sub-slice 3: app-level keyboard shortcuts. Pure renderer
 // behavior — no story-state setup needed; mock-GH defaults are
@@ -16,14 +18,13 @@ test.describe('human-side E2E #476 — direct-action — app-level keyboard shor
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      const board = win.locator('[data-test="board-region"]')
+      const board = new BoardPage(win).region()
       await expect(board).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const titlebar = win.locator('[data-test="titlebar"]')
-      await titlebar.click()
+      await new ChatPage(win).connectionState().click()
 
       await win.keyboard.press('Control+p')
       await expect(board).toBeHidden()
@@ -49,7 +50,7 @@ test.describe('human-side E2E #476 — direct-action — app-level keyboard shor
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+      await expect(win.getByRole('main')).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -58,7 +59,7 @@ test.describe('human-side E2E #476 — direct-action — app-level keyboard shor
       // visibility gated by the `open` attribute. Assert visibility
       // (not count) per the post-#497 dialog-mount shape — `toHaveCount(0)`
       // was the pre-#497 conditional-mount idiom.
-      const overlay = win.locator('[data-test="metrics-overlay"]')
+      const overlay = win.getByRole('dialog', { name: 'Metrics' })
       await expect(overlay).toBeHidden()
 
       await win.keyboard.press('Control+Shift+M')
