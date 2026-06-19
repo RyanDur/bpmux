@@ -68,6 +68,7 @@ mod submit_verdict;
 mod submit_verdict_tests;
 mod update_principle;
 mod user_fn;
+mod user_fn_parse;
 mod view_backlog;
 mod view_comments;
 mod view_commit_diff;
