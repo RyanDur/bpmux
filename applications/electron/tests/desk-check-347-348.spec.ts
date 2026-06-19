@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -82,7 +83,8 @@ test.describe('desk-check 347+348', () => {
   test('capture full-window state with seeded messages', async () => {
     const { app } = await launchAndSeed()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
     await win.waitForTimeout(500)
     await win.screenshot({
       path: join(EVIDENCE_DIR, '01-full-window.png'),
@@ -94,14 +96,14 @@ test.describe('desk-check 347+348', () => {
   test('capture chat-region with avatars + grouping + addressing visible', async () => {
     const { app } = await launchAndSeed()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
     await win.waitForTimeout(500)
-    const chatRegion = win.locator('[data-test="chat-region"]')
-    await chatRegion.screenshot({
+    await chat.region().screenshot({
       path: join(EVIDENCE_DIR, '02-chat-avatars-grouping-addressing.png')
     })
 
-    const avatars = win.locator('[data-test="message-avatar"]')
+    const avatars = chat.avatars()
     const avatarCount = await avatars.count()
     console.log(
       `#348 AC1+AC2: ${avatarCount} avatars render for 7 messages (designer-grouped = 1 anchor; dev + pm + ryan + dev(to-pm) = 4 more ⇒ expect 5)`
@@ -119,12 +121,13 @@ test.describe('desk-check 347+348', () => {
   test('capture i-search failing state with ✗ glyph', async () => {
     const { app } = await launchAndSeed()
     const win = await app.firstWindow()
+    const chat = new ChatPage(win)
     await win.waitForTimeout(500)
-    const textarea = win.locator('[data-test="chat-input-textarea"]')
+    const textarea = chat.input()
     await textarea.focus()
     await textarea.press('Control+r')
     await win.keyboard.type('zzznevermatchesxyzzy')
-    const strip = win.locator('[data-test="chat-input-isearch"]')
+    const strip = chat.isearchIndicator()
     await expect(strip).toBeVisible({ timeout: 2000 })
     const stripText = await strip.textContent()
     console.log(`#347 AC7 i-search failing strip text: "${stripText?.trim()}"`)
@@ -137,15 +140,13 @@ test.describe('desk-check 347+348', () => {
   test('dump accessibility tree + computed a11y substrate props', async () => {
     const { app } = await launchAndSeed()
     const win = await app.firstWindow()
+    const chat = new ChatPage(win)
     await win.waitForTimeout(500)
 
-    const messageListRole = await win.locator('[data-test="message-list"]').getAttribute('role')
-    const messageListAriaLive = await win
-      .locator('[data-test="message-list"]')
-      .getAttribute('aria-live')
-    const messageListAriaLabel = await win
-      .locator('[data-test="message-list"]')
-      .getAttribute('aria-label')
+    const messageList = chat.messageScroller()
+    const messageListRole = await messageList.getAttribute('role')
+    const messageListAriaLive = await messageList.getAttribute('aria-live')
+    const messageListAriaLabel = await messageList.getAttribute('aria-label')
 
     console.log(`#347 AC4 message-list ARIA:`)
     console.log(`  role=${messageListRole}`)

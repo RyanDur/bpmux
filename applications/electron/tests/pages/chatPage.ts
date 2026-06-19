@@ -43,6 +43,10 @@ export class ChatPage {
     return this.messageLog().getByRole('tooltip')
   }
 
+  avatars(): Locator {
+    return this.messageLog().locator('.message-avatar')
+  }
+
   messageListWrap(): Locator {
     return this.win.locator('.message-list-wrap')
   }
