@@ -3,6 +3,8 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
+import { RoadmapPage } from './pages/roadmapPage'
 
 const MOCK_BOARD = {
   fetched_at: '2026-06-04T00:00:00Z',
@@ -48,15 +50,17 @@ test.describe('#1510 board-header iteration-context', () => {
 
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      const roadmap = new RoadmapPage(win)
+      await expect(board.region()).toBeVisible()
       await expect
         .poll(() => win.evaluate(() => document.documentElement.dataset.theme))
         .toBe('dark')
 
-      const header = win.locator('[data-test="board-roadmap-tab-board"]')
-      const iteration = win.locator('[data-test="board-header-iteration"]')
+      const header = roadmap.boardTabLabel()
+      const iteration = roadmap.headerIteration()
       const title = header.locator('.board-title')
-      const glyph = header.locator('[data-test="sync-status-glyph"]')
+      const glyph = header.getByRole('status')
 
       await expect(iteration).toBeVisible()
       await expect(iteration).toHaveText('AlphaTheme')
@@ -89,9 +93,8 @@ test.describe('#1510 board-header iteration-context', () => {
       })
       expect(iterColor, 'iteration-name carries --fg-primary (the hero weight)').toBe(primary)
 
-      await win.locator('[data-test="board-tab-now"]').click()
-      await expect(win.locator('[data-test="board-tabpanel-now-content"]')).toBeVisible()
-      await expect(win.locator('[data-test="board-now-iteration-anchor"]')).toHaveCount(0)
+      await board.openTab('Now')
+      await expect(board.nowContent()).toBeVisible()
 
       const shotPath = join(tmpdir(), 'bpmux-1510-board-header.png')
       await win.screenshot({ path: shotPath, fullPage: false })
