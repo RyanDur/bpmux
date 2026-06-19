@@ -1,7 +1,9 @@
+use super::acceptance_test_path::{
+    validate_acceptance_test_path_at_deliver, validate_acceptance_test_path_at_pickup,
+};
 use super::helpers::{
     LABEL_IN_PROGRESS, ensure_story_in_canonical_store, reap_workflow_labels,
-    require_nonempty_string, role_from_name, validate_acceptance_test_path_at_deliver,
-    validate_acceptance_test_path_at_pickup,
+    require_nonempty_string, role_from_name,
 };
 
 pub(crate) async fn handle_start_story(

@@ -1,4 +1,5 @@
 mod acceptance;
+mod acceptance_test_path;
 mod closure;
 mod creation;
 pub(crate) mod helpers;
@@ -15,14 +16,13 @@ pub(crate) use acceptance::{
     handle_pass_desk_check, handle_reject_story, reject_via_canonical_store,
     verify_bug_question_or_bypass,
 };
+pub use acceptance_test_path::parse_acceptance_test_path;
+#[cfg(test)]
+pub(crate) use acceptance_test_path::{find_repo_root, resolve_acceptance_test_path};
 pub(crate) use closure::{handle_close_iteration, handle_close_story};
 pub(crate) use creation::{handle_create_iteration, handle_create_outcome, handle_create_story};
-pub use helpers::parse_acceptance_test_path;
 #[cfg(test)]
-pub(crate) use helpers::{
-    ALL_STATE_LABELS, find_repo_root, require_role, resolve_acceptance_test_path,
-    stale_workflow_labels,
-};
+pub(crate) use helpers::{ALL_STATE_LABELS, require_role, stale_workflow_labels};
 pub(crate) use helpers::{
     KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
