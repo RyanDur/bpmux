@@ -1,5 +1,6 @@
 mod actions;
 mod bookmark;
+pub(crate) mod bootstrap;
 mod briefing;
 mod ci;
 mod commands;
