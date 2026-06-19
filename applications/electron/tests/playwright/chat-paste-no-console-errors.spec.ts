@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchIsolatedElectron } from '../helpers/launch'
+import { ChatPage } from '../pages/chatPage'
 
 test.describe('#1242 chat-paste — zero console errors when unfurl renders', () => {
   test('mocked unfurl with image+favicon URLs does NOT trigger external image-fetch in renderer', async () => {
@@ -36,15 +37,16 @@ test.describe('#1242 chat-paste — zero console errors when unfurl renders', ()
       })
     })
 
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    const card = win.locator('[data-test="unfurl-card-https://code.claude.com/docs/en/sub-agents"]')
+    const chat = new ChatPage(win)
+    await expect(win.getByRole('main')).toBeVisible()
+    const card = chat.unfurlCards().first()
     await expect(card).toBeVisible({ timeout: 10_000 })
 
     consoleErrors.length = 0
     pageErrors.length = 0
     await win.waitForTimeout(500)
 
-    const externalImgCount = await win.locator('.unfurl-card img').count()
+    const externalImgCount = await card.locator('img').count()
     expect(externalImgCount).toBe(0)
 
     await expect(card).toContainText('Create custom subagents')

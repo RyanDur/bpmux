@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { launchIsolatedWithWindow } from '../helpers/launch'
 import { seedCurrentIterationViaTestApi } from '../helpers/iteration-fixture'
+import { BoardPage } from '../pages/boardPage'
 
 test.describe('#1160 — board-group <summary> keyboard activation', () => {
   test('Enter on focused board-group summary toggles aria-expanded + details[open]', async () => {
@@ -10,8 +11,9 @@ test.describe('#1160 — board-group <summary> keyboard activation', () => {
     try {
       await seedCurrentIterationViaTestApi(backendPort, authToken, 'Pw448Keyboard')
       await win.reload()
-      const summary = win.locator('[data-test="board-group-ready"]')
-      const details = win.locator('details.board-group').first()
+      const board = new BoardPage(win)
+      const summary = board.columnToggle('Ready')
+      const details = board.group('Ready')
       await summary.focus()
       await expect(summary).toHaveAttribute('aria-expanded', 'true')
       await expect(details).toHaveJSProperty('open', true)
@@ -33,8 +35,9 @@ test.describe('#1160 — board-group <summary> keyboard activation', () => {
     try {
       await seedCurrentIterationViaTestApi(backendPort, authToken, 'Pw448Mouse')
       await win.reload()
-      const summary = win.locator('[data-test="board-group-ready"]')
-      const details = win.locator('details.board-group').first()
+      const board = new BoardPage(win)
+      const summary = board.columnToggle('Ready')
+      const details = board.group('Ready')
       await expect(details).toHaveJSProperty('open', true)
       await summary.click()
       await expect(details).toHaveJSProperty('open', false)
