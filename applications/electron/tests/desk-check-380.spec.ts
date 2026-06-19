@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 // #380: inline @mention pills in message body text. Render with
 // role-color + tint + bold when the @-token matches a runtime-
@@ -72,10 +73,11 @@ test.describe('desk-check #380 inline @mention pills', () => {
     // into pills.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
 
-    const pmMention = win.locator('[data-test="message-mention"][data-role="pm"]').first()
-    const devMention = win.locator('[data-test="message-mention"][data-role="dev"]').first()
+    const pmMention = chat.mentionPill('pm').first()
+    const devMention = chat.mentionPill('dev').first()
     await expect(pmMention).toBeVisible({ timeout: 5_000 })
     await expect(devMention).toBeVisible()
     await expect(pmMention).toHaveText('@pm')
@@ -90,17 +92,14 @@ test.describe('desk-check #380 inline @mention pills', () => {
     // with that role exists — it should NOT produce a pill.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
 
-    await expect(win.locator('[data-test="message-mention"][data-role="nobody-role"]')).toHaveCount(
-      0
-    )
+    await expect(chat.mentionPill('nobody-role')).toHaveCount(0)
 
     // Sanity: the @nobody-role string is still in the rendered
     // text somewhere (plain, not split).
-    await expect(
-      win.locator('[data-test="message-row"]', { hasText: '@nobody-role should stay plain' })
-    ).toBeVisible()
+    await expect(chat.messageRow('@nobody-role should stay plain')).toBeVisible()
 
     await app.close()
   })
@@ -108,13 +107,14 @@ test.describe('desk-check #380 inline @mention pills', () => {
   test('clicking a mention pill shifts chat scope to that role (chat, not a terminal)', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
 
-    const devMention = win.locator('[data-test="message-mention"][data-role="dev"]').first()
+    const devMention = chat.mentionPill('dev').first()
     await devMention.click()
 
-    await expect(win.locator('[data-test="message-list"]')).toBeVisible({ timeout: 10_000 })
-    await expect(win.locator('[data-test="terminal-dev"]')).toHaveCount(0)
+    await expect(chat.messageLog()).toBeVisible({ timeout: 10_000 })
+    await expect(chat.terminalOutput()).toHaveCount(0)
 
     await app.close()
   })

@@ -109,4 +109,8 @@ export class ChatPage {
   reactionPill(accessibleName: string): Locator {
     return this.win.getByRole('button', { name: accessibleName })
   }
+
+  mentionPill(role: string): Locator {
+    return this.messageLog().getByRole('button', { name: `@${role}`, exact: true })
+  }
 }
