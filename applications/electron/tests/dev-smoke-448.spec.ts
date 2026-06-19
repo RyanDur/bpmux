@@ -1,19 +1,22 @@
 import { test, expect } from '@playwright/test'
 import { launchIsolatedWithWindow } from './helpers/launch'
 import { seedCurrentIterationViaTestApi } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { SidebarPage } from './pages/sidebarPage'
 
 test.describe('#448 board column collapse affordance — dev smoke', () => {
   test('each board column renders a toggle button (across NOW/DONE/PLAN tabs)', async () => {
     const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
     await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-1')
     await win.reload()
-    for (const state of ['ready', 'in-progress', 'delivered']) {
-      await expect(win.locator(`[data-test="board-group-${state}"]`)).toBeVisible()
+    const board = new BoardPage(win)
+    for (const label of ['Ready', 'In Progress', 'Acceptance']) {
+      await expect(board.columnToggle(label)).toBeVisible()
     }
-    await win.locator('[data-test="board-tab-done"]').click()
-    await expect(win.locator('[data-test="board-group-accepted"]')).toBeVisible()
-    await win.locator('[data-test="board-tab-plan"]').click()
-    await expect(win.locator('[data-test="board-group-icebox"]')).toBeVisible()
+    await board.openTab('Done')
+    await expect(board.columnToggle('Accepted')).toBeVisible()
+    await board.openTab('Plan')
+    await expect(board.columnToggle('Icebox')).toBeVisible()
     await app.close()
   })
 
@@ -21,7 +24,7 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
     const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
     await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-2')
     await win.reload()
-    const toggle = win.locator('[data-test="board-group-ready"]')
+    const toggle = new BoardPage(win).columnToggle('Ready')
     await expect(toggle).toBeVisible()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
     await toggle.click()
@@ -33,16 +36,11 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
 
   test('default collapsed columns (accepted) start closed', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    await win.locator('[data-test="board-tab-done"]').click()
-    await expect(win.locator('[data-test="board-group-accepted"]')).toHaveAttribute(
-      'aria-expanded',
-      'false'
-    )
-    await win.locator('[data-test="board-tab-plan"]').click()
-    await expect(win.locator('[data-test="board-group-icebox"]')).toHaveAttribute(
-      'aria-expanded',
-      'true'
-    )
+    const board = new BoardPage(win)
+    await board.openTab('Done')
+    await expect(board.columnToggle('Accepted')).toHaveAttribute('aria-expanded', 'false')
+    await board.openTab('Plan')
+    await expect(board.columnToggle('Icebox')).toHaveAttribute('aria-expanded', 'true')
     await app.close()
   })
 
@@ -50,7 +48,7 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
     const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
     await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-4')
     await win.reload()
-    const toggle = win.locator('[data-test="board-group-ready"]')
+    const toggle = new BoardPage(win).columnToggle('Ready')
     await toggle.focus()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
     await win.keyboard.press('Enter')
@@ -64,7 +62,7 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
     const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
     await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-5')
     await win.reload()
-    const toggle = win.locator('[data-test="board-group-ready"]')
+    const toggle = new BoardPage(win).columnToggle('Ready')
     const content = win.locator('#board-group-ready-content')
     await expect(content).toBeVisible()
     await toggle.click()
@@ -76,20 +74,19 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
     const { app, win, backendPort, authToken } = await launchIsolatedWithWindow()
     await seedCurrentIterationViaTestApi(backendPort, authToken, 'DevSmoke448-6')
     await win.reload()
-    const chevron = win.locator('[data-test="board-group-ready"]').locator('.board-group-chevron')
+    const toggle = new BoardPage(win).columnToggle('Ready')
+    const chevron = toggle.locator('.board-group-chevron')
     const before = (): Promise<string> =>
       chevron.evaluate((el) => getComputedStyle(el, '::before').content)
     expect(await before()).toBe('"▾"')
-    await win.locator('[data-test="board-group-ready"]').click()
+    await toggle.click()
     expect(await before()).toBe('"▸"')
     await app.close()
   })
 
   test('sidebar sections no longer expose collapse toggles — retired per #448 scope', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    await expect(win.locator('[data-test="sidebar-section-direct-toggle"]')).toHaveCount(0)
-    await expect(win.locator('[data-test="sidebar-section-groups-toggle"]')).toHaveCount(0)
-    await expect(win.locator('[data-test="sidebar-section-system-toggle"]')).toHaveCount(0)
+    await expect(new SidebarPage(win).nav().locator('summary')).toHaveCount(0)
     await app.close()
   })
 })
