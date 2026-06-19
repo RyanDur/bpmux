@@ -5,8 +5,14 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use super::shared::{TrackerHandle, broadcast_board_invalidate, err_body, json_headers};
+use super::blockers::{
+    broadcast_iteration_close_blocked, build_close_iteration_ready_queue_blocked_body,
+    collect_ready_queue_blockers,
+};
 use crate::session;
+use crate::transport::rest::shared::{
+    TrackerHandle, broadcast_board_invalidate, err_body, json_headers,
+};
 
 #[derive(Default, Deserialize)]
 pub struct CloseIterationRequest {
@@ -122,36 +128,13 @@ async fn post_close_iteration_canonical(
         ));
     }
     broadcast_board_invalidate(&session);
-    super::shared::broadcast_board_snapshot(&session, refresh);
+    crate::transport::rest::shared::broadcast_board_snapshot(&session, refresh);
     let body = serde_json::json!({
         "promoted": Vec::<u64>::new(),
         "deleted_marker_id": serde_json::Value::Null,
         "iteration_number": iteration_number,
     });
     (StatusCode::OK, json_headers(), body.to_string())
-}
-
-pub(crate) async fn collect_ready_queue_blockers(
-    refresh: &dyn crate::board::RefreshDriver,
-) -> Vec<IterationCloseBlocker> {
-    refresh
-        .all_stories()
-        .into_iter()
-        .filter(|s| matches!(s.state, crate::board::domain::StoryState::Ready) && !s.is_closed)
-        .map(|s| IterationCloseBlocker {
-            number: s.number,
-            title: s.title,
-            state: "ready".to_string(),
-        })
-        .collect()
-}
-
-fn build_close_iteration_ready_queue_blocked_body(blockers: &[IterationCloseBlocker]) -> String {
-    serde_json::json!({
-        "error": "close_iteration blocked: ready queue must be empty before canonical-via-GH iteration close (#1258 r3 guard).",
-        "blockers": blockers,
-    })
-    .to_string()
 }
 
 pub(crate) async fn close_iteration_canonical(
@@ -179,40 +162,4 @@ pub(crate) async fn close_iteration_canonical(
         })
         .map_err(|e| format!("#{iteration_number} iteration-close enqueue failed: {e}"))?;
     Ok(())
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct IterationCloseBlocker {
-    pub number: u64,
-    pub title: String,
-    pub state: String,
-}
-
-fn broadcast_iteration_close_blocked(
-    session: &Arc<session::Session>,
-    blockers: &[IterationCloseBlocker],
-) {
-    let payload = session::message::StateDeltaPayload::IterationCloseBlocked {
-        blockers: blockers
-            .iter()
-            .map(|b| session::message::IterationCloseBlockerPayload {
-                number: b.number,
-                title: b.title.clone(),
-                state: b.state.clone(),
-            })
-            .collect(),
-    };
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
-        state_delta: Some(payload),
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!(
-            "post_close_iteration: iteration-close-blocked broadcast failed: {e}"
-        ));
-    }
 }
