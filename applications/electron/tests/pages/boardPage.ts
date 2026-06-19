@@ -9,6 +9,10 @@ export class BoardPage {
     return this.win.getByRole('complementary', { name: 'Board' })
   }
 
+  resizeHandle(): Locator {
+    return this.win.getByRole('slider', { name: 'Board panel width' })
+  }
+
   tab(name: BoardTab): Locator {
     return this.win.getByRole('radio', { name })
   }

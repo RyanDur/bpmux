@@ -1,10 +1,9 @@
 import { test, expect, type Page } from '@playwright/test'
 import { launchIsolatedWithWindow, launchIsolatedElectron } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 const flexBasisPx = (win: Page): Promise<number> =>
-  win
-    .locator('[data-test="board-region"]')
-    .evaluate((el) => Number.parseInt(getComputedStyle(el).flexBasis, 10))
+  new BoardPage(win).region().evaluate((el) => Number.parseInt(getComputedStyle(el).flexBasis, 10))
 
 const waitForFlexBasis = async (win: Page, expected: number): Promise<void> => {
   await expect.poll(() => flexBasisPx(win), { timeout: 5000 }).toBe(expected)
@@ -13,7 +12,7 @@ const waitForFlexBasis = async (win: Page, expected: number): Promise<void> => {
 test.describe('#458 board panel — drag-resize + persistence', () => {
   test('handle is visible with col-resize cursor on hover', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const handle = win.locator('[data-test="board-resize-handle"]')
+    const handle = new BoardPage(win).resizeHandle()
     await expect(handle).toBeVisible()
     const cursor = await handle.evaluate((el) => getComputedStyle(el).cursor)
     expect(cursor).toBe('col-resize')
@@ -22,7 +21,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
   test('handle exposes WAI-ARIA slider contract (role=slider per jsx-a11y; native-button focusable)', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const handle = win.locator('[data-test="board-resize-handle"]')
+    const handle = new BoardPage(win).resizeHandle()
     await expect(handle).toHaveAttribute('role', 'slider')
     await expect(handle).toHaveAttribute('aria-orientation', 'vertical')
     await expect(handle).toHaveAttribute('aria-controls', 'board-region')
@@ -38,7 +37,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
   test('default width on fresh userDataDir is 360px', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const board = win.locator('[data-test="board-region"]')
+    const board = new BoardPage(win).region()
     const flexBasis = await board.evaluate((el) => getComputedStyle(el).flexBasis)
     expect(flexBasis).toBe('360px')
     await app.close()
@@ -46,7 +45,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
   test('Left arrow shrinks, Right arrow grows, aria-valuenow updates (WAI-ARIA APG)', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const handle = win.locator('[data-test="board-resize-handle"]')
+    const handle = new BoardPage(win).resizeHandle()
 
     await handle.focus()
     const beforeAriaNow = await handle.getAttribute('aria-valuenow')
@@ -67,7 +66,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
   test('keyboard cannot push width below min (260px)', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const handle = win.locator('[data-test="board-resize-handle"]')
+    const handle = new BoardPage(win).resizeHandle()
     await handle.focus()
     for (let i = 0; i < 100; i++) await win.keyboard.press('ArrowLeft')
     await waitForFlexBasis(win, 260)
@@ -76,7 +75,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
   test('Home jumps to min width, End jumps to max', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const handle = win.locator('[data-test="board-resize-handle"]')
+    const handle = new BoardPage(win).resizeHandle()
     await handle.focus()
 
     await win.keyboard.press('Home')
@@ -92,7 +91,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
   test('Enter toggles collapse-to-min and restore', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const handle = win.locator('[data-test="board-resize-handle"]')
+    const handle = new BoardPage(win).resizeHandle()
     await handle.focus()
 
     await waitForFlexBasis(win, 360)
@@ -108,7 +107,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
   test('width persists across app restart per viewer-identity', async () => {
     const first = await launchIsolatedWithWindow({ preserveTempPaths: true })
-    const handle = first.win.locator('[data-test="board-resize-handle"]')
+    const handle = new BoardPage(first.win).resizeHandle()
     await handle.focus()
     await first.win.keyboard.press('ArrowRight')
     await first.win.keyboard.press('ArrowRight')
@@ -120,7 +119,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
     const second = await launchIsolatedElectron({ userDataDir, sessionBase })
     const win2 = await second.app.firstWindow()
-    await expect(win2.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(new BoardPage(win2).region()).toBeVisible()
     await waitForFlexBasis(win2, 408)
 
     await second.app.close()
@@ -128,10 +127,10 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
 
   test('rapid drag does not lag main thread (DOM-direct, no React per-move)', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(new BoardPage(win).region()).toBeVisible()
 
     const result = await win.evaluate(async () => {
-      const handle = document.querySelector<HTMLElement>('[data-test="board-resize-handle"]')
+      const handle = document.querySelector<HTMLElement>('[aria-label="Board panel width"]')
       const aside = document.getElementById('board-region')
       if (!handle || !aside) return { ok: false, reason: 'no-elements' }
 
@@ -195,11 +194,11 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
     })
     win.on('pageerror', (e) => pageErrors.push(e))
 
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(new BoardPage(win).region()).toBeVisible()
     consoleErrors.length = 0
     pageErrors.length = 0
 
-    const handle = win.locator('[data-test="board-resize-handle"]')
+    const handle = new BoardPage(win).resizeHandle()
     await handle.focus()
     for (const k of ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', 'Enter']) {
       await win.keyboard.press(k)
