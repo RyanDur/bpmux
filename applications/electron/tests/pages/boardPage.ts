@@ -46,6 +46,48 @@ export class BoardPage {
     return this.win.getByRole('article', { name: 'Now' })
   }
 
+  planContent(): Locator {
+    return this.win.getByRole('article', { name: 'Plan' })
+  }
+
+  tabBar(): Locator {
+    return this.win.getByRole('group', { name: 'Board sections' })
+  }
+
+  epicsSection(): Locator {
+    return this.win.getByRole('region', { name: 'Epics' })
+  }
+
+  epicCard(epicNumber: number): Locator {
+    return this.win.getByRole('group', { name: new RegExp(`Epic #${epicNumber}\\b`) })
+  }
+
+  epicState(epicNumber: number): Locator {
+    return this.epicCard(epicNumber).locator('.board-epic-state')
+  }
+
+  epicProgress(epicNumber: number): Locator {
+    return this.epicCard(epicNumber).getByRole('progressbar')
+  }
+
+  epicMiniboard(epicNumber: number): Locator {
+    return this.epicCard(epicNumber).locator('.board-epic-miniboard')
+  }
+
+  epicMiniColumn(epicNumber: number, columnLabel: string): Locator {
+    return this.epicMiniboard(epicNumber).getByLabel(new RegExp(`^${columnLabel}:`))
+  }
+
+  epicViewDetails(epicNumber: number): Locator {
+    return this.epicCard(epicNumber).getByRole('button', {
+      name: new RegExp(`view epic details: #${epicNumber}\\b`)
+    })
+  }
+
+  epicLink(storyNumber: number): Locator {
+    return this.storyRow(storyNumber).getByRole('button', { name: /^open epic #/ })
+  }
+
   async openStory(storyNumber: number): Promise<void> {
     await this.storyNavigate(storyNumber).click({ position: { x: 4, y: 4 } })
   }

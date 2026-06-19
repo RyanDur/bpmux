@@ -27,7 +27,7 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
   if (epics.length === 0) return null
   const sortedEpics = sortEpics(epics, sort, stories)
   return (
-    <section className="board-epics" data-test="board-epics">
+    <section className="board-epics" data-test="board-epics" aria-label="Epics">
       <header className="board-epics-header">
         <b className="board-group-label">Epics</b>
         <small className="board-group-count">{epics.length}</small>
@@ -57,6 +57,7 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
               <details
                 className="board-epic-card"
                 data-test={`board-epic-${epic.number}`}
+                aria-label={`Epic #${epic.number} ${displayTitle}`}
                 open={open}
                 onToggle={(event) => {
                   collapse.setOpen(epic.number, event.currentTarget.open)

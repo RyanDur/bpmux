@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
 
 const launchWith = async (
   board: object
@@ -60,8 +61,9 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
       ]
     })
     const win = await app.firstWindow()
-    const stateBadge = win.locator('[data-test="board-epic-901-state"]')
-    await expect(stateBadge).toHaveText('in-progress')
+    const board = new BoardPage(win)
+    await board.openTab('Plan')
+    await expect(board.epicState(901)).toHaveText('in-progress')
     expect(consoleErrors).toEqual([])
     await app.close()
   })
@@ -102,8 +104,9 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
       ]
     })
     const win = await app.firstWindow()
-    const stateBadge = win.locator('[data-test="board-epic-911-state"]')
-    await expect(stateBadge).toHaveText('in-progress')
+    const board = new BoardPage(win)
+    await board.openTab('Plan')
+    await expect(board.epicState(911)).toHaveText('in-progress')
     expect(consoleErrors).toEqual([])
     await app.close()
   })
@@ -134,8 +137,9 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
       ]
     })
     const win = await app.firstWindow()
-    const stateBadge = win.locator('[data-test="board-epic-921-state"]')
-    await expect(stateBadge).toHaveText('in-progress')
+    const board = new BoardPage(win)
+    await board.openTab('Plan')
+    await expect(board.epicState(921)).toHaveText('in-progress')
     expect(consoleErrors).toEqual([])
     await app.close()
   })
@@ -167,12 +171,11 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
       ]
     })
     const win = await app.firstWindow()
-    const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
-    await expect(nowPanel.locator('[data-test="board-story-932"]')).toBeVisible()
-    await expect(nowPanel.locator('[data-test="board-story-931"]')).toHaveCount(0)
-    await win.locator('[data-test="board-tab-plan"]').click()
-    const planPanel = win.locator('[data-test="board-tabpanel-plan-content"]')
-    await expect(planPanel.locator('[data-test="board-epic-931"]')).toBeVisible()
+    const board = new BoardPage(win)
+    await expect(board.storyRow(932)).toBeVisible()
+    await expect(board.storyNavigate(931)).toHaveCount(0)
+    await board.openTab('Plan')
+    await expect(board.epicCard(931)).toBeVisible()
     expect(consoleErrors).toEqual([])
     await app.close()
   })

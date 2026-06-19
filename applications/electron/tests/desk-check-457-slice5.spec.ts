@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
 
 const MOCK_BOARD = {
   fetched_at: '2026-04-26T00:00:00Z',
@@ -74,36 +75,32 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
   test('#1185 Epic meta-card: progress + breakdown + no nested children + summary toggle-only with body view-details (#1516)', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-list"]')).toBeVisible()
+    const board = new BoardPage(win)
+    await expect(board.region()).toBeVisible()
+    await expect(board.tabBar()).toBeVisible()
 
-    await win.locator('[data-test="board-tab-plan"]').click()
+    await board.openTab('Plan')
 
-    const planPanel = win.locator('[data-test="board-tabpanel-plan-content"]')
-    const epics = planPanel.locator('[data-test="board-epics"]')
-    await expect(epics).toBeVisible()
+    await expect(board.epicsSection()).toBeVisible()
 
-    const epic901 = planPanel.locator('[data-test="board-epic-901"]')
+    const epic901 = board.epicCard(901)
     await expect(epic901).toBeVisible()
 
-    const progress = planPanel.locator('[data-test="board-epic-901-progress"]')
+    const progress = board.epicProgress(901)
     await expect(progress).toBeVisible()
     await expect(progress).toHaveAttribute('value', '1')
     await expect(progress).toHaveAttribute('max', '2')
 
-    const miniboard = planPanel.locator('[data-test="board-epic-901-miniboard"]')
-    await expect(miniboard).toBeVisible()
-    const acceptedCol = planPanel.locator('[data-test="board-epic-901-miniboard-column-accepted"]')
-    await expect(acceptedCol).toContainText('(1)')
-    const readyCol = planPanel.locator('[data-test="board-epic-901-miniboard-column-ready"]')
-    await expect(readyCol).toContainText('(1)')
+    await expect(board.epicMiniboard(901)).toBeVisible()
+    await expect(board.epicMiniColumn(901, 'Accepted')).toContainText('(1)')
+    await expect(board.epicMiniColumn(901, 'Ready')).toContainText('(1)')
 
     await expect(epic901.locator('.board-epic-children')).toHaveCount(0)
     await expect(epic901.locator('.board-epic-child-state')).toHaveCount(0)
     await expect(epic901.locator('.board-story-row')).toHaveCount(0)
 
     await expect(epic901.locator('.board-epic-summary button')).toHaveCount(0)
-    await expect(planPanel.locator('[data-test="board-epic-901-view-details"]')).toBeVisible()
+    await expect(board.epicViewDetails(901)).toBeVisible()
 
     await app.close()
   })
@@ -111,21 +108,19 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
   test('#1260 child story shows ↳ Epic #N link (no full Epic title in visible text) in its state lane', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    const board = new BoardPage(win)
+    await expect(board.region()).toBeVisible()
 
-    const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
-    const childRow = nowPanel.locator('[data-test="board-story-902"]')
-    await expect(childRow).toBeVisible()
-    const epicRef = childRow.locator('[data-test="epic-link"]')
+    await expect(board.storyRow(902)).toBeVisible()
+    const epicRef = board.epicLink(902)
     await expect(epicRef).toHaveText('↳ Epic #901')
     await expect(epicRef).toHaveAttribute(
       'aria-label',
       /open epic #901 Epic: substrate consolidation/
     )
 
-    const standaloneRow = nowPanel.locator('[data-test="board-story-904"]')
-    await expect(standaloneRow).toBeVisible()
-    await expect(standaloneRow.locator('[data-test="epic-link"]')).toHaveCount(0)
+    await expect(board.storyRow(904)).toBeVisible()
+    await expect(board.epicLink(904)).toHaveCount(0)
 
     await app.close()
   })
@@ -156,8 +151,9 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
       })
     })
     await win.reload()
-    await expect(win.locator('[data-test="board-list"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-epics"]')).toHaveCount(0)
+    const board = new BoardPage(win)
+    await expect(board.tabBar()).toBeVisible()
+    await expect(board.epicsSection()).toHaveCount(0)
     await app.close()
   })
 })
