@@ -4,6 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -86,41 +88,31 @@ const launchWithFixture = async (): Promise<{
   return { app }
 }
 
-const openGroup = async (
-  win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>,
-  state: 'delivered' | 'accepted'
-): Promise<void> => {
-  // Post-#516: `data-test="board-group-{state}"` lives on `<summary>`,
-  // not `<details>`. Pre-#1128 helper read `.open` on summary
-  // (undefined) + then `group.locator('summary').first()` looked for a
-  // descendant summary inside the summary itself — 0 matches → click
-  // hung the test. Click the summary directly so native <details>
-  // toggle fires.
-  await win.locator(`[data-test="board-tab-${state === 'accepted' ? 'done' : 'now'}"]`).click()
-  const summary = win.locator(`[data-test="board-group-${state}"]`).first()
-  const isOpen = await summary.evaluate((el: Element) => {
-    const details = el.closest('details')
-    return details ? (details as HTMLDetailsElement).open : false
-  })
-  if (!isOpen) {
-    await summary.click()
-  }
+const GROUP = {
+  delivered: { tab: 'Now', label: 'Acceptance' },
+  accepted: { tab: 'Done', label: 'Accepted' }
+} as const
+
+const openGroup = async (board: BoardPage, state: 'delivered' | 'accepted'): Promise<void> => {
+  const { tab, label } = GROUP[state]
+  await board.openTab(tab)
+  await board.openColumn(label)
 }
 
 test.describe('desk-check #375 state-aware badge labels', () => {
   test('delivered rows use awaiting-tense labels', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await openGroup(win, 'delivered')
+    const board = new BoardPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
+    await openGroup(board, 'delivered')
 
-    const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
-    const feat = nowPanel.locator('[data-test="board-story-900"] [data-test="story-badge"]')
-    await expect(feat).toHaveAttribute('data-badge-kind', 'accepted')
+    const feat = board.storyStateBadge(900)
+    await expect(feat).toHaveClass(/story-badge--accepted\b/)
     await expect(feat).toContainText('awaiting owner')
 
-    const chore = nowPanel.locator('[data-test="board-story-901"] [data-test="story-badge"]')
-    await expect(chore).toHaveAttribute('data-badge-kind', 'team-accepted')
+    const chore = board.storyStateBadge(901)
+    await expect(chore).toHaveClass(/story-badge--team-accepted\b/)
     await expect(chore).toContainText('awaiting team')
 
     await win.screenshot({
@@ -133,15 +125,16 @@ test.describe('desk-check #375 state-aware badge labels', () => {
   test('accepted rows use accepted-tense labels', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await openGroup(win, 'accepted')
+    const board = new BoardPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
+    await openGroup(board, 'accepted')
 
-    const feat = win.locator('[data-test="board-story-902"] [data-test="story-badge"]')
-    await expect(feat).toHaveAttribute('data-badge-kind', 'accepted')
+    const feat = board.storyStateBadge(902)
+    await expect(feat).toHaveClass(/story-badge--accepted\b/)
     await expect(feat).toContainText('owner-accepted')
 
-    const chore = win.locator('[data-test="board-story-903"] [data-test="story-badge"]')
-    await expect(chore).toHaveAttribute('data-badge-kind', 'team-accepted')
+    const chore = board.storyStateBadge(903)
+    await expect(chore).toHaveClass(/story-badge--team-accepted\b/)
     await expect(chore).toContainText('team-accepted')
 
     await app.close()
