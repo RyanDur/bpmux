@@ -4,6 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
@@ -50,37 +52,24 @@ test.describe('desk-check #354 close-direction animations', () => {
   test('drill-in stays mounted during exit transition (data-visible toggles)', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-354"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    const drillIn = new DrillInPage(win)
+    await new BoardPage(win).storyNavigate(354).click()
+    await expect(drillIn.panel()).toBeVisible()
     await win.waitForTimeout(400)
 
-    // Inspect data-visible attribute.
-    const enteredAttr = await win.evaluate(() =>
-      document.querySelector('[data-test="board-drill-in"]')?.getAttribute('data-visible')
-    )
+    const enteredAttr = await drillIn.panel().getAttribute('data-visible')
     console.log(`#354 drill-in data-visible while entered: ${enteredAttr}`)
 
-    // Click Back; expect drill-in still in DOM briefly with data-visible=false.
-    await win.locator('[data-test="board-drill-in"] button[aria-label*="Back" i]').click()
+    await drillIn.backButton().click()
 
-    // Immediately check data-visible state.
     await win.waitForTimeout(50)
-    const exitingAttr = await win.evaluate(() =>
-      document.querySelector('[data-test="board-drill-in"]')?.getAttribute('data-visible')
-    )
+    const exitingAttr = await win.locator('.drill-in').getAttribute('data-visible')
     console.log(`#354 drill-in data-visible right after close click: ${exitingAttr}`)
 
-    // Wait for the full exit duration.
     await win.waitForTimeout(400)
-    const afterExit = await win.evaluate(() =>
-      document.querySelector('[data-test="board-drill-in"]')
-    )
+    const afterExitCount = await win.locator('.drill-in').count()
     console.log(
-      `#354 drill-in DOM after full exit: ${afterExit === null ? 'unmounted ✓' : 'still present'}`
+      `#354 drill-in DOM after full exit: ${afterExitCount === 0 ? 'unmounted ✓' : 'still present'}`
     )
 
     await app.close()
@@ -89,17 +78,12 @@ test.describe('desk-check #354 close-direction animations', () => {
   test('drill-in exit transition has transform + opacity declared at close', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-354"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    const drillIn = new DrillInPage(win)
+    await new BoardPage(win).storyNavigate(354).click()
+    await expect(drillIn.panel()).toBeVisible()
     await win.waitForTimeout(400)
 
-    const transition = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="board-drill-in"]')
-      if (!el) return null
+    const transition = await drillIn.panel().evaluate((el) => {
       const cs = window.getComputedStyle(el)
       return {
         property: cs.transitionProperty,
@@ -108,9 +92,9 @@ test.describe('desk-check #354 close-direction animations', () => {
       }
     })
     console.log(`#354 drill-in transition (at entered state):`)
-    console.log(`  property: ${transition?.property}`)
-    console.log(`  duration: ${transition?.duration}`)
-    console.log(`  easing: ${transition?.easing}`)
+    console.log(`  property: ${transition.property}`)
+    console.log(`  duration: ${transition.duration}`)
+    console.log(`  easing: ${transition.easing}`)
 
     await app.close()
   })
@@ -118,17 +102,12 @@ test.describe('desk-check #354 close-direction animations', () => {
   test('reduced-motion: drill-in exit uses 0s duration + transform none', async () => {
     const { app } = await launchWithBoard('reduce')
     const win = await app.firstWindow()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-354"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    const drillIn = new DrillInPage(win)
+    await new BoardPage(win).storyNavigate(354).click()
+    await expect(drillIn.panel()).toBeVisible()
     await win.waitForTimeout(300)
 
-    const reduced = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="board-drill-in"]')
-      if (!el) return null
+    const reduced = await drillIn.panel().evaluate((el) => {
       const cs = window.getComputedStyle(el)
       return {
         duration: cs.transitionDuration,
@@ -136,9 +115,9 @@ test.describe('desk-check #354 close-direction animations', () => {
       }
     })
     console.log(`#354 reduced-motion drill-in:`)
-    console.log(`  duration: ${reduced?.duration}`)
-    console.log(`  transform: ${reduced?.transform}`)
-    expect(reduced?.duration).toMatch(/^0s|^0ms|0s,/)
+    console.log(`  duration: ${reduced.duration}`)
+    console.log(`  transform: ${reduced.transform}`)
+    expect(reduced.duration).toMatch(/^0s|^0ms|0s,/)
 
     await app.close()
   })
