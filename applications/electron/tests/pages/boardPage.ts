@@ -71,4 +71,12 @@ export class BoardPage {
   iterationRow(iterationNumber: number): Locator {
     return this.iterationGrip(iterationNumber).locator('xpath=ancestor::article[1]')
   }
+
+  async memberOrder(iterationNumber: number): Promise<number[]> {
+    return this.iterationRow(iterationNumber).evaluate((article) =>
+      Array.from(article.querySelectorAll('[data-iteration-member]')).map((el) =>
+        Number(el.getAttribute('data-iteration-member'))
+      )
+    )
+  }
 }

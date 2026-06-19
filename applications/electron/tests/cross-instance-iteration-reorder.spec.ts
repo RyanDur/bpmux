@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchTwoElectronsSharedBackend } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration order after one reorders', () => {
   test('drag-reorder in instance A propagates to instance B via WS state-delta', async () => {
@@ -47,33 +48,16 @@ test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration o
 
       await win1.reload()
       await win2.reload()
-      await win1.locator('[data-test="board-tab-plan"]').click()
-      await win2.locator('[data-test="board-tab-plan"]').click()
+      const board1 = new BoardPage(win1)
+      const board2 = new BoardPage(win2)
+      await board1.openTab('Plan')
+      await board2.openTab('Plan')
 
-      const iter1Selector = '[data-test="board-iteration-9301"]'
-      await expect(win1.locator(iter1Selector)).toBeVisible({ timeout: 20_000 })
-      await expect(win2.locator(iter1Selector)).toBeVisible({ timeout: 20_000 })
+      await expect(board1.iterationGrip(9301)).toBeVisible({ timeout: 20_000 })
+      await expect(board2.iterationGrip(9301)).toBeVisible({ timeout: 20_000 })
 
-      await win1.locator(iter1Selector).evaluate((el) => {
-        ;(el as HTMLDetailsElement).open = true
-      })
-      await win2.locator(iter1Selector).evaluate((el) => {
-        ;(el as HTMLDetailsElement).open = true
-      })
-
-      const memberOrderIn = async (page: typeof win1): Promise<number[]> => {
-        return await page.evaluate(() => {
-          const container = document.querySelector('[data-test="board-iteration-9301"]')
-          if (!container) return []
-          const members = Array.from(container.querySelectorAll('[data-iteration-member]'))
-          return members.map((el) =>
-            Number((el as HTMLElement).getAttribute('data-iteration-member'))
-          )
-        })
-      }
-
-      const initial1 = await memberOrderIn(win1)
-      const initial2 = await memberOrderIn(win2)
+      const initial1 = await board1.memberOrder(9301)
+      const initial2 = await board2.memberOrder(9301)
       expect(initial1).toEqual([9311, 9312, 9313])
       expect(initial2).toEqual([9311, 9312, 9313])
 
@@ -91,10 +75,10 @@ test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration o
       expect(mutateRes.ok).toBe(true)
 
       await expect
-        .poll(async () => await memberOrderIn(win1), { timeout: 15_000, intervals: [200] })
+        .poll(() => board1.memberOrder(9301), { timeout: 15_000, intervals: [200] })
         .toEqual([9313, 9311, 9312])
       await expect
-        .poll(async () => await memberOrderIn(win2), { timeout: 15_000, intervals: [200] })
+        .poll(() => board2.memberOrder(9301), { timeout: 15_000, intervals: [200] })
         .toEqual([9313, 9311, 9312])
     } finally {
       await cleanup()
