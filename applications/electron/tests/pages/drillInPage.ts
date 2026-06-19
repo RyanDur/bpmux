@@ -39,8 +39,12 @@ export class DrillInPage {
     return this.win.getByRole('region', { name: 'Comments' })
   }
 
+  commentList(): Locator {
+    return this.win.getByRole('list', { name: 'Comments' })
+  }
+
   commentItems(): Locator {
-    return this.commentsRegion().getByRole('listitem')
+    return this.commentList().getByRole('listitem')
   }
 
   commentInput(): Locator {

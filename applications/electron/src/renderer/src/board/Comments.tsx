@@ -169,6 +169,7 @@ const Comments = ({
           className="drill-in-comments-list"
           ref={commentsListRef}
           data-test="drill-in-comments-list"
+          aria-label="Comments"
         >
           {comments.map((c) => (
             <li

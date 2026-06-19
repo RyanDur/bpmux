@@ -4,6 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T18:00:00Z',
@@ -51,15 +53,12 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
   test('Cmd+Enter (or Ctrl+Enter) fires POST + clears draft', async () => {
     const { app } = await launchBoard()
     const win = await app.firstWindow()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    const drillIn = new DrillInPage(win)
+    await new BoardPage(win).storyNavigate(356).click()
+    await expect(drillIn.panel()).toBeVisible()
     await win.waitForTimeout(500)
 
-    const ta = win.locator('[data-test="drill-in-comment-input"]')
+    const ta = drillIn.commentInput()
     await ta.focus()
     const draft = 'Draft via Cmd+Enter path'
     await ta.fill(draft)
@@ -69,7 +68,7 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
     await ta.press(`${modifier}+Enter`)
     await win.waitForTimeout(400)
 
-    await expect(win.locator('[data-test="drill-in-comment"]', { hasText: draft })).toBeVisible()
+    await expect(drillIn.commentItems().filter({ hasText: draft })).toBeVisible()
     await expect(ta).toHaveValue('')
 
     await app.close()
@@ -78,22 +77,19 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
   test('Shift+Enter still inserts newline (does NOT submit)', async () => {
     const { app } = await launchBoard()
     const win = await app.firstWindow()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    const drillIn = new DrillInPage(win)
+    await new BoardPage(win).storyNavigate(356).click()
+    await expect(drillIn.panel()).toBeVisible()
     await win.waitForTimeout(500)
 
-    const ta = win.locator('[data-test="drill-in-comment-input"]')
+    const ta = drillIn.commentInput()
     await ta.focus()
     await ta.fill('Line 1')
     await ta.press('Shift+Enter')
     await ta.pressSequentially('Line 2')
     await win.waitForTimeout(200)
 
-    await expect(win.locator('[data-test="drill-in-comment"]')).toHaveCount(0)
+    await expect(drillIn.commentItems()).toHaveCount(0)
     await expect(ta).toHaveValue(/\n/)
 
     await app.close()
