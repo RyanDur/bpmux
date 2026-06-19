@@ -84,6 +84,12 @@ Ranked by pressure toward next-stage progression:
    substrate-enforced; types are duplicated in `applications/electron/src/renderer/`.
    v4-equivalent fix: codegen TypeScript types from the bridge view
    models, or contract-test the wire shape at the boundary.
+   **Status (WS-only renderer, 2026-06-19, commit 7f14d95c):** the
+   renderer's DATA READS moved off REST onto the WebSocket (see
+   "Renderer data layer: WS-only" below). The boundary is now the WS
+   typed-frame contract; the REST surface persists for CLI / MCP /
+   main-process. The TypeScript-type-duplication coordination cost is
+   unchanged — still the open v4-fix.
 
 ## Where v3 is working
 
@@ -388,6 +394,82 @@ convenience (name-derivation) leaks storage into the domain, the fix is
 to ground attribution on a canonical identity, not to add another
 parallel path. Audit-trail: #1302 (2026-05-25).
 
+## Renderer data layer: WS-only (2026-06-19, commit 7f14d95c)
+
+The TypeScript renderer's data READS moved from the REST surface to the
+WebSocket. Board cold-start (`board/useBoardFetch.ts`) and chat history
+(initial hydrate + older-history pagination) now request over the WS —
+the renderer no longer calls `GET /api/board` or `GET /api/messages`.
+
+**Prior art**: Ryan's Rails ActionCable channels (REST-like-over-WS —
+a `hydrate` action on connect + live deltas on the same stream). bpmux
+adopts the request/response half on top of its existing broadcast+mirror:
+a `BoardHydrate` / `*Hydrate` / `HistoryPage` `ClientMessage` → a
+caller-only reply over the per-connection `reply_tx`. Handlers live in
+`transport/ws/hydrate.rs` (`handle_board_hydrate` / `handle_comments_hydrate`
+/ `handle_history_hydrate` / `handle_history_page`), each mirroring the
+comments-hydrate archetype. ONE stream — bpmux is a single local shared
+workspace, NOT multi-tenant, so there is no per-resource stream routing.
+
+**Caller-vs-everyone split**: shared mutations broadcast to all
+(existing mirror); hydrate results + action errors reply to the
+INITIATING connection only. `useBoardFetch` fires `requestBoardHydrate`
+on identify + reconnect and consumes the existing `board_snapshot` delta.
+
+**The REST surface STAYS** — it is the substrate for the bpmux CLI
+(gated `/api/rpc/*` write verbs + `/api` reads, off-MCP), the MCP bridge,
+and the main process (healthz, electron-capture). The migration removes
+REST from the RENDERER, not the server. This reshapes Friction #3: the
+renderer↔bpmux boundary is now the WS typed-frame contract, not REST/WS.
+
+**Stage-fit**: v3-strengthening — the renderer↔transport seam is one
+typed-frame contract instead of two (REST + WS). Same strangler-fig
+discipline as the iteration/storage pivots: each consumer's REST read
+retired as its WS hydrate landed, e2e green every slice.
+
+**Test-substrate consequence + a bug it exposed**: every e2e spec that
+route-mocked `/api/board` or `/api/messages` had to migrate to WS-driven
+fixtures (`launchWithMockGh` + rpc for board state; the `seedMessages`
+launch opt for chat history) — the mock was dead the moment the renderer
+stopped calling the endpoint. De-mocking surfaced a real producer/
+consumer bug: `board/adapters/json.rs` curated labels and DROPPED
+`blocked-by:N` + `desk-check-fail`, so the blocker-reference and rework
+badges had only ever rendered against hand-authored MOCK data. Fixed by
+passing those labels through (`is_renderer_badge_label`). Lesson: the
+test-doubles bought isolation at the cost of fidelity; the migration's
+value included finding what the mocks hid.
+
+## Role identity: config-driven, not hardcoded (2026-06-19, commit 7f14d95c)
+
+Roles are no longer baked into source. The role SET — ids, count, the
+owner — comes from the workflow config (`WorkflowConfig.role`:
+`{ id, purposes }`; `workflow/bundled_default.rs` is the overridable
+default). Everything downstream derives from it:
+
+- The owner is a workflow role like any other (`owner_role_id()` =
+  `role_id_for_purpose("owner")`); its id is the generic `owner`, not a
+  personal name. This makes the owner symmetric with the other roles and
+  unblocked owner-walk acceptance over RPC — the owner-only `accept_story`
+  gate is now drivable as agent `owner`, which the RPC allowlist accepts.
+- The RPC agent allowlist derives from `current_workflow().role` ids
+  (`transport/rpc_routes/validation.rs`), not a hardcoded
+  `["dev","pm","designer","owner"]`.
+- The renderer's identity / owner-detection / addressable set, and the
+  avatar-color hashing (`roles/roleColor.ts`), are role-agnostic.
+- The CI-actions URL derives from `BPMUX_REPO` config, not a hardcoded
+  repo handle.
+
+No production-code path enumerates a fixed team. Principle (Ryan,
+2026-06-19): "this app is to be usable by anyone, including myself."
+**Open follow-ups (deferred — not this refactor)**: dynamic per-role
+CSS theming is a designer concern (the static `--role-*` tokens remain);
+a renderer that can be ANY role at runtime (multi-user identity) is a
+feature. `RosterRole` + the purpose vocabulary stay the stable
+classification layer.
+
+**Stage-fit**: v3-strengthening — the role taxonomy has a single config
+seam instead of scattered literals across backend, renderer, and plugin.
+
 ## Testing substrate: RTL+real-backend (primary) + Playwright (edge-coverage) (Epic #1247)
 
 **Canonical testing-substrate** (post-Pegasus shipped state, 2026-05-14):
@@ -497,6 +579,33 @@ The final target (<6-8min full-suite wall-clock per original Epic
 Current shipped state captures the architectural foundation +
 substrate-canon; final-close-out captures the full-bulk-migration
 terminal state.
+
+## How this architecture evolves
+
+The substrate improves the same way every pivot above happened: by
+continuously **migrating the code to better patterns as they are
+learned** — not by holding it still. Refactoring is not a scheduled
+project; it is the ongoing act of moving the substrate forward (clean as
+you go, pay debt at sight). Each migration lowers the cost of the NEXT
+change, because the property that makes change cheap — small
+single-purpose files, readable names over comments, behavior-coupled
+tests, gates that fire at the moment of the mistake — is the same
+property the next better pattern reinforces. The WS-only migration was
+cheap precisely because the prior decomposition + behavior-coupled tests
+existed: swapping the entire transport under the renderer was a
+fixture-swap, not an assertion rewrite, because the tests assert what the
+user sees, never how the data arrived. Today's work pays the next change
+forward the same way.
+
+**Feedback speed is load-bearing, and the rule is faster-NOT-thinner.**
+Feedback speed sets the safe step SIZE: a sub-30s unit signal lets a
+small step be taken and corrected in seconds; a 7-minute e2e forces
+batching. Small steps mean less can break before detection — fast
+feedback → small steps → tight error-correction → small blast radius.
+When the slow tier bites (the e2e), the move is to parallelize / reuse
+the app+backend / cache / shard — NEVER trim coverage to buy speed.
+Cutting tests to go faster destroys the very feedback that makes the
+speed worth having.
 
 ## Why this doc exists
 
