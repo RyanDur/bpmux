@@ -176,6 +176,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
 
 mod action;
 mod middleware;
+mod middleware_mutation;
 mod snapshot;
 mod store;
 
