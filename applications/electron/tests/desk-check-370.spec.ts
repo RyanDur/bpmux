@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 // #370 rework: retire hardcoded role descriptions. Per Ryan's
 // 2026-04-22 23:28 UTC comment: "agents should define themselves.
@@ -79,16 +80,17 @@ test.describe('desk-check #370 avatar tooltip (rework — no hardcoded descripti
     // element is the regression gate.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
 
-    const tooltip = win.locator('[data-test="avatar-tooltip"]').first()
+    const tooltip = chat.tooltips().first()
     await expect(tooltip).toBeAttached()
 
     // Label present (role name, capitalized).
     await expect(tooltip.locator('.avatar-tooltip-label')).toBeVisible()
 
     // Status present.
-    await expect(tooltip.locator('[data-test="avatar-tooltip-status"]')).toBeVisible()
+    await expect(tooltip.locator('.avatar-tooltip-status')).toBeVisible()
 
     // Description element retired — no .avatar-tooltip-desc anywhere.
     await expect(win.locator('.avatar-tooltip-desc')).toHaveCount(0)
@@ -101,22 +103,16 @@ test.describe('desk-check #370 avatar tooltip (rework — no hardcoded descripti
     // from the sender short-name, capitalized — so ops shows "Ops."
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
+    const chat = new ChatPage(win)
 
-    // Find the ops avatar by its data-role attribute OR the initial
-    // text. The message-avatar has `data-role` attribute, which
-    // PALETTE_ROLE_TOKENS sets to 'unknown' for ops (CSS palette
-    // limitation, not an identity claim). The tooltip's label text
-    // still carries the runtime-derived "Ops."
-    const opsMessageRow = win.locator('[data-test="message-row"]', { hasText: 'new role not in' })
+    const opsMessageRow = chat.messageRow('new role not in')
     await expect(opsMessageRow).toBeVisible()
-    const opsAvatar = opsMessageRow.locator('[data-test="message-avatar"]').first()
+    const opsAvatar = opsMessageRow.getByRole('button', { name: /^Ops — / })
     await expect(opsAvatar).toBeVisible()
 
     const opsTooltipLabel = opsMessageRow.locator('.avatar-tooltip-label').first()
     await expect(opsTooltipLabel).toHaveText(/^Ops$/)
 
-    // aria-label on the button also carries runtime name + status
-    // (not "unknown").
     const ariaLabel = await opsAvatar.getAttribute('aria-label')
     expect(ariaLabel).toMatch(/^Ops — /)
 

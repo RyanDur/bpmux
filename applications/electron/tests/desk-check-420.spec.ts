@@ -3,6 +3,8 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
+import { SidebarPage } from './pages/sidebarPage'
 
 const FIXTURE_MESSAGES = [
   {
@@ -70,18 +72,19 @@ test.describe('desk-check #420 per-message channel tag', () => {
   test('channel-tags render in TUI-parity format + owner elided', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
     // Default view is `broadcast` — only DMs/groups visible when
     // their channel is selected, only broadcasts visible by default.
     // Test asserts the cross-section of channel tags so flip into
     // ALL view via the sidebar's `all` selector.
-    await win.locator('[data-test="sidebar-all"]').click()
-    await expect(win.locator('[data-test="message-row"]')).toHaveCount(3, {
+    await expect(chat.region()).toBeVisible()
+    await new SidebarPage(win).allChannel().click()
+    await expect(chat.messageRows()).toHaveCount(3, {
       timeout: 5_000
     })
 
-    const tags = await win
-      .locator('[data-test="message-channel"]')
+    const tags = await chat
+      .channelTags()
       .evaluateAll((els) => els.map((e) => (e as HTMLElement).textContent?.trim() ?? ''))
 
     expect(tags.length).toBeGreaterThanOrEqual(1)

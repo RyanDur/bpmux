@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 // #388 "N new messages ↓" indicator. When chat is scrolled up from
 // the bottom + new messages arrive, a floating pill shows the
@@ -69,10 +70,11 @@ test.describe('desk-check #388 "new messages ↓" indicator', () => {
     // stay absent.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="message-list"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
+    await expect(chat.messageScroller()).toBeVisible()
 
-    await expect(win.locator('[data-test="new-messages-pill"]')).toHaveCount(0)
+    await expect(chat.newMessagesPill()).toHaveCount(0)
 
     await app.close()
   })
@@ -85,13 +87,11 @@ test.describe('desk-check #388 "new messages ↓" indicator', () => {
     // break the pill's layout.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const wrap = win.locator('[data-test="message-list-wrap"]')
+    const chat = new ChatPage(win)
+    const wrap = chat.messageListWrap()
     await expect(wrap).toBeVisible()
-    const inner = wrap.locator('[data-test="message-list"]')
-    await expect(inner).toBeVisible()
+    await expect(wrap.getByRole('list')).toBeVisible()
 
-    // position: relative on the wrap (absolute-positioning context
-    // for the pill). Read computed style to lock it in.
     const position = await wrap.evaluate((el) => getComputedStyle(el).position)
     expect(position).toBe('relative')
 

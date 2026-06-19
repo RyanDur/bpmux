@@ -31,6 +31,22 @@ export class ChatPage {
     return this.messageLog().getByRole('listitem').filter({ hasText: text })
   }
 
+  messageRows(): Locator {
+    return this.messageLog().getByRole('listitem')
+  }
+
+  channelTags(): Locator {
+    return this.messageLog().locator('.message-channel')
+  }
+
+  tooltips(): Locator {
+    return this.messageLog().getByRole('tooltip')
+  }
+
+  messageListWrap(): Locator {
+    return this.win.locator('.message-list-wrap')
+  }
+
   newMessagesPill(): Locator {
     return this.win.getByRole('button', { name: /new message/i })
   }

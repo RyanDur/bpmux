@@ -35,6 +35,14 @@ export class DrillInPage {
     return this.win.getByRole('button', { name: /back to board/i })
   }
 
+  commentsRegion(): Locator {
+    return this.win.getByRole('region', { name: 'Comments' })
+  }
+
+  commentItems(): Locator {
+    return this.commentsRegion().getByRole('listitem')
+  }
+
   commentInput(): Locator {
     return this.win.getByRole('textbox', { name: /add a comment/i })
   }

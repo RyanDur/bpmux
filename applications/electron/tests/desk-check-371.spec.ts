@@ -5,6 +5,8 @@ import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // Playwright can't interact with native Electron Menus — menu.popup()
 // is an OS-level affordance that lives outside the browser DOM. So
@@ -75,12 +77,10 @@ test.describe('desk-check #371 right-click quote context menu', () => {
   test('simulated Quote-in-reply IPC inserts blockquote into draft', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const storyCard = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-371"]'
-    )
-    await storyCard.first().click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
-    await expect(win.locator('[data-test="drill-in-comment"]').first()).toBeVisible()
+    const drillIn = new DrillInPage(win)
+    await new BoardPage(win).storyNavigate(371).click()
+    await expect(drillIn.panel()).toBeVisible()
+    await expect(drillIn.commentItems().first()).toBeVisible()
 
     // Simulate the main-process click by sending the IPC frame the
     // native "Quote in reply" menu item would emit. No need to
@@ -97,16 +97,15 @@ test.describe('desk-check #371 right-click quote context menu', () => {
     })
 
     // Draft should contain the quote block.
-    const draft = await win.locator('[data-test="drill-in-comment-input"]').inputValue()
+    const draft = await drillIn.commentInput().inputValue()
     expect(draft).toContain('> [@designer](#comment-4200):')
     expect(draft).toContain('> native menu preserves Copy/Paste/Inspect alongside Quote in reply.')
     expect(draft.endsWith('\n\n')).toBe(true)
 
     // Textarea should be focused with cursor at prefix.length.
-    const focused = await win.evaluate(() => {
-      const ta = document.querySelector<HTMLTextAreaElement>('[data-test="drill-in-comment-input"]')
-      return document.activeElement === ta
-    })
+    const focused = await drillIn
+      .commentInput()
+      .evaluate((ta) => document.activeElement === ta)
     expect(focused).toBe(true)
 
     await app.close()
