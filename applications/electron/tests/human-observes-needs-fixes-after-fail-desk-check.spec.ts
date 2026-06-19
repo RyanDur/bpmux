@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
 
 // #1127 sub-slice 2: replicate human-observes-* migration onto the
 // fail_desk_check sibling. Setup walks create→start→deliver to land
@@ -21,7 +22,8 @@ test.describe('human-side E2E #476 — observation-class — fail_desk_check', (
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -70,19 +72,16 @@ test.describe('human-side E2E #476 — observation-class — fail_desk_check', (
       expect(failResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
-      const storyInProgress = nowPanel.locator(
-        '#board-group-in-progress-content [data-test="board-story-1"]'
-      )
-      await expect(storyInProgress).toContainText('human-observes-needs-fixes')
+      await expect(
+        board.group('In Progress').getByRole('button', { name: /human-observes-needs-fixes/ })
+      ).toBeVisible()
 
-      for (const otherState of ['ready', 'desk-check', 'delivered']) {
-        const storyElsewhere = nowPanel.locator(
-          `#board-group-${otherState}-content [data-test="board-story-1"]`
-        )
-        await expect(storyElsewhere).toHaveCount(0)
+      for (const otherColumn of ['Ready', 'Desk Check', 'Acceptance']) {
+        await expect(
+          board.group(otherColumn).getByRole('button', { name: /Open story #1\b/ })
+        ).toHaveCount(0)
       }
 
       expect(consoleErrors).toEqual([])

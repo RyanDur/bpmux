@@ -37,7 +37,7 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
     const win = await app.firstWindow()
     await win.addInitScript(installFrameCapture)
     await win.reload()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
     await expect
       .poll(
         async () => {
@@ -65,7 +65,7 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
     const win = await app.firstWindow()
     await win.addInitScript(installFrameCapture)
     await win.reload()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
     await expect
       .poll(
         async () => {
@@ -110,7 +110,7 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
     const win = await app.firstWindow()
     await win.addInitScript(installFrameCapture)
     await win.reload()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
     await expect
       .poll(
         async () => {
@@ -121,7 +121,7 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
       )
       .toBe(true)
     await win.reload()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
     await expect
       .poll(
         async () => {
