@@ -8,6 +8,7 @@ mod capture_electron_window;
 mod ci_get_job_status;
 #[cfg(test)]
 mod ci_get_job_status_tests;
+mod ci_log_parse;
 mod classifier_misfire;
 #[cfg(test)]
 mod close_iteration_tests;
@@ -93,6 +94,8 @@ pub(crate) use ci_get_job_status::CiJobStatusError;
 pub(crate) use ci_get_job_status::build_ci_job_status_response;
 pub(crate) use ci_get_job_status::compute_duration_ms;
 pub(in crate::bridge) use ci_get_job_status::handle_ci_get_job_status;
+pub(crate) use ci_log_parse::build_non_test_failure_record;
+pub(crate) use ci_log_parse::parse_playwright_failures_from_log;
 pub(in crate::bridge) use classifier_misfire::handle_classifier_misfire;
 pub(in crate::bridge) use dev_in_flight::handle_dev_in_flight;
 pub(in crate::bridge) use get_bookmark::handle_get_bookmark;
@@ -100,9 +103,7 @@ pub(in crate::bridge) use get_briefing::handle_get_briefing;
 pub(crate) use get_ci_log_for_run::CiLogError;
 pub(crate) use get_ci_log_for_run::CiRunFailures;
 pub(crate) use get_ci_log_for_run::CiTestFailure;
-pub(crate) use get_ci_log_for_run::build_non_test_failure_record;
 pub(in crate::bridge) use get_ci_log_for_run::handle_get_ci_log_for_run;
-pub(crate) use get_ci_log_for_run::parse_playwright_failures_from_log;
 pub(crate) use get_ci_state::CiStateReport;
 pub(crate) use get_ci_state::build_ci_state_report;
 pub(in crate::bridge) use get_ci_state::handle_get_ci_state;
