@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 import { launchWithMockGhAndSeededIteration } from './helpers/iteration-fixture'
 
 test.describe('#467 board panel — bounded scroll + sticky headers + native <details>', () => {
@@ -37,7 +38,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
       themeName: 'ScrollStickyDisclosure'
     })
     try {
-      const summary = win.locator('[data-test="board-group-ready"]')
+      const summary = new BoardPage(win).columnToggle('Ready')
       const listStyle = await summary.evaluate((el) => getComputedStyle(el).listStyleType)
       expect(listStyle).toBe('none')
     } finally {
@@ -51,20 +52,20 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
       themeName: 'ScrollStickyMultiExpand'
     })
     try {
-      const ready = win.locator('[data-test="board-group-ready"]')
-      const inProgress = win.locator('[data-test="board-group-in-progress"]')
-      const accepted = win.locator('[data-test="board-group-accepted"]')
+      const ready = new BoardPage(win).columnToggle('Ready')
+      const inProgress = new BoardPage(win).columnToggle('In Progress')
+      const accepted = new BoardPage(win).columnToggle('Accepted')
 
       await expect(ready).toHaveAttribute('aria-expanded', 'true')
       await expect(inProgress).toHaveAttribute('aria-expanded', 'true')
 
-      await win.locator('[data-test="board-tab-done"]').click()
+      await new BoardPage(win).openTab('Done')
       await expect(accepted).toHaveAttribute('aria-expanded', 'false')
 
       await accepted.click()
       await expect(accepted).toHaveAttribute('aria-expanded', 'true')
 
-      await win.locator('[data-test="board-tab-now"]').click()
+      await new BoardPage(win).openTab('Now')
       await expect(ready).toHaveAttribute('aria-expanded', 'true')
       await expect(inProgress).toHaveAttribute('aria-expanded', 'true')
     } finally {
@@ -76,9 +77,9 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
   test('board-body has bounded vertical scroll affordance', async () => {
     const { app, win, mockGh } = await launchWithMockGh()
     try {
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(new BoardPage(win).region()).toBeVisible()
 
-      const body = win.locator('[data-test="board-list"]')
+      const body = win.locator('.board-body')
       const overflowY = await body.evaluate((el) => getComputedStyle(el).overflowY)
       expect(overflowY).toBe('auto')
 
@@ -95,7 +96,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
       themeName: 'ScrollStickySticky'
     })
     try {
-      const summary = win.locator('[data-test="board-group-ready"]')
+      const summary = new BoardPage(win).columnToggle('Ready')
       const position = await summary.evaluate((el) => getComputedStyle(el).position)
       expect(position).toBe('sticky')
 
@@ -116,7 +117,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
       themeName: 'ScrollStickyChevron'
     })
     try {
-      const summary = win.locator('[data-test="board-group-ready"]')
+      const summary = new BoardPage(win).columnToggle('Ready')
       const chevron = summary.locator('.board-group-chevron')
       const before = (): Promise<string> =>
         chevron.evaluate((el) => getComputedStyle(el, '::before').content)
@@ -145,7 +146,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const summary = win.locator('[data-test="board-group-ready"]')
+      const summary = new BoardPage(win).columnToggle('Ready')
       await summary.click()
       await summary.click()
       await summary.click()
