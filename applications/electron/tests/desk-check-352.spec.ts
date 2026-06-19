@@ -127,8 +127,7 @@ test.describe('desk-check #352 micro-interactions', () => {
     await expect(new ChatPage(win).filterRegion()).toBeVisible()
 
     const pillDur = await win.evaluate(
-      () =>
-        window.getComputedStyle(document.querySelector('.filter-pill')!).transitionDuration
+      () => window.getComputedStyle(document.querySelector('.filter-pill')!).transitionDuration
     )
     console.log(`#352 AC6 filter-pill duration under reduced-motion: ${pillDur}`)
     expect(pillDur).toMatch(/^0s|^0ms/)

@@ -4,6 +4,12 @@
 # violations; pre-existing baseline (190 eslint + 166 stylelint
 # errors as of 2026-05-20) is tolerated. Slices 2-N retire baseline
 # per-component-cluster.
+#
+# #19 hardening (2026-06-19): eslint runs at --max-warnings 0, so
+# WARNINGS (prettier drift, testing-library/jest-dom advisories on
+# *.test.tsx) now fail the gate on staged files too — not just errors.
+# Same touch-it-fix-it model: dormant baseline warnings in untouched
+# files don't block; staging a file forces it warning-clean.
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -21,7 +27,7 @@ ts_exit=0
 css_exit=0
 
 if [ -n "$STAGED_TS" ]; then
-  echo "$STAGED_TS" | xargs npx eslint --no-warn-ignored || ts_exit=$?
+  echo "$STAGED_TS" | xargs npx eslint --no-warn-ignored --max-warnings 0 || ts_exit=$?
 fi
 
 if [ -n "$STAGED_CSS" ]; then

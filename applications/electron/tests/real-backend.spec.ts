@@ -912,9 +912,9 @@ test.describe('real-backend', () => {
     const textarea = drillIn.commentInput()
     await textarea.fill('hello from Cmd+Enter')
     await textarea.press('Meta+Enter')
-    await expect(
-      drillIn.commentItems().filter({ hasText: 'hello from Cmd+Enter' })
-    ).toBeVisible({ timeout: 3_000 })
+    await expect(drillIn.commentItems().filter({ hasText: 'hello from Cmd+Enter' })).toBeVisible({
+      timeout: 3_000
+    })
 
     await app.close()
   })

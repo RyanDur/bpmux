@@ -39,9 +39,9 @@ test.describe('human-side E2E #476 — read-class — metrics overlay content', 
       // #497: Metrics is now a native <dialog> (always mounted; open
       // state toggled via show()/close()). Closed-state assertion shifts
       // from element-unmount to el.open === false.
-      await expect.poll(() => metrics.dialog().evaluate((el: HTMLDialogElement) => el.open)).toBe(
-        false
-      )
+      await expect
+        .poll(() => metrics.dialog().evaluate((el: HTMLDialogElement) => el.open))
+        .toBe(false)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

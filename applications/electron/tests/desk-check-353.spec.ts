@@ -57,9 +57,7 @@ test.describe('desk-check #353 WS board invalidate', () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
     await expect(new BoardPage(win).region()).toBeVisible()
-    await expect(
-      new BoardPage(win).storyNavigate(353)
-    ).toBeVisible()
+    await expect(new BoardPage(win).storyNavigate(353)).toBeVisible()
     await win.waitForTimeout(300)
     await new BoardPage(win).region().screenshot({
       path: join(EVIDENCE_DIR, '80-board-live-refresh-baseline.png')
@@ -95,9 +93,7 @@ test.describe('desk-check #353 WS board invalidate', () => {
     // Full poll-interval regression would need a custom fetch counter
     // hook which is over-scope.
     await win.waitForTimeout(2000)
-    await expect(
-      new BoardPage(win).storyNavigate(353)
-    ).toBeVisible()
+    await expect(new BoardPage(win).storyNavigate(353)).toBeVisible()
     await app.close()
   })
 })
