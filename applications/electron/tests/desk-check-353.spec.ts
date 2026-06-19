@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -55,12 +56,12 @@ test.describe('desk-check #353 WS board invalidate', () => {
   test('board renders + fetches on mount, story visible', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(new BoardPage(win).region()).toBeVisible()
     await expect(
-      win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]')
+      new BoardPage(win).storyNavigate(353)
     ).toBeVisible()
     await win.waitForTimeout(300)
-    await win.locator('[data-test="board-region"]').screenshot({
+    await new BoardPage(win).region().screenshot({
       path: join(EVIDENCE_DIR, '80-board-live-refresh-baseline.png')
     })
     await app.close()
@@ -69,7 +70,7 @@ test.describe('desk-check #353 WS board invalidate', () => {
   test('subscription code: messages prop reaches Board (indirect — the board_invalidated state-delta is the trigger)', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(new BoardPage(win).region()).toBeVisible()
 
     // Assert the board region + its parent composition renders the
     // story. A missing messages prop would NOT break initial render;
@@ -77,27 +78,17 @@ test.describe('desk-check #353 WS board invalidate', () => {
     // grows past the last-seen ref. We can't simulate that from the
     // test process without the multi-party-peer-post harness per
     // dev's commit-body note + #345 precedent.
-    const mounted = await win
-      .locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]')
-      .isVisible()
+    const mounted = await new BoardPage(win).storyNavigate(353).isVisible()
     console.log(`#353 mount: story row present = ${mounted}`)
 
-    // Confirm Board.tsx is exported + wired in the bundle by checking
-    // that the test IDs the component uses are present in the DOM.
-    const testIds = await win.evaluate(() =>
-      Array.from(document.querySelectorAll('[data-test]'))
-        .map((e) => e.getAttribute('data-test'))
-        .filter((v) => v?.startsWith('board'))
-    )
-    console.log(`#353 board-scope data-test attrs: ${testIds.join(', ')}`)
-    expect(testIds.some((v) => v?.startsWith('board-'))).toBe(true)
+    await expect(new BoardPage(win).storyNavigate(353)).toBeVisible()
     await app.close()
   })
 
   test('poll interval is no longer 30s (sanity — 5-min fallback should not fire in short test)', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(new BoardPage(win).region()).toBeVisible()
     // We can't easily count calls across Playwright's route handler
     // timing. This is a sanity smoke: the app renders + stays stable
     // for 2 seconds without repeated refetch-induced re-renders.
@@ -105,7 +96,7 @@ test.describe('desk-check #353 WS board invalidate', () => {
     // hook which is over-scope.
     await win.waitForTimeout(2000)
     await expect(
-      win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]')
+      new BoardPage(win).storyNavigate(353)
     ).toBeVisible()
     await app.close()
   })
