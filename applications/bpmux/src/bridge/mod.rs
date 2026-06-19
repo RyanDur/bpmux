@@ -144,6 +144,8 @@ pub fn run_bridge(
 }
 
 #[cfg(test)]
+mod connection_tests;
+#[cfg(test)]
 mod poller_middleware_tests;
 #[cfg(test)]
 mod tests;
