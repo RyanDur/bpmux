@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { launchIsolatedWithWindow } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // Deterministic board fixture — one story per state we actively
 // exercise. `delivered` covers the Accept/Reject owner path; `ready`
@@ -35,8 +38,8 @@ const MOCK_BOARD = {
 test('launches + connects + renders chat', async () => {
   const { app, win } = await launchIsolatedWithWindow()
   try {
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
   } finally {
     await app.close()
   }
@@ -54,18 +57,17 @@ test('board renders stories, opens drill-in, shows Accept for delivered', async 
     })
     await win.reload()
 
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-    const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
-    await expect(nowPanel.locator('[data-test="board-story-111"]')).toBeVisible()
-    await expect(nowPanel.locator('[data-test="board-story-222"]')).toBeVisible()
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await expect(board.region()).toBeVisible()
+    await expect(board.storyRow(111)).toBeVisible()
+    await expect(board.storyRow(222)).toBeVisible()
 
-    await nowPanel.locator('[data-test="board-story-222"] .board-story-navigate').click({
-      position: { x: 4, y: 4 }
-    })
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    await board.openStory(222)
+    await expect(drillIn.panel()).toBeVisible()
 
-    await expect(win.locator('[data-test="drill-in-accept"]')).toBeVisible()
-    await expect(win.locator('[data-test="drill-in-reject"]')).toBeVisible()
+    await expect(drillIn.acceptButton()).toBeVisible()
+    await expect(drillIn.rejectButton()).toBeVisible()
   } finally {
     await app.close()
   }
