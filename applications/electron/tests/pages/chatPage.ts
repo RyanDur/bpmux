@@ -4,7 +4,11 @@ export class ChatPage {
   constructor(private readonly win: Page) {}
 
   appRoot(): Locator {
-    return this.win.locator('[data-test="app-root"]')
+    return this.win.getByRole('main')
+  }
+
+  region(): Locator {
+    return this.win.getByRole('region', { name: 'Chat' })
   }
 
   input(): Locator {

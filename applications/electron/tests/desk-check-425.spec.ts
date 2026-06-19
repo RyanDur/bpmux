@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test'
 import { launchIsolatedElectron } from './helpers/launch'
 import { formatViolations, runA11yAudit } from './helpers/a11yAudit'
+import { ChatPage } from './pages/chatPage'
 
 test.describe('#425 a11y audit substrate', () => {
   test('axe runs against running Electron surface and returns structured violations', async () => {
     const { app } = await launchIsolatedElectron()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
 
     const result = await runA11yAudit(win)
     console.log(formatViolations(result))
@@ -24,7 +25,7 @@ test.describe('#425 a11y audit substrate', () => {
   test('violations expose target + impact + help so designer can cite specific failures', async () => {
     const { app } = await launchIsolatedElectron()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
 
     const result = await runA11yAudit(win)
     for (const v of result.violations) {

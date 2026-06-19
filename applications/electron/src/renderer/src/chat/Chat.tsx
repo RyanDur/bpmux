@@ -88,7 +88,7 @@ const Chat = ({
   }
 
   return (
-    <section className="chat" data-test="chat-region">
+    <section className="chat" data-test="chat-region" aria-label="Chat">
       {showReconnect && (
         <output className="chat-warning" aria-live="polite">
           {status === 'connecting' ? 'connecting…' : 'reconnecting…'}

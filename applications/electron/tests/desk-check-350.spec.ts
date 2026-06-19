@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -25,7 +26,7 @@ test.describe('desk-check #350 motion substrate', () => {
   test('six motion tokens resolve to declared values in default media', async () => {
     const { app } = await launchIsolated()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
 
     const tokens = [
       '--motion-duration-instant',
@@ -61,7 +62,7 @@ test.describe('desk-check #350 motion substrate', () => {
   test('duration tokens zero under prefers-reduced-motion:reduce', async () => {
     const { app } = await launchIsolated()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
 
     await win.emulateMedia({ reducedMotion: 'reduce' })
 
@@ -84,7 +85,7 @@ test.describe('desk-check #350 motion substrate', () => {
   test('motion-safe-transform utility: transform reset + transition-property opacity under reduced-motion', async () => {
     const { app } = await launchIsolated()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
 
     // Inject a test element with motion-safe-transform + a transform.
     // Evaluate its computed style in both media states.
@@ -135,7 +136,7 @@ test.describe('desk-check #350 motion substrate', () => {
     // surfaces visually.
     const { app } = await launchIsolated()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
     await win.waitForTimeout(300)
     await win.screenshot({
       path: join(EVIDENCE_DIR, '50-app-unchanged-with-motion-tokens.png')
