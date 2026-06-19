@@ -1,5 +1,10 @@
 use chrono::{DateTime, Utc};
 
+use super::label_fields::{
+    acceptor_from_labels, horizon_from_labels, is_current_from_labels,
+    iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
+    iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
+};
 use crate::board::domain::{Story, StoryState, Tag};
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
@@ -72,89 +77,6 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
         story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
     }
     Some(story)
-}
-
-pub fn parent_epic_from_labels(labels: &[String]) -> Option<u64> {
-    labels
-        .iter()
-        .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_parent_epic(l))
-}
-
-pub fn iteration_membership_from_labels(labels: &[String]) -> Option<(u64, u32)> {
-    labels.iter().find_map(|l| {
-        crate::board::adapters::gh_label_codec::GhLabelCodec.decode_parent_iteration(l)
-    })
-}
-
-pub fn outcome_membership_from_labels(labels: &[String]) -> Option<(u64, u32)> {
-    labels
-        .iter()
-        .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_parent_outcome(l))
-}
-
-pub fn iteration_order_from_labels(labels: &[String]) -> Option<u32> {
-    labels
-        .iter()
-        .filter_map(|l| {
-            crate::board::adapters::gh_label_codec::GhLabelCodec.decode_iteration_order(l)
-        })
-        .min()
-}
-
-pub fn iteration_review_closers_from_labels(labels: &[String]) -> Vec<String> {
-    labels
-        .iter()
-        .filter_map(|l| {
-            crate::board::adapters::gh_label_codec::GhLabelCodec.decode_iteration_review_closer(l)
-        })
-        .collect()
-}
-
-pub fn iteration_dev_ok_by_from_labels(labels: &[String]) -> Vec<String> {
-    labels
-        .iter()
-        .filter_map(|l| {
-            crate::board::adapters::gh_label_codec::GhLabelCodec.decode_iteration_dev_ok(l)
-        })
-        .collect()
-}
-
-pub fn is_current_from_labels(labels: &[String]) -> bool {
-    labels
-        .iter()
-        .any(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.is_current_iteration_label(l))
-}
-
-pub fn acceptor_from_labels(labels: &[String]) -> Option<crate::board::domain::Acceptor> {
-    labels
-        .iter()
-        .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_acceptor(l))
-}
-
-pub fn horizon_from_labels(labels: &[String]) -> Option<crate::board::domain::Horizon> {
-    labels
-        .iter()
-        .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_horizon(l))
-}
-
-fn is_iteration_position_label(label: &str) -> bool {
-    crate::board::adapters::gh_label_codec::GhLabelCodec.is_iteration_position_label(label)
-}
-
-pub(crate) fn is_position_label(label: &str) -> bool {
-    use crate::board::label_codec::LabelCodec;
-    is_iteration_position_label(label)
-        || crate::board::adapters::gh_label_codec::GhLabelCodec.is_ready_order_label(label)
-}
-
-#[cfg(test)]
-pub(crate) fn is_iteration_position_label_for_test(label: &str) -> bool {
-    is_iteration_position_label(label)
-}
-
-#[cfg(test)]
-pub(crate) fn is_position_label_for_test(label: &str) -> bool {
-    is_position_label(label)
 }
 
 fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
