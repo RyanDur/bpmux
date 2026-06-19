@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket};
-use base64::Engine;
 use futures::stream::SplitSink;
 
+use super::client_handlers::{
+    handle_comments_hydrate, handle_pty_input, handle_pty_subscribe, handle_reaction_toggle,
+    handle_send,
+};
 use super::{MAX_MESSAGE_SIZE, message_size_ok, send_json};
 use crate::session;
-use crate::session::MessageType;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
 pub(crate) struct ClientCtx<'a> {
@@ -51,18 +53,7 @@ pub(crate) async fn handle_client_message(
             addressee,
             message_type,
         }) => {
-            let explicit_privacy = to.is_some();
-            let msg = session::Message {
-                from: identity.to_string(),
-                text: msg_text,
-                ts: chrono::Utc::now(),
-                message_type: MessageType::from(message_type.as_deref()),
-                to,
-                addressee,
-                explicit_privacy,
-                ..session::Message::default()
-            };
-            ctx.session.broadcast(&msg)?;
+            handle_send(ctx, identity, msg_text, to, addressee, message_type)?;
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;
@@ -93,45 +84,10 @@ pub(crate) async fn handle_client_message(
             .await?;
         }
         Ok(ClientMessage::PtySubscribe { terminal_id }) => {
-            let already_streaming = pty_readers
-                .get(&terminal_id)
-                .is_some_and(|stop| !stop.load(std::sync::atomic::Ordering::Relaxed));
-            if !already_streaming
-                && let Some(mut output) = ctx.pty_registry.subscribe_for(&terminal_id)
-            {
-                let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
-                pty_readers.insert(terminal_id.clone(), stop.clone());
-                let sink = ctx.pty_tx.clone();
-                tokio::spawn(async move {
-                    use tokio::sync::broadcast::error::RecvError;
-                    loop {
-                        if stop.load(std::sync::atomic::Ordering::Relaxed) {
-                            break;
-                        }
-                        match output.recv().await {
-                            Ok(bytes) if bytes.is_empty() => {
-                                let _ = sink.send((terminal_id.clone(), Vec::new()));
-                                break;
-                            }
-                            Ok(bytes) => {
-                                if sink.send((terminal_id.clone(), bytes)).is_err() {
-                                    break;
-                                }
-                            }
-                            Err(RecvError::Lagged(_)) => continue,
-                            Err(RecvError::Closed) => {
-                                let _ = sink.send((terminal_id.clone(), Vec::new()));
-                                break;
-                            }
-                        }
-                    }
-                });
-            }
+            handle_pty_subscribe(ctx, terminal_id, pty_readers);
         }
         Ok(ClientMessage::PtyInput { terminal_id, data }) => {
-            if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data) {
-                ctx.pty_registry.write_to(&terminal_id, &bytes);
-            }
+            handle_pty_input(ctx, terminal_id, data);
         }
         Ok(ClientMessage::PtyResize {
             terminal_id,
@@ -146,51 +102,11 @@ pub(crate) async fn handle_client_message(
             emoji,
             user,
         }) => {
-            let body = crate::transport::rest::ReactionToggle {
-                channel,
-                message_key,
-                emoji,
-                user,
-            };
-            if let Err(e) =
-                crate::transport::rest::apply_reaction_toggle(ctx.session, ctx.orchestrator, &body)
-                    .await
-            {
-                send_json(
-                    tx,
-                    &ServerMessage::Error {
-                        reason: format!("reaction toggle failed: {e}"),
-                    },
-                )
-                .await?;
-            }
+            handle_reaction_toggle(ctx, tx, channel, message_key, emoji, user).await?;
         }
-        Ok(ClientMessage::CommentsHydrate { story_number }) => match ctx.tracker.clone() {
-            Some(tracker) => {
-                let reply_tx = ctx.reply_tx.clone();
-                tokio::spawn(async move {
-                    let reply = match tracker.list_story_comments(story_number).await {
-                        Ok(comments) => ServerMessage::CommentsHydrated {
-                            story_number,
-                            comments,
-                        },
-                        Err(e) => ServerMessage::Error {
-                            reason: format!("list comments failed: {e}"),
-                        },
-                    };
-                    let _ = reply_tx.send(reply);
-                });
-            }
-            None => {
-                send_json(
-                    tx,
-                    &ServerMessage::Error {
-                        reason: "tracker not configured".to_string(),
-                    },
-                )
-                .await?;
-            }
-        },
+        Ok(ClientMessage::CommentsHydrate { story_number }) => {
+            handle_comments_hydrate(ctx, tx, story_number).await?;
+        }
         Err(e) => {
             send_json(
                 tx,

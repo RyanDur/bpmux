@@ -12,6 +12,7 @@ use crate::session;
 use crate::transport::protocol::ServerMessage;
 
 mod client;
+mod client_handlers;
 mod delivery;
 mod peer_lag;
 mod roster;
