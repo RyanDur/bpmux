@@ -14,6 +14,7 @@
 
 import { expect, test, type Page } from '@playwright/test'
 import { launchIsolatedWithWindow } from '../helpers/launch'
+import { ChatPage } from '../pages/chatPage'
 
 interface NotificationCall {
   title: string
@@ -57,7 +58,7 @@ const awaitLiveWsChannel = async (win: Page, apiBase: string, authToken: string)
       },
       [apiBase, authToken, probe] as const
     )
-    await expect(win.locator('[data-test="message-list"]')).toContainText(probe, {
+    await expect(new ChatPage(win).messageLog()).toContainText(probe, {
       timeout: 1500
     })
   }).toPass({ timeout: 20000 })

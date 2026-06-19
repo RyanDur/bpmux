@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedWithWindow } from '../helpers/launch'
+import { SyncStatusPage } from '../pages/syncStatusPage'
 
 test.describe('#1158 — offline-first board', () => {
   test('F1 visibility — sync-status indicator visible from any view', async () => {
@@ -10,12 +11,10 @@ test.describe('#1158 — offline-first board', () => {
       extraEnv: { BPMUX_TEST_MODE: '1' }
     })
     try {
-      const region = win.locator('output.sync-status-region')
-      await expect(region).toBeVisible()
-      await expect(region).toHaveAttribute('aria-live', 'polite')
-      const indicator = win.locator('[data-test="sync-status-glyph"]')
-      await expect(indicator).toBeVisible()
-      await expect(indicator).toHaveAttribute(
+      const glyph = new SyncStatusPage(win).glyph()
+      await expect(glyph).toBeVisible()
+      await expect(glyph).toHaveAttribute('aria-live', 'polite')
+      await expect(glyph).toHaveAttribute(
         'data-state',
         /^(connected|syncing|offline-queued|drained-permanent-failure|recovering|stale|startup-fail)$/
       )
@@ -113,7 +112,7 @@ test.describe('#1158 — offline-first board', () => {
       extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_TEST_INGEST_FAIL: '1' }
     })
     try {
-      const indicator = win.locator('[data-test="sync-status-glyph"]')
+      const indicator = new SyncStatusPage(win).glyph()
       await expect(indicator).toBeVisible()
       await expect(indicator).toHaveAttribute('data-state', 'startup-fail', { timeout: 30_000 })
       const computed = await indicator.evaluate(
@@ -133,7 +132,7 @@ test.describe('#1158 — offline-first board', () => {
       extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_STALENESS_THRESHOLD_SECS: '0' }
     })
     try {
-      const indicator = win.locator('[data-test="sync-status-glyph"]')
+      const indicator = new SyncStatusPage(win).glyph()
       await expect(indicator).toBeVisible()
       await expect(indicator).toHaveAttribute('data-state', 'stale', { timeout: 30_000 })
       const computed = await indicator.evaluate(

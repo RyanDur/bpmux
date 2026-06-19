@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedWithWindow } from '../helpers/launch'
+import { SyncStatusPage } from '../pages/syncStatusPage'
 
 test.describe('#1159 — corrupted board-store surfaces "recovering" indicator state', () => {
   test('corrupted disk file triggers recovering data-state on launch', async () => {
@@ -22,7 +23,7 @@ test.describe('#1159 — corrupted board-store surfaces "recovering" indicator s
       }
     })
     try {
-      const indicator = win.locator('[data-test="sync-status-glyph"]')
+      const indicator = new SyncStatusPage(win).glyph()
       await expect(indicator).toBeVisible()
       await expect(indicator).toHaveAttribute('data-state', 'recovering', { timeout: 15_000 })
       await expect(indicator).toHaveAttribute(
@@ -39,7 +40,7 @@ test.describe('#1159 — corrupted board-store surfaces "recovering" indicator s
       extraEnv: { BPMUX_TEST_MODE: '1' }
     })
     try {
-      const indicator = win.locator('[data-test="sync-status-glyph"]')
+      const indicator = new SyncStatusPage(win).glyph()
       await expect(indicator).toBeVisible()
       await expect(indicator).not.toHaveAttribute('data-state', 'recovering')
     } finally {
