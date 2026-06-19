@@ -9,6 +9,8 @@ mod lesson;
 mod parity_audit;
 mod principle;
 mod read;
+#[cfg(test)]
+mod read_tests;
 mod write;
 pub(crate) use actions::{
     BookmarkAction, BriefingAction, CiAction, EpicAction, IterationAction, LessonAction,
