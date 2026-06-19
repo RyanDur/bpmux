@@ -5,7 +5,6 @@ use tokio_util::sync::CancellationToken;
 use crate::board::{BoardStore, RefreshDriver};
 use crate::session;
 use crate::transport;
-use crate::transport::auth::AuthState;
 
 pub type TestRefreshHandle = Option<Arc<dyn RefreshDriver>>;
 
@@ -46,15 +45,7 @@ pub async fn run_server(
     port: u16,
     ct: CancellationToken,
 ) -> anyhow::Result<()> {
-    let token_path = session::auth_token::default_auth_token_path()
-        .ok_or_else(|| anyhow::anyhow!("cannot locate ~/.bpmux auth token path"))?;
-    let token = session::auth_token::ensure(&token_path).map_err(|e| {
-        anyhow::anyhow!(
-            "Unable to write auth token to {}: {e}",
-            token_path.display()
-        )
-    })?;
-    let auth_state = AuthState::new(token);
+    let auth_state = build_auth_state()?;
 
     let tracker: transport::rest::TrackerHandle =
         crate::board::adapters::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
@@ -132,118 +123,30 @@ pub async fn run_server(
     }
     let orchestrator = std::sync::Arc::new(orchestrator_inner);
     orchestrator.spawn_action_drainer(action_rx);
-    orchestrator.add_ci_listener(std::sync::Arc::new(
-        crate::orchestrator::CiStateStoreWriter::new(ci_state_store.clone()),
-    ));
-    orchestrator.add_ci_listener(std::sync::Arc::new(
-        crate::orchestrator::CiSessionBroadcaster::new(session.clone()),
-    ));
-    orchestrator.add_reactions_listener(std::sync::Arc::new(
-        crate::orchestrator::ReactionsSessionBroadcaster::new(session.clone()),
-    ));
-    orchestrator.add_roster_listener(std::sync::Arc::new(
-        crate::orchestrator::RosterSessionBroadcaster::new(session.clone()),
-    ));
-    let live_terminal_ids = pty_registry.reap_dead_and_list_live();
-    let reaped_ghosts = session.reconcile_roster(&live_terminal_ids);
-    for identity in &reaped_ghosts {
-        let routing_id = startup_routing_id(&routing_store, identity);
-        crate::transport::ws::dispatch_roster_leave(&orchestrator, &routing_id).await;
-    }
-    for identity in session.roster_snapshot() {
-        let routing_id = startup_routing_id(&routing_store, &identity);
-        crate::transport::ws::dispatch_roster_join(&orchestrator, &routing_id, &identity).await;
-    }
+    wire_orchestrator_listeners(&orchestrator, &session, &ci_state_store);
+    wire_startup_roster(&orchestrator, &session, &pty_registry, &routing_store).await;
     if let Some(refresh) = test_refresh.as_ref().cloned() {
-        let owner_park =
-            crate::orchestrator::OwnerParkBroadcaster::new(orchestrator.clone(), refresh.store());
-        let mut events = refresh.store().subscribe();
-        let owner_park_ct = ct.clone();
-        tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    _ = owner_park_ct.cancelled() => return,
-                    received = events.recv() => match received {
-                        Ok(event) => owner_park.on_board_event(&event).await,
-                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
-                            owner_park.recompute_from_snapshot().await;
-                        }
-                        Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
-                    }
-                }
-            }
-        });
+        spawn_owner_park_loop(refresh, orchestrator.clone(), ct.clone());
     }
-    orchestrator
-        .dispatch(crate::orchestrator::OrchestratorAction::StartCiPolling)
-        .await;
-    if test_refresh.is_some() {
-        orchestrator
-            .dispatch(crate::orchestrator::OrchestratorAction::StartIngestPolling)
-            .await;
-        orchestrator
-            .dispatch(crate::orchestrator::OrchestratorAction::StartHydrationPolling)
-            .await;
-    }
+    start_polling(&orchestrator, test_refresh.is_some()).await;
 
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
 
-    let gated_routes = gated_routes(auth_state, unfurl_cache);
-    let test_seed_routes = test_seed_routes();
-    let test_routes = test_routes(test_refresh.is_some());
-
-    let router = axum::Router::new()
-        .route("/healthz", axum::routing::get(|| async { "ok" }))
-        .route("/ws", axum::routing::any(transport::ws::ws_handler))
-        .route(
-            "/api/messages",
-            axum::routing::get(transport::rest::get_messages).post(transport::rest::post_message),
-        )
-        .route("/api/board", axum::routing::get(transport::rest::get_board))
-        .route(
-            "/api/wait-for-event",
-            axum::routing::get(transport::rest::wait_for_event),
-        )
-        .route(
-            "/api/search",
-            axum::routing::get(transport::rest::search_messages),
-        )
-        .route(
-            "/api/lessons",
-            axum::routing::get(transport::rest::get_lessons).post(transport::rest::post_lesson),
-        )
-        .route(
-            "/api/peer-lessons",
-            axum::routing::get(transport::rest::get_peer_lessons),
-        )
-        .route(
-            "/api/classifier-misfire",
-            axum::routing::post(transport::rest::post_classifier_misfire),
-        )
-        .route(
-            "/api/register",
-            axum::routing::post(transport::rest::post_register),
-        )
-        .merge(gated_routes)
-        .merge(test_routes)
-        .merge(test_seed_routes)
-        .with_state(session)
-        .layer(axum::Extension(tracker))
-        .layer(axum::Extension(ci_state_store))
-        .layer(axum::Extension(ci_log_store))
-        .layer(axum::Extension(electron_capture_lock))
-        .layer(axum::Extension(test_refresh))
-        .layer(axum::Extension(orchestrator.clone()))
-        .layer(axum::Extension(pty_registry.clone()))
-        .layer(axum::Extension(routing_store.clone()))
-        .layer(axum::Extension(port))
-        .layer(
-            tower_http::cors::CorsLayer::new()
-                .allow_origin(tower_http::cors::Any)
-                .allow_methods(tower_http::cors::Any)
-                .allow_headers(tower_http::cors::Any),
-        );
+    let router = build_router(RouterDeps {
+        auth_state,
+        unfurl_cache,
+        session,
+        tracker,
+        ci_state_store,
+        ci_log_store,
+        electron_capture_lock,
+        test_refresh,
+        orchestrator,
+        pty_registry,
+        routing_store,
+        port,
+    });
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
     let shutdown_ct = ct.clone();
     let serve = axum::serve(listener, router)
@@ -264,5 +167,7 @@ pub async fn run_server(
 
 mod routes;
 mod setup;
+mod wiring;
 use routes::{gated_routes, test_routes, test_seed_routes};
 use setup::*;
+use wiring::*;
