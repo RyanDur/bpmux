@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { MetricsPage } from './pages/metricsPage'
 
 test.describe('human-side E2E #476 — read-class — metrics overlay content', () => {
   test('opening metrics overlay renders the Velocity + DORA header + metric tiles', async () => {
@@ -12,16 +13,17 @@ test.describe('human-side E2E #476 — read-class — metrics overlay content', 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+      const metrics = new MetricsPage(win)
+      await expect(win.getByRole('main')).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
       await win.keyboard.press('Control+Shift+M')
 
-      const overlay = win.locator('[data-test="metrics-overlay"]')
+      const overlay = metrics.overlay()
       await expect(overlay).toBeVisible()
-      await expect(overlay.locator('h2')).toHaveText('Velocity + DORA')
+      await expect(metrics.heading()).toHaveText('Velocity + DORA')
 
       for (const label of [
         'Delivered / day',
@@ -33,12 +35,13 @@ test.describe('human-side E2E #476 — read-class — metrics overlay content', 
         await expect(overlay).toContainText(label, { timeout: 10000 })
       }
 
-      const closeButton = overlay.locator('button.metrics-close')
-      await closeButton.click()
+      await metrics.closeButton().click()
       // #497: Metrics is now a native <dialog> (always mounted; open
       // state toggled via show()/close()). Closed-state assertion shifts
       // from element-unmount to el.open === false.
-      await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(false)
+      await expect.poll(() => metrics.dialog().evaluate((el: HTMLDialogElement) => el.open)).toBe(
+        false
+      )
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

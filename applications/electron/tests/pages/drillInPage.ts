@@ -27,6 +27,18 @@ export class DrillInPage {
     return this.win.getByRole('button', { name: 'Send', exact: true })
   }
 
+  bugQuestionDialog(): Locator {
+    return this.win.getByRole('dialog', { name: 'Bug-question test' })
+  }
+
+  bugQuestionNo(): Locator {
+    return this.win.getByRole('button', { name: 'No, accept it' })
+  }
+
+  bugQuestionYes(): Locator {
+    return this.win.getByRole('button', { name: 'Yes, reject instead' })
+  }
+
   cancelReject(): Locator {
     return this.win.getByRole('button', { name: 'Cancel', exact: true })
   }

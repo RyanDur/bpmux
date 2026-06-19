@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 test.describe('#1170 — UI accept-button mutates canonical store via REST (no silent-fail)', () => {
   test('accept-button click transitions delivered → accepted in canonical AND renderer', async () => {
@@ -14,7 +16,9 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await expect(board.region()).toBeVisible()
 
       const acceptanceTestPath =
         'applications/electron/tests/human-1170-accept-button-mutates-canonical-via-rest.spec.ts'
@@ -58,22 +62,18 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       expect(passResp.status).toBe(200)
       await seedTeamVerdicts(rpc, 1, ['designer', 'dev'])
 
-      const deliveredCard = win.locator(
-        '#board-group-delivered-content [data-test="board-story-1"]'
-      )
-      await expect(deliveredCard).toContainText('human-1170-accept-button-canonical-mutation', {
+      await expect(board.storyRow(1)).toContainText('human-1170-accept-button-canonical-mutation', {
         timeout: 10_000
       })
-      await deliveredCard.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
-      await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+      await board.openStory(1)
+      await expect(drillIn.panel()).toBeVisible()
 
-      const acceptBtn = win.locator('[data-test="drill-in-accept"]')
+      const acceptBtn = drillIn.acceptButton()
       await expect(acceptBtn).toBeVisible()
       await acceptBtn.click()
 
-      const bugQuestion = win.locator('[data-test="drill-in-bug-question"]')
-      await expect(bugQuestion).toBeVisible()
-      await win.locator('[data-test="drill-in-bug-question-no"]').click()
+      await expect(drillIn.bugQuestionDialog()).toBeVisible()
+      await drillIn.bugQuestionNo().click()
 
       await expect(async () => {
         const boardResp = await win.evaluate(async () => {
@@ -90,18 +90,12 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
         expect(story?.state).toBe('accepted')
       }).toPass({ timeout: 10_000 })
 
-      await win.locator('[data-test="board-tab-done"]').click()
-      await win.locator('[data-test="board-group-accepted"]').click()
-      const acceptedCard = win.locator('#board-group-accepted-content [data-test="board-story-1"]')
-      await expect(acceptedCard).toBeVisible()
+      await board.openTab('Done')
+      await board.openColumn('Accepted')
+      await expect(board.storyRow(1)).toBeVisible()
 
-      const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
-      for (const otherState of ['ready', 'in-progress', 'desk-check', 'delivered']) {
-        const elsewhere = nowPanel.locator(
-          `#board-group-${otherState}-content [data-test="board-story-1"]`
-        )
-        await expect(elsewhere).toHaveCount(0)
-      }
+      await board.openTab('Now')
+      await expect(board.storyNavigate(1)).toHaveCount(0)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

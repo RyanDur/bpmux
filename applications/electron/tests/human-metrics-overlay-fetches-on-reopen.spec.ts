@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { MetricsPage } from './pages/metricsPage'
 
 // #497 slice 2 regression-guard: the native <dialog> migration moved
 // Metrics from conditionally-mounted (each open = fresh component =
@@ -25,20 +26,20 @@ test.describe('human-side E2E #497 — metrics dialog fetches on reopen', () => 
         }
       })
 
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+      const metrics = new MetricsPage(win)
+      await expect(win.getByRole('main')).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
       metricsRequests.length = 0
 
       await win.keyboard.press('Control+Shift+M')
-      const overlay = win.locator('[data-test="metrics-overlay"]')
+      const overlay = metrics.dialog()
       await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(true)
       await expect.poll(() => metricsRequests.length).toBeGreaterThanOrEqual(1)
       const firstFetchCount = metricsRequests.length
 
-      const closeButton = overlay.locator('button.metrics-close')
-      await closeButton.click()
+      await metrics.closeButton().click()
       await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(false)
 
       await win.keyboard.press('Control+Shift+M')
