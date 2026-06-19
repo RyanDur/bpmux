@@ -89,7 +89,10 @@ fn report_serializes_as_json_object() {
     assert_eq!(parsed["conclusion"], "success");
     assert_eq!(parsed["last_run_id"], 1);
     assert_eq!(parsed["branch"], "main");
-    assert!(parsed["url"].as_str().unwrap().ends_with("/actions"));
+    assert_eq!(
+        parsed["url"].as_str().unwrap(),
+        crate::ci::github_actions_url()
+    );
     assert!(!parsed["url"].as_str().unwrap().contains("/runs/"));
 }
 
