@@ -3,6 +3,8 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
+import { SidebarPage } from './pages/sidebarPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -89,16 +91,15 @@ test.describe('desk-check #346 sidebar derivation', () => {
   test('sidebar GROUPS section lists derived groups with stable labels', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+    const sidebar = new SidebarPage(win)
+    await expect(sidebar.nav()).toBeVisible()
     await win.waitForTimeout(800)
 
-    const sidebar = win.locator('[data-test="sidebar"]')
-    await sidebar.screenshot({
+    await sidebar.nav().screenshot({
       path: join(EVIDENCE_DIR, '20-sidebar-populated.png')
     })
 
-    // Enumerate everything in the sidebar for a full log.
-    const items = await sidebar.locator('button, p').allTextContents()
+    const items = await sidebar.nav().locator('button, p').allTextContents()
     console.log('#346 AC sidebar content:')
     items.forEach((t, i) =>
       console.log(`  item[${i}] "${t.trim().replace(/\s+/g, ' ').slice(0, 80)}"`)
@@ -109,10 +110,11 @@ test.describe('desk-check #346 sidebar derivation', () => {
   test('clicking a group scopes the chat', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
+    const sidebar = new SidebarPage(win)
+    const chat = new ChatPage(win)
     await win.waitForTimeout(800)
 
-    // Find a group button — label should include "+" since it's a multi-role group.
-    const groups = win.locator('[data-test^="sidebar-group-"]')
+    const groups = sidebar.groupChannels()
     const groupCount = await groups.count()
     console.log(`#346 groups found: ${groupCount}`)
 
@@ -122,16 +124,13 @@ test.describe('desk-check #346 sidebar derivation', () => {
       await groups.first().click()
       await win.waitForTimeout(300)
 
-      // Inspect the chat for a scope indicator.
-      const scope = win.locator('[data-test="chat-scope"], .chat-scope').first()
+      const scope = win.locator('.chat-scope').first()
       if ((await scope.count()) > 0) {
         const scopeText = (await scope.textContent())?.trim()
         console.log(`  chat scope after click: "${scopeText}"`)
       } else {
-        console.log(`  no [data-test="chat-scope"] found — checking input placeholder`)
-        const placeholder = await win
-          .locator('[data-test="chat-input-textarea"]')
-          .getAttribute('placeholder')
+        console.log(`  no chat-scope indicator found — checking input placeholder`)
+        const placeholder = await chat.input().getAttribute('placeholder')
         console.log(`  input placeholder: "${placeholder}"`)
       }
 
@@ -147,9 +146,11 @@ test.describe('desk-check #346 sidebar derivation', () => {
   test('SYSTEM section shows count, clicking narrows filter', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
+    const sidebar = new SidebarPage(win)
+    const chat = new ChatPage(win)
     await win.waitForTimeout(800)
 
-    const systemBtn = win.locator('[data-test="sidebar-system"]')
+    const systemBtn = sidebar.nav().getByRole('button', { name: /system/i })
     const systemCount = await systemBtn.count()
     console.log(`#346 system sidebar button present: ${systemCount > 0}`)
 
@@ -160,16 +161,11 @@ test.describe('desk-check #346 sidebar derivation', () => {
       await systemBtn.click()
       await win.waitForTimeout(500)
 
-      // Check that filter pills now reflect system-only.
-      const systemPressed = await win
-        .locator('[data-test="filter-pill-system"]')
-        .getAttribute('aria-pressed')
-      const chatPressed = await win
-        .locator('[data-test="filter-pill-chat"]')
-        .getAttribute('aria-pressed')
+      const systemPressed = await chat.filterPill('system').getAttribute('aria-pressed')
+      const chatPressed = await chat.filterPill('chat').getAttribute('aria-pressed')
       console.log(`  filter after system click: chat=${chatPressed} system=${systemPressed}`)
 
-      await win.locator('[data-test="chat-region"]').screenshot({
+      await chat.region().screenshot({
         path: join(EVIDENCE_DIR, '22-system-click-narrows-filter.png')
       })
     }
