@@ -5,6 +5,9 @@ import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // #337 rework regression: the observation-falsifier from the pickup-
 // gate paraphrase: "I would reject if, after opening any drill-in
@@ -92,26 +95,23 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
   test('comments section is reachable via scroll within drill-in', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
 
     // Open drill-in.
-    const card = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-337"]'
-    )
-    await card.first().click()
-    const drillIn = win.locator('[data-test="board-drill-in"]')
-    await expect(drillIn).toBeVisible()
+    await board.storyNavigate(337).click()
+    await expect(drillIn.panel()).toBeVisible()
 
     // Comments list exists in DOM (before #337 fix, this was true
     // but unreachable). Assert existence first.
-    const commentsList = win.locator('[data-test="drill-in-comments-list"]')
+    const commentsList = drillIn.commentList()
     await expect(commentsList).toBeAttached({ timeout: 5_000 })
 
     // Observation-falsifier: "I would reject if comments unreachable
     // by natural scroll." Scroll the drill-in container to the
     // bottom, then check comments are visible in the viewport.
-    const scrollPanel = win.locator('[data-test="board-roadmap-panel-board"]')
-    await scrollPanel.evaluate((el: HTMLElement) => {
+    await board.boardScrollPanel().evaluate((el: HTMLElement) => {
       el.scrollTop = el.scrollHeight
     })
 
@@ -119,14 +119,12 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
     await expect(commentsList).toBeInViewport({ timeout: 3_000 })
     // The specific comment text confirms we can read content.
     await expect(
-      win.locator('[data-test="drill-in-comment"]', {
-        hasText: 'reachable via natural scroll'
-      })
+      drillIn.commentItems().filter({ hasText: 'reachable via natural scroll' })
     ).toBeInViewport({ timeout: 3_000 })
 
     // Post-form textarea also reachable (falsifier explicitly names
     // "comments list + post-form").
-    await expect(win.locator('[data-test="drill-in-comment-input"]')).toBeInViewport({
+    await expect(drillIn.commentInput()).toBeInViewport({
       timeout: 3_000
     })
 
@@ -141,19 +139,16 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
   test('back-crumb header stays sticky during scroll', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-337"] .board-story-navigate'
-      )
-      .click()
-    const drillIn = win.locator('[data-test="board-drill-in"]')
+    const drillIn = new DrillInPage(win)
+    await new BoardPage(win).storyNavigate(337).click()
+    const panel = drillIn.panel()
 
-    const backButton = win.locator('.drill-in-back')
+    const backButton = drillIn.backButton()
     await expect(backButton).toBeInViewport()
 
-    await expect(drillIn).toHaveAttribute('data-visible', /.*/)
+    await expect(panel).toHaveAttribute('data-visible', /.*/)
 
-    await drillIn.evaluate((el: HTMLElement) => {
+    await panel.evaluate((el: HTMLElement) => {
       el.scrollTop = el.scrollHeight
     })
 

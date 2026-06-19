@@ -13,6 +13,10 @@ export class BoardPage {
     return this.win.getByRole('slider', { name: 'Board panel width' })
   }
 
+  boardScrollPanel(): Locator {
+    return this.win.getByRole('article', { name: 'Board' })
+  }
+
   tab(name: BoardTab): Locator {
     return this.win.getByRole('radio', { name })
   }
