@@ -28,6 +28,14 @@ export class BoardPage {
     return this.win.getByRole('button', { name: new RegExp(`Open story #${storyNumber}\\b`) })
   }
 
+  storyRow(storyNumber: number): Locator {
+    return this.storyNavigate(storyNumber).locator('xpath=ancestor::li[1]')
+  }
+
+  nowContent(): Locator {
+    return this.win.getByRole('article', { name: 'Now' })
+  }
+
   async openStory(storyNumber: number): Promise<void> {
     await this.storyNavigate(storyNumber).click({ position: { x: 4, y: 4 } })
   }
