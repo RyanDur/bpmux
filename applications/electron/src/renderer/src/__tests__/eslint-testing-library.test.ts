@@ -16,7 +16,7 @@ const EXPECTED_RULE_IDS = [
 ] as const
 
 const lintFixture = async (): Promise<ESLint.LintResult[]> => {
-  const eslint = new ESLint({ cwd: ELECTRON_APP_ROOT })
+  const eslint = new ESLint({ cwd: ELECTRON_APP_ROOT, ignore: false })
   return eslint.lintFiles([FIXTURE_PATH])
 }
 

@@ -42,7 +42,8 @@ export default defineConfig(
       '**/test-results/**',
       '**/playwright-report/**',
       '**/coverage/**',
-      '**/*.tsbuildinfo'
+      '**/*.tsbuildinfo',
+      '**/__tests__/**/fixtures/**'
     ]
   },
   tseslint.configs.recommended,
