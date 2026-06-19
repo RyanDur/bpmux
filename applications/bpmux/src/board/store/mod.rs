@@ -8,6 +8,7 @@ use super::domain::{Story, StoryState};
 use super::events::BoardEvent;
 
 mod apply;
+mod apply_events;
 mod label_sync;
 mod persist_error;
 mod persistence;
