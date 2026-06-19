@@ -63,6 +63,18 @@ export class BoardPage {
     return this.storyRow(storyNumber).locator('.story-badge')
   }
 
+  reorderAnnounce(): Locator {
+    return this.win.getByRole('status', { name: 'Reorder announcements' })
+  }
+
+  async storyOrder(columnLabel: string): Promise<number[]> {
+    return this.group(columnLabel)
+      .getByRole('button', { name: /^Open story #/ })
+      .evaluateAll((els) =>
+        els.map((el) => Number((el.getAttribute('aria-label') ?? '').match(/#(\d+)/)?.[1]))
+      )
+  }
+
   columnCount(label: string): Locator {
     return this.group(label).locator('.board-group-count')
   }

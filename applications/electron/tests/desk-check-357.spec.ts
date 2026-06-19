@@ -4,6 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
 
 // #357 rework: keyboard-accessible drag-reorder. Ryan observed at
 // 2026-04-22 23:13 UTC that Ctrl+Shift+Up/Down on a focused Ready
@@ -82,16 +84,15 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
   test('Ctrl+Shift+Down on focused row moves story + announces position', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-group-ready"]').first()).toBeVisible()
+    const board = new BoardPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
+    await expect(board.group('Ready')).toBeVisible()
 
-    const firstRow = win.locator(
-      '#board-group-ready-content [data-test="board-story-811"] .board-story-navigate'
-    )
+    const firstRow = board.storyNavigate(811)
     await firstRow.focus()
 
     // Pre-reorder: live region empty.
-    const announce = win.locator('[data-test="board-reorder-announce"]')
+    const announce = board.reorderAnnounce()
     await expect(announce).toBeAttached()
 
     await firstRow.press('Control+Shift+ArrowDown')
@@ -102,10 +103,9 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     await expect(announce).toContainText(/Moved to position \d+ of 3/, { timeout: 3_000 })
 
     // Row order changes (811 moves past 812 in DOM).
-    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
     await expect(async () => {
-      const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
-      expect(order[0]).not.toBe('board-story-811')
+      const order = await board.storyOrder('Ready')
+      expect(order[0]).not.toBe(811)
     }).toPass({ timeout: 3_000 })
 
     await app.close()
@@ -118,22 +118,19 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // announcement.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const firstRow = win.locator(
-      '#board-group-ready-content [data-test="board-story-811"] .board-story-navigate'
-    )
+    const board = new BoardPage(win)
+    const firstRow = board.storyNavigate(811)
     await firstRow.focus()
 
     await firstRow.press('Control+Shift+ArrowUp')
 
     // Order unchanged.
-    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
-    const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
-    expect(order).toEqual(['board-story-811', 'board-story-812', 'board-story-813'])
+    const order = await board.storyOrder('Ready')
+    expect(order).toEqual([811, 812, 813])
 
     // Announcement text must NOT have fired (stays empty). If the
     // handler short-circuited at i===0, no setReorderAnnounce call.
-    const announce = win.locator('[data-test="board-reorder-announce"]')
-    await expect(announce).toHaveText('')
+    await expect(board.reorderAnnounce()).toHaveText('')
 
     await app.close()
   })
@@ -142,19 +139,16 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // Mirror of the first-row case at the other boundary.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const lastRow = win.locator(
-      '#board-group-ready-content [data-test="board-story-813"] .board-story-navigate'
-    )
+    const board = new BoardPage(win)
+    const lastRow = board.storyNavigate(813)
     await lastRow.focus()
 
     await lastRow.press('Control+Shift+ArrowDown')
 
-    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
-    const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
-    expect(order).toEqual(['board-story-811', 'board-story-812', 'board-story-813'])
+    const order = await board.storyOrder('Ready')
+    expect(order).toEqual([811, 812, 813])
 
-    const announce = win.locator('[data-test="board-reorder-announce"]')
-    await expect(announce).toHaveText('')
+    await expect(board.reorderAnnounce()).toHaveText('')
 
     await app.close()
   })
@@ -165,9 +159,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // Keyboard-only users hear the affordance at focus time.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const button = win.locator(
-      '#board-group-ready-content [data-test="board-story-811"] .board-story-navigate'
-    )
+    const button = new BoardPage(win).storyNavigate(811)
     const ariaLabel = await button.getAttribute('aria-label')
     expect(ariaLabel).toMatch(/position 1 of 3/i)
     expect(ariaLabel).toMatch(/Ctrl\+Shift/i)

@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -76,20 +77,15 @@ test.describe('desk-check #349 richer filter', () => {
   test('default state: 3 pills present, chat on, events + bpmux muted', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
 
-    const pillContainer = win.locator('[data-test="filter-pills"]')
+    const pillContainer = chat.filterRegion()
     await expect(pillContainer).toBeVisible()
 
-    await expect(win.locator('[data-test="filter-pill-chat"]')).toHaveAttribute('data-state', 'on')
-    await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
-      'data-state',
-      'off'
-    )
-    await expect(win.locator('[data-test="filter-pill-bpmux"]')).toHaveAttribute(
-      'data-state',
-      'off'
-    )
+    await expect(chat.filterPill('chat')).toBeChecked()
+    await expect(chat.filterPill('events')).not.toBeChecked()
+    await expect(chat.filterPill('bpmux')).not.toBeChecked()
 
     await pillContainer.screenshot({
       path: join(EVIDENCE_DIR, '10-filter-default-chat-only.png')
@@ -101,14 +97,14 @@ test.describe('desk-check #349 richer filter', () => {
   test('toggle bpmux ON: pill becomes active', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
 
-    const bpmuxPill = win.locator('[data-test="filter-pill-bpmux"]')
-    await expect(bpmuxPill).toHaveAttribute('data-state', 'off')
-    await bpmuxPill.click()
-    await expect(bpmuxPill).toHaveAttribute('data-state', 'on')
+    await expect(chat.filterPill('bpmux')).not.toBeChecked()
+    await chat.toggleFilter('bpmux')
+    await expect(chat.filterPill('bpmux')).toBeChecked()
 
-    await win.locator('[data-test="chat-region"]').screenshot({
+    await chat.region().screenshot({
       path: join(EVIDENCE_DIR, '11-filter-bpmux-on.png')
     })
 
@@ -119,23 +115,21 @@ test.describe('desk-check #349 richer filter', () => {
     const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-349-persist-'))
     const first = await launchWithFixture(udd)
     const win1 = await first.app.firstWindow()
-    await expect(win1.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat1 = new ChatPage(win1)
+    await expect(chat1.region()).toBeVisible()
 
-    const bpmuxPill1 = win1.locator('[data-test="filter-pill-bpmux"]')
-    await bpmuxPill1.click()
-    await expect(bpmuxPill1).toHaveAttribute('data-state', 'on')
+    await chat1.toggleFilter('bpmux')
+    await expect(chat1.filterPill('bpmux')).toBeChecked()
     await first.app.close()
 
     const second = await launchWithFixture(udd)
     const win2 = await second.app.firstWindow()
-    await expect(win2.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat2 = new ChatPage(win2)
+    await expect(chat2.region()).toBeVisible()
 
-    await expect(win2.locator('[data-test="filter-pill-bpmux"]')).toHaveAttribute(
-      'data-state',
-      'on'
-    )
+    await expect(chat2.filterPill('bpmux')).toBeChecked()
 
-    await win2.locator('[data-test="filter-pills"]').screenshot({
+    await chat2.filterRegion().screenshot({
       path: join(EVIDENCE_DIR, '12-filter-persisted-after-reopen.png')
     })
 
@@ -145,23 +139,21 @@ test.describe('desk-check #349 richer filter', () => {
   test('keyboard: pills Tab-reachable', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
 
-    await win.locator('[data-test="filter-pill-chat"] input').focus()
+    await chat.filterPill('chat').focus()
     const reached: string[] = []
     for (let i = 0; i < 3; i++) {
-      const cls = await win.evaluate(
-        () =>
-          document.activeElement
-            ?.closest('[data-test^="filter-pill-"]')
-            ?.getAttribute('data-test') ?? ''
+      const label = await win.evaluate(
+        () => document.activeElement?.getAttribute('aria-label') ?? ''
       )
-      reached.push(cls)
+      reached.push(label)
       await win.keyboard.press('Tab')
     }
-    expect(reached).toContain('filter-pill-chat')
-    expect(reached).toContain('filter-pill-events')
-    expect(reached).toContain('filter-pill-bpmux')
+    expect(reached.some((l) => l.startsWith('chat messages'))).toBe(true)
+    expect(reached.some((l) => l.startsWith('events messages'))).toBe(true)
+    expect(reached.some((l) => l.startsWith('bpmux messages'))).toBe(true)
 
     await app.close()
   })
