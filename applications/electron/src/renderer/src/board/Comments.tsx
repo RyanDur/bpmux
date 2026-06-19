@@ -21,17 +21,10 @@ interface Props {
   storyNumber: number
   apiBase: string | undefined
   authToken: string | undefined
-  usingMock: boolean
   onError: (msg: string) => void
 }
 
-const Comments = ({
-  storyNumber,
-  apiBase,
-  authToken,
-  usingMock,
-  onError
-}: Props): React.JSX.Element => {
+const Comments = ({ storyNumber, apiBase, authToken, onError }: Props): React.JSX.Element => {
   const boardInvalidateTick = useBoardInvalidateTick()
   const hydratedComments = useComments(storyNumber)
   const [optimistic, setOptimistic] = useState<CommentWire[]>([])
@@ -41,7 +34,7 @@ const Comments = ({
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const wasAtBottomRef = useRef<boolean>(true)
 
-  const offline = usingMock || apiBase === undefined
+  const offline = apiBase === undefined
   const serverComments: readonly CommentWire[] | null = offline ? [] : hydratedComments
   const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
 
@@ -77,7 +70,7 @@ const Comments = ({
     }
     setOptimistic((prev) => [...prev, optimisticEntry])
     setCommentDraft('')
-    if (usingMock || apiBase === undefined) {
+    if (apiBase === undefined) {
       setCommentBusy(false)
       return
     }
@@ -89,7 +82,7 @@ const Comments = ({
       }
     ).value
     setCommentBusy(false)
-  }, [apiBase, authToken, commentBusy, commentDraft, onError, storyNumber, usingMock])
+  }, [apiBase, authToken, commentBusy, commentDraft, onError, storyNumber])
 
   const insertQuote = useCallback((id: string, author: string, text: string) => {
     const selected = text.trim()

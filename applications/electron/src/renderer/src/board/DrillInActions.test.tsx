@@ -17,7 +17,6 @@ const story = (overrides: Partial<BoardStory>): BoardStory => ({
 const baseProps = {
   apiBase: undefined,
   authToken: undefined,
-  usingMock: false,
   mode: 'idle' as ActionMode,
   setMode: () => {},
   onStoryMutated: () => {},

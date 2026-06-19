@@ -12,7 +12,6 @@ const VALID_VIEWS: ReadonlyArray<BoardRoadmapView> = ['board', 'roadmap'] as con
 
 interface BoardRoadmapSwitcherProps {
   boardLabel: React.ReactNode
-  mock?: React.ReactNode
   board: React.ReactNode
   roadmap: React.ReactNode
   nudge?: CloseApproachNudgeData | null
@@ -21,7 +20,6 @@ interface BoardRoadmapSwitcherProps {
 
 const BoardRoadmapSwitcher = ({
   boardLabel,
-  mock,
   board,
   roadmap,
   nudge,
@@ -73,7 +71,6 @@ const BoardRoadmapSwitcher = ({
               </i>
             )}
           </label>
-          {mock}
         </fieldset>
       </header>
       {nudge != null && currentIterationName != null && (

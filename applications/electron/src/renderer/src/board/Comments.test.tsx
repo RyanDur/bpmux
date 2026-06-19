@@ -16,7 +16,6 @@ const baseProps = {
   storyNumber: 999,
   apiBase: undefined,
   authToken: undefined,
-  usingMock: false,
   onError: () => {}
 }
 
@@ -70,7 +69,6 @@ describe('Comments reads over the live session (real socket + store)', () => {
     storyNumber: 700,
     apiBase: 'http://backend.invalid',
     authToken: 'tok',
-    usingMock: false,
     onError: (): void => {}
   }
 

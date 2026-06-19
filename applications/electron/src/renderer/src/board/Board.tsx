@@ -36,7 +36,7 @@ interface BoardProps {
 
 const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
-  const { data, setData, loading, error, setError, usingMock, refetch } = useBoardFetch({
+  const { data, setData, loading, error, setError, refetch } = useBoardFetch({
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })
@@ -98,7 +98,6 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
     setError,
     setPendingReadyOrder,
     clearPendingReadyOrder,
-    usingMock,
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })
@@ -149,17 +148,6 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
             <SyncStatusGlyph />
           </>
         }
-        mock={
-          usingMock ? (
-            <small
-              className="board-mock-flag"
-              aria-label="showing mock data"
-              data-test="board-mock-flag"
-            >
-              mock
-            </small>
-          ) : undefined
-        }
         board={
           renderedDrill !== null ? (
             <DrillIn
@@ -167,7 +155,6 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
               isOwner={isOwner}
               apiBase={bridge?.apiBase}
               authToken={bridge?.authToken}
-              usingMock={usingMock}
               visible={drilledStory !== null}
               focusTimeline={focusTimelineFor === renderedDrill.number}
               onBack={handleBack}

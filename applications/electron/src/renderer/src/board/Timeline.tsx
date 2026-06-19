@@ -93,15 +93,13 @@ const renderTimelineList = (
 interface Props {
   story: BoardStory
   apiBase: string | undefined
-  usingMock: boolean
   focusTimeline?: boolean
 }
 
-const Timeline = ({ story, apiBase, usingMock, focusTimeline }: Props): React.JSX.Element => {
+const Timeline = ({ story, apiBase, focusTimeline }: Props): React.JSX.Element => {
   const [showAll, setShowAll] = useState<boolean>(false)
   const timeline = useTimeline({
     apiBase,
-    usingMock,
     storyNumber: story.number
   })
   const detailsRef = useRef<HTMLDetailsElement | null>(null)

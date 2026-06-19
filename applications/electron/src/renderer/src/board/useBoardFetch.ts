@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { describeHttpError } from '../api/http'
 import { getBoard } from '../api/boardClient'
 import { useBoardSnapshot } from '../transport/session'
-import { MOCK_BOARD_RESPONSE } from './mockBoard'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import type { BoardResponse } from './types'
 
@@ -19,7 +18,6 @@ export interface UseBoardFetchResult {
   loading: boolean
   error: string | null
   setError: React.Dispatch<React.SetStateAction<string | null>>
-  usingMock: boolean
   refetch: () => void
 }
 
@@ -31,13 +29,10 @@ export const useBoardFetch = ({
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
-  const [usingMock, setUsingMock] = useState<boolean>(false)
 
   const fetchBoard = useCallback(
     (signal?: AbortSignal): void => {
       if (apiBase === undefined) {
-        setData(MOCK_BOARD_RESPONSE)
-        setUsingMock(true)
         setError(null)
         setLoading(false)
         return
@@ -48,7 +43,6 @@ export const useBoardFetch = ({
           .onSuccess((board) => {
             if (signal?.aborted) return
             setData(board)
-            setUsingMock(false)
             setError(null)
             setLoading(false)
           })
@@ -60,9 +54,7 @@ export const useBoardFetch = ({
               return
             }
             const message = describeHttpError(reason)
-            console.warn('bpmux board: fetch failed, falling back to mock', message)
-            setData((prev) => prev ?? MOCK_BOARD_RESPONSE)
-            setUsingMock((prev) => prev || !prev)
+            console.warn('bpmux board: fetch failed', message)
             setError(message)
             setLoading(false)
           })
@@ -92,7 +84,6 @@ export const useBoardFetch = ({
   ) {
     setLastAppliedSnapshot(boardSnapshot)
     setData(boardSnapshot)
-    setUsingMock(false)
     setError(null)
     setLoading(false)
   }
@@ -101,5 +92,5 @@ export const useBoardFetch = ({
     fetchBoard()
   }, [fetchBoard])
 
-  return { data, setData, loading, error, setError, usingMock, refetch }
+  return { data, setData, loading, error, setError, refetch }
 }

@@ -18,7 +18,6 @@ export interface UseBoardReorderOptions {
   setError: (msg: string) => void
   setPendingReadyOrder: (storyNumber: number, position: number) => void
   clearPendingReadyOrder: (storyNumbers: number[]) => void
-  usingMock: boolean
   apiBase: string | undefined
   authToken: string | undefined
 }
@@ -32,7 +31,6 @@ export const useBoardReorder = ({
   setError,
   setPendingReadyOrder,
   clearPendingReadyOrder,
-  usingMock,
   apiBase,
   authToken
 }: UseBoardReorderOptions): HandleReorder => {
@@ -134,7 +132,7 @@ export const useBoardReorder = ({
           setReorderAnnounce(`Moved to position ${newIndex + 1} of ${readyStories.length}`)
         }
 
-        if (usingMock || apiBase === undefined) return
+        if (apiBase === undefined) return
         for (const assignment of assignments) {
           void postStoryLabels(
             { apiBase, authToken },
@@ -183,7 +181,6 @@ export const useBoardReorder = ({
       setError,
       setPendingReadyOrder,
       clearPendingReadyOrder,
-      usingMock,
       apiBase,
       authToken
     ]

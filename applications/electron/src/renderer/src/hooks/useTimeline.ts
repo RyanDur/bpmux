@@ -29,7 +29,6 @@ export interface ClassifiedEvent {
 
 interface UseTimelineArgs {
   apiBase: string | undefined
-  usingMock: boolean
   storyNumber: number | null
 }
 
@@ -87,13 +86,9 @@ const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
   return out
 }
 
-export const useTimeline = ({
-  apiBase,
-  usingMock,
-  storyNumber
-}: UseTimelineArgs): UseTimelineResult => {
+export const useTimeline = ({ apiBase, storyNumber }: UseTimelineArgs): UseTimelineResult => {
   const boardInvalidateTick = useBoardInvalidateTick()
-  const offline = usingMock || apiBase === undefined
+  const offline = apiBase === undefined
   const rawEvents = useTimelineEvents(storyNumber ?? -1)
 
   const events = useMemo<ClassifiedEvent[] | null>(() => {

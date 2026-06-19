@@ -34,7 +34,6 @@ test.describe('real-backend', () => {
     await expect(new BoardPage(win).errorBanner()).toBeHidden({
       timeout: 10_000
     })
-    await expect(win.locator('.board-mock-flag')).toHaveCount(0)
 
     await app.close()
   })

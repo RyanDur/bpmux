@@ -28,7 +28,6 @@ interface Props {
   isOwner: boolean
   apiBase: string | undefined
   authToken: string | undefined
-  usingMock: boolean
   visible: boolean
   focusTimeline?: boolean
   onBack: () => void
@@ -43,7 +42,6 @@ const DrillIn = ({
   isOwner,
   apiBase,
   authToken,
-  usingMock,
   visible,
   focusTimeline,
   onBack,
@@ -152,23 +150,16 @@ const DrillIn = ({
         storyNumber={story.number}
         apiBase={apiBase}
         authToken={authToken}
-        usingMock={usingMock}
         onError={setToast}
       />
 
-      <Timeline
-        story={story}
-        apiBase={apiBase}
-        usingMock={usingMock}
-        focusTimeline={focusTimeline}
-      />
+      <Timeline story={story} apiBase={apiBase} focusTimeline={focusTimeline} />
 
       <DrillInActions
         story={story}
         canAct={canAct}
         apiBase={apiBase}
         authToken={authToken}
-        usingMock={usingMock}
         mode={mode}
         setMode={setMode}
         onStoryMutated={onStoryMutated}

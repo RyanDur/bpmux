@@ -12,7 +12,6 @@ interface Props {
   canAct: boolean
   apiBase: string | undefined
   authToken: string | undefined
-  usingMock: boolean
   mode: ActionMode
   setMode: (m: ActionMode) => void
   onStoryMutated: (story: BoardStory) => void
@@ -25,7 +24,6 @@ const DrillInActions = ({
   canAct,
   apiBase,
   authToken,
-  usingMock,
   mode,
   setMode,
   onStoryMutated,
@@ -61,7 +59,7 @@ const DrillInActions = ({
         setBusy(null)
         onError(`Accept failed: ${reason}`)
       }
-      if (usingMock || apiBase === undefined) {
+      if (apiBase === undefined) {
         onStoryMutated({ ...story, state: 'accepted' })
         setBusy(null)
         onBack()
@@ -83,7 +81,7 @@ const DrillInActions = ({
       setBusy(null)
       onBack()
     },
-    [apiBase, authToken, busy, onBack, onError, onStoryMutated, story, usingMock]
+    [apiBase, authToken, busy, onBack, onError, onStoryMutated, story]
   )
 
   const handleAccept = useCallback((): void => {
@@ -115,7 +113,7 @@ const DrillInActions = ({
       setBusy(null)
       onError(`Reject failed: ${reason}`)
     }
-    if (usingMock || apiBase === undefined) {
+    if (apiBase === undefined) {
       onStoryMutated({ ...story, state: 'ready' })
       setBusy(null)
       setMode('idle')
@@ -138,7 +136,7 @@ const DrillInActions = ({
     setMode('idle')
     setNote('')
     onBack()
-  }, [apiBase, authToken, busy, note, onBack, onError, onStoryMutated, setMode, story, usingMock])
+  }, [apiBase, authToken, busy, note, onBack, onError, onStoryMutated, setMode, story])
 
   const handleTextareaKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {

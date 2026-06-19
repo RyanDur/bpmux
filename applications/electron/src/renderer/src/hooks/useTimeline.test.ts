@@ -13,7 +13,6 @@ import { mirrorDeltaReceived } from '../transport/session/actions'
 
 const props = {
   apiBase: 'http://backend.invalid',
-  usingMock: false,
   storyNumber: 700
 }
 
@@ -94,10 +93,8 @@ describe('useTimeline — offline (mock) mode', () => {
     resetSessionForTest()
   })
 
-  test('renders empty (not loading) when usingMock', () => {
-    const { result } = renderHook(() =>
-      useTimeline({ apiBase: undefined, usingMock: true, storyNumber: 700 })
-    )
+  test('renders empty (not loading) when offline (apiBase undefined)', () => {
+    const { result } = renderHook(() => useTimeline({ apiBase: undefined, storyNumber: 700 }))
     expect(result.current.events).toEqual([])
     expect(result.current.loading).toBe(false)
   })

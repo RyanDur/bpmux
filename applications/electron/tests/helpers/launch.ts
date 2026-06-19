@@ -428,7 +428,6 @@ export const launchWithMockGh = async (opts: LaunchOpts = {}): Promise<MockGhLau
 export const waitForBoardLoaded = async (win: Page): Promise<void> => {
   await expect(win.locator('[data-test="board-region"]')).toBeVisible()
   await expect(win.locator('[data-test="board-list"]')).toBeVisible()
-  await expect(win.locator('[data-test="board-mock-flag"]')).toHaveCount(0)
 }
 
 // `anchorText` gates downstream derived-state assertions on WS
