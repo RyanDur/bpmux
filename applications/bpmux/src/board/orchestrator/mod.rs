@@ -15,6 +15,7 @@ mod coalesce;
 mod conflict;
 mod drain;
 mod driver;
+mod driver_ops;
 mod fetch;
 mod ingest;
 mod outbox;
