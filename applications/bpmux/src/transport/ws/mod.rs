@@ -9,18 +9,23 @@ use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 
 use crate::session;
-use crate::session::MessageType;
-use crate::transport::protocol::{ClientMessage, ServerMessage};
+use crate::transport::protocol::ServerMessage;
 
 mod client;
+mod delivery;
 mod peer_lag;
 mod roster;
+mod session_io;
+mod snapshot;
 
 pub(crate) use client::*;
+pub(crate) use delivery::*;
 pub use peer_lag::*;
 pub(crate) use roster::*;
+pub(crate) use session_io::send_json;
+use session_io::wait_for_identify;
+use snapshot::{build_state_snapshot_message, system_announcement};
 
-const MAX_MESSAGE_SIZE: usize = 65536;
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
 pub async fn ws_handler(
@@ -232,114 +237,4 @@ fn roster_key_for(routing_session_id: &Option<String>, identity: &str) -> Option
             .clone()
             .unwrap_or_else(|| identity.to_string()),
     )
-}
-
-async fn wait_for_identify(
-    tx: &mut SplitSink<WebSocket, WsMessage>,
-    rx: &mut SplitStream<WebSocket>,
-) -> Result<(String, Option<String>), Box<dyn std::error::Error + Send + Sync>> {
-    let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        while let Some(Ok(msg)) = rx.next().await {
-            if let WsMessage::Text(text) = msg {
-                match serde_json::from_str::<ClientMessage>(&text) {
-                    Ok(ClientMessage::Identify { name, tool, cursor }) => {
-                        let tool_name = tool.unwrap_or_else(|| "ws".to_string());
-                        return Ok((format!("{name}:{tool_name}"), cursor));
-                    }
-                    Ok(_) => {
-                        send_json(
-                            tx,
-                            &ServerMessage::Error {
-                                reason: "must identify first".to_string(),
-                            },
-                        )
-                        .await?;
-                    }
-                    Err(e) => {
-                        send_json(
-                            tx,
-                            &ServerMessage::Error {
-                                reason: format!("invalid message: {e}"),
-                            },
-                        )
-                        .await?;
-                    }
-                }
-            }
-        }
-        Err("connection closed before identify".into())
-    })
-    .await;
-    match timeout {
-        Ok(result) => result,
-        Err(_) => Err("identify timeout (5s)".into()),
-    }
-}
-
-fn system_announcement(text: &str) -> session::Message {
-    session::Message {
-        from: "bpmux".to_string(),
-        text: text.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: MessageType::System,
-        ..session::Message::default()
-    }
-}
-
-fn build_state_snapshot_message(
-    orchestrator: &crate::orchestrator::Orchestrator<
-        crate::board::adapters::github::GitHubSourceAdapter,
-    >,
-) -> session::Message {
-    let snapshot = orchestrator.build_snapshot();
-    session::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: MessageType::StateSnapshot,
-        state_snapshot: Some(snapshot),
-        ..session::Message::default()
-    }
-}
-
-pub(crate) fn short_name(identity: &str) -> &str {
-    identity.split(':').next().unwrap_or(identity)
-}
-
-pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> bool {
-    if matches!(
-        role_from_short_name(short_name(peer_identity)),
-        crate::orchestrator::stores::RosterRole::Owner
-    ) {
-        return msg.message_type != MessageType::Nudge;
-    }
-    let recipients = match &msg.to {
-        None => return true,
-        Some(r) => r,
-    };
-    if recipients
-        .iter()
-        .any(|r| r == crate::session::message::BROADCAST_ALL)
-    {
-        return true;
-    }
-    let peer_short = short_name(peer_identity);
-    let sender_short = short_name(&msg.from);
-    if peer_short == sender_short {
-        return true;
-    }
-    recipients.iter().any(|r| short_name(r) == peer_short)
-}
-
-pub(crate) fn message_size_ok(text: &str) -> bool {
-    text.len() <= MAX_MESSAGE_SIZE
-}
-
-async fn send_json(
-    tx: &mut SplitSink<WebSocket, WsMessage>,
-    msg: &ServerMessage,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let json = serde_json::to_string(msg)?;
-    tx.send(WsMessage::Text(json.into())).await?;
-    Ok(())
 }
