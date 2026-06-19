@@ -37,7 +37,7 @@ impl UnfurlCache {
         Self::default()
     }
 
-    fn get(&self, url: &str, ttl: Duration) -> Option<UnfurlData> {
+    pub(super) fn get(&self, url: &str, ttl: Duration) -> Option<UnfurlData> {
         let guard = self.entries.lock().ok()?;
         let (data, at) = guard.get(url)?;
         if at.elapsed() > ttl {
@@ -46,7 +46,7 @@ impl UnfurlCache {
         Some(data.clone())
     }
 
-    fn put(&self, url: String, data: UnfurlData) {
+    pub(super) fn put(&self, url: String, data: UnfurlData) {
         let Ok(mut guard) = self.entries.lock() else {
             return;
         };
@@ -77,7 +77,7 @@ static FAVICON_RE: Lazy<Regex> = Lazy::new(|| {
         .expect("favicon regex compiles")
 });
 
-fn extract_from_html(url: &str, html: &str) -> UnfurlData {
+pub(super) fn extract_from_html(url: &str, html: &str) -> UnfurlData {
     let mut data = UnfurlData {
         url: url.to_string(),
         ..Default::default()
@@ -190,76 +190,4 @@ pub async fn get_unfurl(
         json_headers(),
         serde_json::to_string(&data).unwrap_or_else(|_| "{}".to_string()),
     )
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn extracts_og_tags() {
-        let html = r#"
-            <html><head>
-                <meta property="og:title" content="My Page">
-                <meta property="og:description" content="Some description">
-                <meta property="og:image" content="https://example.com/img.png">
-            </head></html>
-        "#;
-        let data = extract_from_html("https://example.com", html);
-        assert_eq!(data.title.as_deref(), Some("My Page"));
-        assert_eq!(data.description.as_deref(), Some("Some description"));
-        assert_eq!(data.image.as_deref(), Some("https://example.com/img.png"));
-    }
-
-    #[test]
-    fn falls_back_to_title_tag_when_og_missing() {
-        let html = "<html><head><title>Fallback Title</title></head></html>";
-        let data = extract_from_html("https://example.com", html);
-        assert_eq!(data.title.as_deref(), Some("Fallback Title"));
-    }
-
-    #[test]
-    fn resolves_relative_favicon() {
-        let html = r#"<html><head><link rel="icon" href="/favicon.ico"></head></html>"#;
-        let data = extract_from_html("https://example.com/path", html);
-        assert_eq!(
-            data.favicon.as_deref(),
-            Some("https://example.com/favicon.ico")
-        );
-    }
-
-    #[test]
-    fn twitter_card_fills_gaps_when_og_missing() {
-        let html = r#"
-            <meta name="twitter:title" content="TW Title">
-            <meta name="twitter:description" content="TW Description">
-        "#;
-        let data = extract_from_html("https://example.com", html);
-        assert_eq!(data.title.as_deref(), Some("TW Title"));
-        assert_eq!(data.description.as_deref(), Some("TW Description"));
-    }
-
-    #[test]
-    fn cache_returns_none_when_ttl_expired() {
-        let cache = UnfurlCache::new();
-        cache.put(
-            "https://example.com".to_string(),
-            UnfurlData {
-                url: "https://example.com".to_string(),
-                title: Some("cached".to_string()),
-                ..Default::default()
-            },
-        );
-        assert!(
-            cache
-                .get("https://example.com", Duration::from_secs(100))
-                .is_some()
-        );
-        assert!(
-            cache
-                .get("https://example.com", Duration::from_nanos(1))
-                .is_none()
-        );
-    }
 }
