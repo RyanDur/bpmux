@@ -53,6 +53,8 @@ mod save_briefing;
 mod save_lesson;
 mod search_log;
 mod send_message;
+#[cfg(test)]
+mod send_message_tests;
 mod set_name;
 mod set_status;
 mod share_message;
