@@ -1,4 +1,5 @@
-mod ci;
+mod ci_failures;
+mod ci_jobs;
 mod conditional;
 mod fetch;
 mod json_shape;
