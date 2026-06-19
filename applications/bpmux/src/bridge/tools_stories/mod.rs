@@ -7,6 +7,8 @@ mod reorder;
 mod signals;
 mod transition;
 mod view;
+#[cfg(test)]
+mod view_tests;
 
 pub(crate) use acceptance::{
     BugGate, accept_via_canonical_store, handle_accept_story, handle_fail_desk_check,
