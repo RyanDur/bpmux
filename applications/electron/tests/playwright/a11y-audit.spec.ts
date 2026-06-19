@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchIsolatedElectron } from '../helpers/launch'
 import { formatViolations, runA11yAudit } from '../helpers/a11yAudit'
+import { ChatPage } from '../pages/chatPage'
 
 interface ContrastFailure {
   category: 'contrast'
@@ -63,15 +64,16 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
       seedRoster: ['pm:claude-code', 'dev:claude-code']
     })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const chat = new ChatPage(win)
+    await expect(win.getByRole('main')).toBeVisible()
+    await expect(chat.region()).toBeVisible()
 
     await win.evaluate(() => {
       window.localStorage.setItem('bpmux-theme', 'dark')
     })
     await win.reload()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(win.getByRole('main')).toBeVisible()
+    await expect(chat.region()).toBeVisible()
     await win.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
     await win.evaluate(() => {
       document.getAnimations().forEach((animation) => {

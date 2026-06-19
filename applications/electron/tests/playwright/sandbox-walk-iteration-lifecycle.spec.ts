@@ -3,6 +3,9 @@ import { mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 import { launchIsolatedWithWindow } from '../helpers/launch'
 import type { Page } from '@playwright/test'
+import { BoardPage } from '../pages/boardPage'
+
+type BoardTab = 'Now' | 'Plan' | 'Done'
 
 const CAPTURE_DIR = join(__dirname, '__captures__')
 
@@ -17,12 +20,10 @@ const capture = async (win: Page, name: string): Promise<string> => {
   return path
 }
 
-const switchToTab = async (win: Page, tabId: string): Promise<void> => {
-  await win.locator(`label[data-test="board-tab-${tabId}"]`).first().click()
-  await win
-    .locator(`[data-test="board-tab-${tabId}"] input[type="radio"]:checked`)
-    .first()
-    .waitFor({ timeout: 5_000 })
+const switchToTab = async (win: Page, label: BoardTab): Promise<void> => {
+  const board = new BoardPage(win)
+  await board.openTab(label)
+  await expect(board.tab(label)).toBeChecked({ timeout: 5_000 })
 }
 
 const postTest = async (
@@ -52,10 +53,7 @@ const parseCreatedStoryNumber = (msg: unknown): number => {
   return Number(match![1])
 }
 
-const unscheduledOrder = async (win: Page): Promise<string[]> =>
-  win
-    .locator('[data-test="board-iteration-unscheduled"] [data-test^="board-story-"]')
-    .evaluateAll((els) => els.map((el) => el.getAttribute('data-test') ?? ''))
+const unscheduledOrder = (win: Page): Promise<number[]> => new BoardPage(win).unscheduledOrder()
 
 test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle drive+capture', () => {
   test.setTimeout(90_000)
@@ -93,8 +91,8 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       expect(createC.ok, JSON.stringify(createC.json)).toBe(true)
       parseCreatedIterationNumber(createC.json.message)
 
-      await switchToTab(win, 'plan')
-      await expect(win.locator(`text=Iteration ${themeA}`).first()).toBeVisible({
+      await switchToTab(win, 'Plan')
+      await expect(win.getByText(`Iteration ${themeA}`).first()).toBeVisible({
         timeout: 15_000
       })
       await capture(win, 'lifecycle-01-created')
@@ -105,8 +103,8 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       })
       expect(designate.ok, JSON.stringify(designate.json)).toBe(true)
 
-      await switchToTab(win, 'now')
-      const headerIteration = win.locator('[data-test="board-header-iteration"]')
+      await switchToTab(win, 'Now')
+      const headerIteration = new BoardPage(win).headerIteration()
       await expect(headerIteration).toBeVisible({ timeout: 15_000 })
       await expect(headerIteration).toContainText(themeA, {
         timeout: 15_000
@@ -131,14 +129,12 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       expect(createY.ok, JSON.stringify(createY.json)).toBe(true)
       const numberY = parseCreatedStoryNumber(createY.json.message)
 
-      await switchToTab(win, 'plan')
-      const rowX = `board-story-${numberX}`
-      const rowY = `board-story-${numberY}`
+      await switchToTab(win, 'Plan')
       await expect
         .poll(() => unscheduledOrder(win), { timeout: 15_000 })
-        .toEqual(expect.arrayContaining([rowX, rowY]))
+        .toEqual(expect.arrayContaining([numberX, numberY]))
       const orderBefore = await unscheduledOrder(win)
-      expect(orderBefore.indexOf(rowX)).toBeLessThan(orderBefore.indexOf(rowY))
+      expect(orderBefore.indexOf(numberX)).toBeLessThan(orderBefore.indexOf(numberY))
 
       const reorder = await postTest(backendPort, token, 'move_story', {
         number: numberY,
@@ -149,12 +145,12 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       })
       expect(reorder.ok, JSON.stringify(reorder.json)).toBe(true)
 
-      await switchToTab(win, 'plan')
+      await switchToTab(win, 'Plan')
       await expect
         .poll(
           async () => {
             const order = await unscheduledOrder(win)
-            return order.indexOf(rowY) < order.indexOf(rowX)
+            return order.indexOf(numberY) < order.indexOf(numberX)
           },
           { timeout: 15_000 }
         )
@@ -168,7 +164,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         agent: 'pm:test'
       })
       expect(rename.ok, JSON.stringify(rename.json)).toBe(true)
-      await switchToTab(win, 'now')
+      await switchToTab(win, 'Now')
       await expect(headerIteration).toBeVisible({ timeout: 30_000 })
       await expect(headerIteration).toContainText(`${themeA}-RENAMED`, {
         timeout: 15_000
@@ -181,7 +177,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         agent: 'pm:test'
       })
       expect(close.ok, JSON.stringify(close.json)).toBe(true)
-      await switchToTab(win, 'now')
+      await switchToTab(win, 'Now')
       await expect(headerIteration).toBeHidden({ timeout: 15_000 })
       await capture(win, 'lifecycle-05-closed')
 

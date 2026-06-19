@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 import { launchIsolatedWithWindow } from '../helpers/launch'
+import { BoardPage } from '../pages/boardPage'
 
 test.describe('#1564 — live-walk harness slice 1/2: boot + seed + drive create-iteration + capture', () => {
   test('the minimal complete walk-loop on an isolated in-memory sandbox', async () => {
@@ -25,12 +26,10 @@ test.describe('#1564 — live-walk harness slice 1/2: boot + seed + drive create
         /iteration created: #\d+ Iteration /
       )
 
-      await win.locator('label[data-test="board-tab-plan"]').first().click()
-      await win
-        .locator('[data-test="board-tab-plan"] input[type="radio"]:checked')
-        .first()
-        .waitFor({ timeout: 5_000 })
-      await expect(win.locator(`text=Iteration ${themeName}`).first()).toBeVisible({
+      const board = new BoardPage(win)
+      await board.openTab('Plan')
+      await expect(board.tab('Plan')).toBeChecked({ timeout: 5_000 })
+      await expect(win.getByText(`Iteration ${themeName}`).first()).toBeVisible({
         timeout: 15_000
       })
 
