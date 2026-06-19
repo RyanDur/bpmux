@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -48,9 +49,9 @@ test.describe('desk-check #352 micro-interactions', () => {
   test('filter pill transitions at instant duration (80ms)', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="filter-pill-chat"]')).toBeVisible()
+    await expect(new ChatPage(win).filterRegion()).toBeVisible()
     const pill = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="filter-pill-chat"]')
+      const el = document.querySelector('.filter-pill')
       if (!el) return null
       const cs = window.getComputedStyle(el)
       return { property: cs.transitionProperty, duration: cs.transitionDuration }
@@ -68,7 +69,7 @@ test.describe('desk-check #352 micro-interactions', () => {
   test('button global base has hover transition', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
 
     const anyButton = await win.evaluate(() => {
       // Find any <button> that isn't a filter-pill (those have their
@@ -101,10 +102,10 @@ test.describe('desk-check #352 micro-interactions', () => {
   test('message-row has grid-template-rows transition at fast duration', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="message-row"]').first()).toBeVisible()
+    await expect(new ChatPage(win).messageScroller().getByRole('listitem').first()).toBeVisible()
 
     const row = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="message-row"]')
+      const el = document.querySelector('.message-row')
       if (!el) return null
       const cs = window.getComputedStyle(el)
       return {
@@ -123,18 +124,17 @@ test.describe('desk-check #352 micro-interactions', () => {
   test('reduced-motion zeros filter-pill + message-row durations; message-row transform drops', async () => {
     const { app } = await launchWithMessages('reduce')
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="filter-pill-chat"]')).toBeVisible()
+    await expect(new ChatPage(win).filterRegion()).toBeVisible()
 
     const pillDur = await win.evaluate(
       () =>
-        window.getComputedStyle(document.querySelector('[data-test="filter-pill-chat"]')!)
-          .transitionDuration
+        window.getComputedStyle(document.querySelector('.filter-pill')!).transitionDuration
     )
     console.log(`#352 AC6 filter-pill duration under reduced-motion: ${pillDur}`)
     expect(pillDur).toMatch(/^0s|^0ms/)
 
     const rowProps = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="message-row"]')
+      const el = document.querySelector('.message-row')
       if (!el) return null
       const cs = window.getComputedStyle(el)
       return {
@@ -157,7 +157,7 @@ test.describe('desk-check #352 micro-interactions', () => {
   test('capture static state for visual regression (motion not frame-capturable)', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
     await win.waitForTimeout(500)
     await win.screenshot({
       path: join(EVIDENCE_DIR, '70-micro-interactions-static.png')
