@@ -11,6 +11,7 @@ pub(crate) mod connection;
 pub(crate) mod deliver_story_body_diff_gate;
 pub(crate) mod dispatch;
 pub(crate) mod event_subscription;
+mod mcp_dispatch;
 pub(crate) mod mcp_handler;
 pub(crate) mod move_story;
 mod notification_meta;
