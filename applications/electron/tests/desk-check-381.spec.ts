@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 // #381: inline markdown (bold / italic / inline code) renders with
 // visual distinction in every markdown-rendered context (chat
@@ -73,8 +74,11 @@ test.describe('desk-check #381: inline markdown rendering', () => {
   test('strong / em / inline-code each render with distinct computed styles', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="message-row"]').first()).toBeVisible({ timeout: 5_000 })
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
+    await expect(chat.messageScroller().getByRole('listitem').first()).toBeVisible({
+      timeout: 5_000
+    })
 
     // Locate the specific inline elements within the rendered
     // markdown. MessageBody wraps in `.markdown-body`.

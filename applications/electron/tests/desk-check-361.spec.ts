@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { startMockGhServer, type MockGhServer } from './helpers/mock_gh'
+import { TitlebarPage } from './pages/titlebarPage'
 
 const runsBody = (conclusion: string): Record<string, unknown> => ({
   total_count: 1,
@@ -57,7 +58,7 @@ test.describe('desk-check #361 CI glyph colour + glyph tracks the real backend c
       const { app, mockGh } = await launchWithCiConclusion(conclusion)
       try {
         const win = await app.firstWindow()
-        const glyph = win.locator('[data-test="ci-glyph"]')
+        const glyph = new TitlebarPage(win).ciGlyph()
         await expect(glyph).toBeVisible()
         await expect(glyph).toHaveAttribute('data-conclusion', conclusion, { timeout: 15_000 })
         await expect(glyph).toHaveClass(new RegExp(`ci-glyph--${conclusion}\\b`))
@@ -73,7 +74,7 @@ test.describe('desk-check #361 CI glyph colour + glyph tracks the real backend c
     const { app, mockGh } = await launchWithCiConclusion('success')
     try {
       const win = await app.firstWindow()
-      const glyph = win.locator('[data-test="ci-glyph"]')
+      const glyph = new TitlebarPage(win).ciGlyph()
       await expect(glyph).toHaveAttribute('data-conclusion', 'success', { timeout: 15_000 })
       const color = await glyph.evaluate((el) => getComputedStyle(el).color)
       expect(color).not.toBe('rgb(128, 128, 128)')

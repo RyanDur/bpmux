@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 // #382: notifications fire only when Electron is unfocused AND the
 // message is relevant (DM / @mention / story-accept). The root-cause
@@ -52,7 +53,7 @@ test.describe('desk-check #382: notifications honor focus + message class', () =
   test('focus state is queryable via live API (regression gate for focusedRef bug)', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
     await win.bringToFront()
 
     // The #382 rework replaced the event-tracked `focusedRef` with
@@ -80,7 +81,7 @@ test.describe('desk-check #382: notifications honor focus + message class', () =
   test('Notification API present in renderer (permission path not broken)', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
 
     // The renderer requests permission on mount; verify the global
     // Notification API is present (Electron exposes it by default;

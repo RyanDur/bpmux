@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
 
 // #378: Ctrl+Y yank retired. Kill-ops (Ctrl+W / Ctrl+K / Ctrl+U +
 // Alt+D word-kill) still delete text AND write the killed text to
@@ -51,9 +52,9 @@ test.describe('desk-check #378 Ctrl+Y retired; kills route to OS clipboard', () 
     // textarea must remain empty (aside from any remainder).
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
 
-    const input = win.locator('[data-test="chat-input-textarea"]').first()
+    const input = new ChatPage(win).input()
     await input.focus()
     await input.fill('abc-to-kill')
 
@@ -75,9 +76,9 @@ test.describe('desk-check #378 Ctrl+Y retired; kills route to OS clipboard', () 
     // clipboard and verify it holds the killed content.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
 
-    const input = win.locator('[data-test="chat-input-textarea"]').first()
+    const input = new ChatPage(win).input()
     await input.focus()
     await input.fill('ship-me')
 
@@ -114,9 +115,9 @@ test.describe('desk-check #378 Ctrl+Y retired; kills route to OS clipboard', () 
     // verifies the round-trip shape — kill + paste restores.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
 
-    const input = win.locator('[data-test="chat-input-textarea"]').first()
+    const input = new ChatPage(win).input()
     await input.focus()
     await input.fill('hello-kill-me')
 

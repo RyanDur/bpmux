@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { startMockGhServer, type MockGhServer } from './helpers/mock_gh'
+import { TitlebarPage } from './pages/titlebarPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -51,7 +52,7 @@ test.describe('desk-check #372 CI state arrives over the WS push path (no /api/c
     const { app, mockGh } = await launchPushFed()
     try {
       const win = await app.firstWindow()
-      const glyph = win.locator('[data-test="ci-glyph"]')
+      const glyph = new TitlebarPage(win).ciGlyph()
       await expect(glyph).toBeVisible()
       await expect(glyph).toHaveAttribute('aria-label', 'CI success', { timeout: 15_000 })
       await expect(glyph).toHaveClass(/ci-glyph--success/)
