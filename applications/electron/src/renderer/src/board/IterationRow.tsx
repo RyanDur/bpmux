@@ -58,6 +58,7 @@ const IterationRow = ({
         <details
           className="board-iteration-card"
           data-test={boardIterationTestId(iteration.number)}
+          aria-label={`Iteration #${iteration.number} ${iteration.title}`}
           data-iteration-kind="named"
           data-iteration-name={themeName}
           data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}

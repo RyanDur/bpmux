@@ -188,6 +188,22 @@ export class BoardPage {
     )
   }
 
+  iterationCard(iterationNumber: number): Locator {
+    return this.win.getByRole('group', { name: new RegExp(`Iteration #${iterationNumber}\\b`) })
+  }
+
+  iterationSummary(iterationNumber: number): Locator {
+    return this.iterationCard(iterationNumber).locator(':scope > summary')
+  }
+
+  activePlannedSection(): Locator {
+    return this.win.getByRole('group', { name: 'Active + Planned iterations' })
+  }
+
+  activePlannedSummary(): Locator {
+    return this.activePlannedSection().locator(':scope > summary')
+  }
+
   closedIterationsSection(): Locator {
     return this.win.getByRole('group', { name: 'Closed iterations' })
   }

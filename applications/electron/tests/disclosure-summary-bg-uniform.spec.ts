@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 const MOCK_BOARD = {
   fetched_at: '2026-06-04T00:00:00Z',
@@ -105,9 +106,10 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
         })
       })
 
+      const board = new BoardPage(win)
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
       await expect
         .poll(() => win.evaluate(() => document.documentElement.dataset.theme))
         .toBe('dark')
@@ -127,14 +129,11 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
         }
       })
 
-      await win.locator('[data-test="board-tab-plan"]').click()
-      await expect(win.locator('[data-test="board-tabpanel-plan-content"]')).toBeVisible()
+      await board.openTab('Plan')
+      await expect(board.planContent()).toBeVisible()
 
-      const iceboxGroup = win.locator('[data-test="board-group-icebox"]')
-      if ((await iceboxGroup.getAttribute('aria-expanded')) !== 'true') {
-        await iceboxGroup.click()
-      }
-      await expect(win.locator('[data-test="board-iterations"]')).toBeVisible()
+      await board.openColumn('Icebox')
+      await expect(board.activePlannedSection()).toBeVisible()
 
       type LocLike = ReturnType<typeof win.locator>
       const restRead = async (loc: LocLike): Promise<string> => {
@@ -158,7 +157,7 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
 
       table['board-group-summary'] = {}
       {
-        const grp = win.locator('[data-test="board-group-icebox"]')
+        const grp = board.columnToggle('Icebox')
         if ((await grp.getAttribute('aria-expanded')) !== 'true') await toggleVia(grp)
         await expect(grp).toHaveAttribute('aria-expanded', 'true')
         table['board-group-summary'].open = await restRead(grp)
@@ -172,7 +171,7 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
 
       table['board-epic-summary'] = {}
       {
-        const card = win.locator('[data-test="board-epic-901"]')
+        const card = board.epicCard(901)
         const sum = card.locator('.board-epic-summary')
         await expect(sum).toBeVisible()
         if (await isOpen(card)) await toggleVia(sum)
@@ -186,9 +185,9 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
       table['board-iteration-summary'] = {}
       table['board-iteration-summary-current'] = {}
       {
-        const card = win.locator('[data-test="board-iteration-910"]')
+        const card = board.iterationCard(910)
         await expect(card).toBeVisible()
-        const sum = card.locator('summary.board-iteration-summary')
+        const sum = board.iterationSummary(910)
         await expect(card).toHaveAttribute('data-current-iteration', 'true')
         if (!(await isOpen(card))) await toggleVia(sum)
         table['board-iteration-summary-current'].open = await restRead(sum)
@@ -204,8 +203,8 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
 
       table['board-iterations-section-summary'] = {}
       {
-        const sec = win.locator('[data-test="board-iterations-section-active-planned"]')
-        const sum = win.locator('[data-test="board-iterations-section-active-planned-summary"]')
+        const sec = board.activePlannedSection()
+        const sum = board.activePlannedSummary()
         await expect(sum).toBeVisible()
         if (!(await isOpen(sec))) await toggleVia(sum)
         table['board-iterations-section-summary'].open = await restRead(sum)
