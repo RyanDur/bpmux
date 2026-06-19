@@ -4,6 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -75,72 +77,53 @@ const launchWithFixture = async (): Promise<{
   return { app }
 }
 
-const openGroup = async (
-  win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>,
-  state: 'delivered' | 'accepted'
-): Promise<void> => {
-  // Post-#516: data-test on summary, not details. See desk-check-375
-  // for full diagnosis. Click summary directly to fire <details>
-  // toggle.
-  await win.locator(`[data-test="board-tab-${state === 'accepted' ? 'done' : 'now'}"]`).click()
-  const summary = win.locator(`[data-test="board-group-${state}"]`).first()
-  const isOpen = await summary.evaluate((el: Element) => {
-    const details = el.closest('details')
-    return details ? (details as HTMLDetailsElement).open : false
-  })
-  if (!isOpen) {
-    await summary.click()
-  }
+const GROUP = {
+  delivered: { tab: 'Now', label: 'Acceptance' },
+  accepted: { tab: 'Done', label: 'Accepted' }
+} as const
+
+const openGroup = async (board: BoardPage, state: 'delivered' | 'accepted'): Promise<void> => {
+  const { tab, label } = GROUP[state]
+  await board.openTab(tab)
+  await board.openColumn(label)
 }
 
 test.describe('desk-check #376 color-differentiate awaiting vs accepted', () => {
   test('data-state attribute lands on each badge', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await openGroup(win, 'delivered')
-    await openGroup(win, 'accepted')
+    const board = new BoardPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
 
-    await expect(
-      win.locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-950"] [data-test="story-badge"]'
-      )
-    ).toHaveAttribute('data-state', 'delivered')
+    await openGroup(board, 'delivered')
+    await expect(board.storyStateBadge(950)).toHaveAttribute('data-state', 'delivered')
+    await expect(board.storyStateBadge(952)).toHaveAttribute('data-state', 'delivered')
 
-    await expect(
-      win.locator(
-        '[data-test="board-tabpanel-done-content"] [data-test="board-story-951"] [data-test="story-badge"]'
-      )
-    ).toHaveAttribute('data-state', 'accepted')
-
-    await expect(
-      win.locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-952"] [data-test="story-badge"]'
-      )
-    ).toHaveAttribute('data-state', 'delivered')
+    await openGroup(board, 'accepted')
+    await expect(board.storyStateBadge(951)).toHaveAttribute('data-state', 'accepted')
     await app.close()
   })
 
   test('delivered and accepted badges render in different colors', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await openGroup(win, 'delivered')
-    await openGroup(win, 'accepted')
+    const board = new BoardPage(win)
 
     // Both badges share the same kind ("accepted" = owner-lane
     // outlined); the color axis must differ between states. We
     // read computed styles so "same color" regressions (Ryan's
     // img_10 observation) fail the test — a simpler attribute
     // assertion wouldn't catch a CSS rule deleted.
-    const readBorderColor = async (n: number, panel: 'now' | 'done'): Promise<string> =>
-      win
-        .locator(
-          `[data-test="board-tabpanel-${panel}-content"] [data-test="board-story-${n}"] [data-test="story-badge"]`
-        )
-        .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
+    await openGroup(board, 'delivered')
+    const deliveredColor = await board
+      .storyStateBadge(950)
+      .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
 
-    const deliveredColor = await readBorderColor(950, 'now')
-    const acceptedColor = await readBorderColor(951, 'done')
+    await openGroup(board, 'accepted')
+    const acceptedColor = await board
+      .storyStateBadge(951)
+      .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
+
     console.log(`#376 delivered badge border: ${deliveredColor}`)
     console.log(`#376 accepted badge border: ${acceptedColor}`)
     expect(deliveredColor).not.toBe(acceptedColor)

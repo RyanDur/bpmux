@@ -48,6 +48,17 @@ export class BoardPage {
     return this.group(label).locator(':scope > summary')
   }
 
+  async openColumn(label: string): Promise<void> {
+    const summary = this.columnToggle(label)
+    if ((await summary.getAttribute('aria-expanded')) !== 'true') {
+      await summary.click()
+    }
+  }
+
+  storyStateBadge(storyNumber: number): Locator {
+    return this.storyRow(storyNumber).locator('.story-badge')
+  }
+
   columnCount(label: string): Locator {
     return this.group(label).locator('.board-group-count')
   }
