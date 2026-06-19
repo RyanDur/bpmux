@@ -20,6 +20,8 @@ mod dev_in_flight;
 mod edit_story_tests;
 mod get_bookmark;
 mod get_briefing;
+#[cfg(test)]
+mod get_briefing_tests;
 mod get_ci_log_for_run;
 mod get_ci_state;
 #[cfg(test)]
@@ -55,8 +57,12 @@ mod set_name;
 mod set_status;
 mod share_message;
 #[cfg(test)]
+mod share_message_tests;
+#[cfg(test)]
 mod start_story_validation_tests;
 mod submit_verdict;
+#[cfg(test)]
+mod submit_verdict_tests;
 mod update_principle;
 mod user_fn;
 mod view_backlog;
