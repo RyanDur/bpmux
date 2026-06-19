@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
 
 // #1127 sub-slice 3: story-badge rendering on a story that reached
 // DELIVERED column (post-pass_desk_check; the awaiting-owner badge
@@ -18,7 +19,8 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -63,17 +65,17 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       expect(passResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      const storyRow = win.locator(
-        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
+      await expect(board.storyInColumn('Acceptance', 1)).toHaveAttribute(
+        'aria-label',
+        /badge-render-target/
       )
-      await expect(storyRow).toContainText('badge-render-target')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const badge = storyRow.locator('[data-test="story-badge"]')
+      const badge = board.storyBadge('Acceptance', 'awaiting owner')
       await expect(badge).toBeVisible()
       await expect(badge).toHaveAttribute('data-badge-kind', 'accepted')
       await expect(badge).toHaveAttribute('data-state', 'delivered')

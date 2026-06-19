@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // #1127 sub-slice 3 + #499 substrate: StoryBadge with a click handler
 // renders as <button>; pre-#499 StoryRow's outer element was also
@@ -70,24 +72,23 @@ test.describe('human-side E2E #499 — StoryBadge no nested-button', () => {
       await win.reload()
       await waitForBoardLoaded(win)
 
-      const row = win.locator(
-        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
+      const board = new BoardPage(win)
+      await expect(board.storyInColumn('Acceptance', 1)).toHaveAttribute(
+        'aria-label',
+        /storybadge-nesting-target/
       )
-      await expect(row).toContainText('storybadge-nesting-target')
 
-      const badge = row.locator('[data-test="story-badge"]').first()
-      await expect(badge).toBeVisible()
+      await expect(board.storyBadge('Acceptance', 'awaiting owner')).toBeVisible()
 
-      await row.click()
-      const drillIn = win.locator('[data-test="board-drill-in"]')
-      await expect(drillIn).toBeVisible()
+      await board.openStory(1)
+      const drill = new DrillInPage(win)
+      await expect(drill.panel()).toBeVisible()
       await win.keyboard.press('Escape')
-      await expect(drillIn).not.toBeVisible({ timeout: 5000 })
+      await expect(drill.panel()).not.toBeVisible({ timeout: 5000 })
 
-      const button = row.locator('.board-story-navigate')
-      await button.focus()
+      await board.storyNavigate(1).focus()
       await win.keyboard.press('Enter')
-      await expect(drillIn).toBeVisible()
+      await expect(drill.panel()).toBeVisible()
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

@@ -55,4 +55,8 @@ export class BoardPage {
   storyAnywhere(storyNumber: number): Locator {
     return this.win.locator(`[aria-label^="Open story #${storyNumber} "]`)
   }
+
+  storyBadge(column: string, label: string): Locator {
+    return this.group(column).getByLabel(new RegExp(`^${label}:`))
+  }
 }
