@@ -1,35 +1,26 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
   test('column renders between IN PROGRESS and DELIVERED', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-1')
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-
-      const expectedColumnOrder = [
-        'board-group-ready',
-        'board-group-in-progress',
-        'board-group-desk-check',
-        'board-group-delivered'
-      ]
+      await expect(board.region()).toBeVisible()
 
       await expect
-        .poll(async () =>
-          win.evaluate(() => {
-            const now = document.querySelector('[data-test="board-tabpanel-now-content"]')
-            const summaries =
-              now?.querySelectorAll<HTMLElement>(
-                '[data-test^="board-group-"]:not([data-test$="-count"])'
-              ) ?? []
-            return Array.from(summaries).map((el) => el.getAttribute('data-test') ?? '')
-          })
+        .poll(() =>
+          board
+            .nowContent()
+            .getByRole('group')
+            .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))
         )
-        .toEqual(expectedColumnOrder)
+        .toEqual(['Ready', 'In Progress', 'Desk Check', 'Acceptance'])
     } finally {
       await app.close()
       await mockGh.close()
@@ -39,17 +30,15 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
   test('DESK-CHECK column renders empty-state with (0) count when no stories present', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-2')
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      const deskCheckSummary = win.locator('[data-test="board-group-desk-check"]')
-      await expect(deskCheckSummary).toBeVisible()
-
-      const count = win.locator('[data-test="board-group-desk-check-count"]')
-      await expect(count).toHaveText('(0)')
-      await expect(count).toHaveAttribute('data-empty', 'true')
+      await expect(board.group('Desk Check')).toBeVisible()
+      await expect(board.columnCount('Desk Check')).toHaveText('(0)')
+      await expect(board.columnCount('Desk Check')).toHaveAttribute('data-empty', 'true')
     } finally {
       await app.close()
       await mockGh.close()
@@ -59,13 +48,14 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
   test('DESK-CHECK column header has matching styling to other columns', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-3')
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      const deskCheck = win.locator('[data-test="board-group-desk-check"]')
-      const inProgress = win.locator('[data-test="board-group-in-progress"]')
+      const deskCheck = board.columnToggle('Desk Check')
+      const inProgress = board.columnToggle('In Progress')
 
       const deskCheckPosition = await deskCheck.evaluate((el) => getComputedStyle(el).position)
       const inProgressPosition = await inProgress.evaluate((el) => getComputedStyle(el).position)
@@ -90,11 +80,12 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-4')
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-      await expect(win.locator('[data-test="board-group-desk-check"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
+      await expect(board.group('Desk Check')).toBeVisible()
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

@@ -48,6 +48,10 @@ export class BoardPage {
     return this.group(label).locator(':scope > summary')
   }
 
+  columnCount(label: string): Locator {
+    return this.group(label).locator('.board-group-count')
+  }
+
   storyInColumn(label: string, storyNumber: number): Locator {
     return this.group(label).locator(`[aria-label^="Open story #${storyNumber} "]`)
   }
