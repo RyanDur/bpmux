@@ -41,6 +41,8 @@ mod auth_token_tests;
 #[cfg(test)]
 mod awareness_tests;
 #[cfg(test)]
+mod bayes_tests;
+#[cfg(test)]
 mod classifier_tests;
 #[cfg(test)]
 mod diag_tests;
@@ -54,6 +56,8 @@ mod message_tests;
 mod precommit_tests;
 #[cfg(test)]
 mod recall_tests;
+#[cfg(test)]
+mod speech_guard_tests;
 #[cfg(test)]
 mod tokens_tests;
 #[cfg(test)]
