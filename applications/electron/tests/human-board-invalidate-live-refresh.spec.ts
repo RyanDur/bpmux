@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('human-side E2E #476 — live-update class — BOARD_INVALIDATE refresh', () => {
   test('story created via rpc appears WITHOUT manual reload (live WS-driven refetch)', async () => {
@@ -17,7 +18,8 @@ test.describe('human-side E2E #476 — live-update class — BOARD_INVALIDATE re
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const initial = win.locator('[data-test="board-story-1"]')
+      const board = new BoardPage(win)
+      const initial = board.storyAnywhere(1)
       await expect(initial).toHaveCount(0)
 
       const createResp = await rpc(
@@ -35,10 +37,11 @@ test.describe('human-side E2E #476 — live-update class — BOARD_INVALIDATE re
       )
       expect(createResp.status).toBe(200)
 
-      const storyAfterInvalidate = win.locator('[data-test="board-story-1"]').first()
-      await expect(storyAfterInvalidate).toContainText('live-board-invalidate-marker', {
-        timeout: 10000
-      })
+      await expect(board.storyAnywhere(1).first()).toHaveAttribute(
+        'aria-label',
+        /live-board-invalidate-marker/,
+        { timeout: 10000 }
+      )
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

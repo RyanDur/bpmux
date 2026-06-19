@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
+import { BoardPage } from './pages/boardPage'
 
 // #1127 sub-slice 2: replicate human-observes-* migration onto the
 // accept_story sibling. Setup walks create→start→deliver to get a
@@ -22,7 +23,8 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -76,19 +78,14 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       expect(acceptResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-done"]').click()
-      await win.locator('[data-test="board-group-accepted"]').click()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Done')
 
-      const storyAccepted = win.locator('#board-group-accepted-content [data-test="board-story-1"]')
-      await expect(storyAccepted).toContainText('human-observes-accepted')
-
-      for (const otherState of ['ready', 'in-progress', 'desk-check', 'delivered', 'icebox']) {
-        const storyElsewhere = win.locator(
-          `#board-group-${otherState}-content [data-test="board-story-1"]`
-        )
-        await expect(storyElsewhere).toHaveCount(0)
-      }
+      await expect(board.storyInColumn('Accepted', 1)).toHaveCount(1)
+      await expect(board.storyInColumn('Accepted', 1)).toHaveAttribute(
+        'aria-label',
+        /human-observes-accepted/
+      )
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

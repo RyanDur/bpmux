@@ -29,6 +29,14 @@ export class BoardPage {
   }
 
   group(label: string): Locator {
-    return this.win.getByRole('button', { name: new RegExp(label, 'i') })
+    return this.win.getByRole('group', { name: label, exact: true })
+  }
+
+  storyInColumn(label: string, storyNumber: number): Locator {
+    return this.group(label).locator(`[aria-label^="Open story #${storyNumber} "]`)
+  }
+
+  storyAnywhere(storyNumber: number): Locator {
+    return this.win.locator(`[aria-label^="Open story #${storyNumber} "]`)
   }
 }

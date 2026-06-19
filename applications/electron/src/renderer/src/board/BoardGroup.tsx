@@ -38,6 +38,7 @@ const BoardGroup = ({
   return (
     <details
       className="board-group"
+      aria-label={group.label}
       open={!collapsed}
       onToggle={(e) => {
         const nextOpen = (e.currentTarget as HTMLDetailsElement).open

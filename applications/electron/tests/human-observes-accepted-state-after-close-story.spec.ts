@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('human-side E2E #476/#1377 — observation-class — close_story', () => {
   test('human observes RETIRED after close_story with retire-class reason', async () => {
@@ -12,7 +13,8 @@ test.describe('human-side E2E #476/#1377 — observation-class — close_story',
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -56,26 +58,14 @@ test.describe('human-side E2E #476/#1377 — observation-class — close_story',
       expect(closeResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      await win.locator('[data-test="board-tab-done"]').click()
-      await win.locator('[data-test="board-group-retired"]').click()
-      const storyRetired = win.locator('#board-group-retired-content [data-test="board-story-1"]')
-      await expect(storyRetired).toContainText('human-observes-closed')
-
-      for (const otherState of [
-        'ready',
-        'in-progress',
-        'desk-check',
-        'delivered',
-        'icebox',
-        'accepted'
-      ]) {
-        const storyElsewhere = win.locator(
-          `#board-group-${otherState}-content [data-test="board-story-1"]`
-        )
-        await expect(storyElsewhere).toHaveCount(0)
-      }
+      await board.openTab('Done')
+      await expect(board.storyInColumn('Retired', 1)).toHaveCount(1)
+      await expect(board.storyInColumn('Retired', 1)).toHaveAttribute(
+        'aria-label',
+        /human-observes-closed/
+      )
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

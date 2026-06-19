@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 // #1127 sub-slice 1: pattern-establish migration off BPMUX_TEST_MODE +
@@ -23,7 +24,8 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -63,13 +65,13 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       expect(startResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
-      const storyInProgress = nowPanel.locator(
-        '#board-group-in-progress-content [data-test="board-story-1"]'
+      await expect(board.storyInColumn('In Progress', 1)).toHaveCount(1)
+      await expect(board.storyInColumn('In Progress', 1)).toHaveAttribute(
+        'aria-label',
+        /human-observes-delivered/
       )
-      await expect(storyInProgress).toContainText('human-observes-delivered')
 
       const deliverResp = await rpc('deliver_story', {
         number: 1,
@@ -79,7 +81,7 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       expect(deliverResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
       // Per designer's #1127 ruling: single-gate-per-spec preserves
       // the family shape (`human-observes-X-state-after-Y-story`).
@@ -89,17 +91,11 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       // destination of deliver_story per Ryan 2026-04-27/28 + state
       // machine in domain.rs:23) is mechanism-fidelity, not user-job
       // shape-change.
-      const storyDeskCheck = nowPanel.locator(
-        '#board-group-desk-check-content [data-test="board-story-1"]'
+      await expect(board.storyInColumn('Desk Check', 1)).toHaveCount(1)
+      await expect(board.storyInColumn('Desk Check', 1)).toHaveAttribute(
+        'aria-label',
+        /human-observes-delivered/
       )
-      await expect(storyDeskCheck).toContainText('human-observes-delivered')
-
-      for (const otherState of ['ready', 'in-progress', 'delivered']) {
-        const storyElsewhere = nowPanel.locator(
-          `#board-group-${otherState}-content [data-test="board-story-1"]`
-        )
-        await expect(storyElsewhere).toHaveCount(0)
-      }
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

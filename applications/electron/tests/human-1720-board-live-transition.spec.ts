@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('#1720 — board reflects a real state-transition LIVE (no reload)', () => {
   test('a peer-driven transition moves the rendered card to its new column without any manual reload', async () => {
@@ -41,10 +42,11 @@ test.describe('#1720 — board reflects a real state-transition LIVE (no reload)
       })
       expect(startResp.status).toBe(200)
 
-      const inProgressCard = win.locator(
-        '#board-group-in-progress-content [data-test="board-story-1"]'
-      )
-      await expect(inProgressCard).toContainText('live-transition-marker', { timeout: 10000 })
+      const board = new BoardPage(win)
+      const inProgressCard = board.storyInColumn('In Progress', 1)
+      await expect(inProgressCard).toHaveAttribute('aria-label', /live-transition-marker/, {
+        timeout: 10000
+      })
 
       const deliverResp = await rpc('deliver_story', {
         number: 1,
@@ -53,10 +55,10 @@ test.describe('#1720 — board reflects a real state-transition LIVE (no reload)
       })
       expect(deliverResp.status).toBe(200)
 
-      const deskCheckCard = win.locator(
-        '#board-group-desk-check-content [data-test="board-story-1"]'
-      )
-      await expect(deskCheckCard).toContainText('live-transition-marker', { timeout: 10000 })
+      const deskCheckCard = board.storyInColumn('Desk Check', 1)
+      await expect(deskCheckCard).toHaveAttribute('aria-label', /live-transition-marker/, {
+        timeout: 10000
+      })
       await expect(inProgressCard).toHaveCount(0)
 
       await seedTeamVerdicts(rpc, 1, ['designer'])
@@ -67,10 +69,10 @@ test.describe('#1720 — board reflects a real state-transition LIVE (no reload)
       )
       expect(passResp.status).toBe(200)
 
-      const deliveredCard = win.locator(
-        '#board-group-delivered-content [data-test="board-story-1"]'
-      )
-      await expect(deliveredCard).toContainText('live-transition-marker', { timeout: 10000 })
+      const deliveredCard = board.storyInColumn('Acceptance', 1)
+      await expect(deliveredCard).toHaveAttribute('aria-label', /live-transition-marker/, {
+        timeout: 10000
+      })
       await expect(deskCheckCard).toHaveCount(0)
 
       expect(consoleErrors).toEqual([])

@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
 
 // #1127 sub-slice 3: owner-specific actions visible on a story that
 // reached DELIVERED column. Setup: create→start→deliver→pass_desk_check.
@@ -17,7 +19,8 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -62,25 +65,23 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       expect(passResp.status).toBe(200)
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      const storyRow = win.locator(
-        '[data-test="board-tabpanel-now-content"] #board-group-delivered-content [data-test="board-story-1"]'
+      await expect(board.storyInColumn('Acceptance', 1)).toHaveCount(1)
+      await expect(board.storyInColumn('Acceptance', 1)).toHaveAttribute(
+        'aria-label',
+        /owner-actions-target/
       )
-      await expect(storyRow).toContainText('owner-actions-target')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await storyRow.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
+      await board.openStory(1)
 
-      const drillIn = win.locator('[data-test="board-drill-in"]')
-      await expect(drillIn).toBeVisible()
-
-      const actions = win.locator('[data-test="drill-in-actions"]')
-      await expect(actions).toBeVisible()
-      await expect(win.locator('[data-test="drill-in-accept"]')).toBeVisible()
-      await expect(win.locator('[data-test="drill-in-reject"]')).toBeVisible()
+      const drill = new DrillInPage(win)
+      await expect(drill.panel()).toBeVisible()
+      await expect(drill.acceptButton()).toBeVisible()
+      await expect(drill.rejectButton()).toBeVisible()
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
