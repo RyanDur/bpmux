@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('human-side E2E #476 — persistence-class — board collapse state', () => {
   test('user-toggled icebox collapse survives window reload', async () => {
@@ -13,24 +14,25 @@ test.describe('human-side E2E #476 — persistence-class — board collapse stat
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await board.openTab('Plan')
 
-      const iceboxToggle = win.locator('[data-test="board-group-icebox"]')
+      const iceboxToggle = board.columnToggle('Icebox')
       await expect(iceboxToggle).toHaveAttribute('aria-expanded', 'true')
 
       await iceboxToggle.click()
       await expect(iceboxToggle).toHaveAttribute('aria-expanded', 'false')
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Plan')
 
-      const iceboxAfterReload = win.locator('[data-test="board-group-icebox"]')
+      const iceboxAfterReload = board.columnToggle('Icebox')
       await expect(iceboxAfterReload).toHaveAttribute('aria-expanded', 'false')
 
       expect(consoleErrors).toEqual([])
@@ -51,25 +53,26 @@ test.describe('human-side E2E #476 — persistence-class — board collapse stat
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardCollapseInProgress')
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      const inProgressToggle = win.locator('[data-test="board-group-in-progress"]')
+      const inProgressToggle = board.columnToggle('In Progress')
       await expect(inProgressToggle).toHaveAttribute('aria-expanded', 'true')
 
       await inProgressToggle.click()
       await expect(inProgressToggle).toHaveAttribute('aria-expanded', 'false')
 
       await win.reload()
-      await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await expect(board.region()).toBeVisible()
 
-      const inProgressAfterReload = win.locator('[data-test="board-group-in-progress"]')
+      const inProgressAfterReload = board.columnToggle('In Progress')
       await expect(inProgressAfterReload).toHaveAttribute('aria-expanded', 'false')
 
       expect(consoleErrors).toEqual([])

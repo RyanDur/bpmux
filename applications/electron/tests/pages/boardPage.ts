@@ -32,6 +32,10 @@ export class BoardPage {
     return this.win.getByRole('group', { name: label, exact: true })
   }
 
+  columnToggle(label: string): Locator {
+    return this.group(label).locator(':scope > summary')
+  }
+
   storyInColumn(label: string, storyNumber: number): Locator {
     return this.group(label).locator(`[aria-label^="Open story #${storyNumber} "]`)
   }
