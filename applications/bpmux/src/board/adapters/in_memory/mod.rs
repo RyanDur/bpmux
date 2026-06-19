@@ -5,6 +5,9 @@ use crate::board::domain::{FreeComment, GateComment, Story};
 use crate::board::events::BoardEvent;
 use crate::board::sync::{SourceAdapter, SyncError};
 
+mod mutation;
+mod seed;
+
 #[derive(Default)]
 pub struct InMemorySourceAdapter {
     state: Mutex<InnerState>,
@@ -21,79 +24,6 @@ struct InnerState {
     failures_on_push: bool,
     permanent_push_failures: bool,
     failures_on_ingest: bool,
-}
-
-impl InMemorySourceAdapter {
-    pub fn new() -> Self {
-        let env_fail = std::env::var("BPMUX_TEST_INGEST_FAIL")
-            .map(|v| !v.is_empty() && v != "0")
-            .unwrap_or(false);
-        let mut adapter = Self::default();
-        if env_fail {
-            adapter
-                .state
-                .get_mut()
-                .unwrap_or_else(|e| e.into_inner())
-                .failures_on_ingest = true;
-        }
-        adapter
-    }
-
-    pub fn seed_stories(&self, stories: Vec<Story>) {
-        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        for story in stories {
-            s.stories.insert(story.number, story);
-        }
-    }
-
-    pub fn seed_body(&self, number: u64, body: String) {
-        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        s.bodies.insert(number, body);
-    }
-
-    pub fn seed_labels(&self, number: u64, labels: Vec<String>) {
-        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        s.labels.insert(number, labels);
-    }
-
-    pub fn seed_free_comments(&self, number: u64, comments: Vec<FreeComment>) {
-        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        s.free_comments.insert(number, comments);
-    }
-
-    pub fn seed_gate_comments(&self, number: u64, comments: Vec<GateComment>) {
-        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        s.gate_comments.insert(number, comments);
-    }
-
-    pub fn pushed_events(&self) -> Vec<BoardEvent> {
-        self.state
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .pushed_events
-            .clone()
-    }
-
-    pub fn set_push_failures(&self, fail: bool) {
-        self.state
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .failures_on_push = fail;
-    }
-
-    pub fn set_permanent_push_failures(&self, fail: bool) {
-        self.state
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .permanent_push_failures = fail;
-    }
-
-    pub fn set_ingest_failures(&self, fail: bool) {
-        self.state
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .failures_on_ingest = fail;
-    }
 }
 
 impl SourceAdapter for InMemorySourceAdapter {
@@ -196,130 +126,7 @@ impl SourceAdapter for InMemorySourceAdapter {
             return Err(SyncError::SourceUnreachable("push test failure".into()));
         }
         s.pushed_events.push(event.clone());
-        match event {
-            BoardEvent::FreeCommentAppended { number, body, meta } => {
-                let entry = FreeComment {
-                    body: body.clone(),
-                    author: meta.actor.clone(),
-                    ts: meta.ts,
-                };
-                s.free_comments.entry(*number).or_default().push(entry);
-            }
-            BoardEvent::GateCommentAppended {
-                number,
-                gate,
-                payload,
-                meta,
-            } => {
-                let entry = GateComment {
-                    gate: *gate,
-                    ts: meta.ts,
-                    actor: meta.actor.clone(),
-                    payload: payload.clone(),
-                };
-                s.gate_comments.entry(*number).or_default().push(entry);
-            }
-            BoardEvent::BodyFetched { number, body, .. } => {
-                s.bodies.insert(*number, body.clone());
-            }
-            BoardEvent::TagAdded { number, label, .. } => {
-                let labels = s.labels.entry(*number).or_default();
-                if !labels.iter().any(|l| l.eq_ignore_ascii_case(label)) {
-                    labels.push(label.clone());
-                }
-                if label.eq_ignore_ascii_case("blocked")
-                    && let Some(story) = s.stories.get_mut(number)
-                    && !story.tags.contains(&crate::board::domain::Tag::Blocked)
-                {
-                    story.tags.push(crate::board::domain::Tag::Blocked);
-                }
-            }
-            BoardEvent::TagRemoved { number, label, .. } => {
-                if let Some(labels) = s.labels.get_mut(number) {
-                    labels.retain(|l| !l.eq_ignore_ascii_case(label));
-                }
-                if label.eq_ignore_ascii_case("blocked")
-                    && let Some(story) = s.stories.get_mut(number)
-                {
-                    story
-                        .tags
-                        .retain(|t| *t != crate::board::domain::Tag::Blocked);
-                }
-            }
-            BoardEvent::StoryClosed { number, .. } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.is_closed = true;
-                }
-            }
-            BoardEvent::StoryReopened { number, .. } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.is_closed = false;
-                }
-            }
-            BoardEvent::StateTransitioned {
-                number, new_state, ..
-            } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.state = *new_state;
-                }
-            }
-            BoardEvent::CurrentIterationDesignated { number, .. } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.is_current = true;
-                }
-            }
-            BoardEvent::CurrentIterationCleared { number, .. } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.is_current = false;
-                }
-            }
-            BoardEvent::StoryCreated {
-                number,
-                story_type,
-                initial_state,
-                ..
-            } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.story_type = *story_type;
-                    story.state = *initial_state;
-                }
-            }
-            BoardEvent::ParentEpicSet {
-                number,
-                epic_number,
-                ..
-            } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.parent_epic = Some(*epic_number);
-                }
-            }
-            BoardEvent::ParentEpicUnset { number, .. } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.parent_epic = None;
-                }
-            }
-            BoardEvent::IterationMembershipSet {
-                number,
-                iteration_number,
-                position,
-                ..
-            } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.iteration_membership = Some((*iteration_number, *position));
-                }
-            }
-            BoardEvent::OutcomeMembershipSet {
-                number,
-                outcome_number,
-                position,
-                ..
-            } => {
-                if let Some(story) = s.stories.get_mut(number) {
-                    story.outcome_membership = Some((*outcome_number, *position));
-                }
-            }
-            _ => {}
-        }
+        mutation::apply_push_event(&mut s, event);
         Ok(None)
     }
 
