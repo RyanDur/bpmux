@@ -21,6 +21,8 @@ mod domain_tests;
 #[cfg(test)]
 mod event_messages_audit_tests;
 #[cfg(test)]
+mod iteration_label_tests;
+#[cfg(test)]
 mod iteration_readiness_tests;
 #[cfg(test)]
 mod orchestrator_tests;
