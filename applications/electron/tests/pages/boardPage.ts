@@ -88,6 +88,18 @@ export class BoardPage {
     return this.storyRow(storyNumber).getByRole('button', { name: /^open epic #/ })
   }
 
+  closeApproachNudge(): Locator {
+    return this.win.getByRole('complementary', { name: 'Next iteration readiness' })
+  }
+
+  closeApproachDismiss(): Locator {
+    return this.win.getByRole('button', { name: 'Dismiss' })
+  }
+
+  roadmapAttn(): Locator {
+    return this.win.locator('.board-roadmap-attn')
+  }
+
   async openStory(storyNumber: number): Promise<void> {
     await this.storyNavigate(storyNumber).click({ position: { x: 4, y: 4 } })
   }

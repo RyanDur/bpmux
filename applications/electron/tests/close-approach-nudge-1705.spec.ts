@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import type { Page } from '@playwright/test'
+import { BoardPage } from './pages/boardPage'
 
 const NOT_READY = { drafted: true, stories_ordered: true, review_closed: false, dev_ok: false }
 const READY = { drafted: true, stories_ordered: true, review_closed: true, dev_ok: true }
@@ -84,7 +85,7 @@ const traceFromFirstAppearance = (win: Page): Promise<MotionTrace> =>
         let postFrames = 0
         let totalFrames = 0
         const tick = (): void => {
-          const el = document.querySelector('[data-test="close-approach-nudge"]')
+          const el = document.querySelector('.close-approach-nudge')
           if (el) {
             opacities.push(parseFloat(getComputedStyle(el).opacity))
             anims.push(el.getAnimations().length)
@@ -110,12 +111,13 @@ test.describe('#1705 close-approach readiness nudge', () => {
     const { app, win } = await launchWithBoard(boardWith(NOT_READY))
     const trace = traceFromFirstAppearance(win)
     try {
-      const strip = win.locator('[data-test="close-approach-nudge"]')
+      const board = new BoardPage(win)
+      const strip = board.closeApproachNudge()
       await expect(strip).toBeVisible()
       await expect(strip).toContainText('Fornax')
       await expect(strip).toContainText('designer-review')
-      await expect(win.locator('[data-test="board-roadmap-attn"]')).toBeVisible()
-      await expect(win.locator('[data-test="board-list"]')).toBeVisible()
+      await expect(board.roadmapAttn()).toBeVisible()
+      await expect(board.tabBar()).toBeVisible()
 
       const t = await trace
       expect(t.samples, 'strip was observed from its first frame').toBeGreaterThan(0)
@@ -134,15 +136,16 @@ test.describe('#1705 close-approach readiness nudge', () => {
   test('dismiss collapses the strip (the EXIT plays) but the ◐ tab-badge survives (recognition-over-recall)', async () => {
     const { app, win } = await launchWithBoard(boardWith(NOT_READY))
     try {
-      await expect(win.locator('[data-test="close-approach-nudge"]')).toBeVisible()
-      await win.locator('[data-test="close-approach-nudge-dismiss"]').click()
+      const board = new BoardPage(win)
+      await expect(board.closeApproachNudge()).toBeVisible()
+      await board.closeApproachDismiss().click()
       const exitAnims = await win.evaluate(
         () =>
           new Promise<number>((resolve) => {
             let max = 0
             let frames = 0
             const tick = (): void => {
-              const el = document.querySelector('[data-test="close-approach-nudge"]')
+              const el = document.querySelector('.close-approach-nudge')
               if (el) max = Math.max(max, el.getAnimations().length)
               frames += 1
               if (frames < 30) requestAnimationFrame(tick)
@@ -152,11 +155,8 @@ test.describe('#1705 close-approach readiness nudge', () => {
           })
       )
       expect(exitAnims, 'the collapse transition ran (exit plays)').toBeGreaterThan(0)
-      await expect(win.locator('[data-test="close-approach-nudge"]')).toHaveAttribute(
-        'data-dismissed',
-        'true'
-      )
-      await expect(win.locator('[data-test="board-roadmap-attn"]')).toBeVisible()
+      await expect(board.closeApproachNudge()).toHaveAttribute('data-dismissed', 'true')
+      await expect(board.roadmapAttn()).toBeVisible()
     } finally {
       await app.close()
     }
@@ -165,9 +165,10 @@ test.describe('#1705 close-approach readiness nudge', () => {
   test('next-ready: no strip and no tab-badge (signal-honesty — only an un-ready NEXT trips it)', async () => {
     const { app, win } = await launchWithBoard(boardWith(READY))
     try {
-      await expect(win.locator('[data-test="board-list"]')).toBeVisible()
-      await expect(win.locator('[data-test="close-approach-nudge"]')).toHaveCount(0)
-      await expect(win.locator('[data-test="board-roadmap-attn"]')).toHaveCount(0)
+      const board = new BoardPage(win)
+      await expect(board.tabBar()).toBeVisible()
+      await expect(board.closeApproachNudge()).toHaveCount(0)
+      await expect(board.roadmapAttn()).toHaveCount(0)
     } finally {
       await app.close()
     }
@@ -177,12 +178,12 @@ test.describe('#1705 close-approach readiness nudge', () => {
     const { app, win } = await launchWithBoard(boardWith(NOT_READY), 'reduce')
     const trace = traceFromFirstAppearance(win)
     try {
-      await expect(win.locator('[data-test="close-approach-nudge"]')).toBeVisible()
+      await expect(new BoardPage(win).closeApproachNudge()).toBeVisible()
       const t = await trace
       expect(t.maxAnims, 'reduced-motion ran NO animation (instant present)').toBe(0)
       const duration = await win.evaluate(
         () =>
-          getComputedStyle(document.querySelector('[data-test="close-approach-nudge"]') as Element)
+          getComputedStyle(document.querySelector('.close-approach-nudge') as Element)
             .transitionDuration
       )
       expect(duration).toMatch(/^0s|^0ms|0s,/)
