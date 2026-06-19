@@ -46,6 +46,8 @@ pub enum ClientMessage {
     },
     #[serde(rename = "comments_hydrate")]
     CommentsHydrate { story_number: u64 },
+    #[serde(rename = "timeline_hydrate")]
+    TimelineHydrate { story_number: u64 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -83,6 +85,11 @@ pub enum ServerMessage {
     CommentsHydrated {
         story_number: u64,
         comments: Vec<serde_json::Value>,
+    },
+    #[serde(rename = "timeline_hydrated")]
+    TimelineHydrated {
+        story_number: u64,
+        events: Vec<serde_json::Value>,
     },
 }
 

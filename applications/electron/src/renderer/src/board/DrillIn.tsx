@@ -159,7 +159,7 @@ const DrillIn = ({
       <Timeline
         story={story}
         apiBase={apiBase}
-        authToken={authToken}
+        usingMock={usingMock}
         focusTimeline={focusTimeline}
       />
 

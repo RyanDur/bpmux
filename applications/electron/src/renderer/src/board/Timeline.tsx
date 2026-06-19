@@ -93,15 +93,15 @@ const renderTimelineList = (
 interface Props {
   story: BoardStory
   apiBase: string | undefined
-  authToken: string | undefined
+  usingMock: boolean
   focusTimeline?: boolean
 }
 
-const Timeline = ({ story, apiBase, authToken, focusTimeline }: Props): React.JSX.Element => {
+const Timeline = ({ story, apiBase, usingMock, focusTimeline }: Props): React.JSX.Element => {
   const [showAll, setShowAll] = useState<boolean>(false)
   const timeline = useTimeline({
     apiBase,
-    authToken,
+    usingMock,
     storyNumber: story.number
   })
   const detailsRef = useRef<HTMLDetailsElement | null>(null)
@@ -128,8 +128,6 @@ const Timeline = ({ story, apiBase, authToken, focusTimeline }: Props): React.JS
       </summary>
       {timeline.loading && timeline.events === null ? (
         <p className="drill-in-timeline-empty">loading…</p>
-      ) : timeline.error && timeline.events === null ? (
-        <p className="drill-in-timeline-empty">failed to load: {timeline.error}</p>
       ) : timeline.events && timeline.events.length > 0 ? (
         <>
           <section className="drill-in-timeline-controls">

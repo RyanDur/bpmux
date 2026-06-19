@@ -9,6 +9,7 @@ import {
   pongDecoder,
   ptyExitDecoder,
   ptyOutputDecoder,
+  timelineHydratedDecoder,
   welcomeDecoder
 } from '../wsDecoders'
 import {
@@ -19,6 +20,7 @@ import {
   ptyExitReceived,
   ptyOutputReceived,
   sessionIdentified,
+  timelineHydrated,
   type SessionAction
 } from './actions'
 import { type ChatMessage, type ServerChatMessage } from '../types'
@@ -79,6 +81,11 @@ export const dispatchServerFrame = (
     .or(() =>
       maybe(commentsHydratedDecoder.decode(frame)).map((hydrated) =>
         dispatch(commentsHydrated(hydrated.story_number, hydrated.comments))
+      )
+    )
+    .or(() =>
+      maybe(timelineHydratedDecoder.decode(frame)).map((hydrated) =>
+        dispatch(timelineHydrated(hydrated.story_number, hydrated.events))
       )
     )
     .or(() =>

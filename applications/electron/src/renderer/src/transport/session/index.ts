@@ -8,6 +8,7 @@ import {
   ptySubscribeRequested,
   reactionToggleRequested,
   startRequested,
+  timelineHydrateRequested,
   type SendOptions,
   type SessionConfig
 } from './actions'
@@ -25,7 +26,8 @@ export {
   useSyncStatus,
   useBoardSnapshot,
   useBoardInvalidateTick,
-  useComments
+  useComments,
+  useTimelineEvents
 } from './hooks'
 export { subscribeLiveMessages, subscribePtyOutput, subscribePtyExit } from './emitter'
 export { encodeKeystroke, decodePtyData } from './ptyCodec'
@@ -47,6 +49,9 @@ export const toggleReaction = (
 
 export const requestCommentsHydrate = (storyNumber: number): void =>
   dispatchSession(commentsHydrateRequested(storyNumber))
+
+export const requestTimelineHydrate = (storyNumber: number): void =>
+  dispatchSession(timelineHydrateRequested(storyNumber))
 
 export const sendPtySubscribe = (terminalId: string): void =>
   dispatchSession(ptySubscribeRequested(terminalId))

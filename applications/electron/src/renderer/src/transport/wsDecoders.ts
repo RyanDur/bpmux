@@ -6,6 +6,7 @@ import {
   type ServerPong,
   type ServerPtyExit,
   type ServerPtyOutput,
+  type ServerTimelineHydrated,
   type ServerWelcome
 } from './types'
 import { stateDeltaDecoder, stateSnapshotDecoder } from './stateSyncDecoders'
@@ -41,6 +42,26 @@ export const commentsHydratedDecoder: D.Decoder<ServerCommentsHydrated> = D.obje
           author: D.string,
           body: D.string,
           created_at: D.string
+        }
+      })
+    )
+  }
+})
+
+export const timelineHydratedDecoder: D.Decoder<ServerTimelineHydrated> = D.object({
+  required: {
+    type: D.literal('timeline_hydrated'),
+    story_number: D.number,
+    events: D.array(
+      D.object({
+        required: {
+          event: D.string,
+          actor: D.string,
+          ts: D.string
+        },
+        optional: {
+          label: D.string,
+          body: D.string
         }
       })
     )

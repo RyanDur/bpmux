@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import { describeHttpError, http } from '../api/http'
-import { useBoardInvalidateTick } from '../transport/session'
+import { useCallback, useEffect, useMemo } from 'react'
+import {
+  requestTimelineHydrate,
+  useBoardInvalidateTick,
+  useTimelineEvents
+} from '../transport/session'
+import type { TimelineEventWire } from '../transport/types'
 
-export interface TimelineEvent {
-  event: string
-  actor: string
-  ts: string
-  label?: string
-  body?: string
-}
+export type TimelineEvent = TimelineEventWire
 
 export const TIMELINE_GATE = {
   Filed: 'filed',
@@ -31,14 +29,13 @@ export interface ClassifiedEvent {
 
 interface UseTimelineArgs {
   apiBase: string | undefined
-  authToken: string | undefined
+  usingMock: boolean
   storyNumber: number | null
 }
 
 export interface UseTimelineResult {
   events: ClassifiedEvent[] | null
   loading: boolean
-  error: string | null
   refetch: () => void
 }
 
@@ -92,66 +89,34 @@ const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
 
 export const useTimeline = ({
   apiBase,
-  authToken,
+  usingMock,
   storyNumber
 }: UseTimelineArgs): UseTimelineResult => {
   const boardInvalidateTick = useBoardInvalidateTick()
-  const [events, setEvents] = useState<ClassifiedEvent[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const loading =
-    events === null &&
-    error === null &&
-    storyNumber !== null &&
-    apiBase !== undefined &&
-    authToken !== undefined
+  const offline = usingMock || apiBase === undefined
+  const rawEvents = useTimelineEvents(storyNumber ?? -1)
+
+  const events = useMemo<ClassifiedEvent[] | null>(() => {
+    if (offline) return []
+    if (storyNumber === null || rawEvents === null) return null
+    const classified: ClassifiedEvent[] = rawEvents.map((r) => ({
+      raw: r,
+      gate: classifyEvent(r)
+    }))
+    return markReworkCycles(classified)
+  }, [offline, storyNumber, rawEvents])
+
+  const loading = events === null
 
   const refetch = useCallback((): void => {
-    if (!apiBase || !authToken || storyNumber === null) return
-    http
-      .get<TimelineEvent[]>({ apiBase, authToken }, `/api/stories/${storyNumber}/timeline`)
-      .onSuccess((raw) => {
-        const classified: ClassifiedEvent[] = raw.map((r) => ({
-          raw: r,
-          gate: classifyEvent(r)
-        }))
-        setEvents(markReworkCycles(classified))
-        setError(null)
-      })
-      .onFailure((err) => setError(describeHttpError(err)))
-  }, [apiBase, authToken, storyNumber])
+    if (offline || storyNumber === null) return
+    requestTimelineHydrate(storyNumber)
+  }, [offline, storyNumber])
 
   useEffect(() => {
-    if (storyNumber === null || !apiBase || !authToken) {
-      return
-    }
-    const controller = new AbortController()
-    http
-      .get<TimelineEvent[]>(
-        { apiBase, authToken },
-        `/api/stories/${storyNumber}/timeline`,
-        controller.signal
-      )
-      .onSuccess((raw) => {
-        if (controller.signal.aborted) return
-        const classified: ClassifiedEvent[] = raw.map((r) => ({
-          raw: r,
-          gate: classifyEvent(r)
-        }))
-        setEvents(markReworkCycles(classified))
-        setError(null)
-      })
-      .onFailure((err) => {
-        if (controller.signal.aborted) return
-        setError(describeHttpError(err))
-      })
-    return () => controller.abort()
-  }, [storyNumber, apiBase, authToken])
+    if (offline || storyNumber === null) return
+    requestTimelineHydrate(storyNumber)
+  }, [offline, storyNumber, boardInvalidateTick])
 
-  useEffect(() => {
-    if (boardInvalidateTick === 0) return
-    const id = setTimeout(() => refetch(), 0)
-    return () => clearTimeout(id)
-  }, [boardInvalidateTick, refetch])
-
-  return { events, loading, error, refetch }
+  return { events, loading, refetch }
 }

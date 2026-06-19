@@ -139,3 +139,37 @@ pub(super) async fn handle_comments_hydrate(
     }
     Ok(())
 }
+
+pub(super) async fn handle_timeline_hydrate(
+    ctx: &ClientCtx<'_>,
+    tx: &mut SplitSink<WebSocket, WsMessage>,
+    story_number: u64,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    match ctx.tracker.clone() {
+        Some(tracker) => {
+            let reply_tx = ctx.reply_tx.clone();
+            tokio::spawn(async move {
+                let reply = match tracker.list_story_timeline(story_number).await {
+                    Ok(events) => ServerMessage::TimelineHydrated {
+                        story_number,
+                        events,
+                    },
+                    Err(e) => ServerMessage::Error {
+                        reason: format!("list timeline failed: {e}"),
+                    },
+                };
+                let _ = reply_tx.send(reply);
+            });
+        }
+        None => {
+            send_json(
+                tx,
+                &ServerMessage::Error {
+                    reason: "tracker not configured".to_string(),
+                },
+            )
+            .await?;
+        }
+    }
+    Ok(())
+}

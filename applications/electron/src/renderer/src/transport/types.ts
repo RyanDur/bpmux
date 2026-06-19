@@ -106,6 +106,20 @@ export interface ServerCommentsHydrated {
   comments: CommentWire[]
 }
 
+export interface TimelineEventWire {
+  event: string
+  actor: string
+  ts: string
+  label?: string
+  body?: string
+}
+
+export interface ServerTimelineHydrated {
+  type: 'timeline_hydrated'
+  story_number: number
+  events: TimelineEventWire[]
+}
+
 export interface ServerError {
   type: 'error'
   reason: string
@@ -175,6 +189,11 @@ export interface ClientCommentsHydrate {
   story_number: number
 }
 
+export interface ClientTimelineHydrate {
+  type: 'timeline_hydrate'
+  story_number: number
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -184,6 +203,7 @@ export type ClientMessage =
   | ClientPtyResize
   | ClientReactionToggle
   | ClientCommentsHydrate
+  | ClientTimelineHydrate
 
 export interface ChatMessage {
   id: string

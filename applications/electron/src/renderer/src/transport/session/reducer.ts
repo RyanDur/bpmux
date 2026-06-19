@@ -1,7 +1,7 @@
 import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from '../state-delta'
 import { asMessageType } from '../messageType'
 import { SessionActionType, type SessionAction, type HistoryMessage } from './actions'
-import type { ChatMessage, CommentWire, ConnectionStatus } from '../types'
+import type { ChatMessage, CommentWire, ConnectionStatus, TimelineEventWire } from '../types'
 import type { BoardResponse, BoardStory } from '../../board/types'
 import type { MirrorState } from '../state-delta'
 
@@ -14,6 +14,7 @@ export interface SessionSnapshot {
   boardInvalidateTick: number
   reconnectTick: number
   commentsByStory: ReadonlyMap<number, CommentWire[]>
+  timelineByStory: ReadonlyMap<number, TimelineEventWire[]>
 }
 
 export const messageKey = (m: { from: string; text: string; ts: string }): string =>
@@ -27,7 +28,8 @@ export const emptySnapshot = (url: string | undefined): SessionSnapshot => ({
   boardSnapshot: null,
   boardInvalidateTick: 0,
   reconnectTick: 0,
-  commentsByStory: new Map()
+  commentsByStory: new Map(),
+  timelineByStory: new Map()
 })
 
 const mergeHistory = (state: SessionSnapshot, history: HistoryMessage[]): ChatMessage[] => {
@@ -80,6 +82,11 @@ export const sessionReducer = (state: SessionSnapshot, action: SessionAction): S
       const commentsByStory = new Map(state.commentsByStory)
       commentsByStory.set(action.storyNumber, action.comments)
       return { ...state, commentsByStory }
+    }
+    case SessionActionType.TimelineHydrated: {
+      const timelineByStory = new Map(state.timelineByStory)
+      timelineByStory.set(action.storyNumber, action.events)
+      return { ...state, timelineByStory }
     }
     case SessionActionType.MirrorSnapshotReceived:
       return { ...state, mirror: applyStateSnapshot(state.mirror, action.payload) }

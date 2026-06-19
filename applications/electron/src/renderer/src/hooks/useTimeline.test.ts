@@ -1,13 +1,21 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { useTimeline } from './useTimeline'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
+import {
+  BrowserWebSocket,
+  startTestWsServer,
+  type TestWsConnection,
+  type TestWsServer
+} from '../../../../test/wsTestServer'
+import { startSession, getSessionSnapshot, resetSessionForTest } from '../transport/session'
+import { dispatchSession } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
 
-const fetchSpy = vi.fn()
-
-const timelineCalls = (): number =>
-  fetchSpy.mock.calls.filter((c) => String(c[0]).includes('/timeline')).length
+const props = {
+  apiBase: 'http://backend.invalid',
+  usingMock: false,
+  storyNumber: 700
+}
 
 const bumpBoard = (): void =>
   dispatchSession(
@@ -17,49 +25,80 @@ const bumpBoard = (): void =>
     )
   )
 
-beforeEach(() => {
-  fetchSpy.mockReset()
-  fetchSpy.mockResolvedValue({
-    ok: true,
-    status: 200,
-    json: async () => [],
-    text: async () => ''
-  } as unknown as Response)
-  vi.stubGlobal('fetch', fetchSpy)
-})
+describe('#1456 useTimeline — re-hydrates over WS when the board changes (tick replaces marker-scan)', () => {
+  let server: TestWsServer
+  let conn: TestWsConnection
 
-afterEach(() => {
-  resetSessionForTest()
-  vi.unstubAllGlobals()
-  vi.clearAllMocks()
-})
+  const timelineFrames = (): number =>
+    conn.received.filter((r) => {
+      try {
+        return (JSON.parse(r) as { type?: string }).type === 'timeline_hydrate'
+      } catch {
+        return false
+      }
+    }).length
 
-describe('#1456 useTimeline — refetch survives the ingest-strip (tick replaces marker-scan)', () => {
-  const props = {
-    apiBase: 'http://127.0.0.1:9',
-    authToken: 'tok',
-    storyNumber: 700
-  }
+  beforeEach(async () => {
+    vi.stubGlobal('WebSocket', BrowserWebSocket)
+    server = await startTestWsServer()
+    resetSessionForTest()
+    startSession({ url: server.url })
+    conn = await server.waitForConnection()
+    await waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+  })
 
-  test('a board-invalidate tick increment triggers a timeline refetch (silent-regression guard)', async () => {
+  afterEach(async () => {
+    resetSessionForTest()
+    await server.close()
+    vi.unstubAllGlobals()
+  })
+
+  test('a board-invalidate tick increment triggers a timeline re-hydrate frame (silent-regression guard)', async () => {
     renderHook((p: typeof props) => useTimeline(p), { initialProps: props })
-    await waitFor(() => expect(timelineCalls()).toBeGreaterThanOrEqual(1))
-    const before = timelineCalls()
+    await waitFor(() => expect(timelineFrames()).toBeGreaterThanOrEqual(1))
+    const before = timelineFrames()
 
     act(() => {
       bumpBoard()
     })
 
-    await waitFor(() => expect(timelineCalls()).toBe(before + 1))
+    await waitFor(() => expect(timelineFrames()).toBe(before + 1))
   })
 
-  test('no board-invalidate bump does not refetch beyond the mount fetch', async () => {
-    const { rerender } = renderHook((p: typeof props) => useTimeline(p), { initialProps: props })
-    await waitFor(() => expect(timelineCalls()).toBeGreaterThanOrEqual(1))
-    const before = timelineCalls()
+  test('classifies the events the backend serves for this story', async () => {
+    const { result } = renderHook((p: typeof props) => useTimeline(p), { initialProps: props })
+    await waitFor(() => expect(timelineFrames()).toBeGreaterThanOrEqual(1))
 
-    rerender(props)
+    act(() => {
+      conn.send(
+        JSON.stringify({
+          type: 'timeline_hydrated',
+          story_number: 700,
+          events: [
+            { event: 'filed', actor: 'pm', ts: '2026-04-20T10:00:00Z' },
+            { event: 'labeled', actor: 'dev', ts: '2026-04-21T10:00:00Z', label: 'delivered' }
+          ]
+        })
+      )
+    })
 
-    expect(timelineCalls()).toBe(before)
+    await waitFor(() => expect(result.current.events?.length).toBe(2))
+    expect(result.current.events?.[0].gate).toBe('filed')
+    expect(result.current.events?.[1].gate).toBe('delivered')
+    expect(result.current.loading).toBe(false)
+  })
+})
+
+describe('useTimeline — offline (mock) mode', () => {
+  afterEach(() => {
+    resetSessionForTest()
+  })
+
+  test('renders empty (not loading) when usingMock', () => {
+    const { result } = renderHook(() =>
+      useTimeline({ apiBase: undefined, usingMock: true, storyNumber: 700 })
+    )
+    expect(result.current.events).toEqual([])
+    expect(result.current.loading).toBe(false)
   })
 })

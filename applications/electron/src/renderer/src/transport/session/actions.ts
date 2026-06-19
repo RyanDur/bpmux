@@ -1,4 +1,10 @@
-import type { ChatMessage, CommentWire, StateDeltaPayload, StateSnapshotPayload } from '../types'
+import type {
+  ChatMessage,
+  CommentWire,
+  StateDeltaPayload,
+  StateSnapshotPayload,
+  TimelineEventWire
+} from '../types'
 
 export interface SendOptions {
   addressee?: string | null
@@ -37,6 +43,8 @@ export const SessionActionType = {
   ReactionToggleRequested: 'session/reactionToggleRequested',
   CommentsHydrateRequested: 'session/commentsHydrateRequested',
   CommentsHydrated: 'session/commentsHydrated',
+  TimelineHydrateRequested: 'session/timelineHydrateRequested',
+  TimelineHydrated: 'session/timelineHydrated',
   PtySubscribeRequested: 'session/ptySubscribeRequested',
   PtyInputRequested: 'session/ptyInputRequested',
   PtyResizeRequested: 'session/ptyResizeRequested',
@@ -70,6 +78,12 @@ export type SessionAction =
       type: typeof SessionActionType.CommentsHydrated
       storyNumber: number
       comments: CommentWire[]
+    }
+  | { type: typeof SessionActionType.TimelineHydrateRequested; storyNumber: number }
+  | {
+      type: typeof SessionActionType.TimelineHydrated
+      storyNumber: number
+      events: TimelineEventWire[]
     }
   | { type: typeof SessionActionType.PtySubscribeRequested; terminalId: string }
   | { type: typeof SessionActionType.PtyInputRequested; terminalId: string; keystroke: string }
@@ -157,6 +171,20 @@ export const commentsHydrated = (storyNumber: number, comments: CommentWire[]): 
   type: SessionActionType.CommentsHydrated,
   storyNumber,
   comments
+})
+
+export const timelineHydrateRequested = (storyNumber: number): SessionAction => ({
+  type: SessionActionType.TimelineHydrateRequested,
+  storyNumber
+})
+
+export const timelineHydrated = (
+  storyNumber: number,
+  events: TimelineEventWire[]
+): SessionAction => ({
+  type: SessionActionType.TimelineHydrated,
+  storyNumber,
+  events
 })
 
 export const ptySubscribeRequested = (terminalId: string): SessionAction => ({

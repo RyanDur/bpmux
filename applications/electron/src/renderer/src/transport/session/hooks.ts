@@ -7,7 +7,8 @@ import type {
   ConnectionStatus,
   ReactionAggregateWire,
   RosterMemberWire,
-  SyncStatusWire
+  SyncStatusWire,
+  TimelineEventWire
 } from '../types'
 import type { BoardResponse } from '../../board/types'
 
@@ -37,3 +38,6 @@ export const useBoardInvalidateTick = (): number => useSelector((s) => s.boardIn
 
 export const useComments = (storyNumber: number): CommentWire[] | null =>
   useSelector((s) => s.commentsByStory.get(storyNumber) ?? null)
+
+export const useTimelineEvents = (storyNumber: number): TimelineEventWire[] | null =>
+  useSelector((s) => s.timelineByStory.get(storyNumber) ?? null)

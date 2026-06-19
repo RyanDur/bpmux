@@ -144,6 +144,9 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
       case SessionActionType.CommentsHydrateRequested:
         send({ type: 'comments_hydrate', story_number: action.storyNumber })
         return
+      case SessionActionType.TimelineHydrateRequested:
+        send({ type: 'timeline_hydrate', story_number: action.storyNumber })
+        return
       case SessionActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return
