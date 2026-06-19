@@ -328,8 +328,8 @@
     border-radius: 50%;
   }
 
-  & .message-avatar--ryan {
-    background: var(--role-ryan);
+  & .message-avatar--owner {
+    background: var(--role-owner);
   }
 
   & .message-avatar--designer {

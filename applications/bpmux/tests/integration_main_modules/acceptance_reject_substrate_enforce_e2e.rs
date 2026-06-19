@@ -1,25 +1,3 @@
-//! E2E acceptance-test for #1389 — acceptance reject substrate-
-//! enforce via workflow.toml-configured target-state.
-//!
-//! Sibling of #1385 — wires `reject_story` through the workflow
-//! gate (parallel to accept_story's substrate). Fixes the routing
-//! bug Ryan flagged 2026-05-18 01:18 UTC: acceptance rejection
-//! should route to the workflow.toml-configured `target` (bundled
-//! default = `ready`), NOT hardcoded `in-progress`.
-//!
-//! Five Gherkin scenarios from #1389's body:
-//!   1. PM/owner fires reject with reason-cite → routes to configured
-//!      target (default ready)
-//!   2. PM fires reject without reason → hard-block 409 missing_evidence
-//!   3. Non-PM/owner role fires reject → hard-block 409
-//!   4. Target-state per workflow.toml (configurable) — substrate-
-//!      proven via the workflow.toml-loader handing the `to` field
-//!      through to the validator; covered by workflow::loader_tests
-//!      sister-shape for the accept transition (sister-coverage)
-//!   5. Regression-anchor — bundled-default ships canonical
-//!      `acceptance.reject → ready` (sister to slice 1 of #1385's
-//!      bundled-default check covering the canonical-routing)
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

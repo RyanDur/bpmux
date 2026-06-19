@@ -2,37 +2,20 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
-
-// #370 rework: retire hardcoded role descriptions. Per Ryan's
-// 2026-04-22 23:28 UTC comment: "agents should define themselves.
-// this app needs to be usable to any type of agent and human
-// collaboration." The static `ROLE_INFO[role].description` table
-// named specific agents (pm/dev/designer/ryan); adding a new role
-// would render as "unknown" with no meaningful text.
-//
-// Scope-narrow (per pm + designer endorsement on option-a): the
-// tooltip now shows label (runtime-derived short-role, capitalized)
-// + presence status. Rich self-descriptions become future work when
-// an agent-driven `get_identity` metadata channel wires through
-// to the renderer. The hardcoded constants file is deleted.
 
 const AD_HOC_MESSAGES = [
   {
-    from: 'ryan:electron',
+    from: 'owner:electron',
     text: 'hello',
     ts: '2026-04-23T11:00:00Z',
-    to: null,
-    addressee: null,
     message_type: 'chat'
   },
   {
     from: 'ops:claude-code',
     text: 'new role not in pre-#370 hardcoded list',
     ts: '2026-04-23T11:00:10Z',
-    to: null,
-    addressee: null,
     message_type: 'chat'
   }
 ]
@@ -42,33 +25,13 @@ const launchWithFixture = async (): Promise<{
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-370-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-370-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app } = await launchIsolatedElectron({
+    sessionBase,
+    userDataDir: udd,
+    seedMessages: AD_HOC_MESSAGES
+  })
   const win = await app.firstWindow()
-
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ fetched_at: '2026-04-23T11:00:00Z', stories: [] })
-    })
-  })
-  await win.route('**/api/messages*', async (route, request) => {
-    const url = request.url()
-    if (url.includes('message_type=activity')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: '[]'
-      })
-      return
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(AD_HOC_MESSAGES)
-    })
-  })
-  await win.reload()
+  await waitForMessagesLoaded(win, 'new role not in pre-#370 hardcoded list')
   return { app }
 }
 

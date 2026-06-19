@@ -164,7 +164,7 @@ async fn view_board_buckets_stories_by_story_state() {
             "accepted-story".into(),
             StoryState::Accepted,
             ts,
-            "ryan".into(),
+            "owner".into(),
         ),
     ];
     adapter.seed_stories(stories);

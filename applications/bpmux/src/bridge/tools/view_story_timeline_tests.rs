@@ -186,7 +186,7 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
         GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 4, 23, 0, 0, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some("not quite".into()),
         },
         GateComment {
@@ -233,7 +233,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
         vec![GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some(reason.into()),
         }],
     );
@@ -262,5 +262,5 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
         reject["payload"], reason,
         "the reject reason is VERBATIM byte-exact in the timeline"
     );
-    assert_eq!(reject["actor"], "ryan");
+    assert_eq!(reject["actor"], "owner");
 }

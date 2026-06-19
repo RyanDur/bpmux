@@ -25,7 +25,7 @@ describe('#495 deriveDirectRolesFromRoster — orphan agent-XXXX dedup', () => {
       { identity: 'agent-abcd:claude-code', role: 'agent-abcd' },
       { identity: 'dev:claude-code', role: 'dev' }
     ]
-    expect(deriveDirectRolesFromRoster(roster, 'ryan:human')).toEqual(['dev'])
+    expect(deriveDirectRolesFromRoster(roster, 'owner:human')).toEqual(['dev'])
   })
 
   test('preserves truly-distinct unnamed agents on different tools', () => {
@@ -33,19 +33,19 @@ describe('#495 deriveDirectRolesFromRoster — orphan agent-XXXX dedup', () => {
       { identity: 'agent-abcd:claude-code', role: 'agent-abcd' },
       { identity: 'agent-xyzw:cursor', role: 'agent-xyzw' }
     ]
-    expect(deriveDirectRolesFromRoster(roster, 'ryan:human')).toEqual(['agent-abcd', 'agent-xyzw'])
+    expect(deriveDirectRolesFromRoster(roster, 'owner:human')).toEqual(['agent-abcd', 'agent-xyzw'])
   })
 
   test('filters viewer self from output', () => {
     const roster = [
-      { identity: 'ryan:human', role: 'ryan' },
+      { identity: 'owner:human', role: 'owner' },
       { identity: 'dev:claude-code', role: 'dev' }
     ]
-    expect(deriveDirectRolesFromRoster(roster, 'ryan:human')).toEqual(['dev'])
+    expect(deriveDirectRolesFromRoster(roster, 'owner:human')).toEqual(['dev'])
   })
 
   test('handles empty roster', () => {
-    expect(deriveDirectRolesFromRoster([], 'ryan:human')).toEqual([])
+    expect(deriveDirectRolesFromRoster([], 'owner:human')).toEqual([])
   })
 
   test('groups derive uses same dedup', () => {
@@ -54,39 +54,39 @@ describe('#495 deriveDirectRolesFromRoster — orphan agent-XXXX dedup', () => {
       { identity: 'dev:claude-code', role: 'dev' },
       { identity: 'pm:claude-code', role: 'pm' }
     ]
-    expect(deriveCombinableRolesFromRoster(roster, 'ryan:human')).toEqual(['dev', 'pm'])
+    expect(deriveCombinableRolesFromRoster(roster, 'owner:human')).toEqual(['dev', 'pm'])
   })
 })
 
 describe('#393 deriveTeamRoles — runtime discovery from message stream (replaces desk-check-393.spec.ts)', () => {
   test('discovers all unique short-names across messages, sorted', () => {
     const messages = [
-      msg({ from: 'ryan:electron' }),
+      msg({ from: 'owner:electron' }),
       msg({ from: 'dev:claude-code' }),
       msg({ from: 'ops:claude-code' })
     ]
-    expect(deriveTeamRoles(messages, 'ryan:electron')).toEqual(['dev', 'ops', 'ryan'])
+    expect(deriveTeamRoles(messages, 'owner:electron')).toEqual(['dev', 'ops', 'owner'])
   })
 
   test('includes a never-before-seen role (ops) outside the pre-#393 hardcoded list', () => {
     const messages = [msg({ from: 'ops:claude-code' })]
-    expect(deriveTeamRoles(messages, 'ryan:electron')).toContain('ops')
+    expect(deriveTeamRoles(messages, 'owner:electron')).toContain('ops')
   })
 
   test('omits designer/pm when neither speaks (no hardcoded fallback)', () => {
-    const messages = [msg({ from: 'ryan:electron' }), msg({ from: 'dev:claude-code' })]
-    const roles = deriveTeamRoles(messages, 'ryan:electron')
+    const messages = [msg({ from: 'owner:electron' }), msg({ from: 'dev:claude-code' })]
+    const roles = deriveTeamRoles(messages, 'owner:electron')
     expect(roles).not.toContain('designer')
     expect(roles).not.toContain('pm')
   })
 
   test('viewer self always present even before having spoken', () => {
-    expect(deriveTeamRoles([], 'ryan:electron')).toEqual(['ryan'])
+    expect(deriveTeamRoles([], 'owner:electron')).toEqual(['owner'])
   })
 
   test('to-recipients become roles even before speaking; "all" sentinel skipped', () => {
-    const messages = [msg({ from: 'ryan:electron', to: ['dev', 'all'] })]
-    const roles = deriveTeamRoles(messages, 'ryan:electron')
+    const messages = [msg({ from: 'owner:electron', to: ['dev', 'all'] })]
+    const roles = deriveTeamRoles(messages, 'owner:electron')
     expect(roles).toContain('dev')
     expect(roles).not.toContain('all')
   })

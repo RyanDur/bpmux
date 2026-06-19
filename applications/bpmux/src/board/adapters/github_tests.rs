@@ -185,13 +185,13 @@ fn decode_story_metadata_reads_object_label_shape() {
         "state": "open",
         "labels": [{"name": "in progress"}],
         "created_at": "2026-04-24T13:22:36+00:00",
-        "user": {"login": "ryan"},
+        "user": {"login": "owner"},
     });
     let story = decode_story_metadata(&json).expect("story");
     assert_eq!(story.number, 451);
     assert_eq!(story.title, "Internal board abstraction");
     assert_eq!(story.state, StoryState::InProgress);
-    assert_eq!(story.filed_by, "ryan");
+    assert_eq!(story.filed_by, "owner");
     assert!(
         story.body.is_none(),
         "body absent from JSON → body remains None on decoded Story"
@@ -207,13 +207,13 @@ fn decode_story_metadata_decodes_body_when_present() {
         "labels": [{"name": "ready"}],
         "created_at": "2026-05-14T23:30:00+00:00",
         "user": {"login": "pm"},
-        "body": "## User job\n\nWhen PM/Ryan wants to commit a group of stories to an iteration...\n\n## Acceptance test path\n\napplications/bpmux/src/bridge/tools/create_iteration_tests.rs",
+        "body": "## User job\n\nWhen PM/owner wants to commit a group of stories to an iteration...\n\n## Acceptance test path\n\napplications/bpmux/src/bridge/tools/create_iteration_tests.rs",
     });
     let story = decode_story_metadata(&json).expect("story");
     assert_eq!(
         story.body.as_deref(),
         Some(
-            "## User job\n\nWhen PM/Ryan wants to commit a group of stories to an iteration...\n\n## Acceptance test path\n\napplications/bpmux/src/bridge/tools/create_iteration_tests.rs"
+            "## User job\n\nWhen PM/owner wants to commit a group of stories to an iteration...\n\n## Acceptance test path\n\napplications/bpmux/src/bridge/tools/create_iteration_tests.rs"
         ),
         "body present in JSON must propagate to decoded Story (closes edit_story body-cascade-drop bug discovered 2026-05-14 23:33 UTC)"
     );
@@ -275,7 +275,7 @@ fn decode_story_metadata_closed_without_retired_collapses_to_accepted() {
         "gh_state": "closed",
         "labels": ["ready for accept", "delivered"],
         "created_at": "2026-04-20T00:00:00Z",
-        "user": {"login": "ryan"},
+        "user": {"login": "owner"},
     });
     let story = decode_story_metadata(&json).unwrap();
     assert!(
@@ -347,7 +347,7 @@ fn classify_gate_delivered_payload_preserved() {
 
 #[test]
 fn classify_gate_rejection_default_is_rejected() {
-    let body = "**rejection_reason** (reject-gate by ryan):\n\nno good";
+    let body = "**rejection_reason** (reject-gate by owner):\n\nno good";
     let result = classify_gate(body).unwrap();
     assert_eq!(result.0, Gate::Rejected);
     assert_eq!(result.1.as_deref(), Some("no good"));
@@ -371,7 +371,7 @@ fn classify_gate_pass_desk_check_no_payload() {
 
 #[test]
 fn classify_gate_accepted_no_payload() {
-    let body = "**accepted** (accept-gate by ryan)";
+    let body = "**accepted** (accept-gate by owner)";
     let result = classify_gate(body).unwrap();
     assert_eq!(result.0, Gate::Accepted);
     assert!(result.1.is_none());
@@ -396,8 +396,8 @@ fn decode_gate_comments_filters_unstructured_and_preserves_structured() {
             "created_at": "2026-04-22T00:00:00Z",
         }),
         serde_json::json!({
-            "body": "**accepted** (accept-gate by ryan)",
-            "author": "ryan",
+            "body": "**accepted** (accept-gate by owner)",
+            "author": "owner",
             "created_at": "2026-04-23T00:00:00Z",
         }),
     ];

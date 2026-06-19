@@ -1,4 +1,4 @@
-const VALID_ADDRESSEES = new Set(['ryan', 'dev', 'pm', 'designer'])
+const VALID_ADDRESSEES = new Set(['owner', 'dev', 'pm', 'designer'])
 
 export const parseAddressee = (text: string): string | null => {
   const match = text.match(/^@(\w+)\b/)

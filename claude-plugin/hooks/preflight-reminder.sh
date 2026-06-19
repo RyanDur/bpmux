@@ -10,7 +10,7 @@
 #
 # Why: dev drifted on pre-flight subagents 3x in the 2026-04-17
 # iteration (#280, #282, #283) because changes felt "obviously
-# small." Caught reactively after Ryan asked "still using subagents?"
+# small." Caught reactively after owner asked "still using subagents?"
 # This hook automates the reminder at the pickup moment so the
 # discipline doesn't rely on memory.
 

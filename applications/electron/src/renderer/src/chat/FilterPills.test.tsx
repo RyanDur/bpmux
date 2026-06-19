@@ -33,7 +33,7 @@ const Harness = ({
   return <FilterPills filter={filter} hiddenCounts={hiddenCounts} visibleCounts={visibleCounts} />
 }
 
-describe('#1456 FilterPills — native HTML5 checkbox-in-label (Ryan-canon supersession)', () => {
+describe('#1456 FilterPills — native HTML5 checkbox-in-label (owner-canon supersession)', () => {
   test('Scenario 1: exactly 3 pills render with canon labels chat/events/bpmux', () => {
     render(<Harness />)
     expect(filterPills.isRendered('chat')).toBe(true)

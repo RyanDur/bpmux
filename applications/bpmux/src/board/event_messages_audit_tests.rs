@@ -19,7 +19,7 @@ const IMPERATIVE_VOCABULARY: &[&str] = &[
     "pick the next",
     "fix and re-deliver",
     "fix and redeliver",
-    "present to ryan",
+    "present to owner",
     "present to pm",
     "check ready count",
     "check if restocking",
@@ -81,7 +81,7 @@ fn start_signal_drops_check_restocking_imperative() {
 }
 
 #[test]
-fn pass_desk_check_pm_present_signal_drops_present_to_ryan_imperative() {
+fn pass_desk_check_pm_present_signal_drops_present_to_owner_imperative() {
     let msg = build_pass_desk_check_pm_present_signal(123);
     let text = extract_text(&msg);
     assert!(text.contains("#123"));
@@ -91,7 +91,7 @@ fn pass_desk_check_pm_present_signal_drops_present_to_ryan_imperative() {
 
 #[test]
 fn pass_desk_check_signal_is_informational() {
-    let msg = build_pass_desk_check_signal(123, "ryan");
+    let msg = build_pass_desk_check_signal(123, "owner");
     let text = extract_text(&msg);
     assert!(text.contains("#123"));
     assert!(text.contains("passed designer desk-check"));

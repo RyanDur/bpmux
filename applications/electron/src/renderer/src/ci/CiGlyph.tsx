@@ -11,7 +11,7 @@ import './CiGlyph.css'
 
 type CiConclusion = 'success' | 'failure' | 'in_progress' | 'quota_exhausted' | 'unknown'
 
-const CI_ACTIONS_URL = 'https://github.com/RyanDur/bpmux/actions'
+const GITHUB_FALLBACK_URL = 'https://github.com'
 const CI_BRANCH = 'main'
 
 const stateToConclusion = (state: CiStateWire): CiConclusion => {
@@ -55,6 +55,7 @@ const conclusionAriaLabel = (conclusion: string): string => {
 
 const CiGlyph = (): React.JSX.Element => {
   const ciSnapshot = useCiSnapshot()
+  const actionsUrl = ciSnapshot?.url ?? GITHUB_FALLBACK_URL
   const conclusion = ciSnapshot ? stateToConclusion(ciSnapshot.state) : 'unknown'
   const watcherUnhealthy = isWatcherUnhealthy(ciSnapshot)
   const glyph = conclusionGlyph(conclusion)
@@ -63,12 +64,12 @@ const CiGlyph = (): React.JSX.Element => {
   return (
     <a
       className={derivedClassName(conclusion, watcherUnhealthy)}
-      href={CI_ACTIONS_URL}
+      href={actionsUrl}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => {
         e.preventDefault()
-        window.open(CI_ACTIONS_URL, '_blank', 'noopener,noreferrer')
+        window.open(actionsUrl, '_blank', 'noopener,noreferrer')
       }}
       title={tooltip}
       aria-label={

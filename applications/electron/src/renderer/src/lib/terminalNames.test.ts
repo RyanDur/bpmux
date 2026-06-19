@@ -15,8 +15,8 @@ describe('#1609 terminal names — custom overrides the auto dir, clearing falls
   })
 
   test('names round-trip through storage keyed by terminal_id', () => {
-    writeTerminalNames('ryan', { 'term-id-1': 'build', 'term-id-2': 'logs' })
-    expect(readTerminalNames('ryan')).toEqual({ 'term-id-1': 'build', 'term-id-2': 'logs' })
+    writeTerminalNames('owner', { 'term-id-1': 'build', 'term-id-2': 'logs' })
+    expect(readTerminalNames('owner')).toEqual({ 'term-id-1': 'build', 'term-id-2': 'logs' })
   })
 
   test('reading a never-written identity yields an empty map', () => {
@@ -25,9 +25,9 @@ describe('#1609 terminal names — custom overrides the auto dir, clearing falls
 
   test('empty-string and non-string name entries are dropped on read', () => {
     window.localStorage.setItem(
-      'bpmux-terminal-names:ryan',
+      'bpmux-terminal-names:owner',
       JSON.stringify({ keep: 'build', empty: '', bad: 7 })
     )
-    expect(readTerminalNames('ryan')).toEqual({ keep: 'build' })
+    expect(readTerminalNames('owner')).toEqual({ keep: 'build' })
   })
 })

@@ -36,9 +36,9 @@ fn owner_bypasses_team_verifiable_accept_via_superset_not_actor_list() {
     assert!(
         !accept_team_verifiable()
             .actor_roles
-            .contains(&"ryan".to_string())
+            .contains(&"owner".to_string())
     );
-    assert!(enforce_role_allowed(&accept_team_verifiable(), "ryan", "ryan").is_ok());
+    assert!(enforce_role_allowed(&accept_team_verifiable(), "owner", "owner").is_ok());
 }
 
 #[test]
@@ -77,7 +77,7 @@ fn bundled_default_refuses_dev_to_accept_team_verifiable() {
 fn owner_walk_accept_allows_owner_via_bypass_and_refuses_team() {
     let owner_walk = accept_owner_walk();
     assert!(owner_walk.actor_roles.is_empty());
-    assert!(enforce_role_allowed(&owner_walk, "ryan", "ryan").is_ok());
+    assert!(enforce_role_allowed(&owner_walk, "owner", "owner").is_ok());
     assert!(matches!(
         check_role_allowed(&owner_walk, "pm"),
         Err(GateError::RoleNotAllowed { .. })
@@ -97,7 +97,7 @@ fn dev_verifiable_accept_allows_dev_only() {
         Err(GateError::RoleNotAllowed { .. })
     ));
     assert!(matches!(
-        check_role_allowed(&dev_verifiable, "ryan"),
+        check_role_allowed(&dev_verifiable, "owner"),
         Err(GateError::RoleNotAllowed { .. })
     ));
     assert!(matches!(
@@ -108,12 +108,12 @@ fn dev_verifiable_accept_allows_dev_only() {
 
 #[test]
 fn owner_superset_bypass_fires_every_gate_class_yet_non_owner_stays_role_checked() {
-    assert!(enforce_role_allowed(&accept_team_verifiable(), "ryan", "ryan").is_ok());
-    assert!(enforce_role_allowed(&accept_owner_walk(), "ryan", "ryan").is_ok());
-    assert!(enforce_role_allowed(&accept_dev_verifiable(), "ryan", "ryan").is_ok());
-    assert!(enforce_role_allowed(&accept_dev_verifiable(), "dev", "ryan").is_ok());
+    assert!(enforce_role_allowed(&accept_team_verifiable(), "owner", "owner").is_ok());
+    assert!(enforce_role_allowed(&accept_owner_walk(), "owner", "owner").is_ok());
+    assert!(enforce_role_allowed(&accept_dev_verifiable(), "owner", "owner").is_ok());
+    assert!(enforce_role_allowed(&accept_dev_verifiable(), "dev", "owner").is_ok());
     assert!(matches!(
-        enforce_role_allowed(&accept_dev_verifiable(), "pm", "ryan"),
+        enforce_role_allowed(&accept_dev_verifiable(), "pm", "owner"),
         Err(GateError::RoleNotAllowed { .. })
     ));
     assert!(matches!(
@@ -190,13 +190,13 @@ fn json_shape_includes_kind_discriminator_and_structured_fields() {
     let err = GateError::RoleNotAllowed {
         actor_role: "dev".into(),
         attempted_transition: "accept".into(),
-        allowed_roles: vec!["ryan".into(), "pm".into()],
+        allowed_roles: vec!["owner".into(), "pm".into()],
     };
     let json = serde_json::to_value(&err).unwrap();
     assert_eq!(json["kind"], "workflow-role-not-allowed");
     assert_eq!(json["actor_role"], "dev");
     assert_eq!(json["attempted_transition"], "accept");
-    assert_eq!(json["allowed_roles"][0], "ryan");
+    assert_eq!(json["allowed_roles"][0], "owner");
     assert_eq!(json["allowed_roles"][1], "pm");
 }
 
@@ -347,7 +347,7 @@ fn evidence_check_fails_when_designer_verdict_is_stale_beyond_window() {
 fn owner_walk_accept_passes_with_no_team_evidence() {
     let now = Utc::now();
     let owner_walk = accept_owner_walk();
-    assert!(check_evidence_present(&owner_walk, "ryan", &[], now, None).is_ok());
+    assert!(check_evidence_present(&owner_walk, "owner", &[], now, None).is_ok());
 }
 
 #[test]
@@ -431,7 +431,7 @@ fn evidence_check_distinguishes_missing_from_stale_in_verdict_state_1461() {
 fn evidence_check_no_verdict_state_when_class_is_none_or_no_required_roles_1461() {
     let now = Utc::now();
     let owner_walk = accept_owner_walk();
-    let result = check_evidence_present(&owner_walk, "ryan", &[], now, None);
+    let result = check_evidence_present(&owner_walk, "owner", &[], now, None);
     assert!(result.is_ok());
 }
 

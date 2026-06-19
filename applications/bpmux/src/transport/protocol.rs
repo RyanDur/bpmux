@@ -59,6 +59,8 @@ pub enum ClientMessage {
         before: String,
         limit: usize,
     },
+    #[serde(rename = "board_hydrate")]
+    BoardHydrate,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -9,7 +9,7 @@ fn owner_role_id() -> String {
     crate::workflow::current_workflow()
         .owner_role_id()
         .map(str::to_string)
-        .unwrap_or_else(|| "ryan".to_string())
+        .unwrap_or_else(|| "owner".to_string())
 }
 
 #[derive(Serialize)]

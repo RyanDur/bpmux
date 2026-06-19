@@ -1,91 +1,82 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
+import { test, expect } from '@playwright/test'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
+import { seedTeamVerdicts } from './helpers/seed-evidence'
+import {
+  setupCurrentIterationViaRpc,
+  addStoryToIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
-// Fixture carries one story per (lane × state) intersection so the
-// state-aware label transitions can be asserted in a single render.
-// #375: DELIVERED + feature should read "awaiting owner", ACCEPTED
-// + feature should read "owner-accepted"; DELIVERED + bug/chore
-// should read "awaiting team", ACCEPTED + bug/chore should read
-// "team-accepted". Rework stays "rework" regardless of state.
-const MOCK_BOARD = {
-  fetched_at: '2026-04-22T16:00:00Z',
-  stories: [
-    mockCurrentIteration('DeskCheck375', '2026-04-22T16:00:00Z'),
+const createStory = async (rpc: RpcFn, title: string): Promise<void> => {
+  const resp = await rpc(
+    'create_story',
     {
-      number: 900,
-      title: 'Delivered feature awaiting owner',
-      state: 'delivered',
-      labels: ['Feature', 'delivered', 'ready for accept'],
-      acceptor: 'owner',
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: '',
-      ...inMockCurrentIteration(1)
+      title,
+      user_job: `Fixture story for desk-check #375: ${title}.`,
+      observation_falsifier: 'reject if the state-aware badge label is wrong for this fixture row',
+      acceptance_test_path: 'applications/electron/tests/desk-check-375.spec.ts'
     },
-    {
-      number: 901,
-      title: 'Delivered chore awaiting team',
-      state: 'delivered',
-      labels: ['Chore', 'delivered', 'ready for accept'],
-      acceptor: 'team',
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: '',
-      ...inMockCurrentIteration(2)
-    },
-    {
-      number: 902,
-      title: 'Accepted feature',
-      state: 'accepted',
-      labels: ['Feature', 'accepted'],
-      acceptor: 'owner',
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: ''
-    },
-    {
-      number: 903,
-      title: 'Accepted chore',
-      state: 'accepted',
-      labels: ['Chore', 'accepted'],
-      acceptor: 'team',
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: ''
-    }
-  ]
+    'pm'
+  )
+  expect(resp.status).toBe(200)
 }
 
-const launchWithFixture = async (): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-}> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-375-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-375-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_BOARD)
-    })
+const driveToDelivered = async (
+  rpc: RpcFn,
+  number: number,
+  acceptor: 'owner' | 'team'
+): Promise<void> => {
+  const startResp = await rpc('start_story', {
+    number,
+    pickup_paraphrase: 'Driving the chain so the delivered badge is reachable.',
+    falsifier_reframing: 'reject if start_story does not move story to in-progress'
   })
-  await win.route('**/api/stories/*/comments', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  expect(startResp.status).toBe(200)
+  const deliverResp = await rpc('deliver_story', {
+    number,
+    verified_observation: 'Drove deliver so designer can pass desk-check next.'
   })
-  await win.route('**/api/stories/*/timeline', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
-  })
-  await win.reload()
-  return { app }
+  expect(deliverResp.status).toBe(200)
+  await seedTeamVerdicts(rpc, number, ['designer'])
+  const passResp = await rpc(
+    'pass_desk_check',
+    { number, acceptor, would_file_bug: false },
+    'designer'
+  )
+  expect(passResp.status).toBe(200)
+}
+
+const driveToAccepted = async (
+  rpc: RpcFn,
+  number: number,
+  acceptor: 'owner' | 'team'
+): Promise<void> => {
+  await driveToDelivered(rpc, number, acceptor)
+  await seedTeamVerdicts(rpc, number, ['designer', 'dev'])
+  const acceptRole = acceptor === 'owner' ? 'owner' : 'pm'
+  const acceptResp = await rpc('accept_story', { number, would_file_bug: false }, acceptRole)
+  expect(acceptResp.status).toBe(200)
+}
+
+const seedFixture = async (result: MockGhLaunchResult): Promise<void> => {
+  const { rpc } = result
+  await createStory(rpc, '[Feature] Delivered feature awaiting owner')
+  await createStory(rpc, '[Chore] Delivered chore awaiting team')
+  await createStory(rpc, '[Feature] Accepted feature')
+  await createStory(rpc, '[Chore] Accepted chore')
+
+  const iterNumber = await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck375')
+  await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
+
+  await driveToDelivered(rpc, 1, 'owner')
+  await driveToDelivered(rpc, 2, 'team')
+  await driveToAccepted(rpc, 3, 'owner')
+  await driveToAccepted(rpc, 4, 'team')
 }
 
 const GROUP = {
@@ -101,42 +92,55 @@ const openGroup = async (board: BoardPage, state: 'delivered' | 'accepted'): Pro
 
 test.describe('desk-check #375 state-aware badge labels', () => {
   test('delivered rows use awaiting-tense labels', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(new ChatPage(win).region()).toBeVisible()
-    await openGroup(board, 'delivered')
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedFixture(result)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+      await openGroup(board, 'delivered')
 
-    const feat = board.storyStateBadge(900)
-    await expect(feat).toHaveClass(/story-badge--accepted\b/)
-    await expect(feat).toContainText('awaiting owner')
+      const feat = board.storyStateBadge(1)
+      await expect(feat).toHaveClass(/story-badge--accepted\b/)
+      await expect(feat).toContainText('awaiting owner')
 
-    const chore = board.storyStateBadge(901)
-    await expect(chore).toHaveClass(/story-badge--team-accepted\b/)
-    await expect(chore).toContainText('awaiting team')
+      const chore = board.storyStateBadge(2)
+      await expect(chore).toHaveClass(/story-badge--team-accepted\b/)
+      await expect(chore).toContainText('awaiting team')
 
-    await win.screenshot({
-      path: join(EVIDENCE_DIR, '99-badge-state-aware-delivered.png'),
-      fullPage: true
-    })
-    await app.close()
+      await win.screenshot({
+        path: join(EVIDENCE_DIR, '99-badge-state-aware-delivered.png'),
+        fullPage: true
+      })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('accepted rows use accepted-tense labels', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(new ChatPage(win).region()).toBeVisible()
-    await openGroup(board, 'accepted')
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedFixture(result)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+      await openGroup(board, 'accepted')
 
-    const feat = board.storyStateBadge(902)
-    await expect(feat).toHaveClass(/story-badge--accepted\b/)
-    await expect(feat).toContainText('owner-accepted')
+      const feat = board.storyStateBadge(3)
+      await expect(feat).toHaveClass(/story-badge--accepted\b/)
+      await expect(feat).toContainText('owner-accepted')
 
-    const chore = board.storyStateBadge(903)
-    await expect(chore).toHaveClass(/story-badge--team-accepted\b/)
-    await expect(chore).toContainText('team-accepted')
-
-    await app.close()
+      const chore = board.storyStateBadge(4)
+      await expect(chore).toHaveClass(/story-badge--team-accepted\b/)
+      await expect(chore).toContainText('team-accepted')
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

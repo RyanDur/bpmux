@@ -374,27 +374,33 @@ fn build_dev_ci_signal_from_is_bpmux() {
 }
 
 #[test]
-fn github_actions_url_defaults_to_repo_actions_tab_when_unconfigured() {
-    assert_eq!(github_actions_url(), DEFAULT_CI_ACTIONS_URL);
+fn resolve_ci_actions_url_falls_back_to_github_base_when_unset() {
+    assert_eq!(resolve_ci_actions_url(None, None), GITHUB_BASE_URL);
 }
 
 #[test]
-fn resolve_ci_actions_url_defaults_when_unset() {
-    assert_eq!(resolve_ci_actions_url(None), DEFAULT_CI_ACTIONS_URL);
-}
-
-#[test]
-fn resolve_ci_actions_url_honors_configured_override() {
+fn resolve_ci_actions_url_derives_actions_tab_from_repo() {
     assert_eq!(
-        resolve_ci_actions_url(Some("https://github.com/acme/bpmux/actions".to_string())),
+        resolve_ci_actions_url(None, Some("acme/bpmux".to_string())),
         "https://github.com/acme/bpmux/actions"
     );
 }
 
 #[test]
-fn resolve_ci_actions_url_ignores_blank_override() {
+fn resolve_ci_actions_url_honors_configured_override() {
     assert_eq!(
-        resolve_ci_actions_url(Some("   ".to_string())),
-        DEFAULT_CI_ACTIONS_URL
+        resolve_ci_actions_url(
+            Some("https://example.test/ci".to_string()),
+            Some("acme/bpmux".to_string())
+        ),
+        "https://example.test/ci"
+    );
+}
+
+#[test]
+fn resolve_ci_actions_url_ignores_blank_override_and_derives_from_repo() {
+    assert_eq!(
+        resolve_ci_actions_url(Some("   ".to_string()), Some("acme/bpmux".to_string())),
+        "https://github.com/acme/bpmux/actions"
     );
 }

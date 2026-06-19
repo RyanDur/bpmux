@@ -12,7 +12,7 @@ import type { ChatMessage } from '../transport/types'
 
 const live = (i: number): ChatMessage => ({
   id: `live-${i}`,
-  from: 'ryan',
+  from: 'owner',
   text: `live ${i}`,
   ts: `2026-05-03T03:${String(50 + i).padStart(2, '0')}:00.000Z`,
   to: null,

@@ -24,7 +24,7 @@ pub fn move_story_tool(description: &'static str) -> Tool {
             "position": {
                 "type": ["integer", "null"],
                 "minimum": 1,
-                "description": "1-based absolute position within the destination column. Only meaningful when target_state is 'ready' or 'icebox'; PM-only when present (PM organizes those queues per Ryan 2026-05-05 01:39 UTC). Null/absent is fine for any non-organizing column."
+                "description": "1-based absolute position within the destination column. Only meaningful when target_state is 'ready' or 'icebox'; PM-only when present (PM organizes those queues per the owner 2026-05-05 01:39 UTC). Null/absent is fine for any non-organizing column."
             },
             "rationale": {
                 "type": "string",

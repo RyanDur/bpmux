@@ -27,14 +27,6 @@ test.describe('#1511 chat-panel blue accent + scope-text retired', () => {
     const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
     const win = await app.firstWindow()
     try {
-      await win.route('**/api/board', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ fetched_at: '2026-06-04T00:00:00Z', stories: [] })
-        })
-      })
-
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))
       await win.reload()
       const chat = win.locator('.chat')

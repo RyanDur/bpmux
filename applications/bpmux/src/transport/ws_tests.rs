@@ -7,7 +7,7 @@ use chrono::Utc;
 
 #[test]
 fn reaction_toggle_frame_deserializes_with_snake_case_fields() {
-    let wire = r#"{"type":"reaction_toggle","channel":"broadcast","message_key":"2026-04-22T18:30:00Z|dev:claude-code","emoji":"👍","user":"ryan"}"#;
+    let wire = r#"{"type":"reaction_toggle","channel":"broadcast","message_key":"2026-04-22T18:30:00Z|dev:claude-code","emoji":"👍","user":"owner"}"#;
     let parsed: ClientMessage =
         serde_json::from_str(wire).expect("renderer reaction_toggle frame must deserialize");
     assert!(
@@ -24,7 +24,7 @@ fn reaction_toggle_frame_deserializes_with_snake_case_fields() {
         assert_eq!(channel, "broadcast");
         assert_eq!(message_key, "2026-04-22T18:30:00Z|dev:claude-code");
         assert_eq!(emoji, "👍");
-        assert_eq!(user, "ryan");
+        assert_eq!(user, "owner");
     }
 }
 
@@ -189,6 +189,17 @@ fn history_page_loaded_reply_echoes_request_id_caller_only() {
     );
 }
 
+#[test]
+fn board_hydrate_frame_deserializes_as_unit_variant() {
+    let wire = r#"{"type":"board_hydrate"}"#;
+    let parsed: ClientMessage =
+        serde_json::from_str(wire).expect("renderer board_hydrate frame must deserialize");
+    assert!(
+        matches!(&parsed, ClientMessage::BoardHydrate),
+        "expected BoardHydrate, got {parsed:?}"
+    );
+}
+
 fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
     session::Message {
         from: from.to_string(),
@@ -216,7 +227,7 @@ fn broadcast_delivered_to_everyone() {
         &msg("dev:claude-code", None),
         "pm:claude-code",
     ));
-    assert!(should_deliver(&msg("dev:claude-code", None), "ryan:human",));
+    assert!(should_deliver(&msg("dev:claude-code", None), "owner:human",));
 }
 
 #[test]
@@ -257,7 +268,7 @@ fn group_addressed_delivered_to_all_named() {
     assert!(should_deliver(&m, "designer:claude-code"));
     assert!(should_deliver(&m, "dev:human"));
     assert!(
-        should_deliver(&m, "ryan:human"),
+        should_deliver(&m, "owner:human"),
         "owner-omniscience: the owner receives a group conversation even though it is NOT named in --to — scope spares peers, never hides from the owner"
     );
 }
@@ -266,7 +277,7 @@ fn group_addressed_delivered_to_all_named() {
 fn owner_receives_every_conversation_even_scoped_to_other_peers() {
     let m = msg("dev:claude-code", Some(vec!["pm", "designer"]));
     assert!(
-        should_deliver(&m, "ryan:human"),
+        should_deliver(&m, "owner:human"),
         "owner-omniscience (owner-raised): a chat message scoped to:[pm,designer] STILL reaches the owner — --to is peer-attention, never owner-hiding. The owner sees every conversation; the all-conversations view renders it while group rooms still filter by --to."
     );
     assert!(
@@ -280,11 +291,11 @@ fn owner_receives_activity_but_nudges_stay_substrate_excluded() {
     let mut activity = msg("dev:claude-code", None);
     activity.message_type = session::MessageType::Activity;
     assert!(
-        should_deliver(&activity, "ryan:human"),
+        should_deliver(&activity, "owner:human"),
         "the owner's SESSION receives activity signals (they were already broadcast) — hiding plumbing is the RENDERER's job (events-class hidden from all-conversations by default, FilterPills-toggleable), not the substrate's"
     );
     assert!(
-        !should_deliver(&nudge(Some(vec!["ryan"])), "ryan:human"),
+        !should_deliver(&nudge(Some(vec!["owner"])), "owner:human"),
         "owner-omniscience PRESERVES the deliberate #1525 substrate nudge-exclusion — nudges (recall/handoff routing) never reach the owner-peer; surfacing them is a separate #1525-revisit, not this fix"
     );
 }
@@ -293,14 +304,14 @@ fn owner_receives_activity_but_nudges_stay_substrate_excluded() {
 fn to_all_is_broadcast() {
     let m = msg("dev:claude-code", Some(vec!["all"]));
     assert!(should_deliver(&m, "pm:claude-code"));
-    assert!(should_deliver(&m, "ryan:human"));
+    assert!(should_deliver(&m, "owner:human"));
     assert!(should_deliver(&m, "designer:claude-code"));
 }
 
 #[test]
 fn nudge_never_delivered_to_owner_even_when_addressed_to_owner() {
     assert!(
-        !should_deliver(&nudge(Some(vec!["ryan"])), "ryan:human"),
+        !should_deliver(&nudge(Some(vec!["owner"])), "owner:human"),
         "#1525: a Nudge addressed to the owner must NEVER reach the owner-role peer (recall/handoff can address it to: owner)"
     );
 }
@@ -308,11 +319,11 @@ fn nudge_never_delivered_to_owner_even_when_addressed_to_owner() {
 #[test]
 fn nudge_never_delivered_to_owner_on_broadcast_or_all_paths() {
     assert!(
-        !should_deliver(&nudge(None), "ryan:human"),
+        !should_deliver(&nudge(None), "owner:human"),
         "#1525: a broadcast Nudge (to:None) must not slip through to the owner"
     );
     assert!(
-        !should_deliver(&nudge(Some(vec!["all"])), "ryan:human"),
+        !should_deliver(&nudge(Some(vec!["all"])), "owner:human"),
         "#1525: a to:all Nudge must not slip through to the owner"
     );
 }
@@ -340,7 +351,7 @@ fn nudge_still_delivered_to_every_agent_role() {
 #[test]
 fn short_name_strips_tool_suffix() {
     assert_eq!(short_name("dev:claude-code"), "dev");
-    assert_eq!(short_name("ryan:human"), "ryan");
+    assert_eq!(short_name("owner:human"), "owner");
     assert_eq!(short_name("bpmux"), "bpmux");
 }
 

@@ -1,10 +1,5 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-
-const getBoard = vi.fn()
-vi.mock('../api/boardClient', () => ({
-  getBoard: (...args: unknown[]) => getBoard(...args)
-}))
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import Board from './Board'
 import type { BoardResponse, BoardStory } from './types'
@@ -18,11 +13,6 @@ const pushSnapshot = (snapshot: BoardResponse): void =>
       snapshot.fetched_at
     )
   )
-
-const inertChain = (): unknown => {
-  const chain = { onSuccess: () => chain, onFailure: () => chain }
-  return chain
-}
 
 const story = (over: Partial<BoardStory>): BoardStory => ({
   number: 1,
@@ -66,8 +56,6 @@ const boardPanel = (): HTMLElement => screen.getByTestId('board-roadmap-panel-bo
 
 beforeEach(() => {
   window.localStorage.clear()
-  getBoard.mockReset()
-  getBoard.mockImplementation(() => inertChain())
   window.bpmux = { wsUrl: 'ws://test.invalid', authToken: 'tok', apiBase: 'http://test.invalid' }
 })
 

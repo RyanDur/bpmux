@@ -30,6 +30,16 @@ use snapshot::{build_state_snapshot_message, system_announcement};
 
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
+struct WsDeps {
+    session: Arc<session::Session>,
+    orchestrator:
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    pty_registry: Arc<crate::room::LivePtyRegistry>,
+    routing: Arc<crate::session::routing_identity::RoutingStore>,
+    tracker: crate::transport::rest::TrackerHandle,
+    test_refresh: crate::server::TestRefreshHandle,
+}
+
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(session): State<Arc<session::Session>>,
@@ -39,41 +49,22 @@ pub async fn ws_handler(
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
     axum::Extension(routing): axum::Extension<Arc<crate::session::routing_identity::RoutingStore>>,
     axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
 ) -> Response {
-    ws.on_upgrade(move |socket| {
-        handle_ws(
-            socket,
-            session,
-            orchestrator,
-            pty_registry,
-            routing,
-            tracker,
-        )
-    })
-}
-
-async fn handle_ws(
-    socket: WebSocket,
-    session: Arc<session::Session>,
-    orchestrator: Arc<
-        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
-    >,
-    pty_registry: Arc<crate::room::LivePtyRegistry>,
-    routing: Arc<crate::session::routing_identity::RoutingStore>,
-    tracker: crate::transport::rest::TrackerHandle,
-) {
-    let (tx, rx) = socket.split();
-    if let Err(e) = run_ws_session(
-        tx,
-        rx,
+    let deps = WsDeps {
         session,
         orchestrator,
         pty_registry,
         routing,
         tracker,
-    )
-    .await
-    {
+        test_refresh,
+    };
+    ws.on_upgrade(move |socket| handle_ws(socket, deps))
+}
+
+async fn handle_ws(socket: WebSocket, deps: WsDeps) {
+    let (tx, rx) = socket.split();
+    if let Err(e) = run_ws_session(tx, rx, deps).await {
         crate::session::diag::log_diag(&format!("ws: session error: {e}"));
     }
 }
@@ -81,14 +72,16 @@ async fn handle_ws(
 async fn run_ws_session(
     mut tx: SplitSink<WebSocket, WsMessage>,
     mut rx: SplitStream<WebSocket>,
-    session: Arc<session::Session>,
-    orchestrator: Arc<
-        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
-    >,
-    pty_registry: Arc<crate::room::LivePtyRegistry>,
-    routing: Arc<crate::session::routing_identity::RoutingStore>,
-    tracker: crate::transport::rest::TrackerHandle,
+    deps: WsDeps,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let WsDeps {
+        session,
+        orchestrator,
+        pty_registry,
+        routing,
+        tracker,
+        test_refresh,
+    } = deps;
     let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
     let routing_session_id = routing.resolve(short_name(&identity)).into_iter().next();
     let mut roster_key = roster_key_for(&routing_session_id, &identity);
@@ -187,6 +180,7 @@ async fn run_ws_session(
                                 pty_registry: &pty_registry,
                                 pty_tx: &pty_tx,
                                 tracker: &tracker,
+                                test_refresh: &test_refresh,
                                 reply_tx: &reply_tx,
                             };
                             if let Some(new_identity) = handle_client_message(&text, &identity, &client_ctx, &mut tx, &mut pty_readers).await? {

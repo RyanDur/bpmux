@@ -78,7 +78,7 @@ mod tests {
 
     fn make_session(dir: PathBuf) -> Arc<Session> {
         let (tx, _) = broadcast::channel(16);
-        Arc::new(Session::new(dir, "ryan".to_string(), tx))
+        Arc::new(Session::new(dir, "owner".to_string(), tx))
     }
 
     fn submit_args(

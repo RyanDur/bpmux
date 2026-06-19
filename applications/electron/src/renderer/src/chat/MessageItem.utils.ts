@@ -13,7 +13,7 @@ export const shortName = (identity: string): string => {
 }
 
 export const avatarClasses = (sender: string): string => {
-  const shape = sender === 'ryan' ? 'message-avatar--circle' : 'message-avatar--square'
+  const shape = sender === 'owner' ? 'message-avatar--circle' : 'message-avatar--square'
   return `message-avatar ${shape}`
 }
 

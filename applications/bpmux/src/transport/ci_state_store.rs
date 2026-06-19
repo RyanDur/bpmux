@@ -63,7 +63,7 @@ mod tests {
             conclusion,
             last_run_id: Some(42),
             branch: "main",
-            url: "https://github.com/RyanDur/bpmux/actions".to_string(),
+            url: "https://github.com/acme/bpmux/actions".to_string(),
             head_sha: Some("abc1234".to_string()),
             display_title: Some("test".to_string()),
             last_updated_at: None,

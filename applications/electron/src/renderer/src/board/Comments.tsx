@@ -3,7 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import { describeHttpError } from '../api/http'
 import { postStoryComment } from '../api/storiesClient'
-import { useBoardInvalidateTick, useComments, requestCommentsHydrate } from '../transport/session'
+import {
+  useBoardInvalidateTick,
+  useComments,
+  requestCommentsHydrate,
+  RENDERER_IDENTITY
+} from '../transport/session'
 import type { CommentWire } from '../transport/types'
 
 const OPTIMISTIC_ID_BASE = -1_000_000_000
@@ -64,7 +69,7 @@ const Comments = ({ storyNumber, apiBase, authToken, onError }: Props): React.JS
     setCommentBusy(true)
     const optimisticEntry: CommentWire = {
       id: OPTIMISTIC_ID_BASE - Date.now(),
-      author: 'ryan',
+      author: RENDERER_IDENTITY,
       body: trimmed,
       created_at: new Date().toISOString()
     }

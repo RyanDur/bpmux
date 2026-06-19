@@ -2,25 +2,23 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
 const MOCK_MESSAGES = [
   {
-    id: 'mm1',
     from: 'designer:claude-code',
     text: 'Mock message for avatar + arrival',
     ts: '2026-04-22T16:00:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   },
   {
-    id: 'mm2',
     from: 'dev:claude-code',
     text: 'Dev speaks',
     ts: '2026-04-22T16:01:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   }
 ]
 
@@ -31,17 +29,14 @@ const launchWithMessages = async (
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-352-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-352-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app } = await launchIsolatedElectron({
+    sessionBase,
+    userDataDir: udd,
+    seedMessages: MOCK_MESSAGES
+  })
   const win = await app.firstWindow()
   if (reducedMotion) await win.emulateMedia({ reducedMotion })
-  await win.route('**/api/messages*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_MESSAGES)
-    })
-  })
-  await win.reload()
+  await waitForMessagesLoaded(win, 'Mock message for avatar + arrival')
   return { app }
 }
 

@@ -47,6 +47,7 @@ export const SessionActionType = {
   TimelineHydrated: 'session/timelineHydrated',
   HistoryHydrateRequested: 'session/historyHydrateRequested',
   OlderHistoryRequested: 'session/olderHistoryRequested',
+  BoardHydrateRequested: 'session/boardHydrateRequested',
   PtySubscribeRequested: 'session/ptySubscribeRequested',
   PtyInputRequested: 'session/ptyInputRequested',
   PtyResizeRequested: 'session/ptyResizeRequested',
@@ -98,6 +99,7 @@ export type SessionAction =
       before: string
       limit: number
     }
+  | { type: typeof SessionActionType.BoardHydrateRequested }
   | { type: typeof SessionActionType.PtySubscribeRequested; terminalId: string }
   | { type: typeof SessionActionType.PtyInputRequested; terminalId: string; keystroke: string }
   | {
@@ -218,6 +220,10 @@ export const olderHistoryRequested = (
   requestId,
   before,
   limit
+})
+
+export const boardHydrateRequested = (): SessionAction => ({
+  type: SessionActionType.BoardHydrateRequested
 })
 
 export const ptySubscribeRequested = (terminalId: string): SessionAction => ({

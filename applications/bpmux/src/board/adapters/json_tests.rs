@@ -169,7 +169,7 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
         GateComment {
             gate: Gate::Rejected,
             ts: chrono::Utc::now(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some("user-story not satisfied".into()),
         },
     ]);
@@ -207,7 +207,7 @@ fn story_to_board_json_rework_comment_clears_after_forward_edge() {
         GateComment {
             gate: Gate::Rejected,
             ts: chrono::Utc::now(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some("rework needed".into()),
         },
         GateComment {

@@ -3,7 +3,13 @@ use serde_json::Value;
 
 pub const AGENT_HEADER: &str = "X-BPMUX-Agent";
 
-const KNOWN_AGENTS: &[&str] = &["dev", "pm", "designer", "owner"];
+fn known_agents() -> Vec<String> {
+    crate::workflow::current_workflow()
+        .role
+        .iter()
+        .map(|r| r.id.to_ascii_lowercase())
+        .collect()
+}
 
 pub(super) fn known_tools() -> &'static [&'static str] {
     &[
@@ -74,9 +80,10 @@ pub fn agent_from_headers(headers: &HeaderMap) -> Result<String, String> {
     if raw.is_empty() {
         return Err(format!("{AGENT_HEADER} header is empty"));
     }
-    if !KNOWN_AGENTS.contains(&raw.as_str()) {
+    let known = known_agents();
+    if !known.iter().any(|id| id == &raw) {
         return Err(format!(
-            "{AGENT_HEADER} '{raw}' is not a known role; expected one of {KNOWN_AGENTS:?}"
+            "{AGENT_HEADER} '{raw}' is not a known role; expected one of {known:?}"
         ));
     }
     Ok(raw)

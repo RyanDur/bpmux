@@ -17,7 +17,7 @@ fn chat_message_is_chat() {
 #[test]
 fn system_message_is_not_chat() {
     let msg = Message {
-        from: "ryan:claude-code".to_string(),
+        from: "owner:claude-code".to_string(),
         text: "[turn complete]".to_string(),
         ts: Utc::now(),
         message_type: MessageType::System,
@@ -41,7 +41,7 @@ fn explicit_chat_type_is_chat() {
 #[test]
 fn serializes_message_to_json() {
     let msg = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "hello world".to_string(),
         ts: DateTime::parse_from_rfc3339("2026-04-02T12:00:00Z")
             .expect("test timestamp")
@@ -58,7 +58,7 @@ fn serializes_message_to_json() {
 #[test]
 fn addressee_omitted_by_default_in_json() {
     let msg = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "hi".to_string(),
         ts: Utc::now(),
         ..Message::default()
@@ -70,7 +70,7 @@ fn addressee_omitted_by_default_in_json() {
 #[test]
 fn addressee_roundtrips_through_json() {
     let msg = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "what about X?".to_string(),
         ts: Utc::now(),
         addressee: Some("pm".to_string()),
@@ -84,7 +84,7 @@ fn addressee_roundtrips_through_json() {
 
 #[test]
 fn addressee_deserializes_from_pre_158_json() {
-    let json = r#"{"from":"ryan:human","text":"hi","ts":"2026-04-02T12:00:00Z","to":null}"#;
+    let json = r#"{"from":"owner:human","text":"hi","ts":"2026-04-02T12:00:00Z","to":null}"#;
     let parsed: Message = serde_json::from_str(json).expect("deserialize");
     assert!(parsed.addressee.is_none());
 }
@@ -139,7 +139,7 @@ fn message_without_multi_depth_serializes_without_the_field() {
 
 #[test]
 fn message_deserializes_from_pre_187_json_without_multi_depth() {
-    let json = r#"{"from":"ryan:human","text":"hi","ts":"2026-04-02T12:00:00Z","to":null}"#;
+    let json = r#"{"from":"owner:human","text":"hi","ts":"2026-04-02T12:00:00Z","to":null}"#;
     let parsed: Message = serde_json::from_str(json).expect("deserialize");
     assert!(parsed.multi_depth.is_none());
 }

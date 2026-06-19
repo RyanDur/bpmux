@@ -13,7 +13,7 @@
 # verification — 5 unverified-premise filings within ~3 hours (#279,
 # team-docs recreation, #211 almost, stretch candidates). Saved
 # lesson `feedback_verify_premise_before_filing` exists but wasn't
-# firing at the right moment. Today's reminder is Ryan's
+# firing at the right moment. Today's reminder is owner's
 # "objectively?"; this hook automates it at the create_story moment.
 #
 # Content is role-agnostic in v1 — the four premise questions apply
@@ -39,7 +39,7 @@ case "$role" in
   *) exit 0 ;;
 esac
 
-lenses="observed pain or speculation? (speculative → don't file) / substrate verified? (grep code, read related docs, git history for prior decisions) / reverses a deliberate past decision? (if yes, escalate to Ryan with context) / extends existing or duplicates? (check supersession risk)"
+lenses="observed pain or speculation? (speculative → don't file) / substrate verified? (grep code, read related docs, git history for prior decisions) / reverses a deliberate past decision? (if yes, escalate to owner with context) / extends existing or duplicates? (check supersession risk)"
 
 message="[file] premise check before filing for ${role}: ${lenses}"
 

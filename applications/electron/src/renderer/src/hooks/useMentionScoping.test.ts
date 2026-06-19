@@ -4,7 +4,7 @@ import { useMentionScoping } from './useMentionScoping'
 
 describe('#1444 useMentionScoping', () => {
   test('mentionRoles wraps presenceRoles in a Set', () => {
-    const { result } = renderHook(() => useMentionScoping(['dev', 'pm', 'ryan']))
+    const { result } = renderHook(() => useMentionScoping(['dev', 'pm', 'owner']))
     expect(result.current.mentionRoles).toBeInstanceOf(Set)
     expect(result.current.mentionRoles.has('dev')).toBe(true)
     expect(result.current.mentionRoles.has('pm')).toBe(true)

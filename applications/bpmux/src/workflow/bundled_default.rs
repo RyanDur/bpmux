@@ -4,7 +4,7 @@ pub fn bundled_default() -> WorkflowConfig {
     WorkflowConfig {
         role: vec![
             Role {
-                id: "ryan".into(),
+                id: "owner".into(),
                 purposes: vec!["owner".into()],
             },
             Role {

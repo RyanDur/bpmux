@@ -228,7 +228,7 @@ fn review_closed_is_config_driven_not_hardcoded_designer() {
 #[test]
 fn owner_close_does_not_spoof_review_closed() {
     let mut it = iteration(200);
-    it.iteration_review_closed_by = vec!["ryan".to_string()];
+    it.iteration_review_closed_by = vec!["owner".to_string()];
     assert!(
         !iteration_readiness(&it, &[], &bundled_default()).review_closed,
         "an owner-close is recorded but does not spoof review_closed — the derive validates the closer is a configured reviewer"

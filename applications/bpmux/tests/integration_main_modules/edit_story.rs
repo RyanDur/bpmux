@@ -146,7 +146,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
     assert_eq!(
         non_pm.status(),
         reqwest::StatusCode::BAD_REQUEST,
-        "non-PM (and non-Ryan) role must be rejected from edit_story"
+        "non-PM (and non-owner) role must be rejected from edit_story"
     );
 
     ct.cancel();

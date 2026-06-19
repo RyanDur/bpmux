@@ -1,18 +1,3 @@
-//! #724: shared httpmock helpers for fixture-seed tests.
-//!
-//! Tests should use these to construct GitHub API JSON payloads that
-//! octocrab's deserializer accepts. Per Ryan's 2026-04-30 directive,
-//! ONLY octocrab gets mocked — these helpers wrap the GitHub HTTP
-//! boundary so the real `GitHubSourceAdapter` + canonical store +
-//! state-decode + RPC dispatch are exercised end-to-end.
-//!
-//! ## The Label gotcha
-//!
-//! `octocrab`'s `Label` deserializer needs the FULL shape (id,
-//! node_id, url, name, description, color, default). A skinny
-//! `[{"name": "ready"}]` causes serde to silently reject the entire
-//! issue → BoardStore stays empty with no error surface. `label_json`
-//! emits the full shape from a single `name` argument.
 #![allow(dead_code)]
 
 use httpmock::{HttpMockRequest, HttpMockResponse, Method, MockServer};

@@ -83,5 +83,6 @@ fn ci_to_wire(snap: &CiSnapshot) -> CiSnapshotWire {
         head_sha: snap.head_sha.clone(),
         display_title: snap.display_title.clone(),
         last_successful_poll_at: None,
+        url: Some(crate::ci::github_actions_url()),
     }
 }

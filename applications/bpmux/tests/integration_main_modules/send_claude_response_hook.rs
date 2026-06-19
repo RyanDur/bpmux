@@ -122,22 +122,18 @@ fn hook_injects_multiple_messages_in_log_order() {
     assert!(sys_msg.contains("[dev]"));
 }
 
-/// GIVEN a messages log where the only new entries are ryan's own
-///   messages (which the agent shouldn't echo-read)
-/// WHEN the hook runs
-/// THEN no systemMessage is emitted
 #[test]
-fn hook_is_silent_when_only_ryan_messages_are_new() {
+fn hook_is_silent_when_only_owner_messages_are_new() {
     let messages = r#"[
         {"from":"pm:claude-code","text":"old message","ts":"2026-04-11T22:00:00Z","message_type":"chat"},
-        {"from":"ryan:claude-code","text":"ryan just typed this","ts":"2026-04-11T23:00:00Z","message_type":"chat"}
+        {"from":"owner:claude-code","text":"owner just typed this","ts":"2026-04-11T23:00:00Z","message_type":"chat"}
     ]"#;
     let (code, stdout) = run_hook(messages, Some("2026-04-11T22:30:00Z"));
     assert_eq!(code, 0);
     // No output means no systemMessage injection — correct silent behavior.
     assert!(
         stdout.trim().is_empty(),
-        "expected silent when only ryan messages are new, got: {stdout}"
+        "expected silent when only owner messages are new, got: {stdout}"
     );
 }
 

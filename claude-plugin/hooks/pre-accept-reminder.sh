@@ -23,16 +23,16 @@ set -euo pipefail
 role="${BPMUX_ROLE:-}"
 
 # Unknown / unset role → silent no-op. accept_story is owner-only
-# (Ryan), so missing role-context means we can't tailor the lens.
+# (owner), so missing role-context means we can't tailor the lens.
 if [ -z "$role" ]; then
   exit 0
 fi
 
 # Only fire for the lane that calls accept_story. PM acts as
-# proxy-accept on owner's behalf today; Ryan accepts directly via
+# proxy-accept on owner's behalf today; owner accepts directly via
 # Electron. Both surfaces are governed by the same audit-lens.
 case "$role" in
-  pm|ryan) ;;
+  pm|owner) ;;
   *) exit 0 ;;
 esac
 

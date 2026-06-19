@@ -1,5 +1,6 @@
 import { dispatchSession } from './store'
 import {
+  boardHydrateRequested,
   chatSendRequested,
   commentsHydrateRequested,
   frameReceived,
@@ -64,6 +65,8 @@ export const requestOlderHistory = (
   dispatchSession(olderHistoryRequested(requestId, before, limit))
   return promise
 }
+
+export const requestBoardHydrate = (): void => dispatchSession(boardHydrateRequested())
 
 export const sendPtySubscribe = (terminalId: string): void =>
   dispatchSession(ptySubscribeRequested(terminalId))

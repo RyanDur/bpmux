@@ -1,112 +1,83 @@
 import { test, expect } from '@playwright/test'
-import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchWithMockGh } from './helpers/launch'
+import { seedTeamVerdicts } from './helpers/seed-evidence'
+import {
+  seedCurrentIterationViaRpc,
+  addStoryToIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 
-const MOCK_BOARD = {
-  fetched_at: '2026-06-04T00:00:00Z',
-  stories: [
-    {
-      number: 901,
-      title: 'Epic: disclosure-summary uniformity',
-      state: 'in-progress',
-      labels: ['Epic'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: ''
-    },
-    {
-      number: 902,
-      title: 'Child story under epic — ready',
-      state: 'ready',
-      labels: ['Feature'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: '',
-      parent_epic: 901
-    },
-    {
-      number: 903,
-      title: 'Child story under epic — accepted',
-      state: 'accepted',
-      labels: ['Feature'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: '',
-      parent_epic: 901
-    },
-    {
-      number: 910,
-      title: 'Iteration AlphaTheme',
-      state: 'in-progress',
-      gh_state: 'open',
-      labels: ['iteration', 'iteration-order:1'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: '',
-      is_current: true
-    },
-    {
-      number: 911,
-      title: 'Member of AlphaTheme',
-      state: 'ready',
-      labels: ['Feature'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: '',
-      iteration_membership: { iteration_number: 910, position: 1 }
-    },
-    {
-      number: 920,
-      title: 'Iteration BetaTheme',
-      state: 'accepted',
-      gh_state: 'closed',
-      labels: ['iteration', 'iteration-order:2'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: ''
-    },
-    {
-      number: 930,
-      title: 'Unscheduled loose story A',
-      state: 'icebox',
-      labels: ['Feature', 'unscheduled-order:1'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: ''
-    },
-    {
-      number: 931,
-      title: 'Unscheduled loose story B',
-      state: 'icebox',
-      labels: ['Feature', 'unscheduled-order:2'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: ''
-    }
-  ]
+const SPEC_PATH = 'applications/electron/tests/disclosure-summary-bg-uniform.spec.ts'
+
+const createStory = async (rpc: RpcFn, title: string, parentEpic?: number): Promise<number> => {
+  const body: Record<string, unknown> = {
+    title,
+    user_job: `Disclosure-uniformity fixture: ${title}.`,
+    observation_falsifier: 'reject if this fixture row does not render in its board section',
+    acceptance_test_path: SPEC_PATH
+  }
+  if (parentEpic !== undefined) body.parent_epic = parentEpic
+  const resp = await rpc('create_story', body, 'pm')
+  expect(resp.status).toBe(200)
+  const json = (await resp.json()) as { message?: string }
+  const number = Number(json.message?.match(/#(\d+)/)?.[1])
+  expect(number).toBeGreaterThan(0)
+  return number
+}
+
+const driveToAccepted = async (rpc: RpcFn, number: number): Promise<void> => {
+  const startResp = await rpc('start_story', {
+    number,
+    pickup_paraphrase: 'Driving an epic child to accepted for the disclosure fixture.',
+    falsifier_reframing: 'reject if start_story does not move story to in-progress'
+  })
+  expect(startResp.status).toBe(200)
+  const deliverResp = await rpc('deliver_story', {
+    number,
+    verified_observation: 'Drove deliver so the child reaches accepted.'
+  })
+  expect(deliverResp.status).toBe(200)
+  await seedTeamVerdicts(rpc, number, ['designer'])
+  const passResp = await rpc(
+    'pass_desk_check',
+    { number, acceptor: 'team', would_file_bug: false },
+    'designer'
+  )
+  expect(passResp.status).toBe(200)
+  await seedTeamVerdicts(rpc, number, ['designer', 'dev'])
+  const acceptResp = await rpc('accept_story', { number, would_file_bug: false }, 'pm')
+  expect(acceptResp.status).toBe(200)
 }
 
 type StateBg = Record<string, string>
 
 test.describe('#1519 disclosure-summary background uniformity (dark theme)', () => {
   test('all 4 summary toggle-headers share --bg-base resting/open and --bg-highlighted hover', async () => {
-    const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-1519-'))
-    const udd = mkdtempSync(join(tmpdir(), 'bpmux-1519-udd-'))
-    const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-    const win = await app.firstWindow()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
-      await win.route('**/api/board', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(MOCK_BOARD)
-        })
-      })
-
       const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+
+      const epicNumber = await createStory(rpc, '[Epic] disclosure-summary uniformity')
+      await createStory(rpc, '[Feature] Child story under epic — ready', epicNumber)
+      const acceptedChild = await createStory(
+        rpc,
+        '[Feature] Child story under epic — accepted',
+        epicNumber
+      )
+
+      const memberNumber = await createStory(rpc, '[Feature] Member of AlphaTheme')
+      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'AlphaTheme')
+      await addStoryToIterationViaRpc(rpc, memberNumber, iterNumber, 1)
+
+      await createStory(rpc, '[Feature] Unscheduled loose story A')
+      await createStory(rpc, '[Feature] Unscheduled loose story B')
+
+      await driveToAccepted(rpc, acceptedChild)
+
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))
       await win.reload()
       await expect(board.region()).toBeVisible()
@@ -171,7 +142,7 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
 
       table['board-epic-summary'] = {}
       {
-        const card = board.epicCard(901)
+        const card = board.epicCard(epicNumber)
         const sum = card.locator('.board-epic-summary')
         await expect(sum).toBeVisible()
         if (await isOpen(card)) await toggleVia(sum)
@@ -185,9 +156,9 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
       table['board-iteration-summary'] = {}
       table['board-iteration-summary-current'] = {}
       {
-        const card = board.iterationCard(910)
+        const card = board.iterationCard(iterNumber)
         await expect(card).toBeVisible()
-        const sum = board.iterationSummary(910)
+        const sum = board.iterationSummary(iterNumber)
         await expect(card).toHaveAttribute('data-current-iteration', 'true')
         if (!(await isOpen(card))) await toggleVia(sum)
         table['board-iteration-summary-current'].open = await restRead(sum)
@@ -247,6 +218,7 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
       ).toBe(tokens.highlighted)
     } finally {
       await app.close()
+      await mockGh.close()
     }
   })
 })

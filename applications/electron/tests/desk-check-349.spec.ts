@@ -31,7 +31,7 @@ const MIXED_CLASS_MESSAGES = [
   },
   {
     id: 'm4',
-    from: 'ryan:human',
+    from: 'owner:human',
     text: 'This is a system message — ⚙ glyph expected.',
     ts: '2026-04-22T15:03:00Z',
     message_type: 'system'

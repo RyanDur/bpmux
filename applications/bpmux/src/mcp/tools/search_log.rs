@@ -10,7 +10,7 @@ pub fn search_log_tool(description: &'static str) -> Tool {
             },
             "sender": {
                 "type": "string",
-                "description": "Filter by sender name (e.g. 'ryan')"
+                "description": "Filter by sender name (e.g. 'owner')"
             }
         },
         "required": ["query"]

@@ -1,182 +1,142 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { test, expect } from '@playwright/test'
+import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
+import {
+  seedCurrentIterationViaRpc,
+  addStoryToIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 
-const launchWith = async (
-  board: object
-): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-  consoleErrors: string[]
-}> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-457-6-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-457-6-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  const consoleErrors: string[] = []
-  win.on('console', (m) => {
-    if (m.type() === 'error') consoleErrors.push(m.text())
-  })
-  win.on('pageerror', (e) => consoleErrors.push(String(e)))
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(board)
-    })
-  })
-  await win.reload()
-  return { app, consoleErrors }
+const createStory = async (rpc: RpcFn, title: string, parentEpic?: number): Promise<void> => {
+  const body: Record<string, unknown> = {
+    title,
+    user_job: `Fixture story for desk-check #457 slice 6: ${title}.`,
+    observation_falsifier:
+      'reject if the Epic state-derivation does not match the #1450 truth-table',
+    acceptance_test_path: 'applications/electron/tests/desk-check-457-slice6.spec.ts'
+  }
+  if (parentEpic !== undefined) body.parent_epic = parentEpic
+  const resp = await rpc('create_story', body, 'pm')
+  expect(resp.status).toBe(200)
 }
 
-const ts = '2026-04-26T00:00:00Z'
+const moveTo = async (rpc: RpcFn, number: number, state: string): Promise<void> => {
+  const resp = await rpc(
+    'move_story',
+    { number, target_state: state, rationale: `desk-check-457 slice6 fixture: ${state}` },
+    'pm'
+  )
+  expect(resp.status).toBe(200)
+}
+
+const collectConsoleErrors = (result: MockGhLaunchResult): string[] => {
+  const consoleErrors: string[] = []
+  result.win.on('console', (m) => {
+    if (m.type() === 'error') consoleErrors.push(m.text())
+  })
+  result.win.on('pageerror', (e) => consoleErrors.push(String(e)))
+  return consoleErrors
+}
 
 test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane filter', () => {
   test('Epic with in-progress child derives in-progress state', async () => {
-    const { app, consoleErrors } = await launchWith({
-      fetched_at: ts,
-      stories: [
-        {
-          number: 901,
-          title: 'Epic with in-progress work',
-          state: 'ready',
-          labels: ['Epic'],
-          assignees: [],
-          created_at: ts,
-          body: ''
-        },
-        {
-          number: 902,
-          title: 'Child in progress',
-          state: 'in-progress',
-          labels: ['Feature'],
-          assignees: [],
-          created_at: ts,
-          body: '',
-          parent_epic: 901
-        }
-      ]
-    })
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await board.openTab('Plan')
-    await expect(board.epicState(901)).toHaveText('in-progress')
-    expect(consoleErrors).toEqual([])
-    await app.close()
+    const result = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      const consoleErrors = collectConsoleErrors(result)
+
+      await createStory(rpc, '[Epic] Epic with in-progress work')
+      await createStory(rpc, 'Child in progress', 1)
+      await moveTo(rpc, 2, 'in-progress')
+
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Plan')
+      await expect(board.epicState(1)).toHaveText('in-progress')
+      expect(consoleErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('Epic with all-delivered children derives in-progress (delivered is not a terminal child state per #1450 truth-table)', async () => {
-    const { app, consoleErrors } = await launchWith({
-      fetched_at: ts,
-      stories: [
-        {
-          number: 911,
-          title: 'Epic ready for owner',
-          state: 'ready',
-          labels: ['Epic'],
-          assignees: [],
-          created_at: ts,
-          body: ''
-        },
-        {
-          number: 912,
-          title: 'Child A delivered',
-          state: 'delivered',
-          labels: ['Feature'],
-          assignees: [],
-          created_at: ts,
-          body: '',
-          parent_epic: 911
-        },
-        {
-          number: 913,
-          title: 'Child B delivered',
-          state: 'delivered',
-          labels: ['Feature'],
-          assignees: [],
-          created_at: ts,
-          body: '',
-          parent_epic: 911
-        }
-      ]
-    })
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await board.openTab('Plan')
-    await expect(board.epicState(911)).toHaveText('in-progress')
-    expect(consoleErrors).toEqual([])
-    await app.close()
+    const result = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      const consoleErrors = collectConsoleErrors(result)
+
+      await createStory(rpc, '[Epic] Epic ready for owner')
+      await createStory(rpc, 'Child A delivered', 1)
+      await createStory(rpc, 'Child B delivered', 1)
+      await moveTo(rpc, 2, 'delivered')
+      await moveTo(rpc, 3, 'delivered')
+
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Plan')
+      await expect(board.epicState(1)).toHaveText('in-progress')
+      expect(consoleErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('Epic explicit state is ignored; in-progress child derives in-progress per #1450 truth-table', async () => {
-    const { app, consoleErrors } = await launchWith({
-      fetched_at: ts,
-      stories: [
-        {
-          number: 921,
-          title: 'Owner-accepted epic',
-          state: 'accepted',
-          labels: ['Epic'],
-          assignees: [],
-          created_at: ts,
-          body: ''
-        },
-        {
-          number: 922,
-          title: 'Late-arriving child',
-          state: 'in-progress',
-          labels: ['Feature'],
-          assignees: [],
-          created_at: ts,
-          body: '',
-          parent_epic: 921
-        }
-      ]
-    })
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await board.openTab('Plan')
-    await expect(board.epicState(921)).toHaveText('in-progress')
-    expect(consoleErrors).toEqual([])
-    await app.close()
+    const result = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      const consoleErrors = collectConsoleErrors(result)
+
+      await createStory(rpc, '[Epic] Owner-accepted epic')
+      await createStory(rpc, 'Late-arriving child', 1)
+      await moveTo(rpc, 1, 'accepted')
+      await moveTo(rpc, 2, 'in-progress')
+
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Plan')
+      await expect(board.epicState(1)).toHaveText('in-progress')
+      expect(consoleErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('Epic story is filtered out of state lanes (lives only in Epics section)', async () => {
-    const { app, consoleErrors } = await launchWith({
-      fetched_at: ts,
-      stories: [
-        mockCurrentIteration('DeskCheck457Slice6', ts),
-        {
-          number: 931,
-          title: 'Lone epic in ready',
-          state: 'ready',
-          labels: ['Epic'],
-          assignees: [],
-          created_at: ts,
-          body: ''
-        },
-        {
-          number: 932,
-          title: 'Plain ready feature',
-          state: 'ready',
-          labels: ['Feature'],
-          assignees: [],
-          created_at: ts,
-          body: '',
-          ...inMockCurrentIteration(1)
-        }
-      ]
-    })
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(board.storyRow(932)).toBeVisible()
-    await expect(board.storyNavigate(931)).toHaveCount(0)
-    await board.openTab('Plan')
-    await expect(board.epicCard(931)).toBeVisible()
-    expect(consoleErrors).toEqual([])
-    await app.close()
+    const result = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      const consoleErrors = collectConsoleErrors(result)
+
+      await createStory(rpc, '[Epic] Lone epic in ready')
+      await createStory(rpc, 'Plain ready feature')
+      await moveTo(rpc, 1, 'ready')
+      await moveTo(rpc, 2, 'ready')
+
+      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice6')
+      await addStoryToIterationViaRpc(rpc, 2, iterNumber, 1)
+
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+      await expect(board.storyRow(2)).toBeVisible()
+      await expect(board.storyNavigate(1)).toHaveCount(0)
+      await board.openTab('Plan')
+      await expect(board.epicCard(1)).toBeVisible()
+      expect(consoleErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

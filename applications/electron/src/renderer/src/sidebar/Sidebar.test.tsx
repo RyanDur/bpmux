@@ -25,7 +25,7 @@ const wire = (overrides: Partial<RosterMemberWire>): RosterMemberWire => ({
 })
 
 const ROSTER_FIXTURE: RosterMemberWire[] = [
-  wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+  wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' }),
   wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev' }),
   wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' }),
   wire({ name: 'designer', identity: 'designer:claude-code', role: 'Designer' })
@@ -34,10 +34,10 @@ const ROSTER_FIXTURE: RosterMemberWire[] = [
 const pushRoster = (members: RosterMemberWire[]): void =>
   dispatchSession(mirrorDeltaReceived({ domain: 'roster', members }, '2026-01-01T00:00:00Z'))
 
-const RYAN_ONLY_MESSAGES: ChatMessage[] = [
+const OWNER_ONLY_MESSAGES: ChatMessage[] = [
   {
     id: 'msg-1',
-    from: 'ryan:electron',
+    from: 'owner:electron',
     text: 'i am here',
     ts: '2026-04-23T12:00:00Z',
     to: null,
@@ -60,7 +60,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -69,7 +69,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
     expect(html).toContain('data-test="sidebar-direct-designer"')
   })
 
-  test('viewer (ryan) excluded from sidebar-direct entries (#393 AC1 self-filter)', () => {
+  test('viewer (owner) excluded from sidebar-direct entries (#393 AC1 self-filter)', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -77,22 +77,22 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
-    expect(html).not.toContain('data-test="sidebar-direct-ryan"')
+    expect(html).not.toContain('data-test="sidebar-direct-owner"')
   })
 
   test('#1246: only-self in roster shows NO peer direct-entries (no message-history fallback)', () => {
     const SELF_ONLY: RosterMemberWire[] = [
-      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' })
+      wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' })
     ]
     pushRoster(SELF_ONLY)
     const messages: ChatMessage[] = [
       {
         id: 'm1',
-        from: 'ryan:electron',
+        from: 'owner:electron',
         text: 'addressed',
         ts: '2026-04-23T12:00:00Z',
         to: ['dev'],
@@ -136,7 +136,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -157,7 +157,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         allView={false}
         onSelectRecipient={onSelectRecipient}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -169,7 +169,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
   test('#1733: a 2-peer roster scopes its only group to that exact pair, not broadcast', async () => {
     const onSelectRecipient = vi.fn()
     const TWO_PEER_ROSTER: RosterMemberWire[] = [
-      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' }),
       wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev' }),
       wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' })
     ]
@@ -180,7 +180,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         allView
         onSelectRecipient={onSelectRecipient}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -199,7 +199,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
         allView={false}
         onSelectRecipient={onSelectRecipient}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -246,7 +246,7 @@ describe('#1246 Sidebar — roster is source-of-truth; no message-history fallba
 
   test('roster present + message-history present → roster wins (peers from roster only)', () => {
     const ROSTER_HAS_DEV_ONLY: RosterMemberWire[] = [
-      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' }),
       wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev' })
     ]
     pushRoster(ROSTER_HAS_DEV_ONLY)
@@ -310,8 +310,8 @@ describe('#1246 Sidebar — roster is source-of-truth; no message-history fallba
   })
 })
 
-describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX section', () => {
-  test('Scenario 1: GROUP rows do NOT carry +ryan affordance (owner-is-constant; canon-cite 18:31 UTC "I am already here")', () => {
+describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX section', () => {
+  test('Scenario 1: GROUP rows do NOT carry +owner affordance (owner-is-constant; canon-cite 18:31 UTC "I am already here")', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -319,13 +319,13 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
-    expect(html).not.toContain('+ryan')
+    expect(html).not.toContain('+owner')
     expect(html).not.toContain('sidebar-item-owner-affordance')
-    expect(html).not.toContain('owner ryan also observes')
+    expect(html).not.toContain('owner owner also observes')
     expect(html).not.toMatch(/data-test="sidebar-group-[^"]+-owner"/)
   })
 
@@ -367,7 +367,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -383,7 +383,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -401,7 +401,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -418,7 +418,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -434,7 +434,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX s
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -453,7 +453,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -463,7 +463,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
 
   test('wire presence Blocked (owner-parked) shows a red blocked dot and the blocked label', () => {
     const BLOCKED_ROSTER: RosterMemberWire[] = [
-      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' }),
       wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Blocked' })
     ]
     pushRoster(BLOCKED_ROSTER)
@@ -473,7 +473,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -483,7 +483,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
 
   test('a roster member with no wire presence entry shows unknown (neutral), never available/green', () => {
     const NO_PRESENCE: RosterMemberWire[] = [
-      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' }),
       { name: 'dev', identity: 'dev:claude-code', role: 'Dev' } as RosterMemberWire
     ]
     pushRoster(NO_PRESENCE)
@@ -493,7 +493,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -509,7 +509,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -518,7 +518,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
 
   test('wire presence Busy maps to the busy dot', () => {
     const BUSY_ROSTER: RosterMemberWire[] = [
-      wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+      wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' }),
       wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Busy' })
     ]
     pushRoster(BUSY_ROSTER)
@@ -528,7 +528,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
+        messages={OWNER_ONLY_MESSAGES}
         filter={filter}
       />
     )
@@ -585,7 +585,7 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
       const { rerender } = render(<Sidebar {...baseProps} messages={[]} />)
       const msg: ChatMessage = {
         id: 'b-1',
-        from: 'ryan:electron',
+        from: 'owner:electron',
         text: 'team sync',
         ts: '2026-06-16T12:00:01Z',
         to: null,
@@ -605,7 +605,7 @@ describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (mot
     vi.useFakeTimers()
     try {
       const BUSY_ROSTER: RosterMemberWire[] = [
-        wire({ name: 'ryan', identity: 'ryan:electron', role: 'Owner' }),
+        wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' }),
         wire({ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Busy' }),
         wire({ name: 'pm', identity: 'pm:claude-code', role: 'Pm' })
       ]

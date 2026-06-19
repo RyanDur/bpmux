@@ -1,178 +1,140 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
+import { test, expect } from '@playwright/test'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { launchWithMockGh } from './helpers/launch'
+import { setupCurrentIterationViaRpc, type RpcFn } from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 import { ChatPage } from './pages/chatPage'
 import { DrillInPage } from './pages/drillInPage'
+import type { MockGhServer } from './helpers/mock_gh'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
-const MOCK_BOARD = {
-  fetched_at: '2026-04-22T16:00:00Z',
-  stories: [
-    mockCurrentIteration('DeskCheck367', '2026-04-22T16:00:00Z'),
-    {
-      number: 367,
-      title: 'Timeline audit-trail',
-      state: 'ready',
-      labels: ['Feature', 'ready'],
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: 'Timeline story body.',
-      ...inMockCurrentIteration(1)
-    }
-  ]
-}
+const MEMBER_TITLE = 'Timeline audit-trail'
 
-const MOCK_COMMENTS: unknown[] = []
+const labeledEvent = (label: string, created_at: string): Record<string, unknown> => ({
+  event: 'labeled',
+  id: null,
+  node_id: null,
+  url: null,
+  actor: null,
+  commit_id: null,
+  commit_url: null,
+  created_at,
+  label: { name: label, color: 'ededed' }
+})
 
-// Fixture timeline with a canonical lifecycle AND one rework cycle:
-//  filed → started → delivered → desk-check-fail → delivered →
-//  accepted → closed. The rework cycle should group events 3..5
-//  (fail + redeliver + accept) under a single reworkGroup.
-const MOCK_TIMELINE = [
-  {
-    event: 'filed',
-    actor: 'ryandurling',
-    ts: '2026-04-22T16:00:00Z'
-  },
-  {
-    event: 'labeled',
-    actor: 'dev-bot',
-    ts: '2026-04-22T16:05:00Z',
-    label: 'in progress'
-  },
-  {
-    event: 'labeled',
-    actor: 'dev-bot',
-    ts: '2026-04-22T16:30:00Z',
-    label: 'delivered'
-  },
-  {
-    event: 'labeled',
-    actor: 'designer-bot',
-    ts: '2026-04-22T16:45:00Z',
-    label: 'desk-check-fail'
-  },
-  {
-    event: 'labeled',
-    actor: 'dev-bot',
-    ts: '2026-04-22T17:00:00Z',
-    label: 'delivered'
-  },
-  {
-    event: 'labeled',
-    actor: 'ryandurling',
-    ts: '2026-04-22T17:10:00Z',
-    label: 'accepted'
-  },
+const MOCK_GH_TIMELINE: Record<string, unknown>[] = [
+  labeledEvent('in progress', '2026-04-22T16:05:00Z'),
+  labeledEvent('delivered', '2026-04-22T16:30:00Z'),
+  labeledEvent('desk-check-fail', '2026-04-22T16:45:00Z'),
+  labeledEvent('delivered', '2026-04-22T17:00:00Z'),
+  labeledEvent('accepted', '2026-04-22T17:10:00Z'),
   {
     event: 'closed',
-    actor: 'ryandurling',
-    ts: '2026-04-22T17:11:00Z'
+    id: null,
+    node_id: null,
+    url: null,
+    actor: null,
+    commit_id: null,
+    commit_url: null,
+    created_at: '2026-04-22T17:11:00Z'
   },
   {
     event: 'commented',
-    actor: 'ryandurling',
-    ts: '2026-04-22T17:12:00Z',
+    id: null,
+    node_id: null,
+    url: null,
+    actor: null,
+    commit_id: null,
+    commit_url: null,
+    created_at: '2026-04-22T17:12:00Z',
     body: 'Great work team — this shipped clean.'
   }
 ]
 
-const launchWithFixture = async (): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-}> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-367-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-367-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_BOARD)
-    })
+const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
+  const createResp = await rpc(
+    'create_story',
+    {
+      title: `[Feature] ${MEMBER_TITLE}`,
+      user_job: 'When a human opens a story, the drill-in shows a timeline of major gates.',
+      observation_falsifier: 'reject if the timeline omits a major gate or mis-groups rework',
+      acceptance_test_path: 'applications/electron/tests/desk-check-367.spec.ts'
+    },
+    'pm'
+  )
+  expect(createResp.status).toBe(200)
+  await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck367')
+  mockGh.on({
+    method: 'GET',
+    match: /\/repos\/acme\/bpmux\/issues\/1\/timeline/,
+    bodyJson: MOCK_GH_TIMELINE
   })
-  await win.route('**/api/stories/367/comments', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_COMMENTS)
-    })
-  })
-  await win.route('**/api/stories/367/timeline', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_TIMELINE)
-    })
-  })
-  await win.reload()
-  return { app }
 }
 
 test.describe('desk-check #367 timeline audit-trail', () => {
   test('drill-in exposes a timeline section with major gates by default', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    const drillIn = new DrillInPage(win)
-    await expect(new ChatPage(win).region()).toBeVisible()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedFixture(rpc, mockGh)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
 
-    await board.storyNavigate(367).click()
-    await expect(drillIn.panel()).toBeVisible()
+      await board.openTab('Plan')
+      await board.openStory(1)
+      await expect(drillIn.panel()).toBeVisible()
 
-    const timeline = drillIn.timelineSection()
-    await expect(timeline).toBeVisible()
+      const timeline = drillIn.timelineSection()
+      await expect(timeline).toBeVisible()
 
-    // Expand the details.
-    await drillIn.timelineSummary().click()
-    await expect(drillIn.timelineList()).toBeVisible()
+      await drillIn.timelineSummary().click()
+      await expect(drillIn.timelineList()).toBeVisible()
 
-    // Default filter: every MAJOR_GATE event should be present.
-    // (commented is NOT a major gate; should be hidden until "show
-    // all" is toggled.)
-    const count = await drillIn.timelineItems().count()
-    console.log(`#367 default timeline item count: ${count}`)
+      const count = await drillIn.timelineItems().count()
+      console.log(`#367 default timeline item count: ${count}`)
 
-    // Expected default gates: filed, started (labeled in progress),
-    // delivered x2, desk-check-fail, accepted, closed = 7 items.
-    expect(count).toBe(7)
+      expect(count).toBe(7)
 
-    // Commented event body should NOT appear in the default view.
-    await expect(drillIn.timelineItems().filter({ hasText: 'Commented' })).toHaveCount(0)
+      await expect(drillIn.timelineItems().filter({ hasText: 'Commented' })).toHaveCount(0)
 
-    // Rework group: the 2nd delivered + accepted items carry the
-    // rework-group attribute because they followed the desk-check-fail.
-    const reworkCount = await drillIn.reworkItems().count()
-    console.log(`#367 rework-grouped items: ${reworkCount}`)
-    expect(reworkCount).toBeGreaterThanOrEqual(3) // fail + redeliver + accept
+      const reworkCount = await drillIn.reworkItems().count()
+      console.log(`#367 rework-grouped items: ${reworkCount}`)
+      expect(reworkCount).toBeGreaterThanOrEqual(3)
 
-    await timeline.screenshot({
-      path: join(EVIDENCE_DIR, '80-timeline-default-major-gates.png')
-    })
-
-    await app.close()
+      await timeline.screenshot({
+        path: join(EVIDENCE_DIR, '80-timeline-default-major-gates.png')
+      })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('show-all toggle reveals non-gate events', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    const drillIn = new DrillInPage(win)
-    await board.storyNavigate(367).click()
-    await drillIn.timelineSummary().click()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await expect(board.region()).toBeVisible()
+      await seedFixture(rpc, mockGh)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
 
-    await drillIn.timelineToggle().click()
+      await board.openTab('Plan')
+      await board.openStory(1)
+      await drillIn.timelineSummary().click()
 
-    // After show-all, the commented event should render.
-    const commentedItem = drillIn.timelineItems().filter({ hasText: 'Commented' })
-    await expect(commentedItem).toHaveCount(1)
-    await expect(commentedItem).toContainText('Great work team')
+      await drillIn.timelineToggle().click()
 
-    await app.close()
+      const commentedItem = drillIn.timelineItems().filter({ hasText: 'Commented' })
+      await expect(commentedItem).toHaveCount(1)
+      await expect(commentedItem).toContainText('Great work team')
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

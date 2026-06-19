@@ -1,10 +1,3 @@
-//! #173 — observability for SessionStart recall.
-//!
-//! AC: when `bpmux recall --role <role>` runs against a live bpmux
-//! server, an `activity`-type message appears in the channel log
-//! reporting the lesson count. This closes the observability gap
-//! Ryan surfaced during #157 acceptance.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

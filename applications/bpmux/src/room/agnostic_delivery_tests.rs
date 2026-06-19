@@ -187,7 +187,7 @@ async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
     let session =
-        crate::session::Session::new(sess_dir.path().to_path_buf(), "ryan".to_string(), tx);
+        crate::session::Session::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     session
         .broadcast(&chat_at(
@@ -238,7 +238,7 @@ async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_b
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
     let session =
-        crate::session::Session::new(sess_dir.path().to_path_buf(), "ryan".to_string(), tx);
+        crate::session::Session::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     session
         .broadcast(&chat_at(
@@ -293,7 +293,7 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
     let session =
-        crate::session::Session::new(sess_dir.path().to_path_buf(), "ryan".to_string(), tx);
+        crate::session::Session::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx1 = live.subscribe();
@@ -334,7 +334,7 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
     let drained = drain_for(&mut rx2, "RECONNECT-SENTINEL").await;
     assert!(
         !drained.contains("M2-while-offline") && !drained.contains("M1-delivered-live"),
-        "a reconnecting agent does NOT catch up on broadcasts sent BEFORE its reconnect job-start — neither the live-delivered M1 (10:00) nor the offline-broadcast M2 (10:05) is re-dumped when the agent reconnects at 11:00; the gate-window catch-up is bounded by job-start, so ambient/offline broadcasts stay live-forward-only and the reconnect starts clean (the conscious falsifier-3 relaxation per Ryan); got {drained:?}"
+        "a reconnecting agent does NOT catch up on broadcasts sent BEFORE its reconnect job-start — neither the live-delivered M1 (10:00) nor the offline-broadcast M2 (10:05) is re-dumped when the agent reconnects at 11:00; the gate-window catch-up is bounded by job-start, so ambient/offline broadcasts stay live-forward-only and the reconnect starts clean (the conscious falsifier-3 relaxation per owner); got {drained:?}"
     );
 }
 

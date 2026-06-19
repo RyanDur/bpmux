@@ -74,7 +74,7 @@ describe('#1537 session — connection lifecycle as a module singleton', () => {
     await vi.waitFor(() => expect(conn.received.length).toBeGreaterThan(0))
     expect(JSON.parse(conn.received[0])).toMatchObject({
       type: 'identify',
-      name: 'ryan',
+      name: 'owner',
       tool: 'electron'
     })
   })

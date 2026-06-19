@@ -2,7 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 import { SidebarPage } from './pages/sidebarPage'
 
@@ -11,16 +11,13 @@ const FIXTURE_MESSAGES = [
     from: 'designer:claude-code',
     text: 'broadcast from designer',
     ts: '2026-04-24T02:00:00Z',
-    to: null,
-    addressee: null,
     message_type: 'chat'
   },
   {
-    from: 'ryan:electron',
-    text: 'dm ryan to designer',
+    from: 'owner:electron',
+    text: 'dm owner to designer',
     ts: '2026-04-24T02:01:00Z',
     to: ['designer'],
-    addressee: null,
     message_type: 'chat'
   },
   {
@@ -28,7 +25,6 @@ const FIXTURE_MESSAGES = [
     text: 'group dev to designer+pm',
     ts: '2026-04-24T02:02:00Z',
     to: ['designer', 'pm'],
-    addressee: null,
     message_type: 'chat'
   }
 ]
@@ -38,33 +34,13 @@ const launchWithFixture = async (): Promise<{
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-420-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-420-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app } = await launchIsolatedElectron({
+    sessionBase,
+    userDataDir: udd,
+    seedMessages: FIXTURE_MESSAGES
+  })
   const win = await app.firstWindow()
-
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ fetched_at: '2026-04-24T02:00:00Z', stories: [] })
-    })
-  })
-  await win.route('**/api/messages*', async (route, request) => {
-    const url = request.url()
-    if (url.includes('message_type=activity')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: '[]'
-      })
-      return
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(FIXTURE_MESSAGES)
-    })
-  })
-  await win.reload()
+  await waitForMessagesLoaded(win, 'broadcast from designer')
   return { app }
 }
 
@@ -93,7 +69,7 @@ test.describe('desk-check #420 per-message channel tag', () => {
     expect(tags).toContain('[designer+dev+pm]')
 
     for (const tag of tags) {
-      expect(tag).not.toMatch(/ryan/)
+      expect(tag).not.toMatch(/owner/)
     }
 
     await app.close()

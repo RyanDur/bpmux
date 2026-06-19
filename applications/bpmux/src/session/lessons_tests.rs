@@ -18,11 +18,11 @@ fn msg(from: &str, text: &str) -> Message {
 #[test]
 fn build_index_finds_experiences() {
     let messages = vec![
-        msg("ryan:human", "you should restate before building"),
+        msg("owner:human", "you should restate before building"),
         msg("dev:claude-code", "understood"),
-        msg("ryan:human", "sounds good"),
+        msg("owner:human", "sounds good"),
     ];
-    let index = build_index(&messages, "ryan");
+    let index = build_index(&messages, "owner");
     assert_eq!(index.experiences.len(), 1);
     assert!(
         index.experiences[0]
@@ -34,11 +34,11 @@ fn build_index_finds_experiences() {
 #[test]
 fn build_index_skips_operational() {
     let messages = vec![
-        msg("ryan:human", "do I need to restart?"),
-        msg("ryan:human", "rebuilt now checking"),
-        msg("ryan:human", "sounds good, keep going"),
+        msg("owner:human", "do I need to restart?"),
+        msg("owner:human", "rebuilt now checking"),
+        msg("owner:human", "sounds good, keep going"),
     ];
-    let index = build_index(&messages, "ryan");
+    let index = build_index(&messages, "owner");
     assert_eq!(
         index.experiences.len(),
         0,
@@ -49,10 +49,10 @@ fn build_index_skips_operational() {
 #[test]
 fn group_by_topic_merges_similar() {
     let messages = vec![
-        msg("ryan:human", "you should focus on the problem"),
-        msg("ryan:human", "focus on what matters, not the fix"),
+        msg("owner:human", "you should focus on the problem"),
+        msg("owner:human", "focus on what matters, not the fix"),
     ];
-    let index = build_index(&messages, "ryan");
+    let index = build_index(&messages, "owner");
     let groups = group_by_topic(&index);
     assert!(
         groups.len() <= 2,
@@ -114,8 +114,8 @@ fn group_by_topic_includes_lessons() {
     let dir = TempDir::new().unwrap();
     add_lesson(dir.path(), "quality", "quality compounds", "dev", vec![]).unwrap();
     let mut index = build_index(
-        &[msg("ryan:human", "quality is the goal. in everything")],
-        "ryan",
+        &[msg("owner:human", "quality is the goal. in everything")],
+        "owner",
     );
     let saved = load_index(dir.path());
     index.lessons = saved.lessons;
@@ -127,7 +127,7 @@ fn group_by_topic_includes_lessons() {
 
 #[test]
 fn empty_log_produces_empty_index() {
-    let index = build_index(&[], "ryan");
+    let index = build_index(&[], "owner");
     assert!(index.experiences.is_empty());
     assert!(index.lessons.is_empty());
 }
@@ -136,7 +136,7 @@ fn empty_log_produces_empty_index() {
 fn classifier_tags_search_result() {
     use super::search::{SearchFilters, search};
     let messages = vec![
-        msg("ryan:human", "you should focus on the problem not the fix"),
+        msg("owner:human", "you should focus on the problem not the fix"),
         msg("dev:claude-code", "understood, focusing on the problem"),
     ];
     let filters = SearchFilters {
@@ -147,7 +147,7 @@ fn classifier_tags_search_result() {
         channel: None,
         message_class: Some(MessageClass::Experience(ExperienceKind::Teaching)),
         insight_only: false,
-        owner_name: "ryan".to_string(),
+        owner_name: "owner".to_string(),
     };
     let results = search(&messages, &filters);
     assert_eq!(results.len(), 1);

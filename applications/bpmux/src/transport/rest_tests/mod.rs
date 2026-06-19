@@ -99,7 +99,7 @@ pub(super) fn board_test_session(
     let (tx, _rx) = broadcast::channel(16);
     let session = Arc::new(session::Session::new(
         dir.path().to_path_buf(),
-        "ryan".to_string(),
+        "owner".to_string(),
         tx.clone(),
     ));
     (session, tx)
@@ -107,22 +107,22 @@ pub(super) fn board_test_session(
 
 pub(super) fn board_author() -> Value {
     json!({
-        "login": "ryan",
+        "login": "owner",
         "id": 1,
         "node_id": "MDQ6VXNlcjE=",
         "avatar_url": "https://example.test/avatar.png",
         "gravatar_id": "",
-        "url": "https://example.test/users/ryan",
-        "html_url": "https://example.test/ryan",
-        "followers_url": "https://example.test/ryan/followers",
-        "following_url": "https://example.test/ryan/following{/other_user}",
-        "gists_url": "https://example.test/ryan/gists{/gist_id}",
-        "starred_url": "https://example.test/ryan/starred{/owner}{/repo}",
-        "subscriptions_url": "https://example.test/ryan/subscriptions",
-        "organizations_url": "https://example.test/ryan/orgs",
-        "repos_url": "https://example.test/ryan/repos",
-        "events_url": "https://example.test/ryan/events{/privacy}",
-        "received_events_url": "https://example.test/ryan/received_events",
+        "url": "https://example.test/users/owner",
+        "html_url": "https://example.test/owner",
+        "followers_url": "https://example.test/owner/followers",
+        "following_url": "https://example.test/owner/following{/other_user}",
+        "gists_url": "https://example.test/owner/gists{/gist_id}",
+        "starred_url": "https://example.test/owner/starred{/owner}{/repo}",
+        "subscriptions_url": "https://example.test/owner/subscriptions",
+        "organizations_url": "https://example.test/owner/orgs",
+        "repos_url": "https://example.test/owner/repos",
+        "events_url": "https://example.test/owner/events{/privacy}",
+        "received_events_url": "https://example.test/owner/received_events",
         "type": "User",
         "site_admin": false
     })

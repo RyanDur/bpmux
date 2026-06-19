@@ -11,20 +11,20 @@ fn role_from_name_extracts_short_role() {
     assert_eq!(role_from_name("dev:claude-code"), "dev");
     assert_eq!(role_from_name("pm"), "pm");
     assert_eq!(role_from_name("designer:cursor"), "designer");
-    assert_eq!(role_from_name("ryan:human"), "ryan");
+    assert_eq!(role_from_name("owner:human"), "owner");
 }
 
 #[test]
 fn require_role_allows_matching_role() {
     assert!(require_role("dev:claude-code", &["dev"], "start").is_ok());
     assert!(require_role("pm", &["pm"], "label").is_ok());
-    assert!(require_role("ryan:human", &["ryan"], "accept").is_ok());
+    assert!(require_role("owner:human", &["owner"], "accept").is_ok());
 }
 
 #[test]
 fn require_role_owner_superset_bypasses_any_gate_yet_non_owner_stays_gated() {
-    assert!(require_role("ryan:human", &["pm"], "label").is_ok());
-    assert!(require_role("ryan:human", &["designer"], "fail desk-check").is_ok());
+    assert!(require_role("owner:human", &["pm"], "label").is_ok());
+    assert!(require_role("owner:human", &["designer"], "fail desk-check").is_ok());
     assert!(require_role("dev:claude-code", &["pm"], "label").is_err());
 }
 
@@ -51,13 +51,13 @@ fn require_role_rejects_dev_from_pm_operations() {
 
 #[test]
 fn require_role_rejects_agents_from_owner_only_operations() {
-    let result = require_role("dev:claude-code", &["ryan"], "reject");
+    let result = require_role("dev:claude-code", &["owner"], "reject");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("restricted to ryan"));
+    assert!(result.unwrap_err().contains("restricted to owner"));
 
-    let result = require_role("pm:claude-code", &["ryan"], "reject");
+    let result = require_role("pm:claude-code", &["owner"], "reject");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("restricted to ryan"));
+    assert!(result.unwrap_err().contains("restricted to owner"));
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn require_role_rejects_designer_from_close_iteration() {
 
 #[test]
 fn require_role_lets_owner_bypass_close_iteration_via_the_1548_superset() {
-    assert!(require_role("ryan:human", &["pm"], "close iteration").is_ok());
+    assert!(require_role("owner:human", &["pm"], "close iteration").is_ok());
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn close_story_is_pm_only_gate_for_non_owner_roles() {
         assert!(result.unwrap_err().contains("restricted to pm"));
     }
     assert!(
-        require_role("ryan:human", &["pm"], "close").is_ok(),
+        require_role("owner:human", &["pm"], "close").is_ok(),
         "the owner bypasses the pm-only close gate via the #1548 superset"
     );
 }
@@ -186,7 +186,7 @@ fn require_role_rejects_non_designer_non_owner_from_desk_check_operations() {
         assert!(result.unwrap_err().contains("restricted to designer"));
     }
     assert!(
-        require_role("ryan:human", &["designer"], "pass desk-check").is_ok(),
+        require_role("owner:human", &["designer"], "pass desk-check").is_ok(),
         "the owner bypasses the designer-only require_role gate via the #1548 superset"
     );
 }
@@ -273,7 +273,7 @@ async fn reorder_story_returns_tool_retired_regardless_of_role_1403() {
     for caller in [
         "designer:claude-code",
         "dev:claude-code",
-        "ryan:human",
+        "owner:human",
         "intern:claude-code",
         "pm:claude-code",
     ] {

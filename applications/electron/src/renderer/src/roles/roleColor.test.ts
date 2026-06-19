@@ -17,7 +17,7 @@ describe('roleColorFor — dynamic role palette (replaces desk-check-401.spec.ts
 
   test('different role short-names produce different hues for common bpmux team', () => {
     const colors = new Set([
-      roleColorFor('ryan').color,
+      roleColorFor('owner').color,
       roleColorFor('dev').color,
       roleColorFor('pm').color,
       roleColorFor('designer').color,

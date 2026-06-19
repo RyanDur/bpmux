@@ -10,13 +10,13 @@ pub(super) fn verdict_and_view_tools() -> Vec<rmcp::model::Tool> {
             "Mark a delivered story as failed desk-check with a reason. Applies the 'needs fixes' label and signals dev with the reason. DESIGNER ONLY.",
         ),
         crate::mcp::tools::view_tokens_tool(
-            "#225: open the token-usage overlay in Ryan's TUI. Call when conversation warrants seeing token spend (e.g., 'how's our token usage?', 'are we over budget?'). The TUI shows the same data as the /tokens slash command; agents use this MCP tool instead of typing.",
+            "#225: open the token-usage overlay in the owner's TUI. Call when conversation warrants seeing token spend (e.g., 'how's our token usage?', 'are we over budget?'). The TUI shows the same data as the /tokens slash command; agents use this MCP tool instead of typing.",
         ),
         crate::mcp::tools::view_roadmap_tool(
-            "#226: surface the roadmap in Ryan's TUI. Call when conversation warrants reviewing roadmap state (e.g., 'what's on the roadmap?', 'what are we working on next?'). Same content as the /roadmap slash command; agents use this MCP tool instead of typing.",
+            "#226: surface the roadmap in the owner's TUI. Call when conversation warrants reviewing roadmap state (e.g., 'what's on the roadmap?', 'what are we working on next?'). Same content as the /roadmap slash command; agents use this MCP tool instead of typing.",
         ),
         crate::mcp::tools::view_backlog_tool(
-            "#286: surface the board/backlog in Ryan's TUI. Call when conversation warrants reviewing the backlog state (e.g., 'how's the icebox?', 'what's in the ready queue?', 'where are we?'). Returns a JSON summary with counts + ready/delivered samples so the agent can answer inline AND opens the project panel for Ryan.",
+            "#286: surface the board/backlog in the owner's TUI. Call when conversation warrants reviewing the backlog state (e.g., 'how's the icebox?', 'what's in the ready queue?', 'where are we?'). Returns a JSON summary with counts + ready/delivered samples so the agent can answer inline AND opens the project panel for the owner.",
         ),
         crate::mcp::tools::get_usage_tool(
             "Get feature usage statistics — invocation counts and last-used timestamps for all commands/features used this session. JSON format.",
@@ -31,7 +31,7 @@ pub(super) fn verdict_and_view_tools() -> Vec<rmcp::model::Tool> {
             "#412: read a commit's line-level diff inside bpmux. Accepts a sha/ref (or any git ref). Returns the output of `git show --format=fuller --patch <sha>` with an optional `max_bytes` cap (default 100000) — oversized diffs are truncated with a trailing marker citing shown/total bytes so the consumer knows to narrow the view. Any role can call. Use at desk-check to review implementation against spec without context-switching to terminal git-show.",
         ),
         crate::mcp::tools::edit_story_tool(
-            "Replace a story's full markdown body. PM + Ryan only — other roles are rejected. Cascade: GitHub issue updated → canonical store refreshed via SourceAdapter::update_body → board-invalidate broadcast so renderers + bridges see the new body without restart. USE THIS INSTEAD OF `gh issue edit <N> --body` — raw gh calls bypass the canonical-store cascade so teammates can't observe the edit (#530). Args: number + body (full replacement; not a diff).",
+            "Replace a story's full markdown body. PM + owner only — other roles are rejected. Cascade: GitHub issue updated → canonical store refreshed via SourceAdapter::update_body → board-invalidate broadcast so renderers + bridges see the new body without restart. USE THIS INSTEAD OF `gh issue edit <N> --body` — raw gh calls bypass the canonical-store cascade so teammates can't observe the edit (#530). Args: number + body (full replacement; not a diff).",
         ),
     ]
 }

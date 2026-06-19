@@ -19,7 +19,7 @@ pub(super) fn board_read_tools() -> Vec<rmcp::model::Tool> {
             "View the project board — all stories grouped by state (icebox, ready, in progress, delivered, ready for accept, needs fixes, rejected, accepted) with counts. SCOPE it to stay token-light on a large board: `state` (one column), `iteration` (parent-iteration issue number), and/or `row_limit` (cap rows per column; the column count still shows the full total). Omit all three for the full board. Same data as the TUI board view.",
         ),
         crate::mcp::tools::view_velocity_tool(
-            "View team velocity metrics (#209a) computed from workflow-signal timestamps over a rolling 14-day window. Returns JSON with delivered count, delivered-per-day, median pickup→deliver hours, median deliver→accept hours, rework rate, and a `sparse` flag when under-3-deliveries makes the medians indicative only. Objective data — no self-report. Also opens the velocity view in Ryan's TUI (project panel) so he can see it alongside your response — call this when he asks about velocity, not proactively.",
+            "View team velocity metrics (#209a) computed from workflow-signal timestamps over a rolling 14-day window. Returns JSON with delivered count, delivered-per-day, median pickup→deliver hours, median deliver→accept hours, rework rate, and a `sparse` flag when under-3-deliveries makes the medians indicative only. Objective data — no self-report. Also opens the velocity view in the owner's TUI (project panel) so they can see it alongside your response — call this when they ask about velocity, not proactively.",
         ),
     ]
 }

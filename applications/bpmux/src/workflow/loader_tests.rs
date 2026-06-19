@@ -308,7 +308,7 @@ section = "post-work"
 id = "accept"
 from = "delivered"
 to = "accepted"
-actor_roles = ["ryan", "pm"]
+actor_roles = ["owner", "pm"]
 gate_class = "team-verifiable"
 evidence_window_seconds = 600
 required_evidence_roles = ["designer", "dev"]
@@ -317,7 +317,7 @@ required_evidence_roles = ["designer", "dev"]
 id = "accept"
 from = "delivered"
 to = "accepted"
-actor_roles = ["ryan"]
+actor_roles = ["owner"]
 gate_class = "owner-walk"
 evidence_window_seconds = 0
 required_evidence_roles = []
@@ -337,11 +337,11 @@ required_evidence_roles = []
     let team_verifiable = workflow
         .transition_for("accept", GateClass::TeamVerifiable)
         .expect("team-verifiable variant");
-    assert_eq!(team_verifiable.actor_roles, vec!["ryan", "pm"]);
+    assert_eq!(team_verifiable.actor_roles, vec!["owner", "pm"]);
     let owner_walk = workflow
         .transition_for("accept", GateClass::OwnerWalk)
         .expect("owner-walk variant");
-    assert_eq!(owner_walk.actor_roles, vec!["ryan"]);
+    assert_eq!(owner_walk.actor_roles, vec!["owner"]);
 }
 
 #[test]

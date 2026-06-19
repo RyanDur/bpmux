@@ -201,7 +201,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(205));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    let result = handle_accept_story(&args, "ryan:human", Some(&orchestrator), None).await;
+    let result = handle_accept_story(&args, "owner:human", Some(&orchestrator), None).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(205).unwrap();
@@ -279,7 +279,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
         "[Bug] post-slice-5b accept-on-delivered cascade".into(),
         StoryState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
-        "ryan".into(),
+        "owner".into(),
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(
@@ -299,7 +299,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(5070));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    handle_accept_story(&args, "ryan:human", Some(&orch), None)
+    handle_accept_story(&args, "owner:human", Some(&orch), None)
         .await
         .unwrap();
 
@@ -373,7 +373,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(206));
     args.insert("reason".into(), serde_json::json!("scope mismatch"));
-    let result = handle_reject_story(&args, "ryan:human", Some(&orchestrator)).await;
+    let result = handle_reject_story(&args, "owner:human", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(206).unwrap();
@@ -531,7 +531,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     let (tx, _rx0) = tokio::sync::broadcast::channel(16);
     let session = Arc::new(crate::session::log::Session::new(
         dir.path().to_path_buf(),
-        "ryan".to_string(),
+        "owner".to_string(),
         tx,
     ));
     let mut rx = session.subscribe();
@@ -586,7 +586,7 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
         vec![GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some(reason.into()),
         }],
     );
@@ -649,7 +649,7 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
             GateComment {
                 gate: Gate::Rejected,
                 ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
-                actor: "ryan".into(),
+                actor: "owner".into(),
                 payload: Some(older.into()),
             },
             GateComment {
@@ -661,7 +661,7 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
             GateComment {
                 gate: Gate::Rejected,
                 ts: Utc.with_ymd_and_hms(2026, 6, 6, 11, 0, 0).unwrap(),
-                actor: "ryan".into(),
+                actor: "owner".into(),
                 payload: Some(latest.into()),
             },
         ],

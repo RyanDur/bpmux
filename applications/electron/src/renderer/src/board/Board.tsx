@@ -37,8 +37,7 @@ interface BoardProps {
 const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const { data, setData, loading, error, setError, refetch } = useBoardFetch({
-    apiBase: bridge?.apiBase,
-    authToken: bridge?.authToken
+    apiBase: bridge?.apiBase
   })
   const [reorderAnnounce, setReorderAnnounce] = useState<string>('')
   const collapseStorage = useCollapsibleSectionsStorage<ColumnState>(
@@ -102,7 +101,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
     authToken: bridge?.authToken
   })
 
-  const isOwner = RENDERER_IDENTITY === 'ryan'
+  const isOwner = RENDERER_IDENTITY === 'owner'
 
   return (
     <aside

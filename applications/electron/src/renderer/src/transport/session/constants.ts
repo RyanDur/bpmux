@@ -1,4 +1,4 @@
-export const RENDERER_IDENTITY = 'ryan'
+export const RENDERER_IDENTITY = 'owner'
 export const RENDERER_TOOL = 'electron'
 
 export const INITIAL_BACKOFF_MS = 1000

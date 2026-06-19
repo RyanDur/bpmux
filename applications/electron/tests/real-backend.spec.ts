@@ -2,8 +2,17 @@ import { test, expect } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron as launchWithIsolatedSession } from './helpers/launch'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import {
+  launchIsolatedElectron as launchWithIsolatedSession,
+  launchWithMockGh,
+  waitForBoardLoaded
+} from './helpers/launch'
+import {
+  addStoryToIterationViaRpc,
+  seedCurrentIterationViaRpc,
+  setupCurrentIterationViaRpc
+} from './helpers/iteration-fixture'
+import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { ChatPage } from './pages/chatPage'
 import { BoardPage } from './pages/boardPage'
 import { DrillInPage } from './pages/drillInPage'
@@ -117,20 +126,9 @@ test.describe('real-backend', () => {
     await app.close()
   })
 
-  // #348 visual differentiation — grouping + Ryan-shape avatar.
-  //
-  // This test narrowly mocks `/api/messages` (hydration payload) via
-  // win.route to seed a deterministic fixture. That's a scoped
-  // fixture for a rendering-logic test (given messages X, what does
-  // the DOM render?) — CORS and network substrate are exercised by
-  // the earlier real-backend tests, so this narrow mock doesn't
-  // short-circuit the substrate-verification we care about.
-  test('grouping + Ryan-circle: 3 designer-in-5min render one avatar; Ryan renders as filled circle', async () => {
-    const { app } = await launchWithIsolatedSession()
-    const win = await app.firstWindow()
-
+  test('grouping + owner-circle: 3 designer-in-5min render one avatar; owner renders as filled circle', async () => {
     const base = new Date('2026-04-22T12:00:00Z').getTime()
-    const fixture = [
+    const seedMessages = [
       {
         from: 'designer:claude-code',
         text: 'first of the group',
@@ -150,46 +148,24 @@ test.describe('real-backend', () => {
         message_type: 'chat'
       },
       {
-        from: 'ryan:human',
-        text: 'ryan breaking the group',
+        from: 'owner:human',
+        text: 'owner breaking the group',
         ts: new Date(base + 30_000).toISOString(),
         message_type: 'chat'
       }
     ]
-    const newestFirstHydration = [...fixture].reverse()
-    await win.route('**/api/messages**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(newestFirstHydration)
-      })
-    })
+    const { app } = await launchWithIsolatedSession({ seedMessages })
+    const win = await app.firstWindow()
 
     const chat = new ChatPage(win)
     await expect(win.getByRole('main')).toBeVisible()
     await expect(chat.messageLog()).toBeVisible()
 
-    // AC9(a): three consecutive designer messages + one ryan message
-    // render four rows total, but only TWO avatars — the first
-    // designer row anchors the 3-message group, the ryan row anchors
-    // its own single-row group. Avatars 2 and 3 (grouped
-    // continuations) are hidden.
     const avatars = chat.avatars()
     await expect(avatars).toHaveCount(2, { timeout: 5_000 })
-    // MessageList renders newest-first via `buildReversed` (column-
-    // reverse style DOM order — see MessageList.tsx:360). DOM order
-    // is therefore [ryan-anchor, designer-anchor]. Pre-#1128 the spec
-    // expected chronological-first DOM; current shape is reverse.
-    await expect(avatars.nth(0)).toHaveAttribute('data-role', 'ryan')
+    await expect(avatars.nth(0)).toHaveAttribute('data-role', 'owner')
     await expect(avatars.nth(1)).toHaveAttribute('data-role', 'designer')
 
-    // AC9(b): Ryan's avatar is a filled circle (shape class
-    // `message-avatar--circle` → border-radius: 50% in CSS). AI
-    // avatars are rounded-squares (`message-avatar--square` →
-    // border-radius: 4px). The shape class maps 1:1 to the rendered
-    // geometry per MessageList.css; asserting on the class is a
-    // boundary-level check that stays stable across CSS refactors
-    // so long as the shape-per-role contract is intact.
     await expect(avatars.nth(0)).toHaveClass(/message-avatar--circle/)
     await expect(avatars.nth(1)).toHaveClass(/message-avatar--square/)
 
@@ -283,7 +259,7 @@ test.describe('real-backend', () => {
   test('sidebar groups: unique `to` arrays from message history render as sidebar items', async () => {
     const seedMessages = [
       {
-        from: 'ryan:human',
+        from: 'owner:human',
         text: 'hello dev + designer',
         ts: '2026-04-22T16:00:00Z',
         to: ['dev', 'designer'],
@@ -297,7 +273,7 @@ test.describe('real-backend', () => {
         message_type: 'chat'
       },
       {
-        from: 'ryan:human',
+        from: 'owner:human',
         text: 'to pm + designer + dev',
         ts: '2026-04-22T16:02:00Z',
         to: ['pm', 'designer', 'dev'],
@@ -305,7 +281,7 @@ test.describe('real-backend', () => {
       },
       {
         from: 'bpmux:system',
-        text: 'ryan:electron joined',
+        text: 'owner:electron joined',
         ts: '2026-04-22T16:03:00Z',
         message_type: 'system'
       }
@@ -421,7 +397,16 @@ test.describe('real-backend', () => {
   // on background-color (AC8a) and that .message-row declares a
   // transform transition at fast duration for arrival animation (AC8b).
   test('micro-interactions: filter pill transitions bg-color, message-row transitions grid-template-rows', async () => {
-    const { app } = await launchWithIsolatedSession()
+    const { app } = await launchWithIsolatedSession({
+      seedMessages: [
+        {
+          from: 'dev:claude-code',
+          text: 'arrival',
+          ts: '2026-04-22T17:00:00Z',
+          message_type: 'chat'
+        }
+      ]
+    })
     const win = await app.firstWindow()
     await expect(win.getByRole('main')).toBeVisible()
 
@@ -442,26 +427,6 @@ test.describe('real-backend', () => {
     // 80ms = 0.08s
     expect(pillTransition?.duration).toContain('0.08s')
 
-    // Message-row: seed a chat message, check transform transition is
-    // declared. Register the mock + reload so hydration runs with the
-    // mocked response (otherwise the renderer's initial /api/messages
-    // fetch has already landed with the empty isolated-session log,
-    // and historyLoadedRef guards against a second fetch).
-    await win.route('**/api/messages**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            from: 'dev:claude-code',
-            text: 'arrival',
-            ts: '2026-04-22T17:00:00Z',
-            message_type: 'chat'
-          }
-        ])
-      })
-    })
-    await win.reload()
     const row = new ChatPage(win).messageRows().first()
     await expect(row).toBeVisible({ timeout: 5_000 })
     const rowTransition = await row.evaluate((el) => {
@@ -546,7 +511,7 @@ test.describe('real-backend', () => {
 
     await chat.reactToFirstMessage('👍')
 
-    await expect(chat.reactionPill('👍 1 reactions from ryan')).toBeVisible({ timeout: 10_000 })
+    await expect(chat.reactionPill('👍 1 reactions from owner')).toBeVisible({ timeout: 10_000 })
 
     await app.close()
   })
@@ -616,101 +581,64 @@ test.describe('real-backend', () => {
     await app.close()
   })
 
-  // #357 keyboard-accessible drag-reorder — Ctrl+Shift+ArrowDown
-  // twice moves a Ready row two positions. Mocks /api/board (initial
-  // state) + /api/stories/:n/reorder (to observe the POST). No WS
-  // broadcast needed to validate the AC — the renderer optimistically
-  // reorders + fires the POST, which is what the AC asserts.
   test('keyboard drag-reorder: Ctrl+Shift+Down twice shifts story by 2', async () => {
-    const board = {
-      fetched_at: '2026-04-22T19:00:00Z',
-      stories: [
-        {
-          number: 700,
-          title: 'Iteration KeyboardDragHarness',
-          state: 'icebox',
-          gh_state: 'open',
-          labels: ['iteration', 'iteration-order.100'],
-          assignees: [],
-          created_at: '2026-04-22T00:00:00Z',
-          body: '',
-          is_current: true
-        },
-        {
-          number: 701,
-          title: 'Story one',
-          state: 'ready',
-          gh_state: 'open',
-          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.100'],
-          assignees: [],
-          created_at: '2026-04-22T00:00:00Z',
-          body: '',
-          iteration_membership: { iteration_number: 700, position: 100 }
-        },
-        {
-          number: 702,
-          title: 'Story two',
-          state: 'ready',
-          gh_state: 'open',
-          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.200'],
-          assignees: [],
-          created_at: '2026-04-22T00:01:00Z',
-          body: '',
-          iteration_membership: { iteration_number: 700, position: 200 }
-        },
-        {
-          number: 703,
-          title: 'Story three',
-          state: 'ready',
-          gh_state: 'open',
-          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.300'],
-          assignees: [],
-          created_at: '2026-04-22T00:02:00Z',
-          body: '',
-          iteration_membership: { iteration_number: 700, position: 300 }
-        }
-      ]
-    }
-    const { app } = await launchWithIsolatedSession()
-    await app.context().route('**/api/board', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(board)
-      })
-    })
-    const win = await app.firstWindow()
-    const reorderCalls: Array<{ number: number }> = []
-    await win.route('**/api/stories/*/labels', async (route) => {
-      const req = route.request()
-      if (req.method() !== 'POST') {
-        await route.fallback()
-        return
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(win.getByRole('main')).toBeVisible()
+
+      for (const title of ['Story one', 'Story two', 'Story three']) {
+        const createResp = await rpc(
+          'create_story',
+          {
+            title: `[Feature] ${title}`,
+            user_job:
+              'When the human Ctrl+Shift+Down-reorders a Ready row twice, it shifts two positions.',
+            observation_falsifier:
+              'reject if Ctrl+Shift+Down twice does not move the focused Ready row by two positions',
+            acceptance_test_path: 'applications/electron/tests/real-backend.spec.ts'
+          },
+          'pm'
+        )
+        expect(createResp.status).toBe(200)
       }
-      const urlParts = req.url().split('/')
-      const numberStr = urlParts[urlParts.length - 2] ?? ''
-      reorderCalls.push({ number: Number.parseInt(numberStr, 10) })
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: '{}'
-      })
-    })
+      for (const number of [1, 2, 3]) {
+        const moveResp = await rpc(
+          'move_story',
+          { number, target_state: 'ready', rationale: 'real-backend keyboard-reorder fixture' },
+          'pm'
+        )
+        expect(moveResp.status).toBe(200)
+      }
+      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'KeyboardDragHarness')
+      await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
+      await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
+      await addStoryToIterationViaRpc(rpc, 3, iterNumber, 3)
 
-    await expect(win.getByRole('main')).toBeVisible()
-    const firstRow = new BoardPage(win).storyNavigate(701)
-    await expect(firstRow).toBeVisible({ timeout: 30_000 })
-    await firstRow.waitFor({ state: 'attached' })
-    await firstRow.focus()
-    await expect(firstRow).toBeFocused()
-    await firstRow.press('Control+Shift+ArrowDown')
-    await expect.poll(() => reorderCalls.length).toBeGreaterThanOrEqual(1)
-    await firstRow.press('Control+Shift+ArrowDown')
-    await expect.poll(() => reorderCalls.length).toBeGreaterThanOrEqual(2)
-    expect(reorderCalls[0].number).toBe(701)
-    expect(reorderCalls[1].number).toBe(701)
+      await win.reload()
+      await waitForBoardLoaded(win)
+      const board = new BoardPage(win)
+      await expect(board.group('Ready')).toBeVisible()
+      expect(await board.storyOrder('Ready')).toEqual([1, 2, 3])
 
-    await app.close()
+      const firstRow = board.storyNavigate(1)
+      await firstRow.focus()
+      await expect(firstRow).toBeFocused()
+
+      await firstRow.press('Control+Shift+ArrowDown')
+      await expect(async () => {
+        expect(await board.storyOrder('Ready')).toEqual([2, 1, 3])
+      }).toPass({ timeout: 5_000 })
+
+      await firstRow.focus()
+      await expect(firstRow).toBeFocused()
+      await firstRow.press('Control+Shift+ArrowDown')
+      await expect(async () => {
+        expect(await board.storyOrder('Ready')).toEqual([2, 3, 1])
+      }).toPass({ timeout: 5_000 })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   // #360 presence signals — activity-class broadcast updates sidebar
@@ -860,61 +788,64 @@ test.describe('real-backend', () => {
 
   // #356 comment Cmd+Enter submit — match reject-form's shortcut.
   test('comment Cmd+Enter: keystroke in comment textarea triggers POST', async () => {
-    const { app } = await launchWithIsolatedSession()
-    const win = await app.firstWindow()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(win.getByRole('main')).toBeVisible()
 
-    const story = {
-      number: 356,
-      title: 'Test story',
-      state: 'ready',
-      labels: ['Feature'],
-      assignees: [],
-      created_at: '2026-04-22T18:00:00Z',
-      body: 'body',
-      ...inMockCurrentIteration(1)
-    }
-    await win.route('**/api/board', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          fetched_at: '2026-04-22T18:00:00Z',
-          stories: [mockCurrentIteration('RealBackendCmdEnter', '2026-04-22T18:00:00Z'), story]
-        })
+      const createResp = await rpc(
+        'create_story',
+        {
+          title: '[Feature] Test story',
+          user_job:
+            'When the human types a comment and presses Cmd+Enter, the comment is submitted.',
+          observation_falsifier: 'reject if Cmd+Enter in the comment textarea does not POST',
+          acceptance_test_path: 'applications/electron/tests/real-backend.spec.ts'
+        },
+        'pm'
+      )
+      expect(createResp.status).toBe(200)
+
+      const iterNumber = await setupCurrentIterationViaRpc(rpc, 1, 'RealBackendCmdEnter')
+      expect(iterNumber).toBeGreaterThan(0)
+
+      const startResp = await rpc('start_story', {
+        number: 1,
+        pickup_paraphrase: 'Driving the chain so the delivered drill-in is reachable.',
+        falsifier_reframing: 'reject if start_story does not move story to in-progress'
       })
-    })
-    await win.route('**/api/stories/356/comments', async (route) => {
-      if (route.request().method() === 'POST') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: '{}'
-        })
-      } else {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: '[]'
-        })
-      }
-    })
+      expect(startResp.status).toBe(200)
+      const deliverResp = await rpc('deliver_story', {
+        number: 1,
+        verified_observation: 'Drove deliver so the drill-in opens with a comment textarea.'
+      })
+      expect(deliverResp.status).toBe(200)
+      await seedTeamVerdicts(rpc, 1, ['designer'])
+      const passResp = await rpc(
+        'pass_desk_check',
+        { number: 1, acceptor: 'owner', would_file_bug: false },
+        'designer'
+      )
+      expect(passResp.status).toBe(200)
 
-    const board = new BoardPage(win)
-    const drillIn = new DrillInPage(win)
-    await expect(win.getByRole('main')).toBeVisible()
-    // Open drill-in via board row click.
-    await board.storyNavigate(356).click()
-    await expect(drillIn.panel()).toBeVisible()
+      await win.reload()
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await expect(board.region()).toBeVisible()
+      await board.openTab('Now')
+      await board.openColumn('Acceptance')
 
-    // Type a comment + Cmd+Enter. Playwright's 'Meta+Enter' maps to
-    // metaKey+Enter which our handler catches.
-    const textarea = drillIn.commentInput()
-    await textarea.fill('hello from Cmd+Enter')
-    await textarea.press('Meta+Enter')
-    await expect(drillIn.commentItems().filter({ hasText: 'hello from Cmd+Enter' })).toBeVisible({
-      timeout: 3_000
-    })
+      await board.openStory(1)
+      await expect(drillIn.panel()).toBeVisible()
 
-    await app.close()
+      const textarea = drillIn.commentInput()
+      await textarea.fill('hello from Cmd+Enter')
+      await textarea.press('Meta+Enter')
+      await expect(drillIn.commentItems().filter({ hasText: 'hello from Cmd+Enter' })).toBeVisible({
+        timeout: 5_000
+      })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

@@ -86,17 +86,17 @@ mod tests {
     #[test]
     fn a_complete_osc7_in_one_chunk_yields_the_cwd_path() {
         let mut parser = Osc7CwdParser::new();
-        let got = parser.feed(&osc7("myhost", "/Users/ryan/project"));
+        let got = parser.feed(&osc7("myhost", "/Users/owner/project"));
         assert_eq!(
             got.as_deref(),
-            Some("/Users/ryan/project"),
+            Some("/Users/owner/project"),
             "a complete OSC-7 (ESC]7;file://HOST/PATH BEL) yields the cwd PATH (host stripped); got {got:?}"
         );
     }
 
     #[test]
     fn an_osc7_split_across_a_read_boundary_still_yields_the_cwd() {
-        let full = osc7("myhost", "/Users/ryan/split-dir");
+        let full = osc7("myhost", "/Users/owner/split-dir");
         let split = full.len() / 2;
         let mut parser = Osc7CwdParser::new();
         assert_eq!(
@@ -107,7 +107,7 @@ mod tests {
         let got = parser.feed(&full[split..]);
         assert_eq!(
             got.as_deref(),
-            Some("/Users/ryan/split-dir"),
+            Some("/Users/owner/split-dir"),
             "the second half completes the buffered sequence → the cwd parses across the 4096-read-boundary split (acceptance-4: a boundary-split cwd-emission must still register); got {got:?}"
         );
     }

@@ -251,13 +251,7 @@ pub async fn post_seed_roster(
             .next()
             .unwrap_or(identity.as_str())
             .to_string();
-        let role = match name.as_str() {
-            "dev" => crate::orchestrator::RosterRole::Dev,
-            "pm" => crate::orchestrator::RosterRole::Pm,
-            "designer" => crate::orchestrator::RosterRole::Designer,
-            "ryan" => crate::orchestrator::RosterRole::Owner,
-            _ => crate::orchestrator::RosterRole::Other,
-        };
+        let role = crate::transport::ws::role_from_short_name(&name);
         orchestrator
             .dispatch(crate::orchestrator::OrchestratorAction::Roster(
                 crate::orchestrator::RosterAction::RosterMemberUpserted {

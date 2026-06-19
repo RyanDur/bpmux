@@ -120,10 +120,10 @@ async fn owner_bypasses_add_story_to_iteration_via_superset_1548() {
     ])
     .await;
     let result =
-        handle_add_story_to_iteration(&args(1397, 1500, 100), "ryan:human", Some(&orch)).await;
+        handle_add_story_to_iteration(&args(1397, 1500, 100), "owner:human", Some(&orch)).await;
     assert!(
         result.is_ok(),
-        "owner (ryan) bypasses the pm-only add-to-iteration role-guard via the #1548 superset: {result:?}"
+        "owner (owner) bypasses the pm-only add-to-iteration role-guard via the #1548 superset: {result:?}"
     );
 }
 

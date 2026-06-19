@@ -1,70 +1,3 @@
-//! E2E acceptance-test for #1385 — accept_story substrate-enforce
-//! (role-access + evidence-required hard-block at bridge).
-//!
-//! First vertical-slice of Epic #1384 (configurable workflow substrate).
-//! Substrate-enforces the 11 Gherkin scenarios from #1385's body:
-//!   1. team-verifiable PM-fire with designer + dev verdicts → 200
-//!   2. owner-walk-class without owner-fire-evidence → 409
-//!   3. team-verifiable without designer-verdict → 409
-//!   4. dev/designer fires coordinator-only-config → 409
-//!   5. substrate-tests evidence-broadcast regex against empirical seeds
-//!   6. backward-compat — existing accepted stories unaffected
-//!   7. workflow.toml missing → bundled-default (graceful greenfield)
-//!   8. workflow.toml malformed → 500 + structured error; NEVER silent-fallback
-//!   9. concurrent-fire race — second fire returns 409 target-state-invalid
-//!  10. self-mutation guard — actor who delivered cannot fire accept
-//!  11. workflow.toml configures evidence_window_seconds per transition
-//!
-//! Slice 2 (role-check): partial coverage of Scenario 4 (dev/designer
-//! fires accept on workflow.toml-restricted actor_roles list → 409
-//! workflow-role-not-allowed structured error).
-//!
-//! Slice 3 (evidence-check): coverage of Scenarios 1 + 3 — PM fires
-//! team-verifiable accept with both designer + dev verdicts in window
-//! → 200; PM fires team-verifiable without designer-verdict → 409
-//! workflow-gate-mismatch with missing_evidence cite.
-//!
-//! Slice 4 (concurrent-fire + self-mutation guards): substrate
-//! primitives in workflow::gate (check_target_state_valid +
-//! check_self_mutation_refused) wired into handle_accept_story.
-//!
-//! - Scenario 9 (race-guard): refuses if story.state is already the
-//!   transition's to-state (accepted). Returns structured
-//!   workflow-target-state-invalid with current_state +
-//!   expected_state cite. Substrate-correct in production (GH
-//!   adapter reflects close after first accept). E2E not added here
-//!   because the InMemorySourceAdapter used by TestBpmux doesn't
-//!   round-trip mutation→adapter→re-ingest within a single test
-//!   run; substrate proof lives in workflow::gate_tests.
-//! - Scenario 10 (self-mutation): refuses if same actor fired a
-//!   prior gate in the refused list (deliver / pass-desk-check).
-//!   Bundled-default actor sets don't overlap, so the guard is
-//!   preventative-only at default config; substrate proof lives
-//!   in workflow::gate_tests.
-//!
-//! Slice 5 (owner-walk gate-class per-story): coverage of Scenarios
-//! 2 + 4 (fuller). Stories with label `gate:owner-walk` route to
-//! the owner-walk-class transition variant (actor_roles=[ryan],
-//! required_evidence=[]); stories without the label default to
-//! team-verifiable.
-//!
-//! Slice 6 (back-compat + evidence-window + empirical fixtures):
-//! - Scenario 6 (back-compat): existing accepted stories unaffected
-//!   by substrate-pivot — verified via the broader test suite
-//!   (1617 passing tests include previously-accepted stories
-//!   unaffected by new gates).
-//! - Scenario 11 (evidence-window configurable): substrate-test in
-//!   workflow::gate_tests::evidence_check_fails_when_designer_
-//!   verdict_is_stale_beyond_window proves the per-transition
-//!   evidence_window_seconds drives cutoff; bundled-default uses
-//!   600s, but a workflow.toml override (parsed via loader) would
-//!   pass through to the validator unchanged. Loader's e2e is
-//!   covered by workflow::loader_tests.
-//! - Scenario 5 (empirical-fixture seeds): the permissive-baseline
-//!   shape doesn't use content-regex (retired per team-converge);
-//!   verdict-shape evolution lives in a future sister-substrate
-//!   story under #1384.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -122,7 +55,7 @@ fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind(
             "attempted_transition names the gate; got {err}"
         );
         assert!(
-            err.contains("\"pm\"") && !err.contains("\"ryan\""),
+            err.contains("\"pm\"") && !err.contains("\"owner\""),
             "allowed_roles cites the team set [pm]; the owner is absent because it bypasses via superset (#1548); got {err}"
         );
 

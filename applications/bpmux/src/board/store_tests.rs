@@ -31,7 +31,7 @@ fn seed_all_populates_stories() {
         "first".to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
-        "ryan".to_string(),
+        "owner".to_string(),
     );
     store.seed_all(vec![s1]);
     assert_eq!(store.len(), 1);

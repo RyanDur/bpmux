@@ -1,24 +1,19 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
+import { test, expect } from '@playwright/test'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import {
+  addStoryToIterationViaRpc,
+  seedCurrentIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 import { ChatPage } from './pages/chatPage'
 import { DrillInPage } from './pages/drillInPage'
-
-// #337 rework regression: the observation-falsifier from the pickup-
-// gate paraphrase: "I would reject if, after opening any drill-in
-// with comments, I cannot reach the comments list + post-form by
-// natural scroll." This test exercises that falsifier directly.
+import type { MockGhServer } from './helpers/mock_gh'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
-// Long body so scroll is required to reach comments — if body fits
-// the viewport without scroll, we miss the regression we're
-// guarding against. 2000+ chars drives past any plausible viewport.
 const LONG_BODY = `
 ## What
 
@@ -33,23 +28,6 @@ ${'Additional content that pushes the comments section off-screen. '.repeat(40)}
 ${'AC line to add vertical bulk. '.repeat(30)}
 `.trim()
 
-const MOCK_BOARD = {
-  fetched_at: '2026-04-22T16:00:00Z',
-  stories: [
-    mockCurrentIteration('DeskCheck337', '2026-04-22T16:00:00Z'),
-    {
-      number: 337,
-      title: 'Drill-in scroll rework fixture',
-      state: 'ready',
-      labels: ['Feature', 'ready'],
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: LONG_BODY,
-      ...inMockCurrentIteration(1)
-    }
-  ]
-}
-
 const MOCK_COMMENTS = [
   {
     id: 9337,
@@ -59,100 +37,103 @@ const MOCK_COMMENTS = [
   }
 ]
 
-const launchWithFixture = async (): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-}> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-337-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-337-'))
-  const { app, mockGh } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_BOARD)
-    })
-  })
+const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
+  const createResp = await rpc(
+    'create_story',
+    {
+      title: '[Feature] Drill-in scroll rework fixture',
+      body: LONG_BODY,
+      user_job:
+        'When a human opens a drill-in with comments, scroll reaches the comments + post-form.',
+      observation_falsifier:
+        'reject if the comments list + post-form cannot be reached by natural scroll',
+      acceptance_test_path: 'applications/electron/tests/desk-check-337.spec.ts'
+    },
+    'pm'
+  )
+  expect(createResp.status).toBe(200)
+  const moveResp = await rpc(
+    'move_story',
+    { number: 1, target_state: 'ready', rationale: 'desk-check-337 scroll fixture' },
+    'pm'
+  )
+  expect(moveResp.status).toBe(200)
+  const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck337')
+  await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
   mockGh.on({
     method: 'GET',
-    match: /\/repos\/acme\/bpmux\/issues\/337\/comments/,
+    match: /\/repos\/acme\/bpmux\/issues\/1\/comments/,
     bodyJson: MOCK_COMMENTS.map((c) =>
       commentJson(c.body, { id: c.id, author: c.author, created_at: c.created_at })
     )
   })
-  await win.route('**/api/stories/337/timeline', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: '[]'
-    })
-  })
-  await win.reload()
-  return { app }
 }
 
 test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => {
   test('comments section is reachable via scroll within drill-in', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    const drillIn = new DrillInPage(win)
-    await expect(new ChatPage(win).region()).toBeVisible()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedFixture(rpc, mockGh)
+      await win.reload()
+      await waitForBoardLoaded(win)
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
 
-    // Open drill-in.
-    await board.storyNavigate(337).click()
-    await expect(drillIn.panel()).toBeVisible()
+      await board.storyNavigate(1).click()
+      await expect(drillIn.panel()).toBeVisible()
 
-    // Comments list exists in DOM (before #337 fix, this was true
-    // but unreachable). Assert existence first.
-    const commentsList = drillIn.commentList()
-    await expect(commentsList).toBeAttached({ timeout: 5_000 })
+      const commentsList = drillIn.commentList()
+      await expect(commentsList).toBeAttached({ timeout: 5_000 })
 
-    // Observation-falsifier: "I would reject if comments unreachable
-    // by natural scroll." Scroll the drill-in container to the
-    // bottom, then check comments are visible in the viewport.
-    await board.boardScrollPanel().evaluate((el: HTMLElement) => {
-      el.scrollTop = el.scrollHeight
-    })
+      await board.boardScrollPanel().evaluate((el: HTMLElement) => {
+        el.scrollTop = el.scrollHeight
+      })
 
-    // After scroll, the comments list should be in viewport.
-    await expect(commentsList).toBeInViewport({ timeout: 3_000 })
-    // The specific comment text confirms we can read content.
-    await expect(
-      drillIn.commentItems().filter({ hasText: 'reachable via natural scroll' })
-    ).toBeInViewport({ timeout: 3_000 })
+      await expect(commentsList).toBeInViewport({ timeout: 3_000 })
+      await expect(
+        drillIn.commentItems().filter({ hasText: 'reachable via natural scroll' })
+      ).toBeInViewport({ timeout: 3_000 })
 
-    // Post-form textarea also reachable (falsifier explicitly names
-    // "comments list + post-form").
-    await expect(drillIn.commentInput()).toBeInViewport({
-      timeout: 3_000
-    })
+      await expect(drillIn.commentInput()).toBeInViewport({
+        timeout: 3_000
+      })
 
-    await win.screenshot({
-      path: join(EVIDENCE_DIR, '102-drill-in-comments-reachable.png'),
-      fullPage: false
-    })
-
-    await app.close()
+      await win.screenshot({
+        path: join(EVIDENCE_DIR, '102-drill-in-comments-reachable.png'),
+        fullPage: false
+      })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('back-crumb header stays sticky during scroll', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const drillIn = new DrillInPage(win)
-    await new BoardPage(win).storyNavigate(337).click()
-    const panel = drillIn.panel()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedFixture(rpc, mockGh)
+      await win.reload()
+      await waitForBoardLoaded(win)
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await board.storyNavigate(1).click()
+      const panel = drillIn.panel()
 
-    const backButton = drillIn.backButton()
-    await expect(backButton).toBeInViewport()
+      const backButton = drillIn.backButton()
+      await expect(backButton).toBeInViewport()
 
-    await expect(panel).toHaveAttribute('data-visible', /.*/)
+      await expect(panel).toHaveAttribute('data-visible', /.*/)
 
-    await panel.evaluate((el: HTMLElement) => {
-      el.scrollTop = el.scrollHeight
-    })
+      await panel.evaluate((el: HTMLElement) => {
+        el.scrollTop = el.scrollHeight
+      })
 
-    await expect(backButton).toBeInViewport({ timeout: 3_000 })
-    await app.close()
+      await expect(backButton).toBeInViewport({ timeout: 3_000 })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

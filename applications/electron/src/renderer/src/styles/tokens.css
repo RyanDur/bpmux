@@ -20,7 +20,7 @@
   --accent-info-bg: color-mix(in srgb, var(--accent-info) 12%, transparent);
   --border-subtle: rgb(51 51 51);
   --border-strong: rgb(85 85 85);
-  --role-ryan: rgb(255 213 79);
+  --role-owner: rgb(255 213 79);
   --role-designer: rgb(179 104 233);
   --role-dev: rgb(79 195 247);
   --role-pm: rgb(129 199 132);
@@ -95,7 +95,7 @@
   --accent-info: rgb(2 132 199);
   --border-subtle: rgb(226 232 240);
   --border-strong: rgb(203 213 224);
-  --role-ryan: rgb(161 98 7);
+  --role-owner: rgb(161 98 7);
   --role-designer: rgb(126 34 206);
   --role-dev: rgb(3 105 161);
   --role-pm: rgb(21 128 61);

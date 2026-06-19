@@ -1,77 +1,163 @@
 import { test, expect } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
+import { seedTeamVerdicts } from './helpers/seed-evidence'
+import type { RpcFn } from './helpers/iteration-fixture'
 import type { Page } from '@playwright/test'
 import { BoardPage } from './pages/boardPage'
 
-const NOT_READY = { drafted: true, stories_ordered: true, review_closed: false, dev_ok: false }
-const READY = { drafted: true, stories_ordered: true, review_closed: true, dev_ok: true }
-
-const member = (position: number, state: string): Record<string, unknown> => ({
-  number: 500 + position,
-  title: `member ${position}`,
-  state,
-  labels: ['Feature'],
-  assignees: [],
-  created_at: '2026-06-16T00:00:00Z',
-  body: '',
-  iteration_membership: { iteration_number: 100, position }
-})
-
-const boardWith = (nextReadiness: typeof NOT_READY): Record<string, unknown> => ({
-  fetched_at: '2026-06-16T00:00:00Z',
-  stories: [
-    {
-      number: 100,
-      title: 'Iteration Lupus',
-      state: 'in-progress',
-      gh_state: 'open',
-      labels: ['iteration'],
-      assignees: [],
-      created_at: '2026-06-16T00:00:00Z',
-      body: '',
-      is_current: true,
-      iteration_order: 1
-    },
-    {
-      number: 200,
-      title: 'Iteration Fornax',
-      state: 'icebox',
-      gh_state: 'open',
-      labels: ['iteration'],
-      assignees: [],
-      created_at: '2026-06-16T00:00:00Z',
-      body: '',
-      iteration_order: 2,
-      readiness: nextReadiness
-    },
-    member(1, 'delivered'),
-    member(2, 'delivered'),
-    member(3, 'delivered'),
-    member(4, 'in-progress')
-  ]
-})
-
-const launchWithBoard = async (
-  board: Record<string, unknown>,
-  reducedMotion?: 'reduce'
-): Promise<{ app: Awaited<ReturnType<typeof launchIsolatedElectron>>['app']; win: Page }> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-1705-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-1705-udd-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  if (reducedMotion) await win.emulateMedia({ reducedMotion })
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(board)
-    })
+const iterationOrderOf = async (
+  result: MockGhLaunchResult,
+  iterationNumber: number
+): Promise<number | null> => {
+  const resp = await fetch(`http://127.0.0.1:${result.backendPort}/api/board`, {
+    headers: { Authorization: `Bearer ${result.authToken}` }
   })
-  await win.reload()
-  return { app, win }
+  expect(resp.status).toBe(200)
+  const board = (await resp.json()) as {
+    stories: { number: number; iteration_order: number | null }[]
+  }
+  return board.stories.find((s) => s.number === iterationNumber)?.iteration_order ?? null
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+const waitForStableIterationOrder = async (
+  result: MockGhLaunchResult,
+  iterationNumber: number
+): Promise<number> => {
+  const deadline = Date.now() + 20_000
+  let stableValue: number | null = null
+  let stableHits = 0
+  while (Date.now() < deadline) {
+    const order = await iterationOrderOf(result, iterationNumber)
+    if (order !== null && order === stableValue) {
+      stableHits += 1
+      if (stableHits >= 3) return order
+    } else {
+      stableValue = order
+      stableHits = order === null ? 0 : 1
+    }
+    await sleep(300)
+  }
+  throw new Error(`iteration #${iterationNumber} order did not settle within 20s`)
+}
+
+const numberFromMessage = async (resp: Response): Promise<number> => {
+  expect(resp.status).toBe(200)
+  const json = (await resp.json()) as { message?: string }
+  const n = Number(json.message?.match(/#(\d+)/)?.[1])
+  expect(n).toBeGreaterThan(0)
+  return n
+}
+
+const createMember = async (rpc: RpcFn, label: string): Promise<number> => {
+  const resp = await rpc(
+    'create_story',
+    {
+      title: `[Feature] ${label}`,
+      user_job: `Member ${label} so the current iteration can drain toward close-approach.`,
+      observation_falsifier: 'reject if the member does not land in the current iteration column',
+      acceptance_test_path: 'applications/electron/tests/close-approach-nudge-1705.spec.ts'
+    },
+    'pm'
+  )
+  return numberFromMessage(resp)
+}
+
+const createIteration = async (rpc: RpcFn, theme: string): Promise<number> => {
+  const resp = await rpc('create_iteration', { theme_name: theme }, 'pm')
+  return numberFromMessage(resp)
+}
+
+const startMember = async (rpc: RpcFn, number: number): Promise<void> => {
+  const resp = await rpc('start_story', {
+    number,
+    pickup_paraphrase: 'Driving the member into the current iteration so it can drain.',
+    falsifier_reframing: 'reject if start_story does not move the member to in-progress'
+  })
+  expect(resp.status).toBe(200)
+}
+
+const deliverMember = async (rpc: RpcFn, number: number): Promise<void> => {
+  await startMember(rpc, number)
+  const deliverResp = await rpc('deliver_story', {
+    number,
+    verified_observation: 'Drove deliver so the member lands in the Acceptance column.'
+  })
+  expect(deliverResp.status).toBe(200)
+  await seedTeamVerdicts(rpc, number, ['designer'])
+  const passResp = await rpc(
+    'pass_desk_check',
+    { number, acceptor: 'team', would_file_bug: false },
+    'designer'
+  )
+  expect(passResp.status).toBe(200)
+}
+
+interface NudgeTopology {
+  nextNumber: number
+  nextTheme: string
+}
+
+const seedCloseApproach = async (
+  result: MockGhLaunchResult,
+  makeNextReady: boolean
+): Promise<NudgeTopology> => {
+  const { rpc } = result
+  const currentMembers: number[] = []
+  for (let i = 1; i <= 4; i += 1) {
+    currentMembers.push(await createMember(rpc, `current member ${i}`))
+  }
+  const nextMember = await createMember(rpc, 'next member')
+
+  const currentTheme = 'Lupus'
+  const nextTheme = 'Fornax'
+  const currentIter = await createIteration(rpc, currentTheme)
+  const currentOrder = await waitForStableIterationOrder(result, currentIter)
+  const nextIter = await createIteration(rpc, nextTheme)
+  const nextOrder = await waitForStableIterationOrder(result, nextIter)
+  expect(nextOrder, 'the next iteration sorts after the current one').toBeGreaterThan(currentOrder)
+
+  const designateResp = await rpc(
+    'designate_current_iteration',
+    { iteration_number: currentIter },
+    'pm'
+  )
+  expect(designateResp.status).toBe(200)
+
+  for (let i = 0; i < currentMembers.length; i += 1) {
+    const addResp = await rpc(
+      'add_story_to_iteration',
+      { story_number: currentMembers[i], iteration_number: currentIter, position: i + 1 },
+      'pm'
+    )
+    expect(addResp.status).toBe(200)
+  }
+
+  const addNextResp = await rpc(
+    'add_story_to_iteration',
+    { story_number: nextMember, iteration_number: nextIter, position: 1 },
+    'pm'
+  )
+  expect(addNextResp.status).toBe(200)
+
+  await deliverMember(rpc, currentMembers[0])
+  await deliverMember(rpc, currentMembers[1])
+  await deliverMember(rpc, currentMembers[2])
+  await startMember(rpc, currentMembers[3])
+
+  if (makeNextReady) {
+    const reviewResp = await rpc(
+      'close_pre_pickup_review',
+      { iteration_number: nextIter },
+      'designer'
+    )
+    expect(reviewResp.status).toBe(200)
+    const devOkResp = await rpc('dev_ok_iteration', { iteration_number: nextIter }, 'dev')
+    expect(devOkResp.status).toBe(200)
+  }
+
+  return { nextNumber: nextIter, nextTheme }
 }
 
 type MotionTrace = { minOpacity: number | null; maxAnims: number; samples: number }
@@ -108,13 +194,19 @@ const traceFromFirstAppearance = (win: Page): Promise<MotionTrace> =>
 
 test.describe('#1705 close-approach readiness nudge', () => {
   test('close-approach + next-not-ready: the strip renders in-frame (owner-visible, warn-not-block) + ◐ tab-badge, and the ENTER slide PLAYS (opacity 0→1, getAnimations live)', async () => {
-    const { app, win } = await launchWithBoard(boardWith(NOT_READY))
-    const trace = traceFromFirstAppearance(win)
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
     try {
       const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      const { nextTheme } = await seedCloseApproach(result, false)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+
+      const trace = traceFromFirstAppearance(win)
       const strip = board.closeApproachNudge()
       await expect(strip).toBeVisible()
-      await expect(strip).toContainText('Fornax')
+      await expect(strip).toContainText(nextTheme)
       await expect(strip).toContainText('designer-review')
       await expect(board.roadmapAttn()).toBeVisible()
       await expect(board.tabBar()).toBeVisible()
@@ -130,13 +222,20 @@ test.describe('#1705 close-approach readiness nudge', () => {
       ).toBeLessThan(1)
     } finally {
       await app.close()
+      await mockGh.close()
     }
   })
 
   test('dismiss collapses the strip (the EXIT plays) but the ◐ tab-badge survives (recognition-over-recall)', async () => {
-    const { app, win } = await launchWithBoard(boardWith(NOT_READY))
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
     try {
       const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      await seedCloseApproach(result, false)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+
       await expect(board.closeApproachNudge()).toBeVisible()
       await board.closeApproachDismiss().click()
       const exitAnims = await win.evaluate(
@@ -159,26 +258,42 @@ test.describe('#1705 close-approach readiness nudge', () => {
       await expect(board.roadmapAttn()).toBeVisible()
     } finally {
       await app.close()
+      await mockGh.close()
     }
   })
 
   test('next-ready: no strip and no tab-badge (signal-honesty — only an un-ready NEXT trips it)', async () => {
-    const { app, win } = await launchWithBoard(boardWith(READY))
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
     try {
       const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      await seedCloseApproach(result, true)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+
       await expect(board.tabBar()).toBeVisible()
       await expect(board.closeApproachNudge()).toHaveCount(0)
       await expect(board.roadmapAttn()).toHaveCount(0)
     } finally {
       await app.close()
+      await mockGh.close()
     }
   })
 
   test('reduced-motion: the strip is present but does NOT animate (instant, no slide)', async () => {
-    const { app, win } = await launchWithBoard(boardWith(NOT_READY), 'reduce')
-    const trace = traceFromFirstAppearance(win)
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
     try {
-      await expect(new BoardPage(win).closeApproachNudge()).toBeVisible()
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      await seedCloseApproach(result, false)
+      await win.emulateMedia({ reducedMotion: 'reduce' })
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+
+      const trace = traceFromFirstAppearance(win)
+      await expect(board.closeApproachNudge()).toBeVisible()
       const t = await trace
       expect(t.maxAnims, 'reduced-motion ran NO animation (instant present)').toBe(0)
       const duration = await win.evaluate(
@@ -189,6 +304,7 @@ test.describe('#1705 close-approach readiness nudge', () => {
       expect(duration).toMatch(/^0s|^0ms|0s,/)
     } finally {
       await app.close()
+      await mockGh.close()
     }
   })
 })

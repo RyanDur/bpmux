@@ -132,7 +132,7 @@ async fn fetch_free_comments_caches_comments_and_fires_event() {
     adapter.seed_stories(vec![seed_story(9, StoryState::Ready)]);
     let seeded = vec![FreeComment {
         body: "hi".into(),
-        author: "ryan".into(),
+        author: "owner".into(),
         ts: Utc.with_ymd_and_hms(2026, 4, 20, 10, 0, 0).unwrap(),
     }];
     adapter.seed_free_comments(9, seeded.clone());

@@ -30,13 +30,6 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      // create_story is pm-lane (require_role gate); dev/designer/ryan
-      // are rejected. Same shape as `dispatch_test_create_story`'s
-      // `agent.unwrap_or_else(|| "pm:test")` default — we just push
-      // the role into the X-BPMUX-Agent header instead of the body.
-      // acceptance_test_path satisfies #476's gate at start_story;
-      // the spec file itself is a valid + cwd-resolvable path under
-      // resolve_acceptance_test_path's repo-relative candidates.
       const acceptanceTestPath =
         'applications/electron/tests/human-observes-desk-check-state-after-deliver-story.spec.ts'
       const createResp = await rpc(
@@ -83,14 +76,6 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       await win.reload()
       await expect(board.region()).toBeVisible()
 
-      // Per designer's #1127 ruling: single-gate-per-spec preserves
-      // the family shape (`human-observes-X-state-after-Y-story`).
-      // The user-mental-model is "see story leave IN-PROGRESS visibly
-      // post-deliver"; column-label update from `delivered` (pre-#476
-      // single-step vocabulary) to `desk-check` (post-#516 ceremony
-      // destination of deliver_story per Ryan 2026-04-27/28 + state
-      // machine in domain.rs:23) is mechanism-fidelity, not user-job
-      // shape-change.
       await expect(board.storyInColumn('Desk Check', 1)).toHaveCount(1)
       await expect(board.storyInColumn('Desk Check', 1)).toHaveAttribute(
         'aria-label',

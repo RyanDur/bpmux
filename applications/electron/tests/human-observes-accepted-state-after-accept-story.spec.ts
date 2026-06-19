@@ -36,7 +36,7 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
         {
           title: '[Feature] human-observes-accepted',
           user_job:
-            'When ryan accepts a delivered story, human needs to see it move to ACCEPTED column on Electron without manual refresh-thinking.',
+            'When owner accepts a delivered story, human needs to see it move to ACCEPTED column on Electron without manual refresh-thinking.',
           observation_falsifier:
             'reject if board does not show story in ACCEPTED column after accept_story round-trip',
           acceptance_test_path: acceptanceTestPath

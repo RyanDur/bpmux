@@ -2,7 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 
 // #381: inline markdown (bold / italic / inline code) renders with
@@ -30,8 +30,6 @@ const MESSAGES = [
     from: 'designer:claude-code',
     text: MARKDOWN_TEXT,
     ts: '2026-04-22T16:00:00Z',
-    to: null,
-    addressee: null,
     message_type: 'chat'
   }
 ]
@@ -41,32 +39,13 @@ const launchWithFixture = async (): Promise<{
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-381-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-381-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app } = await launchIsolatedElectron({
+    sessionBase,
+    userDataDir: udd,
+    seedMessages: MESSAGES
+  })
   const win = await app.firstWindow()
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ fetched_at: '2026-04-22T16:00:00Z', stories: [] })
-    })
-  })
-  await win.route('**/api/messages*', async (route, request) => {
-    const url = request.url()
-    if (url.includes('message_type=activity')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: '[]'
-      })
-      return
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MESSAGES)
-    })
-  })
-  await win.reload()
+  await waitForMessagesLoaded(win, 'bolded-word')
   return { app }
 }
 

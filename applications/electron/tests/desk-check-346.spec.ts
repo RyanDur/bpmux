@@ -43,14 +43,13 @@ const MESSAGES_WITH_GROUPS_AND_SYSTEM = [
     message_type: 'chat',
     to: ['designer', 'dev', 'pm']
   },
-  // DM to ryan (single recipient — this counts as DM not group)
   {
     id: 'm5',
     from: 'designer:claude-code',
-    text: 'DM to ryan only',
+    text: 'DM to owner only',
     ts: '2026-04-22T15:04:00Z',
     message_type: 'chat',
-    to: ['ryan']
+    to: ['owner']
   },
   // System messages
   {

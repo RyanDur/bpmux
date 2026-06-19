@@ -27,7 +27,7 @@ const ruleFor = (
 const refViolations = (msgs: ESLint.LintResult['messages']): ESLint.LintResult['messages'] =>
   ruleFor(msgs, 'no-restricted-syntax').filter((m) => /useRef/.test(m.message))
 
-describe('#1499 ESLint no-useRef substrate — Ryan-canon "no refs unless no other way"', () => {
+describe('#1499 ESLint no-useRef substrate — owner-canon "no refs unless no other way"', () => {
   test('production file: useRef fires no-restricted-syntax error', async () => {
     const code = `import { useRef } from 'react'\nexport const C = () => { const r = useRef(0); return r.current }\n`
     const [result] = await lintAs(code, STUB_PRODUCTION_TSX)

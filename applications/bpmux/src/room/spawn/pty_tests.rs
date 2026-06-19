@@ -133,7 +133,7 @@ fn a_paste_capable_tui_that_toggled_paste_off_still_gets_a_bracket_framed_submit
              receive the delivery bracket-paste-framed (the [200~…[201~ markers wrap the body) — the \
              capability LATCHES, so the submit never depends on the flickering current paste-mode. \
              Without the latch, a delivery in the paste-off window ships plain + a bare \\r that a \
-             busy raw-TUI PARKS awaiting a manual Enter (Ryan's 2026-06-13 intermittent reject); got {seen:?}"
+             busy raw-TUI PARKS awaiting a manual Enter (owner's 2026-06-13 intermittent reject); got {seen:?}"
     );
 }
 

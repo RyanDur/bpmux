@@ -29,7 +29,7 @@ async fn create_story_rejects_non_pm_non_owner_role() {
             "error should redirect to broadcast. role={role}, err={err}"
         );
     }
-    let owner_result = handle_create_story(args.as_object().unwrap(), "ryan", None).await;
+    let owner_result = handle_create_story(args.as_object().unwrap(), "owner", None).await;
     assert!(
         !owner_result
             .as_ref()
@@ -347,7 +347,7 @@ async fn label_story_still_pm_gated_with_operation_param() {
             "{caller} rejection should cite role restriction"
         );
     }
-    let owner_result = handle_label_story(args.as_object().unwrap(), "ryan:human", None).await;
+    let owner_result = handle_label_story(args.as_object().unwrap(), "owner:human", None).await;
     assert!(
         !owner_result
             .as_ref()

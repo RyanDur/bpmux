@@ -1,16 +1,3 @@
-//! Agent-side E2E test for `accept_story` MCP tool (#476 Phase 1
-//! backfill — gate-fire archetype, multi-role variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — accept_story applicability =
-//! {agent: yes, human: yes (Electron accept affordance), external: no}.
-//! This test covers ONLY agent-side; human-side follows.
-//!
-//! accept_story allows ryan / pm / designer / dev role-set per current
-//! implementation (substrate-gate Feature #479 narrows this in future).
-//! Accept also closes the story — view_board reflects Accepted section
-//! population.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -219,7 +206,7 @@ fn accept_role_survives_ingest_poll_after_acceptor_label_seed_1550() {
         )
         .await
         .expect(
-            "accept survives the re-ingest poll: the stateful GET /issues mock reflects the pushed acceptor-label, so seed_all does not clobber it to OwnerWalk/[ryan]",
+            "accept survives the re-ingest poll: the stateful GET /issues mock reflects the pushed acceptor-label, so seed_all does not clobber it to OwnerWalk/[owner]",
         );
 
         pm.close().await;

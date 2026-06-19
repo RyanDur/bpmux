@@ -23,7 +23,7 @@ const SEED_MULTI_ROLE_MESSAGES = [
     message_type: 'chat'
   },
   {
-    from: 'ryan:human',
+    from: 'owner:human',
     text: 'pre-existing group message',
     ts: '2026-04-22T16:03:00Z',
     to: ['dev', 'designer'],

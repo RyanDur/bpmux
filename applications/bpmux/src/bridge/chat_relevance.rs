@@ -49,7 +49,7 @@ mod tests {
     fn owner_bridge_stream_receives_a_conversation_scoped_to_other_peers() {
         let to = recipients(&["pm", "designer"]);
         assert!(
-            scope_reaches_live_stream(Some(&to), "ryan"),
+            scope_reaches_live_stream(Some(&to), "owner"),
             "#1733-rework: the owner's live-notification stream sees a chat scoped to:[pm,designer] — the bridge scope-gate is unfilterable for the owner, mirroring should_deliver. --to is peer-attention, never owner-hiding"
         );
     }

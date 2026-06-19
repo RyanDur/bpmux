@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 fn empty_message_session() -> Arc<crate::session::Session> {
     let dir = std::env::temp_dir().join(format!("bpmux-detect-{}", uuid::Uuid::new_v4()));
     let (tx, _rx) = tokio::sync::broadcast::channel(16);
-    Arc::new(crate::session::Session::new(dir, "ryan".to_string(), tx))
+    Arc::new(crate::session::Session::new(dir, "owner".to_string(), tx))
 }
 
 fn osc7(path: &str) -> Vec<u8> {
@@ -69,7 +69,7 @@ fn a_transient_job_that_ends_before_the_gate_resets_and_never_mints() {
 #[test]
 fn a_sustained_job_in_a_known_cwd_mints_at_the_gate_with_the_job_start_ts() {
     let mut detector = AgentRunDetector::new(GATE);
-    detector.feed_output(&osc7("/Users/ryan/project"));
+    detector.feed_output(&osc7("/Users/owner/project"));
     let start = Instant::now();
     assert!(
         detector
@@ -81,7 +81,7 @@ fn a_sustained_job_in_a_known_cwd_mints_at_the_gate_with_the_job_start_ts() {
         .observe(true, start + GATE, "2026-06-12T10:00:01Z")
         .expect("a SUSTAINED foreground-job (>= gate) in a known cwd mints");
     assert_eq!(
-        mint.cwd, "/Users/ryan/project",
+        mint.cwd, "/Users/owner/project",
         "mints in the cwd the agent works in (the OSC-7-tracked dir)"
     );
     assert_eq!(

@@ -384,14 +384,14 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
   })
 
   test('persisted-closed state in localStorage overrides default-open (falsifier-e)', () => {
-    window.localStorage.setItem('bpmux-epic-collapse:ryan', JSON.stringify({ '1100': false }))
+    window.localStorage.setItem('bpmux-epic-collapse:owner', JSON.stringify({ '1100': false }))
     const epic = story({ number: 1100, state: 'in-progress' })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />)
     expect(html).not.toMatch(/<details[^>]*\sopen\b/)
   })
 
   test('persisted-open state in localStorage overrides default-closed', () => {
-    window.localStorage.setItem('bpmux-epic-collapse:ryan', JSON.stringify({ '1100': true }))
+    window.localStorage.setItem('bpmux-epic-collapse:owner', JSON.stringify({ '1100': true }))
     const epic = story({ number: 1100, state: 'accepted' })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />)
     expect(html).toMatch(/<details[^>]*\sopen\b/)

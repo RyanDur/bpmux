@@ -40,7 +40,7 @@ fn resolve_bridge_name_generates_agent_suffix_for_unexpanded_placeholder() {
 #[test]
 fn build_meta_always_includes_core_fields() {
     let meta = build_notification_meta(
-        "ryan:human",
+        "owner:human",
         "2026-04-15T20:00:00Z",
         "broadcast",
         None,
@@ -48,7 +48,7 @@ fn build_meta_always_includes_core_fields() {
     );
     assert_eq!(
         meta.get("from").and_then(|v| v.as_str()),
-        Some("ryan:human")
+        Some("owner:human")
     );
     assert_eq!(
         meta.get("ts").and_then(|v| v.as_str()),
@@ -63,7 +63,7 @@ fn build_meta_always_includes_core_fields() {
 
 #[test]
 fn build_meta_omits_optional_keys_when_none() {
-    let meta = build_notification_meta("ryan", "t", "broadcast", None, None);
+    let meta = build_notification_meta("owner", "t", "broadcast", None, None);
     assert!(
         !meta.contains_key("addressee"),
         "addressee must be omitted when None"
@@ -76,13 +76,13 @@ fn build_meta_omits_optional_keys_when_none() {
 
 #[test]
 fn build_meta_includes_addressee_when_present() {
-    let meta = build_notification_meta("ryan", "t", "broadcast", Some("dev"), None);
+    let meta = build_notification_meta("owner", "t", "broadcast", Some("dev"), None);
     assert_eq!(meta.get("addressee").and_then(|v| v.as_str()), Some("dev"));
 }
 
 #[test]
 fn build_meta_includes_message_type_when_present() {
-    let meta = build_notification_meta("ryan", "t", "broadcast", None, Some("insight"));
+    let meta = build_notification_meta("owner", "t", "broadcast", None, Some("insight"));
     assert_eq!(
         meta.get("message_type").and_then(|v| v.as_str()),
         Some("insight")
@@ -106,14 +106,14 @@ fn build_meta_never_contains_null_values() {
 
 #[test]
 fn validate_meta_accepts_payload_with_no_nulls() {
-    let meta = build_notification_meta("ryan", "t", "broadcast", Some("dev"), Some("chat"));
+    let meta = build_notification_meta("owner", "t", "broadcast", Some("dev"), Some("chat"));
     assert!(validate_meta(&meta).is_ok());
 }
 
 #[test]
 fn validate_meta_rejects_payload_with_null_value() {
     let mut meta = serde_json::Map::new();
-    meta.insert("from".to_string(), serde_json::json!("ryan"));
+    meta.insert("from".to_string(), serde_json::json!("owner"));
     meta.insert("addressee".to_string(), serde_json::Value::Null);
     let err = validate_meta(&meta).expect_err("should reject null");
     assert!(err.contains("addressee"));
@@ -148,7 +148,7 @@ fn validate_meta_accepts_empty_map() {
 
 #[test]
 fn build_meta_mixed_presence_only_includes_present_keys() {
-    let meta = build_notification_meta("ryan", "t", "dev", Some("dev"), Some("chat"));
+    let meta = build_notification_meta("owner", "t", "dev", Some("dev"), Some("chat"));
     assert!(meta.contains_key("addressee"));
     assert!(meta.contains_key("message_type"));
 }
@@ -216,7 +216,7 @@ fn curate_message_broadcast_has_null_addressee() {
 #[test]
 fn curate_message_addressee_visible_across_recipients() {
     let raw = serde_json::json!({
-        "from": "ryan",
+        "from": "owner",
         "text": "work on this dev",
         "ts": "2026-04-15T21:00:00Z",
         "addressee": "dev",
@@ -249,10 +249,10 @@ fn curate_message_returns_none_when_required_fields_missing() {
 #[test]
 fn curate_message_broadcast_distinguishable_from_addressed() {
     let broadcast = serde_json::json!({
-        "from": "ryan", "text": "hi team", "ts": "t",
+        "from": "owner", "text": "hi team", "ts": "t",
     });
     let addressed = serde_json::json!({
-        "from": "ryan", "text": "hi dev", "ts": "t", "addressee": "dev",
+        "from": "owner", "text": "hi dev", "ts": "t", "addressee": "dev",
     });
     let broadcast_out = curate_message(&broadcast).expect("should curate");
     let addressed_out = curate_message(&addressed).expect("should curate");
@@ -355,7 +355,7 @@ fn pick_most_recent_visible_chat_returns_none_when_only_system_and_activity() {
 #[test]
 fn pick_most_recent_visible_chat_treats_null_message_type_as_chat() {
     let messages = vec![serde_json::json!({
-        "from": "ryan",
+        "from": "owner",
         "text": "broadcast hello",
         "message_type": serde_json::Value::Null,
     })];

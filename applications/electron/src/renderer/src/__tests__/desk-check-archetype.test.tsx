@@ -10,7 +10,7 @@ import { keyboardReorder } from '../board/keyboardReorder.page'
 
 const SEED_MESSAGES: SeedMessage[] = [
   {
-    from: 'ryan:human',
+    from: 'owner:human',
     text: 'SEED_CHAT_MARKER_BPF13_FIRST',
     ts: '2026-04-22T16:00:00Z',
     message_type: 'chat'

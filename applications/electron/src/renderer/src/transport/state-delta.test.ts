@@ -8,15 +8,15 @@ describe('applyStateSnapshot', () => {
       reactions: [
         {
           channel: 'broadcast',
-          aggregated: [{ message_key: 'k1', emoji: '👍', count: 2, users: ['ryan', 'dev'] }]
+          aggregated: [{ message_key: 'k1', emoji: '👍', count: 2, users: ['owner', 'dev'] }]
         }
       ],
       ci: { state: 'green', run_id: 7, head_sha: 'abc', display_title: 'title' },
       roster: [
         {
-          routing_id: 'sess-ryan',
-          name: 'ryan',
-          identity: 'ryan:electron',
+          routing_id: 'sess-owner',
+          name: 'owner',
+          identity: 'owner:electron',
           role: 'Owner',
           presence: 'Online'
         }
@@ -25,7 +25,7 @@ describe('applyStateSnapshot', () => {
     const next = applyStateSnapshot(emptyMirrorState(), snapshot)
     expect(next.reactions.get('broadcast')?.[0].count).toBe(2)
     expect(next.ci?.state).toBe('green')
-    expect(next.roster[0].name).toBe('ryan')
+    expect(next.roster[0].name).toBe('owner')
   })
 
   test('clears domains when snapshot omits them', () => {
@@ -68,7 +68,7 @@ describe('applyStateDelta', () => {
         },
         {
           channel: 'b',
-          aggregated: [{ message_key: 'k2', emoji: '🎉', count: 1, users: ['ryan'] }]
+          aggregated: [{ message_key: 'k2', emoji: '🎉', count: 1, users: ['owner'] }]
         }
       ],
       ci: null,

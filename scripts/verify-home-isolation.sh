@@ -8,7 +8,7 @@ test -d "$RUNNER_TEMP/rustup-home" || { echo "isolated rustup-home not populated
 
 if ! find "$RUNNER_TEMP/cargo-home/registry" -type f 2>/dev/null | grep -q .; then
     echo "REGRESSION: \$RUNNER_TEMP/cargo-home/registry is empty — cargo did NOT write its registry to the isolated CARGO_HOME."
-    echo "This means the CARGO_HOME redirect via \$GITHUB_ENV was not honored, so dependency downloads would land in Ryan's ~/.cargo."
+    echo "This means the CARGO_HOME redirect via \$GITHUB_ENV was not honored, so dependency downloads would land in owner's ~/.cargo."
     echo "Falsifier-fidelity: cargo populates the isolated registry on every build/test when isolation holds, on warm and cold runners alike; an empty registry empirically means the redirect broke."
     exit 1
 fi

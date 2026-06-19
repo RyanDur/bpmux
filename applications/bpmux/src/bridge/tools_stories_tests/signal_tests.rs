@@ -123,14 +123,14 @@ fn reject_signal_includes_reason() {
 }
 
 #[test]
-fn pass_desk_check_signal_addresses_ryan_for_feature_label() {
+fn pass_desk_check_signal_addresses_owner_for_feature_label() {
     let addressee = addressee_for_pass_desk_check(StoryType::Feature, &[]);
     if let ClientMessage::Send {
         to, addressee: a, ..
     } = build_pass_desk_check_signal(203, addressee)
     {
-        assert_eq!(to.as_ref().unwrap(), &["ryan"]);
-        assert_eq!(a.as_deref(), Some("ryan"));
+        assert_eq!(to.as_ref().unwrap(), &["owner"]);
+        assert_eq!(a.as_deref(), Some("owner"));
     } else {
         panic!("expected Send variant");
     }
@@ -162,18 +162,18 @@ fn pass_desk_check_signal_falls_back_to_title_prefix() {
         addressee_for_pass_desk_check(classify_story(&[], "[Chore] split app_state"), &[]);
     assert_eq!(addressee, "pm");
     let addressee = addressee_for_pass_desk_check(classify_story(&[], "[Feature] new view"), &[]);
-    assert_eq!(addressee, "ryan");
+    assert_eq!(addressee, "owner");
 }
 
 #[test]
-fn pass_desk_check_signal_defaults_ryan_on_empty() {
+fn pass_desk_check_signal_defaults_owner_on_empty() {
     let addressee = addressee_for_pass_desk_check(classify_story(&[], ""), &[]);
-    assert_eq!(addressee, "ryan");
+    assert_eq!(addressee, "owner");
     let addressee = addressee_for_pass_desk_check(
         classify_story(&["ready".to_string()], "unlabeled story"),
         &[],
     );
-    assert_eq!(addressee, "ryan");
+    assert_eq!(addressee, "owner");
 }
 
 #[test]
@@ -195,12 +195,12 @@ fn pass_desk_check_signal_acceptor_label_overrides_title_prefix_owner() {
     let labels = vec!["awaiting owner".to_string()];
     assert_eq!(
         addressee_for_pass_desk_check(StoryType::Bug, &labels),
-        "ryan",
+        "owner",
         "awaiting owner label routes Bug to owner regardless of title-prefix"
     );
     assert_eq!(
         addressee_for_pass_desk_check(StoryType::Chore, &labels),
-        "ryan"
+        "owner"
     );
 }
 
@@ -227,7 +227,7 @@ fn pass_desk_check_signal_does_not_target_dev() {
 
 #[test]
 fn pass_desk_check_signal_announces_ready_for_acceptance() {
-    if let ClientMessage::Send { text, .. } = build_pass_desk_check_signal(203, "ryan") {
+    if let ClientMessage::Send { text, .. } = build_pass_desk_check_signal(203, "owner") {
         assert!(
             text.contains("#203"),
             "story number should be in text: {text}"
@@ -251,8 +251,8 @@ fn pass_desk_check_signals_emits_two_for_feature() {
         })
         .collect();
     assert!(
-        addressees.contains(&Some("ryan".to_string())),
-        "should address ryan: {addressees:?}"
+        addressees.contains(&Some("owner".to_string())),
+        "should address owner: {addressees:?}"
     );
     assert!(
         addressees.contains(&Some("pm".to_string())),
@@ -272,7 +272,7 @@ fn pass_desk_check_signals_emits_one_for_infra() {
 }
 
 #[test]
-fn pass_desk_check_signals_ambiguous_routes_to_ryan_and_pm() {
+fn pass_desk_check_signals_ambiguous_routes_to_owner_and_pm() {
     let signals = build_pass_desk_check_signals(999, classify_story(&[], ""), &[]);
     assert_eq!(signals.len(), 2);
 }
@@ -302,12 +302,12 @@ fn fail_desk_check_signal_targets_dev_only() {
 }
 
 #[test]
-fn fail_desk_check_signal_does_not_target_ryan() {
+fn fail_desk_check_signal_does_not_target_owner() {
     if let ClientMessage::Send { to, .. } = build_fail_desk_check_signal(203, "reason") {
         let recipients = to.as_ref().unwrap();
         assert!(
-            !recipients.contains(&"ryan".to_string()),
-            "fail signal should not go to ryan, got: {recipients:?}"
+            !recipients.contains(&"owner".to_string()),
+            "fail signal should not go to owner, got: {recipients:?}"
         );
     }
 }

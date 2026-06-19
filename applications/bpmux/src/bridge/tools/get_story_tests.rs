@@ -79,7 +79,7 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
         GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 4, 23, 1, 0, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some("channelKeyRef is not legitimate".into()),
         },
     ];
@@ -154,7 +154,7 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
         GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 3, 0, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some("user-story not satisfied; reshape needed".into()),
         },
     ];
@@ -198,7 +198,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
         GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 3, 0, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some("rework needed".into()),
         },
         GateComment {
@@ -588,7 +588,7 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
         GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some(reason.into()),
         },
     ];
@@ -618,7 +618,7 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
         Some(reason),
         "reason must round-trip VERBATIM byte-exact — no paraphrase or truncation anywhere in the chain"
     );
-    assert_eq!(parsed["latest_reject"]["by"].as_str(), Some("ryan"));
+    assert_eq!(parsed["latest_reject"]["by"].as_str(), Some("owner"));
     assert_eq!(parsed["latest_reject"]["gate"].as_str(), Some("rejected"));
 }
 
@@ -656,7 +656,7 @@ async fn latest_reject_survives_an_iteration_move() {
     let gates = vec![GateComment {
         gate: Gate::Rejected,
         ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
-        actor: "ryan".into(),
+        actor: "owner".into(),
         payload: Some(reason.into()),
     }];
     let (store, orch) = seeded_orchestrator(vec![story], vec![(1524, gates)]).await;
@@ -740,7 +740,7 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
         GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some(reason.into()),
         },
     ];
@@ -783,7 +783,7 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
         GateComment {
             gate: Gate::Rejected,
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: Some("rework".into()),
         },
         GateComment {
@@ -795,7 +795,7 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
         GateComment {
             gate: Gate::Accepted,
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 11, 0, 0).unwrap(),
-            actor: "ryan".into(),
+            actor: "owner".into(),
             payload: None,
         },
     ];

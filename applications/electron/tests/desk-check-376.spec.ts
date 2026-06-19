@@ -1,80 +1,80 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
+import { test, expect } from '@playwright/test'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
+import { seedTeamVerdicts } from './helpers/seed-evidence'
+import {
+  setupCurrentIterationViaRpc,
+  addStoryToIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
-// #376: verify color distinguishes awaiting vs accepted at the
-// CSS computed-style level. A pure DOM/attribute test passes even
-// when the visual colors are identical; asserting getComputedStyle
-// catches the "same color by accident" regression Ryan observed in
-// img_10.
-const MOCK_BOARD = {
-  fetched_at: '2026-04-22T16:00:00Z',
-  stories: [
-    mockCurrentIteration('DeskCheck376', '2026-04-22T16:00:00Z'),
+const createStory = async (rpc: RpcFn, title: string): Promise<void> => {
+  const resp = await rpc(
+    'create_story',
     {
-      number: 950,
-      title: 'delivered feature (awaiting owner)',
-      state: 'delivered',
-      labels: ['Feature', 'delivered', 'ready for accept'],
-      acceptor: 'owner',
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: '',
-      ...inMockCurrentIteration(1)
+      title,
+      user_job: `Fixture story for desk-check #376: ${title}.`,
+      observation_falsifier: 'reject if the awaiting vs accepted badge color does not differ',
+      acceptance_test_path: 'applications/electron/tests/desk-check-376.spec.ts'
     },
-    {
-      number: 951,
-      title: 'accepted feature (owner-accepted)',
-      state: 'accepted',
-      labels: ['Feature', 'accepted'],
-      acceptor: 'owner',
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: ''
-    },
-    {
-      number: 952,
-      title: 'delivered chore (awaiting team)',
-      state: 'delivered',
-      labels: ['Chore', 'delivered', 'ready for accept'],
-      acceptor: 'team',
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: '',
-      ...inMockCurrentIteration(2)
-    }
-  ]
+    'pm'
+  )
+  expect(resp.status).toBe(200)
 }
 
-const launchWithFixture = async (): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-}> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-376-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-376-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_BOARD)
-    })
+const driveToDelivered = async (
+  rpc: RpcFn,
+  number: number,
+  acceptor: 'owner' | 'team'
+): Promise<void> => {
+  const startResp = await rpc('start_story', {
+    number,
+    pickup_paraphrase: 'Driving the chain so the delivered badge is reachable.',
+    falsifier_reframing: 'reject if start_story does not move story to in-progress'
   })
-  await win.route('**/api/stories/*/comments', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  expect(startResp.status).toBe(200)
+  const deliverResp = await rpc('deliver_story', {
+    number,
+    verified_observation: 'Drove deliver so designer can pass desk-check next.'
   })
-  await win.route('**/api/stories/*/timeline', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
-  })
-  await win.reload()
-  return { app }
+  expect(deliverResp.status).toBe(200)
+  await seedTeamVerdicts(rpc, number, ['designer'])
+  const passResp = await rpc(
+    'pass_desk_check',
+    { number, acceptor, would_file_bug: false },
+    'designer'
+  )
+  expect(passResp.status).toBe(200)
+}
+
+const driveToAccepted = async (
+  rpc: RpcFn,
+  number: number,
+  acceptor: 'owner' | 'team'
+): Promise<void> => {
+  await driveToDelivered(rpc, number, acceptor)
+  await seedTeamVerdicts(rpc, number, ['designer', 'dev'])
+  const acceptRole = acceptor === 'owner' ? 'owner' : 'pm'
+  const acceptResp = await rpc('accept_story', { number, would_file_bug: false }, acceptRole)
+  expect(acceptResp.status).toBe(200)
+}
+
+const seedFixture = async (result: MockGhLaunchResult): Promise<void> => {
+  const { rpc } = result
+  await createStory(rpc, '[Feature] delivered feature (awaiting owner)')
+  await createStory(rpc, '[Feature] accepted feature (owner-accepted)')
+  await createStory(rpc, '[Chore] delivered chore (awaiting team)')
+
+  const iterNumber = await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck376')
+  await addStoryToIterationViaRpc(rpc, 3, iterNumber, 3)
+
+  await driveToDelivered(rpc, 1, 'owner')
+  await driveToAccepted(rpc, 2, 'owner')
+  await driveToDelivered(rpc, 3, 'team')
 }
 
 const GROUP = {
@@ -90,47 +90,57 @@ const openGroup = async (board: BoardPage, state: 'delivered' | 'accepted'): Pro
 
 test.describe('desk-check #376 color-differentiate awaiting vs accepted', () => {
   test('data-state attribute lands on each badge', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(new ChatPage(win).region()).toBeVisible()
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedFixture(result)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
 
-    await openGroup(board, 'delivered')
-    await expect(board.storyStateBadge(950)).toHaveAttribute('data-state', 'delivered')
-    await expect(board.storyStateBadge(952)).toHaveAttribute('data-state', 'delivered')
+      await openGroup(board, 'delivered')
+      await expect(board.storyStateBadge(1)).toHaveAttribute('data-state', 'delivered')
+      await expect(board.storyStateBadge(3)).toHaveAttribute('data-state', 'delivered')
 
-    await openGroup(board, 'accepted')
-    await expect(board.storyStateBadge(951)).toHaveAttribute('data-state', 'accepted')
-    await app.close()
+      await openGroup(board, 'accepted')
+      await expect(board.storyStateBadge(2)).toHaveAttribute('data-state', 'accepted')
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('delivered and accepted badges render in different colors', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedFixture(result)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
 
-    // Both badges share the same kind ("accepted" = owner-lane
-    // outlined); the color axis must differ between states. We
-    // read computed styles so "same color" regressions (Ryan's
-    // img_10 observation) fail the test — a simpler attribute
-    // assertion wouldn't catch a CSS rule deleted.
-    await openGroup(board, 'delivered')
-    const deliveredColor = await board
-      .storyStateBadge(950)
-      .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
+      await openGroup(board, 'delivered')
+      const deliveredColor = await board
+        .storyStateBadge(1)
+        .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
 
-    await openGroup(board, 'accepted')
-    const acceptedColor = await board
-      .storyStateBadge(951)
-      .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
+      await openGroup(board, 'accepted')
+      const acceptedColor = await board
+        .storyStateBadge(2)
+        .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
 
-    console.log(`#376 delivered badge border: ${deliveredColor}`)
-    console.log(`#376 accepted badge border: ${acceptedColor}`)
-    expect(deliveredColor).not.toBe(acceptedColor)
+      console.log(`#376 delivered badge border: ${deliveredColor}`)
+      console.log(`#376 accepted badge border: ${acceptedColor}`)
+      expect(deliveredColor).not.toBe(acceptedColor)
 
-    await win.screenshot({
-      path: join(EVIDENCE_DIR, '100-badge-colors-differ.png')
-    })
-    await app.close()
+      await win.screenshot({
+        path: join(EVIDENCE_DIR, '100-badge-colors-differ.png')
+      })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

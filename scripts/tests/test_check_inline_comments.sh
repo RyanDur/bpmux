@@ -50,7 +50,7 @@ run_case "piped-clean" "+pub fn foo() {}" "pass" "piped"
 INLINE_VIOLATION=$(printf '+// dropping a comment here\n+pub fn foo() {}')
 run_case "piped-inline-violation" "$INLINE_VIOLATION" "fail" "piped"
 
-# Piped-stdin: rustdoc /// → fail (#1422 — Ryan-canon "build understanding into code").
+# Piped-stdin: rustdoc /// → fail (#1422 — owner-canon "build understanding into code").
 RUSTDOC_VIOLATION=$(printf '+/// a rustdoc comment\n+pub fn foo() {}')
 run_case "piped-rustdoc-violation" "$RUSTDOC_VIOLATION" "fail" "piped"
 
@@ -78,7 +78,7 @@ STRUCTURED_INPUT=$(printf '+++ b/foo.rs\n@@ -1,0 +1,1 @@\n+/// docstring on a fn
 STRUCTURED_ERR=$(echo "$STRUCTURED_INPUT" | "$SCRIPT" 2>&1 || true)
 if echo "$STRUCTURED_ERR" | grep -q "foo.rs:1:" \
    && echo "$STRUCTURED_ERR" | grep -q "comment class '///'" \
-   && echo "$STRUCTURED_ERR" | grep -q "Ryan-canon 2026-05-18"; then
+   && echo "$STRUCTURED_ERR" | grep -q "owner-canon 2026-05-18"; then
   echo "PASS  [structured-error-shape]"
   PASS=$((PASS+1))
 else

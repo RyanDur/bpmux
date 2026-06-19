@@ -11,7 +11,7 @@ pub fn pass_desk_check_tool(description: &'static str) -> Tool {
             "acceptor": {
                 "type": "string",
                 "enum": ["team", "owner", "dev"],
-                "description": "Acceptor-class for the story at desk-check terminal. \"team\" routes to PM-aggregated team-verdict acceptance; \"owner\" routes to Ryan-USE-axis acceptance; \"dev\" routes to dev-acceptance for [Chore]-class (chore-ownership-triad — chores have no business-value so dev accepts after team-feedback, per Ryan-canon 2026-05-21 22:59 UTC). Per Ryan-canon 2026-05-20 03:08:51 UTC + `feedback_designer_voices_acceptor_class_at_pass_desk_check` — illegal-states-unrepresentable at acceptor-axis per Wlaschin Designing-with-Types. Handler atomically applies `awaiting team` / `awaiting owner` / `awaiting dev` label BEFORE gate transition."
+                "description": "Acceptor-class for the story at desk-check terminal. \"team\" routes to PM-aggregated team-verdict acceptance; \"owner\" routes to owner-USE-axis acceptance; \"dev\" routes to dev-acceptance for [Chore]-class (chore-ownership-triad — chores have no business-value so dev accepts after team-feedback, per owner-canon 2026-05-21 22:59 UTC). Per owner-canon 2026-05-20 03:08:51 UTC + `feedback_designer_voices_acceptor_class_at_pass_desk_check` — illegal-states-unrepresentable at acceptor-axis per Wlaschin Designing-with-Types. Handler atomically applies `awaiting team` / `awaiting owner` / `awaiting dev` label BEFORE gate transition."
             },
             "would_file_bug": {
                 "type": "boolean",

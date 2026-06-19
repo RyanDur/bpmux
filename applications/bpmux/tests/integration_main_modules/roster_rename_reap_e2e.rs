@@ -93,7 +93,7 @@ fn rename_to_the_reserved_owner_identity_is_rejected_over_ws() {
     rt.block_on(async {
         let mut peer = WsPeer::connect(&bpmux, "dev").await;
 
-        peer.rename("ryan").await;
+        peer.rename("owner").await;
 
         let rejected = tokio::time::timeout(Duration::from_secs(5), async {
             loop {
@@ -111,12 +111,12 @@ fn rename_to_the_reserved_owner_identity_is_rejected_over_ws() {
         .expect("a frame within 5s");
         assert!(
             rejected,
-            "renaming to the OWNER identity over WS must be rejected with a ServerMessage::Error — the WS set_name-validation locus enforces the auto-submit attribution-boundary (an agent renamed to 'ryan' would get owner-framed messages via frame_team_message's short_name(from)). This pins the WS wiring so a regression of the Rename arm cannot silently re-open owner-forgery CI-undetected, matching the REST register_rejects e2e"
+            "renaming to the OWNER identity over WS must be rejected with a ServerMessage::Error — the WS set_name-validation locus enforces the auto-submit attribution-boundary (an agent renamed to 'owner' would get owner-framed messages via frame_team_message's short_name(from)). This pins the WS wiring so a regression of the Rename arm cannot silently re-open owner-forgery CI-undetected, matching the REST register_rejects e2e"
         );
 
         let owner_not_assumed = poll_until(Duration::from_secs(3), || async {
             let ids = roster_identities(&bpmux).await;
-            ids.iter().any(|i| i.starts_with("dev")) && !ids.iter().any(|i| i.starts_with("ryan"))
+            ids.iter().any(|i| i.starts_with("dev")) && !ids.iter().any(|i| i.starts_with("owner"))
         })
         .await;
         let final_ids = roster_identities(&bpmux).await;

@@ -20,11 +20,6 @@ test.describe('#394 Playwright port + session isolation', () => {
     const port = await getFreePort()
     expect(port).toBeGreaterThan(1024)
     expect(port).toBeLessThan(65536)
-    // Also not 4117 — that's Ryan's live default and would defeat
-    // the purpose of isolation. Not a hard guarantee from
-    // getFreePort (the OS picks), but overwhelmingly unlikely;
-    // flagging explicitly so a regression that returns 0 / 4117
-    // surfaces.
     expect(port).not.toBe(4117)
     expect(port).not.toBe(0)
   })

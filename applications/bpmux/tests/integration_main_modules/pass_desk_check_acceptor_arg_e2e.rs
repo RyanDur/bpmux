@@ -90,7 +90,7 @@ fn pass_desk_check_invalid_acceptor_returns_structured_409() {
                 "pass_desk_check",
                 serde_json::json!({
                     "number": target_number,
-                    "acceptor": "ryan",
+                    "acceptor": "bogus",
                     "would_file_bug": false
                 }),
             )

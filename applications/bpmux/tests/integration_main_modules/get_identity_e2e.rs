@@ -40,11 +40,6 @@ fn get_identity_default_role_returns_calling_bridges_identity() {
 
 #[test]
 fn get_identity_role_arg_overrides_default() {
-    // Seed BPMUX_IDENTITY_DIR with role-distinct identity files so
-    // the role-override semantic is observable. Without this, dev's
-    // local ~/.bpmux/identity supplies dev's data and CI's empty dir
-    // returns equal-empty payloads — masking the actual override
-    // semantic. Per Ryan's "no git/GH/local-state in tests" 2026-05-02.
     let identity_dir = tempfile::TempDir::new().expect("identity dir");
     std::fs::write(
         identity_dir.path().join("dev.json"),

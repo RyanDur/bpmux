@@ -81,6 +81,36 @@ pub(super) async fn handle_history_hydrate(
     Ok(())
 }
 
+pub(super) async fn handle_board_hydrate(
+    ctx: &ClientCtx<'_>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let test_refresh = ctx.test_refresh.clone();
+    let tracker = ctx.tracker.clone();
+    let reply_tx = ctx.reply_tx.clone();
+    tokio::spawn(async move {
+        let stories: Option<Vec<serde_json::Value>> = if let Some(refresh) = test_refresh.as_ref() {
+            if refresh.all_stories().is_empty() {
+                let _ = refresh.refresh_all().await;
+            }
+            Some(crate::transport::rest::ordered_board_stories(refresh))
+        } else if let Some(tracker) = tracker.as_ref() {
+            tracker
+                .fetch_board_stories()
+                .await
+                .ok()
+                .map(crate::board::ready_order_label::sort_board_ready_by_membership)
+        } else {
+            None
+        };
+        if let Some(stories) = stories {
+            let msg =
+                crate::transport::rest::board_snapshot_message(serde_json::Value::Array(stories));
+            let _ = reply_tx.send(ServerMessage::from(msg));
+        }
+    });
+    Ok(())
+}
+
 pub(super) async fn handle_history_page(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,

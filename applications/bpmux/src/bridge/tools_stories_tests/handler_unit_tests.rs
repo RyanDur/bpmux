@@ -161,7 +161,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     });
     let result = handle_accept_story(
         args.as_object().unwrap(),
-        "ryan:human",
+        "owner:human",
         Some(&orchestrator),
         None,
     )
@@ -188,7 +188,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
 #[tokio::test]
 async fn reject_allows_pm_designer_dev_owner() {
     for caller in [
-        "ryan:human",
+        "owner:human",
         "pm:claude-code",
         "designer:claude-code",
         "dev:claude-code",

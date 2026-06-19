@@ -129,13 +129,13 @@ mod tracker_selection {
     #[test]
     fn returns_octocrab_when_repo_and_gh_token_set() {
         let r = reader(HashMap::from([
-            ("BPMUX_REPO", "ryan/bpmux"),
+            ("BPMUX_REPO", "owner/bpmux"),
             ("GH_TOKEN", "t"),
         ]));
         assert_eq!(
             select_from_env(r),
             TrackerSelection::Octocrab {
-                owner: "ryan".to_string(),
+                owner: "owner".to_string(),
                 repo: "bpmux".to_string(),
                 token: "t".to_string(),
             }
@@ -145,7 +145,7 @@ mod tracker_selection {
     #[test]
     fn returns_octocrab_when_repo_and_github_token_set() {
         let r = reader(HashMap::from([
-            ("BPMUX_REPO", "ryan/bpmux"),
+            ("BPMUX_REPO", "owner/bpmux"),
             ("GITHUB_TOKEN", "gh-actions-token"),
         ]));
         assert!(matches!(
@@ -199,7 +199,7 @@ mod tracker_selection {
 
     #[test]
     fn fallback_malformed_repo_when_name_empty() {
-        let r = reader(HashMap::from([("BPMUX_REPO", "ryan/"), ("GH_TOKEN", "t")]));
+        let r = reader(HashMap::from([("BPMUX_REPO", "owner/"), ("GH_TOKEN", "t")]));
         assert_eq!(
             select_from_env(r),
             TrackerSelection::Fallback(FallbackReason::MalformedRepo)

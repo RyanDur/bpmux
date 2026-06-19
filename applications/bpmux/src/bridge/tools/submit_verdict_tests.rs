@@ -10,7 +10,7 @@ use tokio::sync::broadcast;
 
 fn make_session(dir: PathBuf) -> Arc<Session> {
     let (tx, _) = broadcast::channel(16);
-    Arc::new(Session::new(dir, "ryan".to_string(), tx))
+    Arc::new(Session::new(dir, "owner".to_string(), tx))
 }
 
 fn make_args(
@@ -35,7 +35,7 @@ fn make_session_with_rx(
     tokio::sync::broadcast::Receiver<crate::session::Message>,
 ) {
     let (tx, rx) = broadcast::channel(16);
-    let session = Arc::new(Session::new(dir, "ryan".to_string(), tx));
+    let session = Arc::new(Session::new(dir, "owner".to_string(), tx));
     (session, rx)
 }
 

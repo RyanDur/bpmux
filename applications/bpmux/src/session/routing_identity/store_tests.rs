@@ -180,7 +180,7 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
         t
     };
 
-    let broadcast = terminals(store.delivery_targets(None, "ryan"));
+    let broadcast = terminals(store.delivery_targets(None, "owner"));
     assert_eq!(
         broadcast,
         vec!["term-dev".to_string(), "term-pm".to_string()],
@@ -188,7 +188,7 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
     );
 
     assert_eq!(
-        terminals(store.delivery_targets(Some(&["all".to_string()]), "ryan")),
+        terminals(store.delivery_targets(Some(&["all".to_string()]), "owner")),
         broadcast,
         "an explicit BROADCAST_ALL to-list routes identically to to=None"
     );
@@ -224,7 +224,7 @@ fn delivery_targets_excludes_the_senders_own_terminal_even_when_the_send_name_is
     );
     assert!(
         targets.iter().all(|(_, t)| t != dev_terminal),
-        "a broadcast sent under the bridge name agent-{{terminal[..8]}} must NOT route back into the sender's OWN terminal. The bridge auto-assigns this name (rest/room.rs) separately from the dir-session display ('dev'), so resolve-by-display cannot exclude it — the deterministic wiring link agent-{{terminal[..8]}} must. This is Ryan's reject: a terminal's own messages reflected back into its input; got {targets:?}"
+        "a broadcast sent under the bridge name agent-{{terminal[..8]}} must NOT route back into the sender's OWN terminal. The bridge auto-assigns this name (rest/room.rs) separately from the dir-session display ('dev'), so resolve-by-display cannot exclude it — the deterministic wiring link agent-{{terminal[..8]}} must. This is owner's reject: a terminal's own messages reflected back into its input; got {targets:?}"
     );
 }
 

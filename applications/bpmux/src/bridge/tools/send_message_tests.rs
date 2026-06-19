@@ -19,14 +19,14 @@ fn broadcast_when_to_contains_all() {
 fn owner_auto_included_when_absent_from_to() {
     let to = Some(vec!["dev".to_string(), "pm".to_string()]);
     let adjusted = ensure_owner_included(to).expect("scoped");
-    assert!(adjusted.iter().any(|r| r == "ryan"));
+    assert!(adjusted.iter().any(|r| r == "owner"));
 }
 
 #[test]
 fn owner_not_duplicated_when_already_in_to() {
-    let to = Some(vec!["ryan".to_string(), "dev".to_string()]);
+    let to = Some(vec!["owner".to_string(), "dev".to_string()]);
     let adjusted = ensure_owner_included(to).expect("scoped");
-    assert_eq!(adjusted.iter().filter(|r| **r == "ryan").count(), 1);
+    assert_eq!(adjusted.iter().filter(|r| **r == "owner").count(), 1);
 }
 
 #[test]
@@ -80,6 +80,6 @@ fn scoped_echo_surfaces_list_with_owner_auto_added() -> Result<(), serde_json::E
         .filter_map(|v| v.as_str())
         .collect::<Vec<_>>();
     assert!(list.contains(&"dev"));
-    assert!(list.contains(&"ryan"));
+    assert!(list.contains(&"owner"));
     Ok(())
 }

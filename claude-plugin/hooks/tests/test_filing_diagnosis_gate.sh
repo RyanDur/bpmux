@@ -77,7 +77,7 @@ run_case "spike-investigate" \
 # ── ALLOW: normal Feature (no remediation+symptom) ──
 run_case "normal-feature-terminal" \
   "[Feature] Click an agent's name → the chat-area becomes the live terminal" \
-  "As Ryan, I want to click an agent and see its live terminal, so I can watch it" \
+  "As owner, I want to click an agent and see its live terminal, so I can watch it" \
   "Render the PTY in the chat-area." \
   "allow"
 

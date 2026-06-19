@@ -86,7 +86,7 @@ const EXCLUDED: &[(&str, &str)] = &[
     ("get_usage", "usage telemetry"),
     (
         "view_tokens",
-        "opens the Ryan-facing tokens TUI view (a renderer-open, not agent data — cf. get_token_report which returns the JSON)",
+        "opens the owner-facing tokens TUI view (a renderer-open, not agent data — cf. get_token_report which returns the JSON)",
     ),
     ("dev_in_flight", "dev WIP-introspection telemetry"),
     (

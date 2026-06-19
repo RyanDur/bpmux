@@ -20,10 +20,6 @@ use std::time::Duration;
 
 #[test]
 fn view_story_commits_returns_array_for_known_story() {
-    // Per Ryan's "no git/GH in tests" directive (2026-05-02 02:39):
-    // seed BPMUX_GIT_STUB_DIR with a fixture log containing a #476-
-    // tagged commit so the test doesn't depend on the checkout's git
-    // history (CI's shallow-clone fails this assertion otherwise).
     let stub_dir = tempfile::TempDir::new().expect("stub dir");
     let log_fixture = "abc1234567890abcdef1234567890abcdef1234\u{1f}abc1234\u{1f}Fix #476 substrate work\u{1f}dev\u{1f}2026-05-01T00:00:00+00:00\n";
     std::fs::write(stub_dir.path().join("log.txt"), log_fixture).expect("write fixture");

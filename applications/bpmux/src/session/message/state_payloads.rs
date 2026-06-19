@@ -132,6 +132,8 @@ pub struct CiSnapshotWire {
     pub display_title: Option<String>,
     #[serde(default)]
     pub last_successful_poll_at: Option<String>,
+    #[serde(default)]
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

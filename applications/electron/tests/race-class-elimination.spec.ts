@@ -88,7 +88,7 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
         channel: 'broadcast',
         message_key: 'race-class-test',
         emoji: '🟢',
-        user: 'ryan'
+        user: 'owner'
       })
     })
     await expect

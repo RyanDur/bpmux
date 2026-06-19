@@ -235,11 +235,11 @@ mod role_resolver_tests {
     #[test]
     fn bundled_default_resolves_canonical_purposes_to_canonical_ids() {
         let workflow = crate::workflow::bundled_default::bundled_default();
-        assert_eq!(workflow.role_id_for_purpose("owner"), Some("ryan"));
+        assert_eq!(workflow.role_id_for_purpose("owner"), Some("owner"));
         assert_eq!(workflow.role_id_for_purpose("pm"), Some("pm"));
         assert_eq!(workflow.role_id_for_purpose("designer"), Some("designer"));
         assert_eq!(workflow.role_id_for_purpose("dev"), Some("dev"));
-        assert_eq!(workflow.owner_role_id(), Some("ryan"));
+        assert_eq!(workflow.owner_role_id(), Some("owner"));
     }
 
     #[test]

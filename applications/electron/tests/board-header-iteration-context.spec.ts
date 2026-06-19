@@ -1,57 +1,41 @@
 import { test, expect } from '@playwright/test'
-import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchWithMockGh } from './helpers/launch'
+import { setupCurrentIterationViaRpc, type RpcFn } from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 import { RoadmapPage } from './pages/roadmapPage'
 
-const MOCK_BOARD = {
-  fetched_at: '2026-06-04T00:00:00Z',
-  stories: [
+const createStory = async (rpc: RpcFn, title: string): Promise<number> => {
+  const resp = await rpc(
+    'create_story',
     {
-      number: 910,
-      title: 'Iteration AlphaTheme',
-      state: 'in-progress',
-      gh_state: 'open',
-      labels: ['iteration', 'iteration-order:1'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: '',
-      is_current: true
+      title,
+      user_job: `Board-header fixture: ${title}.`,
+      observation_falsifier: 'reject if the iteration member does not render',
+      acceptance_test_path: 'applications/electron/tests/board-header-iteration-context.spec.ts'
     },
-    {
-      number: 911,
-      title: 'Member of AlphaTheme',
-      state: 'in-progress',
-      labels: ['Feature'],
-      assignees: [],
-      created_at: '2026-06-04T00:00:00Z',
-      body: '',
-      iteration_membership: { iteration_number: 910, position: 1 }
-    }
-  ]
+    'pm'
+  )
+  expect(resp.status).toBe(200)
+  const json = (await resp.json()) as { message?: string }
+  const number = Number(json.message?.match(/#(\d+)/)?.[1])
+  expect(number).toBeGreaterThan(0)
+  return number
 }
 
 test.describe('#1510 board-header iteration-context', () => {
   test('iteration-name leads the BOARD-header (left, primary) with BOARD + sync-glyph trailing; anchor-box retired', async () => {
-    const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-1510-'))
-    const udd = mkdtempSync(join(tmpdir(), 'bpmux-1510-udd-'))
-    const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-    const win = await app.firstWindow()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
-      await win.route('**/api/board', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(MOCK_BOARD)
-        })
-      })
+      const board = new BoardPage(win)
+      const roadmap = new RoadmapPage(win)
+
+      const memberNumber = await createStory(rpc, '[Feature] Member of AlphaTheme')
+      await setupCurrentIterationViaRpc(rpc, memberNumber, 'AlphaTheme')
 
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))
       await win.reload()
-      const board = new BoardPage(win)
-      const roadmap = new RoadmapPage(win)
       await expect(board.region()).toBeVisible()
       await expect
         .poll(() => win.evaluate(() => document.documentElement.dataset.theme))
@@ -100,6 +84,7 @@ test.describe('#1510 board-header iteration-context', () => {
       await win.screenshot({ path: shotPath, fullPage: false })
     } finally {
       await app.close()
+      await mockGh.close()
     }
   })
 })

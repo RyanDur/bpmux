@@ -258,7 +258,7 @@ async fn probe_until_live(bpmux: &TestBpmux, farm: &FakeAgentFarm, role: &str) -
     while tokio::time::Instant::now() < deadline {
         n += 1;
         let marker = format!("READY-PROBE-{role}-{n}");
-        post_message(bpmux, json!({ "from": "ryan", "text": marker.clone() })).await;
+        post_message(bpmux, json!({ "from": "owner", "text": marker.clone() })).await;
         tokio::time::sleep(Duration::from_millis(250)).await;
         if farm.capture_contains(role, &marker) {
             return true;
@@ -305,7 +305,7 @@ async fn a_fake_agent_terminal_registers_and_receives_a_live_broadcast_injected_
     let farm = FakeAgentFarm::new();
     let agent = farm.write_agent_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
@@ -326,7 +326,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
     let farm = FakeAgentFarm::new();
     let agent = farm.write_agent_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
@@ -348,7 +348,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
 
     post_message(
         &bpmux,
-        json!({ "from": "ryan", "text": "DIRECT-TO-DEV", "to": ["dev"] }),
+        json!({ "from": "owner", "text": "DIRECT-TO-DEV", "to": ["dev"] }),
     )
     .await;
     assert!(
@@ -357,7 +357,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
     );
     post_message(
         &bpmux,
-        json!({ "from": "ryan", "text": "BARRIER-AFTER-DIRECT" }),
+        json!({ "from": "owner", "text": "BARRIER-AFTER-DIRECT" }),
     )
     .await;
     assert!(
@@ -373,7 +373,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
 
     post_message(
         &bpmux,
-        json!({ "from": "ryan", "text": "GROUP-DEV-PM", "to": ["dev", "pm"] }),
+        json!({ "from": "owner", "text": "GROUP-DEV-PM", "to": ["dev", "pm"] }),
     )
     .await;
     assert!(
@@ -383,7 +383,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
     );
     post_message(
         &bpmux,
-        json!({ "from": "ryan", "text": "BARRIER-AFTER-GROUP" }),
+        json!({ "from": "owner", "text": "BARRIER-AFTER-GROUP" }),
     )
     .await;
     assert!(
@@ -403,7 +403,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
     .await;
     post_message(
         &bpmux,
-        json!({ "from": "ryan", "text": "BARRIER-AFTER-SELF" }),
+        json!({ "from": "owner", "text": "BARRIER-AFTER-SELF" }),
     )
     .await;
     assert!(
@@ -427,7 +427,7 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
     let farm = FakeAgentFarm::new();
     let agent = farm.write_agent_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
     let port = bpmux.port();
@@ -441,7 +441,7 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
     }
 
     terminal_send(port, "dev", Some("pm"), "DEV-SENDS-TO-PM").await;
-    post_message(&bpmux, json!({ "from": "ryan", "text": "BARRIER-1" })).await;
+    post_message(&bpmux, json!({ "from": "owner", "text": "BARRIER-1" })).await;
     assert!(
         wait_capture(&farm, "pm", "DEV-SENDS-TO-PM").await,
         "vice-versa DIRECT: dev running `bpmux send --to pm` in its terminal reaches pm's terminal"
@@ -458,7 +458,7 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
     );
 
     terminal_send(port, "dev", Some("pm,designer"), "DEV-SENDS-GROUP").await;
-    post_message(&bpmux, json!({ "from": "ryan", "text": "BARRIER-2" })).await;
+    post_message(&bpmux, json!({ "from": "owner", "text": "BARRIER-2" })).await;
     assert!(
         wait_capture(&farm, "pm", "DEV-SENDS-GROUP").await
             && wait_capture(&farm, "designer", "DEV-SENDS-GROUP").await,
@@ -474,7 +474,7 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
     );
 
     terminal_send(port, "dev", None, "DEV-SENDS-BROADCAST").await;
-    post_message(&bpmux, json!({ "from": "ryan", "text": "BARRIER-3" })).await;
+    post_message(&bpmux, json!({ "from": "owner", "text": "BARRIER-3" })).await;
     assert!(
         wait_capture(&farm, "pm", "DEV-SENDS-BROADCAST").await
             && wait_capture(&farm, "designer", "DEV-SENDS-BROADCAST").await,
@@ -496,7 +496,7 @@ async fn a_pinned_agent_that_runs_register_binds_its_one_id_to_its_terminal_for_
     let farm = FakeAgentFarm::new();
     let agent = farm.write_register_agent_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
@@ -515,14 +515,14 @@ async fn a_pinned_agent_that_runs_register_binds_its_one_id_to_its_terminal_for_
 
     post_message(
         &bpmux,
-        json!({ "from": "ryan", "text": "ADDRESSED-TO-DEV", "to": ["dev"] }),
+        json!({ "from": "owner", "text": "ADDRESSED-TO-DEV", "to": ["dev"] }),
     )
     .await;
     assert!(
         wait_capture(&farm, "dev", "ADDRESSED-TO-DEV").await,
         "an ADDRESSED message (to:[dev]) reaches dev's terminal — because `bpmux register` forwarded BPMUX_TERMINAL_ID so the server bound dev's ONE pinned id (pinned-dev) to its terminal. This is the addressed-receive that was BROKEN when the terminal was not bound to the id the message routes to"
     );
-    post_message(&bpmux, json!({ "from": "ryan", "text": "BARRIER" })).await;
+    post_message(&bpmux, json!({ "from": "owner", "text": "BARRIER" })).await;
     assert!(
         wait_capture(&farm, "pm", "BARRIER").await,
         "barrier reaches pm, proving the delivery cycle advanced past the dev-addressed message"
@@ -538,7 +538,7 @@ async fn an_osc7_emitting_agent_that_also_registers_is_bound_once_no_duplicate_i
     let farm = FakeAgentFarm::new();
     let agent = farm.write_osc7_register_agent_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
@@ -551,14 +551,14 @@ async fn an_osc7_emitting_agent_that_also_registers_is_bound_once_no_duplicate_i
 
     post_message(
         &bpmux,
-        json!({ "from": "ryan", "text": "SINGLE-COPY-SENTINEL" }),
+        json!({ "from": "owner", "text": "SINGLE-COPY-SENTINEL" }),
     )
     .await;
     assert!(
         wait_capture(&farm, "dev", "SINGLE-COPY-SENTINEL").await,
         "the broadcast reaches dev's terminal"
     );
-    post_message(&bpmux, json!({ "from": "ryan", "text": "COUNT-BARRIER" })).await;
+    post_message(&bpmux, json!({ "from": "owner", "text": "COUNT-BARRIER" })).await;
     assert!(
         wait_capture(&farm, "dev", "COUNT-BARRIER").await,
         "the barrier reaches dev, proving this broadcast's delivery cycle is complete"
@@ -611,7 +611,7 @@ async fn a_foreground_agent_appears_then_leaves_when_its_job_ends_while_the_term
     let farm = FakeAgentFarm::new();
     let agent = farm.write_foreground_agent_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
@@ -642,7 +642,7 @@ async fn a_closed_terminal_drops_its_foreground_agent() {
     let farm = FakeAgentFarm::new();
     let agent = farm.write_foreground_agent_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
@@ -673,7 +673,7 @@ async fn the_dir_name_default_collapses_into_the_registered_role_one_id_keyed_ro
     let farm = FakeAgentFarm::new();
     let agent = farm.write_dir_default_then_register_agent_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
@@ -688,7 +688,7 @@ async fn the_dir_name_default_collapses_into_the_registered_role_one_id_keyed_ro
     assert_eq!(
         dev_rows.len(),
         1,
-        "the dir-name default and the registered role are ONE id-keyed row, not two — this is Ryan's dup screenshot (the gray 'bpmux-dev' default beside the registered 'dev') made impossible by routing-id keying; got roster {roster:?}"
+        "the dir-name default and the registered role are ONE id-keyed row, not two — this is owner's dup screenshot (the gray 'bpmux-dev' default beside the registered 'dev') made impossible by routing-id keying; got roster {roster:?}"
     );
     assert_eq!(
         dev_rows[0], "dev",
@@ -705,7 +705,7 @@ async fn a_cross_cwd_register_reaps_the_detection_default_so_any_cwd_is_one_row(
     let farm = FakeAgentFarm::new();
     let agent = farm.write_detect_then_cross_cwd_register_script();
     let bpmux = TestBpmux::start_with_envs(
-        "ryan",
+        "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
@@ -722,6 +722,6 @@ async fn a_cross_cwd_register_reaps_the_detection_default_so_any_cwd_is_one_row(
     );
     assert!(
         !roster.iter().any(|i| i == "bpmux-dev"),
-        "registering from a cwd whose session-id differs from the terminal's DETECTION session-id STILL collapses to one row — register forwards BPMUX_TERMINAL_ID, so it reaps the orphaned detection dir-default ('bpmux-dev') when it takes the terminal over. Identity is terminal-anchored, not cwd-coupled (Ryan's 'you don't need to cd'); got {roster:?}"
+        "registering from a cwd whose session-id differs from the terminal's DETECTION session-id STILL collapses to one row — register forwards BPMUX_TERMINAL_ID, so it reaps the orphaned detection dir-default ('bpmux-dev') when it takes the terminal over. Identity is terminal-anchored, not cwd-coupled (owner's 'you don't need to cd'); got {roster:?}"
     );
 }

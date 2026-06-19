@@ -8,7 +8,7 @@ const msg = (from: string, to: string[] | null): ChatMessage =>
 describe('isMessageInScope — owner-omniscience scoping (#1733)', () => {
   test('the owner all-conversations view renders every message, regardless of --to', () => {
     expect(
-      isMessageInScope(msg('dev:claude-code', ['pm', 'designer']), null, 'ryan:human', true)
+      isMessageInScope(msg('dev:claude-code', ['pm', 'designer']), null, 'owner:human', true)
     ).toBe(true)
   })
 
@@ -17,7 +17,7 @@ describe('isMessageInScope — owner-omniscience scoping (#1733)', () => {
       isMessageInScope(
         msg('dev:claude-code', ['dev', 'pm']),
         ['designer', 'dev'],
-        'ryan:human',
+        'owner:human',
         false
       )
     ).toBe(false)
@@ -28,7 +28,7 @@ describe('isMessageInScope — owner-omniscience scoping (#1733)', () => {
       isMessageInScope(
         msg('designer:claude-code', ['designer', 'dev']),
         ['designer', 'dev'],
-        'ryan:human',
+        'owner:human',
         false
       )
     ).toBe(true)

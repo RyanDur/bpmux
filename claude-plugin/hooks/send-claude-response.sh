@@ -54,20 +54,20 @@ if [ -z "$LAST_SEEN" ]; then
 fi
 
 # Collect the full new-message objects (chat-type only, excluding
-# ryan's own messages so the agent doesn't echo-read its own
+# owner's own messages so the agent doesn't echo-read its own
 # prompts back through the hook).
 NEW_MESSAGES=$(echo "$MESSAGES" | jq --arg last "$LAST_SEEN" '
   [.[] |
     select(.ts > $last) |
     select((.message_type // "chat") == "chat") |
-    select(.from | test("ryan:claude-code|ryan:mcp-client") | not)
+    select(.from | test("owner:claude-code|owner:mcp-client") | not)
   ]
 ')
 
 NEW_COUNT=$(echo "$NEW_MESSAGES" | jq 'length' 2>/dev/null)
 
 # Update last seen to the most recent message in the log (not just
-# the filtered new-messages set) so we advance even if only ryan's
+# the filtered new-messages set) so we advance even if only owner's
 # own messages were appended.
 echo "$MESSAGES" | jq -r '.[-1].ts // empty' > "$LAST_SEEN_FILE" 2>/dev/null
 

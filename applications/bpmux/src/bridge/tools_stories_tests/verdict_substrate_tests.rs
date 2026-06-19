@@ -27,7 +27,7 @@ mod verdict_substrate_integration_1407 {
 
     fn make_session(dir: PathBuf) -> Arc<Session> {
         let (tx, _) = broadcast::channel(16);
-        Arc::new(Session::new(dir, "ryan".to_string(), tx))
+        Arc::new(Session::new(dir, "owner".to_string(), tx))
     }
 
     async fn build_orchestrator_with_seed(seeded: Story) -> Arc<dyn RefreshDriver> {

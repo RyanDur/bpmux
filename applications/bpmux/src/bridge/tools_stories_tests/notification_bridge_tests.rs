@@ -19,7 +19,7 @@ mod notification_bridge_push_filter_integration_1432 {
 
     fn make_session(dir: PathBuf) -> Arc<Session> {
         let (tx, _) = broadcast::channel(16);
-        Arc::new(Session::new(dir, "ryan".to_string(), tx))
+        Arc::new(Session::new(dir, "owner".to_string(), tx))
     }
 
     fn make_message(message_type: MessageType, text: &str, addressee: Option<&str>) -> Message {

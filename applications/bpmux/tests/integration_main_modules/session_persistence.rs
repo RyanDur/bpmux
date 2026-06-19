@@ -15,13 +15,13 @@ fn messages_persist_across_session_resumes() {
     // First "run": create session, write messages
     let session1 = resume_or_create_session(base.path()).expect("create session");
     let msg1 = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "first session message".to_string(),
         ts: Utc::now(),
         ..Message::default()
     };
     let msg2 = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "second session message".to_string(),
         ts: Utc::now(),
         ..Message::default()
@@ -43,5 +43,5 @@ fn messages_persist_across_session_resumes() {
     assert_eq!(messages.len(), 2, "both messages should persist");
     assert_eq!(messages[0].text, "first session message");
     assert_eq!(messages[1].text, "second session message");
-    assert_eq!(messages[0].from, "ryan:human");
+    assert_eq!(messages[0].from, "owner:human");
 }

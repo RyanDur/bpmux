@@ -1,159 +1,145 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { test, expect } from '@playwright/test'
+import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
+import {
+  seedCurrentIterationViaRpc,
+  addStoryToIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 
-const MOCK_BOARD = {
-  fetched_at: '2026-04-26T00:00:00Z',
-  stories: [
-    mockCurrentIteration('DeskCheck457Slice5', '2026-04-26T00:00:00Z'),
-    {
-      number: 901,
-      title: 'Epic: substrate consolidation',
-      state: 'in-progress',
-      labels: ['Epic'],
-      assignees: [],
-      created_at: '2026-04-26T00:00:00Z',
-      body: ''
-    },
-    {
-      number: 902,
-      title: 'Child story under epic — feature',
-      state: 'ready',
-      labels: ['Feature'],
-      assignees: [],
-      created_at: '2026-04-26T00:00:00Z',
-      body: '',
-      parent_epic: 901,
-      ...inMockCurrentIteration(1)
-    },
-    {
-      number: 903,
-      title: 'Child story under epic — accepted feature',
-      state: 'accepted',
-      labels: ['Feature'],
-      assignees: [],
-      created_at: '2026-04-26T00:00:00Z',
-      body: '',
-      parent_epic: 901
-    },
-    {
-      number: 904,
-      title: 'Standalone (no epic) story',
-      state: 'ready',
-      labels: ['Feature'],
-      assignees: [],
-      created_at: '2026-04-26T00:00:00Z',
-      body: '',
-      ...inMockCurrentIteration(2)
-    }
-  ]
+const EPIC = 1
+const CHILD_READY = 2
+const CHILD_ACCEPTED = 3
+const STANDALONE = 4
+
+const EPIC_TITLE = '[Epic] Epic: substrate consolidation'
+
+const createStory = async (rpc: RpcFn, title: string, parentEpic?: number): Promise<void> => {
+  const body: Record<string, unknown> = {
+    title,
+    user_job: `Fixture story for desk-check #457 slice 5: ${title}.`,
+    observation_falsifier: 'reject if the Epic-summary section does not derive from this fixture',
+    acceptance_test_path: 'applications/electron/tests/desk-check-457-slice5.spec.ts'
+  }
+  if (parentEpic !== undefined) body.parent_epic = parentEpic
+  const resp = await rpc('create_story', body, 'pm')
+  expect(resp.status).toBe(200)
 }
 
-const launchWithFixture = async (): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-}> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-457-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-457-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_BOARD)
-    })
-  })
-  await win.reload()
-  return { app }
+const moveTo = async (rpc: RpcFn, number: number, state: string): Promise<void> => {
+  const resp = await rpc(
+    'move_story',
+    { number, target_state: state, rationale: `desk-check-457 slice5 fixture: ${state}` },
+    'pm'
+  )
+  expect(resp.status).toBe(200)
+}
+
+const openEpicCard = async (board: BoardPage, epicNumber: number): Promise<void> => {
+  const card = board.epicCard(epicNumber)
+  if ((await card.getAttribute('open')) === null) {
+    await card.locator(':scope > summary').click()
+  }
+  await expect(card).toHaveAttribute('open', '')
+}
+
+const seedEpicFixture = async (result: MockGhLaunchResult): Promise<void> => {
+  const { rpc } = result
+  await createStory(rpc, EPIC_TITLE)
+  await createStory(rpc, 'Child story under epic — feature', EPIC)
+  await createStory(rpc, 'Child story under epic — accepted feature', EPIC)
+  await createStory(rpc, 'Standalone (no epic) story')
+
+  await moveTo(rpc, CHILD_READY, 'ready')
+  await moveTo(rpc, CHILD_ACCEPTED, 'accepted')
+  await moveTo(rpc, STANDALONE, 'ready')
+
+  const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice5')
+  await addStoryToIterationViaRpc(rpc, CHILD_READY, iterNumber, 1)
+  await addStoryToIterationViaRpc(rpc, STANDALONE, iterNumber, 2)
 }
 
 test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () => {
   test('#1185 Epic meta-card: progress + breakdown + no nested children + summary toggle-only with body view-details (#1516)', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(board.region()).toBeVisible()
-    await expect(board.tabBar()).toBeVisible()
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      await seedEpicFixture(result)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+      await expect(board.tabBar()).toBeVisible()
 
-    await board.openTab('Plan')
+      await board.openTab('Plan')
 
-    await expect(board.epicsSection()).toBeVisible()
+      await expect(board.epicsSection()).toBeVisible()
 
-    const epic901 = board.epicCard(901)
-    await expect(epic901).toBeVisible()
+      const epicCard = board.epicCard(EPIC)
+      await expect(epicCard).toBeVisible()
 
-    const progress = board.epicProgress(901)
-    await expect(progress).toBeVisible()
-    await expect(progress).toHaveAttribute('value', '1')
-    await expect(progress).toHaveAttribute('max', '2')
+      const progress = board.epicProgress(EPIC)
+      await expect(progress).toBeVisible()
+      await expect(progress).toHaveAttribute('value', '1')
+      await expect(progress).toHaveAttribute('max', '2')
 
-    await expect(board.epicMiniboard(901)).toBeVisible()
-    await expect(board.epicMiniColumn(901, 'Accepted')).toContainText('(1)')
-    await expect(board.epicMiniColumn(901, 'Ready')).toContainText('(1)')
+      await openEpicCard(board, EPIC)
+      await expect(board.epicMiniboard(EPIC)).toBeVisible()
+      await expect(board.epicMiniColumn(EPIC, 'Accepted')).toContainText('(1)')
+      await expect(board.epicMiniColumn(EPIC, 'Ready')).toContainText('(1)')
 
-    await expect(epic901.locator('.board-epic-children')).toHaveCount(0)
-    await expect(epic901.locator('.board-epic-child-state')).toHaveCount(0)
-    await expect(epic901.locator('.board-story-row')).toHaveCount(0)
+      await expect(epicCard.locator('.board-epic-children')).toHaveCount(0)
+      await expect(epicCard.locator('.board-epic-child-state')).toHaveCount(0)
+      await expect(epicCard.locator('.board-story-row')).toHaveCount(0)
 
-    await expect(epic901.locator('.board-epic-summary button')).toHaveCount(0)
-    await expect(board.epicViewDetails(901)).toBeVisible()
-
-    await app.close()
+      await expect(epicCard.locator('.board-epic-summary button')).toHaveCount(0)
+      await expect(board.epicViewDetails(EPIC)).toBeVisible()
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('#1260 child story shows ↳ Epic #N link (no full Epic title in visible text) in its state lane', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(board.region()).toBeVisible()
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      await seedEpicFixture(result)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
 
-    await expect(board.storyRow(902)).toBeVisible()
-    const epicRef = board.epicLink(902)
-    await expect(epicRef).toHaveText('↳ Epic #901')
-    await expect(epicRef).toHaveAttribute(
-      'aria-label',
-      /open epic #901 Epic: substrate consolidation/
-    )
+      await expect(board.storyRow(CHILD_READY)).toBeVisible()
+      const epicRef = board.epicLink(CHILD_READY)
+      await expect(epicRef).toHaveText(`↳ Epic #${EPIC}`)
+      await expect(epicRef).toHaveAttribute(
+        'aria-label',
+        new RegExp(`open epic #${EPIC} \\[Epic\\] Epic: substrate consolidation`)
+      )
 
-    await expect(board.storyRow(904)).toBeVisible()
-    await expect(board.epicLink(904)).toHaveCount(0)
-
-    await app.close()
+      await expect(board.storyRow(STANDALONE)).toBeVisible()
+      await expect(board.epicLink(STANDALONE)).toHaveCount(0)
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('no Epics section when board has no Epic stories', async () => {
-    const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-457-empty-'))
-    const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-457-empty-'))
-    const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-    const win = await app.firstWindow()
-    await win.route('**/api/board', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          fetched_at: '2026-04-26T00:00:00Z',
-          stories: [
-            {
-              number: 1001,
-              title: 'No epic on this board',
-              state: 'ready',
-              labels: ['Feature'],
-              assignees: [],
-              created_at: '2026-04-26T00:00:00Z',
-              body: ''
-            }
-          ]
-        })
-      })
-    })
-    await win.reload()
-    const board = new BoardPage(win)
-    await expect(board.tabBar()).toBeVisible()
-    await expect(board.epicsSection()).toHaveCount(0)
-    await app.close()
+    const result = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      await createStory(rpc, 'No epic on this board')
+      await moveTo(rpc, 1, 'ready')
+      await win.reload()
+      await expect(board.tabBar()).toBeVisible()
+      await expect(board.epicsSection()).toHaveCount(0)
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

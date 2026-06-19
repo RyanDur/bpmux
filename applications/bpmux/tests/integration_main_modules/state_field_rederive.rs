@@ -1,17 +1,3 @@
-//! Regression test for #509: stacked workflow-state labels must decode
-//! to the highest-priority canonical state per state_from_labels. This
-//! covers the patterns from the 6 today's-rejects named in the spec
-//! (#469 / #463 / #464 / #450 / #457 / #498) — each carrying ["ready
-//! for accept", "needs fixes", "rejected"] on GH at filing time.
-//!
-//! Today's substrate-arc (#519 universal-reap on reject_story, #503
-//! universal-reap on pass/fail_desk_check, #520+#522 column-projection
-//! parity) prevents NEW stacked-label states from forming. This test
-//! locks in the decoder's correctness for any pre-existing stories
-//! that still carry stacked labels — they decode correctly to the
-//! highest-priority state, and column_for buckets them where Ryan's
-//! 15:19 UTC proposal asked (rejected → READY-with-feedback).
-
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use bpmux::board::adapters::github::state_from_labels;

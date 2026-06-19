@@ -1,12 +1,15 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
+import { test, expect } from '@playwright/test'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import {
+  addStoryToIterationViaRpc,
+  seedCurrentIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 import { DrillInPage } from './pages/drillInPage'
+import type { MockGhServer } from './helpers/mock_gh'
 
 const seedComments = (
   comments: ReadonlyArray<{ id: number; author: string; body: string; created_at: string }>
@@ -14,23 +17,6 @@ const seedComments = (
   comments.map((c) => commentJson(c.body, { id: c.id, author: c.author, created_at: c.created_at }))
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
-
-const MOCK_BOARD = {
-  fetched_at: '2026-04-22T16:00:00Z',
-  stories: [
-    mockCurrentIteration('DeskCheck345', '2026-04-22T16:00:00Z'),
-    {
-      number: 345,
-      title: 'Desk-check story for #345 live comment refresh',
-      state: 'ready',
-      labels: ['Feature', 'ready'],
-      assignees: ['dev'],
-      created_at: '2026-04-22T16:00:00Z',
-      body: 'Body for #345 desk-check.',
-      ...inMockCurrentIteration(1)
-    }
-  ]
-}
 
 const INITIAL_COMMENTS = [
   {
@@ -47,154 +33,147 @@ const INITIAL_COMMENTS = [
   }
 ]
 
-const launchWithFixture = async (): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-}> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-345-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-345-'))
-  const { app, mockGh } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_BOARD)
-    })
-  })
+const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
+  const createResp = await rpc(
+    'create_story',
+    {
+      title: '[Feature] Desk-check story for #345 live comment refresh',
+      body: 'Body for #345 desk-check.',
+      user_job: 'When the human opens a drill-in, comments hydrate and optimistic-add on submit.',
+      observation_falsifier:
+        'reject if comments do not hydrate on mount or optimistic-add on submit',
+      acceptance_test_path: 'applications/electron/tests/desk-check-345.spec.ts'
+    },
+    'pm'
+  )
+  expect(createResp.status).toBe(200)
+  const moveResp = await rpc(
+    'move_story',
+    { number: 1, target_state: 'ready', rationale: 'desk-check-345 comment fixture' },
+    'pm'
+  )
+  expect(moveResp.status).toBe(200)
+  const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck345')
+  await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
   mockGh.on({
     method: 'GET',
-    match: /\/repos\/acme\/bpmux\/issues\/345\/comments/,
+    match: /\/repos\/acme\/bpmux\/issues\/1\/comments/,
     bodyJson: seedComments(INITIAL_COMMENTS)
   })
-  await win.route('**/api/stories/345/comments', async (route) => {
-    if (route.request().method() === 'POST') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ ok: true })
-      })
-    } else {
-      await route.continue()
-    }
-  })
-  await win.reload()
-  return { app }
 }
 
 test.describe('desk-check #345 live comment refresh', () => {
   test('drill-in opens + comments hydrate on mount', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    const drillIn = new DrillInPage(win)
-    await expect(board.region()).toBeVisible()
-    await board.storyNavigate(345).click()
-    await expect(drillIn.panel()).toBeVisible()
-    await win.waitForTimeout(500)
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(new BoardPage(win).region()).toBeVisible()
+      await seedFixture(rpc, mockGh)
+      await win.reload()
+      await waitForBoardLoaded(win)
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await board.storyNavigate(1).click()
+      await expect(drillIn.panel()).toBeVisible()
+      await win.waitForTimeout(500)
 
-    await drillIn.panel().screenshot({
-      path: join(EVIDENCE_DIR, '30-drillin-with-comments.png')
-    })
+      await drillIn.panel().screenshot({
+        path: join(EVIDENCE_DIR, '30-drillin-with-comments.png')
+      })
 
-    const comments = drillIn.commentItems()
-    const count = await comments.count()
-    console.log(`#345 AC comments on mount: ${count} rendered`)
-    for (let i = 0; i < count; i++) {
-      const text = (await comments.nth(i).textContent())?.trim()
-      console.log(`  comment[${i}]: "${(text ?? '').replace(/\s+/g, ' ').slice(0, 80)}"`)
+      const comments = drillIn.commentItems()
+      const count = await comments.count()
+      console.log(`#345 AC comments on mount: ${count} rendered`)
+      for (let i = 0; i < count; i++) {
+        const text = (await comments.nth(i).textContent())?.trim()
+        console.log(`  comment[${i}]: "${(text ?? '').replace(/\s+/g, ' ').slice(0, 80)}"`)
+      }
+    } finally {
+      await app.close()
+      await mockGh.close()
     }
-    await app.close()
   })
 
   test('optimistic render: typed comment appears immediately on submit', async () => {
-    const { app } = await launchWithFixture()
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    const drillIn = new DrillInPage(win)
-    await board.storyNavigate(345).click()
-    await expect(drillIn.panel()).toBeVisible()
-    await win.waitForTimeout(500)
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(new BoardPage(win).region()).toBeVisible()
+      await seedFixture(rpc, mockGh)
+      await win.reload()
+      await waitForBoardLoaded(win)
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await board.storyNavigate(1).click()
+      await expect(drillIn.panel()).toBeVisible()
+      await win.waitForTimeout(500)
 
-    // Type in the comment textarea.
-    const textarea = drillIn.commentInput()
-    await textarea.fill('Optimistic comment from the desk-check walk.')
+      const textarea = drillIn.commentInput()
+      await textarea.fill('Optimistic comment from the desk-check walk.')
 
-    // Count before submit.
-    const before = await drillIn.commentItems().count()
-    console.log(`#345 optimistic: ${before} comments before submit`)
+      const before = await drillIn.commentItems().count()
+      console.log(`#345 optimistic: ${before} comments before submit`)
 
-    await drillIn.commentSend().click()
+      await drillIn.commentSend().click()
 
-    // Optimistic should add immediately (before server round trip).
-    await win.waitForTimeout(150)
-    const afterImmediate = await drillIn.commentItems().count()
-    console.log(`  immediately after submit: ${afterImmediate} comments (expect before+1)`)
+      await win.waitForTimeout(150)
+      const afterImmediate = await drillIn.commentItems().count()
+      console.log(`  immediately after submit: ${afterImmediate} comments (expect before+1)`)
 
-    // Draft should clear.
-    const draftAfter = await textarea.inputValue()
-    console.log(`  draft after submit: "${draftAfter}" (expect empty)`)
+      const draftAfter = await textarea.inputValue()
+      console.log(`  draft after submit: "${draftAfter}" (expect empty)`)
 
-    // Screenshot the optimistic state.
-    await drillIn.panel().screenshot({
-      path: join(EVIDENCE_DIR, '31-drillin-optimistic-add.png')
-    })
-
-    await app.close()
+      await drillIn.panel().screenshot({
+        path: join(EVIDENCE_DIR, '31-drillin-optimistic-add.png')
+      })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('rollback: POST failure restores draft + toast fires', async () => {
-    const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-345-fail-'))
-    const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-345-fail-'))
-    const { app, mockGh } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-    const win = await app.firstWindow()
-    await win.route('**/api/board', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_BOARD)
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(new BoardPage(win).region()).toBeVisible()
+      await seedFixture(rpc, mockGh)
+      await win.route('**/api/stories/1/comments', async (route) => {
+        if (route.request().method() === 'POST') {
+          await route.fulfill({ status: 500, body: 'server error' })
+        } else {
+          await route.continue()
+        }
       })
-    })
-    mockGh.on({
-      method: 'GET',
-      match: /\/repos\/acme\/bpmux\/issues\/345\/comments/,
-      bodyJson: seedComments(INITIAL_COMMENTS)
-    })
-    await win.route('**/api/stories/345/comments', async (route) => {
-      if (route.request().method() === 'POST') {
-        await route.fulfill({ status: 500, body: 'server error' })
-      } else {
-        await route.continue()
+      await win.reload()
+      await waitForBoardLoaded(win)
+
+      const board = new BoardPage(win)
+      const drillIn = new DrillInPage(win)
+      await board.storyNavigate(1).click()
+      await expect(drillIn.panel()).toBeVisible()
+      await win.waitForTimeout(500)
+
+      const textarea = drillIn.commentInput()
+      const draft = 'This one will fail — draft should restore.'
+      await textarea.fill(draft)
+      await drillIn.commentSend().click()
+      await win.waitForTimeout(500)
+
+      const draftAfter = await textarea.inputValue()
+      console.log(`#345 rollback: draft after 500 error: "${draftAfter}" (expect restored)`)
+
+      const toast = drillIn.toast()
+      const toastVisible = await toast.isVisible()
+      console.log(`  toast visible: ${toastVisible}`)
+      if (toastVisible) {
+        const toastText = (await toast.textContent())?.trim()
+        console.log(`  toast text: "${toastText}"`)
       }
-    })
-    await win.reload()
 
-    const board = new BoardPage(win)
-    const drillIn = new DrillInPage(win)
-    await board.storyNavigate(345).click()
-    await expect(drillIn.panel()).toBeVisible()
-    await win.waitForTimeout(500)
-
-    const textarea = drillIn.commentInput()
-    const draft = 'This one will fail — draft should restore.'
-    await textarea.fill(draft)
-    await drillIn.commentSend().click()
-    await win.waitForTimeout(500)
-
-    const draftAfter = await textarea.inputValue()
-    console.log(`#345 rollback: draft after 500 error: "${draftAfter}" (expect restored)`)
-
-    const toast = drillIn.toast()
-    const toastVisible = await toast.isVisible()
-    console.log(`  toast visible: ${toastVisible}`)
-    if (toastVisible) {
-      const toastText = (await toast.textContent())?.trim()
-      console.log(`  toast text: "${toastText}"`)
+      await drillIn.panel().screenshot({
+        path: join(EVIDENCE_DIR, '32-drillin-rollback-toast.png')
+      })
+    } finally {
+      await app.close()
+      await mockGh.close()
     }
-
-    await drillIn.panel().screenshot({
-      path: join(EVIDENCE_DIR, '32-drillin-rollback-toast.png')
-    })
-
-    await app.close()
   })
 })

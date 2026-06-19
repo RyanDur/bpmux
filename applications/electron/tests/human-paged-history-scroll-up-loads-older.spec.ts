@@ -2,31 +2,33 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 
-// #1153 rework — visual-class falsifier per
-// `feedback_visual_class_falsifier_needs_visual_assertion`. The
-// scrollMath unit test covers the predicate; this spec covers the
-// wired path: handleScroll → triggerableLoadOlder → loadOlder fetch
-// → loading-pill DOM-shape. Also covers the "no-jank" falsifier:
-// fetch is in-flight BEFORE the user reaches the boundary.
+const RECENT_COUNT = 200
+const OLDER_COUNT = 5
 
-const SEED_COUNT = 60
+const olderMessages = Array.from({ length: OLDER_COUNT }, (_, i) => ({
+  from: 'pm:claude-code',
+  text: `older message ${i}`,
+  ts: `2026-05-03T05:${String(i).padStart(2, '0')}:00Z`,
+  message_type: 'chat'
+}))
 
-const seedMessages = (count: number): Array<Record<string, unknown>> =>
-  Array.from({ length: count }, (_, i) => {
-    const minute = String(i % 60).padStart(2, '0')
-    const hour = String(10 + Math.floor(i / 60)).padStart(2, '0')
-    return {
-      from: 'dev:claude-code',
-      text: `seed message ${i}`,
-      ts: `2026-05-03T${hour}:${minute}:00Z`,
-      message_type: 'chat'
-    }
-  })
+const recentMessages = Array.from({ length: RECENT_COUNT }, (_, i) => {
+  const minute = String(i % 60).padStart(2, '0')
+  const hour = String(10 + Math.floor(i / 60)).padStart(2, '0')
+  return {
+    from: 'dev:claude-code',
+    text: `seed message ${i}`,
+    ts: `2026-05-03T${hour}:${minute}:00Z`,
+    message_type: 'chat'
+  }
+})
+
+const ALL_MESSAGES = [...olderMessages, ...recentMessages]
 
 test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch', () => {
   test('scroll near visual top fires loadOlder + loading-pill renders', async () => {
     const { app, win, mockGh } = await launchWithMockGh({
-      seedMessages: seedMessages(SEED_COUNT)
+      seedMessages: ALL_MESSAGES
     })
     try {
       const consoleErrors: string[] = []
@@ -36,33 +38,8 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
       })
       win.on('pageerror', (e) => pageErrors.push(e))
 
-      await waitForMessagesLoaded(win, 'seed message 59')
+      await waitForMessagesLoaded(win, 'seed message 199')
 
-      // Intercept the paged-history endpoint so we can deterministically
-      // observe loadOlder firing AND control the loading-pill window.
-      let releasePagedFetch: () => void = () => {}
-      const pagedFetchHeld = new Promise<void>((resolve) => {
-        releasePagedFetch = resolve
-      })
-      const olderPage = Array.from({ length: 5 }, (_, i) => ({
-        from: 'pm:claude-code',
-        text: `older message ${i}`,
-        ts: `2026-05-03T05:${String(i).padStart(2, '0')}:00Z`,
-        message_type: 'chat'
-      }))
-      await win.route('**/api/messages?**before=*', async (route) => {
-        await pagedFetchHeld
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(olderPage)
-        })
-      })
-
-      // Programmatically scroll the message-list to the visual top.
-      // Under column-reverse, |scrollTop| grows toward
-      // (scrollHeight - clientHeight). Setting scrollTop near that
-      // limit puts the user inside the 200px near-top trigger zone.
       const ul = new ChatPage(win).messageScroller()
       await expect(ul).toBeVisible()
       await ul.evaluate((el) => {
@@ -71,19 +48,12 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
         el.dispatchEvent(new Event('scroll'))
       })
 
-      // Falsifier: loading-pill must appear BEFORE the response lands
-      // (no-jank — fetch is in flight before user reaches boundary).
       const loadingPill = new ChatPage(win).loadingOlderPill()
       await expect(loadingPill).toBeVisible({ timeout: 2000 })
 
-      // Release the held fetch so the merge path runs.
-      releasePagedFetch()
-
-      // Pill clears once the response lands.
       await expect(loadingPill).toHaveCount(0, { timeout: 5000 })
 
-      // Older messages prepended into the rendered list.
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < OLDER_COUNT; i++) {
         await expect(ul).toContainText(`older message ${i}`)
       }
 

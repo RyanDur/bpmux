@@ -63,14 +63,6 @@ test.describe('#1649 titlebar connection-status text meets WCAG AA (4.5:1) in bo
     const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
     const win = await app.firstWindow()
     try {
-      await win.route('**/api/board', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ fetched_at: '2026-06-04T00:00:00Z', stories: [] })
-        })
-      })
-
       const failures: string[] = []
       for (const theme of ['light', 'dark'] as const) {
         const measured = await measureStateTextContrast(win, theme)

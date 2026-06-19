@@ -22,7 +22,7 @@ describe('#1502 Stylelint tag-selector substrate — bare tag-selectors banned i
     expect(warnings[0].severity).toBe('error')
   })
 
-  test('app CSS: `details::details-content {}` fires (the Ryan 11:14 UTC anti-pattern)', async () => {
+  test('app CSS: `details::details-content {}` fires (the owner 11:14 UTC anti-pattern)', async () => {
     const warnings = await typeWarnings(
       'details::details-content {\n  height: 0;\n}\n',
       APP_CSS_STUB

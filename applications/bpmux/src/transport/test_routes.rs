@@ -321,7 +321,7 @@ pub async fn post_test_accept_story(
     run_test_route(session, refresh, |refresh, session| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "number", req.number);
-        let agent = req.agent.unwrap_or_else(|| "ryan:test".to_string());
+        let agent = req.agent.unwrap_or_else(|| "owner:test".to_string());
         bridge::dispatch_test_accept_story(args, &agent, Some(&refresh), &session).await
     })
     .await

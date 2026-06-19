@@ -434,7 +434,7 @@ fn derive_epic_state_1189_paradox_regression_1450() {
     assert_eq!(
         derive_epic_state(StoryState::Icebox, &refs),
         StoryState::Accepted,
-        "#1189 paradox: Epic with 30 Accepted + 6 Retired children derives Accepted, NOT Icebox (Ryan-canon 2026-05-19 01:47 UTC)"
+        "#1189 paradox: Epic with 30 Accepted + 6 Retired children derives Accepted, NOT Icebox (owner-canon 2026-05-19 01:47 UTC)"
     );
 }
 
@@ -560,7 +560,7 @@ fn derive_epic_counts_progress_denominator_includes_icebox_1451_canon_refinement
     assert_eq!(
         counts.progress_denominator(),
         9,
-        "Epic #1477 canon-truth: 1 active + 8 icebox = 9 stories needing completion; icebox INCLUDED in denom (Ryan-canon 2026-05-20 23:12 UTC)"
+        "Epic #1477 canon-truth: 1 active + 8 icebox = 9 stories needing completion; icebox INCLUDED in denom (owner-canon 2026-05-20 23:12 UTC)"
     );
 }
 

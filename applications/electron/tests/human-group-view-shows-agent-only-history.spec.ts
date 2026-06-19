@@ -3,14 +3,6 @@ import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 import { SidebarPage } from './pages/sidebarPage'
 
-// #463: when Ryan-as-viewer selects a group view (e.g., dev+designer),
-// agent-only conversations within that group must be visible — Ryan
-// observes team coordination without having been a participant. The
-// pre-#463 strict-equality scope-filter hid those conversations
-// because their channelId omitted Ryan ("designer+dev" vs the view's
-// "designer+dev+ryan"). Diagnose-class: HIDE (data in store; filter
-// over-blocks).
-
 const SEED_GROUP_HISTORY = [
   {
     from: 'pm:claude-code',

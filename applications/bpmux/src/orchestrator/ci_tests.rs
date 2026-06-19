@@ -235,7 +235,7 @@ async fn spawn_action_drainer_routes_channel_actions_into_dispatch() {
             channel: "broadcast".to_string(),
             message_key: "drainer-test".to_string(),
             emoji: "🟢".to_string(),
-            user: "ryan".to_string(),
+            user: "owner".to_string(),
             ts_iso: "2026-05-08T19:30:00Z".to_string(),
         },
     ))

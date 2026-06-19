@@ -16,31 +16,6 @@ const launchWithFixture = async (): Promise<{
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-378-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-378-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ fetched_at: '2026-04-23T11:00:00Z', stories: [] })
-    })
-  })
-  await win.route('**/api/messages*', async (route, request) => {
-    const url = request.url()
-    if (url.includes('message_type=activity')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: '[]'
-      })
-      return
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: '[]'
-    })
-  })
-  await win.reload()
   return { app }
 }
 

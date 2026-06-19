@@ -5,7 +5,7 @@ import type { ChatMessage } from '../transport/types'
 
 const baseMsg = (over: Partial<ChatMessage> = {}): ChatMessage => ({
   id: 'srv-1',
-  from: 'ryan',
+  from: 'owner',
   text: 'pick up #1604',
   ts: '2026-06-03T00:00:00.000Z',
   to: ['dev'],

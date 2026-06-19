@@ -1,31 +1,3 @@
-//! Live-Electron integration test for capture_electron_window MCP
-//! tool (#1183). Run locally on macOS with:
-//!
-//!     cargo test -p bpmux --test integration_main capture_electron_window
-//!
-//! Requires: bpmux Electron app running, macOS Screen Recording
-//! permission granted to the terminal/process running this test.
-//!
-//! Per #1183 falsifier-g (`feedback_test_fidelity_vocabulary_discipline` +
-//! `feedback_visual_class_falsifier_needs_visual_assertion`): mock-only
-//! is the substitution-class. Live test below verifies (1) window
-//! discovery returns a real CGWindowID for the bpmux Electron, (2)
-//! `screencapture` writes an actual PNG file at the namespaced path,
-//! (3) the PNG has non-zero size + the PNG file signature.
-//!
-//! Cross-platform CI gate: gated on `target_os = "macos"` so Linux
-//! CI doesn't try to run it (`swift` + Quartz + Electron all absent).
-//! Inside the macOS gate, soft-skip when no bpmux Electron window is
-//! visible — covers macOS CI runners (no GUI Electron) + macOS dev
-//! without Electron currently running. The test asserts only when
-//! the prerequisite environment exists, so CI green is achievable
-//! anywhere; only running-Electron + Screen Recording grant unlocks
-//! the full assertion path. #1193 removed the prior
-//! `integration_tests` Cargo feature gate (Ryan 2026-05-05 directive
-//! against tests calling outside-this-computer resources). Quartz +
-//! Electron are local-this-computer, so the test stays — it's the
-//! soft-skip + macOS-only target gate that keeps CI safe.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 #[cfg(target_os = "macos")]

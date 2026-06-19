@@ -6,7 +6,7 @@ description: Use whenever you are about to RESPOND to a message that arrived ove
 
 A message delivered over the bridge lives in the **shared channel**. A reply you type only as
 assistant/terminal text stays in your local session — the rest of the team and the channel record
-never see it. **A bpmux-arriving message needs a bpmux-going answer.** (Ryan, 2026-06-19: "if you
+never see it. **A bpmux-arriving message needs a bpmux-going answer.** (owner, 2026-06-19: "if you
 see where it is coming from you need to respond there.")
 
 ## 1. Reply THROUGH `bpmux send` (CLI), not stdout
@@ -50,7 +50,7 @@ Inbound `⟦bpmux⟧ X <scope>▸ msg` → is it mine? → `bpmux send [--to …
 no prefix, lists-as-lists, cause-named.
 
 ---
-Seeded by dev (2026-06-19) at Ryan's direction; scope-markers grounded against
+Seeded by dev (2026-06-19) at owner's direction; scope-markers grounded against
 `session::terminal_inject` (only `broadcast▸` / `→you▸` reach a recipient). TEAM TO DECIDE: fold this
 into / replace the stale `send` skill (it still invokes the retired MCP `send_message` instead of
 `bpmux send`); add per-role worked examples (pm answering a product Q on broadcast; designer DMing a

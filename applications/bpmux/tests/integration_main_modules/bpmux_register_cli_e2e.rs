@@ -94,7 +94,7 @@ async fn register_rejects_the_reserved_owner_identity() {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let workspace = TempDir::new().expect("temp workspace");
 
-    let (ok, stdout) = run_register(bin, port, workspace.path(), "ryan").await;
+    let (ok, stdout) = run_register(bin, port, workspace.path(), "owner").await;
     assert!(
         !ok,
         "registering the reserved OWNER identity must be REJECTED server-side (403) — an agent can never present as the owner; auto-submit's defense-in-depth peer-impersonation guard; stdout: {stdout}"

@@ -8,7 +8,7 @@ const SEEDED_REACTIONS: AggregatedReaction[] = [
     message_key: '2026-04-22T16:01:00.000Z|dev',
     emoji: '👍',
     count: 2,
-    users: ['ryan', 'pm']
+    users: ['owner', 'pm']
   },
   {
     message_key: '2026-04-22T16:01:00.000Z|dev',
@@ -21,11 +21,11 @@ const SEEDED_REACTIONS: AggregatedReaction[] = [
 describe('Reactions — direct prop injection (replaces desk-check-340.spec.ts)', () => {
   test('seeded reactions render as pills with emoji, count, and aria-label', () => {
     const html = renderToStaticMarkup(
-      <Reactions reactions={SEEDED_REACTIONS} viewer="ryan" onToggle={() => {}} />
+      <Reactions reactions={SEEDED_REACTIONS} viewer="owner" onToggle={() => {}} />
     )
     expect(html).toContain('data-test="reaction-pill-👍"')
     expect(html).toContain('data-test="reaction-pill-🎉"')
-    expect(html).toContain('aria-label="👍 2 reactions from ryan, pm"')
+    expect(html).toContain('aria-label="👍 2 reactions from owner, pm"')
     expect(html).toContain('aria-label="🎉 1 reactions from designer"')
     expect(html).toContain('<small>2</small>')
     expect(html).toContain('<small>1</small>')
@@ -33,7 +33,7 @@ describe('Reactions — direct prop injection (replaces desk-check-340.spec.ts)'
 
   test('pill aria-pressed reflects whether viewer is in users list', () => {
     const html = renderToStaticMarkup(
-      <Reactions reactions={SEEDED_REACTIONS} viewer="ryan" onToggle={() => {}} />
+      <Reactions reactions={SEEDED_REACTIONS} viewer="owner" onToggle={() => {}} />
     )
     expect(html).toMatch(/data-test="reaction-pill-👍"[^>]*aria-pressed="true"/)
     expect(html).toMatch(/data-test="reaction-pill-🎉"[^>]*aria-pressed="false"/)
@@ -41,14 +41,14 @@ describe('Reactions — direct prop injection (replaces desk-check-340.spec.ts)'
 
   test('reacted pill receives reaction-pill--reacted class', () => {
     const html = renderToStaticMarkup(
-      <Reactions reactions={SEEDED_REACTIONS} viewer="ryan" onToggle={() => {}} />
+      <Reactions reactions={SEEDED_REACTIONS} viewer="owner" onToggle={() => {}} />
     )
     expect(html).toContain('reaction-pill reaction-pill--reacted')
   })
 
   test('add-reaction button renders alongside pills when reactions present', () => {
     const html = renderToStaticMarkup(
-      <Reactions reactions={SEEDED_REACTIONS} viewer="ryan" onToggle={() => {}} />
+      <Reactions reactions={SEEDED_REACTIONS} viewer="owner" onToggle={() => {}} />
     )
     expect(html).toContain('data-test="reaction-add"')
     expect(html).toContain('aria-label="Add reaction"')
@@ -58,14 +58,14 @@ describe('Reactions — direct prop injection (replaces desk-check-340.spec.ts)'
 
   test('returns null when reactions are undefined and picker not open', () => {
     const html = renderToStaticMarkup(
-      <Reactions reactions={undefined} viewer="ryan" onToggle={() => {}} />
+      <Reactions reactions={undefined} viewer="owner" onToggle={() => {}} />
     )
     expect(html).toBe('')
   })
 
   test('returns null when reactions are empty and picker not open', () => {
     const html = renderToStaticMarkup(
-      <Reactions reactions={[]} viewer="ryan" onToggle={() => {}} />
+      <Reactions reactions={[]} viewer="owner" onToggle={() => {}} />
     )
     expect(html).toBe('')
   })

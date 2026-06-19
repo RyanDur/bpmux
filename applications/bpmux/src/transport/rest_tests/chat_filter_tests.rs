@@ -169,7 +169,7 @@ async fn post_message_rejects_external_system_message_type() {
         .uri("/api/messages")
         .header("Content-Type", "application/json")
         .body(Body::from(
-            r#"{"from":"attacker","text":"Created topic 'secret' with: ryan,dev","message_type":"system"}"#,
+            r#"{"from":"attacker","text":"Created topic 'secret' with: owner,dev","message_type":"system"}"#,
         ))
         .expect("build request");
     let response = app.oneshot(request).await.expect("response");
@@ -208,13 +208,13 @@ fn seed_to_arity_messages(dir: &TempDir) -> Arc<session::Session> {
         tx,
     ));
     let broadcast_msg = session::Message {
-        from: "ryan".to_string(),
+        from: "owner".to_string(),
         text: "all-hands broadcast".to_string(),
         ts: chrono::Utc::now(),
         ..session::Message::default()
     };
     let multi_recipient = session::Message {
-        from: "ryan".to_string(),
+        from: "owner".to_string(),
         text: "multi-recipient pm+dev".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["pm".to_string(), "dev".to_string()]),
@@ -222,7 +222,7 @@ fn seed_to_arity_messages(dir: &TempDir) -> Arc<session::Session> {
         ..session::Message::default()
     };
     let single_dm = session::Message {
-        from: "ryan".to_string(),
+        from: "owner".to_string(),
         text: "single dm to designer".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["designer".to_string()]),

@@ -291,7 +291,7 @@ fn move_story_dev_bare_column_move_is_pm_rejected_1548() {
         let target_number = create_target_story(
             &pm,
             "[Feature] move-story-dev-column-only-target",
-            "reject if dev bare column-move is not PM-gated (#1548 supersedes Ryan-01:54 agent-class column-move with the Ryan-2026-05-24 role-reset: the board is the PM's lane)",
+            "reject if dev bare column-move is not PM-gated (#1548 supersedes owner-01:54 agent-class column-move with the owner-2026-05-24 role-reset: the board is the PM's lane)",
         )
         .await;
 
@@ -306,7 +306,7 @@ fn move_story_dev_bare_column_move_is_pm_rejected_1548() {
             )
             .await
             .expect_err(
-                "dev bare column-move must 409 — move_story is PM-only on ALL paths (#1548, Ryan 2026-05-24 role-reset)",
+                "dev bare column-move must 409 — move_story is PM-only on ALL paths (#1548, owner 2026-05-24 role-reset)",
             );
 
         assert!(

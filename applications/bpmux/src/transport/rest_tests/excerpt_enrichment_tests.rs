@@ -120,18 +120,18 @@ fn message_scope_from_key_adds_the_sender_so_reactions_reach_the_author() {
         .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
         .unwrap();
     let msgs = vec![session::Message {
-        from: "ryan:electron".to_string(),
-        text: "ryan to dev+pm".to_string(),
+        from: "owner:electron".to_string(),
+        text: "owner to dev+pm".to_string(),
         ts,
         to: Some(vec!["dev".to_string(), "pm".to_string()]),
         ..session::Message::default()
     }];
-    let key = format!("{}|ryan:electron", ts.to_rfc3339());
+    let key = format!("{}|owner:electron", ts.to_rfc3339());
     let mut scope = message_scope_from_key(&msgs, &key).expect("scope");
     scope.sort();
     assert_eq!(
         scope,
-        vec!["dev".to_string(), "pm".to_string(), "ryan".to_string()]
+        vec!["dev".to_string(), "owner".to_string(), "pm".to_string()]
     );
 }
 
@@ -157,7 +157,7 @@ fn message_scope_from_key_is_none_for_a_broadcast_so_its_reaction_stays_public()
 
 #[test]
 fn build_reaction_event_text_with_excerpt_wraps_in_typographic_quotes() {
-    let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
+    let body = reaction_toggle("owner", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
     let text = build_reaction_event_text_with_excerpt(&body, true, Some("merged #377"));
     assert!(
         text.contains("\u{201C}merged #377\u{201D}"),
@@ -168,9 +168,9 @@ fn build_reaction_event_text_with_excerpt_wraps_in_typographic_quotes() {
 
 #[test]
 fn build_reaction_event_text_with_excerpt_falls_back_when_excerpt_none() {
-    let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
+    let body = reaction_toggle("owner", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
     let with_none = build_reaction_event_text_with_excerpt(&body, true, None);
-    assert_eq!(with_none, "ryan reacted 👍 to dev's message");
+    assert_eq!(with_none, "owner reacted 👍 to dev's message");
     assert!(!with_none.contains('\u{201C}'));
 }
 
@@ -212,7 +212,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
 
     let message_key = format!("{}|dev:claude-code", target_ts.to_rfc3339());
     let toggle_body = format!(
-        r#"{{"channel":"broadcast","message_key":"{message_key}","emoji":"👍","user":"ryan"}}"#
+        r#"{{"channel":"broadcast","message_key":"{message_key}","emoji":"👍","user":"owner"}}"#
     );
     let request = Request::builder()
         .method("POST")
@@ -236,7 +236,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     assert!(
         reaction_event
             .text
-            .contains("ryan reacted 👍 to dev's message"),
+            .contains("owner reacted 👍 to dev's message"),
         "#387 base shape preserved end-to-end: {}",
         reaction_event.text
     );
@@ -276,7 +276,7 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
         .layer(axum::Extension(orch))
         .with_state(session.clone());
 
-    let toggle_body = r#"{"channel":"broadcast","message_key":"2026-04-23T11:30:00+00:00|dev:claude-code","emoji":"👍","user":"ryan"}"#;
+    let toggle_body = r#"{"channel":"broadcast","message_key":"2026-04-23T11:30:00+00:00|dev:claude-code","emoji":"👍","user":"owner"}"#;
     let request = Request::builder()
         .method("POST")
         .uri("/api/reactions")
@@ -297,7 +297,7 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
         .expect("reaction event broadcasts even when lookup fails");
 
     assert_eq!(
-        reaction_event.text, "ryan reacted 👍 to dev's message",
+        reaction_event.text, "owner reacted 👍 to dev's message",
         "lookup-fail cascade preserves #387 pre-excerpt shape byte-for-byte"
     );
     assert!(
@@ -355,7 +355,7 @@ async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
         conclusion: "success",
         last_run_id: Some(42),
         branch: "main",
-        url: "https://github.com/RyanDur/bpmux/actions".to_string(),
+        url: "https://github.com/acme/bpmux/actions".to_string(),
         head_sha: Some("abc1234".to_string()),
         display_title: Some("test".to_string()),
         last_updated_at: None,
@@ -405,7 +405,7 @@ async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
         conclusion: "failure",
         last_run_id: Some(7),
         branch: "main",
-        url: "https://github.com/RyanDur/bpmux/actions".to_string(),
+        url: "https://github.com/acme/bpmux/actions".to_string(),
         head_sha: Some("def5678".to_string()),
         display_title: Some("flaky test".to_string()),
         last_updated_at: None,

@@ -3,6 +3,11 @@ use crate::board::domain::{
 };
 use crate::board::label_codec::LabelCodec;
 
+fn is_renderer_badge_label(raw: &str) -> bool {
+    let lower = raw.to_ascii_lowercase();
+    lower == "desk-check-fail" || lower.starts_with("blocked-by:")
+}
+
 pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_json::Value {
     let mut labels: Vec<String> = Vec::new();
     labels.push(
@@ -29,6 +34,9 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
             labels.push(raw.clone());
         }
         if codec.is_ready_order_label(raw) && !labels.iter().any(|l| l == raw) {
+            labels.push(raw.clone());
+        }
+        if is_renderer_badge_label(raw) && !labels.iter().any(|l| l == raw) {
             labels.push(raw.clone());
         }
     }

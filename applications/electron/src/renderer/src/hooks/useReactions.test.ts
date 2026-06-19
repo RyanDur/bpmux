@@ -19,7 +19,7 @@ afterEach(() => {
 describe('useReactions — channel-scoped aggregation from the session store', () => {
   test('groups the channel’s reactions by message_key', () => {
     pushReactions('broadcast', [
-      { message_key: 'm1', emoji: '👍', count: 2, users: ['ryan', 'pm'] },
+      { message_key: 'm1', emoji: '👍', count: 2, users: ['owner', 'pm'] },
       { message_key: 'm1', emoji: '🎉', count: 1, users: ['designer'] },
       { message_key: 'm2', emoji: '🚀', count: 1, users: ['dev'] }
     ])
@@ -29,7 +29,7 @@ describe('useReactions — channel-scoped aggregation from the session store', (
   })
 
   test('a different channel sees none of another channel’s reactions', () => {
-    pushReactions('broadcast', [{ message_key: 'm1', emoji: '👍', count: 1, users: ['ryan'] }])
+    pushReactions('broadcast', [{ message_key: 'm1', emoji: '👍', count: 1, users: ['owner'] }])
     const { result } = renderHook(() => useReactions({ channel: 'dev+pm' }))
     expect(result.current.byMessage.size).toBe(0)
   })

@@ -35,6 +35,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
             head_sha: s.head_sha,
             display_title: s.display_title,
             last_successful_poll_at: None,
+            url: Some(crate::ci::github_actions_url()),
         });
         let roster = self
             .roster_store
@@ -66,6 +67,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
             head_sha: snap.as_ref().and_then(|s| s.head_sha.clone()),
             display_title: snap.as_ref().and_then(|s| s.display_title.clone()),
             last_successful_poll_at,
+            url: Some(crate::ci::github_actions_url()),
         };
         let msg = session::Message {
             from: "bpmux".to_string(),

@@ -66,9 +66,9 @@
   line-height: 1.3;
 }
 
-.markdown-body .message-mention[data-role='ryan'] {
-  color: var(--role-ryan);
-  background: color-mix(in srgb, var(--role-ryan) 15%, transparent);
+.markdown-body .message-mention[data-role='owner'] {
+  color: var(--role-owner);
+  background: color-mix(in srgb, var(--role-owner) 15%, transparent);
 }
 
 .markdown-body .message-mention[data-role='dev'] {

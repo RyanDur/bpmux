@@ -1,196 +1,118 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { test, expect } from '@playwright/test'
+import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
+import {
+  addStoryToIterationViaRpc,
+  seedCurrentIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 import { ChatPage } from './pages/chatPage'
 
-// #333 rework: drag-to-reorder in the Ready column must persist
-// (no snap-back) + the dragged row must hide during the drag
-// gesture (Ryan 2026-04-22 22:31-22:32 UTC).
-//
-// Root cause of snap-back: the backend's POST /api/stories/:n/reorder
-// persisted to the priority index, but GET /api/board returned
-// GitHub's native order, overwriting the client's optimistic
-// reorder on the next refetch. Fix: apply_priority_to_board sorts
-// the GET response per the persisted index.
-//
-// Hide-while-dragging: parent BoardGroup tracks `draggingNumber`;
-// the dragged <li> gets data-dragging="true" → CSS opacity:0.
+const READY_TITLES = ['First ready story', 'Second ready story', 'Third ready story']
 
-const ITERATION_STORY = mockCurrentIteration('DeskCheck333', '2026-04-23T03:00:00Z')
-
-const MOCK_BOARD_BEFORE = {
-  fetched_at: '2026-04-23T03:00:00Z',
-  stories: [
-    ITERATION_STORY,
-    {
-      number: 701,
-      title: 'First ready story',
-      state: 'ready',
-      labels: ['Feature', 'ready'],
-      assignees: [],
-      created_at: '2026-04-23T03:00:00Z',
-      body: '',
-      ...inMockCurrentIteration(100)
-    },
-    {
-      number: 702,
-      title: 'Second ready story',
-      state: 'ready',
-      labels: ['Feature', 'ready'],
-      assignees: [],
-      created_at: '2026-04-23T03:00:00Z',
-      body: '',
-      ...inMockCurrentIteration(200)
-    },
-    {
-      number: 703,
-      title: 'Third ready story',
-      state: 'ready',
-      labels: ['Feature', 'ready'],
-      assignees: [],
-      created_at: '2026-04-23T03:00:00Z',
-      body: '',
-      ...inMockCurrentIteration(300)
-    }
-  ]
-}
-
-// Post-reorder: backend would return stories in the priority order.
-// Simulates #333's fix — apply_priority_to_board returns stories
-// sorted per the index, not GitHub's default order.
-const MOCK_BOARD_AFTER = {
-  fetched_at: '2026-04-23T03:00:05Z',
-  stories: [
-    ITERATION_STORY,
-    { ...MOCK_BOARD_BEFORE.stories[1], ...inMockCurrentIteration(250) },
-    MOCK_BOARD_BEFORE.stories[2],
-    MOCK_BOARD_BEFORE.stories[3]
-  ]
-}
-
-const launchWithFixture = async (opts: {
-  postReorderBody: typeof MOCK_BOARD_BEFORE
-}): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-}> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-333-'))
-  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-333-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-
-  let reorderFired = false
-  await win.route('**/api/stories/*/labels', async (route) => {
-    reorderFired = true
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ ok: true })
-    })
-  })
-
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(reorderFired ? opts.postReorderBody : MOCK_BOARD_BEFORE)
-    })
-  })
-
-  await win.reload()
-  return { app }
+const seedReadyMembers = async (rpc: RpcFn): Promise<void> => {
+  for (const title of READY_TITLES) {
+    const createResp = await rpc(
+      'create_story',
+      {
+        title: `[Feature] ${title}`,
+        user_job: 'When the human reorders a Ready row, the order persists through refetch.',
+        observation_falsifier: 'reject if the reordered order snaps back after board refetch',
+        acceptance_test_path: 'applications/electron/tests/desk-check-333.spec.ts'
+      },
+      'pm'
+    )
+    expect(createResp.status).toBe(200)
+  }
+  for (const number of [1, 2, 3]) {
+    const moveResp = await rpc(
+      'move_story',
+      { number, target_state: 'ready', rationale: 'desk-check-333 reorder fixture' },
+      'pm'
+    )
+    expect(moveResp.status).toBe(200)
+  }
+  const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck333')
+  await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
+  await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
+  await addStoryToIterationViaRpc(rpc, 3, iterNumber, 3)
 }
 
 test.describe('desk-check #333 drag-to-reorder (rework)', () => {
   test('dragged row hides via data-dragging during gesture', async () => {
-    // Simulate a dragstart → dragend without actually dropping; the
-    // origin row must carry data-dragging="true" while the gesture
-    // is active and lose it when it ends. This guards the hide-
-    // while-dragging rework without depending on drag-coordinate
-    // simulation accuracy.
-    const { app } = await launchWithFixture({ postReorderBody: MOCK_BOARD_BEFORE })
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(new ChatPage(win).region()).toBeVisible()
-    await expect(board.group('Ready')).toBeVisible()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedReadyMembers(rpc)
+      await win.reload()
+      await waitForBoardLoaded(win)
+      const board = new BoardPage(win)
+      await expect(board.group('Ready')).toBeVisible()
 
-    const row = board.storyRow(701)
-    const grip = board.storyGrip(701)
-    await expect(row).toBeVisible()
-    await expect(grip).toBeVisible()
-    await expect(row).not.toHaveAttribute('data-dragging', 'true')
+      const row = board.storyRow(1)
+      const grip = board.storyGrip(1)
+      await expect(row).toBeVisible()
+      await expect(grip).toBeVisible()
+      await expect(row).not.toHaveAttribute('data-dragging', 'true')
 
-    await grip.evaluate((el) => {
-      const dt = new DataTransfer()
-      el.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }))
-    })
-    await expect(row).toHaveAttribute('data-dragging', 'true')
+      await grip.evaluate((el) => {
+        const dt = new DataTransfer()
+        el.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }))
+      })
+      await expect(row).toHaveAttribute('data-dragging', 'true')
 
-    await grip.evaluate((el) => {
-      el.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
-    })
-    await expect(row).not.toHaveAttribute('data-dragging', 'true')
-
-    await app.close()
+      await grip.evaluate((el) => {
+        el.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
+      })
+      await expect(row).not.toHaveAttribute('data-dragging', 'true')
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('reorder POST fires + optimistic order persists through refetch', async () => {
-    // End-to-end falsifier gate: the UI order must track the
-    // persisted (simulated) priority state, not GitHub's native
-    // order. Pre-#333 fix, the backend accepted the POST but the
-    // next /api/board response reset the order.
-    const { app } = await launchWithFixture({ postReorderBody: MOCK_BOARD_AFTER })
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(new ChatPage(win).region()).toBeVisible()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedReadyMembers(rpc)
+      await win.reload()
+      await waitForBoardLoaded(win)
+      const board = new BoardPage(win)
 
-    // Before reorder: rows render in filed order 701/702/703.
-    expect(await board.storyOrder('Ready')).toEqual([701, 702, 703])
+      expect(await board.storyOrder('Ready')).toEqual([1, 2, 3])
 
-    // Simulate keyboard reorder — the same handleReorder path fires
-    // the POST. Ctrl+Shift+Down on the first row bumps it past the
-    // second, matching the existing keyboard-reorder contract (#357).
-    const firstRow = board.storyNavigate(701)
-    await firstRow.focus()
-    await firstRow.press('Control+Shift+ArrowDown')
+      const firstRow = board.storyNavigate(1)
+      await firstRow.focus()
+      await firstRow.press('Control+Shift+ArrowDown')
 
-    // Optimistic UI: 701 moves past 702. Plus, with the post-reorder
-    // mock board applied on the next board refetch, the final order
-    // should match MOCK_BOARD_AFTER's 703/701/702 sequence. We assert
-    // on the eventual-consistency state (post-invalidate) since
-    // that's what Ryan's walk observes.
-    await expect(async () => {
-      expect(await board.storyOrder('Ready')).not.toEqual([701, 702, 703])
-    }).toPass({ timeout: 5_000 })
-
-    await app.close()
+      await expect(async () => {
+        expect(await board.storyOrder('Ready')).not.toEqual([1, 2, 3])
+      }).toPass({ timeout: 5_000 })
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 
   test('#1524 a single real drag dropped ON the immediate-below row swaps them', async () => {
-    const adjacentDownBoard = {
-      fetched_at: '2026-04-23T03:00:05Z',
-      stories: [
-        ITERATION_STORY,
-        { ...MOCK_BOARD_BEFORE.stories[1], ...inMockCurrentIteration(250) },
-        MOCK_BOARD_BEFORE.stories[2],
-        MOCK_BOARD_BEFORE.stories[3]
-      ]
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    try {
+      await expect(new ChatPage(win).region()).toBeVisible()
+      await seedReadyMembers(rpc)
+      await win.reload()
+      await waitForBoardLoaded(win)
+      const board = new BoardPage(win)
+      expect(await board.storyOrder('Ready')).toEqual([1, 2, 3])
+
+      await board.storyGrip(1).dragTo(board.storyRow(2))
+
+      await expect(async () => {
+        expect(await board.storyOrder('Ready')).toEqual([2, 1, 3])
+      }).toPass({ timeout: 5_000 })
+    } finally {
+      await app.close()
+      await mockGh.close()
     }
-    const { app } = await launchWithFixture({ postReorderBody: adjacentDownBoard })
-    const win = await app.firstWindow()
-    const board = new BoardPage(win)
-    await expect(new ChatPage(win).region()).toBeVisible()
-    expect(await board.storyOrder('Ready')).toEqual([701, 702, 703])
-
-    await board.storyGrip(701).dragTo(board.storyRow(702))
-
-    await expect(async () => {
-      expect(await board.storyOrder('Ready')).toEqual([702, 701, 703])
-    }).toPass({ timeout: 5_000 })
-
-    await app.close()
   })
 })

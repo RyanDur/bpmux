@@ -208,13 +208,13 @@ fn test_pre_commit_hook_only_matches_actual_git_commit_not_other_bash() {
 }
 
 #[test]
-fn test_pre_accept_hook_silent_for_non_pm_non_ryan_role() {
+fn test_pre_accept_hook_silent_for_non_pm_non_owner_role() {
     let env: &[(&str, &str)] = &[];
     let out = run_hook("pre-accept-reminder.sh", "dev", "{}", env);
     assert_eq!(
         out.trim(),
         "",
-        "pre-accept hook must be silent for roles outside pm/ryan; got: {out:?}"
+        "pre-accept hook must be silent for roles outside pm/owner; got: {out:?}"
     );
 }
 

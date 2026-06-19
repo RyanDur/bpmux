@@ -2,32 +2,29 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
 const MOCK_MESSAGES = [
   {
-    id: 'u1',
     from: 'designer:claude-code',
     text: 'Check this out: https://example.com/article',
     ts: '2026-04-22T16:00:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   },
   {
-    id: 'u2',
     from: 'dev:claude-code',
     text: 'Two URLs here: https://docs.rust-lang.org/ and https://example.com/other',
     ts: '2026-04-22T16:01:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   },
   {
-    id: 'u3',
     from: 'pm:claude-code',
     text: 'No URL in this message.',
     ts: '2026-04-22T16:02:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   }
 ]
 
@@ -60,15 +57,12 @@ const launchWithMessages = async (): Promise<{
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-343-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-343-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-  const win = await app.firstWindow()
-  await win.route('**/api/messages*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_MESSAGES)
-    })
+  const { app } = await launchIsolatedElectron({
+    sessionBase,
+    userDataDir: udd,
+    seedMessages: MOCK_MESSAGES
   })
+  const win = await app.firstWindow()
   await win.route('**/api/unfurl*', async (route) => {
     const url = new URL(route.request().url())
     const target = url.searchParams.get('url') ?? ''
@@ -83,7 +77,7 @@ const launchWithMessages = async (): Promise<{
       await route.fulfill({ status: 404, body: 'not found' })
     }
   })
-  await win.reload()
+  await waitForMessagesLoaded(win, 'Check this out')
   return { app }
 }
 

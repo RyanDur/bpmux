@@ -157,11 +157,8 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
     });
 }
 
-/// AC (#203): designer calling pass_desk_check fires a signal
-/// addressed to ryan. dev's notification stream does NOT contain
-/// the signal — routing is exact, not broadcast.
 #[test]
-fn pass_desk_check_signal_routes_to_ryan_not_dev() {
+fn pass_desk_check_signal_routes_to_owner_not_dev() {
     use harness::mock_gh::{issue_json, mock_story_mutations};
     use httpmock::{Method, MockServer};
     use serde_json::Value;
@@ -181,7 +178,7 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
-        let ryan = TestBridge::connect_with_mock_gh(&bpmux, "ryan", &base_url).await;
+        let owner = TestBridge::connect_with_mock_gh(&bpmux, "owner", &base_url).await;
         let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -211,7 +208,8 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
             "pass_desk_check Ok status should report signal sent. got: {status_str}"
         );
 
-        ryan.capture
+        owner
+            .capture
             .wait_for("ready for acceptance", WAIT_PRESENCE_TIMEOUT)
             .await;
 
@@ -221,11 +219,11 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
         let dev_seen = dev.capture.received().join("\n");
         assert!(
             !dev_seen.contains("ready for acceptance"),
-            "dev should NOT receive the ryan-addressed pass signal. got:\n{dev_seen}"
+            "dev should NOT receive the owner-addressed pass signal. got:\n{dev_seen}"
         );
 
         designer.close().await;
-        ryan.close().await;
+        owner.close().await;
         dev.close().await;
     });
 }
@@ -251,7 +249,7 @@ fn fail_desk_check_signal_reaches_dev_and_the_owner_but_not_other_peers() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
-        let ryan = TestBridge::connect_with_mock_gh(&bpmux, "ryan", &base_url).await;
+        let owner = TestBridge::connect_with_mock_gh(&bpmux, "owner", &base_url).await;
         let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
         let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
 
@@ -273,7 +271,7 @@ fn fail_desk_check_signal_reaches_dev_and_the_owner_but_not_other_peers() {
         dev.capture
             .wait_for("missing negative test", WAIT_PRESENCE_TIMEOUT)
             .await;
-        ryan.capture
+        owner.capture
             .wait_for("missing negative test", WAIT_PRESENCE_TIMEOUT)
             .await;
 
@@ -281,11 +279,11 @@ fn fail_desk_check_signal_reaches_dev_and_the_owner_but_not_other_peers() {
         let pm_seen = pm.capture.received().join("\n");
         assert!(
             !pm_seen.contains("missing negative test"),
-            "#1733: the owner is unfilterable — dev (addressed) AND ryan (the omniscient owner) both receive the fail signal, but pm (a non-owner not in --to) must NOT — owner-omniscience does not loosen peer scoping. got:\n{pm_seen}"
+            "#1733: the owner is unfilterable — dev (addressed) AND owner (the omniscient owner) both receive the fail signal, but pm (a non-owner not in --to) must NOT — owner-omniscience does not loosen peer scoping. got:\n{pm_seen}"
         );
 
         designer.close().await;
-        ryan.close().await;
+        owner.close().await;
         dev.close().await;
         pm.close().await;
     });
@@ -300,7 +298,7 @@ fn pass_desk_check_rejects_non_designer_callers() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let dev = TestBridge::connect(&bpmux, "dev").await;
-        let ryan = TestBridge::connect(&bpmux, "ryan").await;
+        let owner = TestBridge::connect(&bpmux, "owner").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -317,19 +315,17 @@ fn pass_desk_check_rejects_non_designer_callers() {
         );
 
         tokio::time::sleep(Duration::from_millis(500)).await;
-        let ryan_seen = ryan.capture.received().join("\n");
+        let owner_seen = owner.capture.received().join("\n");
         assert!(
-            !ryan_seen.contains("ready for acceptance"),
-            "rejected pass call should not fire the ryan signal. got:\n{ryan_seen}"
+            !owner_seen.contains("ready for acceptance"),
+            "rejected pass call should not fire the owner signal. got:\n{owner_seen}"
         );
 
         dev.close().await;
-        ryan.close().await;
+        owner.close().await;
     });
 }
 
-/// AC (#213): PM can call accept_story. The signal broadcasts
-/// "accepted by pm" so Ryan sees who closed the story.
 #[test]
 fn accept_story_allows_pm_and_broadcasts_role_attribution() {
     use harness::mock_gh::{issue_json, mock_story_full};

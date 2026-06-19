@@ -9,6 +9,7 @@ const snap = (over: Partial<CiSnapshotWire> & Pick<CiSnapshotWire, 'state'>): Ci
   run_id: 7,
   head_sha: 'abc1234def',
   display_title: 'test commit',
+  url: 'https://github.com/acme/bpmux/actions',
   ...over
 })
 
@@ -54,10 +55,15 @@ describe('CiGlyph — conclusion derivation from mirror.ci.state', () => {
   })
 })
 
-describe('CiGlyph — links to GitHub Actions via a frontend constant (no /api/ci)', () => {
-  test('href + window.open target the canonical actions URL', () => {
+describe('CiGlyph — links to GitHub Actions via the backend-provided snapshot url (no /api/ci)', () => {
+  test('href + window.open target the snapshot actions URL', () => {
     pushCi(snap({ state: 'green' }))
-    expect(render()).toContain('href="https://github.com/RyanDur/bpmux/actions"')
+    expect(render()).toContain('href="https://github.com/acme/bpmux/actions"')
+  })
+
+  test('falls back to github.com when the snapshot carries no url', () => {
+    pushCi(snap({ state: 'green', url: null }))
+    expect(render()).toContain('href="https://github.com"')
   })
 })
 

@@ -73,7 +73,7 @@ async fn reactions_listener_emits_typed_state_delta() {
         message_key: "k1".to_string(),
         emoji: "👍".to_string(),
         count: 2,
-        users: vec!["ryan".to_string(), "dev".to_string()],
+        users: vec!["owner".to_string(), "dev".to_string()],
     }];
     listener.on_changed("broadcast", &agg);
     let payload = drain_state_delta(&mut rx);
@@ -282,9 +282,9 @@ async fn roster_listener_emits_typed_state_delta() {
     let (session, mut rx, _dir) = fresh_session();
     let listener = RosterSessionBroadcaster::new(session);
     let members = vec![RosterMember {
-        routing_id: "sess-ryan".to_string(),
-        name: "ryan".to_string(),
-        identity: "ryan:electron".to_string(),
+        routing_id: "sess-owner".to_string(),
+        name: "owner".to_string(),
+        identity: "owner:electron".to_string(),
         role: RosterRole::Owner,
         presence: Presence::Online,
     }];
@@ -293,7 +293,7 @@ async fn roster_listener_emits_typed_state_delta() {
     match payload {
         StateDeltaPayload::Roster { members } => {
             assert_eq!(members.len(), 1);
-            assert_eq!(members[0].name, "ryan");
+            assert_eq!(members[0].name, "owner");
             assert_eq!(members[0].role, RosterRole::Owner);
             assert_eq!(members[0].presence, Presence::Online);
         }

@@ -164,6 +164,9 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           limit: action.limit
         })
         return
+      case SessionActionType.BoardHydrateRequested:
+        send({ type: 'board_hydrate' })
+        return
       case SessionActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return

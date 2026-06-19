@@ -1,12 +1,3 @@
-// #1127 sister-class helper: TypeScript port of Rust harness/mock_gh.rs
-// (#724 slice 2). Builds GitHub API JSON shapes that octocrab's
-// deserializer accepts + a tiny http.Server harness so Playwright
-// specs can drive bpmux's real GitHubSourceAdapter against an
-// in-process mock GH boundary.
-//
-// Per Ryan 2026-04-30: only octocrab gets test-doubled. The mock
-// serves the GH HTTP boundary; everything inside bpmux runs the
-// production code path.
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import type { AddressInfo } from 'net'
 

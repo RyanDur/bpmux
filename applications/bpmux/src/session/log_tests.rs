@@ -10,13 +10,13 @@ use tokio::sync::broadcast;
 fn appends_and_reads_messages() {
     let dir = TempDir::new().expect("temp dir");
     let msg1 = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "first message".to_string(),
         ts: Utc::now(),
         ..Message::default()
     };
     let msg2 = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "second message".to_string(),
         ts: Utc::now(),
         ..Message::default()
@@ -33,7 +33,7 @@ fn appends_and_reads_messages() {
 fn cloned_session_starts_with_empty_roster() {
     let dir = TempDir::new().expect("temp dir");
     let (tx, _rx) = broadcast::channel(16);
-    let session = Session::new(dir.path().to_path_buf(), "ryan".to_string(), tx);
+    let session = Session::new(dir.path().to_path_buf(), "owner".to_string(), tx);
     session.roster_join("dev:claude-code");
     let cloned = session.clone();
     assert!(
@@ -65,7 +65,7 @@ fn resumes_existing_session() {
     let dir1 = create_session(base.path()).expect("create session");
     assert!(dir1.exists());
     let msg = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "persisted message".to_string(),
         ts: Utc::now(),
         ..Message::default()
@@ -93,7 +93,7 @@ fn dir_session_id_is_held_in_the_dir_minted_once_then_reclaimed_via_a_lightweigh
     let second = read_or_create_dir_session(&dir).expect("reclaim");
     assert_eq!(
         first, second,
-        "the {{id, name}} is HELD in the dir — a second derivation (restart in the same dir) reclaims the same identity, never mints a new one (Ryan's dir-anchor)"
+        "the {{id, name}} is HELD in the dir — a second derivation (restart in the same dir) reclaims the same identity, never mints a new one (owner's dir-anchor)"
     );
 
     assert!(
@@ -130,7 +130,7 @@ fn session_broadcasts_and_reads() {
     let (tx, mut rx) = broadcast::channel(16);
     let session = Session::new(dir.path().to_path_buf(), "test".to_string(), tx);
     let msg = Message {
-        from: "ryan:human".to_string(),
+        from: "owner:human".to_string(),
         text: "via session".to_string(),
         ts: Utc::now(),
         ..Message::default()

@@ -99,7 +99,7 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
         "[Bug] cascade-drain-on-reject".into(),
         StoryState::Accepted,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
-        "ryan".into(),
+        "owner".into(),
     );
     seeded.story_type = StoryType::Bug;
     seeded.is_closed = true;
@@ -113,7 +113,7 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(4690));
     args.insert("reason".into(), serde_json::json!("cascade drain test"));
-    handle_reject_story(&args, "ryan:human", Some(&orch))
+    handle_reject_story(&args, "owner:human", Some(&orch))
         .await
         .unwrap();
 
@@ -151,7 +151,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
         "[Bug] cascade-drain-on-fail-desk-check".into(),
         StoryState::DeskCheck,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
-        "ryan".into(),
+        "owner".into(),
     );
     seeded.story_type = StoryType::Bug;
     adapter.seed_stories(vec![seeded]);
@@ -196,7 +196,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
         "[Bug] rework-after-accept".into(),
         StoryState::Accepted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
-        "ryan".into(),
+        "owner".into(),
     );
     seeded.story_type = StoryType::Bug;
     seeded.is_closed = true;
@@ -210,7 +210,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(469));
     args.insert("reason".into(), serde_json::json!("rework needed"));
-    let result = handle_reject_story(&args, "ryan:human", Some(&orch)).await;
+    let result = handle_reject_story(&args, "owner:human", Some(&orch)).await;
     assert!(result.is_ok(), "reject should succeed: {result:?}");
 
     orch.drain_pending().await.unwrap();
@@ -261,7 +261,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
         "[Bug] reject-from-delivered".into(),
         StoryState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
-        "ryan".into(),
+        "owner".into(),
     );
     seeded.story_type = StoryType::Bug;
     adapter.seed_stories(vec![seeded]);
@@ -274,7 +274,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(470));
     args.insert("reason".into(), serde_json::json!("not done"));
-    handle_reject_story(&args, "ryan:human", Some(&orch))
+    handle_reject_story(&args, "owner:human", Some(&orch))
         .await
         .unwrap();
 

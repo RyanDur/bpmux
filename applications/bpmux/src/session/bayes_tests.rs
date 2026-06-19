@@ -16,8 +16,8 @@ fn msg(from: &str, text: &str) -> Message {
 fn untrained_model_falls_back_to_keyword_classifier() {
     let model = BayesModel::default();
     assert!(!model.is_trained());
-    let m = msg("ryan:human", "you should restate before building");
-    let result = model.classify(&m, "ryan");
+    let m = msg("owner:human", "you should restate before building");
+    let result = model.classify(&m, "owner");
     assert!(result.is_experience());
 }
 
@@ -25,30 +25,30 @@ fn untrained_model_falls_back_to_keyword_classifier() {
 fn trained_model_classifies() {
     let mut model = BayesModel::default();
     let training_data = vec![
-        msg("ryan:human", "you should focus on the problem not the fix"),
-        msg("ryan:human", "you should restate before building anything"),
-        msg("ryan:human", "you should always verify before showing me"),
+        msg("owner:human", "you should focus on the problem not the fix"),
+        msg("owner:human", "you should restate before building anything"),
+        msg("owner:human", "you should always verify before showing me"),
         msg(
-            "ryan:human",
+            "owner:human",
             "why did you pick that approach over the simpler one?",
         ),
         msg(
-            "ryan:human",
+            "owner:human",
             "why are you not available? what is preventing you?",
         ),
-        msg("ryan:human", "do you know why we test through public API?"),
-        msg("ryan:human", "don't do that, it breaks the build process"),
+        msg("owner:human", "do you know why we test through public API?"),
+        msg("owner:human", "don't do that, it breaks the build process"),
         msg(
-            "ryan:human",
+            "owner:human",
             "don't do this just for me, do it for each other",
         ),
-        msg("ryan:human", "remember, quality is the goal in everything"),
+        msg("owner:human", "remember, quality is the goal in everything"),
         msg(
-            "ryan:human",
+            "owner:human",
             "focus on the problem, make sure you understand it",
         ),
         msg(
-            "ryan:human",
+            "owner:human",
             "all design feedback should go through the designer",
         ),
         msg(
@@ -62,24 +62,24 @@ fn trained_model_classifies() {
         msg("dev:claude-code", "I'll fix the filter now"),
         msg("dev:claude-code", "understood, working on it"),
         msg("dev:claude-code", "tests pass, pushing now"),
-        msg("ryan:human", "sounds good, keep going"),
-        msg("ryan:human", "great, continue with work"),
-        msg("ryan:human", "ok"),
-        msg("ryan:human", "yes"),
+        msg("owner:human", "sounds good, keep going"),
+        msg("owner:human", "great, continue with work"),
+        msg("owner:human", "ok"),
+        msg("owner:human", "yes"),
         msg("pm:claude-code", "board updated, three stories in ready"),
         msg("designer:claude-code", "design sign-off on the overlay"),
         msg("pm:claude-code", "#92 accepted and closed"),
-        msg("ryan:human", "accepted"),
+        msg("owner:human", "accepted"),
         msg("pm:claude-code", "#110 filed and in backlog"),
     ];
-    model.train(&training_data, "ryan");
+    model.train(&training_data, "owner");
     assert!(model.is_trained());
 
     let m = msg(
-        "ryan:human",
+        "owner:human",
         "you should always verify before showing me the result",
     );
-    let result = model.classify(&m, "ryan");
+    let result = model.classify(&m, "owner");
     assert!(
         result.is_experience(),
         "expected experience, got {result:?}"

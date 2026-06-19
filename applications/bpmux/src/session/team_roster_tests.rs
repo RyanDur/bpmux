@@ -7,7 +7,7 @@ use tokio::sync::broadcast;
 fn fresh_session() -> Session {
     let dir = tempdir().unwrap().keep();
     let (wake_tx, _wake_rx) = broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
-    Session::new(dir, "ryan".to_string(), wake_tx)
+    Session::new(dir, "owner".to_string(), wake_tx)
 }
 
 #[test]
@@ -24,7 +24,7 @@ fn session_pre_populates_roster_from_seed_file_at_session_dir() {
     let path = dir.join("roster_seed.json");
     std::fs::write(&path, serde_json::to_string(&seed).unwrap()).unwrap();
     let (wake_tx, _) = broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
-    let session = Session::new(dir, "ryan".to_string(), wake_tx);
+    let session = Session::new(dir, "owner".to_string(), wake_tx);
     let snapshot = session.roster_snapshot();
     assert_eq!(
         snapshot,

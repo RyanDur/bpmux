@@ -66,7 +66,7 @@ async fn reactions_action_drives_reducer_and_fires_listener() {
             channel: "broadcast".to_string(),
             message_key: "k1".to_string(),
             emoji: "👍".to_string(),
-            user: "ryan".to_string(),
+            user: "owner".to_string(),
             ts_iso: "t0".to_string(),
         },
     ))
@@ -75,7 +75,7 @@ async fn reactions_action_drives_reducer_and_fires_listener() {
     let agg = orch.reactions_store().aggregated_for_channel("broadcast");
     assert_eq!(agg.len(), 1);
     assert_eq!(agg[0].count, 1);
-    assert_eq!(agg[0].users, vec!["ryan".to_string()]);
+    assert_eq!(agg[0].users, vec!["owner".to_string()]);
 
     let received = rec.received.lock().unwrap();
     assert_eq!(received.len(), 1);
@@ -93,7 +93,7 @@ async fn reactions_toggle_off_clears_and_fires_listener() {
         channel: "broadcast".to_string(),
         message_key: "k1".to_string(),
         emoji: "👍".to_string(),
-        user: "ryan".to_string(),
+        user: "owner".to_string(),
         ts_iso: "t0".to_string(),
     });
     orch.dispatch(toggle.clone()).await;
@@ -118,7 +118,7 @@ async fn reactions_aggregates_count_per_emoji_not_raw_events() {
             ts_iso: "t".to_string(),
         })
     };
-    orch.dispatch(toggle_user("ryan")).await;
+    orch.dispatch(toggle_user("owner")).await;
     orch.dispatch(toggle_user("dev")).await;
     orch.dispatch(toggle_user("designer")).await;
 
@@ -135,9 +135,9 @@ async fn roster_member_upserted_fires_listener() {
 
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
-            routing_id: "sess-ryan".to_string(),
-            name: "ryan".to_string(),
-            identity: "ryan:electron".to_string(),
+            routing_id: "sess-owner".to_string(),
+            name: "owner".to_string(),
+            identity: "owner:electron".to_string(),
             role: RosterRole::Owner,
             presence: Presence::Online,
         },
@@ -182,7 +182,7 @@ async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_pla
     assert_eq!(
         members.len(),
         1,
-        "the default and the set-display are ONE row (same routing-id), not two — the dup in Ryan's screenshot is structurally impossible; got {members:?}"
+        "the default and the set-display are ONE row (same routing-id), not two — the dup in owner's screenshot is structurally impossible; got {members:?}"
     );
     assert_eq!(
         members[0].name, "designer",
@@ -330,7 +330,7 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
         "channel": "broadcast",
         "message_key": "k1",
         "emoji": "👍",
-        "user": "ryan"
+        "user": "owner"
     }))
     .unwrap();
     let response = router
@@ -410,7 +410,7 @@ async fn ws_dispatch_roster_leave_removes_member() {
 #[tokio::test]
 async fn ws_dispatch_roster_join_role_mapping_covers_known_short_names() {
     let cases = [
-        ("ryan:electron", "ryan", RosterRole::Owner),
+        ("owner:electron", "owner", RosterRole::Owner),
         ("dev:claude-code", "dev", RosterRole::Dev),
         ("pm:claude-code", "pm", RosterRole::Pm),
         ("designer:claude-code", "designer", RosterRole::Designer),

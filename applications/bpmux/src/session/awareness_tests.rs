@@ -27,14 +27,14 @@ fn system_leave(name: &str) -> Message {
 
 #[test]
 fn track_agents_adds_on_join() {
-    let mut tracker = AgentTracker::new("ryan");
+    let mut tracker = AgentTracker::new("owner");
     tracker.on_message(&system_join("dev:claude-code"));
     assert_eq!(tracker.connected, vec!["dev"]);
 }
 
 #[test]
 fn track_agents_removes_on_leave() {
-    let mut tracker = AgentTracker::new("ryan");
+    let mut tracker = AgentTracker::new("owner");
     tracker.on_message(&system_join("dev:claude-code"));
     tracker.on_message(&system_join("pm:claude-code"));
     tracker.on_message(&system_leave("dev:claude-code"));
@@ -43,8 +43,8 @@ fn track_agents_removes_on_leave() {
 
 #[test]
 fn track_agents_ignores_owner() {
-    let mut tracker = AgentTracker::new("ryan");
-    tracker.on_message(&system_join("ryan:human"));
+    let mut tracker = AgentTracker::new("owner");
+    tracker.on_message(&system_join("owner:human"));
     assert!(
         tracker.connected.is_empty(),
         "owner should not be tracked as agent"
@@ -53,7 +53,7 @@ fn track_agents_ignores_owner() {
 
 #[test]
 fn track_agents_no_duplicates() {
-    let mut tracker = AgentTracker::new("ryan");
+    let mut tracker = AgentTracker::new("owner");
     tracker.on_message(&system_join("dev:claude-code"));
     tracker.on_message(&system_join("dev:claude-code"));
     assert_eq!(tracker.connected.len(), 1);
@@ -70,7 +70,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
 
 #[test]
 fn classify_log_disabled_by_default_suppresses_log() {
-    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "ryan", false);
+    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "owner", false);
     let msg = chat_msg("dev:claude-code", "this is a decision to ship");
     detector.on_message(&msg, "dev");
     assert!(
@@ -81,7 +81,7 @@ fn classify_log_disabled_by_default_suppresses_log() {
 
 #[test]
 fn classify_log_enabled_fires_on_first_message() {
-    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "ryan", true);
+    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "owner", true);
     let msg = chat_msg("dev:claude-code", "this is a test classification message");
     detector.on_message(&msg, "dev");
     assert!(
@@ -92,7 +92,7 @@ fn classify_log_enabled_fires_on_first_message() {
 
 #[test]
 fn classify_log_rate_limits_rapid_messages() {
-    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "ryan", true);
+    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "owner", true);
     for i in 0..10 {
         let msg = chat_msg("dev:claude-code", &format!("message {i}"));
         detector.on_message(&msg, "dev");
@@ -102,14 +102,14 @@ fn classify_log_rate_limits_rapid_messages() {
 
 #[test]
 fn classify_log_does_not_affect_classification_behavior() {
-    let msg = chat_msg("ryan:human", "don't do that, it breaks the build");
+    let msg = chat_msg("owner:human", "don't do that, it breaks the build");
 
-    let mut detector_a = experience::ExperienceDetector::with_classify_log(&[], "ryan", false);
-    detector_a.on_message(&msg, "ryan");
+    let mut detector_a = experience::ExperienceDetector::with_classify_log(&[], "owner", false);
+    detector_a.on_message(&msg, "owner");
     let has_pending_without = detector_a.has_pending();
 
-    let mut detector_b = experience::ExperienceDetector::with_classify_log(&[], "ryan", true);
-    detector_b.on_message(&msg, "ryan");
+    let mut detector_b = experience::ExperienceDetector::with_classify_log(&[], "owner", true);
+    detector_b.on_message(&msg, "owner");
     let has_pending_with = detector_b.has_pending();
 
     assert_eq!(
@@ -131,7 +131,7 @@ fn make_session() -> (Arc<Session>, broadcast::Receiver<Message>, TempDir) {
     let (tx, rx) = broadcast::channel(64);
     let session = Arc::new(Session::new(
         dir.path().to_path_buf(),
-        "ryan".to_string(),
+        "owner".to_string(),
         tx,
     ));
     (session, rx, dir)
@@ -149,12 +149,12 @@ fn drain_broadcasts(rx: &mut broadcast::Receiver<Message>) -> Vec<Message> {
 fn flush_excludes_recipient_own_messages() {
     let (session, mut rx, _dir) = make_session();
 
-    let mut agents = AgentTracker::new("ryan");
+    let mut agents = AgentTracker::new("owner");
     agents.on_message(&system_join("dev:claude-code"));
     agents.on_message(&system_join("designer:claude-code"));
     agents.on_message(&system_join("pm:claude-code"));
 
-    let mut detector = experience::ExperienceDetector::new(&[], "ryan");
+    let mut detector = experience::ExperienceDetector::new(&[], "owner");
     detector.on_message(
         &chat_msg(
             "pm:claude-code",
@@ -219,11 +219,11 @@ fn flush_excludes_recipient_own_messages() {
 #[test]
 fn flush_skips_recipients_with_only_own_experiences() {
     let (session, mut rx, _dir) = make_session();
-    let mut agents = AgentTracker::new("ryan");
+    let mut agents = AgentTracker::new("owner");
     agents.on_message(&system_join("pm:claude-code"));
     agents.on_message(&system_join("dev:claude-code"));
 
-    let mut detector = experience::ExperienceDetector::new(&[], "ryan");
+    let mut detector = experience::ExperienceDetector::new(&[], "owner");
     detector.on_message(
         &chat_msg(
             "pm:claude-code",
@@ -253,7 +253,7 @@ fn nudge_text_does_not_classify_as_experience() {
         "somebody:else",
         "📝 3 candidate moments from recent chat. Pointers, not content to copy — reflect through your own role's lens and save your own framing if any apply:\n  1. [from dev] test preview\nCall save_lesson(topic, lesson) only for durable rules in your own words.",
     );
-    let class = super::classifier::classify(&nudge_msg, "ryan");
+    let class = super::classifier::classify(&nudge_msg, "owner");
     assert!(
         !class.is_experience(),
         "reworded nudge text must not classify as experience, got {class:?}"
@@ -264,21 +264,21 @@ fn nudge_text_does_not_classify_as_experience() {
 fn bayes_classify_returns_routine_for_bpmux_sender() {
     let mut model = BayesModel::default();
     let training = vec![
-        chat_msg("ryan:human", "don't do that, it breaks the build"),
+        chat_msg("owner:human", "don't do that, it breaks the build"),
         chat_msg("dev:claude-code", "my bad, fixed"),
         chat_msg(
             "pm:claude-code",
             "some routine coordination about stories today",
         ),
     ];
-    model.train(&training, "ryan");
+    model.train(&training, "owner");
     assert!(model.is_trained());
 
     let bpmux_msg = chat_msg(
         "bpmux",
         "3 candidate moments from recent chat — don't do that, my bad",
     );
-    assert_eq!(model.classify(&bpmux_msg, "ryan"), MessageClass::Routine);
+    assert_eq!(model.classify(&bpmux_msg, "owner"), MessageClass::Routine);
 }
 
 #[test]
@@ -286,11 +286,11 @@ fn bayes_classify_returns_routine_for_non_chat_type() {
     let mut model = BayesModel::default();
     model.train(
         &[
-            chat_msg("ryan:human", "don't do that"),
+            chat_msg("owner:human", "don't do that"),
             chat_msg("dev:claude-code", "my bad"),
             chat_msg("pm:claude-code", "coordination"),
         ],
-        "ryan",
+        "owner",
     );
     assert!(model.is_trained());
 
@@ -301,14 +301,14 @@ fn bayes_classify_returns_routine_for_non_chat_type() {
         message_type: MessageType::System,
         ..Message::default()
     };
-    assert_eq!(model.classify(&sys_msg, "ryan"), MessageClass::Routine);
+    assert_eq!(model.classify(&sys_msg, "owner"), MessageClass::Routine);
 }
 
 #[test]
 fn handoff_nudge_suppressed_when_recipient_already_responded() {
     let (session, mut rx, _dir) = make_session();
 
-    let mut agents = AgentTracker::new("ryan");
+    let mut agents = AgentTracker::new("owner");
     agents.on_message(&system_join("designer:claude-code"));
     agents.on_message(&system_join("dev:claude-code"));
 
@@ -319,7 +319,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
     let _ = session.broadcast(&handoff_msg);
 
     let mut tracker = HandoffTracker::new();
-    tracker.on_message(&handoff_msg, "dev", &agents, "ryan");
+    tracker.on_message(&handoff_msg, "dev", &agents, "owner");
     assert!(
         tracker.is_pending(),
         "precondition: handoff should be detected and pending"
@@ -350,7 +350,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
 #[test]
 fn handoff_nudge_fires_when_recipient_silent() {
     let (session, mut rx, _dir) = make_session();
-    let mut agents = AgentTracker::new("ryan");
+    let mut agents = AgentTracker::new("owner");
     agents.on_message(&system_join("designer:claude-code"));
     agents.on_message(&system_join("dev:claude-code"));
 
@@ -361,7 +361,7 @@ fn handoff_nudge_fires_when_recipient_silent() {
     let _ = session.broadcast(&handoff_msg);
 
     let mut tracker = HandoffTracker::new();
-    tracker.on_message(&handoff_msg, "dev", &agents, "ryan");
+    tracker.on_message(&handoff_msg, "dev", &agents, "owner");
     assert!(tracker.is_pending());
 
     let _ = drain_broadcasts(&mut rx);

@@ -1,14 +1,3 @@
-//! #724: read-side fixture-seed test using the httpmock pattern
-//! (only octocrab is mocked; real GitHubSourceAdapter + canonical
-//! BoardStore + RPC + state-decode all exercised). Supersedes the
-//! pre-#724 BPMUX_BOARD_FIXTURE+InMemorySourceAdapter substrate-bypass
-//! shape per Ryan's 2026-04-30 directive: only octocrab gets mocked.
-//!
-//! Verifies that when the mocked GH list response includes a story
-//! with body content, the canonical store ingests both metadata + body
-//! through the real adapter cascade so get_story surfaces the body
-//! without a separate fetch.
-
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use crate::harness;

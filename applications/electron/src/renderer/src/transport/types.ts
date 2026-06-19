@@ -32,6 +32,7 @@ export interface CiSnapshotWire {
   head_sha?: string | null
   display_title?: string | null
   last_successful_poll_at?: string | null
+  url?: string | null
 }
 
 export interface DroppedEventWire {
@@ -227,6 +228,10 @@ export interface ClientHistoryPage {
   limit: number
 }
 
+export interface ClientBoardHydrate {
+  type: 'board_hydrate'
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -239,6 +244,7 @@ export type ClientMessage =
   | ClientTimelineHydrate
   | ClientHistoryHydrate
   | ClientHistoryPage
+  | ClientBoardHydrate
 
 export interface ChatMessage {
   id: string

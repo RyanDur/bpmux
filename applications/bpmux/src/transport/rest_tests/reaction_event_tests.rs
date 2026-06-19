@@ -23,10 +23,10 @@ use crate::transport::rest::*;
 
 #[test]
 fn build_reaction_event_text_names_sender_from_message_key() {
-    let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
+    let body = reaction_toggle("owner", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
     let text = build_reaction_event_text_with_excerpt(&body, true, None);
     assert!(
-        text.contains("ryan") && text.contains("👍") && text.contains("dev"),
+        text.contains("owner") && text.contains("👍") && text.contains("dev"),
         "text should name reactor + emoji + sender: {text}"
     );
     assert!(
@@ -53,9 +53,9 @@ fn build_reaction_event_text_unreact_uses_unreacted_verb() {
 
 #[test]
 fn build_reaction_event_text_falls_back_without_message_key_shape() {
-    let body = reaction_toggle("ryan", "✨", "malformed-key");
+    let body = reaction_toggle("owner", "✨", "malformed-key");
     let text = build_reaction_event_text_with_excerpt(&body, true, None);
-    assert!(text.contains("ryan") && text.contains("✨"));
+    assert!(text.contains("owner") && text.contains("✨"));
     assert!(
         !text.contains("'s message"),
         "no sender context when key is malformed: {text}"
@@ -64,7 +64,7 @@ fn build_reaction_event_text_falls_back_without_message_key_shape() {
 
 #[test]
 fn build_reaction_event_text_strips_transport_suffix_from_sender() {
-    let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|designer:claude-code");
+    let body = reaction_toggle("owner", "👍", "2026-04-23T11:30:00Z|designer:claude-code");
     let text = build_reaction_event_text_with_excerpt(&body, true, None);
     assert!(
         text.contains("designer") && !text.contains(":claude-code"),

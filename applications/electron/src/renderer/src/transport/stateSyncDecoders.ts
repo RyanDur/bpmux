@@ -17,7 +17,8 @@ const ciSnapshot: D.Decoder<CiSnapshotWire> = D.object({
     run_id: D.nullable(D.number),
     head_sha: D.nullable(D.string),
     display_title: D.nullable(D.string),
-    last_successful_poll_at: D.nullable(D.string)
+    last_successful_poll_at: D.nullable(D.string),
+    url: D.nullable(D.string)
   }
 })
 

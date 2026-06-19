@@ -2,61 +2,54 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
 const MOCK_MESSAGES = [
   {
-    id: 'm1',
     from: 'designer:claude-code',
     text: 'First message from designer — avatar + role name visible here.',
     ts: '2026-04-22T15:00:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   },
   {
-    id: 'm2',
     from: 'designer:claude-code',
     text: 'Second message from same sender within 5 minutes — should group (no avatar, no header).',
     ts: '2026-04-22T15:02:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   },
   {
-    id: 'm3',
     from: 'designer:claude-code',
     text: 'Third consecutive — still grouped.',
     ts: '2026-04-22T15:03:30Z',
-    messageType: 'chat'
+    message_type: 'chat'
   },
   {
-    id: 'm4',
     from: 'dev:claude-code',
     text: 'Dev speaks — breaks the group, new avatar + header.',
     ts: '2026-04-22T15:05:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   },
   {
-    id: 'm5',
     from: 'pm:claude-code',
-    text: 'PM addressing ryan directly — should get left-border accent.',
+    text: 'PM addressing owner directly — should get left-border accent.',
     ts: '2026-04-22T15:06:00Z',
-    messageType: 'chat',
-    addressee: 'ryan'
+    message_type: 'chat',
+    addressee: 'owner'
   },
   {
-    id: 'm6',
-    from: 'ryan:human',
-    text: 'Ryan speaks — filled circle avatar instead of rounded square.',
+    from: 'owner:human',
+    text: 'owner speaks — filled circle avatar instead of rounded square.',
     ts: '2026-04-22T15:07:00Z',
-    messageType: 'chat'
+    message_type: 'chat'
   },
   {
-    id: 'm7',
     from: 'dev:claude-code',
     text: 'Message addressed to pm (not me) — body should be dimmed.',
     ts: '2026-04-22T15:08:00Z',
-    messageType: 'chat',
+    message_type: 'chat',
     addressee: 'pm'
   }
 ]
@@ -65,17 +58,9 @@ const launchAndSeed = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-'))
-  const { app } = await launchIsolatedElectron({ sessionBase })
+  const { app } = await launchIsolatedElectron({ sessionBase, seedMessages: MOCK_MESSAGES })
   const win = await app.firstWindow()
-  await win.route('**/api/messages*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_MESSAGES)
-    })
-  })
-  // Trigger a reload so the fixture is consumed on the first fetch.
-  await win.reload()
+  await waitForMessagesLoaded(win, 'First message from designer')
   return { app }
 }
 
@@ -106,7 +91,7 @@ test.describe('desk-check 347+348', () => {
     const avatars = chat.avatars()
     const avatarCount = await avatars.count()
     console.log(
-      `#348 AC1+AC2: ${avatarCount} avatars render for 7 messages (designer-grouped = 1 anchor; dev + pm + ryan + dev(to-pm) = 4 more ⇒ expect 5)`
+      `#348 AC1+AC2: ${avatarCount} avatars render for 7 messages (designer-grouped = 1 anchor; dev + pm + owner + dev(to-pm) = 4 more ⇒ expect 5)`
     )
 
     for (let i = 0; i < avatarCount; i++) {

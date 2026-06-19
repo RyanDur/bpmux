@@ -1,38 +1,52 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
-import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { launchIsolatedWithWindow, launchWithMockGh } from './helpers/launch'
+import { seedTeamVerdicts } from './helpers/seed-evidence'
+import {
+  setupCurrentIterationViaRpc,
+  addStoryToIterationViaRpc,
+  type RpcFn
+} from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 import { ChatPage } from './pages/chatPage'
 import { DrillInPage } from './pages/drillInPage'
 
-// Deterministic board fixture — one story per state we actively
-// exercise. `delivered` covers the Accept/Reject owner path; `ready`
-// covers default-visible list rendering.
-const MOCK_BOARD = {
-  fetched_at: '2026-04-21T00:00:00Z',
-  stories: [
-    mockCurrentIteration('AppSpec', '2026-04-18T12:00:00Z'),
+const createStory = async (rpc: RpcFn, title: string): Promise<number> => {
+  const resp = await rpc(
+    'create_story',
     {
-      number: 111,
-      title: 'Ready story under test',
-      state: 'ready',
-      labels: ['Feature', 'ready'],
-      assignees: ['dev'],
-      created_at: '2026-04-18T12:00:00Z',
-      body: 'Test body for #111',
-      ...inMockCurrentIteration(1)
+      title,
+      user_job: `App-spec fixture: ${title}.`,
+      observation_falsifier: 'reject if the board does not render this fixture row',
+      acceptance_test_path: 'applications/electron/tests/app.spec.ts'
     },
-    {
-      number: 222,
-      title: 'Delivered story awaiting accept',
-      state: 'delivered',
-      labels: ['Feature'],
-      assignees: ['dev'],
-      created_at: '2026-04-19T12:00:00Z',
-      body: 'Test body for #222',
-      ...inMockCurrentIteration(2)
-    }
-  ]
+    'pm'
+  )
+  expect(resp.status).toBe(200)
+  const json = (await resp.json()) as { message?: string }
+  const number = Number(json.message?.match(/#(\d+)/)?.[1])
+  expect(number).toBeGreaterThan(0)
+  return number
+}
+
+const driveToDelivered = async (rpc: RpcFn, number: number): Promise<void> => {
+  const startResp = await rpc('start_story', {
+    number,
+    pickup_paraphrase: 'Driving to delivered so the Accept/Reject path is reachable.',
+    falsifier_reframing: 'reject if start_story does not move story to in-progress'
+  })
+  expect(startResp.status).toBe(200)
+  const deliverResp = await rpc('deliver_story', {
+    number,
+    verified_observation: 'Drove deliver so the owner-accept buttons render.'
+  })
+  expect(deliverResp.status).toBe(200)
+  await seedTeamVerdicts(rpc, number, ['designer'])
+  const passResp = await rpc(
+    'pass_desk_check',
+    { number, acceptor: 'owner', would_file_bug: false },
+    'designer'
+  )
+  expect(passResp.status).toBe(200)
 }
 
 test('launches + connects + renders chat', async () => {
@@ -46,29 +60,36 @@ test('launches + connects + renders chat', async () => {
 })
 
 test('board renders stories, opens drill-in, shows Accept for delivered', async () => {
-  const { app, win } = await launchIsolatedWithWindow()
+  const { app, win, mockGh, rpc } = await launchWithMockGh()
   try {
-    await win.route('**/api/board', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_BOARD)
-      })
-    })
-    await win.reload()
-
     const board = new BoardPage(win)
     const drillIn = new DrillInPage(win)
-    await expect(board.region()).toBeVisible()
-    await expect(board.storyRow(111)).toBeVisible()
-    await expect(board.storyRow(222)).toBeVisible()
+    await expect(new ChatPage(win).region()).toBeVisible()
 
-    await board.openStory(222)
+    const readyNumber = await createStory(rpc, '[Feature] Ready story under test')
+    const deliveredNumber = await createStory(rpc, '[Feature] Delivered story awaiting accept')
+
+    const iterNumber = await setupCurrentIterationViaRpc(rpc, readyNumber, 'AppSpec')
+    await addStoryToIterationViaRpc(rpc, deliveredNumber, iterNumber, 2)
+    await driveToDelivered(rpc, deliveredNumber)
+
+    await win.reload()
+    await expect(board.region()).toBeVisible()
+
+    await board.openTab('Plan')
+    await expect(board.storyRow(readyNumber)).toBeVisible()
+
+    await board.openTab('Now')
+    await board.openColumn('Acceptance')
+    await expect(board.storyRow(deliveredNumber)).toBeVisible()
+
+    await board.openStory(deliveredNumber)
     await expect(drillIn.panel()).toBeVisible()
 
     await expect(drillIn.acceptButton()).toBeVisible()
     await expect(drillIn.rejectButton()).toBeVisible()
   } finally {
     await app.close()
+    await mockGh.close()
   }
 })

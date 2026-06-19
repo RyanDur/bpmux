@@ -25,19 +25,19 @@ fn three_job_workflow_returns_per_job_records_with_all_fields() {
             "test",
             "failure",
             Some(120_000),
-            "https://github.com/RyanDur/bpmux/actions/runs/1/job/100",
+            "https://github.com/acme/bpmux/actions/runs/1/job/100",
         ),
         job(
             "build-bpmux",
             "success",
             Some(90_000),
-            "https://github.com/RyanDur/bpmux/actions/runs/1/job/101",
+            "https://github.com/acme/bpmux/actions/runs/1/job/101",
         ),
         job(
             "playwright-e2e",
             "success",
             Some(300_000),
-            "https://github.com/RyanDur/bpmux/actions/runs/1/job/102",
+            "https://github.com/acme/bpmux/actions/runs/1/job/102",
         ),
     ];
     let response = build_ci_job_status_response(1, jobs, false);
@@ -114,9 +114,7 @@ fn verbose_flag_bypasses_token_economy_budget() {
                 &format!("playwright-shard-{i}-of-20"),
                 "success",
                 Some(180_000),
-                &format!(
-                    "https://github.com/RyanDur/bpmux/actions/runs/9999999999/job/123456789{i}"
-                ),
+                &format!("https://github.com/acme/bpmux/actions/runs/9999999999/job/123456789{i}"),
             )
         })
         .collect();

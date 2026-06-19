@@ -87,7 +87,7 @@ test.describe('#382 notification gating — real-backend matrix', () => {
             body: JSON.stringify({
               from: 'pm',
               text: 'focused-DM-target',
-              to: ['ryan']
+              to: ['owner']
             })
           })
         },
@@ -125,7 +125,7 @@ test.describe('#382 notification gating — real-backend matrix', () => {
             body: JSON.stringify({
               from: 'pm',
               text: 'unfocused-DM-target',
-              to: ['ryan']
+              to: ['owner']
             })
           })
         },

@@ -92,11 +92,11 @@ mod tests {
     #[test]
     fn is_reserved_display_blocks_the_owner_identity_but_allows_agent_roles() {
         assert!(
-            is_reserved_display("ryan"),
+            is_reserved_display("owner"),
             "an agent must never be able to present as the owner — set_name/register to the owner identity is rejected (the owner is a human, never an agent)"
         );
         assert!(
-            is_reserved_display("ryan:electron"),
+            is_reserved_display("owner:electron"),
             "the reservation is short-name based — a full identity still resolves to the owner role"
         );
         assert!(

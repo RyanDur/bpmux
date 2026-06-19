@@ -7,7 +7,7 @@ const { liveHandlers } = vi.hoisted(() => ({
 }))
 
 vi.mock('../transport/session', () => ({
-  RENDERER_IDENTITY: 'ryan',
+  RENDERER_IDENTITY: 'owner',
   subscribeLiveMessages: (h: (m: ChatMessage) => void) => {
     liveHandlers.push(h)
     return () => {
@@ -47,7 +47,7 @@ describe('#382 isRelevant — notification gating matrix', () => {
   })
 
   it('AC3: group DM with to including self + others → relevant', () => {
-    expect(isRelevant(baseMsg({ from: 'ryan', to: ['dev', 'designer'] }), SELF)).toBe(true)
+    expect(isRelevant(baseMsg({ from: 'owner', to: ['dev', 'designer'] }), SELF)).toBe(true)
   })
 
   it('AC3: DM with to=[other] (not self) → not relevant', () => {
@@ -64,16 +64,16 @@ describe('#382 isRelevant — notification gating matrix', () => {
 
   it('AC5: accept_story signal (addressee=dev, viewer=dev) → relevant', () => {
     const msg = baseMsg({
-      from: 'ryan:electron',
+      from: 'owner:electron',
       addressee: 'dev',
-      text: '#382 accepted by ryan. pick the next story from the ready queue'
+      text: '#382 accepted by owner. pick the next story from the ready queue'
     })
     expect(isRelevant(msg, SELF)).toBe(true)
   })
 
   it('AC5: reject_story signal (addressee=dev, to=[dev]) → relevant', () => {
     const msg = baseMsg({
-      from: 'ryan:electron',
+      from: 'owner:electron',
       addressee: 'dev',
       to: ['dev'],
       text: '#382 rejected: needs rework. fix and re-deliver'

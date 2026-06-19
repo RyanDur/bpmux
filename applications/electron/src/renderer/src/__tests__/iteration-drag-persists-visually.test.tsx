@@ -13,7 +13,7 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
     rendered = null
   })
 
-  it('after drop, the rendered member order reflects the new position without waiting for backend state-delta — falsifier for the snap-back bug Ryan flagged at 04:18 UTC', async () => {
+  it('after drop, the rendered member order reflects the new position without waiting for backend state-delta — falsifier for the snap-back bug owner flagged at 04:18 UTC', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`

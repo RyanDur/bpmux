@@ -1,14 +1,3 @@
-//! Agent-side E2E test for `reject_story` MCP tool (#476 Phase 1
-//! backfill — gate-fire archetype, multi-role variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — reject_story applicability =
-//! {agent: yes, human: yes (Electron reject affordance), external: no}.
-//! This test covers ONLY agent-side; human-side follows.
-//!
-//! reject_story allows ryan / pm / designer / dev role-set per current
-//! implementation (substrate-gate Feature #479 narrows this in future).
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

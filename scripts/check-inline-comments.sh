@@ -45,7 +45,7 @@ violations=$(
         else if (stripped ~ /^\/\//) cls = "//"
         else if (stripped ~ /^\/\*/) cls = "/* */"
         if (cls != "") {
-            printf "%s:%d: comment class \047%s\047 detected — bpmux is application not library; build understanding into code per Ryan-canon 2026-05-18\n", file, line, cls
+            printf "%s:%d: comment class \047%s\047 detected — bpmux is application not library; build understanding into code per owner-canon 2026-05-18\n", file, line, cls
         }
         line++
         next

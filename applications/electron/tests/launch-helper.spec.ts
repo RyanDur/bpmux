@@ -25,7 +25,7 @@ test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
     const fakeEnv: NodeJS.ProcessEnv = {
       GH_TOKEN: 'real-secret-token',
       GITHUB_TOKEN: 'another-real-token',
-      BPMUX_REPO: 'RyanDur/bpmux',
+      BPMUX_REPO: 'acme/bpmux',
       BPMUX_GH_BASE_URL: 'https://api.github.com',
       BPMUX_SESSION_BASE: '/tmp/leaked',
       RANDOM_OTHER: 'leaked',

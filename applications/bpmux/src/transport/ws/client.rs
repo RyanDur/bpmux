@@ -7,7 +7,8 @@ use super::client_handlers::{
     handle_pty_input, handle_pty_subscribe, handle_reaction_toggle, handle_send,
 };
 use super::hydrate::{
-    handle_comments_hydrate, handle_history_hydrate, handle_history_page, handle_timeline_hydrate,
+    handle_board_hydrate, handle_comments_hydrate, handle_history_hydrate, handle_history_page,
+    handle_timeline_hydrate,
 };
 use super::{MAX_MESSAGE_SIZE, message_size_ok, send_json};
 use crate::session;
@@ -21,6 +22,7 @@ pub(crate) struct ClientCtx<'a> {
     pub pty_registry: &'a crate::room::LivePtyRegistry,
     pub pty_tx: &'a tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
     pub tracker: &'a crate::transport::rest::TrackerHandle,
+    pub test_refresh: &'a crate::server::TestRefreshHandle,
     pub reply_tx: &'a tokio::sync::mpsc::UnboundedSender<ServerMessage>,
 }
 
@@ -124,6 +126,9 @@ pub(crate) async fn handle_client_message(
             limit,
         }) => {
             handle_history_page(ctx, tx, request_id, before, limit).await?;
+        }
+        Ok(ClientMessage::BoardHydrate) => {
+            handle_board_hydrate(ctx).await?;
         }
         Err(e) => {
             send_json(
