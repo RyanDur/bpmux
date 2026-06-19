@@ -4,6 +4,9 @@ mod closure;
 mod creation;
 pub(crate) mod helpers;
 mod metadata;
+mod metadata_epic;
+mod metadata_iteration;
+mod metadata_iteration_readiness;
 mod reorder;
 mod signals;
 mod transition;
@@ -26,11 +29,13 @@ pub(crate) use helpers::{ALL_STATE_LABELS, require_role, stale_workflow_labels};
 pub(crate) use helpers::{
     KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
-pub(crate) use metadata::{
-    handle_add_story_to_iteration, handle_close_pre_pickup_review, handle_comment_on_story,
-    handle_designate_current_iteration, handle_dev_ok_iteration, handle_edit_story,
-    handle_label_story, handle_map_iteration_to_outcome, handle_set_parent_epic,
-    handle_unset_parent_epic,
+pub(crate) use metadata::{handle_comment_on_story, handle_edit_story, handle_label_story};
+pub(crate) use metadata_epic::{handle_set_parent_epic, handle_unset_parent_epic};
+pub(crate) use metadata_iteration::{
+    handle_add_story_to_iteration, handle_map_iteration_to_outcome,
+};
+pub(crate) use metadata_iteration_readiness::{
+    handle_close_pre_pickup_review, handle_designate_current_iteration, handle_dev_ok_iteration,
 };
 pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
 #[cfg(test)]
