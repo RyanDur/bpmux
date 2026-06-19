@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchTwoElectronsSharedBackend } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member retag visible in both', () => {
   test('retag member from iteration A to iteration B in instance A propagates to instance B', async () => {
@@ -51,28 +52,21 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
       })
       expect(seedRes.ok).toBe(true)
 
-      await win1.locator('[data-test="board-tab-plan"]').click()
-      await win2.locator('[data-test="board-tab-plan"]').click()
+      const board1 = new BoardPage(win1)
+      const board2 = new BoardPage(win2)
+      await board1.openTab('Plan')
+      await board2.openTab('Plan')
 
-      const volansSelector = '[data-test="board-iteration-9601"]'
-      const craterSelector = '[data-test="board-iteration-9602"]'
-      await expect(win1.locator(volansSelector)).toBeVisible({ timeout: 15_000 })
-      await expect(win2.locator(craterSelector)).toBeVisible({ timeout: 15_000 })
+      await expect(board1.iterationGrip(9601)).toBeVisible({ timeout: 15_000 })
+      await expect(board2.iterationGrip(9602)).toBeVisible({ timeout: 15_000 })
 
-      const memberInContainer = async (
-        page: typeof win1,
-        containerSelector: string
-      ): Promise<boolean> => {
-        return await page.evaluate((sel) => {
-          const container = document.querySelector(sel)
-          return container?.querySelector('[data-iteration-member="9611"]') !== null
-        }, containerSelector)
-      }
+      const memberIn = async (board: BoardPage, iteration: number): Promise<boolean> =>
+        (await board.memberOrder(iteration)).includes(9611)
 
-      expect(await memberInContainer(win1, volansSelector)).toBe(true)
-      expect(await memberInContainer(win1, craterSelector)).toBe(false)
-      expect(await memberInContainer(win2, volansSelector)).toBe(true)
-      expect(await memberInContainer(win2, craterSelector)).toBe(false)
+      expect(await memberIn(board1, 9601)).toBe(true)
+      expect(await memberIn(board1, 9602)).toBe(false)
+      expect(await memberIn(board2, 9601)).toBe(true)
+      expect(await memberIn(board2, 9602)).toBe(false)
 
       const mutateRes = await fetch(`${apiBase}/api/stories/9611/labels`, {
         method: 'POST',
@@ -88,20 +82,14 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
       expect(mutateRes.ok).toBe(true)
 
       await expect
-        .poll(async () => await memberInContainer(win1, craterSelector), {
-          timeout: 15_000,
-          intervals: [200]
-        })
+        .poll(() => memberIn(board1, 9602), { timeout: 15_000, intervals: [200] })
         .toBe(true)
       await expect
-        .poll(async () => await memberInContainer(win2, craterSelector), {
-          timeout: 15_000,
-          intervals: [200]
-        })
+        .poll(() => memberIn(board2, 9602), { timeout: 15_000, intervals: [200] })
         .toBe(true)
 
-      expect(await memberInContainer(win1, volansSelector)).toBe(false)
-      expect(await memberInContainer(win2, volansSelector)).toBe(false)
+      expect(await memberIn(board1, 9601)).toBe(false)
+      expect(await memberIn(board2, 9601)).toBe(false)
     } finally {
       await cleanup()
     }

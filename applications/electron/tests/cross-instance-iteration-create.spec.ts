@@ -1,14 +1,16 @@
 import { test, expect } from '@playwright/test'
 import { launchTwoElectronsSharedBackend } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('#1297 Scenario 3 — create iteration in one instance is visible in the other', () => {
   test('seed_stories iteration in instance A propagates to instance B via WS state-delta + BOARD_INVALIDATE', async () => {
     const { win1, win2, apiBase, authToken, cleanup } = await launchTwoElectronsSharedBackend()
     try {
-      const iterSelector = '[data-test="board-iteration-9501"]'
+      const board1 = new BoardPage(win1)
+      const board2 = new BoardPage(win2)
 
-      await expect(win1.locator(iterSelector)).toHaveCount(0)
-      await expect(win2.locator(iterSelector)).toHaveCount(0)
+      await expect(board1.iterationGrip(9501)).toHaveCount(0)
+      await expect(board2.iterationGrip(9501)).toHaveCount(0)
 
       const seedRes = await fetch(`${apiBase}/api/test/seed_stories`, {
         method: 'POST',
@@ -36,20 +38,18 @@ test.describe('#1297 Scenario 3 — create iteration in one instance is visible 
       })
       expect(seedRes.ok).toBe(true)
 
-      await win1.locator('[data-test="board-tab-plan"]').click()
-      await win2.locator('[data-test="board-tab-plan"]').click()
+      await board1.openTab('Plan')
+      await board2.openTab('Plan')
 
-      await expect(win1.locator(iterSelector)).toBeVisible({ timeout: 15_000 })
-      await expect(win2.locator(iterSelector)).toBeVisible({ timeout: 15_000 })
+      await expect(board1.iterationGrip(9501)).toBeVisible({ timeout: 15_000 })
+      await expect(board2.iterationGrip(9501)).toBeVisible({ timeout: 15_000 })
 
-      const titleIn = async (page: typeof win1): Promise<string | null> => {
-        return await page.evaluate(() => {
-          const el = document.querySelector('[data-test="board-iteration-9501"]')
-          return el?.textContent?.includes('Iteration Pavo') ? 'Iteration Pavo' : null
-        })
-      }
-      expect(await titleIn(win1)).toBe('Iteration Pavo')
-      expect(await titleIn(win2)).toBe('Iteration Pavo')
+      await expect(
+        board1.iterationRow(9501).getByText('Iteration Pavo', { exact: true })
+      ).toBeVisible()
+      await expect(
+        board2.iterationRow(9501).getByText('Iteration Pavo', { exact: true })
+      ).toBeVisible()
     } finally {
       await cleanup()
     }

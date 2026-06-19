@@ -60,6 +60,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
       <details
         className="board-iterations-section board-iterations-section--active"
         data-test="board-iterations-section-active-planned"
+        aria-label="Active + Planned iterations"
         open={sectionOpen['active-planned']}
         onToggle={(event) => toggleSection('active-planned', event.currentTarget.open)}
       >
@@ -104,6 +105,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
       <details
         className="board-iterations-section board-iterations-section--closed"
         data-test="board-iterations-section-closed"
+        aria-label="Closed iterations"
         open={sectionOpen.closed}
         onToggle={(event) => toggleSection('closed', event.currentTarget.open)}
       >

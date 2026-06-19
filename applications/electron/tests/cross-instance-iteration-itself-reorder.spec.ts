@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchTwoElectronsSharedBackend } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('#1339 Scenario 3 — iteration-itself reorder cross-instance: container order visible in both', () => {
   test('iteration-order label mutation in instance A propagates container order in instance B', async () => {
@@ -46,25 +47,16 @@ test.describe('#1339 Scenario 3 — iteration-itself reorder cross-instance: con
       })
       expect(seedRes.ok).toBe(true)
 
-      await win1.locator('[data-test="board-tab-plan"]').click()
-      await win2.locator('[data-test="board-tab-plan"]').click()
-
-      const orderIn = async (page: typeof win1): Promise<number[]> => {
-        return await page.evaluate(() => {
-          const list = document.querySelector('.board-iterations-list')
-          if (!list) return []
-          return Array.from(list.querySelectorAll('[data-test^="board-iteration-"]'))
-            .map((el) => el.getAttribute('data-test'))
-            .filter((t): t is string => t !== null && /^board-iteration-\d+$/.test(t))
-            .map((t) => Number(t.replace('board-iteration-', '')))
-        })
-      }
+      const board1 = new BoardPage(win1)
+      const board2 = new BoardPage(win2)
+      await board1.openTab('Plan')
+      await board2.openTab('Plan')
 
       await expect
-        .poll(async () => await orderIn(win1), { timeout: 15_000, intervals: [200] })
+        .poll(() => board1.iterationOrder(), { timeout: 15_000, intervals: [200] })
         .toEqual([9701, 9702])
       await expect
-        .poll(async () => await orderIn(win2), { timeout: 15_000, intervals: [200] })
+        .poll(() => board2.iterationOrder(), { timeout: 15_000, intervals: [200] })
         .toEqual([9701, 9702])
 
       const mutateRes = await fetch(`${apiBase}/api/stories/9702/labels`, {
@@ -81,10 +73,10 @@ test.describe('#1339 Scenario 3 — iteration-itself reorder cross-instance: con
       expect(mutateRes.ok).toBe(true)
 
       await expect
-        .poll(async () => await orderIn(win1), { timeout: 15_000, intervals: [200] })
+        .poll(() => board1.iterationOrder(), { timeout: 15_000, intervals: [200] })
         .toEqual([9702, 9701])
       await expect
-        .poll(async () => await orderIn(win2), { timeout: 15_000, intervals: [200] })
+        .poll(() => board2.iterationOrder(), { timeout: 15_000, intervals: [200] })
         .toEqual([9702, 9701])
     } finally {
       await cleanup()

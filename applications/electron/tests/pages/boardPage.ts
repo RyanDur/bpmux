@@ -79,4 +79,24 @@ export class BoardPage {
       )
     )
   }
+
+  async iterationOrder(): Promise<number[]> {
+    return this.win.evaluate(() =>
+      Array.from(document.querySelectorAll('[aria-label^="Reorder iteration #"]'))
+        .map((el) => (el.getAttribute('aria-label') ?? '').match(/Reorder iteration #(\d+)/))
+        .filter((m): m is RegExpMatchArray => m !== null)
+        .map((m) => Number(m[1]))
+    )
+  }
+
+  closedIterationsSection(): Locator {
+    return this.win.getByRole('group', { name: 'Closed iterations' })
+  }
+
+  async openClosedIterationsSection(): Promise<void> {
+    const section = this.closedIterationsSection()
+    if ((await section.getAttribute('open')) === null) {
+      await section.locator(':scope > summary').click()
+    }
+  }
 }

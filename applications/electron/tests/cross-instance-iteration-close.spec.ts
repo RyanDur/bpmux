@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchTwoElectronsSharedBackend } from './helpers/launch'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-close outcome', () => {
   test('close_iteration in instance A closes the container in instance B via WS state-delta; members are NOT promoted (promote-on-close retired #1556)', async () => {
@@ -40,12 +41,13 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
 
       await win1.reload()
       await win2.reload()
-      await win1.locator('[data-test="board-tab-plan"]').click()
-      await win2.locator('[data-test="board-tab-plan"]').click()
+      const board1 = new BoardPage(win1)
+      const board2 = new BoardPage(win2)
+      await board1.openTab('Plan')
+      await board2.openTab('Plan')
 
-      const iterSelector = '[data-test="board-iteration-9401"]'
-      await expect(win1.locator(iterSelector)).toBeVisible({ timeout: 20_000 })
-      await expect(win2.locator(iterSelector)).toBeVisible({ timeout: 20_000 })
+      await expect(board1.iterationGrip(9401)).toBeVisible({ timeout: 20_000 })
+      await expect(board2.iterationGrip(9401)).toBeVisible({ timeout: 20_000 })
 
       const stateOf = async (): Promise<{
         iterationClosed: boolean
@@ -79,25 +81,14 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
       })
       expect(closeRes.ok).toBe(true)
 
-      const renderedClosedAttr = async (page: typeof win1): Promise<string | null> => {
-        return await page.evaluate(() => {
-          const el = document.querySelector('[data-test="board-iteration-9401"]')
-          return el ? (el as HTMLElement).getAttribute('data-closed') : null
-        })
-      }
-
-      await expect
-        .poll(async () => await renderedClosedAttr(win1), {
-          timeout: 15_000,
-          intervals: [200]
-        })
-        .toBe('true')
-      await expect
-        .poll(async () => await renderedClosedAttr(win2), {
-          timeout: 15_000,
-          intervals: [200]
-        })
-        .toBe('true')
+      await board1.openClosedIterationsSection()
+      await board2.openClosedIterationsSection()
+      await expect(
+        board1.closedIterationsSection().getByText('Iteration Cetus', { exact: true })
+      ).toBeVisible({ timeout: 15_000 })
+      await expect(
+        board2.closedIterationsSection().getByText('Iteration Cetus', { exact: true })
+      ).toBeVisible({ timeout: 15_000 })
 
       const finalState = await stateOf()
       expect(finalState.iterationClosed).toBe(true)
