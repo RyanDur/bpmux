@@ -103,9 +103,7 @@ test.describe('desk-check #371 right-click quote context menu', () => {
     expect(draft.endsWith('\n\n')).toBe(true)
 
     // Textarea should be focused with cursor at prefix.length.
-    const focused = await drillIn
-      .commentInput()
-      .evaluate((ta) => document.activeElement === ta)
+    const focused = await drillIn.commentInput().evaluate((ta) => document.activeElement === ta)
     expect(focused).toBe(true)
 
     await app.close()
