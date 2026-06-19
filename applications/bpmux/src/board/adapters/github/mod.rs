@@ -13,6 +13,7 @@ pub use comment_codec::*;
 pub use label_fields::*;
 pub use story_decode::*;
 mod mutation;
+mod mutation_events;
 mod retired_filter;
 pub use retired_filter::*;
 
