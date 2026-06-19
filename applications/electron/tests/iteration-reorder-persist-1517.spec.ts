@@ -1,6 +1,7 @@
 import { test, expect, type Locator } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { issueJson } from './helpers/mock_gh'
+import { BoardPage } from './pages/boardPage'
 
 test.describe('#1517 iteration-row reorder persists across a real-GH reload round-trip', () => {
   test('iterations seeded WITHOUT an order label (as create_iteration makes them) reorder by drag and the order survives drain-to-GitHub + ingest + reload', async () => {
@@ -16,25 +17,22 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
         issueJson(9702, 'Iteration Octans', ['iteration'], '')
       ])
 
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(win.getByRole('main')).toBeVisible()
+      await new BoardPage(win).openTab('Plan')
 
       const orderIn = async (): Promise<number[]> =>
-        win.evaluate(() => {
-          const list = document.querySelector('.board-iterations-list')
-          if (!list) return []
-          return Array.from(list.querySelectorAll('[data-test^="board-iteration-"]'))
-            .map((el) => el.getAttribute('data-test'))
-            .filter((t): t is string => t !== null && /^board-iteration-\d+$/.test(t))
-            .map((t) => Number(t.replace('board-iteration-', '')))
-        })
+        win.evaluate(() =>
+          Array.from(document.querySelectorAll('[aria-label^="Reorder iteration #"]'))
+            .map((el) => (el.getAttribute('aria-label') ?? '').match(/Reorder iteration #(\d+)/))
+            .filter((m): m is RegExpMatchArray => m !== null)
+            .map((m) => Number(m[1]))
+        )
 
       await expect.poll(orderIn, { timeout: 20_000, intervals: [250] }).toEqual([9701, 9702])
 
-      const grip = win.locator(
-        '.board-iteration-item:has([data-test="board-iteration-9702"]) [data-test="iteration-grip"]'
-      )
-      const target = win.locator('[data-test="board-iteration-9701"]')
+      const board = new BoardPage(win)
+      const grip = board.iterationGrip(9702)
+      const target = board.iterationRow(9701)
       await expect(grip).toBeVisible()
       await grip.dragTo(target)
 
@@ -59,8 +57,8 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
 
       await new Promise((resolve) => setTimeout(resolve, 3_000))
       await win.reload()
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(win.getByRole('main')).toBeVisible()
+      await new BoardPage(win).openTab('Plan')
 
       await expect.poll(orderIn, { timeout: 20_000, intervals: [250] }).toEqual([9702, 9701])
     } finally {
@@ -82,24 +80,20 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
         issueJson(9803, 'Iteration Pyxis', ['iteration'], '')
       ])
 
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(win.getByRole('main')).toBeVisible()
+      await new BoardPage(win).openTab('Plan')
 
       const orderIn = async (): Promise<number[]> =>
-        win.evaluate(() => {
-          const list = document.querySelector('.board-iterations-list')
-          if (!list) return []
-          return Array.from(list.querySelectorAll('[data-test^="board-iteration-"]'))
-            .map((el) => el.getAttribute('data-test'))
-            .filter((t): t is string => t !== null && /^board-iteration-\d+$/.test(t))
-            .map((t) => Number(t.replace('board-iteration-', '')))
-        })
-
-      const gripFor = (n: number): Locator =>
-        win.locator(
-          `.board-iteration-item:has([data-test="board-iteration-${n}"]) [data-test="iteration-grip"]`
+        win.evaluate(() =>
+          Array.from(document.querySelectorAll('[aria-label^="Reorder iteration #"]'))
+            .map((el) => (el.getAttribute('aria-label') ?? '').match(/Reorder iteration #(\d+)/))
+            .filter((m): m is RegExpMatchArray => m !== null)
+            .map((m) => Number(m[1]))
         )
-      const rowOf = (n: number): Locator => win.locator(`[data-test="board-iteration-${n}"]`)
+
+      const board = new BoardPage(win)
+      const gripFor = (n: number): Locator => board.iterationGrip(n)
+      const rowOf = (n: number): Locator => board.iterationRow(n)
 
       const orderLabelCounts = async (): Promise<Record<number, number>> => {
         const res = await fetch(`${mockGh.baseUrl}repos/acme/bpmux/issues`)
@@ -131,8 +125,8 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
         .toEqual({ 9801: 1, 9802: 1, 9803: 1 })
 
       await win.reload()
-      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-      await win.locator('[data-test="board-tab-plan"]').click()
+      await expect(win.getByRole('main')).toBeVisible()
+      await new BoardPage(win).openTab('Plan')
       await expect.poll(orderIn, { timeout: 20_000, intervals: [250] }).toEqual([9801, 9802, 9803])
     } finally {
       await app.close()

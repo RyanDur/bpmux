@@ -63,4 +63,12 @@ export class BoardPage {
   storyBadge(column: string, label: string): Locator {
     return this.group(column).getByLabel(new RegExp(`^${label}:`))
   }
+
+  iterationGrip(iterationNumber: number): Locator {
+    return this.win.getByLabel(new RegExp(`^Reorder iteration #${iterationNumber}\\b`))
+  }
+
+  iterationRow(iterationNumber: number): Locator {
+    return this.iterationGrip(iterationNumber).locator('xpath=ancestor::article[1]')
+  }
 }
