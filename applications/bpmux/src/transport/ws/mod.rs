@@ -14,6 +14,7 @@ use crate::transport::protocol::ServerMessage;
 mod client;
 mod client_handlers;
 mod delivery;
+mod hydrate;
 mod peer_lag;
 mod roster;
 mod session_io;

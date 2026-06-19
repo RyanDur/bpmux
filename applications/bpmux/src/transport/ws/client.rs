@@ -4,9 +4,9 @@ use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::stream::SplitSink;
 
 use super::client_handlers::{
-    handle_comments_hydrate, handle_history_hydrate, handle_pty_input, handle_pty_subscribe,
-    handle_reaction_toggle, handle_send, handle_timeline_hydrate,
+    handle_pty_input, handle_pty_subscribe, handle_reaction_toggle, handle_send,
 };
+use super::hydrate::{handle_comments_hydrate, handle_history_hydrate, handle_timeline_hydrate};
 use super::{MAX_MESSAGE_SIZE, message_size_ok, send_json};
 use crate::session;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
