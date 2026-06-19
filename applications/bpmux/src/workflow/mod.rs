@@ -4,6 +4,8 @@ pub mod gate;
 pub mod loader;
 
 #[cfg(test)]
+mod config_tests;
+#[cfg(test)]
 mod gate_tests;
 #[cfg(test)]
 mod loader_tests;
