@@ -268,3 +268,49 @@ fn chat_omits_message_type_but_non_chat_serializes_it() {
         "non-Chat types must serialize their wire-type so the renderer keeps the class-glyph: {insight_json}"
     );
 }
+
+#[test]
+fn message_with_unknown_state_delta_variant_parses_as_none() {
+    let raw = r#"{
+          "from": "bpmux",
+          "text": "",
+          "ts": "2026-05-15T01:23:45Z",
+          "message_type": "state-delta",
+          "state_delta": {"domain": "icebox_migration", "details": "retired"}
+        }"#;
+    let m: Message = serde_json::from_str(raw).expect("retired variant must parse tolerantly");
+    assert_eq!(m.from, "bpmux");
+    assert!(m.state_delta.is_none());
+}
+
+#[test]
+fn message_with_known_state_delta_variant_still_parses_canonically() {
+    let raw = r#"{
+          "from": "bpmux",
+          "text": "",
+          "ts": "2026-05-16T01:23:45Z",
+          "message_type": "state-delta",
+          "state_delta": {"domain": "roster", "members": []}
+        }"#;
+    let m: Message = serde_json::from_str(raw).expect("known variant parses");
+    assert!(matches!(
+        m.state_delta,
+        Some(StateDeltaPayload::Roster { members: _ })
+    ));
+}
+
+#[test]
+fn read_messages_skips_zero_lines_with_legacy_state_delta_variant() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("messages-current.jsonl");
+    let lines = [
+        r#"{"from":"a","text":"first","ts":"2026-05-01T00:00:00Z"}"#,
+        r#"{"from":"bpmux","text":"","ts":"2026-05-15T00:00:00Z","message_type":"state-delta","state_delta":{"domain":"icebox_migration","details":"retired"}}"#,
+        r#"{"from":"b","text":"third","ts":"2026-06-01T00:00:00Z"}"#,
+    ];
+    std::fs::write(&path, lines.join("\n")).unwrap();
+    let parsed = crate::session::log::read_messages(dir.path())
+        .expect("read_messages tolerates legacy state-delta variants");
+    assert_eq!(parsed.len(), 3, "all 3 lines parse — none dropped");
+    assert!(parsed[1].state_delta.is_none(), "legacy variant → None");
+}
