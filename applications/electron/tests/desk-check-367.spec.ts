@@ -4,6 +4,9 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
+import { DrillInPage } from './pages/drillInPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -115,26 +118,24 @@ test.describe('desk-check #367 timeline audit-trail', () => {
   test('drill-in exposes a timeline section with major gates by default', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await expect(new ChatPage(win).region()).toBeVisible()
 
-    const storyButton = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-367"] .board-story-navigate'
-    )
-    await storyButton.click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    await board.storyNavigate(367).click()
+    await expect(drillIn.panel()).toBeVisible()
 
-    const timeline = win.locator('[data-test="drill-in-timeline"]')
+    const timeline = drillIn.timelineSection()
     await expect(timeline).toBeVisible()
 
     // Expand the details.
-    await timeline.locator('summary').click()
-    await expect(win.locator('[data-test="drill-in-timeline-list"]')).toBeVisible()
+    await drillIn.timelineSummary().click()
+    await expect(drillIn.timelineList()).toBeVisible()
 
     // Default filter: every MAJOR_GATE event should be present.
     // (commented is NOT a major gate; should be hidden until "show
     // all" is toggled.)
-    const items = win.locator('[data-test="drill-in-timeline-item"]')
-    const count = await items.count()
+    const count = await drillIn.timelineItems().count()
     console.log(`#367 default timeline item count: ${count}`)
 
     // Expected default gates: filed, started (labeled in progress),
@@ -142,14 +143,11 @@ test.describe('desk-check #367 timeline audit-trail', () => {
     expect(count).toBe(7)
 
     // Commented event body should NOT appear in the default view.
-    await expect(
-      win.locator('[data-test="drill-in-timeline-item"][data-gate="commented"]')
-    ).toHaveCount(0)
+    await expect(drillIn.timelineItems().filter({ hasText: 'Commented' })).toHaveCount(0)
 
     // Rework group: the 2nd delivered + accepted items carry the
     // rework-group attribute because they followed the desk-check-fail.
-    const reworkItems = win.locator('[data-test="drill-in-timeline-item"][data-rework-group]')
-    const reworkCount = await reworkItems.count()
+    const reworkCount = await drillIn.reworkItems().count()
     console.log(`#367 rework-grouped items: ${reworkCount}`)
     expect(reworkCount).toBeGreaterThanOrEqual(3) // fail + redeliver + accept
 
@@ -163,17 +161,15 @@ test.describe('desk-check #367 timeline audit-trail', () => {
   test('show-all toggle reveals non-gate events', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const storyButton = win.locator(
-      '[data-test="board-tabpanel-now-content"] [data-test="board-story-367"] .board-story-navigate'
-    )
-    await storyButton.click()
-    const timeline = win.locator('[data-test="drill-in-timeline"]')
-    await timeline.locator('summary').click()
+    const board = new BoardPage(win)
+    const drillIn = new DrillInPage(win)
+    await board.storyNavigate(367).click()
+    await drillIn.timelineSummary().click()
 
-    await win.locator('[data-test="drill-in-timeline-toggle"]').click()
+    await drillIn.timelineToggle().click()
 
     // After show-all, the commented event should render.
-    const commentedItem = win.locator('[data-test="drill-in-timeline-item"][data-gate="commented"]')
+    const commentedItem = drillIn.timelineItems().filter({ hasText: 'Commented' })
     await expect(commentedItem).toHaveCount(1)
     await expect(commentedItem).toContainText('Great work team')
 

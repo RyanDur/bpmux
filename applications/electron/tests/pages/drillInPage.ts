@@ -58,4 +58,34 @@ export class DrillInPage {
   toast(): Locator {
     return this.panel().getByRole('status')
   }
+
+  title(): Locator {
+    return this.panel().getByRole('heading', { level: 3 }).first()
+  }
+
+  timelineSection(): Locator {
+    return this.win.getByRole('group', { name: 'Timeline' })
+  }
+
+  timelineSummary(): Locator {
+    return this.timelineSection().locator(':scope > summary')
+  }
+
+  timelineList(): Locator {
+    return this.timelineSection().getByRole('list')
+  }
+
+  timelineItems(): Locator {
+    return this.timelineList().getByRole('listitem')
+  }
+
+  timelineToggle(): Locator {
+    return this.timelineSection().getByRole('button', {
+      name: /show all events|show major gates/i
+    })
+  }
+
+  reworkItems(): Locator {
+    return this.timelineList().locator('.drill-in-timeline-item--rework')
+  }
 }

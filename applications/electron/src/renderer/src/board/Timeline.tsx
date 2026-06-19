@@ -117,7 +117,12 @@ const Timeline = ({ story, apiBase, authToken, focusTimeline }: Props): React.JS
   }, [focusTimeline])
 
   return (
-    <details className="drill-in-timeline" data-test="drill-in-timeline" ref={detailsRef}>
+    <details
+      className="drill-in-timeline"
+      data-test="drill-in-timeline"
+      aria-label="Timeline"
+      ref={detailsRef}
+    >
       <summary className="drill-in-timeline-summary">
         <h4>Timeline{timeline.events ? ` (${timeline.events.length})` : ''}</h4>
       </summary>

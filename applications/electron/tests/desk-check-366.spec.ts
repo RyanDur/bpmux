@@ -5,6 +5,9 @@ import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { BoardPage } from './pages/boardPage'
+import { ChatPage } from './pages/chatPage'
+import { DrillInPage } from './pages/drillInPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -68,36 +71,33 @@ const launchWithFixture = async (): Promise<{
 const openStoryDrillIn = async (
   win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>
 ): Promise<void> => {
-  await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-  const storyButton = win.locator(
-    '[data-test="board-tabpanel-now-content"] [data-test="board-story-366"] .board-story-navigate'
-  )
-  await storyButton.click()
-  await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
-  await expect(win.locator('[data-test="drill-in-comment"]').first()).toBeVisible()
+  const drillIn = new DrillInPage(win)
+  await expect(new ChatPage(win).region()).toBeVisible()
+  await new BoardPage(win).storyNavigate(366).click()
+  await expect(drillIn.panel()).toBeVisible()
+  await expect(drillIn.commentItems().first()).toBeVisible()
 }
 
 test.describe('desk-check #366 comment quote-excerpt', () => {
   test('Cmd+E on selected comment text prepends blockquote to draft', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
+    const drillIn = new DrillInPage(win)
     await openStoryDrillIn(win)
 
-    const firstComment = win.locator('[data-test="drill-in-comment"]').first()
-    await expect(firstComment).toHaveAttribute('data-comment-id', '7700')
-    await expect(firstComment).toHaveAttribute('data-comment-author', 'designer')
+    const firstComment = drillIn.commentItems().first()
+    await expect(firstComment).toContainText('designer')
+    await expect(firstComment).toContainText(
+      'The middle-ground proposal is selection-based quoting.'
+    )
 
     // Select a substring of the first comment's body via the DOM
     // Selection API — more precise than chord-dragging and doesn't
     // depend on font metrics.
-    await win.evaluate(() => {
-      const li = document.querySelector<HTMLElement>('[data-comment-id="7700"]')
-      if (!li) throw new Error('comment li not found')
-      const body = li.querySelector<HTMLElement>('.drill-in-comment-body p')
-      if (!body || !body.firstChild) throw new Error('comment body not found')
+    await firstComment.locator('.drill-in-comment-body p').evaluate((body: HTMLElement) => {
+      if (!body.firstChild) throw new Error('comment body not found')
       const text = body.firstChild as Text
       const range = document.createRange()
-      // Grab 'middle-ground proposal' (chars 4-26 of the text)
       range.setStart(text, 4)
       range.setEnd(text, 26)
       const sel = window.getSelection()
@@ -108,11 +108,11 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
 
     // Cmd+E / Ctrl+E on the drill-in article — the shortcut is
     // handled by handleKeyDown which delegates to handleQuoteShortcut.
-    await win.locator('[data-test="board-drill-in"]').focus()
+    await drillIn.panel().focus()
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+E' : 'Control+E')
 
     // Draft should now contain the quote-block prefix.
-    const draft = await win.locator('[data-test="drill-in-comment-input"]').inputValue()
+    const draft = await drillIn.commentInput().inputValue()
     console.log(`#366 draft after quote:\n${draft}`)
 
     expect(draft).toContain('> [@designer](#comment-7700):')
@@ -121,11 +121,7 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
     expect(draft.endsWith('\n\n')).toBe(true)
 
     // Textarea should have focus so the user can type directly.
-    const focused = await win.evaluate(() => {
-      const ta = document.querySelector<HTMLTextAreaElement>('[data-test="drill-in-comment-input"]')
-      return document.activeElement === ta
-    })
-    expect(focused).toBe(true)
+    await expect(drillIn.commentInput()).toBeFocused()
 
     await win.screenshot({
       path: join(EVIDENCE_DIR, '70-quote-shortcut-populates-draft.png')
@@ -137,14 +133,15 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
   test('Cmd+E without selection is a no-op', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
+    const drillIn = new DrillInPage(win)
     await openStoryDrillIn(win)
 
     // No selection present (fresh drill-in). Cmd+E should not modify
     // the draft.
-    await win.locator('[data-test="board-drill-in"]').focus()
+    await drillIn.panel().focus()
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+E' : 'Control+E')
 
-    const draft = await win.locator('[data-test="drill-in-comment-input"]').inputValue()
+    const draft = await drillIn.commentInput().inputValue()
     expect(draft).toBe('')
 
     await app.close()
@@ -153,14 +150,12 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
   test('Cmd+E on selection outside a comment does not quote', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
+    const drillIn = new DrillInPage(win)
     await openStoryDrillIn(win)
 
     // Select the drill-in title text (which is NOT inside a comment).
-    await win.evaluate(() => {
-      const title = document.querySelector<HTMLElement>(
-        '[data-test="board-drill-in"] h1, [data-test="board-drill-in"] h2, [data-test="board-drill-in"] .drill-in-title'
-      )
-      if (!title || !title.firstChild) return
+    await drillIn.title().evaluate((title: HTMLElement) => {
+      if (!title.firstChild) return
       const range = document.createRange()
       range.selectNodeContents(title)
       const sel = window.getSelection()
@@ -169,10 +164,10 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
       sel.addRange(range)
     })
 
-    await win.locator('[data-test="board-drill-in"]').focus()
+    await drillIn.panel().focus()
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+E' : 'Control+E')
 
-    const draft = await win.locator('[data-test="drill-in-comment-input"]').inputValue()
+    const draft = await drillIn.commentInput().inputValue()
     expect(draft).toBe('')
 
     await app.close()
