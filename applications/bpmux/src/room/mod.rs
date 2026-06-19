@@ -7,6 +7,9 @@ pub mod file_storage;
 pub mod live_registry;
 pub mod spawn;
 
+#[cfg(test)]
+mod agnostic_delivery_tests;
+
 pub use agnostic_delivery::{deliver_to_terminals, drain_missed, spawn_terminal_delivery_loop};
 pub use file_storage::FileRoomStorage;
 pub use live_registry::LivePtyRegistry;
