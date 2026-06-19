@@ -61,19 +61,51 @@ for_each_exit_check() {
 for_each_exit_check "e2e serial (workers=1)" "$serial_exit"
 for_each_exit_check "e2e main (workers=4)" "$main_exit"
 
-MAX_LINES=400
-echo "Checking file sizes..."
+MAX_LINES=200
+echo "Checking file sizes (max ${MAX_LINES} lines; hard fail)..."
+
+# Size-gate allowlist (#20 decompose; Ryan 2026-06-19: "set the gate at 200,
+# we can talk about the others after"). Each entry is ONE indivisible unit with
+# no honest vertical seam — a single trait-impl block, a match-dispatch /
+# state-machine, a declarative enum + its exhaustive matches, a catalog literal,
+# or crate-root/server wiring. Splitting any of these would scatter cohesion to
+# hit a number. Add here only with a one-line reason; prefer splitting.
+size_gate_allowlisted() {
+    case "$1" in
+        applications/bpmux/src/lib.rs) return 0 ;;                            # crate-root wiring: mod decls + Cli + run() entrypoint
+        applications/bpmux/src/server/mod.rs) return 0 ;;                     # run_server: one sequential wiring sequence
+        applications/bpmux/src/transport/webrtc.rs) return 0 ;;              # one SDP offer/answer handshake on a shared spine
+        applications/bpmux/src/transport/ws/mod.rs) return 0 ;;             # run_ws_session: one select! loop over shared loop-state
+        applications/bpmux/src/transport/ws/client.rs) return 0 ;;          # handle_client_message: one match over ClientMessage
+        applications/bpmux/src/bridge/connection.rs) return 0 ;;            # run_ws_connection: one connect/receive state machine
+        applications/bpmux/src/bridge/mcp_handler.rs) return 0 ;;           # single ServerHandler trait impl + call_tool match
+        applications/bpmux/src/bridge/tool_registry.rs) return 0 ;;         # build_advertised_tools: one vec! tool catalog
+        applications/bpmux/src/bridge/atp_substantive_gate.rs) return 0 ;;  # one gate unit; checks share consts + classify chain
+        applications/bpmux/src/board/events.rs) return 0 ;;                # BoardEvent: one declarative enum + exhaustive matches
+        applications/bpmux/src/board/store/apply.rs) return 0 ;;           # BoardStore::apply: one BoardEvent match under one lock
+        applications/bpmux/src/board/orchestrator/driver.rs) return 0 ;;   # single RefreshDriver trait impl
+        applications/bpmux/src/board/orchestrator/drain.rs) return 0 ;;    # twin drain state-machines over ConflictKind
+        applications/bpmux/src/board/adapters/github/mutation.rs) return 0 ;;  # apply_push_event: one BoardEvent match
+        applications/bpmux/src/session/instrumented_storage.rs) return 0 ;;    # single Storage trait impl (decorator)
+        applications/bpmux/src/session/storage/session/memory.rs) return 0 ;;  # single Storage trait impl (in-memory)
+    esac
+    return 1
+}
+
 oversized=""
 while IFS= read -r f; do
+    if size_gate_allowlisted "$f"; then
+        continue
+    fi
     lines=$(wc -l < "$f")
     if [ "$lines" -gt "$MAX_LINES" ]; then
         oversized="${oversized}  ${f}: ${lines} lines (max ${MAX_LINES})\n"
     fi
-done < <(find applications/*/src -name "*.rs" -not -name "*test*" -not -path "*/target/*" -not -path "*/node_modules/*")
+done < <(find applications/*/src -name "*.rs" -not -name "*test*" -not -path "*/target/*" -not -path "*/node_modules/*" -not -path "*_tests/*")
 if [ -n "$oversized" ]; then
-    echo "WARNING: Files exceed ${MAX_LINES}-line limit:"
+    echo "FAIL: files exceed the ${MAX_LINES}-line limit. Split by cohesion into capability submodules, or (only if genuinely indivisible) add to size_gate_allowlisted with a one-line reason:"
     echo -e "$oversized"
-    echo "Consider splitting before the next push."
+    exit 1
 fi
 
 echo "All checks passed."
