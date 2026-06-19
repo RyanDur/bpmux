@@ -6,4 +6,8 @@ export class TitlebarPage {
   ciGlyph(): Locator {
     return this.win.getByRole('link', { name: /^CI/ })
   }
+
+  themeToggle(): Locator {
+    return this.win.getByRole('button', { name: /^Switch to (light|dark) theme$/ })
+  }
 }

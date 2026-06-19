@@ -4,6 +4,10 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
+import { ChatPage } from './pages/chatPage'
+import { BoardPage } from './pages/boardPage'
+import { DrillInPage } from './pages/drillInPage'
+import { TitlebarPage } from './pages/titlebarPage'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -52,7 +56,7 @@ test.describe('desk-check #351 high-signal transitions', () => {
   test('body has color + background-color transition (theme toggle smoothing)', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
 
     const bodyTransition = await win.evaluate(() => {
       const cs = window.getComputedStyle(document.body)
@@ -79,11 +83,9 @@ test.describe('desk-check #351 high-signal transitions', () => {
   test('board region transitions on hide-toggle (always-mounted pattern)', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(new BoardPage(win).region()).toBeVisible()
 
-    const boardTransition = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="board-region"]')
-      if (!el) return null
+    const boardTransition = await new BoardPage(win).region().evaluate((el) => {
       const cs = window.getComputedStyle(el)
       return {
         property: cs.transitionProperty,
@@ -95,23 +97,19 @@ test.describe('desk-check #351 high-signal transitions', () => {
     console.log(`  duration: ${boardTransition?.duration}`)
 
     // Toggle via Ctrl+P, confirm it stays mounted + hidden class toggles.
-    const boardBefore = await win.locator('[data-test="board-region"]').isVisible()
+    const boardBefore = await new BoardPage(win).region().isVisible()
     console.log(`  board visible before toggle: ${boardBefore}`)
 
     // Focus outside input before Ctrl+P (needs focus not in editable).
-    await win.locator('[data-test="app-root"]').click()
+    await new ChatPage(win).appRoot().click()
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+p' : 'Control+p')
     await win.waitForTimeout(400)
 
-    const boardClass = await win.evaluate(
-      () => document.querySelector('[data-test="board-region"]')?.className ?? ''
-    )
+    const boardClass = (await win.locator('.board').getAttribute('class')) ?? ''
     console.log(`  board-region class after toggle: "${boardClass}"`)
 
     // Board should STILL be in DOM (always-mounted) — just .board--hidden.
-    const stillMounted = await win.evaluate(
-      () => !!document.querySelector('[data-test="board-region"]')
-    )
+    const stillMounted = (await win.locator('.board').count()) > 0
     console.log(`  board DOM still mounted: ${stillMounted}`)
     expect(stillMounted).toBe(true)
 
@@ -121,17 +119,11 @@ test.describe('desk-check #351 high-signal transitions', () => {
   test('drill-in surface has transition declared on enter state', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await win
-      .locator(
-        '[data-test="board-tabpanel-now-content"] [data-test="board-story-351"] .board-story-navigate'
-      )
-      .click()
-    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    await new BoardPage(win).openStory(351)
+    await expect(new DrillInPage(win).panel()).toBeVisible()
     await win.waitForTimeout(400)
 
-    const drillIn = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="board-drill-in"]')
-      if (!el) return null
+    const drillIn = await new DrillInPage(win).panel().evaluate((el) => {
       const cs = window.getComputedStyle(el)
       return {
         property: cs.transitionProperty,
@@ -148,15 +140,14 @@ test.describe('desk-check #351 high-signal transitions', () => {
   test('reduced-motion: body + board transitions zero to 0ms', async () => {
     const { app } = await launchWithBoard('reduce')
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
 
     const bodyDuration = await win.evaluate(
       () => window.getComputedStyle(document.body).transitionDuration
     )
-    const boardDuration = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="board-region"]')
-      return el ? window.getComputedStyle(el).transitionDuration : null
-    })
+    const boardDuration = await new BoardPage(win)
+      .region()
+      .evaluate((el) => window.getComputedStyle(el).transitionDuration)
     console.log(`#351 AC8 reduced-motion durations:`)
     console.log(`  body: ${bodyDuration}`)
     console.log(`  board: ${boardDuration}`)
@@ -170,25 +161,25 @@ test.describe('desk-check #351 high-signal transitions', () => {
   test('capture UI state — theme toggle + board toggle screenshots (motion not frame-capturable)', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(new ChatPage(win).appRoot()).toBeVisible()
     await win.waitForTimeout(300)
     await win.screenshot({
       path: join(EVIDENCE_DIR, '60-app-default-dark.png')
     })
 
     // Toggle theme.
-    await win.locator('.titlebar-theme-toggle').click()
+    await new TitlebarPage(win).themeToggle().click()
     await win.waitForTimeout(300)
     await win.screenshot({
       path: join(EVIDENCE_DIR, '61-app-light-after-toggle.png')
     })
 
     // Toggle back to dark.
-    await win.locator('.titlebar-theme-toggle').click()
+    await new TitlebarPage(win).themeToggle().click()
     await win.waitForTimeout(200)
 
     // Toggle board off.
-    await win.locator('[data-test="app-root"]').click()
+    await new ChatPage(win).appRoot().click()
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+p' : 'Control+p')
     await win.waitForTimeout(300)
     await win.screenshot({
