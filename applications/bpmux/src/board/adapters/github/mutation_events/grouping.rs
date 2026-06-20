@@ -75,6 +75,22 @@ pub(in crate::board::adapters::github) async fn push_iteration_membership_cleare
     Ok(last_response.map(|labels| labels_refreshed(number, labels)))
 }
 
+pub(in crate::board::adapters::github) async fn push_outcome_membership_cleared(
+    inner: &OctocrabStoryTracker,
+    number: u64,
+) -> Result<Option<BoardEvent>, SyncError> {
+    let current = inner.get_story_labels(number).await;
+    let mut last_response: Option<Vec<String>> = None;
+    for l in current.iter().filter(|l| l.starts_with("parent-outcome-#")) {
+        let labels = inner
+            .remove_label(number, l)
+            .await
+            .map_err(SyncError::Other)?;
+        last_response = Some(labels);
+    }
+    Ok(last_response.map(|labels| labels_refreshed(number, labels)))
+}
+
 pub(in crate::board::adapters::github) async fn push_outcome_membership_set(
     inner: &OctocrabStoryTracker,
     number: u64,

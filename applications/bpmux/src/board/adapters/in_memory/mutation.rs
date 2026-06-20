@@ -130,6 +130,11 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                 story.outcome_membership = Some((*outcome_number, *position));
             }
         }
+        BoardEvent::OutcomeMembershipCleared { number, .. } => {
+            if let Some(story) = s.stories.get_mut(number) {
+                story.outcome_membership = None;
+            }
+        }
         _ => {}
     }
 }

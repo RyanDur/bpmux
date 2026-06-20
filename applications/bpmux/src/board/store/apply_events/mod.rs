@@ -15,9 +15,9 @@ use labels::{apply_labels_refreshed, apply_tag_added, apply_tag_removed};
 use lifecycle::{
     apply_body_fetched, apply_current_iteration_cleared, apply_current_iteration_designated,
     apply_iteration_membership_cleared, apply_iteration_membership_set,
-    apply_outcome_membership_set, apply_parent_epic_set, apply_parent_epic_unset,
-    apply_state_transitioned, apply_story_closed, apply_story_created, apply_story_refreshed,
-    apply_story_reopened,
+    apply_outcome_membership_cleared, apply_outcome_membership_set, apply_parent_epic_set,
+    apply_parent_epic_unset, apply_state_transitioned, apply_story_closed, apply_story_created,
+    apply_story_refreshed, apply_story_reopened,
 };
 
 pub(super) type Stories = HashMap<u64, Story>;
@@ -73,6 +73,7 @@ pub(super) fn apply_event(w: &mut Stories, event: &BoardEvent) {
             position,
             ..
         } => apply_outcome_membership_set(w, number, *outcome_number, *position),
+        BoardEvent::OutcomeMembershipCleared { .. } => apply_outcome_membership_cleared(w, number),
         BoardEvent::CurrentIterationDesignated { .. } => {
             apply_current_iteration_designated(w, number)
         }

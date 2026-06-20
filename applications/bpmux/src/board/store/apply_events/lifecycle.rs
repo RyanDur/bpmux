@@ -96,6 +96,12 @@ pub(super) fn apply_iteration_membership_cleared(w: &mut Stories, number: u64) {
     }
 }
 
+pub(super) fn apply_outcome_membership_cleared(w: &mut Stories, number: u64) {
+    if let Some(story) = w.get_mut(&number) {
+        story.outcome_membership = None;
+    }
+}
+
 pub(super) fn apply_outcome_membership_set(
     w: &mut Stories,
     number: u64,

@@ -12,6 +12,7 @@ mod metadata_epic;
 mod metadata_iteration;
 mod metadata_iteration_readiness;
 mod metadata_outcome;
+mod outcome_mapping;
 mod reorder;
 mod retire_outcome;
 mod signals;
@@ -50,6 +51,9 @@ pub(crate) use metadata_iteration_readiness::{
     handle_close_pre_pickup_review, handle_designate_current_iteration, handle_dev_ok_iteration,
 };
 pub(crate) use metadata_outcome::handle_reprioritize_outcome;
+pub(crate) use outcome_mapping::{
+    handle_reorder_outcome_iteration, handle_unmap_outcome_iteration,
+};
 pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
 pub(crate) use retire_outcome::handle_retire_outcome;
 #[cfg(test)]

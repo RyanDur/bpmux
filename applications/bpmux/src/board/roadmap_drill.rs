@@ -109,7 +109,12 @@ pub fn derive_outcome_drill_in(
     workflow: &WorkflowConfig,
 ) -> OutcomeDrillIn {
     let mut building = building_iterations(outcome_number, stories);
-    building.sort_by_key(|it| it.outcome_membership.map(|(_, p)| p).unwrap_or(0));
+    building.sort_by_key(|it| {
+        (
+            it.outcome_membership.map(|(_, p)| p).unwrap_or(0),
+            it.number,
+        )
+    });
 
     let next_index = building.iter().position(|it| {
         !it.is_closed && {

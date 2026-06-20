@@ -81,6 +81,12 @@ async fn dispatch(
         "edit_iteration_theme" => {
             bridge::dispatch_edit_iteration_theme(args, agent, refresh_ref).await
         }
+        "unmap_outcome_iteration" => {
+            bridge::dispatch_unmap_outcome_iteration(args, agent, refresh_ref).await
+        }
+        "reorder_outcome_iteration" => {
+            bridge::dispatch_reorder_outcome_iteration(args, agent, refresh_ref).await
+        }
         "reorder_story" => bridge::dispatch_reorder_story(args, agent, refresh_ref).await,
         "move_story" => bridge::dispatch_move_story(args, agent, refresh_ref).await,
         "edit_story" => bridge::dispatch_edit_story(args, agent, refresh_ref).await,

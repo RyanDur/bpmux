@@ -162,4 +162,24 @@ pub(crate) enum OutcomeAction {
         )]
         reason: String,
     },
+    #[command(
+        about = "Unmap an iteration from an outcome (remove ONLY the relation — the iteration itself is untouched). The inverse of `outcome add`. PM-only; owner bypasses."
+    )]
+    Unmap {
+        #[arg(help = "Outcome entity issue number")]
+        outcome: u64,
+        #[arg(help = "Iteration entity issue number to unmap")]
+        iteration: u64,
+    },
+    #[command(
+        about = "Reorder an iteration's priority-order within an outcome's build-sequence. PM-only; owner bypasses."
+    )]
+    Reorder {
+        #[arg(help = "Outcome entity issue number")]
+        outcome: u64,
+        #[arg(help = "Iteration entity issue number to reorder")]
+        iteration: u64,
+        #[arg(long, help = "New 1-indexed priority-order within the outcome")]
+        to: u32,
+    },
 }

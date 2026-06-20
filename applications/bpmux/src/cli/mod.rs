@@ -19,6 +19,7 @@ mod roadmap;
 mod roadmap_tests;
 mod write;
 mod write_iteration;
+mod write_outcome;
 mod write_query;
 mod write_story;
 pub(crate) use actions::RoomAction;
