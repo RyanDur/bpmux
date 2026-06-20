@@ -88,6 +88,24 @@ pub(crate) enum OutcomeAction {
         position: u64,
     },
     #[command(
+        about = "Edit an outcome's title (the headline why) and/or body (supplementary why-fields) — the roadmap-semantic verb, NOT the generic `bpmux edit <outcome#>` which leaks outcome=story. At least one of --title / --body. PM-only; owner bypasses.",
+        group = clap::ArgGroup::new("outcome_edit_change").required(true).multiple(true).args(["title", "body"])
+    )]
+    Edit {
+        #[arg(help = "Outcome entity issue number")]
+        number: u64,
+        #[arg(
+            long,
+            help = "New title — the measurable behaviour-change (the headline why, surfaced in bpmux roadmap)"
+        )]
+        title: Option<String>,
+        #[arg(
+            long,
+            help = "New body — supplementary why-fields (the disclosure-detail, surfaced via bpmux story)"
+        )]
+        body: Option<String>,
+    },
+    #[command(
         about = "Re-prioritize an outcome across Now/Next/Later — move its horizon band and/or reorder it within a band (the roadmap's reorganize, in roadmap-language not story-internals). At least one of --to / --position. PM-only; owner bypasses.",
         group = clap::ArgGroup::new("reprioritize_target").required(true).multiple(true).args(["to", "position"])
     )]

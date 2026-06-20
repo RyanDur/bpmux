@@ -18,6 +18,8 @@ mod create_iteration_tests;
 mod create_outcome_tests;
 mod dev_in_flight;
 #[cfg(test)]
+mod edit_outcome_tests;
+#[cfg(test)]
 mod edit_story_tests;
 mod get_bookmark;
 mod get_briefing;
