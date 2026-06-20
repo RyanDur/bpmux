@@ -53,6 +53,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         iteration_review_closed_by,
         iteration_dev_ok_by,
         horizon,
+        horizon_order: _,
         outcome_membership,
         is_current: _,
         acceptor,

@@ -17,6 +17,7 @@ pub(super) fn apply_tag_added(w: &mut Stories, number: u64, label: &str) {
             github::iteration_review_closers_from_labels(&story.raw_labels);
         story.iteration_dev_ok_by = github::iteration_dev_ok_by_from_labels(&story.raw_labels);
         story.horizon = github::horizon_from_labels(&story.raw_labels);
+        story.horizon_order = github::horizon_order_from_labels(&story.raw_labels);
     }
 }
 
@@ -31,6 +32,7 @@ pub(super) fn apply_tag_removed(w: &mut Stories, number: u64, label: &str) {
             github::iteration_review_closers_from_labels(&story.raw_labels);
         story.iteration_dev_ok_by = github::iteration_dev_ok_by_from_labels(&story.raw_labels);
         story.horizon = github::horizon_from_labels(&story.raw_labels);
+        story.horizon_order = github::horizon_order_from_labels(&story.raw_labels);
     }
 }
 
@@ -49,6 +51,7 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, labels: &[Str
         existing.iteration_review_closed_by = github::iteration_review_closers_from_labels(labels);
         existing.iteration_dev_ok_by = github::iteration_dev_ok_by_from_labels(labels);
         existing.horizon = github::horizon_from_labels(labels);
+        existing.horizon_order = github::horizon_order_from_labels(labels);
         existing.is_current = github::is_current_from_labels(labels);
         existing.acceptor = github::acceptor_from_labels(labels);
         existing.raw_labels = labels.to_vec();

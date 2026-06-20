@@ -47,10 +47,19 @@ pub(crate) fn run_outcome_add(outcome: u64, iteration: u64, position: u64) -> an
     super::write::dispatch_write("map_iteration_to_outcome", args)
 }
 
-pub(crate) fn run_outcome_reprioritize(outcome: u64, to: &str) -> anyhow::Result<()> {
+pub(crate) fn run_outcome_reprioritize(
+    outcome: u64,
+    to: Option<&str>,
+    position: Option<u32>,
+) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("outcome_number".to_string(), serde_json::json!(outcome));
-    args.insert("to".to_string(), serde_json::json!(to));
+    if let Some(band) = to {
+        args.insert("to".to_string(), serde_json::json!(band));
+    }
+    if let Some(p) = position {
+        args.insert("position".to_string(), serde_json::json!(p));
+    }
     let role = crate::resolve_role(&None);
     let message = super::write::post_rpc_write(
         "reprioritize_outcome",

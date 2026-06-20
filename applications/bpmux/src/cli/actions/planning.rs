@@ -88,12 +88,21 @@ pub(crate) enum OutcomeAction {
         position: u64,
     },
     #[command(
-        about = "Re-prioritize an outcome across Now/Next/Later — move its horizon band (the roadmap's reorganize, in roadmap-language not story-internals). PM-only; owner bypasses."
+        about = "Re-prioritize an outcome across Now/Next/Later — move its horizon band and/or reorder it within a band (the roadmap's reorganize, in roadmap-language not story-internals). At least one of --to / --position. PM-only; owner bypasses.",
+        group = clap::ArgGroup::new("reprioritize_target").required(true).multiple(true).args(["to", "position"])
     )]
     Reprioritize {
         #[arg(help = "Outcome entity issue number")]
         number: u64,
-        #[arg(long, help = "Target band: now | next | later")]
-        to: String,
+        #[arg(
+            long,
+            help = "Target band: now | next | later (append to the band by default)"
+        )]
+        to: Option<String>,
+        #[arg(
+            long,
+            help = "1-indexed position within the band (reorder; clamps to the band end on overshoot)"
+        )]
+        position: Option<u32>,
     },
 }

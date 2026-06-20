@@ -22,7 +22,29 @@ fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Sto
     s.story_type = story_type;
     s.raw_labels = labels.iter().map(ToString::to_string).collect();
     s.horizon = crate::board::adapters::github::horizon_from_labels(&s.raw_labels);
+    s.horizon_order = crate::board::adapters::github::horizon_order_from_labels(&s.raw_labels);
     s
+}
+
+fn args_full(outcome: u64, to: Option<&str>, position: Option<u32>) -> Map<String, Value> {
+    let mut m = Map::new();
+    m.insert("outcome_number".into(), json!(outcome));
+    if let Some(t) = to {
+        m.insert("to".into(), json!(t));
+    }
+    if let Some(p) = position {
+        m.insert("position".into(), json!(p));
+    }
+    m
+}
+
+fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
+    let workflow = crate::workflow::current_workflow();
+    crate::board::roadmap_view::derive_roadmap_view(&refresh.all_stories(), workflow)
+        .into_iter()
+        .find(|b| b.horizon == horizon)
+        .map(|b| b.outcomes.iter().map(|o| o.number).collect())
+        .unwrap_or_default()
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
@@ -159,6 +181,131 @@ async fn reprioritize_to_the_current_band_is_an_idempotent_noop_1759() {
         refresh.story(700).expect("outcome present").horizon,
         Some(Horizon::Now),
         "the band is unchanged on an idempotent re-fire"
+    );
+}
+
+#[tokio::test]
+async fn position_reorders_an_outcome_within_its_band_observed_through_the_derive_1759() {
+    let refresh = build_refresh(vec![
+        seed(700, "A", StoryType::Outcome, &["outcome", "horizon.now"]),
+        seed(710, "B", StoryType::Outcome, &["outcome", "horizon.now"]),
+        seed(720, "C", StoryType::Outcome, &["outcome", "horizon.now"]),
+    ])
+    .await;
+    assert_eq!(
+        band_order(&refresh, Horizon::Now),
+        vec![700, 710, 720],
+        "with no explicit order the band sorts by number"
+    );
+
+    handle_reprioritize_outcome(
+        &args_full(720, None, Some(1)),
+        "pm:claude-code",
+        Some(&refresh),
+    )
+    .await
+    .expect("pm reorders C to the front of Now");
+
+    assert_eq!(
+        band_order(&refresh, Horizon::Now),
+        vec![720, 700, 710],
+        "C now reads first in Now — the within-band reorder reflects through the derive"
+    );
+}
+
+#[tokio::test]
+async fn position_overshoot_clamps_to_the_band_end_and_labels_it_1759() {
+    let refresh = build_refresh(vec![
+        seed(700, "A", StoryType::Outcome, &["outcome", "horizon.now"]),
+        seed(710, "B", StoryType::Outcome, &["outcome", "horizon.now"]),
+    ])
+    .await;
+    let result = handle_reprioritize_outcome(
+        &args_full(700, None, Some(9)),
+        "pm:claude-code",
+        Some(&refresh),
+    )
+    .await
+    .expect("an overshoot clamps, never errors");
+    assert!(
+        result.contains("position 2 of 2"),
+        "the overshoot clamps to the band end and labels the real slot count: {result}"
+    );
+    assert_eq!(
+        band_order(&refresh, Horizon::Now),
+        vec![710, 700],
+        "A clamped to the last slot of Now"
+    );
+}
+
+#[tokio::test]
+async fn band_move_and_position_compose_in_one_verb_1759() {
+    let refresh = build_refresh(vec![
+        seed(700, "A", StoryType::Outcome, &["outcome", "horizon.now"]),
+        seed(710, "B", StoryType::Outcome, &["outcome", "horizon.now"]),
+        seed(720, "C", StoryType::Outcome, &["outcome", "horizon.next"]),
+    ])
+    .await;
+    handle_reprioritize_outcome(
+        &args_full(720, Some("now"), Some(1)),
+        "pm:claude-code",
+        Some(&refresh),
+    )
+    .await
+    .expect("C moves to Now AND lands at position 1");
+    assert_eq!(
+        band_order(&refresh, Horizon::Now),
+        vec![720, 700, 710],
+        "C moved bands and took the requested slot — --to and --position compose"
+    );
+    assert!(
+        band_order(&refresh, Horizon::Next).is_empty(),
+        "C no longer reads in Next"
+    );
+}
+
+#[tokio::test]
+async fn band_move_resets_a_stale_within_band_position_1759() {
+    let refresh = build_refresh(vec![seed(
+        700,
+        "A",
+        StoryType::Outcome,
+        &["outcome", "horizon.now", "horizon-order.5"],
+    )])
+    .await;
+    handle_reprioritize_outcome(
+        &args_full(700, Some("later"), None),
+        "pm:claude-code",
+        Some(&refresh),
+    )
+    .await
+    .expect("A moves to Later");
+    assert_eq!(
+        refresh.story(700).expect("present").horizon_order,
+        None,
+        "moving bands clears the stale within-band position so it doesn't mis-sort in the new band"
+    );
+}
+
+#[tokio::test]
+async fn reprioritize_with_neither_target_is_rejected_1759() {
+    let refresh = build_refresh(vec![seed(
+        700,
+        "A",
+        StoryType::Outcome,
+        &["outcome", "horizon.now"],
+    )])
+    .await;
+    let err = handle_reprioritize_outcome(
+        &args_full(700, None, None),
+        "pm:claude-code",
+        Some(&refresh),
+    )
+    .await
+    .expect_err("neither --to nor --position is a no-target");
+    assert!(
+        err.contains("--to") && err.contains("--position"),
+        "the error names the fix (pass --to and/or --position): {err}"
     );
 }
 

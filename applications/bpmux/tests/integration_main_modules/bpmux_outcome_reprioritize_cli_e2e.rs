@@ -67,3 +67,19 @@ async fn reprioritize_is_pm_gated_off_the_cli_dev_refused() {
         stderr(&refused)
     );
 }
+
+#[tokio::test]
+async fn reprioritize_with_no_target_is_rejected_by_the_grammar() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let out = run(&bpmux, "pm", &["outcome", "reprioritize", "1"]).await;
+    assert!(
+        !out.status.success(),
+        "neither --to nor --position is a no-target; the grammar requires at least one"
+    );
+    assert!(
+        stderr(&out).contains("--to") || stderr(&out).contains("--position"),
+        "the error names the required flags; stderr: {}",
+        stderr(&out)
+    );
+}

@@ -46,6 +46,8 @@ pub struct Story {
     #[serde(default)]
     pub horizon: Option<Horizon>,
     #[serde(default)]
+    pub horizon_order: Option<u32>,
+    #[serde(default)]
     pub outcome_membership: Option<(u64, u32)>,
     #[serde(default)]
     pub is_current: bool,
@@ -86,6 +88,7 @@ impl Story {
             iteration_review_closed_by: Vec::new(),
             iteration_dev_ok_by: Vec::new(),
             horizon: None,
+            horizon_order: None,
             outcome_membership: None,
             is_current: false,
             acceptor: None,

@@ -60,7 +60,11 @@ pub(crate) fn dispatch_planning(command: &PlanningCommands) -> anyhow::Result<()
                 iteration,
                 position,
             } => run_outcome_add(*outcome, *iteration, *position),
-            OutcomeAction::Reprioritize { number, to } => run_outcome_reprioritize(*number, to),
+            OutcomeAction::Reprioritize {
+                number,
+                to,
+                position,
+            } => run_outcome_reprioritize(*number, to.as_deref(), *position),
         },
         PlanningCommands::Epic { action } => match action {
             EpicAction::SetParent { number, epic } => run_epic_set_parent(*number, *epic),

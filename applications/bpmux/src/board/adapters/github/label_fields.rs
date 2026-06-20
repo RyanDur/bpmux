@@ -61,6 +61,15 @@ pub fn horizon_from_labels(labels: &[String]) -> Option<crate::board::domain::Ho
         .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_horizon(l))
 }
 
+pub fn horizon_order_from_labels(labels: &[String]) -> Option<u32> {
+    labels
+        .iter()
+        .filter_map(|l| {
+            crate::board::adapters::gh_label_codec::GhLabelCodec.decode_horizon_order(l)
+        })
+        .min()
+}
+
 fn is_iteration_position_label(label: &str) -> bool {
     crate::board::adapters::gh_label_codec::GhLabelCodec.is_iteration_position_label(label)
 }

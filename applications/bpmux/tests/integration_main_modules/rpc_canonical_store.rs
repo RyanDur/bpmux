@@ -60,6 +60,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
         iteration_review_closed_by: Vec::new(),
         iteration_dev_ok_by: Vec::new(),
         horizon: None,
+        horizon_order: None,
         outcome_membership: None,
         is_current: false,
         acceptor: None,

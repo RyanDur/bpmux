@@ -107,6 +107,14 @@ impl GhLabelCodec {
         format!("horizon.{}", horizon.as_str())
     }
 
+    pub fn encode_horizon_order(&self, position: u32) -> String {
+        format!("horizon-order.{position}")
+    }
+
+    pub fn decode_horizon_order(&self, label: &str) -> Option<u32> {
+        label.strip_prefix("horizon-order.")?.parse().ok()
+    }
+
     pub fn is_iteration_position_label(&self, label: &str) -> bool {
         let Some(rest) = label.strip_prefix("iteration-") else {
             return false;

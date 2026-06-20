@@ -52,15 +52,18 @@ pub fn derive_roadmap_view(stories: &[Story], workflow: &WorkflowConfig) -> Vec<
     BANDS
         .iter()
         .filter_map(|(horizon, label)| {
-            let mut outcomes: Vec<RoadmapOutcome> = stories
+            let mut members: Vec<&Story> = stories
                 .iter()
                 .filter(|s| s.story_type == StoryType::Outcome && s.horizon == Some(*horizon))
-                .map(|outcome| roadmap_outcome(outcome, stories, workflow))
                 .collect();
-            if outcomes.is_empty() {
+            if members.is_empty() {
                 return None;
             }
-            outcomes.sort_by_key(|o| o.number);
+            members.sort_by_key(|s| (s.horizon_order.unwrap_or(u32::MAX), s.number));
+            let outcomes: Vec<RoadmapOutcome> = members
+                .iter()
+                .map(|outcome| roadmap_outcome(outcome, stories, workflow))
+                .collect();
             Some(RoadmapBand {
                 horizon: *horizon,
                 label: (*label).to_string(),

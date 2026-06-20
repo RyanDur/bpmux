@@ -68,6 +68,22 @@ fn outcomes_within_a_band_sort_by_number() {
 }
 
 #[test]
+fn an_explicit_within_band_position_overrides_number_order() {
+    let mut first = outcome(13, "B", Horizon::Now);
+    first.horizon_order = Some(1);
+    let mut second = outcome(11, "A", Horizon::Now);
+    second.horizon_order = Some(2);
+    let unpositioned = outcome(12, "C", Horizon::Now);
+    let bands = derive_roadmap_view(&[second, unpositioned, first], &bundled_default());
+    let numbers: Vec<u64> = bands[0].outcomes.iter().map(|o| o.number).collect();
+    assert_eq!(
+        numbers,
+        vec![13, 11, 12],
+        "positioned outcomes lead in explicit order; an unpositioned outcome trails by number"
+    );
+}
+
+#[test]
 fn a_non_outcome_story_is_never_a_roadmap_row_even_with_a_horizon() {
     let mut feature = Story::new_minimal(
         99,
