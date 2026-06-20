@@ -71,6 +71,7 @@ async fn dispatch(
             bridge::dispatch_reprioritize_outcome(args, agent, refresh_ref).await
         }
         "edit_outcome" => bridge::dispatch_edit_outcome(args, agent, refresh_ref).await,
+        "retire_outcome" => bridge::dispatch_retire_outcome(args, agent, refresh_ref).await,
         "reorder_story" => bridge::dispatch_reorder_story(args, agent, refresh_ref).await,
         "move_story" => bridge::dispatch_move_story(args, agent, refresh_ref).await,
         "edit_story" => bridge::dispatch_edit_story(args, agent, refresh_ref).await,

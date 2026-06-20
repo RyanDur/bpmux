@@ -48,9 +48,9 @@ pub(crate) use dispatch::{
     dispatch_fail_desk_check, dispatch_get_story, dispatch_label_story,
     dispatch_list_epic_children, dispatch_list_ready, dispatch_map_iteration_to_outcome,
     dispatch_move_story, dispatch_pass_desk_check, dispatch_reject_story, dispatch_reorder_story,
-    dispatch_reprioritize_outcome, dispatch_set_parent_epic, dispatch_start_story,
-    dispatch_submit_verdict, dispatch_unset_parent_epic, dispatch_view_backlog,
-    dispatch_view_board, dispatch_view_comments, dispatch_view_commit_diff,
+    dispatch_reprioritize_outcome, dispatch_retire_outcome, dispatch_set_parent_epic,
+    dispatch_start_story, dispatch_submit_verdict, dispatch_unset_parent_epic,
+    dispatch_view_backlog, dispatch_view_board, dispatch_view_comments, dispatch_view_commit_diff,
     dispatch_view_story_commits, dispatch_view_story_timeline, dispatch_view_velocity,
     dispatch_view_verdicts,
 };

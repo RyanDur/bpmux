@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::board::domain::{Horizon, Story, StoryType};
+use crate::board::domain::{Horizon, Story, StoryState, StoryType};
 use crate::board::iteration_readiness::{building_iterations, outcome_readiness};
 use crate::workflow::config::WorkflowConfig;
 
@@ -54,7 +54,11 @@ pub fn derive_roadmap_view(stories: &[Story], workflow: &WorkflowConfig) -> Vec<
         .filter_map(|(horizon, label)| {
             let mut members: Vec<&Story> = stories
                 .iter()
-                .filter(|s| s.story_type == StoryType::Outcome && s.horizon == Some(*horizon))
+                .filter(|s| {
+                    s.story_type == StoryType::Outcome
+                        && s.horizon == Some(*horizon)
+                        && s.state != StoryState::Retired
+                })
                 .collect();
             if members.is_empty() {
                 return None;

@@ -52,6 +52,8 @@ mod remove_principle;
 #[cfg(test)]
 mod reprioritize_outcome_tests;
 mod rerun_ci;
+#[cfg(test)]
+mod retire_outcome_tests;
 pub(in crate::bridge) mod rework_context;
 mod save_bookmark;
 mod save_briefing;

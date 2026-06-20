@@ -73,6 +73,18 @@ pub(crate) fn run_outcome_edit(
     Ok(())
 }
 
+pub(crate) fn run_outcome_retire(outcome: u64, reason: &str) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("outcome_number".to_string(), serde_json::json!(outcome));
+    args.insert("reason".to_string(), serde_json::json!(reason));
+    let role = crate::resolve_role(&None);
+    let message =
+        super::write::post_rpc_write("retire_outcome", &role, &serde_json::Value::Object(args))?;
+    println!("✓ {message}");
+    println!("  verify: bpmux roadmap");
+    Ok(())
+}
+
 pub(crate) fn run_outcome_reprioritize(
     outcome: u64,
     to: Option<&str>,

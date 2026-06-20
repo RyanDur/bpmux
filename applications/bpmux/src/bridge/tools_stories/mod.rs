@@ -12,6 +12,7 @@ mod metadata_iteration;
 mod metadata_iteration_readiness;
 mod metadata_outcome;
 mod reorder;
+mod retire_outcome;
 mod signals;
 mod transition;
 mod view;
@@ -46,6 +47,7 @@ pub(crate) use metadata_iteration_readiness::{
 };
 pub(crate) use metadata_outcome::handle_reprioritize_outcome;
 pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
+pub(crate) use retire_outcome::handle_retire_outcome;
 #[cfg(test)]
 pub(crate) use signals::{
     addressee_for_pass_desk_check, build_iteration_close_signal,

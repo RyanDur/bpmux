@@ -123,4 +123,16 @@ pub(crate) enum OutcomeAction {
         )]
         position: Option<u32>,
     },
+    #[command(
+        about = "Retire an outcome (domain soft-delete) so it no longer appears in bpmux roadmap — the roadmap-semantic verb, NOT the generic `bpmux close <outcome#>`. --reason required (destructive; the reason is the stream audit-trail). PM-only; owner bypasses."
+    )]
+    Retire {
+        #[arg(help = "Outcome entity issue number")]
+        number: u64,
+        #[arg(
+            long,
+            help = "Why it's being retired (required — the audit-trail in the stream)"
+        )]
+        reason: String,
+    },
 }

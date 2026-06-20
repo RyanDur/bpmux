@@ -59,6 +59,8 @@ mod bpmux_lesson_cli_parity_e2e;
 mod bpmux_outcome_edit_cli_e2e;
 #[path = "integration_main_modules/bpmux_outcome_reprioritize_cli_e2e.rs"]
 mod bpmux_outcome_reprioritize_cli_e2e;
+#[path = "integration_main_modules/bpmux_outcome_retire_cli_e2e.rs"]
+mod bpmux_outcome_retire_cli_e2e;
 #[path = "integration_main_modules/bpmux_pass_cli_substrate_parity_e2e.rs"]
 mod bpmux_pass_cli_substrate_parity_e2e;
 #[path = "integration_main_modules/bpmux_presence_hooks_e2e.rs"]

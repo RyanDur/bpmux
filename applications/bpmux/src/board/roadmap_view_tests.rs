@@ -49,6 +49,35 @@ fn outcomes_group_into_now_next_later_priority_bands() {
 }
 
 #[test]
+fn a_retired_outcome_drops_from_the_roadmap_view_1761() {
+    let live = outcome(11, "Live outcome", Horizon::Now);
+    let mut retired = outcome(12, "Abandoned outcome", Horizon::Now);
+    retired.state = StoryState::Retired;
+    let bands = derive_roadmap_view(&[live, retired], &bundled_default());
+    let numbers: Vec<u64> = bands
+        .iter()
+        .flat_map(|b| &b.outcomes)
+        .map(|o| o.number)
+        .collect();
+    assert_eq!(
+        numbers,
+        vec![11],
+        "a retired outcome is filtered on its domain-state at edge-in (the #1234-class: NOT rendered from raw is_closed); only the live outcome appears"
+    );
+}
+
+#[test]
+fn a_band_with_only_retired_outcomes_is_omitted_1761() {
+    let mut retired = outcome(12, "Abandoned", Horizon::Now);
+    retired.state = StoryState::Retired;
+    let bands = derive_roadmap_view(&[retired], &bundled_default());
+    assert!(
+        bands.is_empty(),
+        "a band whose only outcome is retired renders nothing — retire is done only when the view drops it"
+    );
+}
+
+#[test]
 fn a_horizon_band_with_no_outcomes_is_omitted() {
     let stories = vec![outcome(11, "Now thing", Horizon::Now)];
     let bands = derive_roadmap_view(&stories, &bundled_default());
