@@ -113,7 +113,7 @@ pub async fn post_test_create_story(
             .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml").to_string());
         put_str(&mut args, "acceptance_test_path", path);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_test_create_story(args, &agent, Some(&refresh)).await
+        bridge::dispatch_create_story(args, &agent, Some(&refresh)).await
     })
     .await
 }
@@ -133,7 +133,7 @@ pub async fn post_test_create_iteration(
         let mut args = serde_json::Map::new();
         put_str(&mut args, "theme_name", req.theme_name);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_test_create_iteration(args, &agent, Some(&refresh)).await
+        bridge::dispatch_create_iteration(args, &agent, Some(&refresh)).await
     })
     .await
 }
@@ -159,7 +159,7 @@ pub async fn post_test_designate_current_iteration(
     );
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_designate_current_iteration(args, &agent, Some(refresh_ref)).await {
+    match bridge::dispatch_designate_current_iteration(args, &agent, Some(refresh_ref)).await {
         Ok(message) => {
             if let Err(e) = refresh.drain_pending().await {
                 return (
@@ -206,7 +206,7 @@ pub async fn post_test_move_story(
             put_num(&mut args, "position", p);
         }
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_test_move_story(args, &agent, Some(&refresh)).await
+        bridge::dispatch_move_story(args, &agent, Some(&refresh)).await
     })
     .await
 }
@@ -234,7 +234,7 @@ pub async fn post_test_edit_story(
             put_str(&mut args, "body", b);
         }
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_test_edit_story(args, &agent, Some(&refresh)).await
+        bridge::dispatch_edit_story(args, &agent, Some(&refresh)).await
     })
     .await
 }
@@ -256,7 +256,7 @@ pub async fn post_test_comment_on_story(
         put_num(&mut args, "number", req.number);
         put_str(&mut args, "body", req.body);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_test_comment_on_story(args, &agent, Some(&refresh)).await
+        bridge::dispatch_comment_on_story(args, &agent, Some(&refresh)).await
     })
     .await
 }
@@ -280,7 +280,7 @@ pub async fn post_test_start_story(
         put_str(&mut args, "pickup_paraphrase", req.pickup_paraphrase);
         put_str(&mut args, "falsifier_reframing", req.falsifier_reframing);
         let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
-        bridge::dispatch_test_start_story(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_start_story(args, &agent, Some(&refresh), &session).await
     })
     .await
 }
@@ -302,7 +302,7 @@ pub async fn post_test_fail_desk_check(
         put_num(&mut args, "number", req.number);
         put_str(&mut args, "reason", req.reason);
         let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
-        bridge::dispatch_test_fail_desk_check(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_fail_desk_check(args, &agent, Some(&refresh), &session).await
     })
     .await
 }
@@ -322,7 +322,7 @@ pub async fn post_test_accept_story(
         let mut args = serde_json::Map::new();
         put_num(&mut args, "number", req.number);
         let agent = req.agent.unwrap_or_else(|| "owner:test".to_string());
-        bridge::dispatch_test_accept_story(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_accept_story(args, &agent, Some(&refresh), &session).await
     })
     .await
 }
@@ -344,7 +344,7 @@ pub async fn post_test_deliver_story(
         put_num(&mut args, "number", req.number);
         put_str(&mut args, "verified_observation", req.verified_observation);
         let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
-        bridge::dispatch_test_deliver_story(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_deliver_story(args, &agent, Some(&refresh), &session).await
     })
     .await
 }
@@ -370,7 +370,7 @@ pub async fn post_test_close_story(
             put_str(&mut args, "disposition", disposition);
         }
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_test_close_story(args, &agent, Some(&refresh)).await
+        bridge::dispatch_close_story(args, &agent, Some(&refresh)).await
     })
     .await
 }
@@ -478,7 +478,7 @@ pub async fn post_test_view_velocity(
         return test_route_unavailable();
     };
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_view_velocity(req.messages, Some(refresh_ref)).await {
+    match bridge::dispatch_view_velocity(req.messages, Some(refresh_ref)).await {
         Ok(metrics_json) => {
             let parsed: serde_json::Value = serde_json::from_str(&metrics_json)
                 .unwrap_or(serde_json::Value::String(metrics_json));

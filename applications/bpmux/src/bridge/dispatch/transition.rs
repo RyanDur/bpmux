@@ -32,7 +32,7 @@ pub(super) fn broadcast_client_msg_via_session(
     }
 }
 
-pub(crate) async fn dispatch_test_deliver_story(
+pub(crate) async fn dispatch_deliver_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -51,7 +51,7 @@ pub(crate) async fn dispatch_test_deliver_story(
     Ok(result)
 }
 
-pub(crate) async fn dispatch_test_start_story(
+pub(crate) async fn dispatch_start_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -68,7 +68,7 @@ pub(crate) async fn dispatch_test_start_story(
     Ok(result)
 }
 
-pub(crate) async fn dispatch_test_accept_story(
+pub(crate) async fn dispatch_accept_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -87,7 +87,7 @@ pub(crate) async fn dispatch_test_accept_story(
     Ok(result)
 }
 
-pub(crate) async fn dispatch_test_fail_desk_check(
+pub(crate) async fn dispatch_fail_desk_check(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -108,7 +108,7 @@ pub(crate) async fn dispatch_test_fail_desk_check(
     Ok(result)
 }
 
-pub(crate) async fn dispatch_test_pass_desk_check(
+pub(crate) async fn dispatch_pass_desk_check(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -129,7 +129,7 @@ pub(crate) async fn dispatch_test_pass_desk_check(
     Ok(result)
 }
 
-pub(crate) async fn dispatch_test_reject_story(
+pub(crate) async fn dispatch_reject_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,

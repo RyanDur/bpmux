@@ -173,7 +173,7 @@ async fn roundtrip_coherence_view_board_reflects_new_story() {
     let resp = post_create_story(router, body).await;
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let view = bridge::dispatch_test_view_board(serde_json::Map::new(), Some(&refresh))
+    let view = bridge::dispatch_view_board(serde_json::Map::new(), Some(&refresh))
         .await
         .expect("view_board returns Ok");
     assert!(
@@ -432,7 +432,7 @@ async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
         serde_json::Value::Number(target_number.into()),
     );
     let _ = store;
-    let view = bridge::dispatch_test_view_comments(args, Some(&refresh))
+    let view = bridge::dispatch_view_comments(args, Some(&refresh))
         .await
         .expect("view_comments returns Ok");
     assert!(

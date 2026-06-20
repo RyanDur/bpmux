@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::super::tools_stories;
 
-pub(crate) async fn dispatch_test_create_iteration(
+pub(crate) async fn dispatch_create_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -10,7 +10,7 @@ pub(crate) async fn dispatch_test_create_iteration(
     tools_stories::handle_create_iteration(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_create_outcome(
+pub(crate) async fn dispatch_create_outcome(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -18,7 +18,7 @@ pub(crate) async fn dispatch_test_create_outcome(
     tools_stories::handle_create_outcome(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_close_iteration(
+pub(crate) async fn dispatch_close_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -60,7 +60,7 @@ pub(crate) async fn dispatch_test_close_iteration(
     Ok(format!("iteration #{iteration_number} closed"))
 }
 
-pub(crate) async fn dispatch_test_set_parent_epic(
+pub(crate) async fn dispatch_set_parent_epic(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -68,7 +68,7 @@ pub(crate) async fn dispatch_test_set_parent_epic(
     tools_stories::handle_set_parent_epic(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_unset_parent_epic(
+pub(crate) async fn dispatch_unset_parent_epic(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -76,7 +76,7 @@ pub(crate) async fn dispatch_test_unset_parent_epic(
     tools_stories::handle_unset_parent_epic(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_add_story_to_iteration(
+pub(crate) async fn dispatch_add_story_to_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -84,7 +84,7 @@ pub(crate) async fn dispatch_test_add_story_to_iteration(
     tools_stories::handle_add_story_to_iteration(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_designate_current_iteration(
+pub(crate) async fn dispatch_designate_current_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -92,7 +92,7 @@ pub(crate) async fn dispatch_test_designate_current_iteration(
     tools_stories::handle_designate_current_iteration(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_close_pre_pickup_review(
+pub(crate) async fn dispatch_close_pre_pickup_review(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -100,7 +100,7 @@ pub(crate) async fn dispatch_test_close_pre_pickup_review(
     tools_stories::handle_close_pre_pickup_review(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_dev_ok_iteration(
+pub(crate) async fn dispatch_dev_ok_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -108,7 +108,7 @@ pub(crate) async fn dispatch_test_dev_ok_iteration(
     tools_stories::handle_dev_ok_iteration(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_map_iteration_to_outcome(
+pub(crate) async fn dispatch_map_iteration_to_outcome(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -116,7 +116,7 @@ pub(crate) async fn dispatch_test_map_iteration_to_outcome(
     tools_stories::handle_map_iteration_to_outcome(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_test_reprioritize_outcome(
+pub(crate) async fn dispatch_reprioritize_outcome(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,

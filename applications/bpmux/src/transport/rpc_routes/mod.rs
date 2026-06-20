@@ -33,78 +33,64 @@ async fn dispatch(
 ) -> Result<String, String> {
     let refresh_ref: Option<&Arc<dyn RefreshDriver>> = Some(refresh);
     match tool {
-        "start_story" => bridge::dispatch_test_start_story(args, agent, refresh_ref, session).await,
-        "deliver_story" => {
-            bridge::dispatch_test_deliver_story(args, agent, refresh_ref, session).await
-        }
+        "start_story" => bridge::dispatch_start_story(args, agent, refresh_ref, session).await,
+        "deliver_story" => bridge::dispatch_deliver_story(args, agent, refresh_ref, session).await,
         "pass_desk_check" => {
-            bridge::dispatch_test_pass_desk_check(args, agent, refresh_ref, session).await
+            bridge::dispatch_pass_desk_check(args, agent, refresh_ref, session).await
         }
         "fail_desk_check" => {
-            bridge::dispatch_test_fail_desk_check(args, agent, refresh_ref, session).await
+            bridge::dispatch_fail_desk_check(args, agent, refresh_ref, session).await
         }
-        "accept_story" => {
-            bridge::dispatch_test_accept_story(args, agent, refresh_ref, session).await
-        }
-        "reject_story" => {
-            bridge::dispatch_test_reject_story(args, agent, refresh_ref, session).await
-        }
-        "close_story" => bridge::dispatch_test_close_story(args, agent, refresh_ref).await,
-        "create_story" => bridge::dispatch_test_create_story(args, agent, refresh_ref).await,
-        "create_iteration" => {
-            bridge::dispatch_test_create_iteration(args, agent, refresh_ref).await
-        }
-        "create_outcome" => bridge::dispatch_test_create_outcome(args, agent, refresh_ref).await,
+        "accept_story" => bridge::dispatch_accept_story(args, agent, refresh_ref, session).await,
+        "reject_story" => bridge::dispatch_reject_story(args, agent, refresh_ref, session).await,
+        "close_story" => bridge::dispatch_close_story(args, agent, refresh_ref).await,
+        "create_story" => bridge::dispatch_create_story(args, agent, refresh_ref).await,
+        "create_iteration" => bridge::dispatch_create_iteration(args, agent, refresh_ref).await,
+        "create_outcome" => bridge::dispatch_create_outcome(args, agent, refresh_ref).await,
         "close_iteration" => {
-            bridge::dispatch_test_close_iteration(args, agent, refresh_ref, session).await
+            bridge::dispatch_close_iteration(args, agent, refresh_ref, session).await
         }
-        "comment_on_story" => {
-            bridge::dispatch_test_comment_on_story(args, agent, refresh_ref).await
-        }
-        "label_story" => bridge::dispatch_test_label_story(args, agent, refresh_ref).await,
-        "set_parent_epic" => bridge::dispatch_test_set_parent_epic(args, agent, refresh_ref).await,
-        "unset_parent_epic" => {
-            bridge::dispatch_test_unset_parent_epic(args, agent, refresh_ref).await
-        }
+        "comment_on_story" => bridge::dispatch_comment_on_story(args, agent, refresh_ref).await,
+        "label_story" => bridge::dispatch_label_story(args, agent, refresh_ref).await,
+        "set_parent_epic" => bridge::dispatch_set_parent_epic(args, agent, refresh_ref).await,
+        "unset_parent_epic" => bridge::dispatch_unset_parent_epic(args, agent, refresh_ref).await,
         "add_story_to_iteration" => {
-            bridge::dispatch_test_add_story_to_iteration(args, agent, refresh_ref).await
+            bridge::dispatch_add_story_to_iteration(args, agent, refresh_ref).await
         }
         "designate_current_iteration" => {
-            bridge::dispatch_test_designate_current_iteration(args, agent, refresh_ref).await
+            bridge::dispatch_designate_current_iteration(args, agent, refresh_ref).await
         }
         "close_pre_pickup_review" => {
-            bridge::dispatch_test_close_pre_pickup_review(args, agent, refresh_ref).await
+            bridge::dispatch_close_pre_pickup_review(args, agent, refresh_ref).await
         }
-        "dev_ok_iteration" => {
-            bridge::dispatch_test_dev_ok_iteration(args, agent, refresh_ref).await
-        }
+        "dev_ok_iteration" => bridge::dispatch_dev_ok_iteration(args, agent, refresh_ref).await,
         "map_iteration_to_outcome" => {
-            bridge::dispatch_test_map_iteration_to_outcome(args, agent, refresh_ref).await
+            bridge::dispatch_map_iteration_to_outcome(args, agent, refresh_ref).await
         }
         "reprioritize_outcome" => {
-            bridge::dispatch_test_reprioritize_outcome(args, agent, refresh_ref).await
+            bridge::dispatch_reprioritize_outcome(args, agent, refresh_ref).await
         }
-        "reorder_story" => bridge::dispatch_test_reorder_story(args, agent, refresh_ref).await,
-        "move_story" => bridge::dispatch_test_move_story(args, agent, refresh_ref).await,
-        "edit_story" => bridge::dispatch_test_edit_story(args, agent, refresh_ref).await,
-        "view_board" => bridge::dispatch_test_view_board(args, refresh_ref).await,
-        "get_story" => bridge::dispatch_test_get_story(args, refresh_ref).await,
-        "list_ready" => bridge::dispatch_test_list_ready(refresh_ref).await,
-        "list_epic_children" => bridge::dispatch_test_list_epic_children(args, refresh_ref).await,
-        "dev_in_flight" => bridge::dispatch_test_dev_in_flight(refresh_ref).await,
-        "view_story_timeline" => bridge::dispatch_test_view_story_timeline(args, refresh_ref).await,
-        "view_comments" => bridge::dispatch_test_view_comments(args, refresh_ref).await,
-        "view_backlog" => bridge::dispatch_test_view_backlog(refresh_ref).await,
-        "submit_verdict" => bridge::dispatch_test_submit_verdict(args, agent, session).await,
-        "view_verdicts" => bridge::dispatch_test_view_verdicts(args, session, refresh_ref).await,
+        "reorder_story" => bridge::dispatch_reorder_story(args, agent, refresh_ref).await,
+        "move_story" => bridge::dispatch_move_story(args, agent, refresh_ref).await,
+        "edit_story" => bridge::dispatch_edit_story(args, agent, refresh_ref).await,
+        "view_board" => bridge::dispatch_view_board(args, refresh_ref).await,
+        "get_story" => bridge::dispatch_get_story(args, refresh_ref).await,
+        "list_ready" => bridge::dispatch_list_ready(refresh_ref).await,
+        "list_epic_children" => bridge::dispatch_list_epic_children(args, refresh_ref).await,
+        "dev_in_flight" => bridge::dispatch_dev_in_flight(refresh_ref).await,
+        "view_story_timeline" => bridge::dispatch_view_story_timeline(args, refresh_ref).await,
+        "view_comments" => bridge::dispatch_view_comments(args, refresh_ref).await,
+        "view_backlog" => bridge::dispatch_view_backlog(refresh_ref).await,
+        "submit_verdict" => bridge::dispatch_submit_verdict(args, agent, session).await,
+        "view_verdicts" => bridge::dispatch_view_verdicts(args, session, refresh_ref).await,
         "view_velocity" => {
             let messages = session
                 .read_messages()
                 .map_err(|e| format!("view_velocity: read messages: {e}"))?;
-            bridge::dispatch_test_view_velocity(messages, refresh_ref).await
+            bridge::dispatch_view_velocity(messages, refresh_ref).await
         }
-        "view_story_commits" => bridge::dispatch_test_view_story_commits(args).await,
-        "view_commit_diff" => bridge::dispatch_test_view_commit_diff(args).await,
+        "view_story_commits" => bridge::dispatch_view_story_commits(args).await,
+        "view_commit_diff" => bridge::dispatch_view_commit_diff(args).await,
         _ => Err(format!(
             "rpc: unknown tool '{tool}'; expected one of {:?}",
             known_tools()

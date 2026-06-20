@@ -542,7 +542,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
         "verified_observation".into(),
         serde_json::json!("ran end-to-end"),
     );
-    let result = crate::bridge::dispatch_test_deliver_story(
+    let result = crate::bridge::dispatch_deliver_story(
         args,
         "dev:claude-code",
         Some(&orchestrator),

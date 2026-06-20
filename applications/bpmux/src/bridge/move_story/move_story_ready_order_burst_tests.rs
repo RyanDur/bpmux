@@ -5,7 +5,7 @@ use crate::board::RefreshDriver;
 use crate::board::SyncOrchestrator;
 use crate::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::board::domain::{Story, StoryState};
-use crate::bridge::dispatch::{dispatch_test_list_ready, dispatch_test_move_story};
+use crate::bridge::dispatch::{dispatch_list_ready, dispatch_move_story};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -53,13 +53,13 @@ async fn move_to_ready_position(orch: &Arc<dyn RefreshDriver>, number: u64, posi
         "rationale".to_string(),
         serde_json::json!("burst-regression #1579: distinct positions under rapid reorder"),
     );
-    dispatch_test_move_story(args, "pm", Some(orch))
+    dispatch_move_story(args, "pm", Some(orch))
         .await
         .unwrap_or_else(|e| panic!("move_story(#{number}, pos {position}) must succeed: {e}"));
 }
 
 async fn ready_queue_numbers(orch: &Arc<dyn RefreshDriver>) -> Vec<u64> {
-    let raw = dispatch_test_list_ready(Some(orch)).await.unwrap();
+    let raw = dispatch_list_ready(Some(orch)).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&raw).unwrap();
     parsed
         .as_array()
