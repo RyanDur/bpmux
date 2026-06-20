@@ -155,12 +155,6 @@ pub(crate) fn run_capture(window: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn run_roadmap() -> anyhow::Result<()> {
-    let text = crate::roadmap::fetch_roadmap().map_err(|e| anyhow::anyhow!("{e}"))?;
-    println!("{text}");
-    Ok(())
-}
-
 pub(crate) fn run_sync_status() -> anyhow::Result<()> {
     let (status, body) = authed_get("/api/sync-status")?;
     if !status.is_success() {

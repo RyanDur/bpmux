@@ -25,33 +25,6 @@ fn stderr(out: &std::process::Output) -> String {
 }
 
 #[tokio::test]
-async fn bpmux_roadmap_reads_the_repo_roadmap_off_mcp() {
-    let root = tempfile::TempDir::new().expect("root dir");
-    let marker = "## off-mcp roadmap fixture marker";
-    std::fs::write(
-        root.path().join("ROADMAP.md"),
-        format!("# Roadmap\n\n{marker}\n"),
-    )
-    .expect("write ROADMAP.md fixture");
-    let root_str = root.path().to_str().expect("root path").to_string();
-    let out = run_verb(
-        &["roadmap"],
-        &[("BPMUX_ROOT", root_str.as_str()), ("BPMUX_ROLE", "dev")],
-    )
-    .await;
-    assert!(
-        out.status.success(),
-        "bpmux roadmap reads ROADMAP.md from the repo root directly off MCP; stderr: {}",
-        stderr(&out)
-    );
-    assert!(
-        stdout(&out).contains(marker),
-        "roadmap prints the actual ROADMAP.md content off MCP (non-vacuous: the fixture marker, not empty); stdout: {}",
-        stdout(&out)
-    );
-}
-
-#[tokio::test]
 async fn bpmux_sync_status_reaches_the_authed_rest_read_off_mcp() {
     let bpmux = TestBpmux::start();
     bpmux.simulate_secret();

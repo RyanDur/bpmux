@@ -14,6 +14,9 @@ mod principle;
 mod read;
 #[cfg(test)]
 mod read_tests;
+mod roadmap;
+#[cfg(test)]
+mod roadmap_tests;
 mod write;
 mod write_iteration;
 mod write_query;

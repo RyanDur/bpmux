@@ -1,6 +1,7 @@
 use clap::Subcommand;
 
-use crate::cli::read::{run_roadmap, run_search, run_sync_status};
+use crate::cli::read::{run_search, run_sync_status};
+use crate::cli::roadmap::run_roadmap;
 use crate::cli::write_query::{
     run_backlog, run_comments, run_commit_diff, run_story_commits, run_timeline, run_velocity,
     run_verdicts,
@@ -54,9 +55,12 @@ pub(crate) enum QueryCommands {
         max_bytes: Option<u64>,
     },
     #[command(
-        about = "Print the project roadmap off Claude's MCP — reads ROADMAP.md from the repo root directly."
+        about = "Print the substrate-derived roadmap-view off Claude's MCP — the shared roadmap (outcomes by Now/Next/Later priority with done/ready/needs-attention state), parity with the owner's GUI. --outcome drills into one outcome's iterations."
     )]
-    Roadmap,
+    Roadmap {
+        #[arg(long, help = "Drill into one outcome's iterations by number")]
+        outcome: Option<u64>,
+    },
     #[command(
         about = "Show the canonical-store sync status off Claude's MCP — the same /api/sync-status read the bridge uses."
     )]
@@ -81,7 +85,7 @@ pub(crate) fn dispatch_query(command: &QueryCommands) -> anyhow::Result<()> {
         QueryCommands::Velocity => run_velocity(),
         QueryCommands::Commits { story } => run_story_commits(*story),
         QueryCommands::Diff { sha, max_bytes } => run_commit_diff(sha, *max_bytes),
-        QueryCommands::Roadmap => run_roadmap(),
+        QueryCommands::Roadmap { outcome } => run_roadmap(*outcome),
         QueryCommands::SyncStatus => run_sync_status(),
         QueryCommands::Search { query, sender } => run_search(query, sender),
     }

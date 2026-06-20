@@ -13,6 +13,7 @@ mod metrics;
 mod presence;
 mod reactions;
 mod register;
+mod roadmap;
 mod room;
 mod roster;
 mod search;
@@ -47,6 +48,7 @@ pub(crate) use reactions::{
     truncate_excerpt,
 };
 pub use register::{RegisterRequest, post_register};
+pub use roadmap::get_roadmap;
 pub use room::{get_terminals, post_terminal_close, post_terminal_spawn};
 pub use roster::{
     RosterEntry, get_roster, get_sync_status, post_acknowledge_dropped, post_force_sync,

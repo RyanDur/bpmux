@@ -34,18 +34,21 @@ pub struct OutcomeReadiness {
     pub all_ready: bool,
 }
 
+pub fn building_iterations(outcome_number: u64, all: &[Story]) -> Vec<&Story> {
+    all.iter()
+        .filter(|s| {
+            s.story_type == crate::board::domain::StoryType::Iteration
+                && s.outcome_membership.map(|(o, _)| o) == Some(outcome_number)
+        })
+        .collect()
+}
+
 pub fn outcome_readiness(
     outcome: &Story,
     all: &[Story],
     workflow: &WorkflowConfig,
 ) -> OutcomeReadiness {
-    let building: Vec<&Story> = all
-        .iter()
-        .filter(|s| {
-            s.story_type == crate::board::domain::StoryType::Iteration
-                && s.outcome_membership.map(|(o, _)| o) == Some(outcome.number)
-        })
-        .collect();
+    let building = building_iterations(outcome.number, all);
     let gap_count = building
         .iter()
         .map(|iteration| {

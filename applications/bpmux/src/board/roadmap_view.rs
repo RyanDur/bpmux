@@ -1,0 +1,78 @@
+use serde::Serialize;
+
+use crate::board::domain::{Horizon, Story, StoryType};
+use crate::board::iteration_readiness::{building_iterations, outcome_readiness};
+use crate::workflow::config::WorkflowConfig;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OutcomeState {
+    Done,
+    Ready,
+    NeedsAttention,
+    Planned,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RoadmapOutcome {
+    pub number: u64,
+    pub name: String,
+    pub state: OutcomeState,
+    pub gap_count: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RoadmapBand {
+    pub horizon: Horizon,
+    pub label: String,
+    pub outcomes: Vec<RoadmapOutcome>,
+}
+
+const BANDS: [(Horizon, &str); 3] = [
+    (Horizon::Now, "Now"),
+    (Horizon::Next, "Next"),
+    (Horizon::Later, "Later"),
+];
+
+pub fn derive_roadmap_view(stories: &[Story], workflow: &WorkflowConfig) -> Vec<RoadmapBand> {
+    BANDS
+        .iter()
+        .filter_map(|(horizon, label)| {
+            let mut outcomes: Vec<RoadmapOutcome> = stories
+                .iter()
+                .filter(|s| s.story_type == StoryType::Outcome && s.horizon == Some(*horizon))
+                .map(|outcome| roadmap_outcome(outcome, stories, workflow))
+                .collect();
+            if outcomes.is_empty() {
+                return None;
+            }
+            outcomes.sort_by_key(|o| o.number);
+            Some(RoadmapBand {
+                horizon: *horizon,
+                label: (*label).to_string(),
+                outcomes,
+            })
+        })
+        .collect()
+}
+
+fn roadmap_outcome(outcome: &Story, all: &[Story], workflow: &WorkflowConfig) -> RoadmapOutcome {
+    let readiness = outcome_readiness(outcome, all, workflow);
+    let building = building_iterations(outcome.number, all);
+    let done = !building.is_empty() && building.iter().all(|it| it.is_closed);
+    let state = if done {
+        OutcomeState::Done
+    } else if readiness.iteration_count == 0 {
+        OutcomeState::Planned
+    } else if readiness.all_ready {
+        OutcomeState::Ready
+    } else {
+        OutcomeState::NeedsAttention
+    };
+    RoadmapOutcome {
+        number: outcome.number,
+        name: outcome.title.clone(),
+        state,
+        gap_count: readiness.gap_count,
+    }
+}

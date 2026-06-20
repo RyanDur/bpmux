@@ -60,6 +60,10 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         )
         .route("/api/board", axum::routing::get(transport::rest::get_board))
         .route(
+            "/api/roadmap",
+            axum::routing::get(transport::rest::get_roadmap),
+        )
+        .route(
             "/api/wait-for-event",
             axum::routing::get(transport::rest::wait_for_event),
         )
