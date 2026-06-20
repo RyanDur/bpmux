@@ -10,6 +10,8 @@ async fn run_register(bin: &str, port: u16, cwd: &std::path::Path, role: &str) -
         .current_dir(cwd)
         .env("BPMUX_PORT", port.to_string())
         .env("BPMUX_ROLE", role)
+        .env_remove("BPMUX_SESSION_ID")
+        .env_remove("BPMUX_TERMINAL_ID")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
