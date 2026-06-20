@@ -7,10 +7,16 @@
 
 ## Verb-shape (settled with PM)
 
-Repurpose `bpmux roadmap` -> print the substrate-VIEW by default (parity); demote the
-markdown narrative to `--narrative`. NOT a new verb: a new verb leaves `roadmap` printing
-the retired markdown (the trap). Repurposing makes parity the DEFAULT and retires the
-markdown-as-default for the CLI exactly as #1704 did for the GUI. Same retirement, both surfaces.
+Repurpose `bpmux roadmap` -> print the substrate-VIEW as the SOLE roadmap. The substrate
+(outcomes/iterations) is the source of truth; **ROADMAP.md is RETIRED — deleted, not the source
+of truth** (owner-directive 2026-06-20: "that should be retire and not our source of truth for our
+roadmap"). This SUPERSEDES the earlier "demote the markdown to `--narrative`" decision: do NOT keep
+a `--narrative` path that reads the dead markdown — a demoted-but-unmaintained markdown DRIFTS (the
+stale-lie the substrate-migration kills; the orphaned 57KB ROADMAP.md that `bpmux roadmap` already
+can't read is the empirical proof). So `bpmux roadmap` reads the substrate-VIEW only; the markdown
+file is deleted. Full retire (delete), not demote — mirroring #1704's GUI retirement but completing
+it. (If a prose narrative is ever wanted, it derives FROM the substrate, never from a static file —
+a separate, smaller question, not this.)
 
 ## Token-frugal by design (Ryan-canon 2026-06-16: "only enough to look up details · don't drown anyone / take all their tokens")
 
