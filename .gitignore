@@ -33,3 +33,10 @@ issues.csv
 
 # Per-clone agent routing identity (#1712) — the session-id held in the start dir
 .bpmux-session-id
+
+# Node deps + build/test artifacts (keep `git status` honest — real uncommitted work visible at a glance)
+node_modules/
+*.tsbuildinfo
+test-results/
+desk-check-evidence/
+.playwright-mcp/
