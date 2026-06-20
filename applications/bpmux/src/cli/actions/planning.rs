@@ -63,6 +63,33 @@ pub(crate) enum IterationAction {
         #[arg(help = "Iteration entity issue number")]
         number: u64,
     },
+    #[command(
+        about = "Remove a story from an iteration (the only INTENTIONAL vanish-path; the story is otherwise untouched). --reason required (destructive scope-cut, the audit-trail). PM-only; owner bypasses."
+    )]
+    RemoveMember {
+        #[arg(help = "Iteration entity issue number")]
+        iteration: u64,
+        #[arg(help = "Member story issue number to remove")]
+        story: u64,
+        #[arg(long, help = "Why it's being removed (required — the audit-trail)")]
+        reason: String,
+    },
+    #[command(about = "Reorder a story to a 1-indexed position within an iteration. PM-only.")]
+    MoveMember {
+        #[arg(help = "Iteration entity issue number")]
+        iteration: u64,
+        #[arg(help = "Member story issue number to reorder")]
+        story: u64,
+        #[arg(long, help = "New 1-indexed position within the iteration")]
+        to: u32,
+    },
+    #[command(about = "Edit an iteration's theme (its title). PM-only; owner bypasses.")]
+    Edit {
+        #[arg(help = "Iteration entity issue number")]
+        number: u64,
+        #[arg(long, help = "New theme name")]
+        theme: String,
+    },
 }
 
 #[derive(Subcommand)]

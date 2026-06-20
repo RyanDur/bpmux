@@ -10,8 +10,8 @@ pub(in crate::board::adapters::github) use comments::{
 };
 pub(in crate::board::adapters::github) use grouping::{
     push_current_iteration_cleared, push_current_iteration_designated,
-    push_iteration_membership_set, push_outcome_membership_set, push_parent_epic_set,
-    push_parent_epic_unset,
+    push_iteration_membership_cleared, push_iteration_membership_set, push_outcome_membership_set,
+    push_parent_epic_set, push_parent_epic_unset,
 };
 pub(in crate::board::adapters::github) use labels::{push_tag_added, push_tag_removed};
 pub(in crate::board::adapters::github) use lifecycle::{

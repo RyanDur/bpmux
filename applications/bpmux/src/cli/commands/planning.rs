@@ -4,7 +4,8 @@ use crate::cli::actions::{EpicAction, IterationAction, OutcomeAction};
 use crate::cli::write_iteration::{
     run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_iteration_add,
     run_iteration_close, run_iteration_close_review, run_iteration_create, run_iteration_designate,
-    run_iteration_dev_ok, run_outcome_add, run_outcome_create, run_outcome_edit,
+    run_iteration_dev_ok, run_iteration_edit_theme, run_iteration_move_member,
+    run_iteration_remove_member, run_outcome_add, run_outcome_create, run_outcome_edit,
     run_outcome_reprioritize, run_outcome_retire,
 };
 
@@ -49,6 +50,17 @@ pub(crate) fn dispatch_planning(command: &PlanningCommands) -> anyhow::Result<()
             IterationAction::Close { iteration } => run_iteration_close(*iteration),
             IterationAction::CloseReview { number } => run_iteration_close_review(*number),
             IterationAction::DevOk { number } => run_iteration_dev_ok(*number),
+            IterationAction::RemoveMember {
+                iteration,
+                story,
+                reason,
+            } => run_iteration_remove_member(*iteration, *story, reason),
+            IterationAction::MoveMember {
+                iteration,
+                story,
+                to,
+            } => run_iteration_move_member(*iteration, *story, *to),
+            IterationAction::Edit { number, theme } => run_iteration_edit_theme(*number, theme),
         },
         PlanningCommands::Outcome { action } => match action {
             OutcomeAction::Create {

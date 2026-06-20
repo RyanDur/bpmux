@@ -115,6 +115,11 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                 story.iteration_membership = Some((*iteration_number, *position));
             }
         }
+        BoardEvent::IterationMembershipCleared { number, .. } => {
+            if let Some(story) = s.stories.get_mut(number) {
+                story.iteration_membership = None;
+            }
+        }
         BoardEvent::OutcomeMembershipSet {
             number,
             outcome_number,

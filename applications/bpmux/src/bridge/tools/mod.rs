@@ -41,6 +41,8 @@ mod get_usage;
 pub(crate) mod git_repo;
 #[cfg(test)]
 mod git_repo_tests;
+#[cfg(test)]
+mod iteration_reorg_tests;
 mod list_epic_children;
 #[cfg(test)]
 mod list_epic_children_tests;

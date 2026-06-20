@@ -6,6 +6,7 @@ mod creation_iteration;
 mod creation_outcome;
 mod edit_outcome;
 pub(crate) mod helpers;
+mod iteration_reorg;
 mod metadata;
 mod metadata_epic;
 mod metadata_iteration;
@@ -36,6 +37,9 @@ pub(crate) use edit_outcome::handle_edit_outcome;
 pub(crate) use helpers::{ALL_STATE_LABELS, require_role, stale_workflow_labels};
 pub(crate) use helpers::{
     KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
+};
+pub(crate) use iteration_reorg::{
+    handle_edit_iteration_theme, handle_move_iteration_member, handle_remove_iteration_member,
 };
 pub(crate) use metadata::{handle_comment_on_story, handle_edit_story, handle_label_story};
 pub(crate) use metadata_epic::{handle_set_parent_epic, handle_unset_parent_epic};
