@@ -8,7 +8,8 @@ pub(crate) use iteration::{
     dispatch_test_close_pre_pickup_review, dispatch_test_create_iteration,
     dispatch_test_create_outcome, dispatch_test_designate_current_iteration,
     dispatch_test_dev_ok_iteration, dispatch_test_map_iteration_to_outcome,
-    dispatch_test_set_parent_epic, dispatch_test_unset_parent_epic,
+    dispatch_test_reprioritize_outcome, dispatch_test_set_parent_epic,
+    dispatch_test_unset_parent_epic,
 };
 pub(crate) use story::{
     dispatch_test_close_story, dispatch_test_comment_on_story, dispatch_test_create_story,

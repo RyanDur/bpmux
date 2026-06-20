@@ -132,6 +132,25 @@ impl Horizon {
             Horizon::Later => "later",
         }
     }
+
+    pub fn band_label(self) -> &'static str {
+        match self {
+            Horizon::Now => "Now",
+            Horizon::Next => "Next",
+            Horizon::Later => "Later",
+        }
+    }
+
+    pub fn from_cli(raw: &str) -> Option<Horizon> {
+        match raw.to_ascii_lowercase().as_str() {
+            "now" => Some(Horizon::Now),
+            "next" => Some(Horizon::Next),
+            "later" => Some(Horizon::Later),
+            _ => None,
+        }
+    }
+
+    pub const CLI_VALUES: &'static str = "now | next | later";
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

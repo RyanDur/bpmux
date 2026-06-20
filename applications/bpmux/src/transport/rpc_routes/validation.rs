@@ -33,6 +33,7 @@ pub(super) fn known_tools() -> &'static [&'static str] {
         "close_pre_pickup_review",
         "dev_ok_iteration",
         "map_iteration_to_outcome",
+        "reprioritize_outcome",
         "reorder_story",
         "edit_story",
         "view_board",

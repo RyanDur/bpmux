@@ -81,6 +81,9 @@ async fn dispatch(
         "map_iteration_to_outcome" => {
             bridge::dispatch_test_map_iteration_to_outcome(args, agent, refresh_ref).await
         }
+        "reprioritize_outcome" => {
+            bridge::dispatch_test_reprioritize_outcome(args, agent, refresh_ref).await
+        }
         "reorder_story" => bridge::dispatch_test_reorder_story(args, agent, refresh_ref).await,
         "move_story" => bridge::dispatch_test_move_story(args, agent, refresh_ref).await,
         "edit_story" => bridge::dispatch_test_edit_story(args, agent, refresh_ref).await,

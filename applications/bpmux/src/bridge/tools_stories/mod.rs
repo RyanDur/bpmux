@@ -9,6 +9,7 @@ mod metadata;
 mod metadata_epic;
 mod metadata_iteration;
 mod metadata_iteration_readiness;
+mod metadata_outcome;
 mod reorder;
 mod signals;
 mod transition;
@@ -41,6 +42,7 @@ pub(crate) use metadata_iteration::{
 pub(crate) use metadata_iteration_readiness::{
     handle_close_pre_pickup_review, handle_designate_current_iteration, handle_dev_ok_iteration,
 };
+pub(crate) use metadata_outcome::handle_reprioritize_outcome;
 pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
 #[cfg(test)]
 pub(crate) use signals::{

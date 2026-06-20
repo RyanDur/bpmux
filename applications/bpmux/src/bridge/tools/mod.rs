@@ -47,6 +47,8 @@ mod list_peer_lessons;
 mod list_ready;
 mod read_messages;
 mod remove_principle;
+#[cfg(test)]
+mod reprioritize_outcome_tests;
 mod rerun_ci;
 pub(in crate::bridge) mod rework_context;
 mod save_bookmark;

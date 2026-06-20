@@ -4,7 +4,7 @@ use crate::cli::actions::{EpicAction, IterationAction, OutcomeAction};
 use crate::cli::write_iteration::{
     run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_iteration_add,
     run_iteration_close, run_iteration_close_review, run_iteration_create, run_iteration_designate,
-    run_iteration_dev_ok, run_outcome_add, run_outcome_create,
+    run_iteration_dev_ok, run_outcome_add, run_outcome_create, run_outcome_reprioritize,
 };
 
 #[derive(Subcommand)]
@@ -60,6 +60,7 @@ pub(crate) fn dispatch_planning(command: &PlanningCommands) -> anyhow::Result<()
                 iteration,
                 position,
             } => run_outcome_add(*outcome, *iteration, *position),
+            OutcomeAction::Reprioritize { number, to } => run_outcome_reprioritize(*number, to),
         },
         PlanningCommands::Epic { action } => match action {
             EpicAction::SetParent { number, epic } => run_epic_set_parent(*number, *epic),

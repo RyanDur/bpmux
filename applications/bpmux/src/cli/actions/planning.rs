@@ -87,4 +87,13 @@ pub(crate) enum OutcomeAction {
         #[arg(long, help = "1-indexed position in the outcome's iteration-sequence")]
         position: u64,
     },
+    #[command(
+        about = "Re-prioritize an outcome across Now/Next/Later — move its horizon band (the roadmap's reorganize, in roadmap-language not story-internals). PM-only; owner bypasses."
+    )]
+    Reprioritize {
+        #[arg(help = "Outcome entity issue number")]
+        number: u64,
+        #[arg(long, help = "Target band: now | next | later")]
+        to: String,
+    },
 }
