@@ -81,4 +81,46 @@ test.describe('#1754 — an agent reading via the CLI and the owner viewing the 
       await mockGh.close()
     }
   })
+
+  test('the agent narrows the CLI read with --state', async () => {
+    test.setTimeout(90_000)
+    const result = await launchWithMockGh()
+    const { app, mockGh, rpc, backendPort } = result
+    try {
+      const needsAttentionTitle = 'Has a building iteration not yet ready'
+      const plannedTitle = 'Planned with no iterations yet'
+      const needsAttention = await numberFromMessage(
+        await rpc(
+          'create_outcome',
+          { title: needsAttentionTitle, horizon: 'now', body: '**Benefit:** x' },
+          'pm'
+        )
+      )
+      const iteration = await numberFromMessage(
+        await rpc('create_iteration', { theme_name: 'Crux' }, 'pm')
+      )
+      const mapped = await rpc(
+        'map_iteration_to_outcome',
+        { outcome_number: needsAttention, iteration_number: iteration, position: 1 },
+        'pm'
+      )
+      expect(mapped.status).toBe(200)
+      await numberFromMessage(
+        await rpc(
+          'create_outcome',
+          { title: plannedTitle, horizon: 'next', body: '**Benefit:** y' },
+          'pm'
+        )
+      )
+
+      await expect
+        .poll(() => bpmuxRoadmap(backendPort, ['--state', 'needs-attention']), { timeout: 20_000 })
+        .toContain(needsAttentionTitle)
+      const filtered = await bpmuxRoadmap(backendPort, ['--state', 'needs-attention'])
+      expect(filtered).not.toContain(plannedTitle)
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
+  })
 })

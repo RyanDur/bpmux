@@ -41,6 +41,40 @@ fn overview_empty_is_the_substrate_views_own_marker_never_markdown() {
 }
 
 #[test]
+fn overview_labels_the_elided_count_when_a_limit_dropped_rows() {
+    let out = render_overview(&json!({
+        "bands": [
+            { "label": "Now", "outcomes": [
+                { "number": 12, "name": "A", "state": "ready", "gap_count": 0 }
+            ]}
+        ],
+        "total": 12,
+        "shown": 1
+    }));
+    assert!(
+        out.contains("showing 1 of 12"),
+        "a limited view labels what it elided — never silently truncates; got {out:?}"
+    );
+}
+
+#[test]
+fn overview_omits_the_elision_label_when_nothing_was_dropped() {
+    let out = render_overview(&json!({
+        "bands": [
+            { "label": "Now", "outcomes": [
+                { "number": 12, "name": "A", "state": "ready", "gap_count": 0 }
+            ]}
+        ],
+        "total": 1,
+        "shown": 1
+    }));
+    assert!(
+        !out.contains("showing"),
+        "no elision label when every row is shown; got {out:?}"
+    );
+}
+
+#[test]
 fn drill_renders_header_convene_iterations_and_checks() {
     let out = render_drill(&json!({
         "outcome_number": 34,

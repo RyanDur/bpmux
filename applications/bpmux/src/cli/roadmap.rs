@@ -1,14 +1,27 @@
 use super::http::http_get_with_query;
 
-pub(crate) fn run_roadmap(outcome: Option<u64>) -> anyhow::Result<()> {
-    let outcome_str;
-    let params: Vec<(&str, &str)> = match &outcome {
-        Some(number) => {
-            outcome_str = number.to_string();
-            vec![("outcome", outcome_str.as_str())]
-        }
-        None => vec![],
-    };
+pub(crate) fn run_roadmap(
+    outcome: Option<u64>,
+    state: Option<String>,
+    order: Option<String>,
+    limit: Option<usize>,
+) -> anyhow::Result<()> {
+    validate_state(state.as_deref())?;
+    validate_order(order.as_deref())?;
+    let mut owned: Vec<(&str, String)> = Vec::new();
+    if let Some(number) = outcome {
+        owned.push(("outcome", number.to_string()));
+    }
+    if let Some(value) = &state {
+        owned.push(("state", value.clone()));
+    }
+    if let Some(value) = &order {
+        owned.push(("order", value.clone()));
+    }
+    if let Some(value) = limit {
+        owned.push(("limit", value.to_string()));
+    }
+    let params: Vec<(&str, &str)> = owned.iter().map(|(k, v)| (*k, v.as_str())).collect();
     let (status, body) = http_get_with_query("/api/roadmap", &params)?;
     if !status.is_success() {
         anyhow::bail!("roadmap fetch failed ({status}): {body}");
@@ -21,6 +34,30 @@ pub(crate) fn run_roadmap(outcome: Option<u64>) -> anyhow::Result<()> {
         render_overview(&value)
     };
     print!("{out}");
+    Ok(())
+}
+
+fn validate_state(state: Option<&str>) -> anyhow::Result<()> {
+    if let Some(value) = state
+        && crate::board::roadmap_view::OutcomeState::from_cli(value).is_none()
+    {
+        anyhow::bail!(
+            "invalid --state '{value}': must be {}",
+            crate::board::roadmap_view::OutcomeState::CLI_VALUES
+        );
+    }
+    Ok(())
+}
+
+fn validate_order(order: Option<&str>) -> anyhow::Result<()> {
+    if let Some(value) = order
+        && crate::board::roadmap_filter::RoadmapOrder::from_cli(value).is_none()
+    {
+        anyhow::bail!(
+            "invalid --order '{value}': must be {}",
+            crate::board::roadmap_filter::RoadmapOrder::CLI_VALUES
+        );
+    }
     Ok(())
 }
 
@@ -41,6 +78,11 @@ pub(super) fn render_overview(value: &serde_json::Value) -> String {
             let state = overview_state_text(outcome);
             out.push_str(&format!("{band_col:<6} #{number}  {name}  {state}\n"));
         }
+    }
+    let total = value["total"].as_u64().unwrap_or(0);
+    let shown = value["shown"].as_u64().unwrap_or(total);
+    if total > shown {
+        out.push_str(&format!("showing {shown} of {total}\n"));
     }
     out
 }

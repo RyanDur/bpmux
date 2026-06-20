@@ -13,6 +13,20 @@ pub enum OutcomeState {
     Planned,
 }
 
+impl OutcomeState {
+    pub const CLI_VALUES: &'static str = "done | ready | needs-attention | planned";
+
+    pub fn from_cli(value: &str) -> Option<Self> {
+        match value {
+            "done" => Some(Self::Done),
+            "ready" => Some(Self::Ready),
+            "needs-attention" => Some(Self::NeedsAttention),
+            "planned" => Some(Self::Planned),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RoadmapOutcome {
     pub number: u64,

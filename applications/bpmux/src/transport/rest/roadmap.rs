@@ -8,6 +8,9 @@ use super::shared::{err_body, json_headers};
 #[derive(Deserialize)]
 pub struct RoadmapQuery {
     pub outcome: Option<u64>,
+    pub state: Option<String>,
+    pub order: Option<String>,
+    pub limit: Option<usize>,
 }
 
 pub async fn get_roadmap(
@@ -45,8 +48,23 @@ pub async fn get_roadmap(
         }
         None => {
             let bands = crate::board::roadmap_view::derive_roadmap_view(&all, workflow);
+            let filter = crate::board::roadmap_filter::RoadmapQuery {
+                state: query
+                    .state
+                    .as_deref()
+                    .and_then(crate::board::roadmap_view::OutcomeState::from_cli),
+                order: query
+                    .order
+                    .as_deref()
+                    .and_then(crate::board::roadmap_filter::RoadmapOrder::from_cli)
+                    .unwrap_or(crate::board::roadmap_filter::RoadmapOrder::Priority),
+                limit: query.limit,
+            };
+            let filtered = crate::board::roadmap_filter::apply_roadmap_query(bands, &filter);
             serde_json::json!({
-                "bands": bands,
+                "bands": filtered.bands,
+                "total": filtered.total,
+                "shown": filtered.shown,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),
             })
         }

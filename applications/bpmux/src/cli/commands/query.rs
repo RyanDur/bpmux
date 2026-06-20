@@ -60,6 +60,18 @@ pub(crate) enum QueryCommands {
     Roadmap {
         #[arg(long, help = "Drill into one outcome's iterations by number")]
         outcome: Option<u64>,
+        #[arg(
+            long,
+            help = "Filter to a state: done | ready | needs-attention | planned"
+        )]
+        state: Option<String>,
+        #[arg(long, help = "Sort key: priority (default) | gap-count | state | name")]
+        order: Option<String>,
+        #[arg(
+            long,
+            help = "Cap to the top-N outcomes (the elided count is labelled, never silently dropped)"
+        )]
+        limit: Option<usize>,
     },
     #[command(
         about = "Show the canonical-store sync status off Claude's MCP — the same /api/sync-status read the bridge uses."
@@ -85,7 +97,12 @@ pub(crate) fn dispatch_query(command: &QueryCommands) -> anyhow::Result<()> {
         QueryCommands::Velocity => run_velocity(),
         QueryCommands::Commits { story } => run_story_commits(*story),
         QueryCommands::Diff { sha, max_bytes } => run_commit_diff(sha, *max_bytes),
-        QueryCommands::Roadmap { outcome } => run_roadmap(*outcome),
+        QueryCommands::Roadmap {
+            outcome,
+            state,
+            order,
+            limit,
+        } => run_roadmap(*outcome, state.clone(), order.clone(), *limit),
         QueryCommands::SyncStatus => run_sync_status(),
         QueryCommands::Search { query, sender } => run_search(query, sender),
     }
