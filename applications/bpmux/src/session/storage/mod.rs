@@ -19,6 +19,12 @@ pub use session::*;
 pub trait Storage: Send + Sync {
     fn append_message(&self, msg: &Message) -> Result<(), LogError>;
     fn read_messages(&self) -> Result<Vec<Message>, LogError>;
+    fn read_recent(
+        &self,
+        limit: usize,
+        offset: usize,
+        matches: &dyn Fn(&Message) -> bool,
+    ) -> Result<Vec<Message>, LogError>;
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult>;
     fn clear_messages(&self) -> Result<(), std::io::Error>;
 

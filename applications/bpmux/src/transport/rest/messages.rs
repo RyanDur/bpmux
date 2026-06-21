@@ -38,37 +38,43 @@ pub async fn get_messages(
     State(session): State<Arc<session::Session>>,
     Query(params): Query<GetMessagesParams>,
 ) -> impl IntoResponse {
-    match session.read_messages() {
-        Ok(messages) => {
-            let chat_only = params.chat_only.unwrap_or(true);
-            let offset = params.offset.unwrap_or(0);
-            let limit = params.limit.unwrap_or(DEFAULT_MESSAGE_LIMIT);
-            let mut filtered: Vec<_> = if let Some(ref mt) = params.message_type {
-                let wanted = session::MessageType::from(Some(mt.as_str()));
-                messages
-                    .into_iter()
-                    .filter(|m| m.message_type == wanted)
-                    .collect()
-            } else if chat_only {
-                messages.into_iter().filter(|m| m.is_chat()).collect()
-            } else {
-                messages
-            };
-            if let Some(ref peer) = params.as_peer {
-                filtered.retain(|m| crate::transport::ws::should_deliver(m, peer));
-            }
-            if let Some(ref before_str) = params.before
-                && let Ok(before_ts) = before_str.parse::<chrono::DateTime<chrono::Utc>>()
-            {
-                filtered.retain(|m| m.ts < before_ts);
-            }
-            filtered.reverse();
-            let page: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
-            (
-                StatusCode::OK,
-                serde_json::to_string(&page).unwrap_or_else(|_| "[]".to_string()),
-            )
+    let chat_only = params.chat_only.unwrap_or(true);
+    let offset = params.offset.unwrap_or(0);
+    let limit = params.limit.unwrap_or(DEFAULT_MESSAGE_LIMIT);
+    let wanted_type = params
+        .message_type
+        .as_deref()
+        .map(|mt| session::MessageType::from(Some(mt)));
+    let before_ts = params
+        .before
+        .as_deref()
+        .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok());
+    let as_peer = params.as_peer.clone();
+    let matches = |m: &session::Message| -> bool {
+        let type_ok = match &wanted_type {
+            Some(t) => m.message_type == *t,
+            None => !chat_only || m.is_chat(),
+        };
+        if !type_ok {
+            return false;
         }
+        if let Some(b) = before_ts
+            && m.ts >= b
+        {
+            return false;
+        }
+        if let Some(ref peer) = as_peer
+            && !crate::transport::ws::should_deliver(m, peer)
+        {
+            return false;
+        }
+        true
+    };
+    match session.read_recent(limit, offset, &matches) {
+        Ok(page) => (
+            StatusCode::OK,
+            serde_json::to_string(&page).unwrap_or_else(|_| "[]".to_string()),
+        ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("failed to read: {e}"),

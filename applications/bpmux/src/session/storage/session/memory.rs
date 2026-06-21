@@ -56,6 +56,25 @@ impl Storage for MemoryStorage {
             .clone())
     }
 
+    fn read_recent(
+        &self,
+        limit: usize,
+        offset: usize,
+        matches: &dyn Fn(&Message) -> bool,
+    ) -> Result<Vec<Message>, LogError> {
+        Ok(self
+            .messages
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .rev()
+            .filter(|m| matches(m))
+            .skip(offset)
+            .take(limit)
+            .cloned()
+            .collect())
+    }
+
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {
         let messages = self
             .messages

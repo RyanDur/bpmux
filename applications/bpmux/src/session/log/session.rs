@@ -142,6 +142,15 @@ impl Session {
         self.storage.read_messages()
     }
 
+    pub fn read_recent(
+        &self,
+        limit: usize,
+        offset: usize,
+        matches: &dyn Fn(&Message) -> bool,
+    ) -> Result<Vec<Message>, LogError> {
+        self.storage.read_recent(limit, offset, matches)
+    }
+
     pub fn subscribe(&self) -> broadcast::Receiver<Message> {
         self.wake_tx.subscribe()
     }

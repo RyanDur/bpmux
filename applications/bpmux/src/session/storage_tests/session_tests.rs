@@ -93,6 +93,51 @@ contract!(
     }
 );
 
+contract!(
+    read_recent_returns_newest_first_after_offset,
+    |storage: &dyn Storage| {
+        for i in 0..5 {
+            storage
+                .append_message(&fresh_message(&format!("m{i}")))
+                .unwrap();
+        }
+        let recent = storage.read_recent(2, 0, &|_: &Message| true).unwrap();
+        assert_eq!(
+            recent.iter().map(|m| m.text.as_str()).collect::<Vec<_>>(),
+            vec!["m4", "m3"]
+        );
+        let paged = storage.read_recent(2, 2, &|_: &Message| true).unwrap();
+        assert_eq!(
+            paged.iter().map(|m| m.text.as_str()).collect::<Vec<_>>(),
+            vec!["m2", "m1"]
+        );
+    }
+);
+
+contract!(
+    read_recent_applies_the_predicate,
+    |storage: &dyn Storage| {
+        storage.append_message(&fresh_message("keep-1")).unwrap();
+        storage.append_message(&fresh_message("drop")).unwrap();
+        storage.append_message(&fresh_message("keep-2")).unwrap();
+        let recent = storage
+            .read_recent(10, 0, &|m: &Message| m.text.starts_with("keep"))
+            .unwrap();
+        assert_eq!(
+            recent.iter().map(|m| m.text.as_str()).collect::<Vec<_>>(),
+            vec!["keep-2", "keep-1"]
+        );
+    }
+);
+
+contract!(
+    read_recent_is_empty_when_no_messages,
+    |storage: &dyn Storage| {
+        let recent = storage.read_recent(10, 0, &|_: &Message| true).unwrap();
+        assert!(recent.is_empty());
+    }
+);
+
 contract!(search_returns_matching_messages, |storage: &dyn Storage| {
     storage
         .append_message(&fresh_message("hello world"))

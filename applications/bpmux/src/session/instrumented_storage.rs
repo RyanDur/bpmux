@@ -67,6 +67,24 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
+    fn read_recent(
+        &self,
+        limit: usize,
+        offset: usize,
+        matches: &dyn Fn(&Message) -> bool,
+    ) -> Result<Vec<Message>, LogError> {
+        let start = Instant::now();
+        let result = self.inner.read_recent(limit, offset, matches);
+        if let Ok(ref msgs) = result {
+            self.log(&format!(
+                "read_recent {} msgs (limit {limit} offset {offset}) {:.1}ms",
+                msgs.len(),
+                start.elapsed().as_secs_f64() * 1000.0
+            ));
+        }
+        result
+    }
+
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {
         let start = Instant::now();
         let results = self.inner.search_messages(filters);

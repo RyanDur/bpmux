@@ -60,6 +60,15 @@ impl Storage for FileStorage {
         crate::session::log::read_messages(&self.dir)
     }
 
+    fn read_recent(
+        &self,
+        limit: usize,
+        offset: usize,
+        matches: &dyn Fn(&Message) -> bool,
+    ) -> Result<Vec<Message>, LogError> {
+        crate::session::log::read_recent(&self.dir, limit, offset, matches)
+    }
+
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {
         match self.read_messages() {
             Ok(messages) => search::search(&messages, filters),
