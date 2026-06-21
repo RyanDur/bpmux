@@ -109,6 +109,56 @@ async fn an_agent_pushes_its_state_via_bpmux_signal_and_the_roster_dot_reflects_
         wait_for_role_presence(port, &secret, "dev", "Help", Duration::from_secs(5)).await,
         "needs-help is reachable BY THE AGENT through the signal verb — closing the Help-never-set gap (owner-park previously set only Blocked)"
     );
+
+    let (ok_resolve, out_resolve) = run_signal(bin, port, &token_path, "dev", "busy").await;
+    assert!(
+        ok_resolve,
+        "the resolve-push (`bpmux signal busy` — what the PostToolUse hook fires once the agent resumes after a permission grant) must succeed end-to-end. output: {out_resolve}"
+    );
+    assert!(
+        wait_for_role_presence(port, &secret, "dev", "Busy", Duration::from_secs(5)).await,
+        "#1747 clear-on-resolve: a busy push after Help CLEARS the help — the dot reads Busy, not a lingering false-help. The trustworthy-dot bar: a lit state never persists past its cause, so the owner can act on the dot without double-checking"
+    );
+}
+
+#[tokio::test]
+async fn a_lingering_help_clears_on_the_next_signal_the_deny_resolve_is_next_action_bounded() {
+    let bpmux = TestBpmux::start();
+    let port = bpmux.port();
+    let secret = bpmux.simulate_secret();
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let token_path = bpmux.auth_token_path();
+
+    let registered = bpmux
+        .authed_post(
+            "/api/register",
+            serde_json::json!({ "session_id": "sess-dev-deny", "display": "dev" }),
+        )
+        .await;
+    assert!(
+        registered.status().is_success(),
+        "precondition: dev registers so the roster holds a member to colour"
+    );
+
+    let (ok_help, out_help) = run_signal(bin, port, &token_path, "dev", "help").await;
+    assert!(
+        ok_help,
+        "`bpmux signal help` must succeed. output: {out_help}"
+    );
+    assert!(
+        wait_for_role_presence(port, &secret, "dev", "Help", Duration::from_secs(5)).await,
+        "a permission request sets Help"
+    );
+
+    let (ok_idle, out_idle) = run_signal(bin, port, &token_path, "dev", "idle").await;
+    assert!(
+        ok_idle,
+        "`bpmux signal idle` must succeed. output: {out_idle}"
+    );
+    assert!(
+        wait_for_role_presence(port, &secret, "dev", "Idle", Duration::from_secs(5)).await,
+        "#1747 deny-resolve is NEXT-ACTION-BOUNDED, never a non-clear: when a DENIED permission resolves with no resume and the turn ends, Stop's idle CLEARS the lingering Help — help never persists permanently. Grant clears instantly (the granted tool runs -> PostToolUse -> busy); deny clears on the next signal (busy on resume OR idle on Stop). Claude Code exposes no permission-answered event, so next-action IS the best-available deny-resolve signal: a conscious bound carried to the owner-walk, not a latent gap"
+    );
 }
 
 #[tokio::test]

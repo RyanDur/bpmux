@@ -57,3 +57,20 @@ fn the_presence_bundle_routes_dedicated_events_to_bpmux_signal_with_no_script() 
         "the superseded signal-presence.sh is removed, not commented (remove-superseded on refactor)"
     );
 }
+
+#[test]
+fn post_tool_use_pushes_busy_so_a_resolved_help_clears_not_persists() {
+    let hooks_dir = plugin_hooks_dir();
+    let raw = std::fs::read_to_string(hooks_dir.join("hooks.json")).expect("read hooks.json");
+    let hooks_json: serde_json::Value =
+        serde_json::from_str(&raw).expect("hooks.json is valid json");
+
+    let post_tool_routes_busy = commands_for(&hooks_json, "PostToolUse")
+        .iter()
+        .any(|command| command.contains("bpmux signal busy"));
+    assert!(
+        post_tool_routes_busy,
+        "#1747 clear-on-resolve: PostToolUse routes to `bpmux signal busy`. Claude Code has no permission-answered event, but the OBSERVABLE resolve is the agent resuming tool-use — after a grant the gated tool runs and PostToolUse fires, pushing busy so a stale help CLEARS (never persists past its cause, the trustworthy-dot bar) and a long mid-turn tool-wait stays busy (no false-idle). commands: {:?}",
+        commands_for(&hooks_json, "PostToolUse")
+    );
+}
