@@ -3,7 +3,11 @@ import { defineConfig } from '@playwright/test'
 const SERIAL_HEAVY_SPECS = [
   '**/real-backend.spec.ts',
   '**/a11y-audit.spec.ts',
-  '**/canary-env-leak.spec.ts'
+  '**/canary-env-leak.spec.ts',
+  '**/survive-refresh-reattach.spec.ts',
+  '**/n-terminals-switch.spec.ts',
+  '**/terminal-copy.spec.ts',
+  '**/confirm-before-close.spec.ts'
 ]
 
 export default defineConfig({
