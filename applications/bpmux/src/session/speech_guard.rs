@@ -30,7 +30,7 @@ pub fn pause_vocab_violation(text: &str) -> Option<String> {
     let stripped = strip_quoted(&lower);
     let matched = BANNED
         .iter()
-        .filter_map(|banned| stripped.find(banned).map(|pos| (pos, *banned)))
+        .filter_map(|banned| word_bounded_find(&stripped, banned).map(|pos| (pos, *banned)))
         .min_by_key(|(pos, _)| *pos)
         .map(|(_, banned)| banned)?;
     if NAMED_CAUSE.iter().any(|cause| lower.contains(cause)) {
@@ -54,6 +54,30 @@ fn reason(matched: &str) -> String {
          legitimate-deferral, named-active-trigger). Either rewrite to explicit active work, or \
          name the stop-cause explicitly."
     )
+}
+
+fn word_bounded_find(haystack: &str, needle: &str) -> Option<usize> {
+    let mut from = 0;
+    while let Some(rel) = haystack[from..].find(needle) {
+        let start = from + rel;
+        let end = start + needle.len();
+        let before_bounded = start == 0
+            || !haystack[..start]
+                .chars()
+                .next_back()
+                .is_some_and(is_word_char);
+        let after_bounded =
+            end == haystack.len() || !haystack[end..].chars().next().is_some_and(is_word_char);
+        if before_bounded && after_bounded {
+            return Some(start);
+        }
+        from = start + needle.chars().next().map_or(1, char::len_utf8);
+    }
+    None
+}
+
+fn is_word_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
 }
 
 fn strip_quoted(text: &str) -> String {

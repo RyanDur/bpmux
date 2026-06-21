@@ -115,6 +115,26 @@ fn hold_position_for_pm_signal_cause_clause_is_allowed() {
 }
 
 #[test]
+fn a_banned_phrase_that_is_only_a_prefix_of_a_longer_word_is_not_a_violation() {
+    assert!(
+        !blocked("the presence-model groups members by routing-id"),
+        "'presence-mode' is BANNED but it is a prefix of the legitimate word 'presence-model' — the guard must match on a word-boundary, not a bare substring, or it flags the owner's normal speech (the designer-flagged false-positive)"
+    );
+    assert!(
+        !blocked("passive-watcher is the name of the renderer hook"),
+        "'passive-watch' is BANNED but 'passive-watcher' extends the final word — a trailing word-char means it is not the pause-phrase"
+    );
+}
+
+#[test]
+fn the_exact_banned_phrase_still_blocks_after_the_word_boundary_fix() {
+    assert!(
+        blocked("dropping into presence-mode"),
+        "the word-boundary fix must not over-correct — the exact banned phrase 'presence-mode' (bounded by space and end) is still a violation"
+    );
+}
+
+#[test]
 fn reason_names_the_matched_phrase() {
     let reason = pause_vocab_violation("standing by").expect("blocked");
     assert!(reason.contains("standing by"));
