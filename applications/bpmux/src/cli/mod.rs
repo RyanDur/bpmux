@@ -17,6 +17,7 @@ mod read_tests;
 mod roadmap;
 #[cfg(test)]
 mod roadmap_tests;
+mod wake;
 mod write;
 mod write_iteration;
 mod write_outcome;

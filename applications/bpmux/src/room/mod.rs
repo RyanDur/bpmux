@@ -7,6 +7,7 @@ pub mod commitment_store;
 pub mod file_storage;
 pub mod live_registry;
 pub mod spawn;
+pub mod wake_delivery;
 
 #[cfg(test)]
 mod agnostic_delivery_tests;
@@ -17,9 +18,7 @@ mod file_storage_tests;
 #[cfg(test)]
 mod live_registry_tests;
 
-pub use agnostic_delivery::{
-    deliver_to_terminals, drain_missed, spawn_terminal_delivery_loop, wake_committed_terminals,
-};
+pub use agnostic_delivery::{deliver_to_terminals, drain_missed, spawn_terminal_delivery_loop};
 pub use commitment_store::CommitmentStore;
 pub use file_storage::FileRoomStorage;
 pub use live_registry::LivePtyRegistry;
@@ -28,6 +27,7 @@ pub use spawn::{
     spawn_agent_run_detector, spawn_captured, spawn_pty, spawn_pty_retained, terminal_provisioning,
     terminate,
 };
+pub use wake_delivery::wake_committed_terminals;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Room {

@@ -170,7 +170,9 @@ pub async fn run_server(
 
 mod routes;
 mod setup;
+mod startup_sequence;
 mod wiring;
 use routes::{gated_routes, test_routes, test_seed_routes};
 use setup::*;
+use startup_sequence::*;
 use wiring::*;

@@ -1,9 +1,8 @@
 use clap::Subcommand;
 
 use crate::cli::help::run_help;
-use crate::cli::messaging::{
-    run_read, run_register, run_send, run_wait_for_event, run_wake_on_event,
-};
+use crate::cli::messaging::{run_read, run_register, run_send, run_wait_for_event};
+use crate::cli::wake::run_wake_on_event;
 
 #[derive(Subcommand)]
 pub(crate) enum MessagingCommands {
