@@ -61,13 +61,16 @@ impl LivePty {
 
     pub fn write_input(&self, bytes: &[u8]) -> std::io::Result<()> {
         use std::io::Write;
+        let mut writer = self.writer.lock().unwrap_or_else(|e| e.into_inner());
+        writer.write_all(bytes)?;
+        writer.flush()
+    }
+
+    pub fn note_human_input(&self) {
         *self
             .last_human_input
             .lock()
             .unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
-        let mut writer = self.writer.lock().unwrap_or_else(|e| e.into_inner());
-        writer.write_all(bytes)?;
-        writer.flush()
     }
 
     pub fn human_input_age(&self) -> Option<Duration> {

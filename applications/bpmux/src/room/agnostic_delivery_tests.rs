@@ -87,7 +87,7 @@ async fn an_inject_is_held_not_submitted_while_the_owner_is_mid_typing_into_the_
     let registry = LivePtyRegistry::new();
     let _rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
-    registry.write_to("term-dev", b"hello wor");
+    registry.note_human_keystroke("term-dev");
 
     let held = deliver_to_terminals(&chat("pm", "ship it", None), &registry, &routing);
 
@@ -110,7 +110,7 @@ async fn a_held_inject_delivers_once_the_owner_pauses_typing() {
     let registry = Arc::new(LivePtyRegistry::new());
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
-    registry.write_to("term-dev", b"typing");
+    registry.note_human_keystroke("term-dev");
     let held = deliver_to_terminals(&chat("pm", "ship it", None), &registry, &routing);
     assert_eq!(held.len(), 1, "held while the owner types");
 
@@ -122,6 +122,28 @@ async fn a_held_inject_delivers_once_the_owner_pauses_typing() {
     assert!(
         seen.contains("ship it"),
         "once the owner pauses past the debounce, the held inject delivers as its OWN turn — bounded hold, never a park; got {seen:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_broadcast_to_an_idle_agent_submits_immediately_despite_a_server_cd_write() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let registry = LivePtyRegistry::new();
+    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+
+    registry.write_to("term-dev", b"cd /work\n");
+
+    let held = deliver_to_terminals(&chat("pm", "ship it", None), &registry, &routing);
+
+    assert!(
+        held.is_empty(),
+        "a SERVER-driven write (osc7 cwd-sync / provisioning / agent_detect 'cd ...') is NOT owner-typing — a broadcast to an idle agent must submit IMMEDIATELY, never held; stamping server-writes as activity parked the first post-restart broadcast (the never-park fix-walk reject)"
+    );
+    let seen = drain_for(&mut rx, "ship it").await;
+    assert!(
+        seen.contains("ship it"),
+        "the broadcast delivered immediately into the idle agent — never-park preserved; got {seen:?}"
     );
 }
 

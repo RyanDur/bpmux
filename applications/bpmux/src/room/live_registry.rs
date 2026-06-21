@@ -95,6 +95,17 @@ impl LivePtyRegistry {
             .and_then(|live| live.human_input_age())
     }
 
+    pub fn note_human_keystroke(&self, terminal_id: &str) {
+        if let Some(live) = self
+            .rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(terminal_id)
+        {
+            live.note_human_input();
+        }
+    }
+
     pub fn reap_dead_and_list_live(&self) -> Vec<String> {
         let mut rooms = self.rooms.lock().unwrap_or_else(|e| e.into_inner());
         let mut live = Vec::new();

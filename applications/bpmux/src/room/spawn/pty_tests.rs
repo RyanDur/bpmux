@@ -138,7 +138,7 @@ fn a_paste_capable_tui_that_toggled_paste_off_still_gets_a_bracket_framed_submit
 }
 
 #[test]
-fn a_keystroke_records_human_input_activity_but_an_inject_does_not() {
+fn only_a_genuine_owner_keystroke_records_activity_not_a_server_write_or_inject() {
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     assert!(
         live.human_input_age().is_none(),
@@ -148,13 +148,19 @@ fn a_keystroke_records_human_input_activity_but_an_inject_does_not() {
     live.submit_input(b"injected line").unwrap();
     assert!(
         live.human_input_age().is_none(),
-        "an INJECT (submit_input) is NOT human keystroke-activity — clause (d) must never let an inject suppress its OWN hold-window (it would self-defeat the submit-isolation)"
+        "an INJECT (submit_input) is NOT human keystroke-activity — clause (d) must never let an inject suppress its OWN hold-window"
     );
 
-    live.write_input(b"x").unwrap();
+    live.write_input(b"cd /tmp\n").unwrap();
+    assert!(
+        live.human_input_age().is_none(),
+        "a SERVER-driven write_input (osc7 cwd-sync / provisioning / agent_detect all call it with 'cd ...') is NOT human keystroke-activity — stamping it parked idle agents on the first post-restart broadcast (the fix-walk reject)"
+    );
+
+    live.note_human_input();
     assert!(
         live.human_input_age().is_some(),
-        "an owner KEYSTROKE (write_input) records human-input activity — the clause (d) hold-trigger"
+        "ONLY a genuine owner keystroke (note_human_input, stamped at handle_pty_input) records activity — the clause (d) hold-trigger"
     );
 }
 

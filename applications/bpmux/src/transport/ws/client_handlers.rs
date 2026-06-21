@@ -74,6 +74,7 @@ pub(super) fn handle_pty_subscribe(
 
 pub(super) fn handle_pty_input(ctx: &ClientCtx<'_>, terminal_id: String, data: String) {
     if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data) {
+        ctx.pty_registry.note_human_keystroke(&terminal_id);
         ctx.pty_registry.write_to(&terminal_id, &bytes);
     }
 }
