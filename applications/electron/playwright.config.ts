@@ -7,7 +7,8 @@ const SERIAL_HEAVY_SPECS = [
   '**/survive-refresh-reattach.spec.ts',
   '**/n-terminals-switch.spec.ts',
   '**/terminal-copy.spec.ts',
-  '**/confirm-before-close.spec.ts'
+  '**/confirm-before-close.spec.ts',
+  '**/exited-restart-close.spec.ts'
 ]
 
 export default defineConfig({

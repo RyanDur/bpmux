@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { runCommandUntilOutput } from './helpers/terminal'
 import { TerminalPage } from './pages/terminalPage'
 
 const realShell = (): string =>
@@ -17,15 +18,13 @@ test.describe('#1596 close/kill (S5) — an EXITED terminal is recoverable (rest
 
       const exitActive = async (): Promise<void> => {
         await term.output().click()
-        await win.keyboard.type('exit')
-        await win.keyboard.press('Enter')
+        await runCommandUntilOutput(win, 'exit', term.item(1), 'exited')
       }
 
       await term.addButton().click()
       await expect(term.output()).toBeVisible({ timeout: 15000 })
 
       await exitActive()
-      await expect(term.item(1)).toContainText('exited', { timeout: 15000 })
 
       await expect(term.restartButton()).toBeVisible()
       await expect(term.paneCloseButton()).toBeVisible()
@@ -34,7 +33,6 @@ test.describe('#1596 close/kill (S5) — an EXITED terminal is recoverable (rest
       await expect(term.output()).toBeVisible({ timeout: 15000 })
 
       await exitActive()
-      await expect(term.item(1)).toContainText('exited', { timeout: 15000 })
 
       await term.paneCloseButton().click()
       await expect(term.items()).toHaveCount(0, { timeout: 10000 })
