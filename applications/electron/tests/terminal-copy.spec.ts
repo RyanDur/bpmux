@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { runCommandUntilOutput } from './helpers/terminal'
 import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1598 copy (S7) — Cmd-C copies the terminal selection; Ctrl-C still interrupts', () => {
@@ -19,9 +20,7 @@ test.describe('#1598 copy (S7) — Cmd-C copies the terminal selection; Ctrl-C s
 
       const activeScreen = term.output()
       await activeScreen.click()
-      await win.keyboard.type('echo COPYMARKER_8s7x')
-      await win.keyboard.press('Enter')
-      await expect(activeScreen).toContainText('COPYMARKER_8s7x', { timeout: 15000 })
+      await runCommandUntilOutput(win, 'echo COPYMARKER_8s7x', activeScreen, 'COPYMARKER_8s7x')
 
       const box = await activeScreen.boundingBox()
       if (!box) throw new Error('terminal screen has no bounding box')
@@ -40,13 +39,23 @@ test.describe('#1598 copy (S7) — Cmd-C copies the terminal selection; Ctrl-C s
         .toContain('COPYMARKER_8s7x')
 
       await activeScreen.click()
-      await win.keyboard.type('sleep 30')
-      await win.keyboard.press('Enter')
-      await win.waitForTimeout(800)
-      await win.keyboard.press('Control+c')
-      await win.keyboard.type('echo AFTER:$((3*3))')
-      await win.keyboard.press('Enter')
-      await expect(activeScreen).toContainText('AFTER:9', { timeout: 10000 })
+      await runCommandUntilOutput(
+        win,
+        'echo SLEEPSTARTED_8s7x && sleep 30',
+        activeScreen,
+        'SLEEPSTARTED_8s7x'
+      )
+      await expect
+        .poll(
+          async () => {
+            await win.keyboard.press('Control+c')
+            await win.keyboard.type('echo AFTER:$((3*3))')
+            await win.keyboard.press('Enter')
+            return (await activeScreen.textContent()) ?? ''
+          },
+          { timeout: 20000, intervals: [500, 1000, 1500] }
+        )
+        .toContain('AFTER:9')
     } finally {
       await app.close()
       await mockGh.close()

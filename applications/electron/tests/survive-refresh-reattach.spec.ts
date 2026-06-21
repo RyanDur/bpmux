@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { runCommandUntilOutput } from './helpers/terminal'
 import { TerminalPage } from './pages/terminalPage'
 
 const realShell = (): string =>
@@ -19,16 +20,12 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       await expect(active).toBeVisible({ timeout: 10000 })
       await active.click()
 
-      await win.keyboard.type(
-        'cd /tmp && mkdir -p bpmux-1608-marker && cd bpmux-1608-marker && echo CWD_READY_1608'
+      await runCommandUntilOutput(
+        win,
+        'cd /tmp && mkdir -p bpmux-1608-marker && cd bpmux-1608-marker && echo CWD_READY_1608',
+        active,
+        'CWD_READY_1608'
       )
-      await win.keyboard.press('Enter')
-      await expect
-        .poll(async () => (await active.textContent()) ?? '', {
-          timeout: 15000,
-          intervals: [300, 600, 1000]
-        })
-        .toContain('CWD_READY_1608')
 
       await win.keyboard.type('sleep 999 &')
       await win.keyboard.press('Enter')
@@ -48,14 +45,7 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       await expect(term.items()).toHaveCount(1)
       await reattachedAsSameLiveSession.click()
 
-      await win.keyboard.type('pwd')
-      await win.keyboard.press('Enter')
-      await expect
-        .poll(async () => (await reattachedAsSameLiveSession.textContent()) ?? '', {
-          timeout: 15000,
-          intervals: [300, 600, 1000]
-        })
-        .toContain('bpmux-1608-marker')
+      await runCommandUntilOutput(win, 'pwd', reattachedAsSameLiveSession, 'bpmux-1608-marker')
 
       await win.keyboard.type('jobs')
       await win.keyboard.press('Enter')
@@ -83,24 +73,18 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       const terminalA = term.output()
       await expect(terminalA).toBeVisible({ timeout: 10000 })
       await terminalA.click()
-      await win.keyboard.type(
-        'cd /tmp && mkdir -p bpmux-1608-A && cd bpmux-1608-A && echo A_READY_1608'
+      await runCommandUntilOutput(
+        win,
+        'cd /tmp && mkdir -p bpmux-1608-A && cd bpmux-1608-A && echo A_READY_1608',
+        terminalA,
+        'A_READY_1608'
       )
-      await win.keyboard.press('Enter')
-      await expect
-        .poll(async () => (await terminalA.textContent()) ?? '', {
-          timeout: 15000,
-          intervals: [300, 600, 1000]
-        })
-        .toContain('A_READY_1608')
 
       await term.addButton().click()
       await expect(term.items()).toHaveCount(2)
       const terminalBExitingDuringSession = term.output()
       await terminalBExitingDuringSession.click()
-      await win.keyboard.type('exit')
-      await win.keyboard.press('Enter')
-      await expect(term.item(2)).toContainText('exited', { timeout: 15000 })
+      await runCommandUntilOutput(win, 'exit', term.item(2), 'exited')
 
       await win.reload()
 
@@ -109,14 +93,7 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       await expect(term.items()).toHaveCount(1)
 
       await survivor.click()
-      await win.keyboard.type('pwd')
-      await win.keyboard.press('Enter')
-      await expect
-        .poll(async () => (await survivor.textContent()) ?? '', {
-          timeout: 15000,
-          intervals: [300, 600, 1000]
-        })
-        .toContain('bpmux-1608-A')
+      await runCommandUntilOutput(win, 'pwd', survivor, 'bpmux-1608-A')
     } finally {
       await app.close()
       await mockGh.close()
@@ -135,32 +112,24 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       const firstSpawned = term.output()
       await expect(firstSpawned).toBeVisible({ timeout: 10000 })
       await firstSpawned.click()
-      await win.keyboard.type(
-        'cd /tmp && mkdir -p bpmux-1608-first && cd bpmux-1608-first && echo FIRST_READY_1608'
+      await runCommandUntilOutput(
+        win,
+        'cd /tmp && mkdir -p bpmux-1608-first && cd bpmux-1608-first && echo FIRST_READY_1608',
+        firstSpawned,
+        'FIRST_READY_1608'
       )
-      await win.keyboard.press('Enter')
-      await expect
-        .poll(async () => (await firstSpawned.textContent()) ?? '', {
-          timeout: 15000,
-          intervals: [300, 600, 1000]
-        })
-        .toContain('FIRST_READY_1608')
 
       await term.addButton().click()
       await expect(term.items()).toHaveCount(2)
       const secondSpawned = term.output()
       await expect(secondSpawned).toBeVisible()
       await secondSpawned.click()
-      await win.keyboard.type(
-        'cd /tmp && mkdir -p bpmux-1608-second && cd bpmux-1608-second && echo SECOND_READY_1608'
+      await runCommandUntilOutput(
+        win,
+        'cd /tmp && mkdir -p bpmux-1608-second && cd bpmux-1608-second && echo SECOND_READY_1608',
+        secondSpawned,
+        'SECOND_READY_1608'
       )
-      await win.keyboard.press('Enter')
-      await expect
-        .poll(async () => (await secondSpawned.textContent()) ?? '', {
-          timeout: 15000,
-          intervals: [300, 600, 1000]
-        })
-        .toContain('SECOND_READY_1608')
 
       await expect(term.item(1)).not.toHaveAttribute('aria-current', 'true')
 
@@ -172,14 +141,7 @@ test.describe('#1608 terminals survive refresh — re-attach by terminal_id (no 
       await expect(term.item(1)).not.toHaveAttribute('aria-current', 'true')
 
       await restoredActive.click()
-      await win.keyboard.type('pwd')
-      await win.keyboard.press('Enter')
-      await expect
-        .poll(async () => (await restoredActive.textContent()) ?? '', {
-          timeout: 15000,
-          intervals: [300, 600, 1000]
-        })
-        .toContain('bpmux-1608-second')
+      await runCommandUntilOutput(win, 'pwd', restoredActive, 'bpmux-1608-second')
     } finally {
       await app.close()
       await mockGh.close()
