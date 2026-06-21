@@ -115,6 +115,8 @@ mod close_story_e2e;
 mod close_story_substrate_enforce_e2e;
 #[path = "integration_main_modules/comment_on_story_e2e.rs"]
 mod comment_on_story_e2e;
+#[path = "integration_main_modules/create_derives_acceptor_e2e.rs"]
+mod create_derives_acceptor_e2e;
 #[path = "integration_main_modules/create_story_e2e.rs"]
 mod create_story_e2e;
 #[path = "integration_main_modules/cross_bridge_mutation_propagation.rs"]

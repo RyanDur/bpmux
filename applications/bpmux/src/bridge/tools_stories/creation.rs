@@ -45,6 +45,7 @@ pub(crate) async fn handle_create_story(
         "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
     validate_parent_epic(r, parent_epic)?;
+    let acceptor_label = super::acceptor_axis::derive_acceptor_label(user_job);
     let number = create_and_broadcast_story_events(
         r,
         agent_name,
@@ -52,6 +53,7 @@ pub(crate) async fn handle_create_story(
         composed_body,
         story_type,
         parent_epic,
+        acceptor_label,
     )
     .await?;
     Ok(match parent_epic {
@@ -116,6 +118,7 @@ async fn create_and_broadcast_story_events(
     composed_body: String,
     story_type: crate::board::domain::StoryType,
     parent_epic: Option<u64>,
+    acceptor_label: Option<&'static str>,
 ) -> Result<u64, String> {
     let number = r
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
@@ -135,6 +138,14 @@ async fn create_and_broadcast_story_events(
         story_type,
     })
     .map_err(|e| format!("#{number} created but enqueue failed: {e}"))?;
+    if let Some(label) = acceptor_label {
+        r.mutate_sync(crate::board::BoardEvent::TagAdded {
+            meta: meta.clone(),
+            number,
+            label: label.to_string(),
+        })
+        .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
+    }
     if let Some(epic_number) = parent_epic {
         r.mutate_sync(crate::board::BoardEvent::ParentEpicSet {
             meta,

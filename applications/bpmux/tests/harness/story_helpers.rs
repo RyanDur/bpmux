@@ -165,7 +165,7 @@ pub async fn create_target_story(pm: &TestBridge, title: &str, falsifier: &str) 
             "create_story",
             serde_json::json!({
                 "title": title,
-                "user_job": "When testing affordance E2E, dev needs a target story.",
+                "user_job": "When testing an affordance end-to-end, a target story must exist.",
                 "observation_falsifier": falsifier,
                 "acceptance_test_path": atp
             }),

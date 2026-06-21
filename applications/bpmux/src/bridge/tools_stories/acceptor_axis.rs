@@ -1,0 +1,98 @@
+use super::helpers::{LABEL_AWAITING_DEV, LABEL_AWAITING_OWNER, LABEL_AWAITING_TEAM};
+
+pub(crate) fn derive_acceptor_label(user_job: &str) -> Option<&'static str> {
+    let words: Vec<&str> = user_job
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .collect();
+    let has = |needle: &str| words.iter().any(|w| w.eq_ignore_ascii_case(needle));
+
+    if has("owner") || has("ryan") {
+        return Some(LABEL_AWAITING_OWNER);
+    }
+    let team_axis =
+        has("agent") || has("agents") || has("team") || has("everyone") || has("anyone");
+    let dev_axis = has("dev") || has("developer") || has("developers");
+    let pm_axis = has("pm");
+    if team_axis || (dev_axis && pm_axis) {
+        return Some(LABEL_AWAITING_TEAM);
+    }
+    if dev_axis {
+        return Some(LABEL_AWAITING_DEV);
+    }
+    if pm_axis {
+        return Some(LABEL_AWAITING_TEAM);
+    }
+    None
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn owner_use_axis_derives_owner() {
+        assert_eq!(
+            derive_acceptor_label("As the owner, I want the roadmap legible"),
+            Some(LABEL_AWAITING_OWNER)
+        );
+        assert_eq!(
+            derive_acceptor_label("As Ryan, I want a clear board"),
+            Some(LABEL_AWAITING_OWNER)
+        );
+    }
+
+    #[test]
+    fn single_dev_use_axis_derives_dev() {
+        assert_eq!(
+            derive_acceptor_label("As a dev, I want the module decomposed"),
+            Some(LABEL_AWAITING_DEV)
+        );
+        assert_eq!(
+            derive_acceptor_label("As a developer, I want a faster build"),
+            Some(LABEL_AWAITING_DEV)
+        );
+    }
+
+    #[test]
+    fn agent_or_team_use_axis_derives_team() {
+        assert_eq!(
+            derive_acceptor_label("As an agent on the team, I want shared introspection"),
+            Some(LABEL_AWAITING_TEAM)
+        );
+        assert_eq!(
+            derive_acceptor_label("As a PM, I want the queue ordered"),
+            Some(LABEL_AWAITING_TEAM)
+        );
+    }
+
+    #[test]
+    fn multi_role_use_axis_derives_team_not_dev() {
+        assert_eq!(
+            derive_acceptor_label(
+                "As an agent (PM or dev) filing a story, I want the acceptor set"
+            ),
+            Some(LABEL_AWAITING_TEAM),
+            "a PM-or-dev multi-role axis is a TEAM feature, not dev — team-axis beats the bare dev token"
+        );
+    }
+
+    #[test]
+    fn owner_axis_is_not_a_false_match_on_the_noun_ownership() {
+        assert_eq!(
+            derive_acceptor_label("As a dev, I want input-ownership preserved across reloads"),
+            Some(LABEL_AWAITING_DEV),
+            "the NOUN 'ownership' must not match the owner ROLE — word-exact, not substring"
+        );
+    }
+
+    #[test]
+    fn an_unparseable_axis_derives_nothing_so_the_acceptor_flag_can_override() {
+        assert_eq!(
+            derive_acceptor_label("As a designer, I want the palette tokenized"),
+            None,
+            "an axis with no team/owner/dev role yields no derivation — the --acceptor override (interim) sets it explicitly rather than deriving a wrong acceptor"
+        );
+    }
+}

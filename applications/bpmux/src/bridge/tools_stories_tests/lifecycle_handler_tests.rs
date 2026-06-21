@@ -486,9 +486,12 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 1, "exactly one event (StoryCreated) drained");
+    assert_eq!(
+        drained, 2,
+        "two events drained: StoryCreated + the use-axis-derived acceptor TagAdded (#1787)"
+    );
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 1);
+    assert_eq!(pushed.len(), 2);
     assert!(matches!(
         &pushed[0],
         BoardEvent::StoryCreated {
@@ -498,6 +501,14 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
             ..
         }
     ));
+    assert!(
+        matches!(
+            &pushed[1],
+            BoardEvent::TagAdded { number: 51, label, .. } if label.as_str() == "awaiting team"
+        ),
+        "the 'pm files, dev needs' multi-role use-axis derives the team acceptor, enqueued as awaiting-team at create (#1787); got {:?}",
+        &pushed[1]
+    );
 }
 
 #[tokio::test]
