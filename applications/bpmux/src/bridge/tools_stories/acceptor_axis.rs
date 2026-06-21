@@ -1,5 +1,42 @@
 use super::helpers::{LABEL_AWAITING_DEV, LABEL_AWAITING_OWNER, LABEL_AWAITING_TEAM};
 
+const ALL_ACCEPTOR_LABELS: [&str; 3] = [
+    LABEL_AWAITING_TEAM,
+    LABEL_AWAITING_OWNER,
+    LABEL_AWAITING_DEV,
+];
+
+#[derive(Clone, Copy)]
+pub(crate) enum AcceptorClass {
+    Team,
+    Owner,
+    Dev,
+}
+
+impl AcceptorClass {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            AcceptorClass::Team => LABEL_AWAITING_TEAM,
+            AcceptorClass::Owner => LABEL_AWAITING_OWNER,
+            AcceptorClass::Dev => LABEL_AWAITING_DEV,
+        }
+    }
+
+    pub(crate) fn stale_labels(self) -> impl Iterator<Item = &'static str> {
+        let keep = self.label();
+        ALL_ACCEPTOR_LABELS.into_iter().filter(move |l| *l != keep)
+    }
+
+    pub(crate) fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "team" => Some(AcceptorClass::Team),
+            "owner" => Some(AcceptorClass::Owner),
+            "dev" => Some(AcceptorClass::Dev),
+            _ => None,
+        }
+    }
+}
+
 pub(crate) fn derive_acceptor_label(user_job: &str) -> Option<&'static str> {
     let words: Vec<&str> = user_job
         .split(|c: char| !c.is_alphanumeric())

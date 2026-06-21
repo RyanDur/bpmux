@@ -1,47 +1,10 @@
 use crate::bridge::tools_stories::acceptance::helpers::{
     BugGate, format_bypass_payload, recent_evidence_for_story, verify_bug_question_or_bypass,
 };
+use crate::bridge::tools_stories::acceptor_axis::AcceptorClass;
 use crate::bridge::tools_stories::helpers::{
-    LABEL_AWAITING_DEV, LABEL_AWAITING_OWNER, LABEL_AWAITING_TEAM, LABEL_DELIVERED,
-    ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
+    LABEL_DELIVERED, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
-
-const ALL_ACCEPTOR_LABELS: [&str; 3] = [
-    LABEL_AWAITING_TEAM,
-    LABEL_AWAITING_OWNER,
-    LABEL_AWAITING_DEV,
-];
-
-#[derive(Clone, Copy)]
-enum AcceptorClass {
-    Team,
-    Owner,
-    Dev,
-}
-
-impl AcceptorClass {
-    fn label(self) -> &'static str {
-        match self {
-            AcceptorClass::Team => LABEL_AWAITING_TEAM,
-            AcceptorClass::Owner => LABEL_AWAITING_OWNER,
-            AcceptorClass::Dev => LABEL_AWAITING_DEV,
-        }
-    }
-
-    fn stale_labels(self) -> impl Iterator<Item = &'static str> {
-        let keep = self.label();
-        ALL_ACCEPTOR_LABELS.into_iter().filter(move |l| *l != keep)
-    }
-
-    fn parse(raw: &str) -> Option<Self> {
-        match raw {
-            "team" => Some(AcceptorClass::Team),
-            "owner" => Some(AcceptorClass::Owner),
-            "dev" => Some(AcceptorClass::Dev),
-            _ => None,
-        }
-    }
-}
 
 fn parse_acceptor_arg(
     args: &serde_json::Map<String, serde_json::Value>,
