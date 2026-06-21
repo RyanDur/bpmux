@@ -1,12 +1,14 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use tokio::sync::broadcast;
 
-use super::paste_mode::{PasteModeSniffer, frame_for_paste};
+use super::input_activity::InputActivity;
+use super::output_reader::spawn_output_reader;
+use super::paste_mode::frame_for_paste;
 use super::process::{io_other, signal};
 
 const PTY_OUTPUT_CAPACITY: usize = 1024;
@@ -42,7 +44,7 @@ pub struct LivePty {
     output: broadcast::Sender<Vec<u8>>,
     paste_capable: Arc<AtomicBool>,
     current_paste_mode: Arc<AtomicBool>,
-    last_human_input: Mutex<Option<Instant>>,
+    human_input: InputActivity,
     _retained_tempdir: Option<tempfile::TempDir>,
 }
 
@@ -67,18 +69,11 @@ impl LivePty {
     }
 
     pub fn note_human_input(&self) {
-        *self
-            .last_human_input
-            .lock()
-            .unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
+        self.human_input.note();
     }
 
     pub fn human_input_age(&self) -> Option<Duration> {
-        let last = self
-            .last_human_input
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        last.as_ref().map(Instant::elapsed)
+        self.human_input.age()
     }
 
     pub fn paste_capable(&self) -> bool {
@@ -191,41 +186,7 @@ pub fn spawn_pty_retained(
         output,
         paste_capable,
         current_paste_mode,
-        last_human_input: Mutex::new(None),
+        human_input: InputActivity::default(),
         _retained_tempdir: None,
     })
-}
-
-fn spawn_output_reader(
-    mut reader: Box<dyn std::io::Read + Send>,
-    output: broadcast::Sender<Vec<u8>>,
-    paste_capable: Arc<AtomicBool>,
-    current_paste_mode: Arc<AtomicBool>,
-) {
-    std::thread::spawn(move || {
-        use std::io::Read;
-        let mut sniffer = PasteModeSniffer::new();
-        let mut buf = [0u8; 4096];
-        loop {
-            match reader.read(&mut buf) {
-                Ok(0) => {
-                    let _ = output.send(Vec::new());
-                    break;
-                }
-                Ok(n) => {
-                    if let Some(state) = sniffer.observe(&buf[..n]) {
-                        if state {
-                            paste_capable.store(true, Ordering::Relaxed);
-                        }
-                        current_paste_mode.store(state, Ordering::Relaxed);
-                    }
-                    let _ = output.send(buf[..n].to_vec());
-                }
-                Err(_) => {
-                    let _ = output.send(Vec::new());
-                    break;
-                }
-            }
-        }
-    });
 }
