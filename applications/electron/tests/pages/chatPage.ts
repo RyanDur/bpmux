@@ -47,6 +47,14 @@ export class ChatPage {
     return this.messageLog().locator('.message-avatar')
   }
 
+  avatarStatus(role: string): Locator {
+    const label = role.charAt(0).toUpperCase() + role.slice(1)
+    return this.messageLog()
+      .locator('.message-avatar-wrap')
+      .filter({ has: this.win.getByRole('button', { name: new RegExp(`^${label} `) }) })
+      .locator('.avatar-tooltip-status')
+  }
+
   messageListWrap(): Locator {
     return this.win.locator('.message-list-wrap')
   }

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -847,5 +847,185 @@ test.describe('real-backend', () => {
       await app.close()
       await mockGh.close()
     }
+  })
+})
+
+const resolveToken = (win: Page, token: string): Promise<string> =>
+  win.evaluate((t) => {
+    const probe = document.createElement('span')
+    probe.style.color = `var(${t})`
+    document.body.appendChild(probe)
+    const resolved = window.getComputedStyle(probe).color
+    probe.remove()
+    return resolved
+  }, token)
+
+const seedPresence = async (
+  port: number,
+  identities: string[],
+  presence: string
+): Promise<void> => {
+  const res = await fetch(`http://127.0.0.1:${port}/api/test/seed_roster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identities, presence })
+  })
+  expect(res.ok).toBe(true)
+}
+
+const presenceSeedMessage = {
+  from: 'dev:claude-code',
+  text: 'seed for presence render-trace',
+  ts: '2026-04-22T18:00:00Z',
+  message_type: 'chat'
+}
+
+test.describe('presence dot render-trace (#1785) — pins each surface to its real computed-style→token contract', () => {
+  const SIDEBAR_PALETTE = [
+    { presence: 'Busy', dataPresence: 'busy', token: '--accent-warning' },
+    { presence: 'Idle', dataPresence: 'idle', token: '--accent-success' },
+    { presence: 'Help', dataPresence: 'help', token: '--accent-error' },
+    { presence: 'Blocked', dataPresence: 'blocked', token: '--accent-error' },
+    { presence: 'Offline', dataPresence: 'offline', token: '--fg-dimmer' }
+  ]
+
+  test('sidebar roster dot: busy resolves --accent-warning, idle --accent-success, help/blocked --accent-error, offline --fg-dimmer (filled) — each the live token, never a hardcoded colour — and a help dot CLEARS off --accent-error when the agent resolves to idle', async () => {
+    const { app, backendPort } = await launchWithIsolatedSession({
+      seedRoster: ['dev:claude-code'],
+      seedMessages: [presenceSeedMessage]
+    })
+    const win = await app.firstWindow()
+    await expect(win.getByRole('main')).toBeVisible()
+    const dot = new SidebarPage(win).presenceDot('dev')
+
+    for (const state of SIDEBAR_PALETTE) {
+      await seedPresence(backendPort, ['dev:claude-code'], state.presence)
+      await expect(dot).toHaveAttribute('data-presence', state.dataPresence, { timeout: 15_000 })
+      const expected = await resolveToken(win, state.token)
+      await expect
+        .poll(() => dot.evaluate((el) => getComputedStyle(el).backgroundColor), { timeout: 5_000 })
+        .toBe(expected)
+    }
+
+    await seedPresence(backendPort, ['dev:claude-code'], 'Help')
+    await expect(dot).toHaveAttribute('data-presence', 'help', { timeout: 15_000 })
+    const errorToken = await resolveToken(win, '--accent-error')
+    await expect
+      .poll(() => dot.evaluate((el) => getComputedStyle(el).backgroundColor), { timeout: 5_000 })
+      .toBe(errorToken)
+
+    await seedPresence(backendPort, ['dev:claude-code'], 'Idle')
+    await expect(dot).toHaveAttribute('data-presence', 'idle', { timeout: 15_000 })
+    const successToken = await resolveToken(win, '--accent-success')
+    await expect
+      .poll(() => dot.evaluate((el) => getComputedStyle(el).backgroundColor), { timeout: 5_000 })
+      .toBe(successToken)
+    expect(successToken).not.toBe(errorToken)
+
+    await app.close()
+  })
+
+  test('sidebar roster dot: an un-signaled agent is a hollow ring (transparent fill + inset --fg-dimmer), structurally distinct from offline which is a filled --fg-dimmer dot — unknown is never a false-offline', async () => {
+    const { app, backendPort } = await launchWithIsolatedSession({
+      seedRoster: ['dev:claude-code'],
+      seedMessages: [presenceSeedMessage]
+    })
+    const win = await app.firstWindow()
+    await expect(win.getByRole('main')).toBeVisible()
+    const dot = new SidebarPage(win).presenceDot('dev')
+
+    await expect(dot).toHaveAttribute('data-presence', 'unknown', { timeout: 15_000 })
+    const dimmer = await resolveToken(win, '--fg-dimmer')
+    await expect
+      .poll(() => dot.evaluate((el) => getComputedStyle(el).backgroundColor), { timeout: 5_000 })
+      .toBe('rgba(0, 0, 0, 0)')
+    const ringShadow = await dot.evaluate((el) => getComputedStyle(el).boxShadow)
+    expect(ringShadow).toContain('inset')
+    expect(ringShadow).toContain(dimmer)
+
+    await seedPresence(backendPort, ['dev:claude-code'], 'Offline')
+    await expect(dot).toHaveAttribute('data-presence', 'offline', { timeout: 15_000 })
+    await expect
+      .poll(() => dot.evaluate((el) => getComputedStyle(el).backgroundColor), { timeout: 5_000 })
+      .toBe(dimmer)
+    expect(await dot.evaluate((el) => getComputedStyle(el).boxShadow)).toBe('none')
+
+    await app.close()
+  })
+
+  test('chat-avatar status: actionable states stay distinct (busy=--accent-warning, help/blocked=--accent-error) while idle/offline collapse to --fg-dim — the intended reduced palette for this secondary surface — and help CLEARS to --fg-dim on resolve', async () => {
+    const { app, backendPort } = await launchWithIsolatedSession({
+      seedRoster: ['dev:claude-code'],
+      seedMessages: [presenceSeedMessage]
+    })
+    const win = await app.firstWindow()
+    await expect(win.getByRole('main')).toBeVisible()
+    const status = new ChatPage(win).avatarStatus('dev')
+    await expect(status).toBeAttached({ timeout: 15_000 })
+
+    const warning = await resolveToken(win, '--accent-warning')
+    const error = await resolveToken(win, '--accent-error')
+    const dim = await resolveToken(win, '--fg-dim')
+    const success = await resolveToken(win, '--accent-success')
+
+    const expectStatusColor = async (presence: string, expected: string): Promise<void> => {
+      await seedPresence(backendPort, ['dev:claude-code'], presence)
+      await expect
+        .poll(() => status.evaluate((el) => getComputedStyle(el).color), { timeout: 15_000 })
+        .toBe(expected)
+    }
+
+    await expectStatusColor('Busy', warning)
+    await expectStatusColor('Blocked', error)
+    await expectStatusColor('Help', error)
+    await expectStatusColor('Idle', dim)
+    await expectStatusColor('Offline', dim)
+    expect(dim).not.toBe(success)
+    expect(dim).not.toBe(warning)
+
+    await app.close()
+  })
+
+  test('presence is keyed per agent — signaling dev busy colours only dev, never bleeding onto pm, on both the roster dot and the chat avatar', async () => {
+    const { app, backendPort } = await launchWithIsolatedSession({
+      seedRoster: ['dev:claude-code', 'pm:claude-code'],
+      seedMessages: [
+        presenceSeedMessage,
+        {
+          from: 'pm:claude-code',
+          text: 'seed pm avatar for no-bleed trace',
+          ts: '2026-04-22T18:01:00Z',
+          message_type: 'chat'
+        }
+      ]
+    })
+    const win = await app.firstWindow()
+    await expect(win.getByRole('main')).toBeVisible()
+
+    await seedPresence(backendPort, ['dev:claude-code'], 'Busy')
+
+    const sidebar = new SidebarPage(win)
+    const chat = new ChatPage(win)
+    const warning = await resolveToken(win, '--accent-warning')
+    const dim = await resolveToken(win, '--fg-dim')
+
+    const devDot = sidebar.presenceDot('dev')
+    await expect(devDot).toHaveAttribute('data-presence', 'busy', { timeout: 15_000 })
+    await expect
+      .poll(() => devDot.evaluate((el) => getComputedStyle(el).backgroundColor), { timeout: 5_000 })
+      .toBe(warning)
+
+    const pmDot = sidebar.presenceDot('pm')
+    await expect(pmDot).toHaveAttribute('data-presence', 'unknown', { timeout: 15_000 })
+    await expect(pmDot).not.toHaveAttribute('data-presence', 'busy')
+
+    await expect
+      .poll(() => chat.avatarStatus('dev').evaluate((el) => getComputedStyle(el).color), {
+        timeout: 15_000
+      })
+      .toBe(warning)
+    expect(await chat.avatarStatus('pm').evaluate((el) => getComputedStyle(el).color)).toBe(dim)
+
+    await app.close()
   })
 })
