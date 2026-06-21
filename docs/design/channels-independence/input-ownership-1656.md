@@ -17,8 +17,13 @@ typing**. This doc adds the sixth concern the contract was missing: **input-owne
 injection and the owner's keystrokes share one PTY-stdin, and the injection must not win.
 
 The park-vs-never-park branch is **RESOLVED to RELIABLE-never-park** (designer UX-call on dev's
-kernel-line feasibility-read, 2026-06-20 — §Submit). The whole model is now settled; the one
-remaining build-scope it surfaces (client-side line-editing) is specified in §Line-editing-contract.
+kernel-line feasibility-read, 2026-06-20 — §Submit). **REVISED 2026-06-21 (dev's build-grounding):**
+the needs-help/stuck backstop is RELOCATED OUT of #1656 — the delivery seam can't observe alive-but-
+hung, the vocab already ships, and a hung agent can't self-push (§Signal-states). Build-order is
+**(B) MECHANISM-FIRST** (the collision was the load-bearing reject, not a missing backstop). So
+**#1656's scope is now the collision-safe mechanism ONLY** (CAPTURE→CLEAR→DELIVER→RESTORE + never-park
++ line-editing-no-regression + raw-pass-through); the one remaining build-scope (client-side
+line-editing) is in §Line-editing-contract.
 
 ## User job
 
@@ -52,8 +57,10 @@ I would reject if:
 - the relocated client-side line-editor **REGRESSES my editing** — an affordance I had pre-relocation
   (caret movement, word-delete, kill-line, history-recall, paste) no longer works, so team-delivery
   cost me my editing (§Line-editing-contract); OR
-- an injection that **cannot** be delivered collision-safely (the agent isn't input-ready) is
-  silently dropped OR the agent is hung with **no needs-help/stuck signal** (§Signal-states).
+- an injection ever **PARKS or is silently dropped** instead of landing collision-safe (RELIABLE-
+  never-park violated — every injection lands, restored-around). (The agent-liveness "is the agent
+  CONSUMING?" backstop is NOT a #1656 concern — the delivery seam can't observe alive-but-hung; it
+  relocates to the dot-cluster / attention-signal arc — see §Signal-states, revised 2026-06-21.)
 
 ## The problem — one PTY-stdin, two writers
 
@@ -128,10 +135,13 @@ parked message. Hold/restore IS the never-park behavior.
 relocation fix covers an owner-message AND a #1753 wake identically — ONE model, one collision-safe
 contract, never-park for both. A wake never parks either.
 
-The needs-help/stuck signal (§Signal-states) is therefore NOT a parked-message signal (messages never
-park) — it is the **agent-liveness** backstop: the message always LANDS collision-safe, but if the
-AGENT is hung / not consuming, the owner is signalled to go look. Delivery and agent-liveness are
-separate axes; never-park owns delivery, the backstop owns liveness.
+Because messages never park, there is no parked-message signal at all. The **agent-liveness** question
+— "is the agent CONSUMING what landed?" — is a SEPARATE axis that #1656's delivery path CANNOT observe:
+a PTY write proves the terminal is present, never whether the agent consumes (a present-but-hung
+agent's write succeeds; only absent/dead fails → already Offline). So alive-but-hung is NOT a #1656
+concern — it relocates to the dot-cluster / attention-signal arc (§Signal-states). Delivery and
+agent-liveness are separate axes; never-park owns delivery, and liveness is owned elsewhere — not at
+the delivery seam, which is blind to it.
 
 ## Line-editing-contract — the relocated line-editor must not REGRESS the owner
 
@@ -140,6 +150,13 @@ BECOMES the line-editor** — it must re-provide the editing the kernel/shell ga
 never-park is bought at the price of a crippled compose-line (a regression the owner feels every
 keystroke). This is the designer-owned bar on the relocation: **client-side line-editing good enough
 that the owner does not notice the line left the kernel.**
+
+**MET BY REUSE (dev's 2026-06-21 grounding):** the design's "like a web chat compose-box" analogy is
+LITERAL — the chat compose-box stack (`useInputKeyboard` + `inputCommands` + `useInputHistory` +
+`Input.tsx`) ALREADY implements every affordance below (caret/word-move · Ctrl-W/U/K kill · Ctrl-D
+fwd-del · ↑/↓ + Ctrl-R history · Enter-submit), tested. So renderer-owns-the-line REUSES that stack as
+the cooked-mode compose-line — no-regression met BY REUSE, not a new build — and collision-safety is
+near-STRUCTURAL (a separate compose surface is untouched by an injection writing the output-stream).
 
 Required affordances on the renderer-owned (owner-typing / cooked) line — none may regress vs today:
 - **Echo + caret** — characters appear as typed; a visible, positionable caret.
@@ -151,33 +168,54 @@ Required affordances on the renderer-owned (owner-typing / cooked) line — none
   muscle-memory of ↑-to-recall survives the relocation).
 - **Submit-on-Enter** — Enter sends the complete line to the PTY; nothing reaches the agent before.
 
-**Raw-mode TUIs are the exception, by design:** when a raw TUI (Claude, vim) owns its own line-editor,
-the renderer does NOT replace it — keystrokes pass through and the TUI's editor is authoritative; the
-collision-safety there is the §Raw-mode pass-through-preserve, not the client-side editor. The
-client-side line-editor governs the cooked/owner-typing case (where the kernel-buffer collision lived);
-the raw case is preserved, not relocated. (How the renderer distinguishes the two + switches is dev's
-mechanism.)
+**PASS-THROUGH is the DEFAULT; renderer-owns-the-line is the EXCEPTION (dev's 2026-06-21 grounding —
+the cooked/raw binary is NOT clean):** the renderer owns the line ONLY when CONFIDENT it's a simple
+cooked line-reader; for everything else — a raw TUI (Claude, vim), a shell's readline (its own
+history/completion), cbreak / `read -n1` / pagers — it PASSES THROUGH (the program's editor is
+authoritative, preserved-not-replaced). Reason: taking over a program that has its OWN rich input IS
+the regression. And the cooked/raw signal is a PROXY (bracketed-paste; the true `termios ICANON` is
+unreadable from the PTY master), so DEFAULT-SAFE = pass-through unless confident-cooked.
+
+★ **The RAW/pass-through case is the LOAD-BEARING one, not the cooked reuse.** The owner is usually at
+a shell-readline prompt OR a Claude-TUI — both RAW — so the #1656 reject (an injection clobbered the
+owner's keystrokes) was most likely a RAW case. The compose-box reuse solves COOKED structurally (the
+easy win); the RAW case must deliver the framed line to a program that OWNS its input WITHOUT clobbering
+the owner's in-progress chars (held to an input-ready boundary / framing the TUI recognizes) — dev's
+mechanism, and exactly where the motion-live keystroke-walk focuses (typing to a Claude-TUI, an
+injection arrives, the owner's chars survive).
 
 The bar is no-regression, not feature-parity-with-bash — match what the owner actually uses in a
 bpmux terminal today; if an affordance is missing post-relocation that worked pre-relocation, that
 is the falsifier ("my editing got worse so team-messages could arrive").
 
-## Signal-states (the needs-help/stuck backstop — load-bearing-first slice of the attention-signal vocab)
+## Signal-states — the alive-but-hung backstop is OUT of #1656 (relocated 2026-06-21)
 
-When an injection cannot complete collision-safely (PARK-but-SIGNALED, or the agent is stuck and not
-consuming input), the backstop is a **needs-help/stuck** signal — the owner sees that this agent has
-an undelivered message / is not input-ready, trustworthy enough to ACT on (go look) without
-double-checking.
+REVISED on dev's substrate-grounding + the design-call (META-CANON #1380 — the original backstop-in-
+#1656 premise did not ground). The original design-pass put a needs-help/stuck backstop in #1656 as
+"the load-bearing-first slice the dot-cluster conforms to." Three substrate facts collapse that:
 
-These two states — **running** (input-ready, delivery flows) and **stuck/needs-help** (not
-input-ready, an injection would park / a help is pending) — are the **load-bearing-first slice** of
-the one **attention-signal design-language** (forthcoming sibling doc, authored whole: running/stuck
-+ needs-help + dormant-park [#1753] + owner-attention). Dev builds the needs-help backstop FIRST as
-the shared seam (the dot-cluster #1747/#1748/#1750/#1721 + this backstop conform to it), so the
-vocab's needs-help/stuck states are defined HERE and the full system slots onto them without
-retrofit. Pin (matches the trustworthy-dot acceptance-bar): a stuck/needs-help signal **CLEARS when
-the condition resolves** (the message lands / the help is answered); an input-ready agent never reads
-stuck.
+1. **The vocab already ships.** The landed dot-cluster (Presence::Help, /api/presence, `bpmux signal
+   busy|idle|help`, the hooks) already defines the needs-help/stuck states — there is no vocab to
+   define-first, so the retrofit-risk that motivated backstop-first is moot.
+2. **The delivery seam can't observe alive-but-hung.** A PTY write proves the terminal present, never
+   agent-consumption; "can't deliver" = absent/dead = already Offline. A present-but-hung agent's
+   write SUCCEEDS — invisible to #1656.
+3. **A hung agent can't self-push.** So the dot-cluster's self-push (the agent reports its own state)
+   can't surface alive-but-hung either — the hung agent is exactly the one that can't run `bpmux
+   signal`.
+
+So alive-but-hung detection is NEITHER a delivery-seam concern NOR a simple self-push — it needs a
+THIRD mechanism: an OBSERVER of a hung agent that can't self-report, against ambiguous observables
+(no-push = idle OR hung; and PTY-output-quiet was RETIRED in #1739 as fooled-by-TUI-output). That is
+a NEW, unsolved capability.
+
+**DESIGN-CALL: DEFERRED.** It is team-anticipated, NOT owner-raised — the #1656 reject was the
+COLLISION, not a missing backstop (features-need-owner-raised-problems). So **#1656 = the collision-
+safe mechanism ONLY** (CAPTURE→CLEAR→DELIVER→RESTORE + RELIABLE-never-park + line-editing-no-regression
++ raw-pass-through). The alive-but-hung backstop travels with the dot-cluster / attention-signal arc
+as a future design-shaping IF the owner raises the need; its detection-mechanism is the open
+design-question there (not assumed self-push, not assumed delivery-seam). #1656's falsifier carries
+NO backstop clause.
 
 ## Acceptance — the live keystroke-walk (non-vacuous; no synthetic inject)
 
@@ -190,9 +228,10 @@ The owner-walk proves input-ownership with REAL keystrokes (a synthetic inject s
 - **(c) rapid-fire:** several injections during active typing → every keystroke survives, every
   message lands discretely, order preserved.
 - **(d) submit-isolation:** an injection's `\r` never submits the owner's in-progress line.
-- **(e) stuck-backstop:** an agent not input-ready → the injection does NOT corrupt/drop silently →
-  the needs-help/stuck signal raises, and CLEARS when delivery completes.
-- (Inherits agnostic-receive's (a)-(d) + the injection-format adversarial-sanitize — unchanged.)
+- **(e) line-editing no-regression:** the relocated client-side line-editor provides caret-movement /
+  word-delete / kill-line / history-recall / paste no worse than pre-relocation (§Line-editing-contract).
+- (Inherits agnostic-receive's (a)-(d) + the injection-format adversarial-sanitize — unchanged. The
+  agent-liveness backstop is OUT of #1656 — §Signal-states.)
 
 ## Relationship to siblings
 
@@ -200,9 +239,74 @@ The owner-walk proves input-ownership with REAL keystrokes (a synthetic inject s
   security-condition STAND unchanged; input-ownership is the sixth concern around the same write.
 - **`terminal-injection-format-1656.md`** — the forgery-inert framing on every injected line; the
   CLEAR/RESTORE steps render that framing as one discrete line, never merged with the owner's prompt.
-- **The attention-signal design-language** (forthcoming sibling) — the full signal vocab; the
-  needs-help/stuck states defined here are its load-bearing-first slice (dev's shared-seam build
-  conforms to them). #1753's dormant-park + owner-attention slot onto the same system.
+- **`attention-signal-language.md`** (the vocab) — the needs-help/stuck states are ALREADY SHIPPED by
+  the dot-cluster (Presence::Help / `bpmux signal`), so #1656 does NOT define them. The alive-but-hung
+  BACKSTOP — distinct from those self-pushed states — is a deferred new-capability (§Signal-states)
+  that travels with that arc; its detection-mechanism (observing a hung agent that can't self-report)
+  is the open design-question there, NOT assumed.
 - **#1753 wake-spike** — a wake IS an injection of this class; it rides this collision-safe contract
   (same injection-class, so the 4-step hold/restore + the submit branch apply to a wake too). #1753
   consumes this; it does not re-solve it.
+
+## Clause (d) — human-mid-typing submit-isolation (Circinus owner-walk-surfaced 2026-06-21)
+
+The Crux-met agnostic-receive (bracket-paste-frame + `\r`) is collision-safe for the SPINE — the
+autonomous agent-to-agent case (the agent's input box empty; the inject's `\r` cleanly submits the
+message as the agent's next turn). The owner's live walk surfaced the one case it misses:
+
+**The submit-steal.** When a HUMAN is mid-typing into a raw agent (owner intervention — a directive, a
+correction) and an inject arrives, the inject's `\r` submits the human's PARTIAL line + the injected
+paste-block to Claude as ONE MERGED turn. The human's deliberate input is stolen/corrupted.
+
+- **Trigger (derived-grounded, not assumed):** raw agent + recent human-keystroke-activity, paste-mode
+  ON, at Claude's prompt. DISTINCT from the paste-OFF sub-mode edge-gate (§pass-through-default) — this
+  fires with paste-mode ACTIVE. Necessarily-raw: raw Claudes render no compose-box (so the human typed
+  the raw xterm), and only registered AGENT terminals are inject-targets (a bare shell isn't one) — so
+  the owner's observed merge canNOT be a cooked-box B2 bug.
+- **Fix — hold the WHOLE inject, keystroke-activity-keyed (NOT a generic input-ready-gate):**
+  - HOLD the whole inject (not just the `\r`) while there is recent human-keystroke-activity on that
+    terminal. Holding only the `\r` does NOT isolate — the paste-block still lands in the input-box and
+    MERGES with the human's partial line, just unsubmitted (a polluted draft).
+  - DELIVER the held inject on a keystroke-debounce idle (a natural pause).
+  - MAX-HOLD bound so a continuously-typing human never parks the inject indefinitely — the hold is
+    BOUNDED, never an open-ended park (never-park holds).
+- **Why in-scope (trust-bar, not frequency):** the owner observes >> types-into-agents, so this is
+  RARE — but the intervention is the WORST moment to lose input, and the #1656 user-job is "trust the
+  terminal-input enough to act WITHOUT double-checking." A lurking submit-steal, however rare, is the
+  latent failure that defeats that trust. Rare-but-severe + cheap-to-fix → handle. (Owner ratified
+  HANDLE 2026-06-21.)
+- **Walk status:** the PROBLEM is walk-CONFIRMED (owner observed the merge live, typing 'dfgdfg'). The
+  not-claimed-till-walked bar applies to the FIX — confirm after building: inject-mid-human-typing →
+  the inject HOLDS → the human's line submits clean → THEN the inject delivers as its own turn → no steal.
+- **Distinct from (b):** (b) inject mid-Claude-TURN (autonomous, no human typing) decides the
+  defer-QUEUE (does `\r` queue-at-turn-boundary or interrupt?) — its OWN walk, separate build. Clause (d)
+  is mid-HUMAN-typing — the submit-isolation. Two walks, two builds (or none).
+
+## Cooked compose-line craft-pass (Circinus — the B2 baseline → designer polish)
+
+The B2 cooked compose-line (`TerminalCompose`, reusing the chat readline stack `useInputKeyboard` /
+`useInputHistory` / `useDraftStorage`) ships a functional token-CSS BASELINE (`.terminal-compose` /
+`-input` / `-search`; mono stack; `--bg-base` / `--fg-primary` / `--border-subtle` / `--space-*`). The
+craft-leg adds the polish that makes the protected input-surface PERCEPTIBLE — so the owner FEELS the
+draft is its own safe zone (the collision-safety, felt, not just structural).
+
+- **Caret** — `caret-color: var(--fg-primary)` on `.terminal-compose-input`. A deliberate terminal-caret,
+  not the browser default.
+- **Prompt-affordance (where-you-type)** — a leading prompt-glyph (`❯`) before the textarea, in
+  `var(--fg-dim)`. Signals the compose-ZONE + distinguishes it from the output-stream above (the
+  readline-prompt feel). The KEY affordance: it tells the owner "this is the protected input-line,
+  separate from the terminal output." [Component addition + CSS.]
+- **Focus-state (a11y-REQUIRED + clarity)** — the baseline `outline: none` on the textarea leaves NO
+  focus-indicator (a WCAG 2.4.7 gap). The craft adds a visible focus-state on `:focus-within` of the
+  container: the `border-top` goes accent (`var(--accent-focus)` or the design-system focus-ring token),
+  so the active input-zone is unmistakable. [a11y-critical — do not ship the bare `outline:none`.]
+- **Input-zone distinction (the protected surface, felt)** — keep SUBTLE (terminals read uniform): the
+  border-top + the prompt-glyph already distinguish the zone; add a faint bg-elevation ONLY if the
+  palette has an elevation-token, else the border+glyph suffice. Perceptible-not-loud.
+- **i-search polish** — align `.terminal-compose-search` padding with the input; keep
+  `--nomatch → accent-warning` (the failing-search feedback is right). Leading affordance-prefix optional.
+
+**Token-discipline:** all values from the existing palette (no new colors); WCAG-AA contrast on the
+prompt-glyph + the focus-accent. When Darcula (#1659) lands, this re-tokenizes with it (no per-surface
+drift). **Walk:** confirm the rendered compose-line on a cooked-AGENT recipient (the craft-look + the
+focus-state + the caret) — the visual half of the cooked it-plays.
