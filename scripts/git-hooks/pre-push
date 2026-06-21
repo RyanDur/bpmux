@@ -10,6 +10,13 @@ if [ ! -d "$REPO_ROOT/applications/electron/node_modules" ]; then
     exit 1
 fi
 
+# Build first so the e2e launches CURRENT source, not a stale out/. The hook runs
+# `npx playwright test` directly (to control --project/--workers), which bypasses
+# the `pretest:e2e` build — without this, a renderer change pushed without a manual
+# build is silently tested against the previous build (false green AND false red).
+echo "Building the electron app (so the e2e exercises current source)..."
+(cd "$REPO_ROOT/applications/electron" && npm run build)
+
 echo "Running pre-push quality gates (serial heavy specs at workers=1, main at workers=4 parallel)..."
 
 # Main e2e now runs PARALLEL (workers=4, unsharded). Each spec launches
