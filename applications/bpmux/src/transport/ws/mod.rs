@@ -118,6 +118,7 @@ async fn run_ws_session(
     let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<ServerMessage>();
     let mut pty_readers: std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>> =
         std::collections::HashMap::new();
+    let mut pty_modes: std::collections::HashMap<String, bool> = std::collections::HashMap::new();
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
         loop {
             tokio::select! {
@@ -159,10 +160,26 @@ async fn run_ws_session(
                     if let Some((terminal_id, bytes)) = pty_chunk {
                         if bytes.is_empty() {
                             pty_readers.remove(&terminal_id);
+                            pty_modes.remove(&terminal_id);
                             send_json(&mut tx, &ServerMessage::PtyExit { terminal_id }).await?;
                         } else {
                             let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
-                            send_json(&mut tx, &ServerMessage::PtyOutput { terminal_id, data }).await?;
+                            send_json(&mut tx, &ServerMessage::PtyOutput {
+                                terminal_id: terminal_id.clone(),
+                                data,
+                            })
+                            .await?;
+                            if let Some(bracketed_paste) =
+                                pty_registry.current_bracketed_paste(&terminal_id)
+                                && pty_modes.get(&terminal_id) != Some(&bracketed_paste)
+                            {
+                                pty_modes.insert(terminal_id.clone(), bracketed_paste);
+                                send_json(&mut tx, &ServerMessage::PtyMode {
+                                    terminal_id,
+                                    bracketed_paste,
+                                })
+                                .await?;
+                            }
                         }
                     }
                 }

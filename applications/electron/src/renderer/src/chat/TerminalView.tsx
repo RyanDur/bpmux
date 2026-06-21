@@ -7,6 +7,7 @@ import {
   sendPtyInput,
   sendPtyResize,
   sendPtySubscribe,
+  subscribePtyMode,
   subscribePtyOutput
 } from '../transport/session'
 import { composeTerminalFontFamily } from '../lib/terminalFont'
@@ -56,6 +57,7 @@ export const TerminalView = ({
   const termRef = useRef<Terminal | null>(null)
   const [dims, setDims] = useState<{ cols: number; rows: number }>({ cols: 0, rows: 0 })
   const [liveCwd, setLiveCwd] = useState(cwd)
+  const [bracketedPaste, setBracketedPaste] = useState(false)
 
   useEffect(() => {
     const screen = screenRef.current
@@ -87,6 +89,7 @@ export const TerminalView = ({
     const unsubscribe = subscribePtyOutput(terminalId, (data) => {
       term.write(decodePtyData(data))
     })
+    const unsubscribeMode = subscribePtyMode(terminalId, setBracketedPaste)
     const osc7 = term.parser.registerOscHandler(7, (payload) => {
       const next = cwdFromOsc7(payload)
       if (next) setLiveCwd(next)
@@ -100,6 +103,7 @@ export const TerminalView = ({
     return () => {
       window.removeEventListener('resize', syncSize)
       unsubscribe()
+      unsubscribeMode()
       osc7.dispose()
       term.dispose()
       termRef.current = null
@@ -133,7 +137,11 @@ export const TerminalView = ({
           ✕
         </button>
       </header>
-      <section className="terminal-screen" aria-label="terminal output">
+      <section
+        className="terminal-screen"
+        aria-label="terminal output"
+        data-input-mode={bracketedPaste ? 'raw' : 'cooked'}
+      >
         <section ref={screenRef} className="terminal-screen-canvas" />
       </section>
     </section>

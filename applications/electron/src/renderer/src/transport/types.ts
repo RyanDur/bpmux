@@ -161,6 +161,12 @@ export interface ServerPtyExit {
   terminal_id: string
 }
 
+export interface ServerPtyMode {
+  type: 'pty_mode'
+  terminal_id: string
+  bracketed_paste: boolean
+}
+
 export interface ClientIdentify {
   type: 'identify'
   name: string

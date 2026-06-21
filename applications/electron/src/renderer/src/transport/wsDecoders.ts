@@ -7,6 +7,7 @@ import {
   type ServerHistoryPageLoaded,
   type ServerPong,
   type ServerPtyExit,
+  type ServerPtyMode,
   type ServerPtyOutput,
   type ServerTimelineHydrated,
   type ServerWelcome
@@ -31,6 +32,10 @@ export const ptyOutputDecoder: D.Decoder<ServerPtyOutput> = D.object({
 
 export const ptyExitDecoder: D.Decoder<ServerPtyExit> = D.object({
   required: { type: D.literal('pty_exit'), terminal_id: D.string }
+})
+
+export const ptyModeDecoder: D.Decoder<ServerPtyMode> = D.object({
+  required: { type: D.literal('pty_mode'), terminal_id: D.string, bracketed_paste: D.boolean }
 })
 
 export const commentsHydratedDecoder: D.Decoder<ServerCommentsHydrated> = D.object({

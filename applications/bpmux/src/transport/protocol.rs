@@ -94,6 +94,11 @@ pub enum ServerMessage {
     PtyOutput { terminal_id: String, data: String },
     #[serde(rename = "pty_exit")]
     PtyExit { terminal_id: String },
+    #[serde(rename = "pty_mode")]
+    PtyMode {
+        terminal_id: String,
+        bracketed_paste: bool,
+    },
     #[serde(rename = "comments_hydrated")]
     CommentsHydrated {
         story_number: u64,

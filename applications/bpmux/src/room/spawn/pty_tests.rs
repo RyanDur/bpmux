@@ -138,6 +138,35 @@ fn a_paste_capable_tui_that_toggled_paste_off_still_gets_a_bracket_framed_submit
 }
 
 #[test]
+fn the_current_paste_mode_tracks_the_toggle_off_while_capability_stays_latched() {
+    let live = spawn_pty_retained(
+        "/bin/sh",
+        &[
+            "-c".into(),
+            "printf '\\033[?2004h'; sleep 0.1; printf '\\033[?2004l'; sleep 0.1; exec cat".into(),
+        ],
+        None,
+        &[],
+    )
+    .unwrap();
+    let mut rx = live.subscribe();
+    let toggles = drain_subscriber_until(&mut rx, "\x1b[?2004l");
+    assert!(
+        toggles.contains("\x1b[?2004h") && toggles.contains("\x1b[?2004l"),
+        "precondition: the agent declared (ESC[?2004h) then disabled (ESC[?2004l) bracketed-paste; got {toggles:?}"
+    );
+
+    assert!(
+        live.paste_capable(),
+        "capability LATCHES on — the injection-framing path must never depend on the flickering live mode (the paste-off window), so a busy raw-TUI never parks a bare-\\r delivery"
+    );
+    assert!(
+        !live.current_bracketed_paste(),
+        "the LIVE paste-mode tracks the toggle OFF — this is the renderer's cooked/raw input-ownership signal (#1656), DISTINCT from the latched framing capability: a raw-TUI that exited bracketed-paste hands the cooked line back to the renderer to own"
+    );
+}
+
+#[test]
 fn spawn_pty_retained_runs_a_real_shell_in_the_given_cwd_with_term() {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
     let cwd = std::env::temp_dir().join(format!("bpmux-shell-cwd-{}-{}", std::process::id(), "s1"));

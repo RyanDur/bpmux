@@ -2,6 +2,7 @@ import type { ChatMessage } from '../types'
 
 const liveMessageListeners = new Set<(m: ChatMessage) => void>()
 const ptyOutputListeners = new Map<string, Set<(data: string) => void>>()
+const ptyModeListeners = new Map<string, Set<(bracketedPaste: boolean) => void>>()
 const ptyExitListeners = new Set<(terminalId: string) => void>()
 
 export const emitLiveMessage = (msg: ChatMessage): void => {
@@ -12,6 +13,12 @@ export const emitPtyOutput = (terminalId: string, data: string): void => {
   const handlers = ptyOutputListeners.get(terminalId)
   if (!handlers) return
   for (const handler of handlers) handler(data)
+}
+
+export const emitPtyMode = (terminalId: string, bracketedPaste: boolean): void => {
+  const handlers = ptyModeListeners.get(terminalId)
+  if (!handlers) return
+  for (const handler of handlers) handler(bracketedPaste)
 }
 
 export const emitPtyExit = (terminalId: string): void => {
@@ -40,6 +47,21 @@ export const subscribePtyOutput = (
   }
 }
 
+export const subscribePtyMode = (
+  terminalId: string,
+  handler: (bracketedPaste: boolean) => void
+): (() => void) => {
+  let handlers = ptyModeListeners.get(terminalId)
+  if (!handlers) {
+    handlers = new Set()
+    ptyModeListeners.set(terminalId, handlers)
+  }
+  handlers.add(handler)
+  return () => {
+    handlers.delete(handler)
+  }
+}
+
 export const subscribePtyExit = (handler: (terminalId: string) => void): (() => void) => {
   ptyExitListeners.add(handler)
   return () => {
@@ -50,5 +72,6 @@ export const subscribePtyExit = (handler: (terminalId: string) => void): (() => 
 export const resetSessionEmitter = (): void => {
   liveMessageListeners.clear()
   ptyOutputListeners.clear()
+  ptyModeListeners.clear()
   ptyExitListeners.clear()
 }

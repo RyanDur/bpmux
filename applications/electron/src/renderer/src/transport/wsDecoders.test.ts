@@ -4,6 +4,7 @@ import {
   messageDecoder,
   pongDecoder,
   ptyExitDecoder,
+  ptyModeDecoder,
   ptyOutputDecoder,
   welcomeDecoder
 } from './wsDecoders'
@@ -65,6 +66,22 @@ describe('ptyExitDecoder', () => {
     expect(ptyExitDecoder.validate({ type: 'pty_output', terminal_id: 't1', data: 'x' }).type).toBe(
       'error'
     )
+  })
+})
+
+describe('ptyModeDecoder', () => {
+  test('decodes a pty_mode frame', () => {
+    const result = ptyModeDecoder.validate({
+      type: 'pty_mode',
+      terminal_id: 't1',
+      bracketed_paste: true
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') expect(result.data.bracketed_paste).toBe(true)
+  })
+
+  test('rejects a pty_mode missing bracketed_paste', () => {
+    expect(ptyModeDecoder.validate({ type: 'pty_mode', terminal_id: 't1' }).type).toBe('error')
   })
 })
 

@@ -79,6 +79,14 @@ impl LivePtyRegistry {
             .map(|live| live.has_foreground_job())
     }
 
+    pub fn current_bracketed_paste(&self, terminal_id: &str) -> Option<bool> {
+        self.rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(terminal_id)
+            .map(|live| live.current_bracketed_paste())
+    }
+
     pub fn reap_dead_and_list_live(&self) -> Vec<String> {
         let mut rooms = self.rooms.lock().unwrap_or_else(|e| e.into_inner());
         let mut live = Vec::new();

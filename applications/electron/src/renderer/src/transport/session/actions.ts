@@ -38,6 +38,7 @@ export const SessionActionType = {
   MirrorDeltaReceived: 'session/mirrorDeltaReceived',
   PtyOutputReceived: 'session/ptyOutputReceived',
   PtyExitReceived: 'session/ptyExitReceived',
+  PtyModeReceived: 'session/ptyModeReceived',
   StartRequested: 'session/startRequested',
   ChatSendRequested: 'session/chatSendRequested',
   ReactionToggleRequested: 'session/reactionToggleRequested',
@@ -67,6 +68,11 @@ export type SessionAction =
   | { type: typeof SessionActionType.MirrorDeltaReceived; delta: StateDeltaPayload; ts: string }
   | { type: typeof SessionActionType.PtyOutputReceived; terminalId: string; data: string }
   | { type: typeof SessionActionType.PtyExitReceived; terminalId: string }
+  | {
+      type: typeof SessionActionType.PtyModeReceived
+      terminalId: string
+      bracketedPaste: boolean
+    }
   | { type: typeof SessionActionType.StartRequested; config: SessionConfig }
   | { type: typeof SessionActionType.ChatSendRequested; text: string; opts?: SendOptions }
   | {
@@ -151,6 +157,12 @@ export const ptyOutputReceived = (terminalId: string, data: string): SessionActi
 export const ptyExitReceived = (terminalId: string): SessionAction => ({
   type: SessionActionType.PtyExitReceived,
   terminalId
+})
+
+export const ptyModeReceived = (terminalId: string, bracketedPaste: boolean): SessionAction => ({
+  type: SessionActionType.PtyModeReceived,
+  terminalId,
+  bracketedPaste
 })
 
 export const startRequested = (config: SessionConfig): SessionAction => ({

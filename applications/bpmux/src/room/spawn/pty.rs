@@ -40,6 +40,7 @@ pub struct LivePty {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     output: broadcast::Sender<Vec<u8>>,
     paste_capable: Arc<AtomicBool>,
+    current_paste_mode: Arc<AtomicBool>,
     _retained_tempdir: Option<tempfile::TempDir>,
 }
 
@@ -65,6 +66,10 @@ impl LivePty {
 
     pub fn paste_capable(&self) -> bool {
         self.paste_capable.load(Ordering::Relaxed)
+    }
+
+    pub fn current_bracketed_paste(&self) -> bool {
+        self.current_paste_mode.load(Ordering::Relaxed)
     }
 
     pub fn submit_input(&self, line: &[u8]) -> std::io::Result<()> {
@@ -154,7 +159,13 @@ pub fn spawn_pty_retained(
     let reader = pair.master.try_clone_reader().map_err(io_other)?;
     let (output, _) = broadcast::channel(PTY_OUTPUT_CAPACITY);
     let paste_capable = Arc::new(AtomicBool::new(false));
-    spawn_output_reader(reader, output.clone(), paste_capable.clone());
+    let current_paste_mode = Arc::new(AtomicBool::new(false));
+    spawn_output_reader(
+        reader,
+        output.clone(),
+        paste_capable.clone(),
+        current_paste_mode.clone(),
+    );
     Ok(LivePty {
         pid,
         master: pair.master,
@@ -162,6 +173,7 @@ pub fn spawn_pty_retained(
         child,
         output,
         paste_capable,
+        current_paste_mode,
         _retained_tempdir: None,
     })
 }
@@ -170,6 +182,7 @@ fn spawn_output_reader(
     mut reader: Box<dyn std::io::Read + Send>,
     output: broadcast::Sender<Vec<u8>>,
     paste_capable: Arc<AtomicBool>,
+    current_paste_mode: Arc<AtomicBool>,
 ) {
     std::thread::spawn(move || {
         use std::io::Read;
@@ -182,8 +195,11 @@ fn spawn_output_reader(
                     break;
                 }
                 Ok(n) => {
-                    if sniffer.observe(&buf[..n]) == Some(true) {
-                        paste_capable.store(true, Ordering::Relaxed);
+                    if let Some(state) = sniffer.observe(&buf[..n]) {
+                        if state {
+                            paste_capable.store(true, Ordering::Relaxed);
+                        }
+                        current_paste_mode.store(state, Ordering::Relaxed);
                     }
                     let _ = output.send(buf[..n].to_vec());
                 }

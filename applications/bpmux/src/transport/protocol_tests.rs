@@ -136,6 +136,27 @@ fn pty_exit_serializes_with_distinct_type_and_terminal_id() {
 }
 
 #[test]
+fn pty_mode_serializes_the_bracketed_paste_fact_per_terminal() {
+    let msg = ServerMessage::PtyMode {
+        terminal_id: "term-1".to_string(),
+        bracketed_paste: true,
+    };
+    let json = serde_json::to_string(&msg).expect("serialize");
+    assert!(
+        json.contains(r#""type":"pty_mode""#),
+        "distinct frame type the renderer branches input-ownership on: {json}"
+    );
+    assert!(
+        json.contains(r#""terminal_id":"term-1""#),
+        "scoped to the terminal whose mode changed: {json}"
+    );
+    assert!(
+        json.contains(r#""bracketed_paste":true"#),
+        "carries the bracketed-paste fact (the raw-vs-cooked proxy) the agent's app set: {json}"
+    );
+}
+
+#[test]
 fn deserializes_send_with_to() {
     let json = r#"{"type": "send", "text": "hey", "to": ["pm", "designer"]}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");

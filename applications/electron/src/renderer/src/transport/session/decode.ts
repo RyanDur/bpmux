@@ -10,6 +10,7 @@ import {
   messageDecoder,
   pongDecoder,
   ptyExitDecoder,
+  ptyModeDecoder,
   ptyOutputDecoder,
   timelineHydratedDecoder,
   welcomeDecoder
@@ -22,6 +23,7 @@ import {
   mirrorDeltaReceived,
   mirrorSnapshotReceived,
   ptyExitReceived,
+  ptyModeReceived,
   ptyOutputReceived,
   sessionIdentified,
   timelineHydrated,
@@ -81,6 +83,11 @@ export const dispatchServerFrame = (
     )
     .or(() =>
       maybe(ptyExitDecoder.decode(frame)).map((exit) => dispatch(ptyExitReceived(exit.terminal_id)))
+    )
+    .or(() =>
+      maybe(ptyModeDecoder.decode(frame)).map((mode) =>
+        dispatch(ptyModeReceived(mode.terminal_id, mode.bracketed_paste))
+      )
     )
     .or(() =>
       maybe(commentsHydratedDecoder.decode(frame)).map((hydrated) =>

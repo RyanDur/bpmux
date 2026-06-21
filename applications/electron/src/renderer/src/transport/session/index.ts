@@ -33,7 +33,12 @@ export {
   useComments,
   useTimelineEvents
 } from './hooks'
-export { subscribeLiveMessages, subscribePtyOutput, subscribePtyExit } from './emitter'
+export {
+  subscribeLiveMessages,
+  subscribePtyOutput,
+  subscribePtyMode,
+  subscribePtyExit
+} from './emitter'
 export { encodeKeystroke, decodePtyData } from './ptyCodec'
 export { RENDERER_IDENTITY } from './constants'
 export type { SessionSnapshot } from './reducer'
