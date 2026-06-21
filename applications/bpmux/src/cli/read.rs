@@ -87,7 +87,13 @@ pub(super) fn render_board(stories: &[serde_json::Value]) -> String {
         let number = story["number"].as_u64().unwrap_or(0);
         let title = story["title"].as_str().unwrap_or("");
         let state = story["state"].as_str().unwrap_or("");
-        out.push_str(&format!("  {}  #{number}  {title}  {state}\n", i + 1));
+        match story["acceptor"].as_str() {
+            Some(acceptor) => out.push_str(&format!(
+                "  {}  #{number}  {title}  {state}  awaiting {acceptor}\n",
+                i + 1
+            )),
+            None => out.push_str(&format!("  {}  #{number}  {title}  {state}\n", i + 1)),
+        }
     }
     out
 }

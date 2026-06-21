@@ -33,6 +33,30 @@ async fn run_create(
         .expect("run bpmux create subprocess")
 }
 
+async fn board_line_for(bpmux: &TestBpmux, role: &str, number: u64) -> String {
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let out = tokio::process::Command::new(bin)
+        .args(["board"])
+        .env("BPMUX_PORT", bpmux.port().to_string())
+        .env("BPMUX_ROLE", role)
+        .env("BPMUX_AUTH_TOKEN_PATH", bpmux.auth_token_path())
+        .output()
+        .await
+        .expect("run bpmux board subprocess");
+    assert!(
+        out.status.success(),
+        "bpmux board should exit 0; stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let needle = format!("#{number}  ");
+    stdout
+        .lines()
+        .find(|l| l.contains(&needle))
+        .unwrap_or_else(|| panic!("#{number} should appear on `bpmux board`; board:\n{stdout}"))
+        .to_string()
+}
+
 fn created_number(out: &std::process::Output) -> u64 {
     let stdout = String::from_utf8_lossy(&out.stdout);
     let digits: String = stdout
@@ -136,6 +160,31 @@ async fn off_mcp_create_derives_the_team_acceptor_from_an_agent_use_axis() {
     );
 
     reader.close().await;
+}
+
+#[tokio::test]
+async fn off_mcp_create_owner_axis_renders_the_acceptor_on_the_board_via_cli() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+
+    let out = run_create(
+        &bpmux,
+        "pm",
+        "As the owner, I want the roadmap legible so I can see progress at a glance",
+        None,
+    )
+    .await;
+    assert!(
+        out.status.success(),
+        "create completes off MCP; stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    let line = board_line_for(&bpmux, "dev", created_number(&out)).await;
+    assert!(
+        line.contains("awaiting owner"),
+        "the board the team READS via `bpmux board` renders the derived acceptor (awaiting owner) for an 'As the owner' use-axis — not None; got:\n{line}"
+    );
 }
 
 #[tokio::test]

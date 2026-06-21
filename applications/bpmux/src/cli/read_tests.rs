@@ -48,13 +48,19 @@ fn render_story_is_a_compact_summary_with_a_full_hint_not_the_body() {
 }
 
 #[test]
-fn render_board_lists_one_line_per_story_with_state() {
+fn render_board_lists_one_line_per_story_with_state_and_acceptor() {
     let stories = vec![
         story(1, "first", "ready", Some("owner")),
         story(2, "second", "in-progress", None),
     ];
     let out = render_board(&stories);
     assert!(out.starts_with("board (2):\n"));
-    assert!(out.contains("  1  #1  first  ready\n"));
-    assert!(out.contains("  2  #2  second  in-progress\n"));
+    assert!(
+        out.contains("  1  #1  first  ready  awaiting owner\n"),
+        "render_board surfaces the acceptor so `bpmux board` shows who accepts (consistent with `bpmux ready`), not None; got:\n{out}"
+    );
+    assert!(
+        out.contains("  2  #2  second  in-progress\n"),
+        "a story with no acceptor renders no awaiting clause; got:\n{out}"
+    );
 }

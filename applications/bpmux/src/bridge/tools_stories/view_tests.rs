@@ -35,6 +35,30 @@ fn default_scope_is_unchanged_full_board() {
 }
 
 #[test]
+fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
+    use crate::board::domain::Acceptor;
+    let mut s = story(77, "acceptor-visible", StoryState::Ready);
+    s.acceptor = Some(Acceptor::Owner);
+    let out = build_board_text(&[s], &BoardScope::default());
+    assert!(
+        out.contains("#77 acceptor-visible · awaiting owner"),
+        "the board card surfaces the acceptor (instead of the team reading None) so the acceptor is visible before desk-check; got:\n{out}"
+    );
+}
+
+#[test]
+fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
+    let out = build_board_text(
+        &[story(78, "no-acceptor-yet", StoryState::Ready)],
+        &BoardScope::default(),
+    );
+    assert!(
+        out.contains("#78 no-acceptor-yet") && !out.contains("#78 no-acceptor-yet · awaiting"),
+        "an unset acceptor adds no segment — only present acceptors render; got:\n{out}"
+    );
+}
+
+#[test]
 fn state_scope_renders_only_the_matching_bucket() {
     let stories = vec![
         story(1, "ready one", StoryState::Ready),
