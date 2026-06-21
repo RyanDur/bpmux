@@ -4,6 +4,7 @@ import { seedTeamVerdicts } from './helpers/seed-evidence'
 import type { RpcFn } from './helpers/iteration-fixture'
 import type { Page } from '@playwright/test'
 import { BoardPage } from './pages/boardPage'
+import { RoadmapPage } from './pages/roadmapPage'
 
 const iterationOrderOf = async (
   result: MockGhLaunchResult,
@@ -304,13 +305,14 @@ test.describe('#1705 close-approach readiness nudge', () => {
     const { app, win, mockGh } = result
     try {
       const board = new BoardPage(win)
+      const roadmap = new RoadmapPage(win)
       await expect(board.region()).toBeVisible()
       await seedCloseApproach(result, false)
       await win.reload()
       await expect(board.region()).toBeVisible()
 
       await expect(board.closeApproachNudge()).toBeVisible()
-      await board.boardRoadmapView().click()
+      await roadmap.selectView('Roadmap')
       await expect(board.closeApproachNudgeRaw()).toHaveCount(0)
       await expect(board.roadmapAttn()).toBeVisible()
     } finally {

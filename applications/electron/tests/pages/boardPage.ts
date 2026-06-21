@@ -104,10 +104,6 @@ export class BoardPage {
     return this.win.getByRole('button', { name: 'Dismiss' })
   }
 
-  boardRoadmapView(): Locator {
-    return this.win.getByRole('radio', { name: /Roadmap/i })
-  }
-
   roadmapAttn(): Locator {
     return this.win.locator('.board-roadmap-attn')
   }
