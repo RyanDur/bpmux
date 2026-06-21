@@ -38,6 +38,26 @@ fn dispatch_table_does_not_include_retired_iteration_id_axis_tools() {
 }
 
 #[test]
+fn retired_set_status_advertisement_drops_the_removed_available_presence_state() {
+    let tools = build_advertised_tools();
+    let set_status = tools
+        .iter()
+        .find(|t| t.name.as_ref() == "set_status")
+        .expect("set_status stays advertised — parity with its dispatch redirect (#1404)");
+    let serialized = serde_json::to_string(set_status)
+        .expect("advertised tool serializes")
+        .to_ascii_lowercase();
+    assert!(
+        !serialized.contains("available"),
+        "set_status still advertises the removed `available` presence state (#1750 vestige); tool={serialized}"
+    );
+    assert!(
+        serialized.contains("retire") || serialized.contains("hook"),
+        "the retired set_status tool must advertise its hook-managed reality, not a live status-setter; tool={serialized}"
+    );
+}
+
+#[test]
 fn positional_substrate_tools_remain_advertised() {
     let advertised: Vec<String> = build_advertised_tools()
         .iter()

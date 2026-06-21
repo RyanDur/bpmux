@@ -6,7 +6,7 @@ pub fn set_status_tool(description: &'static str) -> Tool {
         "properties": {
             "status": {
                 "type": "string",
-                "description": "Your status: 'available', 'busy', or 'help'. Add a colon and description for context: 'busy: building #123'"
+                "description": "Retired (#1404): status is hook-managed; this field is ignored."
             }
         },
         "required": ["status"]

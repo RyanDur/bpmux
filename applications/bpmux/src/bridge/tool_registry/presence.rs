@@ -7,7 +7,7 @@ pub(super) fn presence_tools() -> Vec<rmcp::model::Tool> {
             "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
         ),
         crate::mcp::tools::set_status_tool(
-            "Set your status in the bpmux session. available = green dot (can respond), busy = yellow dot (working), help = red dot (needs attention).",
+            "Retired (#1404): status is hook-managed — turn-start pushes busy, stop pushes idle, a permission-prompt pushes help, all to /api/presence. Do not self-report; calling this returns a redirect-to-hooks error.",
         ),
         crate::mcp::tools::classifier_misfire_tool(
             "Report a classifier nudge that fired on a message you judge is NOT a learning moment. The reason field is OPTIONAL — per the 'state observation, not conclusion' framing, simply marking a fire as wrong is valuable training data on its own. Use this whenever you see an experience-nudge in the chat that you reason internally is incorrect, so the team can measure classifier accuracy and tune it over time. See #159.",
