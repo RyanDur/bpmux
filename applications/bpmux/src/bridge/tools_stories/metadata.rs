@@ -136,8 +136,19 @@ pub(crate) async fn handle_edit_story(
         .ok_or("missing 'number' argument")?;
     let body = args.get("body").and_then(|v| v.as_str());
     let title = args.get("title").and_then(|v| v.as_str());
-    if body.is_none() && title.is_none() {
-        return Err("edit_story requires at least one of 'body' or 'title' (#1279)".to_string());
+    let acceptor = match args.get("acceptor").and_then(|v| v.as_str()) {
+        Some(raw) => Some(
+            super::acceptor_axis::AcceptorClass::parse(raw.trim()).ok_or_else(|| {
+                format!("acceptor must be one of: team | owner | dev (got {raw:?})")
+            })?,
+        ),
+        None => None,
+    };
+    if body.is_none() && title.is_none() && acceptor.is_none() {
+        return Err(
+            "edit_story requires at least one of 'body', 'title', or 'acceptor' (#1279, #1787)"
+                .to_string(),
+        );
     }
     let r = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
@@ -160,6 +171,25 @@ pub(crate) async fn handle_edit_story(
             .await
             .map_err(|e| format!("#{number} body update failed: {e}"))?;
         updated.push("body");
+    }
+    if let Some(acceptor) = acceptor {
+        ensure_story_in_canonical_store(r, number).await?;
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        let current_labels = r.story(number).map(|s| s.raw_labels).unwrap_or_default();
+        for event in
+            super::acceptor_axis::acceptor_label_events(acceptor, &current_labels, &meta, number)
+        {
+            r.mutate_sync(event)
+                .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
+        }
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} drain after acceptor re-set failed: {e}"))?;
+        updated.push("acceptor");
     }
     Ok(format!("#{number} {} updated", updated.join(" + ")))
 }

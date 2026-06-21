@@ -129,6 +129,8 @@ mod deliver_story_substrate_enforce_e2e;
 mod dev_in_flight_e2e;
 #[path = "integration_main_modules/diag_routing.rs"]
 mod diag_routing;
+#[path = "integration_main_modules/edit_resets_acceptor_e2e.rs"]
+mod edit_resets_acceptor_e2e;
 #[path = "integration_main_modules/edit_story.rs"]
 mod edit_story;
 #[path = "integration_main_modules/event_subscription_board_invalidated_e2e.rs"]

@@ -109,14 +109,58 @@ async fn edit_story_with_both_title_and_body_updates_both() {
 }
 
 #[tokio::test]
+async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
+    use crate::board::BoardEvent;
+    use crate::board::domain::Acceptor;
+    use crate::board::events::EventMeta;
+
+    let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
+    let meta = EventMeta {
+        actor: "pm".to_string(),
+        ts: Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    refresh
+        .mutate_sync(BoardEvent::TagAdded {
+            meta,
+            number: 1234,
+            label: "awaiting dev".to_string(),
+        })
+        .unwrap();
+    refresh.drain_pending().await.unwrap();
+    assert_eq!(
+        refresh.story(1234).unwrap().acceptor,
+        Some(Acceptor::Dev),
+        "precondition: the create-derived acceptor is dev"
+    );
+
+    let args = args_obj(json!({ "number": 1234, "acceptor": "owner" }));
+    handle_edit_story(&args, "pm:claude-code", Some(&refresh))
+        .await
+        .expect("edit_story with acceptor-only succeeds");
+
+    let story = refresh.story(1234).unwrap();
+    assert_eq!(
+        story.acceptor,
+        Some(Acceptor::Owner),
+        "edit --acceptor owner re-derives the acceptor to owner"
+    );
+    assert!(
+        !story.raw_labels.iter().any(|l| l == "awaiting dev"),
+        "the stale 'awaiting dev' label is cleared (single-acceptor invariant); labels: {:?}",
+        story.raw_labels
+    );
+}
+
+#[tokio::test]
 async fn edit_story_with_neither_field_rejects() {
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let args = args_obj(json!({ "number": 1234 }));
     let err = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
         .await
-        .expect_err("edit_story with neither body nor title rejected");
+        .expect_err("edit_story with neither body, title, nor acceptor rejected");
     assert!(
-        err.contains("at least one of 'body' or 'title'"),
+        err.contains("at least one of 'body', 'title', or 'acceptor'"),
         "error names the required-one-of constraint: {err}"
     );
 }

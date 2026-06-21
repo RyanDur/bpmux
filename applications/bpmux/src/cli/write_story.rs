@@ -143,6 +143,7 @@ pub(crate) fn run_edit(
     number: u64,
     title: &Option<String>,
     body: &Option<String>,
+    acceptor: &Option<String>,
 ) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(number));
@@ -151,6 +152,9 @@ pub(crate) fn run_edit(
     }
     if let Some(b) = body {
         args.insert("body".to_string(), serde_json::json!(b));
+    }
+    if let Some(a) = acceptor {
+        args.insert("acceptor".to_string(), serde_json::json!(a));
     }
     super::write::dispatch_write("edit_story", args)
 }

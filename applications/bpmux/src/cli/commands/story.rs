@@ -69,6 +69,11 @@ pub(crate) enum StoryCommands {
         title: Option<String>,
         #[arg(long, help = "New body (optional)")]
         body: Option<String>,
+        #[arg(
+            long,
+            help = "Re-set the acceptor: team | owner | dev (clears the stale acceptor label)"
+        )]
+        acceptor: Option<String>,
     },
     #[command(
         about = "Comment on a story off Claude's MCP — fires the same gated /api/rpc/comment_on_story path the bridge uses (all roles; no role-restriction)."
@@ -126,7 +131,8 @@ pub(crate) fn dispatch_story(command: &StoryCommands) -> anyhow::Result<()> {
             number,
             title,
             body,
-        } => run_edit(*number, title, body),
+            acceptor,
+        } => run_edit(*number, title, body, acceptor),
         StoryCommands::Comment { number, body } => run_comment(*number, body),
         StoryCommands::Close {
             number,
