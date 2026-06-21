@@ -270,6 +270,12 @@ paste-block to Claude as ONE MERGED turn. The human's deliberate input is stolen
   - DELIVER the held inject on a keystroke-debounce idle (a natural pause).
   - MAX-HOLD bound so a continuously-typing human never parks the inject indefinitely — the hold is
     BOUNDED, never an open-ended park (never-park holds).
+  - **Activity-source precision (Circinus regression-lesson 2026-06-21):** "recent human-keystroke-
+    activity" = the GENUINE owner-keystroke handler (`handle_pty_input`) ONLY — NEVER server-side
+    `write_input` (osc7 cd-sync / provisioning / agent_detect). The first impl stamped server-writes as
+    human-activity, so a re-provision's `cd` held the first post-restart broadcast within the 600ms
+    window = a never-park regression (first-message-only park). Idle / server-cd'd agents → no
+    human-activity → IMMEDIATE submit. The autonomous spine must be UNTOUCHED by any non-keystroke write.
 - **Why in-scope (trust-bar, not frequency):** the owner observes >> types-into-agents, so this is
   RARE — but the intervention is the WORST moment to lose input, and the #1656 user-job is "trust the
   terminal-input enough to act WITHOUT double-checking." A lurking submit-steal, however rare, is the
