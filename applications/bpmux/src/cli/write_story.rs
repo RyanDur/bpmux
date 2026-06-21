@@ -115,6 +115,7 @@ pub(crate) fn run_create(
     body: &Option<String>,
     parent_epic: Option<u64>,
     acceptance_test_path: &Option<String>,
+    acceptor: &Option<String>,
 ) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("title".to_string(), serde_json::json!(title));
@@ -131,6 +132,9 @@ pub(crate) fn run_create(
     }
     if let Some(p) = acceptance_test_path {
         args.insert("acceptance_test_path".to_string(), serde_json::json!(p));
+    }
+    if let Some(a) = acceptor {
+        args.insert("acceptor".to_string(), serde_json::json!(a));
     }
     super::write::dispatch_write("create_story", args)
 }

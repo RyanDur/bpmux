@@ -45,7 +45,16 @@ pub(crate) async fn handle_create_story(
         "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
     validate_parent_epic(r, parent_epic)?;
-    let acceptor_label = super::acceptor_axis::derive_acceptor_label(user_job);
+    let acceptor_label = match args.get("acceptor").and_then(|v| v.as_str()) {
+        Some(raw) => Some(
+            super::acceptor_axis::AcceptorClass::parse(raw.trim())
+                .ok_or_else(|| {
+                    format!("acceptor must be one of: team | owner | dev (got {raw:?})")
+                })?
+                .label(),
+        ),
+        None => super::acceptor_axis::derive_acceptor_label(user_job),
+    };
     let number = create_and_broadcast_story_events(
         r,
         agent_name,

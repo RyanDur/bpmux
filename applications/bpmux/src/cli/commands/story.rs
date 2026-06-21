@@ -53,6 +53,11 @@ pub(crate) enum StoryCommands {
         parent_epic: Option<u64>,
         #[arg(long, help = "Acceptance-test path (optional)")]
         acceptance_test_path: Option<String>,
+        #[arg(
+            long,
+            help = "Acceptor override: team | owner | dev (overrides the use-axis derivation when it can't classify the axis or gets it wrong)"
+        )]
+        acceptor: Option<String>,
     },
     #[command(
         about = "Edit a story's title/body off Claude's MCP — fires the same gated /api/rpc/edit_story path the bridge uses (PM-only; owner bypasses via the #1709 require_role superset-extension)."
@@ -107,6 +112,7 @@ pub(crate) fn dispatch_story(command: &StoryCommands) -> anyhow::Result<()> {
             body,
             parent_epic,
             acceptance_test_path,
+            acceptor,
         } => run_create(
             title,
             user_job,
@@ -114,6 +120,7 @@ pub(crate) fn dispatch_story(command: &StoryCommands) -> anyhow::Result<()> {
             body,
             *parent_epic,
             acceptance_test_path,
+            acceptor,
         ),
         StoryCommands::Edit {
             number,

@@ -5,19 +5,27 @@ use crate::harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 
-async fn run_create(bpmux: &TestBpmux, role: &str, user_job: &str) -> std::process::Output {
+async fn run_create(
+    bpmux: &TestBpmux,
+    role: &str,
+    user_job: &str,
+    acceptor: Option<&str>,
+) -> std::process::Output {
     let bin = env!("CARGO_BIN_EXE_bpmux");
-    tokio::process::Command::new(bin)
-        .args([
-            "create",
-            "--title",
-            "[Chore] acceptor-derivation target",
-            "--user-job",
-            user_job,
-            "--observation-falsifier",
-            "reject if the acceptor is None on the board",
-        ])
-        .env("BPMUX_PORT", bpmux.port().to_string())
+    let mut cmd = tokio::process::Command::new(bin);
+    cmd.args([
+        "create",
+        "--title",
+        "[Chore] acceptor-derivation target",
+        "--user-job",
+        user_job,
+        "--observation-falsifier",
+        "reject if the acceptor is None on the board",
+    ]);
+    if let Some(a) = acceptor {
+        cmd.args(["--acceptor", a]);
+    }
+    cmd.env("BPMUX_PORT", bpmux.port().to_string())
         .env("BPMUX_ROLE", role)
         .env("BPMUX_AUTH_TOKEN_PATH", bpmux.auth_token_path())
         .output()
@@ -60,6 +68,7 @@ async fn off_mcp_create_derives_the_dev_acceptor_from_a_dev_use_axis() {
         &bpmux,
         "dev",
         "As a dev, I want the module decomposed so the file stays under the size gate",
+        None,
     )
     .await;
     assert!(
@@ -87,6 +96,7 @@ async fn off_mcp_create_derives_the_owner_acceptor_from_an_owner_use_axis() {
         &bpmux,
         "dev",
         "As the owner, I want the roadmap legible so I can see progress at a glance",
+        None,
     )
     .await;
     assert!(out.status.success(), "create completes off MCP");
@@ -114,6 +124,7 @@ async fn off_mcp_create_derives_the_team_acceptor_from_an_agent_use_axis() {
         &bpmux,
         "dev",
         "As an agent on the team, I want shared introspection so we all read the same truth",
+        None,
     )
     .await;
     assert!(out.status.success(), "create completes off MCP");
@@ -125,4 +136,83 @@ async fn off_mcp_create_derives_the_team_acceptor_from_an_agent_use_axis() {
     );
 
     reader.close().await;
+}
+
+#[tokio::test]
+async fn off_mcp_create_acceptor_flag_fills_an_unparseable_use_axis() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let reader = TestBridge::connect(&bpmux, "pm").await;
+
+    let out = run_create(
+        &bpmux,
+        "dev",
+        "As a designer, I want the palette tokenized so themes stay consistent",
+        Some("team"),
+    )
+    .await;
+    assert!(
+        out.status.success(),
+        "create with --acceptor completes off MCP; stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    let text = story_text(&reader, created_number(&out)).await;
+    assert!(
+        text.contains("awaiting team"),
+        "a use-axis the derivation can't classify yields None — --acceptor sets it explicitly so the board shows awaiting team, not None; got:\n{text}"
+    );
+
+    reader.close().await;
+}
+
+#[tokio::test]
+async fn off_mcp_create_acceptor_flag_overrides_the_derived_acceptor() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+    let reader = TestBridge::connect(&bpmux, "pm").await;
+
+    let out = run_create(
+        &bpmux,
+        "dev",
+        "As a dev, I want the module decomposed so the file stays under the size gate",
+        Some("owner"),
+    )
+    .await;
+    assert!(out.status.success(), "create completes off MCP");
+
+    let text = story_text(&reader, created_number(&out)).await;
+    assert!(
+        text.contains("awaiting owner"),
+        "an explicit --acceptor wins over the use-axis derivation (the dev-axis would derive dev); got:\n{text}"
+    );
+    assert!(
+        !text.contains("awaiting dev") && !text.contains("awaiting team"),
+        "single-acceptor-label invariant — the override must not leave the derived acceptor behind; got:\n{text}"
+    );
+
+    reader.close().await;
+}
+
+#[tokio::test]
+async fn off_mcp_create_with_an_invalid_acceptor_value_fails_loud() {
+    let bpmux = TestBpmux::start();
+    bpmux.simulate_secret();
+
+    let out = run_create(
+        &bpmux,
+        "dev",
+        "As a dev, I want the module decomposed so the file stays under the size gate",
+        Some("onwer"),
+    )
+    .await;
+    assert!(
+        !out.status.success(),
+        "a typo'd --acceptor must fail loud, not silently fall back to the derivation"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("team") && stderr.contains("owner") && stderr.contains("dev"),
+        "the error names the allowed acceptor classes so the typo is obvious; got stderr:\n{stderr}"
+    );
 }
