@@ -47,23 +47,17 @@ pub(super) async fn handle_history_hydrate(
     chat_limit: usize,
     activity_limit: usize,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let reply = match ctx.session.read_messages() {
-        Ok(messages) => {
-            let mut combined: Vec<session::Message> = messages
-                .iter()
-                .filter(|m| m.is_chat())
-                .rev()
-                .take(chat_limit)
-                .cloned()
-                .collect();
-            combined.extend(
-                messages
-                    .iter()
-                    .filter(|m| m.message_type == MessageType::Activity)
-                    .rev()
-                    .take(activity_limit)
-                    .cloned(),
-            );
+    let chat = ctx
+        .session
+        .read_recent(chat_limit, 0, &|m: &session::Message| m.is_chat());
+    let activity = ctx
+        .session
+        .read_recent(activity_limit, 0, &|m: &session::Message| {
+            m.message_type == MessageType::Activity
+        });
+    let reply = match (chat, activity) {
+        (Ok(mut combined), Ok(activity)) => {
+            combined.extend(activity);
             combined.sort_by_key(|m| m.ts);
             let serialized: Vec<serde_json::Value> = combined
                 .iter()
@@ -73,7 +67,7 @@ pub(super) async fn handle_history_hydrate(
                 messages: serialized,
             }
         }
-        Err(e) => ServerMessage::Error {
+        (Err(e), _) | (_, Err(e)) => ServerMessage::Error {
             reason: format!("read history failed: {e}"),
         },
     };
@@ -118,23 +112,20 @@ pub(super) async fn handle_history_page(
     before: String,
     limit: usize,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let messages: Vec<serde_json::Value> = match (
-        ctx.session.read_messages(),
-        before.parse::<chrono::DateTime<chrono::Utc>>(),
-    ) {
-        (Ok(all), Ok(before_ts)) => {
-            let older: Vec<session::Message> = all
-                .into_iter()
-                .filter(|m| m.is_chat() && m.ts < before_ts)
-                .collect();
-            let start = older.len().saturating_sub(limit);
-            older
-                .iter()
-                .skip(start)
-                .map(|m| serde_json::to_value(m).unwrap_or(serde_json::Value::Null))
-                .collect()
-        }
-        _ => Vec::new(),
+    let messages: Vec<serde_json::Value> = match before.parse::<chrono::DateTime<chrono::Utc>>() {
+        Ok(before_ts) => match ctx.session.read_recent(limit, 0, &|m: &session::Message| {
+            m.is_chat() && m.ts < before_ts
+        }) {
+            Ok(mut newest_first) => {
+                newest_first.reverse();
+                newest_first
+                    .iter()
+                    .map(|m| serde_json::to_value(m).unwrap_or(serde_json::Value::Null))
+                    .collect()
+            }
+            Err(_) => Vec::new(),
+        },
+        Err(_) => Vec::new(),
     };
     send_json(
         tx,
