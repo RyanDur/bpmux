@@ -19,6 +19,7 @@ mod roster;
 mod search;
 pub(crate) mod shared;
 mod wait;
+mod wake;
 
 pub(crate) use board::ordered_board_stories;
 pub use board_acceptance::{AcceptPayload, RejectPayload, post_accept_story, post_reject_story};
@@ -58,3 +59,4 @@ pub(crate) use shared::board_snapshot_message;
 pub(crate) use shared::json_headers;
 pub use shared::{CommentPayload, TrackerHandle};
 pub use wait::{DEFAULT_WAIT_TIMEOUT_MS, WaitParams, wait_for_event};
+pub use wake::{WakeOnEventRequest, wake_on_event};

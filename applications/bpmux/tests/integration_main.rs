@@ -283,3 +283,5 @@ mod view_velocity_e2e;
 mod wait_for_event_cli_e2e;
 #[path = "integration_main_modules/wait_helpers.rs"]
 mod wait_helpers;
+#[path = "integration_main_modules/wake_on_event_cli_e2e.rs"]
+mod wake_on_event_cli_e2e;

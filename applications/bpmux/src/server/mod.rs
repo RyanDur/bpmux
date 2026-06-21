@@ -103,10 +103,12 @@ pub async fn run_server(
     let routing_store = std::sync::Arc::new(crate::session::routing_identity::RoutingStore::load(
         routing_store_dir,
     ));
+    let commitment_store = std::sync::Arc::new(crate::room::CommitmentStore::new());
     crate::room::spawn_terminal_delivery_loop(
         session.clone(),
         pty_registry.clone(),
         routing_store.clone(),
+        commitment_store.clone(),
     );
     let mut orchestrator_inner = crate::orchestrator::Orchestrator::new(
         session.clone(),
@@ -145,6 +147,7 @@ pub async fn run_server(
         orchestrator,
         pty_registry,
         routing_store,
+        commitment_store,
         port,
     });
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;

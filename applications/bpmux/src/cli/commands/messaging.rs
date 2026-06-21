@@ -1,7 +1,9 @@
 use clap::Subcommand;
 
 use crate::cli::help::run_help;
-use crate::cli::messaging::{run_read, run_register, run_send, run_wait_for_event};
+use crate::cli::messaging::{
+    run_read, run_register, run_send, run_wait_for_event, run_wake_on_event,
+};
 
 #[derive(Subcommand)]
 pub(crate) enum MessagingCommands {
@@ -20,6 +22,21 @@ pub(crate) enum MessagingCommands {
             help = "Max milliseconds to block before returning a timed-out result"
         )]
         timeout_ms: u64,
+    },
+    #[command(
+        about = "Commit to be WOKEN the instant a fire-on-event gate fires while dormant — the passive sister of wait-for-event (which blocks a running agent). Registers a one-shot commitment for this agent (ambient role via BPMUX_ROLE) off Claude's MCP; when the event next fires, the server pushes a wake-frame into this agent's terminal even between turns, then the commitment is consumed. Returns immediately."
+    )]
+    WakeOnEvent {
+        #[arg(
+            long,
+            help = "The event-class to wake on (e.g. ci_state_changed, story_state_transition)"
+        )]
+        event: String,
+        #[arg(
+            long,
+            help = "Optional JSON object of payload fields that must match for the wake to fire (e.g. '{\"conclusion\":\"success\"}'); omit to wake on any event of the class"
+        )]
+        filter: Option<String>,
     },
     #[command(
         about = "Send a team message to the bpmux channel as this agent (ambient role via BPMUX_ROLE), off Claude's MCP. Renders the command + a one-line confirm in the terminal stream."
@@ -66,6 +83,7 @@ pub(crate) fn dispatch_messaging(command: &MessagingCommands) -> anyhow::Result<
         MessagingCommands::WaitForEvent { after, timeout_ms } => {
             run_wait_for_event(after, *timeout_ms)
         }
+        MessagingCommands::WakeOnEvent { event, filter } => run_wake_on_event(event, filter),
         MessagingCommands::Send {
             text,
             to,

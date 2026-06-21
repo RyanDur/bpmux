@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 pub mod agnostic_delivery;
+pub mod commitment_store;
 pub mod file_storage;
 pub mod live_registry;
 pub mod spawn;
@@ -10,11 +11,16 @@ pub mod spawn;
 #[cfg(test)]
 mod agnostic_delivery_tests;
 #[cfg(test)]
+mod commitment_store_tests;
+#[cfg(test)]
 mod file_storage_tests;
 #[cfg(test)]
 mod live_registry_tests;
 
-pub use agnostic_delivery::{deliver_to_terminals, drain_missed, spawn_terminal_delivery_loop};
+pub use agnostic_delivery::{
+    deliver_to_terminals, drain_missed, spawn_terminal_delivery_loop, wake_committed_terminals,
+};
+pub use commitment_store::CommitmentStore;
 pub use file_storage::FileRoomStorage;
 pub use live_registry::LivePtyRegistry;
 pub use spawn::{

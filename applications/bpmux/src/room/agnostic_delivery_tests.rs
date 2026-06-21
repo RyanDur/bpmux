@@ -1,12 +1,33 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::agnostic_delivery::*;
-use crate::room::{LivePtyRegistry, spawn_pty_retained};
+use crate::room::{CommitmentStore, LivePtyRegistry, spawn_pty_retained};
 use crate::session::MessageType;
-use crate::session::message::Message;
+use crate::session::message::{CiSnapshotWire, Message, StateDeltaPayload};
 use crate::session::routing_identity::RoutingStore;
 use std::sync::Arc;
 use tokio::sync::broadcast;
+
+fn ci_event(state: crate::ci::CiState, ts: &str) -> Message {
+    Message {
+        from: "bpmux".to_string(),
+        ts: chrono::DateTime::parse_from_rfc3339(ts)
+            .unwrap()
+            .with_timezone(&chrono::Utc),
+        message_type: MessageType::StateDelta,
+        state_delta: Some(StateDeltaPayload::Ci {
+            snapshot: CiSnapshotWire {
+                state,
+                run_id: Some(42),
+                head_sha: Some("abc123".to_string()),
+                display_title: Some("CI on main".to_string()),
+                last_successful_poll_at: None,
+                url: None,
+            },
+        }),
+        ..Message::default()
+    }
+}
 
 fn chat(from: &str, text: &str, to: Option<Vec<String>>) -> Message {
     Message {
@@ -429,6 +450,183 @@ async fn a_pty_loop_delivered_message_is_not_systematically_re_drained_by_the_de
         floor_ts >= m.ts,
         "after the PTY-loop delivers M and advances the shared #1712 id-cursor, the still-firing DEV Stop-hook's wait-for-event drain (drain_floor) clamps a lagging client cursor FORWARD to >= M — so first_pending_after(floor) excludes M and the Stop-hook does NOT re-deliver it: SYSTEMATIC no-double via the shared cursor (whichever delivers first advances it). The narrow concurrent race (both read the cursor before either advances) is bounded-as-DEV-transitional — prod post-#1658 runs ONLY the PTY-loop. floor {floor:?} vs M.ts {}",
         m.ts
+    );
+}
+
+#[tokio::test]
+async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let registry = LivePtyRegistry::new();
+    let commitments = CommitmentStore::new();
+    let live = spawn_pty_retained(
+        "/bin/sh",
+        &[
+            "-c".into(),
+            "while read line; do printf 'PROCESSED[%s]\\n' \"$line\"; done".into(),
+        ],
+        None,
+        &[],
+    )
+    .unwrap();
+    let mut rx = live.subscribe();
+    registry.insert("term-dev".to_string(), live);
+    routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+
+    commitments.commit("dev", "ci_state_changed", None);
+
+    wake_committed_terminals(
+        &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
+        &registry,
+        &routing,
+        &commitments,
+    );
+
+    let seen = drain_for(&mut rx, "PROCESSED[").await;
+    assert!(
+        seen.contains("PROCESSED[") && seen.contains("ci_state_changed"),
+        "a committed CI gate-event SUBMITS a wake-frame into the dormant read-loop — the \\r makes `read` RETURN and PROCESS the line (the agent gets a turn), NOT merely buffer stdin (the #1592 non-vacuity gate). A dormant agent has no turn-boundary, and the chat-only gate at line 78 drops the state-delta — without push-wake the committed event would never reach it. got {seen:?}"
+    );
+}
+
+#[tokio::test]
+async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_ci_event() {
+    let store_dir = tempfile::TempDir::new().unwrap();
+    let routing = Arc::new(RoutingStore::load(store_dir.path().to_path_buf()));
+    let registry = Arc::new(LivePtyRegistry::new());
+    let commitments = Arc::new(CommitmentStore::new());
+    let sess_dir = tempfile::TempDir::new().unwrap();
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(crate::session::Session::new(
+        sess_dir.path().to_path_buf(),
+        "owner".to_string(),
+        tx,
+    ));
+
+    let live = spawn_pty_retained(
+        "/bin/sh",
+        &[
+            "-c".into(),
+            "while read line; do printf 'PROCESSED[%s]\\n' \"$line\"; done".into(),
+        ],
+        None,
+        &[],
+    )
+    .unwrap();
+    let mut rx = live.subscribe();
+    registry.insert("term-dev".to_string(), live);
+    routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+    commitments.commit("dev", "ci_state_changed", None);
+
+    spawn_terminal_delivery_loop(
+        session.clone(),
+        registry.clone(),
+        routing.clone(),
+        commitments.clone(),
+    );
+
+    session
+        .broadcast(&ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"))
+        .unwrap();
+
+    let seen = drain_for(&mut rx, "PROCESSED[").await;
+    assert!(
+        seen.contains("PROCESSED[") && seen.contains("ci_state_changed"),
+        "the REAL prod delivery loop — not the function in isolation — wakes the committed dormant agent when a CI state-delta is broadcast through the session: subscribe→loop→wake_committed_terminals→PTY-submit is wired end-to-end. This is the anti-phantom proof (#1380 / the #1751 ci-lag): a path that merely LOOKS wired but never wakes is exactly the defect this story closes; got {seen:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let routing = Arc::new(RoutingStore::load(dir.path().to_path_buf()));
+    let registry = Arc::new(LivePtyRegistry::new());
+    let commitments = CommitmentStore::new();
+    let live = spawn_pty_retained(
+        "/bin/sh",
+        &[
+            "-c".into(),
+            "while read line; do printf 'PROCESSED[%s]\\n' \"$line\"; done".into(),
+        ],
+        None,
+        &[],
+    )
+    .unwrap();
+    let mut rx = live.subscribe();
+    registry.insert("term-dev".to_string(), live);
+    routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+    commitments.commit("dev", "ci_state_changed", None);
+
+    registry.note_human_keystroke("term-dev");
+    let held = wake_committed_terminals(
+        &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
+        &registry,
+        &routing,
+        &commitments,
+    );
+    assert_eq!(
+        held.len(),
+        1,
+        "while the owner is mid-typing INTO the dormant agent, the wake is HELD not submitted — a wake shares chat's submit-isolation so the \\r never merges his partial line into one Claude turn"
+    );
+
+    for inject in held {
+        spawn_deferred_inject(registry.clone(), routing.clone(), inject);
+    }
+    let seen = drain_for(&mut rx, "PROCESSED[").await;
+    assert!(
+        seen.contains("PROCESSED[") && seen.contains("ci_state_changed"),
+        "once the owner pauses past the debounce, the held wake delivers as its OWN turn — bounded hold, never a park; got {seen:?}"
+    );
+}
+
+#[tokio::test]
+async fn an_uncommitted_agent_is_not_woken_by_an_ambient_gate_event() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let registry = LivePtyRegistry::new();
+    let commitments = CommitmentStore::new();
+    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+
+    wake_committed_terminals(
+        &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
+        &registry,
+        &routing,
+        &commitments,
+    );
+
+    registry.write_to("term-dev", b"UNCOMMITTED-SENTINEL\r");
+    let seen = drain_for(&mut rx, "UNCOMMITTED-SENTINEL").await;
+    assert!(
+        !seen.contains("ci_state_changed") && !seen.contains("fire-on-event"),
+        "an agent that did NOT commit is never woken by an ambient state event — push-wake fires ONLY for a registered commitment, so the chat-only drop at line 78 still holds for every uncommitted terminal (no ambient-event spam). The sentinel proves we drained past where a wake would be; got {seen:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_delivery_seam() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let registry = LivePtyRegistry::new();
+    let commitments = CommitmentStore::new();
+    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+
+    let mut filter = serde_json::Map::new();
+    filter.insert("conclusion".to_string(), serde_json::json!("red"));
+    commitments.commit("dev", "ci_state_changed", Some(filter));
+
+    wake_committed_terminals(
+        &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
+        &registry,
+        &routing,
+        &commitments,
+    );
+
+    registry.write_to("term-dev", b"FILTER-SENTINEL\r");
+    let seen = drain_for(&mut rx, "FILTER-SENTINEL").await;
+    assert!(
+        !seen.contains("ci_state_changed"),
+        "a commitment filtered to conclusion:red is NOT woken by a GREEN CI event — the filter gates the wake at the live delivery seam, not only in the store unit. The armed commitment waits for the matching red event; got {seen:?}"
     );
 }
 

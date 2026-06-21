@@ -5,7 +5,7 @@ use tokio_util::sync::CancellationToken;
 use crate::board::RefreshDriver;
 use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::orchestrator::Orchestrator;
-use crate::room::LivePtyRegistry;
+use crate::room::{CommitmentStore, LivePtyRegistry};
 use crate::session::{self, routing_identity::RoutingStore};
 use crate::transport;
 use crate::transport::auth::AuthState;
@@ -28,6 +28,7 @@ pub(super) struct RouterDeps {
     pub orchestrator: Arc<ProdOrchestrator>,
     pub pty_registry: Arc<LivePtyRegistry>,
     pub routing_store: Arc<RoutingStore>,
+    pub commitment_store: Arc<CommitmentStore>,
     pub port: u16,
 }
 
@@ -44,6 +45,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         orchestrator,
         pty_registry,
         routing_store,
+        commitment_store,
         port,
     } = deps;
     let has_refresh = test_refresh.is_some();
@@ -66,6 +68,10 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .route(
             "/api/wait-for-event",
             axum::routing::get(transport::rest::wait_for_event),
+        )
+        .route(
+            "/api/wake-on-event",
+            axum::routing::post(transport::rest::wake_on_event),
         )
         .route(
             "/api/search",
@@ -99,6 +105,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(pty_registry))
         .layer(axum::Extension(routing_store))
+        .layer(axum::Extension(commitment_store))
         .layer(axum::Extension(port))
         .layer(
             tower_http::cors::CorsLayer::new()
