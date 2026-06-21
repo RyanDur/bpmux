@@ -22,12 +22,19 @@ export interface UseInputKeyboardResult {
   search: SearchState | null
 }
 
+export interface SubmitOptions {
+  trimOnSubmit?: boolean
+  submitEmpty?: boolean
+}
+
 export const useInputKeyboard = (
   value: string,
   setValue: (next: string) => void,
   history: ReturnType<typeof useInputHistory>,
-  onSend: (text: string, addressee: string | null) => void
+  onSend: (text: string, addressee: string | null) => void,
+  submit: SubmitOptions = {}
 ): UseInputKeyboardResult => {
+  const { trimOnSubmit = true, submitEmpty = false } = submit
   const [search, setSearch] = useState<SearchState | null>(null)
 
   const applySearchMatch = useCallback(
@@ -117,10 +124,10 @@ export const useInputKeyboard = (
 
       if (key === 'Enter' && !shiftKey) {
         e.preventDefault()
-        const text = value.trim()
-        if (!text) return
+        const text = trimOnSubmit ? value.trim() : value
+        if (!text && !submitEmpty) return
         onSend(text, parseAddressee(text))
-        history.record(text)
+        if (text) history.record(text)
         setValue('')
         return
       }
@@ -255,7 +262,17 @@ export const useInputKeyboard = (
         }
       }
     },
-    [value, onSend, search, history, applySearchMatch, exitSearch, setValue]
+    [
+      value,
+      onSend,
+      search,
+      history,
+      applySearchMatch,
+      exitSearch,
+      setValue,
+      trimOnSubmit,
+      submitEmpty
+    ]
   )
 
   return { handleKeyDown, search }

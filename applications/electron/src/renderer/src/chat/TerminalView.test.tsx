@@ -51,4 +51,15 @@ describe('#1656 TerminalView — the input-mode mirrors the live bracketed-paste
     deliverServerFrameForTest(ptyModeFrame('mode-unit', false))
     await waitFor(() => expect(screenRegion.getAttribute('data-input-mode')).toBe('cooked'))
   })
+
+  test('the renderer-owned compose-line shows in cooked mode and hides when the agent goes raw', async () => {
+    render(<TerminalView terminalId="compose-unit" cwd="/home/start" isActive={true} />)
+    expect(screen.getByLabelText('terminal input')).toBeTruthy()
+
+    deliverServerFrameForTest(ptyModeFrame('compose-unit', true))
+    await waitFor(() => expect(screen.queryByLabelText('terminal input')).toBeNull())
+
+    deliverServerFrameForTest(ptyModeFrame('compose-unit', false))
+    expect(await screen.findByLabelText('terminal input')).toBeTruthy()
+  })
 })

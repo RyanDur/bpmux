@@ -11,6 +11,7 @@ import {
   subscribePtyOutput
 } from '../transport/session'
 import { composeTerminalFontFamily } from '../lib/terminalFont'
+import { TerminalCompose } from './TerminalCompose'
 import './TerminalView.css'
 
 interface TerminalViewProps {
@@ -55,6 +56,7 @@ export const TerminalView = ({
 }: TerminalViewProps): React.JSX.Element => {
   const screenRef = useRef<HTMLElement>(null)
   const termRef = useRef<Terminal | null>(null)
+  const composeRef = useRef<HTMLTextAreaElement>(null)
   const [dims, setDims] = useState<{ cols: number; rows: number }>({ cols: 0, rows: 0 })
   const [liveCwd, setLiveCwd] = useState(cwd)
   const [bracketedPaste, setBracketedPaste] = useState(false)
@@ -111,10 +113,15 @@ export const TerminalView = ({
   }, [terminalId])
 
   useEffect(() => {
+    const term = termRef.current
+    if (term) term.options.disableStdin = !bracketedPaste
     if (!isActive) return undefined
-    const raf = requestAnimationFrame(() => termRef.current?.focus())
+    const raf = requestAnimationFrame(() => {
+      if (bracketedPaste) termRef.current?.focus()
+      else composeRef.current?.focus()
+    })
     return () => cancelAnimationFrame(raf)
-  }, [isActive])
+  }, [isActive, bracketedPaste])
 
   return (
     <section
@@ -144,6 +151,13 @@ export const TerminalView = ({
       >
         <section ref={screenRef} className="terminal-screen-canvas" />
       </section>
+      {!bracketedPaste && (
+        <TerminalCompose
+          composeKey={terminalId}
+          onSubmit={(line) => sendPtyInput(terminalId, line + '\r')}
+          inputRef={composeRef}
+        />
+      )}
     </section>
   )
 }
