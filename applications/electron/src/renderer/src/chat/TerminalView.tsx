@@ -59,7 +59,7 @@ export const TerminalView = ({
   const composeRef = useRef<HTMLTextAreaElement>(null)
   const [dims, setDims] = useState<{ cols: number; rows: number }>({ cols: 0, rows: 0 })
   const [liveCwd, setLiveCwd] = useState(cwd)
-  const [bracketedPaste, setBracketedPaste] = useState(false)
+  const [inputMode, setInputMode] = useState<'unknown' | 'cooked' | 'raw'>('unknown')
 
   useEffect(() => {
     const screen = screenRef.current
@@ -91,7 +91,9 @@ export const TerminalView = ({
     const unsubscribe = subscribePtyOutput(terminalId, (data) => {
       term.write(decodePtyData(data))
     })
-    const unsubscribeMode = subscribePtyMode(terminalId, setBracketedPaste)
+    const unsubscribeMode = subscribePtyMode(terminalId, (bracketed) =>
+      setInputMode(bracketed ? 'raw' : 'cooked')
+    )
     const osc7 = term.parser.registerOscHandler(7, (payload) => {
       const next = cwdFromOsc7(payload)
       if (next) setLiveCwd(next)
@@ -114,14 +116,14 @@ export const TerminalView = ({
 
   useEffect(() => {
     const term = termRef.current
-    if (term) term.options.disableStdin = !bracketedPaste
+    if (term) term.options.disableStdin = inputMode === 'cooked'
     if (!isActive) return undefined
     const raf = requestAnimationFrame(() => {
-      if (bracketedPaste) termRef.current?.focus()
-      else composeRef.current?.focus()
+      if (inputMode === 'cooked') composeRef.current?.focus()
+      else termRef.current?.focus()
     })
     return () => cancelAnimationFrame(raf)
-  }, [isActive, bracketedPaste])
+  }, [isActive, inputMode])
 
   return (
     <section
@@ -144,14 +146,10 @@ export const TerminalView = ({
           ✕
         </button>
       </header>
-      <section
-        className="terminal-screen"
-        aria-label="terminal output"
-        data-input-mode={bracketedPaste ? 'raw' : 'cooked'}
-      >
+      <section className="terminal-screen" aria-label="terminal output" data-input-mode={inputMode}>
         <section ref={screenRef} className="terminal-screen-canvas" />
       </section>
-      {!bracketedPaste && (
+      {inputMode === 'cooked' && (
         <TerminalCompose
           composeKey={terminalId}
           onSubmit={(line) => sendPtyInput(terminalId, line + '\r')}

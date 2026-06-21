@@ -40,10 +40,10 @@ describe('#1656 TerminalView — the input-mode mirrors the live bracketed-paste
     resetSessionForTest()
   })
 
-  test('defaults to cooked, flips to raw on a bracketed_paste frame, and back to cooked', async () => {
+  test('defaults to UNKNOWN until the server signals, then flips raw/cooked on pty_mode', async () => {
     render(<TerminalView terminalId="mode-unit" cwd="/home/start" isActive={true} />)
     const screenRegion = screen.getByLabelText('terminal output')
-    expect(screenRegion.getAttribute('data-input-mode')).toBe('cooked')
+    expect(screenRegion.getAttribute('data-input-mode')).toBe('unknown')
 
     deliverServerFrameForTest(ptyModeFrame('mode-unit', true))
     await waitFor(() => expect(screenRegion.getAttribute('data-input-mode')).toBe('raw'))
@@ -52,14 +52,14 @@ describe('#1656 TerminalView — the input-mode mirrors the live bracketed-paste
     await waitFor(() => expect(screenRegion.getAttribute('data-input-mode')).toBe('cooked'))
   })
 
-  test('the renderer-owned compose-line shows in cooked mode and hides when the agent goes raw', async () => {
+  test('the compose-line is absent until a POSITIVE cooked signal — no relocation before the server speaks', async () => {
     render(<TerminalView terminalId="compose-unit" cwd="/home/start" isActive={true} />)
-    expect(screen.getByLabelText('terminal input')).toBeTruthy()
-
-    deliverServerFrameForTest(ptyModeFrame('compose-unit', true))
-    await waitFor(() => expect(screen.queryByLabelText('terminal input')).toBeNull())
+    expect(screen.queryByLabelText('terminal input')).toBeNull()
 
     deliverServerFrameForTest(ptyModeFrame('compose-unit', false))
     expect(await screen.findByLabelText('terminal input')).toBeTruthy()
+
+    deliverServerFrameForTest(ptyModeFrame('compose-unit', true))
+    await waitFor(() => expect(screen.queryByLabelText('terminal input')).toBeNull())
   })
 })
