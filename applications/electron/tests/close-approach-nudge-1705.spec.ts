@@ -281,6 +281,44 @@ test.describe('#1705 close-approach readiness nudge', () => {
     }
   })
 
+  test('the strip is board-list-scoped — rendered INSIDE the board panel, not over-rendering past the board-list container', async () => {
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      await seedCloseApproach(result, false)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+
+      await expect(board.closeApproachNudge()).toBeVisible()
+      await expect(board.boardScrollPanel().locator('.close-approach-nudge')).toHaveCount(1)
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
+  })
+
+  test('off the board tab the strip is ABSENT from the DOM (conditional-render, not a hidden attribute) — the ◐ tab-badge carries the cue', async () => {
+    const result = await launchWithMockGh()
+    const { app, win, mockGh } = result
+    try {
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+      await seedCloseApproach(result, false)
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+
+      await expect(board.closeApproachNudge()).toBeVisible()
+      await board.boardRoadmapView().click()
+      await expect(board.closeApproachNudgeRaw()).toHaveCount(0)
+      await expect(board.roadmapAttn()).toBeVisible()
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
+  })
+
   test('reduced-motion: the strip is present but does NOT animate (instant, no slide)', async () => {
     const result = await launchWithMockGh()
     const { app, win, mockGh } = result

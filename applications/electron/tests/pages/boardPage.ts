@@ -96,8 +96,16 @@ export class BoardPage {
     return this.win.getByRole('complementary', { name: 'Next iteration readiness' })
   }
 
+  closeApproachNudgeRaw(): Locator {
+    return this.win.locator('.close-approach-nudge')
+  }
+
   closeApproachDismiss(): Locator {
     return this.win.getByRole('button', { name: 'Dismiss' })
+  }
+
+  boardRoadmapView(): Locator {
+    return this.win.getByRole('radio', { name: /Roadmap/i })
   }
 
   roadmapAttn(): Locator {

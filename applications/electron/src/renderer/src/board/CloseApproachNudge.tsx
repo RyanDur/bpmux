@@ -5,7 +5,6 @@ interface CloseApproachNudgeProps {
   nextIterationName: string
   activeGapLabel: string
   dismissed: boolean
-  hidden: boolean
   onViewRoadmap: () => void
   onDismiss: () => void
 }
@@ -15,7 +14,6 @@ const CloseApproachNudge = ({
   nextIterationName,
   activeGapLabel,
   dismissed,
-  hidden,
   onViewRoadmap,
   onDismiss
 }: CloseApproachNudgeProps): React.JSX.Element => (
@@ -23,7 +21,6 @@ const CloseApproachNudge = ({
     className="close-approach-nudge"
     data-test="close-approach-nudge"
     data-dismissed={dismissed ? 'true' : undefined}
-    hidden={hidden}
     aria-live="polite"
     aria-label="Next iteration readiness"
   >

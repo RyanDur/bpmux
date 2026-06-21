@@ -109,4 +109,16 @@ describe('#1705 close-approach readiness nudge — strip + tab-badge', () => {
     expect(ui.isActive('roadmap')).toBe(true)
     expect(ui.isNudgeShown()).toBe(false)
   })
+
+  test('the strip is board-list-scoped — rendered INSIDE the board panel, not a switcher-level sibling that over-renders past the board-list', () => {
+    renderWithNudge()
+    expect(ui.isNudgeWithinBoardPanel()).toBe(true)
+  })
+
+  test('off the board tab the strip is ABSENT from the DOM (conditional-render, not a hidden attribute) — the ◐ tab-badge carries the cue', async () => {
+    renderWithNudge()
+    await ui.selectTab('roadmap')
+    expect(ui.isNudgeInDom()).toBe(false)
+    expect(ui.attnShown()).toBe(true)
+  })
 })

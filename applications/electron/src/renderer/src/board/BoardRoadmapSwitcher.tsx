@@ -73,23 +73,22 @@ const BoardRoadmapSwitcher = ({
           </label>
         </fieldset>
       </header>
-      {nudge != null && currentIterationName != null && (
-        <CloseApproachNudge
-          currentIterationName={currentIterationName}
-          nextIterationName={nudge.nextIterationName}
-          activeGapLabel={nudge.activeGapLabel}
-          dismissed={nudge.nextIterationNumber === dismissedNextNumber}
-          hidden={activeId !== 'board'}
-          onViewRoadmap={() => setActiveId('roadmap')}
-          onDismiss={() => setDismissedNextNumber(nudge.nextIterationNumber)}
-        />
-      )}
       <article
         className="tabs-panel board-roadmap-panel"
         data-test="board-roadmap-panel-board"
         aria-label="Board"
         hidden={activeId !== 'board'}
       >
+        {activeId === 'board' && nudge != null && currentIterationName != null && (
+          <CloseApproachNudge
+            currentIterationName={currentIterationName}
+            nextIterationName={nudge.nextIterationName}
+            activeGapLabel={nudge.activeGapLabel}
+            dismissed={nudge.nextIterationNumber === dismissedNextNumber}
+            onViewRoadmap={() => setActiveId('roadmap')}
+            onDismiss={() => setDismissedNextNumber(nudge.nextIterationNumber)}
+          />
+        )}
         {board}
       </article>
       {activeId === 'roadmap' && (

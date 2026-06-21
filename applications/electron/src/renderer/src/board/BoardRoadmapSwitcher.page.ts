@@ -19,6 +19,8 @@ const tabLabel = (which: View): HTMLElement => {
 
 const nudgeName = /next iteration readiness/i
 
+const boardPanel = (): HTMLElement => screen.getByRole('article', { name: 'Board' })
+
 export const boardRoadmapSwitcher = {
   isActive: (which: View): boolean => radio(which).checked,
   selectTab: (which: View): Promise<void> => userEvent.click(radio(which)),
@@ -28,6 +30,10 @@ export const boardRoadmapSwitcher = {
   attnShown: (): boolean => within(tabLabel('roadmap')).queryByText('◐') !== null,
   nudge: (): HTMLElement => screen.getByRole('complementary', { name: nudgeName }),
   isNudgeShown: (): boolean => screen.queryByRole('complementary', { name: nudgeName }) !== null,
+  isNudgeWithinBoardPanel: (): boolean =>
+    within(boardPanel()).queryByRole('complementary', { name: nudgeName }) !== null,
+  isNudgeInDom: (): boolean =>
+    document.querySelector('[data-test="close-approach-nudge"]') !== null,
   dismissNudge: (): Promise<void> =>
     userEvent.click(screen.getByRole('button', { name: 'Dismiss' })),
   viewRoadmapFromNudge: (): Promise<void> =>
