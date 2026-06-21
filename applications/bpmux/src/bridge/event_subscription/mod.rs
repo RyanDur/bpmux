@@ -26,12 +26,7 @@ struct Subscription {
 }
 
 fn filter_matches(filter: &Option<Map<String, Value>>, payload: &Value) -> bool {
-    match filter {
-        None => true,
-        Some(criteria) => criteria
-            .iter()
-            .all(|(key, expected)| payload.get(key) == Some(expected)),
-    }
+    crate::session::message::payload_matches_filter(filter.as_ref(), payload)
 }
 
 fn snapshot(subs: &HashMap<String, Subscription>) -> Vec<PersistedSubscription> {

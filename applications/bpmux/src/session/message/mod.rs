@@ -6,7 +6,7 @@ mod state_payloads;
 pub use state_payloads::{
     CiSnapshotWire, DeepDetail, IterationCloseBlockerPayload, MultiDepthPayload,
     ReactionAggregateWire, ReactionsChannelSnapshot, RosterMemberWire, StateDeltaPayload,
-    StateSnapshotPayload, StoryTransitionWire, SyncTransitionWire,
+    StateSnapshotPayload, StoryTransitionWire, SyncTransitionWire, payload_matches_filter,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]

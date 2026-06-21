@@ -77,6 +77,18 @@ impl StateDeltaPayload {
     }
 }
 
+pub fn payload_matches_filter(
+    filter: Option<&serde_json::Map<String, serde_json::Value>>,
+    payload: &serde_json::Value,
+) -> bool {
+    match filter {
+        None => true,
+        Some(criteria) => criteria
+            .iter()
+            .all(|(key, expected)| payload.get(key) == Some(expected)),
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IterationCloseBlockerPayload {
     pub number: u64,
