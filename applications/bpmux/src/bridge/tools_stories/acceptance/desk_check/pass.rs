@@ -96,24 +96,14 @@ pub(crate) async fn handle_pass_desk_check(
         }
         reap_workflow_labels(r.as_ref(), number, &meta, LABEL_DELIVERED)?;
         let labels_after_reap = r.story(number).map(|s| s.raw_labels).unwrap_or_default();
-        for stale in acceptor.stale_labels() {
-            if labels_after_reap.iter().any(|l| l == stale) {
-                r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-                    meta: meta.clone(),
-                    number,
-                    label: stale.to_string(),
-                })
-                .map_err(|e| format!("#{number} {stale}-remove enqueue failed: {e}"))?;
-            }
-        }
-        let acceptor_label = acceptor.label();
-        if !labels_after_reap.iter().any(|l| l == acceptor_label) {
-            r.mutate_sync(crate::board::BoardEvent::TagAdded {
-                meta: meta.clone(),
-                number,
-                label: acceptor_label.to_string(),
-            })
-            .map_err(|e| format!("#{number} {acceptor_label}-add enqueue failed: {e}"))?;
+        for event in crate::bridge::tools_stories::acceptor_axis::acceptor_label_events(
+            acceptor,
+            &labels_after_reap,
+            &meta,
+            number,
+        ) {
+            r.mutate_sync(event)
+                .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
         }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),

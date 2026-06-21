@@ -37,6 +37,33 @@ impl AcceptorClass {
     }
 }
 
+pub(crate) fn acceptor_label_events(
+    acceptor: AcceptorClass,
+    current_labels: &[String],
+    meta: &crate::board::events::EventMeta,
+    number: u64,
+) -> Vec<crate::board::BoardEvent> {
+    let mut events = Vec::new();
+    for stale in acceptor.stale_labels() {
+        if current_labels.iter().any(|l| l == stale) {
+            events.push(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: stale.to_string(),
+            });
+        }
+    }
+    let keep = acceptor.label();
+    if !current_labels.iter().any(|l| l == keep) {
+        events.push(crate::board::BoardEvent::TagAdded {
+            meta: meta.clone(),
+            number,
+            label: keep.to_string(),
+        });
+    }
+    events
+}
+
 pub(crate) fn derive_acceptor_label(user_job: &str) -> Option<&'static str> {
     let words: Vec<&str> = user_job
         .split(|c: char| !c.is_alphanumeric())
