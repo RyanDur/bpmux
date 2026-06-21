@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use tokio::sync::broadcast;
@@ -41,6 +42,7 @@ pub struct LivePty {
     output: broadcast::Sender<Vec<u8>>,
     paste_capable: Arc<AtomicBool>,
     current_paste_mode: Arc<AtomicBool>,
+    last_human_input: Mutex<Option<Instant>>,
     _retained_tempdir: Option<tempfile::TempDir>,
 }
 
@@ -59,9 +61,21 @@ impl LivePty {
 
     pub fn write_input(&self, bytes: &[u8]) -> std::io::Result<()> {
         use std::io::Write;
+        *self
+            .last_human_input
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = Some(Instant::now());
         let mut writer = self.writer.lock().unwrap_or_else(|e| e.into_inner());
         writer.write_all(bytes)?;
         writer.flush()
+    }
+
+    pub fn human_input_age(&self) -> Option<Duration> {
+        let last = self
+            .last_human_input
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        last.as_ref().map(Instant::elapsed)
     }
 
     pub fn paste_capable(&self) -> bool {
@@ -174,6 +188,7 @@ pub fn spawn_pty_retained(
         output,
         paste_capable,
         current_paste_mode,
+        last_human_input: Mutex::new(None),
         _retained_tempdir: None,
     })
 }

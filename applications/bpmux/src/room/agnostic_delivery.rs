@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use tokio::sync::broadcast;
 
@@ -9,6 +10,16 @@ use crate::session::routing_identity::RoutingStore;
 use crate::session::terminal_inject::frame_team_message;
 use crate::transport::ws::short_name;
 
+const HOLD_DEBOUNCE: Duration = Duration::from_millis(600);
+const HOLD_MAX: Duration = Duration::from_secs(10);
+
+pub struct HeldInject {
+    pub session_id: String,
+    pub terminal_id: String,
+    pub line: String,
+    pub ts: String,
+}
+
 pub fn spawn_terminal_delivery_loop(
     session: Arc<Session>,
     registry: Arc<LivePtyRegistry>,
@@ -18,7 +29,11 @@ pub fn spawn_terminal_delivery_loop(
     tokio::spawn(async move {
         loop {
             match rx.recv().await {
-                Ok(msg) => deliver_to_terminals(&msg, &registry, &routing),
+                Ok(msg) => {
+                    for inject in deliver_to_terminals(&msg, &registry, &routing) {
+                        spawn_deferred_inject(registry.clone(), routing.clone(), inject);
+                    }
+                }
                 Err(broadcast::error::RecvError::Lagged(_)) => continue,
                 Err(broadcast::error::RecvError::Closed) => break,
             }
@@ -26,9 +41,42 @@ pub fn spawn_terminal_delivery_loop(
     });
 }
 
-pub fn deliver_to_terminals(msg: &Message, registry: &LivePtyRegistry, routing: &RoutingStore) {
+fn owner_mid_typing(registry: &LivePtyRegistry, terminal_id: &str) -> bool {
+    registry
+        .human_input_age(terminal_id)
+        .is_some_and(|age| age < HOLD_DEBOUNCE)
+}
+
+pub(crate) fn spawn_deferred_inject(
+    registry: Arc<LivePtyRegistry>,
+    routing: Arc<RoutingStore>,
+    inject: HeldInject,
+) {
+    tokio::spawn(async move {
+        let start = tokio::time::Instant::now();
+        loop {
+            tokio::time::sleep(HOLD_DEBOUNCE).await;
+            let owner_paused = registry
+                .human_input_age(&inject.terminal_id)
+                .is_none_or(|age| age >= HOLD_DEBOUNCE);
+            if owner_paused || start.elapsed() >= HOLD_MAX {
+                if registry.submit_to(&inject.terminal_id, inject.line.as_bytes()) {
+                    routing.mark_delivered(&inject.session_id, &inject.ts);
+                }
+                return;
+            }
+        }
+    });
+}
+
+pub fn deliver_to_terminals(
+    msg: &Message,
+    registry: &LivePtyRegistry,
+    routing: &RoutingStore,
+) -> Vec<HeldInject> {
+    let mut held = Vec::new();
     if !msg.is_chat() {
-        return;
+        return held;
     }
     let line = framed_line(msg);
     let ts = msg.ts.to_rfc3339();
@@ -36,10 +84,18 @@ pub fn deliver_to_terminals(msg: &Message, registry: &LivePtyRegistry, routing: 
         if !after_cursor(routing, &session_id, msg.ts) {
             continue;
         }
-        if registry.submit_to(&terminal_id, line.as_bytes()) {
+        if owner_mid_typing(registry, &terminal_id) {
+            held.push(HeldInject {
+                session_id,
+                terminal_id,
+                line: line.clone(),
+                ts: ts.clone(),
+            });
+        } else if registry.submit_to(&terminal_id, line.as_bytes()) {
             routing.mark_delivered(&session_id, &ts);
         }
     }
+    held
 }
 
 pub fn drain_missed(

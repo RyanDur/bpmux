@@ -87,6 +87,14 @@ impl LivePtyRegistry {
             .map(|live| live.current_bracketed_paste())
     }
 
+    pub fn human_input_age(&self, terminal_id: &str) -> Option<std::time::Duration> {
+        self.rooms
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(terminal_id)
+            .and_then(|live| live.human_input_age())
+    }
+
     pub fn reap_dead_and_list_live(&self) -> Vec<String> {
         let mut rooms = self.rooms.lock().unwrap_or_else(|e| e.into_inner());
         let mut live = Vec::new();

@@ -5,6 +5,7 @@ use crate::room::{LivePtyRegistry, spawn_pty_retained};
 use crate::session::MessageType;
 use crate::session::message::Message;
 use crate::session::routing_identity::RoutingStore;
+use std::sync::Arc;
 use tokio::sync::broadcast;
 
 fn chat(from: &str, text: &str, to: Option<Vec<String>>) -> Message {
@@ -76,6 +77,51 @@ async fn a_broadcast_chat_is_framed_and_written_into_a_live_agents_terminal() {
     assert!(
         seen.contains("⟦bpmux⟧ pm broadcast▸") && seen.contains("ship it"),
         "a broadcast chat is delivered INTO the agent's terminal as a forgery-framed line (the agnostic receive — no agent-specific glue); got {seen:?}"
+    );
+}
+
+#[tokio::test]
+async fn an_inject_is_held_not_submitted_while_the_owner_is_mid_typing_into_the_agent() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let registry = LivePtyRegistry::new();
+    let _rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+
+    registry.write_to("term-dev", b"hello wor");
+
+    let held = deliver_to_terminals(&chat("pm", "ship it", None), &registry, &routing);
+
+    assert_eq!(
+        held.len(),
+        1,
+        "while the owner is mid-typing INTO the agent, the inject is HELD not submitted — clause (d) submit-isolation: the \\r must not merge his partial line + the paste-block into one Claude turn (the owner-walk submit-steal)"
+    );
+    assert_eq!(held[0].terminal_id, "term-dev");
+    assert!(
+        held[0].line.contains("ship it"),
+        "the WHOLE inject is held, not just the \\r — holding only the \\r still merges the paste-block into the input-box (a polluted draft)"
+    );
+}
+
+#[tokio::test]
+async fn a_held_inject_delivers_once_the_owner_pauses_typing() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let routing = Arc::new(RoutingStore::load(dir.path().to_path_buf()));
+    let registry = Arc::new(LivePtyRegistry::new());
+    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+
+    registry.write_to("term-dev", b"typing");
+    let held = deliver_to_terminals(&chat("pm", "ship it", None), &registry, &routing);
+    assert_eq!(held.len(), 1, "held while the owner types");
+
+    for inject in held {
+        spawn_deferred_inject(registry.clone(), routing.clone(), inject);
+    }
+
+    let seen = drain_for(&mut rx, "ship it").await;
+    assert!(
+        seen.contains("ship it"),
+        "once the owner pauses past the debounce, the held inject delivers as its OWN turn — bounded hold, never a park; got {seen:?}"
     );
 }
 

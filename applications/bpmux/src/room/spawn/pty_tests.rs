@@ -138,6 +138,27 @@ fn a_paste_capable_tui_that_toggled_paste_off_still_gets_a_bracket_framed_submit
 }
 
 #[test]
+fn a_keystroke_records_human_input_activity_but_an_inject_does_not() {
+    let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+    assert!(
+        live.human_input_age().is_none(),
+        "a fresh terminal has no human-input activity yet"
+    );
+
+    live.submit_input(b"injected line").unwrap();
+    assert!(
+        live.human_input_age().is_none(),
+        "an INJECT (submit_input) is NOT human keystroke-activity — clause (d) must never let an inject suppress its OWN hold-window (it would self-defeat the submit-isolation)"
+    );
+
+    live.write_input(b"x").unwrap();
+    assert!(
+        live.human_input_age().is_some(),
+        "an owner KEYSTROKE (write_input) records human-input activity — the clause (d) hold-trigger"
+    );
+}
+
+#[test]
 fn the_current_paste_mode_tracks_the_toggle_off_while_capability_stays_latched() {
     let live = spawn_pty_retained(
         "/bin/sh",
