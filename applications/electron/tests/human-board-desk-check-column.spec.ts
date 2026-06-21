@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchWithMockGh } from './helpers/launch'
+import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { seedCurrentIterationViaRpc } from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 
@@ -11,7 +11,7 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
       await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-1')
       await win.reload()
-      await expect(board.region()).toBeVisible()
+      await waitForBoardLoaded(win)
 
       await expect
         .poll(() =>
@@ -34,7 +34,7 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
       await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-2')
       await win.reload()
-      await expect(board.region()).toBeVisible()
+      await waitForBoardLoaded(win)
 
       await expect(board.group('Desk Check')).toBeVisible()
       await expect(board.columnCount('Desk Check')).toHaveText('(0)')
@@ -52,7 +52,7 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
       await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-3')
       await win.reload()
-      await expect(board.region()).toBeVisible()
+      await waitForBoardLoaded(win)
 
       const deskCheck = board.columnToggle('Desk Check')
       const inProgress = board.columnToggle('In Progress')
@@ -84,7 +84,7 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
       await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-4')
       await win.reload()
-      await expect(board.region()).toBeVisible()
+      await waitForBoardLoaded(win)
       await expect(board.group('Desk Check')).toBeVisible()
 
       expect(consoleErrors).toEqual([])
