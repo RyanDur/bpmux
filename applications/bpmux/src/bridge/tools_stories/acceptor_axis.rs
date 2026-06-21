@@ -65,7 +65,16 @@ pub(crate) fn acceptor_label_events(
 }
 
 pub(crate) fn derive_acceptor_label(user_job: &str) -> Option<&'static str> {
-    let words: Vec<&str> = user_job
+    let trimmed = user_job.trim_start();
+    if !trimmed
+        .as_bytes()
+        .get(..3)
+        .is_some_and(|p| p.eq_ignore_ascii_case(b"as "))
+    {
+        return None;
+    }
+    let use_axis = trimmed.split(',').next().unwrap_or(trimmed);
+    let words: Vec<&str> = use_axis
         .split(|c: char| !c.is_alphanumeric())
         .filter(|w| !w.is_empty())
         .collect();
@@ -157,6 +166,31 @@ mod tests {
             derive_acceptor_label("As a designer, I want the palette tokenized"),
             None,
             "an axis with no team/owner/dev role yields no derivation — the --acceptor override (interim) sets it explicitly rather than deriving a wrong acceptor"
+        );
+    }
+
+    #[test]
+    fn an_incidental_role_token_in_the_situation_clause_is_not_the_use_axis() {
+        assert_eq!(
+            derive_acceptor_label(
+                "When owner accepts a delivered story, the human watching the board needs to see ACCEPTED"
+            ),
+            None,
+            "'owner' here is scenario-prose, not the use-axis subject — the derivation must read the 'As a [role]' use-axis, NOT body-scan incidental role tokens (#1787 falsifier: the derived acceptor must not diverge from the use-axis)"
+        );
+        assert_eq!(
+            derive_acceptor_label("As a dev, I want the owner notified when CI breaks"),
+            Some(LABEL_AWAITING_DEV),
+            "the use-axis is 'As a dev'; 'owner' after the clause is incidental and must not flip the acceptor to owner"
+        );
+    }
+
+    #[test]
+    fn a_user_job_without_a_clean_as_a_use_axis_falls_back_to_none() {
+        assert_eq!(
+            derive_acceptor_label("When a pm files, dev needs the bug verified"),
+            None,
+            "no leading 'As a [role]' clause → no derivation (sane fallback); the explicit --acceptor or label sets it"
         );
     }
 }

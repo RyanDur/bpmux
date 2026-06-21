@@ -458,7 +458,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     );
     args.insert(
         "user_job".into(),
-        serde_json::json!("When pm files, dev needs..."),
+        serde_json::json!("As an agent (pm or dev), I want the live-verify failure tracked"),
     );
     args.insert(
         "observation_falsifier".into(),
@@ -506,7 +506,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
             &pushed[1],
             BoardEvent::TagAdded { number: 51, label, .. } if label.as_str() == "awaiting team"
         ),
-        "the 'pm files, dev needs' multi-role use-axis derives the team acceptor, enqueued as awaiting-team at create (#1787); got {:?}",
+        "the 'As an agent (pm or dev)' multi-role use-axis derives the team acceptor, enqueued as awaiting-team at create (#1787); got {:?}",
         &pushed[1]
     );
 }
