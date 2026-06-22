@@ -23,3 +23,12 @@ These are team-discipline, not stories. Every new commit satisfies them. Refacto
 **Refactor as you go.** Every commit leaves its file better than it found it. No dedicated refactor sprints, no "migrate X" stories, no waiting for the right time. The time is now.
 
 **Architecture reference:** battleship + Ryan's public repos (sand, ChosenPicachu, Deaf-Beavers) — Result/Maybe/AsyncResult via sand; schemawax decoders; ports-adapters with parallel fakes; feature-grouped source; CSS split by concern (`*.css` paint + `*.layout.css` structure).
+
+## Acceptor rules (who accepts a story)
+
+Acceptor-class follows story-TYPE — not re-derived or negotiated per story.
+
+- **Chore → dev-authored + dev-accepted**, categorically. What makes a story a Chore is **no perceived outward _product_ behavior** (internal tooling/plumbing — even when it surfaces workflow-metadata like an acceptor label). The team still desk-checks it and gives verdicts, but **dev fires the accept**. The acceptor-axis below does NOT apply.
+- **Feature / Bug → acceptor-axis** from the user-job's leading `As a [role]` clause: `As the owner` / `As Ryan` → **owner-accept** (owner-walk); a lone `As a dev` → **dev-accept**; `As a pm` / `As an agent` / `team` / multi-role (`dev`+`pm` together) → **team-accept**. PM picks the class from that clause. Beneficiary ≠ walker — the owner may _benefit_ (e.g. a board-render) while the _agent_ is the walker → team.
+
+`derive_acceptor_label` reads only that leading `As a [role]` clause (set via `bpmux create/edit --acceptor`, voiced at the gate via `bpmux pass --acceptor`). **Run it on Features/Bugs only** — running the acceptor-axis on a Chore is a category-error; a Chore is always dev-accept regardless of role words in its body. (Owner-ruled 2026-06-22.)
