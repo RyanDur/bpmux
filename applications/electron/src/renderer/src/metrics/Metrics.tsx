@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { describeHttpError, http } from '../api/http'
+import Sparkline, { type WipPoint } from './Sparkline'
 import './Metrics.css'
 
 interface Props {
@@ -18,7 +19,11 @@ interface VelocityPayload {
   rework_rate: number | null
   sparse: boolean
   note: string | null
+  wip_history: WipPoint[]
 }
+
+const currentWip = (history: WipPoint[]): number =>
+  history.length > 0 ? history[history.length - 1].wip_count : 0
 
 const formatHours = (h: number | null): string => {
   if (h === null) return '—'
@@ -105,6 +110,11 @@ const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
 
       {data !== null && (
         <section className="metrics-grid">
+          <MetricTile
+            label="In progress (WIP)"
+            value={String(currentWip(data.wip_history))}
+            bar={<Sparkline history={data.wip_history} />}
+          />
           <MetricTile
             label={`Delivered / day (${data.window_days}d)`}
             value={data.delivered_per_day.toFixed(2)}

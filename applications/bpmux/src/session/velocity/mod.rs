@@ -39,6 +39,9 @@ enum Lifecycle {
 mod classify;
 pub use classify::*;
 
+mod wip_history;
+pub use wip_history::WipPoint;
+
 #[derive(Serialize, Debug, PartialEq)]
 pub struct VelocityMetrics {
     pub window_days: i64,
@@ -49,6 +52,7 @@ pub struct VelocityMetrics {
     pub rework_rate: Option<f64>,
     pub sparse: bool,
     pub note: Option<String>,
+    pub wip_history: Vec<WipPoint>,
 }
 
 pub fn compute(
@@ -153,6 +157,7 @@ pub fn compute(
         rework_rate,
         sparse,
         note,
+        wip_history: wip_history::derive_wip_history(messages, now),
     }
 }
 

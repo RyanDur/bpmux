@@ -1,0 +1,41 @@
+.sparkline {
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.sparkline-svg {
+  width: 80px;
+  height: 20px;
+  display: block;
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: var(--accent-success);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  animation: sparkline-draw-in var(--motion-duration-medium) var(--motion-ease-out);
+}
+
+@keyframes sparkline-draw-in {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.sparkline-dot {
+  fill: var(--accent-success);
+}
+
+.sparkline-empty {
+  margin: 0;
+  color: var(--fg-dim);
+  font-size: var(--font-size-12);
+}

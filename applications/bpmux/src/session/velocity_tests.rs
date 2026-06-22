@@ -317,3 +317,37 @@ fn classify_story_decodes_epic_from_label() {
         StoryType::Epic
     );
 }
+
+#[test]
+fn wip_history_is_a_real_per_activity_day_in_progress_series() {
+    let messages = vec![
+        msg("#1 started", now() - ChronoDuration::days(4)),
+        msg("#2 started", now() - ChronoDuration::days(3)),
+        msg("#3 started", now() - ChronoDuration::days(2)),
+        msg("#1 delivered", now() - ChronoDuration::days(1)),
+    ];
+    let m = compute(&messages, now(), |_| true);
+    let counts: Vec<usize> = m.wip_history.iter().map(|p| p.wip_count).collect();
+    assert_eq!(
+        counts,
+        vec![1, 2, 3, 2],
+        "in-progress count rises with each start, falls on the deliver — one point per activity-day"
+    );
+    assert_eq!(m.wip_history.len(), 4);
+}
+
+#[test]
+fn wip_history_excludes_out_of_window_events_and_never_underflows() {
+    let messages = vec![
+        msg("#1 started", now() - ChronoDuration::days(20)),
+        msg("#2 started", now() - ChronoDuration::days(2)),
+        msg("#2 delivered", now() - ChronoDuration::days(1)),
+    ];
+    let m = compute(&messages, now(), |_| true);
+    let counts: Vec<usize> = m.wip_history.iter().map(|p| p.wip_count).collect();
+    assert_eq!(
+        counts,
+        vec![1, 0],
+        "the out-of-window #1 start is excluded; delivering #2 returns to zero (no underflow)"
+    );
+}
