@@ -12,6 +12,7 @@ import {
 } from '../transport/session'
 import { composeTerminalFontFamily } from '../lib/terminalFont'
 import { TerminalCompose } from './TerminalCompose'
+import { copyOnCmdC } from './terminalCopy'
 import './TerminalView.css'
 
 interface TerminalViewProps {
@@ -35,17 +36,6 @@ const cwdFromOsc7 = (payload: string): string | null => {
   } catch {
     return null
   }
-}
-
-const copyOnCmdC = (term: Terminal, event: KeyboardEvent): boolean => {
-  if (event.type === 'keydown' && event.metaKey && !event.ctrlKey && event.key === 'c') {
-    const selection = term.getSelection()
-    if (selection.length > 0) {
-      void navigator.clipboard.writeText(selection)
-      return false
-    }
-  }
-  return true
 }
 
 export const TerminalView = ({
@@ -75,6 +65,17 @@ export const TerminalView = ({
       }
     })
     termRef.current = term
+    if (window.bpmux?.e2e) {
+      const readers = (window.__bpmuxTermText ??= {})
+      readers[terminalId] = () => {
+        const buffer = term.buffer.active
+        const rows: string[] = []
+        for (let row = 0; row < buffer.length; row++) {
+          rows.push(buffer.getLine(row)?.translateToString(true) ?? '')
+        }
+        return rows.join('\n')
+      }
+    }
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(screen)
@@ -111,6 +112,7 @@ export const TerminalView = ({
       osc7.dispose()
       term.dispose()
       termRef.current = null
+      if (window.__bpmuxTermText) delete window.__bpmuxTermText[terminalId]
     }
   }, [terminalId])
 

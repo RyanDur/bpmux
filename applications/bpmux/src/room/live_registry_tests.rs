@@ -4,6 +4,16 @@ use super::live_registry::*;
 use crate::room::spawn::spawn_pty_retained;
 use tokio::sync::broadcast;
 
+fn extract_pid(stream: &str) -> String {
+    let at = stream
+        .find("RPID=")
+        .expect("the PTY output must carry the RPID= marker");
+    stream[at + 5..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect()
+}
+
 fn drain_until(rx: &mut broadcast::Receiver<Vec<u8>>, marker: &str) -> String {
     let mut out = String::new();
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
@@ -145,5 +155,34 @@ fn reap_dead_and_list_live_returns_only_living_ids_and_reaps_the_exited_out_of_t
     assert!(
         !registry.contains("exited-terminal"),
         "the exited terminal must be reaped OUT of the registry — that single pass closes the orphan-PTY leak (d) AND prevents the exited terminal resurrecting on the next refresh's re-attach (e)"
+    );
+}
+
+#[test]
+fn dropping_a_subscriber_then_resubscribing_reattaches_to_the_same_live_process() {
+    let registry = LivePtyRegistry::new();
+    let live = spawn_pty_retained("/bin/sh", &[], None, &[]).unwrap();
+    registry.insert("dev".to_string(), live);
+
+    let mut first = registry.subscribe_for("dev").expect("dev present");
+    assert!(registry.write_to("dev", b"printf 'RPID''=%s\\n' $$\n"));
+    let before = drain_until(&mut first, "RPID=");
+    let pid_before = extract_pid(&before);
+    assert!(
+        !pid_before.is_empty(),
+        "the first attach must observe the live shell's pid; got {before:?}"
+    );
+    drop(first);
+
+    let mut second = registry.subscribe_for("dev").expect(
+        "a refresh re-attaches: the live session must survive a dropped subscriber, not vanish",
+    );
+    assert!(registry.write_to("dev", b"printf 'RPID''=%s\\n' $$\n"));
+    let after = drain_until(&mut second, "RPID=");
+    let pid_after = extract_pid(&after);
+
+    assert_eq!(
+        pid_before, pid_after,
+        "re-subscribing after a disconnect must re-attach to the SAME live process (a refresh re-attaches by terminal_id; it does NOT respawn a fresh shell); before={before:?} after={after:?}"
     );
 }

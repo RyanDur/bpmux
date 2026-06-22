@@ -10,6 +10,7 @@ declare global {
       wsUrl: string
       authToken: string
       apiBase: string
+      e2e?: boolean
       // #371: main-process-fired IPC for "Quote in reply" context-menu
       // clicks. DrillIn subscribes on mount; unsubscribe on unmount.
       // Optional — renderers running outside Electron (unit tests,
@@ -19,6 +20,7 @@ declare global {
         callback: (payload: { commentId: string; author: string; text: string }) => void
       ) => () => void
     }
+    __bpmuxTermText?: Record<string, () => string>
   }
 }
 

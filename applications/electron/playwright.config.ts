@@ -4,9 +4,8 @@ const SERIAL_HEAVY_SPECS = [
   '**/real-backend.spec.ts',
   '**/a11y-audit.spec.ts',
   '**/canary-env-leak.spec.ts',
-  '**/survive-refresh-reattach.spec.ts',
-  '**/n-terminals-switch.spec.ts',
-  '**/terminal-copy.spec.ts',
+  '**/terminal-session-journey.spec.ts',
+  '**/terminals-multi.spec.ts',
   '**/confirm-before-close.spec.ts',
   '**/exited-restart-close.spec.ts'
 ]

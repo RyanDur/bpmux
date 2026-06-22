@@ -351,10 +351,16 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  const configPayload = (): { wsUrl: string; authToken: string; apiBase: string } => ({
+  const configPayload = (): {
+    wsUrl: string
+    authToken: string
+    apiBase: string
+    e2e: boolean
+  } => ({
     wsUrl: WS_URL,
     authToken,
-    apiBase: API_BASE
+    apiBase: API_BASE,
+    e2e: process.env.BPMUX_E2E === '1'
   })
 
   ipcMain.handle('bpmux:config', () => configPayload())

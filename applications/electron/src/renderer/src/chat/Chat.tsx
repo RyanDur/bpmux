@@ -101,6 +101,7 @@ const Chat = ({
             className="terminal-layer"
             data-active={activeKey === t.key}
             data-terminal-key={t.key}
+            data-terminal-id={t.id}
           >
             {t.state === 'ready' && t.id ? (
               <TerminalView

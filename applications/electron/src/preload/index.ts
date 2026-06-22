@@ -4,6 +4,7 @@ interface BpmuxConfig {
   wsUrl: string
   authToken: string
   apiBase: string
+  e2e: boolean
 }
 
 interface QuoteCommentPayload {
@@ -19,6 +20,7 @@ try {
     wsUrl: config.wsUrl,
     authToken: config.authToken,
     apiBase: config.apiBase,
+    e2e: config.e2e,
     onQuoteComment: (callback: (payload: QuoteCommentPayload) => void): (() => void) => {
       const listener = (_event: IpcRendererEvent, payload: QuoteCommentPayload): void => {
         callback(payload)
