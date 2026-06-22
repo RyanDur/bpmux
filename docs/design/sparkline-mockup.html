@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>#1237 WIP sparkline — chart-archetype mockup</title>
+<style>
+  /* tokens grounded vs styles/tokens.css (dark default + [data-theme=light] overrides) */
+  :root {
+    --bg-base: rgb(26 26 26); --bg-elevated: rgb(37 37 37);
+    --fg-primary: rgb(232 232 232); --fg-secondary: rgb(176 176 176); --fg-dim: rgb(157 157 157);
+    --accent-success: rgb(63 185 80); --accent-warning: rgb(212 161 60);
+    --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-16: 16px;
+    --font-size-12: .75rem; --font-size-24: 1.5rem;
+    --chart-stroke: 1.5px; --chart-radius: 4px;
+    --motion-duration-medium: 250ms; --motion-ease-out: cubic-bezier(0,0,.2,1);
+  }
+  [data-theme=light] {
+    --bg-base: rgb(255 255 255); --bg-elevated: rgb(245 245 245);
+    --fg-primary: rgb(26 26 26); --fg-secondary: rgb(74 85 104); --fg-dim: rgb(120 120 120);
+    --accent-success: rgb(22 163 74);
+  }
+  body { background: var(--bg-base); color: var(--fg-primary); font-family: system-ui, sans-serif;
+         margin: 0; padding: 32px; transition: background .2s; }
+  h1 { font-size: 1rem; font-weight: 600; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; margin: 16px 0 28px; }
+  /* the WIP metric-tile: number + sparkline inline, the #1237 surface */
+  .tile { background: var(--bg-elevated); border-radius: var(--chart-radius); padding: var(--space-16);
+          min-width: 180px; }
+  .tile dt { font-size: var(--font-size-12); color: var(--fg-secondary); margin: 0; }
+  .tile .val { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-4); }
+  .tile .num { font-size: var(--font-size-24); font-weight: 600; line-height: 1; }
+  .wip-sparkline { width: 80px; height: 20px; overflow: visible; }
+  .wip-sparkline polyline { fill: none; stroke: var(--accent-success); stroke-width: var(--chart-stroke);
+                            stroke-linecap: round; stroke-linejoin: round; }
+  .wip-sparkline .endpoint { fill: var(--accent-success); }
+  .empty { font-size: var(--font-size-12); color: var(--fg-dim); font-style: italic; }
+  .caption { font-size: var(--font-size-12); color: var(--fg-dim); margin-top: var(--space-6); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* entry-motion: draws left->right; reduced-motion = instant */
+  .draw polyline { stroke-dasharray: 200; stroke-dashoffset: 200; animation: draw var(--motion-duration-medium) var(--motion-ease-out) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { .draw polyline { animation: none; stroke-dashoffset: 0; } }
+  button { background: var(--bg-elevated); color: var(--fg-primary); border: 1px solid var(--fg-dim);
+           border-radius: 4px; padding: 6px 12px; cursor: pointer; font: inherit; }
+</style>
+</head>
+<body data-theme="dark">
+  <h1>#1237 WIP sparkline — chart-archetype (smallest-first for Epic #1236)</h1>
+  <button onclick="document.body.dataset.theme = document.body.dataset.theme==='dark'?'light':'dark'">toggle theme</button>
+  <button onclick="document.querySelectorAll('.wip-sparkline').forEach(s=>{s.parentElement.parentElement.parentElement.classList.remove('draw');void s.clientWidth;s.parentElement.parentElement.parentElement.classList.add('draw')})">replay draw-in</button>
+
+  <div class="row">
+    <!-- STEADY = healthy flow (shape reads flat) -->
+    <div class="tile draw">
+      <dl style="margin:0"><dt>WIP</dt>
+        <dd style="margin:0" class="val">
+          <span class="num">3</span>
+          <svg class="wip-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="WIP trend: 3 items, steady over 14 days" aria-describedby="t-steady">
+            <polyline points="0,15 17,13 33,16 50,14 67,15 83,13 100,15"/>
+            <circle class="endpoint" cx="100" cy="15" r="2.5"/>
+          </svg>
+          <table id="t-steady" class="sr-only"><caption>WIP per day</caption><tr><th>day</th><th>WIP</th></tr><tr><td>1</td><td>3</td></tr><tr><td>14</td><td>3</td></tr></table>
+        </dd>
+      </dl>
+      <div class="caption">STEADY &rarr; healthy flow (shape-read, single semantic stroke)</div>
+    </div>
+
+    <!-- CLIMBING = review-bottleneck warning (shape reads ascending) -->
+    <div class="tile draw">
+      <dl style="margin:0"><dt>WIP</dt>
+        <dd style="margin:0" class="val">
+          <span class="num">7</span>
+          <svg class="wip-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="WIP trend: 7 items, climbing over 14 days" aria-describedby="t-climb">
+            <polyline points="0,26 17,24 33,20 50,18 67,12 83,8 100,3"/>
+            <circle class="endpoint" cx="100" cy="3" r="2.5"/>
+          </svg>
+          <table id="t-climb" class="sr-only"><caption>WIP per day</caption><tr><th>day</th><th>WIP</th></tr><tr><td>1</td><td>2</td></tr><tr><td>14</td><td>7</td></tr></table>
+        </dd>
+      </dl>
+      <div class="caption">CLIMBING &rarr; review-bottleneck warning (same stroke; the SHAPE warns)</div>
+    </div>
+
+    <!-- EMPTY = <2 data points (Scenario 4): placeholder, never a flat-line -->
+    <div class="tile">
+      <dl style="margin:0"><dt>WIP</dt>
+        <dd style="margin:0" class="val">
+          <span class="num">1</span>
+          <span class="empty" style="width:80px;display:inline-block">no data yet</span>
+        </dd>
+      </dl>
+      <div class="caption">EMPTY (&lt;2 pts) &rarr; placeholder, NOT a flat-line (a flat-line = false "WIP=0 steady")</div>
+    </div>
+  </div>
+
+  <p class="caption" style="max-width:640px">
+    Tokens inherited from <code>styles/tokens.css</code>: 4px card-radius, 1.5px stroke (data-ink: crisp-but-light at scale),
+    <code>var(--accent-success)</code> theme-aware stroke (toggle theme — stroke flips, no hardcoded color), endpoint-dot anchors the current value,
+    <code>--space-6</code> number&harr;sparkline gap. Draw-in = stroke-dashoffset 250ms ease-out; <code>prefers-reduced-motion</code> &rarr; instant.
+    A11y: aria-label trend-glance + sr-only data-table detail. Per <code>chart-archetype.md</code>; data-source (WIP-history series) = dev-impl.
+  </p>
+</body>
+</html>
