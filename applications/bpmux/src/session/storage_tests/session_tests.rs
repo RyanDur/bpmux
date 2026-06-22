@@ -2,7 +2,7 @@ use crate::board::domain::{Story, StoryState};
 use crate::session::lessons::LessonIndex;
 use crate::session::message::Message;
 use crate::session::search::SearchFilters;
-use crate::session::storage::{FileStorage, MemoryStorage, Storage};
+use crate::session::storage::{FileStorage, MemoryStorage, SqliteStorage, Storage};
 use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -43,6 +43,12 @@ fn memory_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     (storage, dir)
 }
 
+fn sqlite_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    let storage: Arc<dyn Storage> = Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap());
+    (storage, dir)
+}
+
 fn seed_story(number: u64, title: &str) -> Story {
     Story::new_minimal(
         number,
@@ -67,6 +73,12 @@ macro_rules! contract {
             #[test]
             fn memory_storage() {
                 let (storage, _dir) = super::memory_storage();
+                $check(storage.as_ref());
+            }
+
+            #[test]
+            fn sqlite_storage() {
+                let (storage, _dir) = super::sqlite_storage();
                 $check(storage.as_ref());
             }
         }
@@ -515,6 +527,52 @@ fn session_without_backend_env_writes_disk_io() {
 }
 
 #[test]
+fn session_with_sqlite_backend_env_selects_the_sqlite_db_not_the_flat_log() {
+    let _env_guard = lock_storage_backend_env();
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, _rx) =
+        tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
+
+    let prior = std::env::var("BPMUX_STORAGE_BACKEND").ok();
+    unsafe {
+        std::env::set_var("BPMUX_STORAGE_BACKEND", "sqlite");
+    }
+
+    let session = std::sync::Arc::new(crate::session::Session::new(
+        dir.path().to_path_buf(),
+        "test-dev".to_string(),
+        tx,
+    ));
+
+    session
+        .storage
+        .append_message(&fresh_message("sqlite-mode-test"))
+        .unwrap();
+
+    let sqlite_path = dir.path().join("session.db");
+    assert!(
+        sqlite_path.exists(),
+        "BPMUX_STORAGE_BACKEND=sqlite must select the SQLite backend via the existing env (db at {sqlite_path:?} should exist after append)"
+    );
+    let jsonl_path = crate::session::log::log_path(dir.path());
+    assert!(
+        !jsonl_path.exists(),
+        "the sqlite backend must NOT also write the flat jsonl log at {jsonl_path:?}"
+    );
+
+    let messages = session.storage.read_messages().unwrap();
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].text, "sqlite-mode-test");
+
+    unsafe {
+        match prior {
+            Some(v) => std::env::set_var("BPMUX_STORAGE_BACKEND", v),
+            None => std::env::remove_var("BPMUX_STORAGE_BACKEND"),
+        }
+    }
+}
+
+#[test]
 fn memory_storage_instances_are_isolated() {
     let a = MemoryStorage::new(PathBuf::from("/tmp/a-marker"));
     let b = MemoryStorage::new(PathBuf::from("/tmp/b-marker"));
@@ -525,5 +583,46 @@ fn memory_storage_instances_are_isolated() {
     assert!(
         msgs_b.is_empty(),
         "MemoryStorage instances must not share state (per-test fixture invariant)"
+    );
+}
+
+#[test]
+fn sqlite_concurrent_writers_on_the_same_db_file_lose_no_appends() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().to_path_buf();
+    let per_writer: usize = 50;
+
+    let writer_a: Arc<dyn Storage> = Arc::new(SqliteStorage::new(path.clone()).unwrap());
+    let writer_b: Arc<dyn Storage> = Arc::new(SqliteStorage::new(path.clone()).unwrap());
+
+    let handle_a = {
+        let writer = Arc::clone(&writer_a);
+        std::thread::spawn(move || {
+            for i in 0..per_writer {
+                writer
+                    .append_message(&fresh_message(&format!("a-{i}")))
+                    .unwrap();
+            }
+        })
+    };
+    let handle_b = {
+        let writer = Arc::clone(&writer_b);
+        std::thread::spawn(move || {
+            for i in 0..per_writer {
+                writer
+                    .append_message(&fresh_message(&format!("b-{i}")))
+                    .unwrap();
+            }
+        })
+    };
+    handle_a.join().unwrap();
+    handle_b.join().unwrap();
+
+    let reader = SqliteStorage::new(path.clone()).unwrap();
+    let all = reader.read_messages().unwrap();
+    assert_eq!(
+        all.len(),
+        per_writer * 2,
+        "two SQLite connections to the same db file (the server and a CLI verb are separate processes) writing concurrently must lose no appends — busy_timeout serializes the contending writers instead of erroring with SQLITE_BUSY"
     );
 }

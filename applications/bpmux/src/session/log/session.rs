@@ -56,6 +56,15 @@ impl Session {
         let storage: Arc<dyn Storage> = match std::env::var("BPMUX_STORAGE_BACKEND").ok().as_deref()
         {
             Some("memory") => Arc::new(crate::session::storage::MemoryStorage::new(dir.clone())),
+            Some("sqlite") => match crate::session::storage::SqliteStorage::new(dir.clone()) {
+                Ok(store) => Arc::new(InstrumentedStorage::new(store)),
+                Err(e) => {
+                    crate::session::diag::log_diag(&format!(
+                        "sqlite storage backend failed to open ({e}); falling back to file backend"
+                    ));
+                    Arc::new(InstrumentedStorage::new(FileStorage::new(dir.clone())))
+                }
+            },
             _ => Arc::new(InstrumentedStorage::new(FileStorage::new(dir.clone()))),
         };
         let roster = load_seed_roster(&dir);

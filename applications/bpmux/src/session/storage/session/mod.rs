@@ -207,3 +207,8 @@ impl Storage for FileStorage {
 
 mod memory;
 pub use memory::*;
+
+mod sqlite;
+mod sqlite_documents;
+mod sqlite_engine;
+pub use sqlite::*;
