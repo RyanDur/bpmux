@@ -212,3 +212,8 @@ mod sqlite;
 mod sqlite_documents;
 mod sqlite_engine;
 pub use sqlite::*;
+
+mod migrate;
+pub use migrate::*;
+#[cfg(test)]
+mod migrate_tests;

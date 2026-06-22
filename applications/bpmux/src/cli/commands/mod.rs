@@ -75,6 +75,10 @@ pub(crate) enum Command {
         #[command(subcommand)]
         action: RoomAction,
     },
+    #[command(
+        about = "Migrate the existing jsonl message log into the SQLite store before cutover (#1799). Idempotent; drops the ephemeral board_snapshot deltas (#1642); leaves the jsonl as source-of-truth until you verify and flip BPMUX_STORAGE_BACKEND=sqlite."
+    )]
+    MigrateStorage,
     #[command(flatten)]
     Messaging(MessagingCommands),
     #[command(flatten)]
@@ -94,6 +98,7 @@ pub(crate) enum Command {
 pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
     match command {
         Command::EmitPrecommitPassed { sha, role } => Some(run_emit_precommit_passed(sha, role)),
+        Command::MigrateStorage => Some(super::migrate::run_migrate_storage()),
         Command::Messaging(c) => Some(dispatch_messaging(c)),
         Command::Read(c) => Some(dispatch_read(c)),
         Command::Workflow(c) => Some(dispatch_workflow(c)),
