@@ -34,6 +34,11 @@ test.describe('#1237 WIP-count sparkline reflects real lifecycle history', () =>
     await expect(metrics.overlay()).toBeVisible()
 
     await expect(sparkline.svg()).toBeVisible()
+    expect(await sparkline.animationName()).toBe('sparkline-draw-in')
+    const drawIn = await sparkline.drawInKeyframes()
+    expect(drawIn.exists).toBe(true)
+    expect(drawIn.from).toBeGreaterThan(0)
+    expect(drawIn.to).toBe(0)
     await expect(sparkline.svg()).toHaveAttribute('aria-label', /WIP trend/i)
     await expect(sparkline.polyline()).toBeAttached()
     await expect(sparkline.endpointDot()).toBeAttached()

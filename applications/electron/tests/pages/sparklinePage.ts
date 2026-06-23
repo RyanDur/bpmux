@@ -28,4 +28,35 @@ export class SparklinePage {
     if (!points) return 0
     return points.trim().split(/\s+/).filter(Boolean).length
   }
+
+  async animationName(): Promise<string> {
+    return this.polyline().evaluate((el: Element) => getComputedStyle(el).animationName)
+  }
+
+  async drawInKeyframes(): Promise<{ exists: boolean; from: number; to: number }> {
+    return this.win.evaluate(() => {
+      const offset = (frames: CSSKeyframeRule[], keys: string[]): number => {
+        const frame = frames.find((f) => keys.includes(f.keyText))
+        return Number.parseFloat(frame?.style.getPropertyValue('stroke-dashoffset') ?? '')
+      }
+      const sheets = [...Array.from(document.styleSheets), ...document.adoptedStyleSheets]
+      for (const sheet of sheets) {
+        try {
+          for (const rule of Array.from(sheet.cssRules)) {
+            if (rule instanceof CSSKeyframesRule && rule.name === 'sparkline-draw-in') {
+              const frames = Array.from(rule.cssRules) as CSSKeyframeRule[]
+              return {
+                exists: true,
+                from: offset(frames, ['0%', 'from']),
+                to: offset(frames, ['100%', 'to'])
+              }
+            }
+          }
+        } catch {
+          continue
+        }
+      }
+      return { exists: false, from: Number.NaN, to: Number.NaN }
+    })
+  }
 }
