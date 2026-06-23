@@ -1,20 +1,12 @@
 use crate::board::domain::{Story, StoryState};
 use crate::session::lessons::LessonIndex;
+use crate::session::log::StorageBackend;
 use crate::session::message::Message;
 use crate::session::search::SearchFilters;
-use crate::session::storage::{FileStorage, MemoryStorage, SqliteStorage, Storage};
+use crate::session::storage::{FileStorage, SqliteStorage, Storage};
 use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
-
-static BPMUX_STORAGE_BACKEND_ENV_LOCK: Mutex<()> = Mutex::new(());
-
-fn lock_storage_backend_env() -> MutexGuard<'static, ()> {
-    BPMUX_STORAGE_BACKEND_ENV_LOCK
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-}
+use std::sync::Arc;
 
 fn fresh_message(text: &str) -> Message {
     Message {
@@ -34,12 +26,6 @@ fn file_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
             .with_board_store_path(board_path)
             .with_outbox_path(outbox_path),
     );
-    (storage, dir)
-}
-
-fn memory_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
-    let dir = tempfile::tempdir().unwrap();
-    let storage: Arc<dyn Storage> = Arc::new(MemoryStorage::new(dir.path().to_path_buf()));
     (storage, dir)
 }
 
@@ -67,12 +53,6 @@ macro_rules! contract {
             #[test]
             fn file_storage() {
                 let (storage, _dir) = super::file_storage();
-                $check(storage.as_ref());
-            }
-
-            #[test]
-            fn memory_storage() {
-                let (storage, _dir) = super::memory_storage();
                 $check(storage.as_ref());
             }
 
@@ -416,11 +396,9 @@ contract!(
 );
 
 #[test]
-fn board_store_roundtrips_via_memory_storage() {
+fn board_store_roundtrips_via_sqlite_storage() {
     use crate::board::store::BoardStore;
-    let storage: Arc<dyn Storage> = Arc::new(MemoryStorage::new(PathBuf::from(
-        "/tmp/board-roundtrip-marker",
-    )));
+    let (storage, _dir) = sqlite_storage();
     let source = BoardStore::new();
     source.seed_all(vec![seed_story(100, "alpha"), seed_story(200, "beta")]);
     source.persist_to_storage(storage.as_ref()).unwrap();
@@ -439,74 +417,35 @@ fn board_store_roundtrips_via_memory_storage() {
 #[test]
 fn board_store_load_from_empty_storage_returns_empty() {
     use crate::board::store::BoardStore;
-    let storage: Arc<dyn Storage> =
-        Arc::new(MemoryStorage::new(PathBuf::from("/tmp/board-empty-marker")));
+    let (storage, _dir) = sqlite_storage();
     let store = BoardStore::load_from_storage(storage.as_ref()).unwrap();
     assert!(store.all_stories().is_empty());
 }
 
 #[test]
-fn session_with_memory_backend_env_skips_disk_io() {
-    let _env_guard = lock_storage_backend_env();
-    let dir = tempfile::tempdir().unwrap();
-    let (tx, _rx) =
-        tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
-
-    let prior = std::env::var("BPMUX_STORAGE_BACKEND").ok();
-    unsafe {
-        std::env::set_var("BPMUX_STORAGE_BACKEND", "memory");
-    }
-
-    let session = std::sync::Arc::new(crate::session::Session::new(
-        dir.path().to_path_buf(),
-        "test-dev".to_string(),
-        tx,
-    ));
-
-    session
-        .storage
-        .append_message(&fresh_message("memory-mode-test"))
-        .unwrap();
-
-    let log_path = crate::session::log::log_path(dir.path());
-    assert!(
-        !log_path.exists(),
-        "BPMUX_STORAGE_BACKEND=memory must keep storage pure-in-memory; log file at {log_path:?} should not exist after append"
-    );
-
-    let messages = session.storage.read_messages().unwrap();
+fn storage_backend_resolves_from_env_value_purely() {
+    assert_eq!(StorageBackend::from_env_value(None), StorageBackend::File);
     assert_eq!(
-        messages.len(),
-        1,
-        "MemoryStorage retains the appended message in memory"
+        StorageBackend::from_env_value(Some("unrecognized")),
+        StorageBackend::File
     );
-    assert_eq!(messages[0].text, "memory-mode-test");
-
-    unsafe {
-        match prior {
-            Some(v) => std::env::set_var("BPMUX_STORAGE_BACKEND", v),
-            None => std::env::remove_var("BPMUX_STORAGE_BACKEND"),
-        }
-    }
+    assert_eq!(
+        StorageBackend::from_env_value(Some("sqlite")),
+        StorageBackend::Sqlite
+    );
 }
 
 #[test]
-fn session_without_backend_env_writes_disk_io() {
-    let _env_guard = lock_storage_backend_env();
+fn file_backend_writes_the_jsonl_log_to_disk() {
     let dir = tempfile::tempdir().unwrap();
     let (tx, _rx) =
         tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
-
-    let prior = std::env::var("BPMUX_STORAGE_BACKEND").ok();
-    unsafe {
-        std::env::remove_var("BPMUX_STORAGE_BACKEND");
-    }
-
-    let session = std::sync::Arc::new(crate::session::Session::new(
+    let session = crate::session::Session::with_backend(
         dir.path().to_path_buf(),
         "test-dev".to_string(),
         tx,
-    ));
+        StorageBackend::File,
+    );
 
     session
         .storage
@@ -516,33 +455,21 @@ fn session_without_backend_env_writes_disk_io() {
     let log_path = crate::session::log::log_path(dir.path());
     assert!(
         log_path.exists(),
-        "default storage backend must write to disk at {log_path:?}"
+        "the file backend must write the jsonl log to disk at {log_path:?}"
     );
-
-    if let Some(v) = prior {
-        unsafe {
-            std::env::set_var("BPMUX_STORAGE_BACKEND", v);
-        }
-    }
 }
 
 #[test]
-fn session_with_sqlite_backend_env_selects_the_sqlite_db_not_the_flat_log() {
-    let _env_guard = lock_storage_backend_env();
+fn sqlite_backend_writes_the_db_not_the_flat_log() {
     let dir = tempfile::tempdir().unwrap();
     let (tx, _rx) =
         tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
-
-    let prior = std::env::var("BPMUX_STORAGE_BACKEND").ok();
-    unsafe {
-        std::env::set_var("BPMUX_STORAGE_BACKEND", "sqlite");
-    }
-
-    let session = std::sync::Arc::new(crate::session::Session::new(
+    let session = crate::session::Session::with_backend(
         dir.path().to_path_buf(),
         "test-dev".to_string(),
         tx,
-    ));
+        StorageBackend::Sqlite,
+    );
 
     session
         .storage
@@ -552,7 +479,7 @@ fn session_with_sqlite_backend_env_selects_the_sqlite_db_not_the_flat_log() {
     let sqlite_path = dir.path().join("session.db");
     assert!(
         sqlite_path.exists(),
-        "BPMUX_STORAGE_BACKEND=sqlite must select the SQLite backend via the existing env (db at {sqlite_path:?} should exist after append)"
+        "the sqlite backend must write to session.db at {sqlite_path:?}"
     );
     let jsonl_path = crate::session::log::log_path(dir.path());
     assert!(
@@ -563,27 +490,6 @@ fn session_with_sqlite_backend_env_selects_the_sqlite_db_not_the_flat_log() {
     let messages = session.storage.read_messages().unwrap();
     assert_eq!(messages.len(), 1);
     assert_eq!(messages[0].text, "sqlite-mode-test");
-
-    unsafe {
-        match prior {
-            Some(v) => std::env::set_var("BPMUX_STORAGE_BACKEND", v),
-            None => std::env::remove_var("BPMUX_STORAGE_BACKEND"),
-        }
-    }
-}
-
-#[test]
-fn memory_storage_instances_are_isolated() {
-    let a = MemoryStorage::new(PathBuf::from("/tmp/a-marker"));
-    let b = MemoryStorage::new(PathBuf::from("/tmp/b-marker"));
-    a.append_message(&fresh_message("to-a")).unwrap();
-    let msgs_a = a.read_messages().unwrap();
-    let msgs_b = b.read_messages().unwrap();
-    assert_eq!(msgs_a.len(), 1);
-    assert!(
-        msgs_b.is_empty(),
-        "MemoryStorage instances must not share state (per-test fixture invariant)"
-    );
 }
 
 #[test]

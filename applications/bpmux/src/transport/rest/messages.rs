@@ -84,6 +84,7 @@ pub async fn get_messages(
 
 pub async fn post_message(
     State(session): State<Arc<session::Session>>,
+    axum::Extension(routing): axum::Extension<Arc<crate::session::routing_identity::RoutingStore>>,
     Json(payload): Json<PostMessage>,
 ) -> impl IntoResponse {
     if payload.text.is_empty() {
@@ -113,8 +114,13 @@ pub async fn post_message(
         return (StatusCode::BAD_REQUEST, reason);
     }
     let explicit_privacy = payload.to.is_some();
+    let sender_id = routing
+        .resolve(crate::transport::ws::short_name(&payload.from))
+        .into_iter()
+        .next();
     let msg = session::Message {
         from: payload.from,
+        sender_id,
         text: payload.text,
         ts: chrono::Utc::now(),
         message_type: session::MessageType::from(payload.message_type.as_deref()),

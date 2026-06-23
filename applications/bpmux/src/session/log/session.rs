@@ -46,27 +46,61 @@ impl std::fmt::Debug for Session {
     }
 }
 
-impl Session {
-    pub fn new(dir: PathBuf, owner_name: String, wake_tx: broadcast::Sender<Message>) -> Self {
-        let id = dir
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown")
-            .to_string();
-        let storage: Arc<dyn Storage> = match std::env::var("BPMUX_STORAGE_BACKEND").ok().as_deref()
-        {
-            Some("memory") => Arc::new(crate::session::storage::MemoryStorage::new(dir.clone())),
-            Some("sqlite") => match crate::session::storage::SqliteStorage::new(dir.clone()) {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageBackend {
+    File,
+    Sqlite,
+}
+
+impl StorageBackend {
+    pub fn from_env_value(value: Option<&str>) -> Self {
+        match value {
+            Some("sqlite") => Self::Sqlite,
+            _ => Self::File,
+        }
+    }
+
+    pub fn resolve() -> Self {
+        Self::from_env_value(std::env::var("BPMUX_STORAGE_BACKEND").ok().as_deref())
+    }
+
+    pub fn build(self, dir: &std::path::Path) -> Arc<dyn Storage> {
+        match self {
+            Self::Sqlite => match crate::session::storage::SqliteStorage::new(dir.to_path_buf()) {
                 Ok(store) => Arc::new(InstrumentedStorage::new(store)),
                 Err(e) => {
                     crate::session::diag::log_diag(&format!(
                         "sqlite storage backend failed to open ({e}); falling back to file backend"
                     ));
-                    Arc::new(InstrumentedStorage::new(FileStorage::new(dir.clone())))
+                    Arc::new(InstrumentedStorage::new(FileStorage::new(
+                        dir.to_path_buf(),
+                    )))
                 }
             },
-            _ => Arc::new(InstrumentedStorage::new(FileStorage::new(dir.clone()))),
-        };
+            Self::File => Arc::new(InstrumentedStorage::new(FileStorage::new(
+                dir.to_path_buf(),
+            ))),
+        }
+    }
+}
+
+impl Session {
+    pub fn new(dir: PathBuf, owner_name: String, wake_tx: broadcast::Sender<Message>) -> Self {
+        Self::with_backend(dir, owner_name, wake_tx, StorageBackend::resolve())
+    }
+
+    pub fn with_backend(
+        dir: PathBuf,
+        owner_name: String,
+        wake_tx: broadcast::Sender<Message>,
+        backend: StorageBackend,
+    ) -> Self {
+        let id = dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let storage = backend.build(&dir);
         let roster = load_seed_roster(&dir);
         Self {
             dir,

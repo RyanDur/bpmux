@@ -1,9 +1,6 @@
 //! E2E test for the #1290 Part A seed endpoints. Verifies:
 //! - Endpoints mount only when `BPMUX_TEST_SEED_API=1`.
 //! - Caller-supplied `ts` round-trips through the active Storage trait.
-//! - Pairs with `BPMUX_STORAGE_BACKEND=memory` (#1289) so a seed posted
-//!   over HTTP becomes observable in `/api/messages` despite no
-//!   filesystem write — the substrate-fix #1289 + #1290 together enable.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
@@ -26,12 +23,12 @@ async fn fetch_messages(port: u16) -> Vec<serde_json::Value> {
 }
 
 #[test]
-fn seed_messages_preserves_caller_ts_through_memory_backend() {
+fn seed_messages_preserves_caller_ts_through_sqlite_backend() {
     let bpmux = TestBpmux::start_with_envs(
         "human",
         &[
             ("BPMUX_TEST_SEED_API", "1"),
-            ("BPMUX_STORAGE_BACKEND", "memory"),
+            ("BPMUX_STORAGE_BACKEND", "sqlite"),
         ],
     );
     let port = bpmux.port();

@@ -23,8 +23,36 @@ pub fn bookmark_key(role: &str) -> String {
     format!("{BOOKMARK_PREFIX}{role}")
 }
 
+pub fn doc_get(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
+    engine::query_opt(
+        conn,
+        "SELECT value FROM documents WHERE key = ?1",
+        [key],
+        |row| row.get(0),
+    )
+}
+
+pub fn doc_put(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<usize> {
+    engine::execute(
+        conn,
+        "INSERT INTO documents (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [key, value],
+    )
+}
+
+fn doc_keys_with_prefix(conn: &Connection, prefix: &str) -> rusqlite::Result<Vec<String>> {
+    let pattern = format!("{prefix}%");
+    engine::query(
+        conn,
+        "SELECT key FROM documents WHERE key LIKE ?1",
+        [pattern.as_str()],
+        |row| row.get::<_, String>(0),
+    )
+}
+
 pub fn load_doc<T: serde::de::DeserializeOwned>(conn: &Connection, key: &str) -> Option<T> {
-    let raw = engine::doc_get(conn, key).ok().flatten()?;
+    let raw = doc_get(conn, key).ok().flatten()?;
     serde_json::from_str(&raw).ok()
 }
 
@@ -34,11 +62,11 @@ pub fn save_doc<T: serde::Serialize>(
     value: &T,
 ) -> Result<(), std::io::Error> {
     let raw = serde_json::to_string(value).map_err(std::io::Error::other)?;
-    engine::doc_put(conn, key, &raw).map_err(engine::io_err)
+    doc_put(conn, key, &raw).map(|_| ()).map_err(engine::io_err)
 }
 
 pub fn list_peer_names(conn: &Connection) -> Vec<String> {
-    engine::doc_keys_with_prefix(conn, PEER_LESSONS_PREFIX)
+    doc_keys_with_prefix(conn, PEER_LESSONS_PREFIX)
         .unwrap_or_default()
         .iter()
         .filter_map(|k| k.strip_prefix(PEER_LESSONS_PREFIX).map(str::to_string))

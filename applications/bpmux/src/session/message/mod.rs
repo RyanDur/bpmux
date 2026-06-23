@@ -27,6 +27,8 @@ pub enum MessageType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Message {
     pub from: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sender_id: Option<String>,
     pub text: String,
     pub ts: DateTime<Utc>,
     #[serde(default, skip_serializing_if = "MessageType::is_default_chat")]

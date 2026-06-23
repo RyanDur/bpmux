@@ -8,4 +8,4 @@ pub use dir_session::{
     read_or_create_dir_session, resume_or_create_session,
 };
 pub use file_log::{LogError, append_message, log_path, read_messages, read_recent};
-pub use session::{BROADCAST_CHANNEL_CAPACITY, Session};
+pub use session::{BROADCAST_CHANNEL_CAPACITY, Session, StorageBackend};

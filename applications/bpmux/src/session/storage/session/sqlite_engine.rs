@@ -1,14 +1,16 @@
 use std::path::Path;
 use std::time::Duration;
 
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, Params, Row};
 
 use crate::board::store::PersistError;
 
 const DB_FILE: &str = "session.db";
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub const RECENT_DESC_SQL: &str = "SELECT payload FROM messages ORDER BY seq DESC";
+mod embedded {
+    refinery::embed_migrations!();
+}
 
 pub fn io_err(e: rusqlite::Error) -> std::io::Error {
     std::io::Error::other(e)
@@ -19,57 +21,71 @@ pub fn persist_err(e: rusqlite::Error) -> PersistError {
 }
 
 pub fn open(dir: &Path) -> rusqlite::Result<Connection> {
-    let conn = Connection::open(dir.join(DB_FILE))?;
+    let mut conn = Connection::open(dir.join(DB_FILE))?;
     let _journal_mode: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
     conn.busy_timeout(BUSY_TIMEOUT)?;
-    conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS messages (
-             seq INTEGER PRIMARY KEY AUTOINCREMENT,
-             payload TEXT NOT NULL
-         );
-         CREATE TABLE IF NOT EXISTS documents (
-             key TEXT PRIMARY KEY,
-             value TEXT NOT NULL
-         );",
-    )?;
+    embedded::migrations::runner().run(&mut conn).map_err(|e| {
+        rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_ERROR),
+            Some(format!("refinery migration failed: {e}")),
+        )
+    })?;
     Ok(conn)
 }
 
-pub fn append_message(conn: &Connection, payload: &str) -> rusqlite::Result<()> {
-    conn.execute("INSERT INTO messages (payload) VALUES (?1)", [payload])?;
-    Ok(())
+pub fn execute<P: Params>(conn: &Connection, sql: &str, params: P) -> rusqlite::Result<usize> {
+    conn.execute(sql, params)
 }
 
-pub fn all_payloads_asc(conn: &Connection) -> rusqlite::Result<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT payload FROM messages ORDER BY seq ASC")?;
-    let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+pub fn query<T, P, F>(conn: &Connection, sql: &str, params: P, map: F) -> rusqlite::Result<Vec<T>>
+where
+    P: Params,
+    F: FnMut(&Row<'_>) -> rusqlite::Result<T>,
+{
+    let mut stmt = conn.prepare(sql)?;
+    let rows = stmt.query_map(params, map)?;
     rows.collect()
 }
 
-pub fn clear_messages(conn: &Connection) -> rusqlite::Result<()> {
-    conn.execute("DELETE FROM messages", [])?;
-    Ok(())
+pub fn query_opt<T, P, F>(
+    conn: &Connection,
+    sql: &str,
+    params: P,
+    map: F,
+) -> rusqlite::Result<Option<T>>
+where
+    P: Params,
+    F: FnOnce(&Row<'_>) -> rusqlite::Result<T>,
+{
+    conn.query_row(sql, params, map).optional()
 }
 
-pub fn doc_get(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
-    conn.query_row("SELECT value FROM documents WHERE key = ?1", [key], |row| {
-        row.get(0)
-    })
-    .optional()
-}
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-pub fn doc_put(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
-    conn.execute(
-        "INSERT INTO documents (key, value) VALUES (?1, ?2)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        [key, value],
-    )?;
-    Ok(())
-}
-
-pub fn doc_keys_with_prefix(conn: &Connection, prefix: &str) -> rusqlite::Result<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT key FROM documents WHERE key LIKE ?1")?;
-    let pattern = format!("{prefix}%");
-    let rows = stmt.query_map([pattern.as_str()], |row| row.get::<_, String>(0))?;
-    rows.collect()
+    #[test]
+    fn migrations_are_forward_only_versioned() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
+        let mut count = 0;
+        for entry in std::fs::read_dir(&dir).expect("migrations dir must exist") {
+            let name = entry.unwrap().file_name().to_string_lossy().into_owned();
+            if name.starts_with('.') {
+                continue;
+            }
+            count += 1;
+            let versioned = name
+                .strip_prefix('V')
+                .and_then(|rest| rest.split_once("__"))
+                .is_some_and(|(version, _)| {
+                    !version.is_empty() && version.chars().all(|c| c.is_ascii_digit())
+                });
+            let migration_ext = name.ends_with(".sql") || name.ends_with(".rs");
+            assert!(
+                versioned && migration_ext,
+                "migration `{name}` must be a forward versioned migration (V{{N}}__name.sql); refinery has no rollback/down — undo via a NEW V migration, never a U/down/rollback file"
+            );
+        }
+        assert!(count > 0, "expected at least the V1 migration in {dir:?}");
+    }
 }

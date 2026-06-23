@@ -154,16 +154,29 @@ bpmux's persistence is abstracted behind two traits, both at
   (`~/.bpmux/usage.json`), and per-run auth token
   (`~/.bpmux/auth_token`).
 
-**Two production impls + two test impls**, each storage type has
-contract tests proving FileStore / MemoryStore semantic-parity:
+**Session `Storage`** — two impls; contract tests prove
+FileStore ↔ SqliteStore semantic-parity (#1799 cut message history
+to SQLite; `MemoryStorage` is retired):
 
-- `FileStorage` + `FileGlobalStore` — disk-backed (production).
-  Atomic-rename + fsync semantics stay inside FileStorage; tests'
-  knowledge of those idiosyncrasies is zero.
-- `MemoryStorage` + `MemoryGlobalStore` — in-memory (tests).
-  Per-instance `Mutex<T>` state; no I/O. Selected via
-  `BPMUX_STORAGE_BACKEND=memory` env-var at `Session::new`
-  construction time.
+- `FileStorage` — disk-backed jsonl + json. Atomic-rename + fsync
+  semantics stay inside FileStorage; tests' knowledge of those
+  idiosyncrasies is zero. Retained for the legacy-jsonl read the
+  `migrate-storage` cutover path needs.
+- `SqliteStorage` — SQLite-backed (`session.db`); schema defined by
+  **refinery versioned migrations** (`migrations/V{N}__*.sql`,
+  embedded + run on connection-open), never inline DDL — forward-only,
+  guarded by `migrations_are_forward_only_versioned` (any `U`/down/
+  rollback file fails the build).
+
+**`GlobalStore` is unchanged** — `FileGlobalStore` (disk, production) +
+`MemoryGlobalStore` (in-memory test double).
+
+The session backend is **injected, not env-read in the data path**:
+`StorageBackend::{File,Sqlite}` resolves `BPMUX_STORAGE_BACKEND` exactly
+once at the composition root (`StorageBackend::resolve()`);
+`Session::new` delegates to `Session::with_backend(…)`, which tests call
+with an explicit backend — no global-env mutation, no serializing Mutex,
+so the storage tests are independent.
 
 **Production behavior preserved by path-injection builders** —
 each FileStorage path is `Option<PathBuf>` with builder

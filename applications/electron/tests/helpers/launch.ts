@@ -205,7 +205,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       // so seeds become observable identically to the FileStorage
       // path. Tests that need FileStorage explicitly (e.g., asserting
       // on-disk artifacts) can override via opts.extraEnv.
-      BPMUX_STORAGE_BACKEND: 'memory',
+      BPMUX_STORAGE_BACKEND: 'sqlite',
       BPMUX_E2E: '1',
       ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})

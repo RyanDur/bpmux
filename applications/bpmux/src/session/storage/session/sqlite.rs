@@ -7,6 +7,7 @@ use rusqlite::Connection;
 use super::Storage;
 use super::sqlite_documents as documents;
 use super::sqlite_engine as engine;
+use super::sqlite_messages as messages;
 use crate::board::domain::Story;
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
@@ -39,12 +40,28 @@ impl SqliteStorage {
 impl Storage for SqliteStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let payload = serde_json::to_string(msg)?;
-        engine::append_message(&self.lock(), &payload).map_err(engine::io_err)?;
+        let ts = msg.ts.to_rfc3339();
+        let role = crate::transport::ws::short_name(&msg.from);
+        let sender = msg.sender_id.as_deref().unwrap_or(role);
+        let message_type = msg
+            .message_type
+            .to_wire()
+            .unwrap_or_else(|| "chat".to_string());
+        messages::append(
+            &self.lock(),
+            &ts,
+            sender,
+            role,
+            msg.addressee.as_deref(),
+            &message_type,
+            &payload,
+        )
+        .map_err(engine::io_err)?;
         Ok(())
     }
 
     fn read_messages(&self) -> Result<Vec<Message>, LogError> {
-        let payloads = engine::all_payloads_asc(&self.lock()).map_err(engine::io_err)?;
+        let payloads = messages::all_payloads_asc(&self.lock()).map_err(engine::io_err)?;
         payloads
             .iter()
             .map(|p| serde_json::from_str(p).map_err(LogError::from))
@@ -59,7 +76,7 @@ impl Storage for SqliteStorage {
     ) -> Result<Vec<Message>, LogError> {
         let conn = self.lock();
         let mut stmt = conn
-            .prepare(engine::RECENT_DESC_SQL)
+            .prepare(messages::RECENT_DESC_SQL)
             .map_err(engine::io_err)?;
         let mut rows = stmt.query([]).map_err(engine::io_err)?;
         let mut out = Vec::new();
@@ -89,7 +106,9 @@ impl Storage for SqliteStorage {
     }
 
     fn clear_messages(&self) -> Result<(), std::io::Error> {
-        engine::clear_messages(&self.lock()).map_err(engine::io_err)
+        messages::clear(&self.lock())
+            .map(|_| ())
+            .map_err(engine::io_err)
     }
 
     fn load_lessons(&self) -> LessonIndex {
@@ -136,13 +155,13 @@ impl Storage for SqliteStorage {
     }
 
     fn load_state(&self, key: &str) -> Option<String> {
-        engine::doc_get(&self.lock(), &documents::state_key(key))
+        documents::doc_get(&self.lock(), &documents::state_key(key))
             .ok()
             .flatten()
     }
 
     fn save_state(&self, key: &str, value: &str) {
-        let _ = engine::doc_put(&self.lock(), &documents::state_key(key), value);
+        let _ = documents::doc_put(&self.lock(), &documents::state_key(key), value);
     }
 
     fn dir(&self) -> &Path {
@@ -155,7 +174,8 @@ impl Storage for SqliteStorage {
 
     fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError> {
         let value = serde_json::to_string(snapshot)?;
-        engine::doc_put(&self.lock(), documents::BOARD_SNAPSHOT_KEY, &value)
+        documents::doc_put(&self.lock(), documents::BOARD_SNAPSHOT_KEY, &value)
+            .map(|_| ())
             .map_err(engine::persist_err)
     }
 
@@ -165,7 +185,9 @@ impl Storage for SqliteStorage {
 
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {
         let value = serde_json::to_string(events)?;
-        engine::doc_put(&self.lock(), documents::OUTBOX_KEY, &value).map_err(engine::persist_err)
+        documents::doc_put(&self.lock(), documents::OUTBOX_KEY, &value)
+            .map(|_| ())
+            .map_err(engine::persist_err)
     }
 
     fn load_bookmark(&self, role: &str) -> Bookmark {

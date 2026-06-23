@@ -38,6 +38,9 @@ pub(super) fn test_app(dir: &TempDir) -> (axum::Router, broadcast::Sender<sessio
             "/api/messages",
             axum::routing::get(get_messages).post(post_message),
         )
+        .layer(axum::Extension(Arc::new(
+            crate::session::routing_identity::RoutingStore::load(dir.path().to_path_buf()),
+        )))
         .with_state(session);
     (router, tx)
 }
