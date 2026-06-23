@@ -76,9 +76,10 @@ pub async fn run_server(
         .parent()
         .map(std::path::Path::to_path_buf)
         .unwrap_or_else(|| session.dir.clone());
-    let routing_store = std::sync::Arc::new(crate::session::routing_identity::RoutingStore::load(
-        routing_store_dir,
-    ));
+    let routing_store = std::sync::Arc::new(
+        crate::session::routing_identity::RoutingStore::load(routing_store_dir)
+            .with_storage(session.storage.clone()),
+    );
     let commitment_store = std::sync::Arc::new(crate::room::CommitmentStore::new());
     crate::room::spawn_terminal_delivery_loop(
         session.clone(),

@@ -1,7 +1,10 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::Mutex;
 
+use super::cursor_time::{cursor_after, is_future, later_cursor};
 use super::identity::RoutingIdentity;
+use crate::session::storage::Storage;
 
 fn short(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
@@ -15,6 +18,7 @@ pub fn bridge_agent_name(terminal_id: &str) -> String {
 pub struct RoutingStore {
     identity: Mutex<RoutingIdentity>,
     dir: PathBuf,
+    storage: Option<Arc<dyn Storage>>,
 }
 
 impl RoutingStore {
@@ -23,13 +27,22 @@ impl RoutingStore {
         Self {
             identity: Mutex::new(identity),
             dir,
+            storage: None,
         }
+    }
+
+    pub fn with_storage(mut self, storage: Arc<dyn Storage>) -> Self {
+        self.storage = Some(storage);
+        self
     }
 
     pub fn register(&self, session_id: &str, display: &str) {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         identity.register(session_id, display);
         let _ = identity.save(&self.dir);
+        if let Some(storage) = &self.storage {
+            let _ = storage.upsert_agent(session_id, display, short(display));
+        }
     }
 
     pub fn link_terminal(&self, session_id: &str, terminal_id: &str) {
@@ -67,6 +80,9 @@ impl RoutingStore {
         let reaped = identity.reap_unclaimed_duplicates_of(display);
         if !reaped.is_empty() {
             let _ = identity.save(&self.dir);
+            if let Some(storage) = &self.storage {
+                let _ = storage.delete_agents(&reaped);
+            }
         }
         reaped
     }
@@ -80,6 +96,9 @@ impl RoutingStore {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         identity.rename(session_id, new_display);
         let _ = identity.save(&self.dir);
+        if let Some(storage) = &self.storage {
+            let _ = storage.upsert_agent(session_id, new_display, short(new_display));
+        }
     }
 
     pub fn drain_floor(&self, session_id: &str, client_ack: Option<&str>) -> Option<String> {
@@ -90,6 +109,9 @@ impl RoutingStore {
         if let Some(ref position) = floor {
             identity.advance_cursor(session_id, position);
             let _ = identity.save(&self.dir);
+            if let Some(storage) = &self.storage {
+                let _ = storage.set_agent_cursor(session_id, position);
+            }
         }
         floor
     }
@@ -107,6 +129,9 @@ impl RoutingStore {
         {
             identity.advance_cursor(session_id, &later);
             let _ = identity.save(&self.dir);
+            if let Some(storage) = &self.storage {
+                let _ = storage.set_agent_cursor(session_id, &later);
+            }
         }
     }
 
@@ -152,41 +177,16 @@ impl RoutingStore {
             identity.advance_cursor(session_id, job_start);
         }
         identity.link_terminal(session_id, terminal_id);
-        identity.reap_unclaimed_duplicates_of(display);
+        let reaped = identity.reap_unclaimed_duplicates_of(display);
         let _ = identity.save(&self.dir);
+        if let Some(storage) = &self.storage {
+            let _ = storage.upsert_agent(session_id, display, short(display));
+            if let Some(cursor) = identity.cursor(session_id) {
+                let _ = storage.set_agent_cursor(session_id, &cursor);
+            }
+            if !reaped.is_empty() {
+                let _ = storage.delete_agents(&reaped);
+            }
+        }
     }
-}
-
-fn parse_ts(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
-    chrono::DateTime::parse_from_rfc3339(value)
-        .ok()
-        .map(|dt| dt.with_timezone(&chrono::Utc))
-}
-
-pub(super) fn later_cursor(a: Option<&str>, b: Option<&str>) -> Option<String> {
-    match (a, b) {
-        (Some(x), Some(y)) => match (parse_ts(x), parse_ts(y)) {
-            (Some(px), Some(py)) => Some(if px >= py {
-                x.to_string()
-            } else {
-                y.to_string()
-            }),
-            (Some(_), None) => Some(x.to_string()),
-            (None, _) => Some(y.to_string()),
-        },
-        (Some(x), None) => Some(x.to_string()),
-        (None, Some(y)) => Some(y.to_string()),
-        (None, None) => None,
-    }
-}
-
-fn cursor_after(stored: Option<&str>, job_start: &str) -> bool {
-    match (stored.and_then(parse_ts), parse_ts(job_start)) {
-        (Some(stored), Some(job_start)) => stored > job_start,
-        _ => false,
-    }
-}
-
-fn is_future(ts: &str) -> bool {
-    parse_ts(ts).is_some_and(|ts| ts > chrono::Utc::now())
 }

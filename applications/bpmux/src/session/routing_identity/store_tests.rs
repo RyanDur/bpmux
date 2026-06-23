@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::store::later_cursor;
+use super::cursor_time::later_cursor;
 use super::*;
 
 #[test]
@@ -278,5 +278,60 @@ fn reaping_stale_duplicates_persists_so_a_reload_recovers_only_the_live_id() {
         reloaded.resolve("dev"),
         vec!["dev-live".to_string()],
         "register_agent reaped the unclaimed stale 'dev' when the live 'dev' bound its terminal, and the reap PERSISTED — a reload recovers only the one live id, not the splinter"
+    );
+}
+
+fn sqlite_storage(dir: &std::path::Path) -> std::sync::Arc<dyn crate::session::storage::Storage> {
+    std::sync::Arc::new(
+        crate::session::storage::SqliteStorage::new(dir.to_path_buf()).expect("sqlite"),
+    )
+}
+
+#[test]
+fn register_and_drain_write_through_to_the_agents_table() {
+    let dir = tempfile::TempDir::new().expect("dir");
+    let storage = sqlite_storage(dir.path());
+    let store = RoutingStore::load(dir.path().to_path_buf()).with_storage(storage.clone());
+    store.register("sess-dev", "dev:claude-code");
+    store.drain_floor("sess-dev", Some("2026-06-11T20:00:05Z"));
+
+    let agents = storage.load_agents().expect("load agents");
+    let agent = agents
+        .iter()
+        .find(|a| a.id == "sess-dev")
+        .expect("the registered agent is a real row in the agents table");
+    assert_eq!(
+        agent.name, "dev:claude-code",
+        "the opaque display persists as the agent name"
+    );
+    assert_eq!(agent.role, "dev", "the role token is short(display)");
+    assert_eq!(
+        agent.cursor.as_deref(),
+        Some("2026-06-11T20:00:05Z"),
+        "the drain-floor advance writes through into the agents.cursor column"
+    );
+}
+
+#[test]
+fn register_agent_reap_deletes_the_unclaimed_duplicate_row_from_the_agents_table() {
+    let dir = tempfile::TempDir::new().expect("dir");
+    let storage = sqlite_storage(dir.path());
+    let store = RoutingStore::load(dir.path().to_path_buf()).with_storage(storage.clone());
+    store.register("dev-stale", "dev");
+    store.register_agent("dev-live", "dev", "term-live", "2026-06-13T10:00:00Z");
+
+    let ids: Vec<String> = storage
+        .load_agents()
+        .expect("load agents")
+        .into_iter()
+        .map(|a| a.id)
+        .collect();
+    assert!(
+        ids.contains(&"dev-live".to_string()),
+        "the live claimed agent persists in the table"
+    );
+    assert!(
+        !ids.contains(&"dev-stale".to_string()),
+        "the reap of the unclaimed duplicate deletes its row from the agents table"
     );
 }
