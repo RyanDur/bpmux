@@ -15,9 +15,17 @@ use handoff::HandoffTracker;
 use pileon::PileonDetector;
 use recall::RecallSystem;
 
+const TRAIN_WINDOW: usize = 2000;
+
+fn training_messages(session: &Session) -> Vec<crate::session::message::Message> {
+    session
+        .read_recent(TRAIN_WINDOW, 0, &|_| true)
+        .unwrap_or_default()
+}
+
 pub fn spawn(session: Arc<Session>, owner_name: String) {
     let mut rx = session.subscribe();
-    let messages = session.read_messages().unwrap_or_default();
+    let messages = training_messages(&session);
 
     tokio::spawn(async move {
         let mut agents = AgentTracker::new(&owner_name);

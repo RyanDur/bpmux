@@ -75,7 +75,8 @@ pub async fn apply_reaction_toggle(
             },
         ))
         .await;
-    let msgs = session.read_messages().ok();
+    const EXCERPT_SCAN_WINDOW: usize = 2000;
+    let msgs = session.read_recent(EXCERPT_SCAN_WINDOW, 0, &|_| true).ok();
     let excerpt = msgs
         .as_deref()
         .and_then(|m| find_message_excerpt(m, &body.message_key, EXCERPT_MAX_LEN));

@@ -120,10 +120,12 @@ pub fn drain_missed(
     let join = chrono::DateTime::parse_from_rfc3339(join_ts)
         .ok()
         .map(|dt| dt.with_timezone(&chrono::Utc));
-    let messages = match session.read_messages() {
+    const BACKFILL_SCAN_WINDOW: usize = 1000;
+    let mut messages = match session.read_recent(BACKFILL_SCAN_WINDOW, 0, &|_| true) {
         Ok(messages) => messages,
         Err(_) => return,
     };
+    messages.reverse();
     for msg in messages {
         if !msg.is_chat() || short_name(&msg.from) == display || !reaches(&msg, display) {
             continue;

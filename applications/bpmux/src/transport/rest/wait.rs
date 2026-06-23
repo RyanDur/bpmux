@@ -92,7 +92,11 @@ fn first_pending_after(
     after_cursor: Option<chrono::DateTime<chrono::Utc>>,
     role: &str,
 ) -> Option<serde_json::Value> {
-    let messages = session.read_messages().ok()?;
+    const PENDING_SCAN_WINDOW: usize = 500;
+    let mut messages = session
+        .read_recent(PENDING_SCAN_WINDOW, 0, &|_| true)
+        .ok()?;
+    messages.reverse();
     messages
         .into_iter()
         .filter(|message| match after_cursor {

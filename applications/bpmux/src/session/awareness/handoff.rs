@@ -75,7 +75,8 @@ impl HandoffTracker {
         let Some(h) = self.pending.take() else {
             return;
         };
-        if let Ok(messages) = session.read_messages() {
+        const RESPONSE_SCAN_WINDOW: usize = 200;
+        if let Ok(messages) = session.read_recent(RESPONSE_SCAN_WINDOW, 0, &|_| true) {
             let recipient_responded = messages.iter().any(|m| {
                 if !m.is_chat() {
                     return false;

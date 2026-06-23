@@ -103,10 +103,13 @@ async fn run_ws_session(
     send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;
+    const REPLAY_SCAN_WINDOW: usize = 500;
     if let Some(cursor) = replay_cursor
         && let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(&cursor)
-        && let Ok(messages) = session.read_messages()
+        && let Ok(mut messages) =
+            session.read_recent(REPLAY_SCAN_WINDOW, 0, &|m| m.state_delta.is_some())
     {
+        messages.reverse();
         let cursor_ts = parsed.with_timezone(&chrono::Utc);
         for msg in messages {
             if msg.state_delta.is_some() && msg.ts > cursor_ts && should_deliver(&msg, &identity) {
