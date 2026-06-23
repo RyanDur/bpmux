@@ -6,14 +6,15 @@ use crate::session::storage::AgentRecord;
 pub fn load_all(conn: &Connection) -> rusqlite::Result<Vec<AgentRecord>> {
     engine::query(
         conn,
-        "SELECT id, name, role, cursor FROM agents",
+        "SELECT id, name, role, kind, cursor FROM agents",
         [],
         |row| {
             Ok(AgentRecord {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 role: row.get(2)?,
-                cursor: row.get(3)?,
+                kind: row.get(3)?,
+                cursor: row.get(4)?,
             })
         },
     )

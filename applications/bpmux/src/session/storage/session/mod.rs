@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 
-use super::{AgentRecord, Storage};
+use super::{AgentRecord, Storage, default_kind};
 use crate::session::lessons::LessonIndex;
 use crate::session::log::LogError;
 use crate::session::message::Message;
@@ -160,6 +160,7 @@ impl Storage for FileStorage {
                 id: id.to_string(),
                 name: name.to_string(),
                 role: role.to_string(),
+                kind: default_kind(),
                 cursor: None,
             }),
         }

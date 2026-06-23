@@ -304,6 +304,10 @@ contract!(
         assert_eq!(loaded[0].id, "sess-dev");
         assert_eq!(loaded[0].name, "dev:claude-code");
         assert_eq!(loaded[0].role, "dev");
+        assert_eq!(
+            loaded[0].kind, "agent",
+            "a routing-registered identity defaults to kind=agent; owner/system are the only non-agent kinds, seeded separately"
+        );
         assert_eq!(loaded[0].cursor, None);
     }
 );

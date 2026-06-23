@@ -20,7 +20,13 @@ pub struct AgentRecord {
     pub id: String,
     pub name: String,
     pub role: String,
+    #[serde(default = "default_kind")]
+    pub kind: String,
     pub cursor: Option<String>,
+}
+
+fn default_kind() -> String {
+    "agent".to_string()
 }
 
 pub trait Storage: Send + Sync {

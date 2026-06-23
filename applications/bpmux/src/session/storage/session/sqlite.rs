@@ -41,22 +41,16 @@ impl Storage for SqliteStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let payload = serde_json::to_string(msg)?;
         let ts = msg.ts.to_rfc3339();
-        let role = crate::transport::ws::short_name(&msg.from);
-        let sender = msg.sender_id.as_deref().unwrap_or(role);
+        let sender = msg
+            .sender_id
+            .as_deref()
+            .unwrap_or_else(|| crate::transport::ws::short_name(&msg.from));
         let message_type = msg
             .message_type
             .to_wire()
             .unwrap_or_else(|| "chat".to_string());
-        messages::append(
-            &self.lock(),
-            &ts,
-            sender,
-            role,
-            msg.addressee.as_deref(),
-            &message_type,
-            &payload,
-        )
-        .map_err(engine::io_err)?;
+        messages::append(&self.lock(), &ts, sender, &message_type, &payload)
+            .map_err(engine::io_err)?;
         Ok(())
     }
 

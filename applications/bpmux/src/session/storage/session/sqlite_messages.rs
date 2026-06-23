@@ -10,16 +10,14 @@ pub fn append(
     conn: &Connection,
     ts: &str,
     sender: &str,
-    role: &str,
-    recipient: Option<&str>,
     message_type: &str,
     payload: &str,
 ) -> rusqlite::Result<usize> {
     engine::execute(
         conn,
-        "INSERT INTO messages (ts, sender, role, recipient, message_type, payload) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        (ts, sender, role, recipient, message_type, payload),
+        "INSERT INTO messages (ts, sender, message_type, payload) \
+         VALUES (?1, ?2, ?3, ?4)",
+        (ts, sender, message_type, payload),
     )
 }
 
