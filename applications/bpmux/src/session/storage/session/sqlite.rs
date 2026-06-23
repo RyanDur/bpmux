@@ -112,11 +112,11 @@ impl Storage for SqliteStorage {
     }
 
     fn load_lessons(&self) -> LessonIndex {
-        documents::load_doc(&self.lock(), documents::LESSONS_KEY).unwrap_or_default()
+        crate::session::lessons::load_index(&self.dir)
     }
 
     fn save_lessons(&self, index: &LessonIndex) -> Result<(), std::io::Error> {
-        documents::save_doc(&self.lock(), documents::LESSONS_KEY, index)
+        crate::session::lessons::save_index(&self.dir, index)
     }
 
     fn add_lesson(
@@ -126,32 +126,19 @@ impl Storage for SqliteStorage {
         author_role: &str,
         evidence: Vec<String>,
     ) -> Result<(), std::io::Error> {
-        let conn = self.lock();
-        let mut index: LessonIndex =
-            documents::load_doc(&conn, documents::LESSONS_KEY).unwrap_or_default();
-        index.lessons.push(crate::session::lessons::AgentLesson {
-            topic: topic.to_string(),
-            lesson: lesson.to_string(),
-            author_role: author_role.to_string(),
-            evidence,
-            established: chrono::Utc::now().to_rfc3339(),
-            last_reinforced: None,
-            reinforcement_count: 0,
-            reinforcement_history: Vec::new(),
-        });
-        documents::save_doc(&conn, documents::LESSONS_KEY, &index)
+        crate::session::lessons::add_lesson(&self.dir, topic, lesson, author_role, evidence)
     }
 
     fn load_peer_lessons(&self, peer: &str) -> LessonIndex {
-        documents::load_doc(&self.lock(), &documents::peer_key(peer)).unwrap_or_default()
+        crate::session::lessons::load_peer_index(&self.dir, peer)
     }
 
     fn save_peer_lessons(&self, peer: &str, index: &LessonIndex) -> Result<(), std::io::Error> {
-        documents::save_doc(&self.lock(), &documents::peer_key(peer), index)
+        crate::session::lessons::save_peer_index(&self.dir, peer, index)
     }
 
     fn list_peers(&self) -> Vec<String> {
-        documents::list_peer_names(&self.lock())
+        crate::session::lessons::list_peer_names(&self.dir)
     }
 
     fn load_state(&self, key: &str) -> Option<String> {
