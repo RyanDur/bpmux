@@ -11,7 +11,6 @@ pub struct SyncStatus {
     pub pending_events: usize,
     pub last_error: Option<String>,
     pub dropped_events: Vec<DroppedEvent>,
-    pub recovering_from_corruption: bool,
     #[serde(default)]
     pub stale: bool,
     #[serde(default)]
@@ -103,13 +102,6 @@ pub(super) fn record_ingest_success(status: &Arc<Mutex<SyncStatus>>) {
     with_status_mut(status, |s| {
         s.last_ingest_at = Some(Utc::now());
         s.last_error = None;
-        s.recovering_from_corruption = false;
-    });
-}
-
-pub fn mark_recovering_from_corruption(status: &Arc<Mutex<SyncStatus>>) {
-    with_status_mut(status, |s| {
-        s.recovering_from_corruption = true;
     });
 }
 

@@ -47,7 +47,6 @@ export interface SyncStatusWire {
   pending_events: number
   last_error: string | null
   dropped_events: DroppedEventWire[]
-  recovering_from_corruption: boolean
   stale: boolean
   startup_fail: boolean
   conflicts_pending: number

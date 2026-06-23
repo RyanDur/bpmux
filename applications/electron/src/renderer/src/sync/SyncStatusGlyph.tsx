@@ -27,10 +27,6 @@ const buildTooltip = (state: SyncState, report: SyncStatusWire | null): string =
         lines.push(`#${d.story_number}: ${d.error}`)
       }
       break
-    case 'recovering':
-      lines.push('Sync · recovering from local-cache corruption')
-      lines.push('rehydrating board state from GitHub...')
-      break
     case 'stale':
       lines.push('Sync · stale')
       if (report.last_ingest_at) lines.push(`last ingest ${report.last_ingest_at}`)
@@ -38,7 +34,7 @@ const buildTooltip = (state: SyncState, report: SyncStatusWire | null): string =
     case 'startup-fail':
       lines.push('Sync · startup pull failed')
       if (report.last_error) lines.push(`error: ${report.last_error}`)
-      lines.push('canonical store reflects last persisted snapshot only')
+      lines.push('board is empty until GitHub sync succeeds')
       break
   }
   return lines.join('\n')

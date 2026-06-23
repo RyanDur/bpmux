@@ -124,7 +124,6 @@ describe('applyStateDelta', () => {
         pending_events: 2,
         last_error: null,
         dropped_events: [],
-        recovering_from_corruption: false,
         stale: false,
         startup_fail: false,
         conflicts_pending: 0

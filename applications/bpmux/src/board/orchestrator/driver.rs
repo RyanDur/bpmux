@@ -24,7 +24,6 @@ pub trait RefreshDriver: Send + Sync {
     fn snapshot_status(&self) -> SyncStatus;
     fn status_handle(&self) -> Arc<std::sync::Mutex<SyncStatus>>;
     fn acknowledge_dropped(&self) -> usize;
-    fn mark_recovering_from_corruption(&self);
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;

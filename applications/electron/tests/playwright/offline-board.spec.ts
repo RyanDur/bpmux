@@ -16,7 +16,7 @@ test.describe('#1158 — offline-first board', () => {
       await expect(glyph).toHaveAttribute('aria-live', 'polite')
       await expect(glyph).toHaveAttribute(
         'data-state',
-        /^(connected|syncing|offline-queued|drained-permanent-failure|recovering|stale|startup-fail)$/
+        /^(connected|syncing|offline-queued|drained-permanent-failure|stale|startup-fail)$/
       )
     } finally {
       await app.close()
@@ -40,8 +40,6 @@ test.describe('#1158 — offline-first board', () => {
       expect(json).toHaveProperty('last_error')
       expect(json).toHaveProperty('dropped_events')
       expect(Array.isArray(json.dropped_events)).toBe(true)
-      expect(json).toHaveProperty('recovering_from_corruption')
-      expect(typeof json.recovering_from_corruption).toBe('boolean')
       expect(json).toHaveProperty('stale')
       expect(typeof json.stale).toBe('boolean')
       expect(json).toHaveProperty('startup_fail')

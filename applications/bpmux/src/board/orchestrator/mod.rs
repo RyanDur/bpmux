@@ -30,7 +30,7 @@ pub use outbox::{default_outbox_path, load_outbox_from_disk};
 pub use race_window::*;
 pub use status::{
     DroppedEvent, SyncStatus, SyncTransition, acknowledge_dropped, is_stale, is_startup_fail,
-    mark_recovering_from_corruption, staleness_threshold_secs, sync_transition,
+    staleness_threshold_secs, sync_transition,
 };
 use status::{
     decrement_pending, record_conflicts_pending, record_dropped, record_error, record_push_success,

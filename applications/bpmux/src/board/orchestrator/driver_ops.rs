@@ -7,7 +7,7 @@ use crate::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 
 use super::{
     BoxedFuture, DrainOneOutcome, MutationId, RefreshDriver, SyncOrchestrator, SyncStatus,
-    acknowledge_dropped, cache_fill_meta, mark_recovering_from_corruption,
+    acknowledge_dropped, cache_fill_meta,
 };
 
 impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
@@ -59,10 +59,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn acknowledge_dropped(&self) -> usize {
         acknowledge_dropped(&self.status)
-    }
-
-    fn mark_recovering_from_corruption(&self) {
-        mark_recovering_from_corruption(&self.status);
     }
 
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {

@@ -6,14 +6,12 @@ export type SyncState =
   | 'syncing'
   | 'offline-queued'
   | 'drained-permanent-failure'
-  | 'recovering'
   | 'stale'
   | 'startup-fail'
 
 export const deriveState = (report: SyncStatusWire | null): SyncState => {
   if (!report) return 'loading'
   if (report.dropped_events.length > 0) return 'drained-permanent-failure'
-  if (report.recovering_from_corruption) return 'recovering'
   if (report.startup_fail) return 'startup-fail'
   if (report.pending_events > 0 && report.last_error !== null) return 'offline-queued'
   if (report.pending_events > 0) return 'syncing'
@@ -33,8 +31,6 @@ export const stateGlyph = (state: SyncState): string => {
       return '⚠'
     case 'drained-permanent-failure':
       return '✗'
-    case 'recovering':
-      return '↻'
     case 'stale':
       return '◔'
     case 'startup-fail':
@@ -54,11 +50,9 @@ export const stateAriaLabel = (state: SyncState, count: number): string => {
       return `Sync state: offline, ${count} mutations queued`
     case 'drained-permanent-failure':
       return `Sync state: ${count} mutations dropped on permanent failure`
-    case 'recovering':
-      return 'Sync state: recovering from local-cache corruption; rehydrating from GitHub'
     case 'stale':
       return 'Sync state: stale; last successful sync exceeded the staleness threshold'
     case 'startup-fail':
-      return 'Sync state: startup pull failed; canonical store reflects last persisted snapshot only'
+      return 'Sync state: startup pull failed; board is empty until GitHub sync succeeds'
   }
 }

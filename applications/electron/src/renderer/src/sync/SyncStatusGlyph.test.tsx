@@ -12,7 +12,6 @@ const report: SyncStatusWire = {
   pending_events: 0,
   last_error: null,
   dropped_events: [],
-  recovering_from_corruption: false,
   stale: false,
   startup_fail: false,
   conflicts_pending: 0
@@ -80,10 +79,6 @@ describe('deriveState — full-state coverage (null report never false-greens)',
         dropped_events: [{ story_number: 1, error: 'x', ts: '2026-04-22T16:00:00Z' }]
       })
     ).toBe('drained-permanent-failure')
-  })
-
-  test('recovering_from_corruption → recovering', () => {
-    expect(deriveState({ ...report, recovering_from_corruption: true })).toBe('recovering')
   })
 
   test('startup_fail → startup-fail', () => {

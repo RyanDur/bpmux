@@ -7,7 +7,6 @@ const ALL_STATES: SyncState[] = [
   'syncing',
   'offline-queued',
   'drained-permanent-failure',
-  'recovering',
   'stale',
   'startup-fail'
 ]
@@ -19,7 +18,6 @@ describe('#1636 stateGlyph — each state maps to its own distinct glyph', () =>
     ['syncing', '◌'],
     ['offline-queued', '⚠'],
     ['drained-permanent-failure', '✗'],
-    ['recovering', '↻'],
     ['stale', '◔'],
     ['startup-fail', '⊘']
   ]
@@ -39,12 +37,8 @@ describe('#1636 stateAriaLabel — each state announces its true condition', () 
   const fixedCases: Array<[SyncState, string]> = [
     ['connected', 'Sync state: connected'],
     ['loading', 'Sync state: loading — awaiting first report'],
-    ['recovering', 'Sync state: recovering from local-cache corruption; rehydrating from GitHub'],
     ['stale', 'Sync state: stale; last successful sync exceeded the staleness threshold'],
-    [
-      'startup-fail',
-      'Sync state: startup pull failed; canonical store reflects last persisted snapshot only'
-    ]
+    ['startup-fail', 'Sync state: startup pull failed; board is empty until GitHub sync succeeds']
   ]
 
   test.each(fixedCases)('%s → exact screen-reader string', (state, label) => {

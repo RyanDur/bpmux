@@ -33,7 +33,6 @@ const syncStatus: D.Decoder<SyncStatusWire> = D.object({
     pending_events: D.number,
     last_error: D.nullable(D.string),
     dropped_events: D.array(droppedEvent),
-    recovering_from_corruption: D.boolean,
     stale: D.boolean,
     startup_fail: D.boolean,
     conflicts_pending: D.number
