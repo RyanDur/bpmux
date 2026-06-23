@@ -20,7 +20,7 @@ fn chat(from: &str, sender_id: Option<&str>) -> Message {
     }
 }
 
-fn senders(storage: &SqliteStorage) -> Vec<Option<i64>> {
+fn senders(storage: &SqliteStorage) -> Vec<Option<String>> {
     engine::query(
         &storage.lock(),
         "SELECT sender FROM messages ORDER BY seq",
@@ -98,7 +98,7 @@ fn the_sender_foreign_key_is_enforced_so_a_dangling_reference_cannot_be_written(
     let (_dir, storage) = store();
     let dangling = engine::execute(
         &storage.lock(),
-        "INSERT INTO messages (created_at, sender, message_type, payload) VALUES (1, 999999, 'chat', '{}')",
+        "INSERT INTO messages (created_at, sender, message_type, payload) VALUES (1, 'no-such-user-uuid', 'chat', '{}')",
         [],
     );
     assert!(

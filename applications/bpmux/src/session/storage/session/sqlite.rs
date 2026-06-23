@@ -40,7 +40,7 @@ impl SqliteStorage {
         self.conn.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    fn resolve_sender(&self, conn: &Connection, msg: &Message) -> Option<i64> {
+    fn resolve_sender(&self, conn: &Connection, msg: &Message) -> Option<String> {
         let session = if crate::transport::ws::short_name(&msg.from) == "bpmux" {
             users::SYSTEM_SESSION_ID
         } else {

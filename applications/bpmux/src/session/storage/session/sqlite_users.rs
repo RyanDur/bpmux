@@ -30,10 +30,10 @@ pub fn upsert(
 ) -> rusqlite::Result<usize> {
     engine::execute(
         conn,
-        "INSERT INTO users (session_id, name, role) VALUES (?1, ?2, ?3) \
+        "INSERT INTO users (id, session_id, name, role) VALUES (?1, ?2, ?3, ?4) \
          ON CONFLICT(session_id) DO UPDATE SET name = excluded.name, role = excluded.role, \
          updated_at = unixepoch()",
-        (session_id, name, role),
+        (uuid::Uuid::new_v4().to_string(), session_id, name, role),
     )
 }
 
@@ -57,7 +57,7 @@ pub fn delete(conn: &Connection, session_ids: &[String]) -> rusqlite::Result<usi
     Ok(affected)
 }
 
-pub fn id_for_session(conn: &Connection, session_id: &str) -> rusqlite::Result<Option<i64>> {
+pub fn id_for_session(conn: &Connection, session_id: &str) -> rusqlite::Result<Option<String>> {
     engine::query_opt(
         conn,
         "SELECT id FROM users WHERE session_id = ?1",
@@ -69,9 +69,9 @@ pub fn id_for_session(conn: &Connection, session_id: &str) -> rusqlite::Result<O
 pub fn seed_system(conn: &Connection) -> rusqlite::Result<usize> {
     engine::execute(
         conn,
-        "INSERT INTO users (session_id, name, role, kind) \
-         VALUES (?1, 'bpmux', 'system', 'system') \
+        "INSERT INTO users (id, session_id, name, role, kind) \
+         VALUES (?1, ?2, 'bpmux', 'system', 'system') \
          ON CONFLICT(session_id) DO NOTHING",
-        (SYSTEM_SESSION_ID,),
+        (uuid::Uuid::new_v4().to_string(), SYSTEM_SESSION_ID),
     )
 }
