@@ -11,6 +11,7 @@ use crate::board::events::{BoardEvent, EventMeta};
 use crate::board::orchestrator::SyncOrchestrator;
 use crate::board::peer::PeerId;
 use crate::board::store::BoardStore;
+use crate::session::storage::{SqliteStorage, Storage};
 
 mod outbox_persistence {
     use super::*;
@@ -78,6 +79,40 @@ mod outbox_persistence {
         assert_eq!(drained, 1);
         let events = crate::board::orchestrator::load_outbox_from_disk(&path).unwrap();
         assert!(events.is_empty(), "outbox empty after successful drain");
+    }
+
+    #[tokio::test]
+    async fn drain_drops_pushed_event_from_storage_outbox() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage: Arc<dyn Storage> =
+            Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap());
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(90, StoryState::Ready)]);
+        let orch = SyncOrchestrator::with_storage(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            Arc::clone(&storage),
+        )
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 90,
+            new_state: StoryState::Delivered,
+        })
+        .unwrap();
+        assert_eq!(
+            storage.load_outbox().unwrap().len(),
+            1,
+            "mutate persists the pending write to the storage outbox"
+        );
+
+        let drained = orch.drain_once().await.unwrap();
+        assert_eq!(drained, 1);
+        assert!(
+            storage.load_outbox().unwrap().is_empty(),
+            "a successfully-pushed record is dropped from the persisted storage outbox"
+        );
     }
 
     #[tokio::test]
