@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -17,32 +16,32 @@ pub fn bridge_agent_name(terminal_id: &str) -> String {
 
 pub struct RoutingStore {
     identity: Mutex<RoutingIdentity>,
-    dir: PathBuf,
-    storage: Option<Arc<dyn Storage>>,
+    storage: Arc<dyn Storage>,
 }
 
 impl RoutingStore {
-    pub fn load(dir: PathBuf) -> Self {
-        let identity = RoutingIdentity::load(&dir);
+    pub fn new(storage: Arc<dyn Storage>) -> Self {
+        let mut identity = RoutingIdentity::new();
+        if let Ok(records) = storage.load_agents() {
+            for record in records {
+                identity.register(&record.id, &record.name);
+                if let Some(cursor) = record.cursor {
+                    identity.advance_cursor(&record.id, &cursor);
+                }
+            }
+        }
         Self {
             identity: Mutex::new(identity),
-            dir,
-            storage: None,
+            storage,
         }
-    }
-
-    pub fn with_storage(mut self, storage: Arc<dyn Storage>) -> Self {
-        self.storage = Some(storage);
-        self
     }
 
     pub fn register(&self, session_id: &str, display: &str) {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         identity.register(session_id, display);
-        let _ = identity.save(&self.dir);
-        if let Some(storage) = &self.storage {
-            let _ = storage.upsert_agent(session_id, display, short(display));
-        }
+        let _ = self
+            .storage
+            .upsert_agent(session_id, display, short(display));
     }
 
     pub fn link_terminal(&self, session_id: &str, terminal_id: &str) {
@@ -79,10 +78,7 @@ impl RoutingStore {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         let reaped = identity.reap_unclaimed_duplicates_of(display);
         if !reaped.is_empty() {
-            let _ = identity.save(&self.dir);
-            if let Some(storage) = &self.storage {
-                let _ = storage.delete_agents(&reaped);
-            }
+            let _ = self.storage.delete_agents(&reaped);
         }
         reaped
     }
@@ -95,10 +91,9 @@ impl RoutingStore {
     pub fn rename(&self, session_id: &str, new_display: &str) {
         let mut identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
         identity.rename(session_id, new_display);
-        let _ = identity.save(&self.dir);
-        if let Some(storage) = &self.storage {
-            let _ = storage.upsert_agent(session_id, new_display, short(new_display));
-        }
+        let _ = self
+            .storage
+            .upsert_agent(session_id, new_display, short(new_display));
     }
 
     pub fn drain_floor(&self, session_id: &str, client_ack: Option<&str>) -> Option<String> {
@@ -108,10 +103,7 @@ impl RoutingStore {
         let floor = later_cursor(stored.as_deref(), trusted_ack);
         if let Some(ref position) = floor {
             identity.advance_cursor(session_id, position);
-            let _ = identity.save(&self.dir);
-            if let Some(storage) = &self.storage {
-                let _ = storage.set_agent_cursor(session_id, position);
-            }
+            let _ = self.storage.set_agent_cursor(session_id, position);
         }
         floor
     }
@@ -128,10 +120,7 @@ impl RoutingStore {
             && current.as_deref() != Some(later.as_str())
         {
             identity.advance_cursor(session_id, &later);
-            let _ = identity.save(&self.dir);
-            if let Some(storage) = &self.storage {
-                let _ = storage.set_agent_cursor(session_id, &later);
-            }
+            let _ = self.storage.set_agent_cursor(session_id, &later);
         }
     }
 
@@ -178,15 +167,16 @@ impl RoutingStore {
         }
         identity.link_terminal(session_id, terminal_id);
         let reaped = identity.reap_unclaimed_duplicates_of(display);
-        let _ = identity.save(&self.dir);
-        if let Some(storage) = &self.storage {
-            let _ = storage.upsert_agent(session_id, display, short(display));
-            if let Some(cursor) = identity.cursor(session_id) {
-                let _ = storage.set_agent_cursor(session_id, &cursor);
-            }
-            if !reaped.is_empty() {
-                let _ = storage.delete_agents(&reaped);
-            }
+        if let Some(current) = identity.display_for(session_id) {
+            let _ = self
+                .storage
+                .upsert_agent(session_id, &current, short(&current));
+        }
+        if let Some(cursor) = identity.cursor(session_id) {
+            let _ = self.storage.set_agent_cursor(session_id, &cursor);
+        }
+        if !reaped.is_empty() {
+            let _ = self.storage.delete_agents(&reaped);
         }
     }
 }

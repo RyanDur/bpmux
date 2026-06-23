@@ -37,28 +37,6 @@ fn reconnecting_same_session_id_reclaims_its_cursor_does_not_reset_it() {
 }
 
 #[test]
-fn the_store_persists_to_the_dir_and_a_reload_recovers_id_display_and_cursor() {
-    let dir = tempfile::TempDir::new().expect("dir");
-    {
-        let mut identity = RoutingIdentity::new();
-        identity.register("sess-1", "dev");
-        identity.advance_cursor("sess-1", "2026-06-11T20:00:00Z");
-        identity.save(dir.path()).expect("save");
-    }
-    let reloaded = RoutingIdentity::load(dir.path());
-    assert_eq!(
-        reloaded.resolve("dev"),
-        vec!["sess-1".to_string()],
-        "a reload after restart recovers the id->display mapping (dir-persisted identity)"
-    );
-    assert_eq!(
-        reloaded.cursor("sess-1"),
-        Some("2026-06-11T20:00:00Z".to_string()),
-        "a reload recovers the per-id cursor — durable across restart (the offline->reconnect reclaim base)"
-    );
-}
-
-#[test]
 fn drain_identification_returns_the_missed_set_strictly_after_the_reclaimed_cursor() {
     let mut identity = RoutingIdentity::new();
     identity.register("sess-1", "dev");

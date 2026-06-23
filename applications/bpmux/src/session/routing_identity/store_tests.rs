@@ -2,11 +2,13 @@
 
 use super::cursor_time::later_cursor;
 use super::*;
+use crate::session::storage::sqlite_test_storage;
 
 #[test]
 fn drain_floor_clamps_a_stale_client_cursor_forward_the_durable_cure_for_tmp_replay() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let storage = sqlite_test_storage(dir.path());
+    let store = RoutingStore::new(storage.clone());
     store.register("sess-1", "dev");
 
     let first = store.drain_floor("sess-1", Some("2026-06-11T20:00:05Z"));
@@ -30,11 +32,11 @@ fn drain_floor_clamps_a_stale_client_cursor_forward_the_durable_cure_for_tmp_rep
         "a fresher client ack monotonically advances the durable cursor"
     );
 
-    let reloaded = RoutingIdentity::load(dir.path());
+    let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
         reloaded.cursor("sess-1").as_deref(),
         Some("2026-06-11T20:00:09Z"),
-        "the durable cursor survives a server restart — the drain position is recovered from disk, not a volatile /tmp file"
+        "the durable cursor survives a server restart — the drain position is recovered from the agents table, not a volatile /tmp file"
     );
 }
 
@@ -51,12 +53,13 @@ fn later_cursor_parses_rather_than_lexically_compares_so_subsecond_precision_is_
 fn routing_store_rename_updates_the_display_for_the_fixed_id_and_persists_so_the_new_name_resolves()
 {
     let dir = tempfile::TempDir::new().expect("dir");
+    let storage = sqlite_test_storage(dir.path());
     {
-        let store = RoutingStore::load(dir.path().to_path_buf());
+        let store = RoutingStore::new(storage.clone());
         store.register("sess-1", "dev");
         store.rename("sess-1", "dev-renamed");
     }
-    let reloaded = RoutingIdentity::load(dir.path());
+    let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
         reloaded.resolve("dev-renamed"),
         vec!["sess-1".to_string()],
@@ -71,12 +74,13 @@ fn routing_store_rename_updates_the_display_for_the_fixed_id_and_persists_so_the
 #[test]
 fn routing_store_handle_persists_each_registration_so_a_reload_recovers_it() {
     let dir = tempfile::TempDir::new().expect("dir");
+    let storage = sqlite_test_storage(dir.path());
     {
-        let store = RoutingStore::load(dir.path().to_path_buf());
+        let store = RoutingStore::new(storage.clone());
         store.register("sess-1", "dev");
         store.link_terminal("sess-1", "term-A");
     }
-    let reloaded = RoutingIdentity::load(dir.path());
+    let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
         reloaded.resolve("dev"),
         vec!["sess-1".to_string()],
@@ -87,10 +91,11 @@ fn routing_store_handle_persists_each_registration_so_a_reload_recovers_it() {
 #[test]
 fn register_agent_fresh_floors_the_cursor_at_job_start_so_gate_window_messages_drain() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let storage = sqlite_test_storage(dir.path());
+    let store = RoutingStore::new(storage.clone());
     store.register_agent("sess-fresh", "dev", "term-A", "2026-06-12T10:00:00Z");
 
-    let reloaded = RoutingIdentity::load(dir.path());
+    let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
         reloaded.cursor("sess-fresh").as_deref(),
         Some("2026-06-12T10:00:00Z"),
@@ -106,7 +111,7 @@ fn register_agent_fresh_floors_the_cursor_at_job_start_so_gate_window_messages_d
 #[test]
 fn register_agent_resets_a_future_cursor_to_job_start_so_a_poisoned_floor_self_heals_on_rebind() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let store = RoutingStore::new(sqlite_test_storage(dir.path()));
     store.register("sess-designer", "designer");
     store.mark_delivered("sess-designer", "2099-01-01T00:00:00Z");
     assert_eq!(
@@ -132,7 +137,7 @@ fn register_agent_resets_a_future_cursor_to_job_start_so_a_poisoned_floor_self_h
 #[test]
 fn register_agent_preserves_a_past_cursor_on_reconnect_keeping_delivery_forward_only() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let store = RoutingStore::new(sqlite_test_storage(dir.path()));
     store.register_agent("sess-dev", "dev", "term-a", "2026-06-13T10:00:00Z");
     store.mark_delivered("sess-dev", "2026-06-13T10:05:00Z");
 
@@ -148,7 +153,7 @@ fn register_agent_preserves_a_past_cursor_on_reconnect_keeping_delivery_forward_
 #[test]
 fn drain_floor_rejects_a_future_client_ack_so_a_bad_ack_cannot_poison_the_floor() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let store = RoutingStore::new(sqlite_test_storage(dir.path()));
     store.register("sess-1", "dev");
     store.mark_delivered("sess-1", "2026-06-13T10:00:00Z");
 
@@ -169,7 +174,7 @@ fn drain_floor_rejects_a_future_client_ack_so_a_bad_ack_cannot_poison_the_floor(
 #[test]
 fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let store = RoutingStore::new(sqlite_test_storage(dir.path()));
     store.register_agent("sess-dev", "dev", "term-dev", "2026-06-12T10:00:00Z");
     store.register_agent("sess-pm", "pm", "term-pm", "2026-06-12T10:00:00Z");
     store.register("sess-offline", "designer");
@@ -210,7 +215,7 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
 fn delivery_targets_excludes_the_senders_own_terminal_even_when_the_send_name_is_the_unresolved_bridge_name()
  {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let store = RoutingStore::new(sqlite_test_storage(dir.path()));
     let dev_terminal = "ccb4298d-1111-2222-3333-444455556666";
     store.register_agent("sess-dev", "dev", dev_terminal, "2026-06-12T10:00:00Z");
     store.register_agent("sess-pm", "pm", "term-pm", "2026-06-12T10:00:00Z");
@@ -231,17 +236,18 @@ fn delivery_targets_excludes_the_senders_own_terminal_even_when_the_send_name_is
 #[test]
 fn register_agent_reclaim_preserves_a_renamed_display_not_clobbered_by_the_default_name() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let storage = sqlite_test_storage(dir.path());
+    let store = RoutingStore::new(storage.clone());
     store.register_agent("sess-1", "bpmux-dev", "term-A", "2026-06-12T10:00:00Z");
     store.rename("sess-1", "dev");
 
     store.register_agent("sess-1", "bpmux-dev", "term-B", "2026-06-12T11:00:00Z");
 
-    let reloaded = RoutingIdentity::load(dir.path());
+    let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
         reloaded.resolve("dev"),
         vec!["sess-1".to_string()],
-        "a returning agent keeps the owner-forged name (dev) — re-detection re-supplies the folder-default (bpmux-dev) but must NOT clobber the rename back"
+        "a returning agent keeps the owner-forged name (dev) — re-detection re-supplies the folder-default (bpmux-dev) but must NOT clobber the rename back, in the durable agents table"
     );
     assert!(
         reloaded.resolve("bpmux-dev").is_empty(),
@@ -252,13 +258,14 @@ fn register_agent_reclaim_preserves_a_renamed_display_not_clobbered_by_the_defau
 #[test]
 fn register_agent_reclaim_preserves_the_durable_cursor_not_reset_to_the_new_job_start() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let storage = sqlite_test_storage(dir.path());
+    let store = RoutingStore::new(storage.clone());
     store.register_agent("sess-ret", "dev", "term-A", "2026-06-12T09:00:00Z");
     store.drain_floor("sess-ret", Some("2026-06-12T12:00:00Z"));
 
     store.register_agent("sess-ret", "dev", "term-B", "2026-06-12T15:00:00Z");
 
-    let reloaded = RoutingIdentity::load(dir.path());
+    let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
         reloaded.cursor("sess-ret").as_deref(),
         Some("2026-06-12T12:00:00Z"),
@@ -269,11 +276,12 @@ fn register_agent_reclaim_preserves_the_durable_cursor_not_reset_to_the_new_job_
 #[test]
 fn reaping_stale_duplicates_persists_so_a_reload_recovers_only_the_live_id() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let store = RoutingStore::load(dir.path().to_path_buf());
+    let storage = sqlite_test_storage(dir.path());
+    let store = RoutingStore::new(storage.clone());
     store.register("dev-stale", "dev");
     store.register_agent("dev-live", "dev", "term-live", "2026-06-13T10:00:00Z");
 
-    let reloaded = RoutingIdentity::load(dir.path());
+    let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
         reloaded.resolve("dev"),
         vec!["dev-live".to_string()],
@@ -281,17 +289,11 @@ fn reaping_stale_duplicates_persists_so_a_reload_recovers_only_the_live_id() {
     );
 }
 
-fn sqlite_storage(dir: &std::path::Path) -> std::sync::Arc<dyn crate::session::storage::Storage> {
-    std::sync::Arc::new(
-        crate::session::storage::SqliteStorage::new(dir.to_path_buf()).expect("sqlite"),
-    )
-}
-
 #[test]
 fn register_and_drain_write_through_to_the_agents_table() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let storage = sqlite_storage(dir.path());
-    let store = RoutingStore::load(dir.path().to_path_buf()).with_storage(storage.clone());
+    let storage = sqlite_test_storage(dir.path());
+    let store = RoutingStore::new(storage.clone());
     store.register("sess-dev", "dev:claude-code");
     store.drain_floor("sess-dev", Some("2026-06-11T20:00:05Z"));
 
@@ -315,8 +317,8 @@ fn register_and_drain_write_through_to_the_agents_table() {
 #[test]
 fn register_agent_reap_deletes_the_unclaimed_duplicate_row_from_the_agents_table() {
     let dir = tempfile::TempDir::new().expect("dir");
-    let storage = sqlite_storage(dir.path());
-    let store = RoutingStore::load(dir.path().to_path_buf()).with_storage(storage.clone());
+    let storage = sqlite_test_storage(dir.path());
+    let store = RoutingStore::new(storage.clone());
     store.register("dev-stale", "dev");
     store.register_agent("dev-live", "dev", "term-live", "2026-06-13T10:00:00Z");
 

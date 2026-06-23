@@ -39,7 +39,7 @@ pub(super) fn test_app(dir: &TempDir) -> (axum::Router, broadcast::Sender<sessio
             axum::routing::get(get_messages).post(post_message),
         )
         .layer(axum::Extension(Arc::new(
-            crate::session::routing_identity::RoutingStore::load(dir.path().to_path_buf()),
+            crate::session::routing_identity::RoutingStore::new(session.storage.clone()),
         )))
         .with_state(session);
     (router, tx)

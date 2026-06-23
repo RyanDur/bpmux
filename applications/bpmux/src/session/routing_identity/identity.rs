@@ -1,15 +1,9 @@
 use std::collections::HashMap;
-use std::path::Path;
 
-use serde::{Deserialize, Serialize};
-
-const STORE_FILE: &str = "routing_identity.json";
-
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct RoutingIdentity {
     display_by_id: HashMap<String, String>,
     cursor_by_id: HashMap<String, String>,
-    #[serde(skip)]
     terminal_by_id: HashMap<String, String>,
 }
 
@@ -32,19 +26,6 @@ impl RoutingIdentity {
 
     pub fn cursor(&self, session_id: &str) -> Option<String> {
         self.cursor_by_id.get(session_id).cloned()
-    }
-
-    pub fn save(&self, dir: &Path) -> std::io::Result<()> {
-        std::fs::create_dir_all(dir)?;
-        let json = serde_json::to_string(self).map_err(std::io::Error::other)?;
-        std::fs::write(dir.join(STORE_FILE), json)
-    }
-
-    pub fn load(dir: &Path) -> Self {
-        std::fs::read_to_string(dir.join(STORE_FILE))
-            .ok()
-            .and_then(|json| serde_json::from_str(&json).ok())
-            .unwrap_or_default()
     }
 
     pub fn rename(&mut self, session_id: &str, new_display: &str) {

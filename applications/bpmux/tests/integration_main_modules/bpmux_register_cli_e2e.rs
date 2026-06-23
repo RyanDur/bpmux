@@ -57,15 +57,21 @@ async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_serve
         "the {{id, name}} marker holds the minted session-id"
     );
 
-    let store_json =
-        std::fs::read_to_string(bpmux.sessions_base_path().join("routing_identity.json"))
-            .expect("the server persists the routing-identity store after register");
-    let store: serde_json::Value =
-        serde_json::from_str(&store_json).expect("routing_identity.json is valid json");
+    use bpmux::session::log::StorageBackend;
+    let session_dir = bpmux.sessions_base_path().join("current");
+    let storage = StorageBackend::resolve().build(&session_dir);
+    let agents = storage
+        .load_agents()
+        .expect("the server persists the routing-identity store after register");
+    let agent = agents
+        .iter()
+        .find(|a| a.id == session_id)
+        .unwrap_or_else(|| {
+            panic!("the registered id is a durable row in the agents table; got {agents:?}")
+        });
     assert_eq!(
-        store["display_by_id"][&session_id].as_str(),
-        Some("dev"),
-        "the registered id is RESOLVABLE server-side — the durable store maps the cwd-derived session-id to display 'dev' (a real routing effect, not just a 201); store: {store_json}"
+        agent.name, "dev",
+        "the registered id is RESOLVABLE server-side — the durable agents table maps the cwd-derived session-id to display 'dev' (a real routing effect persisted across restarts, not just a 201)"
     );
 }
 

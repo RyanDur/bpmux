@@ -18,8 +18,8 @@ fn wait_app(dir: &TempDir) -> (Arc<session::Session>, axum::Router) {
         "dev".to_string(),
         tx,
     ));
-    let routing = Arc::new(crate::session::routing_identity::RoutingStore::load(
-        dir.path().to_path_buf(),
+    let routing = Arc::new(crate::session::routing_identity::RoutingStore::new(
+        session.storage.clone(),
     ));
     let router = axum::Router::new()
         .route("/api/wait-for-event", axum::routing::get(wait_for_event))

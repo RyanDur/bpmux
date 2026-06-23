@@ -89,7 +89,7 @@ fn register_live_cat(
 #[tokio::test]
 async fn a_broadcast_chat_is_framed_and_written_into_a_live_agents_terminal() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
@@ -105,7 +105,7 @@ async fn a_broadcast_chat_is_framed_and_written_into_a_live_agents_terminal() {
 #[tokio::test]
 async fn an_inject_is_held_not_submitted_while_the_owner_is_mid_typing_into_the_agent() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let _rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
@@ -128,7 +128,9 @@ async fn an_inject_is_held_not_submitted_while_the_owner_is_mid_typing_into_the_
 #[tokio::test]
 async fn a_held_inject_delivers_once_the_owner_pauses_typing() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::load(dir.path().to_path_buf()));
+    let routing = Arc::new(RoutingStore::new(
+        crate::session::storage::sqlite_test_storage(dir.path()),
+    ));
     let registry = Arc::new(LivePtyRegistry::new());
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
@@ -150,7 +152,7 @@ async fn a_held_inject_delivers_once_the_owner_pauses_typing() {
 #[tokio::test]
 async fn a_broadcast_to_an_idle_agent_submits_immediately_despite_a_server_cd_write() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
@@ -172,7 +174,7 @@ async fn a_broadcast_to_an_idle_agent_submits_immediately_despite_a_server_cd_wr
 #[tokio::test]
 async fn the_carriage_return_submits_the_line_so_a_bare_read_loop_processes_it_not_parks() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let live = spawn_pty_retained(
         "/bin/sh",
@@ -200,7 +202,7 @@ async fn the_carriage_return_submits_the_line_so_a_bare_read_loop_processes_it_n
 #[tokio::test]
 async fn a_scoped_message_reaches_only_the_matching_display_no_leak() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let mut dev_rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
     let mut pm_rx = register_live_cat(&registry, &routing, "sess-pm", "pm", "term-pm");
@@ -228,7 +230,7 @@ async fn a_scoped_message_reaches_only_the_matching_display_no_leak() {
 #[tokio::test]
 async fn the_sender_does_not_receive_an_echo_of_its_own_message() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let mut dev_rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
@@ -246,7 +248,7 @@ async fn the_sender_does_not_receive_an_echo_of_its_own_message() {
 async fn an_agents_own_broadcast_under_its_bridge_name_is_not_reflected_back_into_its_own_terminal()
 {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let dev_terminal = "ccb4298d-1111-2222-3333-444455556666";
     let mut dev_rx = register_live_cat(&registry, &routing, "sess-dev", "dev", dev_terminal);
@@ -272,7 +274,9 @@ async fn an_agents_own_broadcast_under_its_bridge_name_is_not_reflected_back_int
 #[tokio::test]
 async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump() {
     let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(store_dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(
+        store_dir.path(),
+    ));
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
@@ -323,7 +327,9 @@ async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump
 #[tokio::test]
 async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_broadcast() {
     let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(store_dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(
+        store_dir.path(),
+    ));
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
@@ -378,7 +384,9 @@ async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_b
 #[tokio::test]
 async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_forward_only() {
     let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(store_dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(
+        store_dir.path(),
+    ));
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
@@ -431,7 +439,7 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
 #[tokio::test]
 async fn a_pty_loop_delivered_message_is_not_systematically_re_drained_by_the_dev_stop_hook() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let _rx = live.subscribe();
@@ -457,7 +465,7 @@ async fn a_pty_loop_delivered_message_is_not_systematically_re_drained_by_the_de
 #[tokio::test]
 async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let commitments = CommitmentStore::new();
     let live = spawn_pty_retained(
@@ -493,7 +501,9 @@ async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
 #[tokio::test]
 async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_ci_event() {
     let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::load(store_dir.path().to_path_buf()));
+    let routing = Arc::new(RoutingStore::new(
+        crate::session::storage::sqlite_test_storage(store_dir.path()),
+    ));
     let registry = Arc::new(LivePtyRegistry::new());
     let commitments = Arc::new(CommitmentStore::new());
     let sess_dir = tempfile::TempDir::new().unwrap();
@@ -540,7 +550,9 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
 #[tokio::test]
 async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::load(dir.path().to_path_buf()));
+    let routing = Arc::new(RoutingStore::new(
+        crate::session::storage::sqlite_test_storage(dir.path()),
+    ));
     let registry = Arc::new(LivePtyRegistry::new());
     let commitments = CommitmentStore::new();
     let live = spawn_pty_retained(
@@ -584,7 +596,7 @@ async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause()
 #[tokio::test]
 async fn an_uncommitted_agent_is_not_woken_by_an_ambient_gate_event() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let commitments = CommitmentStore::new();
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
@@ -607,7 +619,7 @@ async fn an_uncommitted_agent_is_not_woken_by_an_ambient_gate_event() {
 #[tokio::test]
 async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_delivery_seam() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let commitments = CommitmentStore::new();
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
@@ -634,7 +646,7 @@ async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_deliv
 #[tokio::test]
 async fn a_non_chat_message_is_never_injected_into_a_terminal() {
     let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::load(dir.path().to_path_buf());
+    let routing = RoutingStore::new(crate::session::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 

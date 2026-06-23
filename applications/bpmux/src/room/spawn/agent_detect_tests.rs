@@ -150,7 +150,9 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
     use crate::session::routing_identity::RoutingStore;
 
     let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::load(store_dir.path().to_path_buf()));
+    let routing = Arc::new(RoutingStore::new(
+        crate::session::storage::sqlite_test_storage(store_dir.path()),
+    ));
     let registry = Arc::new(LivePtyRegistry::new());
 
     let work = tempfile::TempDir::new().unwrap();
@@ -215,7 +217,9 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
     use crate::session::routing_identity::RoutingStore;
 
     let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::load(store_dir.path().to_path_buf()));
+    let routing = Arc::new(RoutingStore::new(
+        crate::session::storage::sqlite_test_storage(store_dir.path()),
+    ));
     let registry = Arc::new(LivePtyRegistry::new());
     let passed_through = tempfile::TempDir::new().unwrap();
     let passed_path = passed_through.path().to_string_lossy().to_string();
@@ -268,7 +272,9 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
     use crate::session::routing_identity::RoutingStore;
 
     let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::load(store_dir.path().to_path_buf()));
+    let routing = Arc::new(RoutingStore::new(
+        crate::session::storage::sqlite_test_storage(store_dir.path()),
+    ));
     let registry = Arc::new(LivePtyRegistry::new());
     let work = tempfile::TempDir::new().unwrap();
     let work_name = work

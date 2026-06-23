@@ -99,3 +99,9 @@ pub trait GlobalStore: Send + Sync {
     fn ensure_auth_token(&self) -> std::io::Result<String>;
     fn read_auth_token(&self) -> std::io::Result<String>;
 }
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+pub(crate) fn sqlite_test_storage(dir: &Path) -> std::sync::Arc<dyn Storage> {
+    std::sync::Arc::new(SqliteStorage::new(dir.to_path_buf()).expect("sqlite test storage"))
+}
