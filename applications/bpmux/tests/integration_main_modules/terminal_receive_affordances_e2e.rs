@@ -491,6 +491,87 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_journey() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "owner",
+        &[
+            ("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8")),
+            ("BPMUX_STORAGE_BACKEND", "sqlite"),
+        ],
+    );
+    let port = bpmux.port();
+
+    for role in ["dev", "pm", "designer"] {
+        spawn_terminal(&bpmux).await;
+        assert!(
+            probe_until_live(&bpmux, &farm, role).await,
+            "{role} registers and goes live on the SQLite-backed server — the agent-detect → register → agents-table write path runs clean on sqlite (the cutover substrate)"
+        );
+    }
+
+    terminal_send(port, "dev", Some("pm"), "SQLITE-DIRECT-DEV-TO-PM").await;
+    post_message(
+        &bpmux,
+        json!({ "from": "owner", "text": "SQLITE-BARRIER-1" }),
+    )
+    .await;
+    assert!(
+        wait_capture(&farm, "pm", "SQLITE-DIRECT-DEV-TO-PM").await,
+        "DIRECTED routing on sqlite: `bpmux send --to pm` resolves pm's display → id → terminal and injects into pm's terminal"
+    );
+    assert!(
+        wait_capture(&farm, "dev", "SQLITE-BARRIER-1").await
+            && wait_capture(&farm, "designer", "SQLITE-BARRIER-1").await,
+        "the owner barrier reaches dev + designer, proving the delivery cycle advanced past the directed send"
+    );
+    assert!(
+        !farm.capture_contains("designer", "SQLITE-DIRECT-DEV-TO-PM")
+            && !farm.capture_contains("dev", "SQLITE-DIRECT-DEV-TO-PM"),
+        "FILTERING on sqlite: the to:[pm] send is withheld from designer (unaddressed) AND from dev (the sender never receives its own)"
+    );
+
+    terminal_send(port, "dev", None, "SQLITE-BROADCAST").await;
+    post_message(
+        &bpmux,
+        json!({ "from": "owner", "text": "SQLITE-BARRIER-2" }),
+    )
+    .await;
+    assert!(
+        wait_capture(&farm, "pm", "SQLITE-BROADCAST").await
+            && wait_capture(&farm, "designer", "SQLITE-BROADCAST").await,
+        "BROADCAST routing on sqlite: dev's `bpmux send` reaches every other live terminal"
+    );
+    assert!(
+        wait_capture(&farm, "dev", "SQLITE-BARRIER-2").await,
+        "the owner barrier reaches dev, proving the cycle advanced past dev's broadcast"
+    );
+    assert!(
+        !farm.capture_contains("dev", "SQLITE-BROADCAST"),
+        "SELF-ECHO on sqlite: dev's own broadcast is never reflected back into dev's terminal"
+    );
+
+    use bpmux::session::storage::{SqliteStorage, Storage};
+    let storage = SqliteStorage::new(bpmux.sessions_base_path().join("current"))
+        .expect("open the server's sqlite session store");
+    let mut roles: Vec<String> = storage
+        .load_agents()
+        .expect("load the agents table")
+        .into_iter()
+        .map(|record| record.role)
+        .collect();
+    roles.sort();
+    roles.dedup();
+    assert!(
+        ["designer", "dev", "pm"]
+            .iter()
+            .all(|wanted| roles.iter().any(|role| role == wanted)),
+        "SUBSTRATE: the three routed identities are durable rows in the SQLite agents table — registration wrote routing identity THROUGH to sqlite, so the database genuinely IS the routing store under the cutover. The startup rebuild-from-sqlite read path is unit-pinned by routing_identity::store_tests (reload via a fresh RoutingStore over the same storage). got {roles:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_pinned_agent_that_runs_register_binds_its_one_id_to_its_terminal_for_addressed_delivery()
 {
     let farm = FakeAgentFarm::new();
