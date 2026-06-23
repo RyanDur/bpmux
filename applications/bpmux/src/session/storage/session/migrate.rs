@@ -101,8 +101,14 @@ pub fn migrate_routing_identity_to_agents(
     let mut migrated = 0;
     for (id, display) in &legacy.display_by_id {
         target.upsert_user(id, display, short(display))?;
-        if let Some(cursor) = legacy.cursor_by_id.get(id).filter(|c| !c.is_empty()) {
-            target.set_user_cursor(id, cursor)?;
+        if let Some(ms) = legacy
+            .cursor_by_id
+            .get(id)
+            .filter(|c| !c.is_empty())
+            .and_then(|c| chrono::DateTime::parse_from_rfc3339(c).ok())
+            .map(|dt| dt.timestamp_millis())
+        {
+            target.set_user_last_delivered(id, ms)?;
         }
         migrated += 1;
     }

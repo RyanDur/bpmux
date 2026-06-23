@@ -4,7 +4,7 @@ CREATE TABLE users (
     name       TEXT NOT NULL,
     role       TEXT NOT NULL,
     kind       TEXT NOT NULL DEFAULT 'agent' CHECK (kind IN ('agent', 'owner', 'system')),
-    cursor     TEXT,
+    last_delivered_at INTEGER,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 ) STRICT;

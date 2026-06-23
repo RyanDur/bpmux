@@ -31,3 +31,11 @@ pub(super) fn cursor_after(stored: Option<&str>, job_start: &str) -> bool {
 pub(super) fn is_future(ts: &str) -> bool {
     parse_ts(ts).is_some_and(|ts| ts > chrono::Utc::now())
 }
+
+pub(super) fn to_millis(value: &str) -> Option<i64> {
+    parse_ts(value).map(|dt| dt.timestamp_millis())
+}
+
+pub(super) fn from_millis(ms: i64) -> Option<String> {
+    chrono::DateTime::from_timestamp_millis(ms).map(|dt| dt.to_rfc3339())
+}

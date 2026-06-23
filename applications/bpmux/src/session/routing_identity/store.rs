@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use super::cursor_time::{cursor_after, is_future, later_cursor};
+use super::cursor_time::{cursor_after, from_millis, is_future, later_cursor, to_millis};
 use super::identity::RoutingIdentity;
 use crate::session::storage::Storage;
 
@@ -25,7 +25,7 @@ impl RoutingStore {
         if let Ok(records) = storage.load_users() {
             for record in records {
                 identity.register(&record.session_id, &record.name);
-                if let Some(cursor) = record.cursor {
+                if let Some(cursor) = record.last_delivered_at.and_then(from_millis) {
                     identity.advance_cursor(&record.session_id, &cursor);
                 }
             }
@@ -103,7 +103,9 @@ impl RoutingStore {
         let floor = later_cursor(stored.as_deref(), trusted_ack);
         if let Some(ref position) = floor {
             identity.advance_cursor(session_id, position);
-            let _ = self.storage.set_user_cursor(session_id, position);
+            if let Some(ms) = to_millis(position) {
+                let _ = self.storage.set_user_last_delivered(session_id, ms);
+            }
         }
         floor
     }
@@ -120,7 +122,9 @@ impl RoutingStore {
             && current.as_deref() != Some(later.as_str())
         {
             identity.advance_cursor(session_id, &later);
-            let _ = self.storage.set_user_cursor(session_id, &later);
+            if let Some(ms) = to_millis(&later) {
+                let _ = self.storage.set_user_last_delivered(session_id, ms);
+            }
         }
     }
 
@@ -172,8 +176,10 @@ impl RoutingStore {
                 .storage
                 .upsert_user(session_id, &current, short(&current));
         }
-        if let Some(cursor) = identity.cursor(session_id) {
-            let _ = self.storage.set_user_cursor(session_id, &cursor);
+        if let Some(cursor) = identity.cursor(session_id)
+            && let Some(ms) = to_millis(&cursor)
+        {
+            let _ = self.storage.set_user_last_delivered(session_id, ms);
         }
         if !reaped.is_empty() {
             let _ = self.storage.delete_users(&reaped);

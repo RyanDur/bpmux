@@ -161,16 +161,16 @@ impl Storage for FileStorage {
                 name: name.to_string(),
                 role: role.to_string(),
                 kind: default_kind(),
-                cursor: None,
+                last_delivered_at: None,
             }),
         }
         self.write_users(&records)
     }
 
-    fn set_user_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
+    fn set_user_last_delivered(&self, id: &str, at: i64) -> Result<(), PersistError> {
         let mut records = self.load_users()?;
         if let Some(existing) = records.iter_mut().find(|r| r.session_id == id) {
-            existing.cursor = Some(cursor.to_string());
+            existing.last_delivered_at = Some(at);
         }
         self.write_users(&records)
     }

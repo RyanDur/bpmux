@@ -22,7 +22,7 @@ pub struct UserRecord {
     pub role: String,
     #[serde(default = "default_kind")]
     pub kind: String,
-    pub cursor: Option<String>,
+    pub last_delivered_at: Option<i64>,
 }
 
 fn default_kind() -> String {
@@ -62,7 +62,7 @@ pub trait Storage: Send + Sync {
 
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError>;
     fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError>;
-    fn set_user_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError>;
+    fn set_user_last_delivered(&self, id: &str, at: i64) -> Result<(), PersistError>;
     fn delete_users(&self, ids: &[String]) -> Result<(), PersistError>;
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;

@@ -15,6 +15,12 @@ fn fresh_message(text: &str) -> Message {
     }
 }
 
+fn ms(rfc3339: &str) -> i64 {
+    chrono::DateTime::parse_from_rfc3339(rfc3339)
+        .unwrap()
+        .timestamp_millis()
+}
+
 fn file_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let outbox_path = dir.path().join("board-outbox.json");
@@ -308,7 +314,7 @@ contract!(
             loaded[0].kind, "agent",
             "a routing-registered identity defaults to kind=agent; owner/system are the only non-agent kinds, seeded separately"
         );
-        assert_eq!(loaded[0].cursor, None);
+        assert_eq!(loaded[0].last_delivered_at, None);
     }
 );
 
@@ -327,14 +333,13 @@ contract!(
 );
 
 contract!(
-    set_user_cursor_persists_the_floor,
+    set_user_last_delivered_persists_the_floor,
     |storage: &dyn Storage| {
         storage.upsert_user("sess-c", "dev", "dev").unwrap();
-        storage
-            .set_user_cursor("sess-c", "2026-06-23T10:00:00Z")
-            .unwrap();
+        let at = ms("2026-06-23T10:00:00Z");
+        storage.set_user_last_delivered("sess-c", at).unwrap();
         let loaded = storage.load_users().unwrap();
-        assert_eq!(loaded[0].cursor.as_deref(), Some("2026-06-23T10:00:00Z"));
+        assert_eq!(loaded[0].last_delivered_at, Some(at));
     }
 );
 

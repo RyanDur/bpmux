@@ -147,8 +147,8 @@ impl Storage for SqliteStorage {
             .map_err(engine::persist_err)
     }
 
-    fn set_user_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
-        users::set_cursor(&self.lock(), id, cursor)
+    fn set_user_last_delivered(&self, id: &str, at: i64) -> Result<(), PersistError> {
+        users::set_last_delivered(&self.lock(), id, at)
             .map(|_| ())
             .map_err(engine::persist_err)
     }

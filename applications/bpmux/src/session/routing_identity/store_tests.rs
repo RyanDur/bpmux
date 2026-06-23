@@ -4,6 +4,12 @@ use super::cursor_time::later_cursor;
 use super::*;
 use crate::session::storage::sqlite_test_storage;
 
+fn instant(rfc3339: &str) -> i64 {
+    chrono::DateTime::parse_from_rfc3339(rfc3339)
+        .unwrap()
+        .timestamp_millis()
+}
+
 #[test]
 fn drain_floor_clamps_a_stale_client_cursor_forward_the_durable_cure_for_tmp_replay() {
     let dir = tempfile::TempDir::new().expect("dir");
@@ -34,9 +40,9 @@ fn drain_floor_clamps_a_stale_client_cursor_forward_the_durable_cure_for_tmp_rep
 
     let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
-        reloaded.cursor("sess-1").as_deref(),
-        Some("2026-06-11T20:00:09Z"),
-        "the durable cursor survives a server restart — the drain position is recovered from the users table, not a volatile /tmp file"
+        reloaded.cursor("sess-1").as_deref().map(instant),
+        Some(instant("2026-06-11T20:00:09Z")),
+        "the durable cursor survives a server restart — the drain position is recovered from the users table as an instant, not a volatile /tmp file"
     );
 }
 
@@ -97,8 +103,8 @@ fn register_agent_fresh_floors_the_cursor_at_job_start_so_gate_window_messages_d
 
     let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
-        reloaded.cursor("sess-fresh").as_deref(),
-        Some("2026-06-12T10:00:00Z"),
+        reloaded.cursor("sess-fresh").as_deref().map(instant),
+        Some(instant("2026-06-12T10:00:00Z")),
         "a FRESH agent's cursor floors at the agent-JOB-START — not empty (would flood all history) nor the register-instant (would lose the gate-window) — so a to:[role] sent during the ~1s gate-window (after job-start, before register) still drains"
     );
     assert_eq!(
@@ -267,8 +273,8 @@ fn register_agent_reclaim_preserves_the_durable_cursor_not_reset_to_the_new_job_
 
     let reloaded = RoutingStore::new(storage.clone());
     assert_eq!(
-        reloaded.cursor("sess-ret").as_deref(),
-        Some("2026-06-12T12:00:00Z"),
+        reloaded.cursor("sess-ret").as_deref().map(instant),
+        Some(instant("2026-06-12T12:00:00Z")),
         "a RETURNING agent preserves its durable drain-position (noon) — re-detecting it at a NEW job-start (15:00) must NOT reset the cursor, which would skip the offline 12:00-15:00 messages the durable-reclaim must still deliver"
     );
 }
@@ -308,9 +314,9 @@ fn register_and_drain_write_through_to_the_users_table() {
     );
     assert_eq!(user.role, "dev", "the role token is short(display)");
     assert_eq!(
-        user.cursor.as_deref(),
-        Some("2026-06-11T20:00:05Z"),
-        "the drain-floor advance writes through into the users.cursor column"
+        user.last_delivered_at,
+        Some(instant("2026-06-11T20:00:05Z")),
+        "the drain-floor advance writes through into the users.last_delivered_at column as an instant"
     );
 }
 

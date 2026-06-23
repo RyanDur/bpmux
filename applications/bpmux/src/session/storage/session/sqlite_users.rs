@@ -8,7 +8,7 @@ pub const SYSTEM_SESSION_ID: &str = "bpmux-system";
 pub fn load_all(conn: &Connection) -> rusqlite::Result<Vec<UserRecord>> {
     engine::query(
         conn,
-        "SELECT session_id, name, role, kind, cursor FROM users WHERE kind != 'system'",
+        "SELECT session_id, name, role, kind, last_delivered_at FROM users WHERE kind != 'system'",
         [],
         |row| {
             Ok(UserRecord {
@@ -16,7 +16,7 @@ pub fn load_all(conn: &Connection) -> rusqlite::Result<Vec<UserRecord>> {
                 name: row.get(1)?,
                 role: row.get(2)?,
                 kind: row.get(3)?,
-                cursor: row.get(4)?,
+                last_delivered_at: row.get(4)?,
             })
         },
     )
@@ -37,11 +37,11 @@ pub fn upsert(
     )
 }
 
-pub fn set_cursor(conn: &Connection, session_id: &str, cursor: &str) -> rusqlite::Result<usize> {
+pub fn set_last_delivered(conn: &Connection, session_id: &str, at: i64) -> rusqlite::Result<usize> {
     engine::execute(
         conn,
-        "UPDATE users SET cursor = ?2, updated_at = unixepoch() WHERE session_id = ?1",
-        (session_id, cursor),
+        "UPDATE users SET last_delivered_at = ?2, updated_at = unixepoch() WHERE session_id = ?1",
+        (session_id, at),
     )
 }
 

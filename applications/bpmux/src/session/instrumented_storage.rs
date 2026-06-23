@@ -207,15 +207,15 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn set_user_cursor(
+    fn set_user_last_delivered(
         &self,
         id: &str,
-        cursor: &str,
+        at: i64,
     ) -> Result<(), crate::board::store::PersistError> {
         let start = Instant::now();
-        let result = self.inner.set_user_cursor(id, cursor);
+        let result = self.inner.set_user_last_delivered(id, at);
         self.log(&format!(
-            "set_user_cursor '{}' {:.1}ms",
+            "set_user_last_delivered '{}' {:.1}ms",
             id,
             start.elapsed().as_secs_f64() * 1000.0
         ));

@@ -9,6 +9,12 @@ use super::migrate::{migrate_file_log_to_sqlite, migrate_routing_identity_to_age
 use super::{FileStorage, SqliteStorage, Storage};
 use crate::session::message::{Message, MessageType, StateDeltaPayload};
 
+fn ms(rfc3339: &str) -> i64 {
+    chrono::DateTime::parse_from_rfc3339(rfc3339)
+        .unwrap()
+        .timestamp_millis()
+}
+
 fn chat(text: &str) -> Message {
     Message {
         from: "dev".to_string(),
@@ -211,16 +217,16 @@ fn migrates_legacy_routing_json_display_and_durable_cursor_into_the_users_table(
     );
     assert_eq!(dev.role, "dev", "the role-col is short(display)");
     assert_eq!(
-        dev.cursor.as_deref(),
-        Some("2026-06-20T10:00:00Z"),
-        "the durable drain cursor is carried across the flip — so the agent resumes from where it left off and never re-floods already-seen history"
+        dev.last_delivered_at,
+        Some(ms("2026-06-20T10:00:00Z")),
+        "the durable drain cursor is carried across the flip as an instant — so the agent resumes from where it left off and never re-floods already-seen history"
     );
     let pm = users.iter().find(|u| u.session_id == "sess-pm").unwrap();
     assert_eq!(
         pm.role, "pm",
         "the role-col is short(display) even for a full id:client display"
     );
-    assert_eq!(pm.cursor.as_deref(), Some("2026-06-20T11:00:00Z"));
+    assert_eq!(pm.last_delivered_at, Some(ms("2026-06-20T11:00:00Z")));
 }
 
 #[test]
@@ -235,7 +241,7 @@ fn routing_migration_is_idempotent_and_never_reverts_a_post_flip_advanced_cursor
 
     let storage = SqliteStorage::new(session_dir.clone()).unwrap();
     storage
-        .set_user_cursor("sess-dev", "2026-06-25T00:00:00Z")
+        .set_user_last_delivered("sess-dev", ms("2026-06-25T00:00:00Z"))
         .unwrap();
 
     let second = migrate_routing_identity_to_agents(&session_dir).unwrap();
@@ -252,8 +258,8 @@ fn routing_migration_is_idempotent_and_never_reverts_a_post_flip_advanced_cursor
         .find(|u| u.session_id == "sess-dev")
         .unwrap();
     assert_eq!(
-        dev.cursor.as_deref(),
-        Some("2026-06-25T00:00:00Z"),
+        dev.last_delivered_at,
+        Some(ms("2026-06-25T00:00:00Z")),
         "the cursor advanced by real post-flip drains is NEVER reverted to the stale JSON value — the migration flag makes the re-run a no-op, so running migrate-storage twice can't clobber live drain positions"
     );
 }
