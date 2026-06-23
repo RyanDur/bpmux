@@ -60,18 +60,18 @@ async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_serve
     use bpmux::session::log::StorageBackend;
     let session_dir = bpmux.sessions_base_path().join("current");
     let storage = StorageBackend::resolve().build(&session_dir);
-    let agents = storage
-        .load_agents()
+    let users = storage
+        .load_users()
         .expect("the server persists the routing-identity store after register");
-    let agent = agents
+    let user = users
         .iter()
-        .find(|a| a.id == session_id)
+        .find(|u| u.id == session_id)
         .unwrap_or_else(|| {
-            panic!("the registered id is a durable row in the agents table; got {agents:?}")
+            panic!("the registered id is a durable row in the users table; got {users:?}")
         });
     assert_eq!(
-        agent.name, "dev",
-        "the registered id is RESOLVABLE server-side — the durable agents table maps the cwd-derived session-id to display 'dev' (a real routing effect persisted across restarts, not just a 201)"
+        user.name, "dev",
+        "the registered id is RESOLVABLE server-side — the durable users table maps the cwd-derived session-id to display 'dev' (a real routing effect persisted across restarts, not just a 201)"
     );
 }
 

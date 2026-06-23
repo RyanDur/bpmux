@@ -100,9 +100,9 @@ pub fn migrate_routing_identity_to_agents(
         .unwrap_or_default();
     let mut migrated = 0;
     for (id, display) in &legacy.display_by_id {
-        target.upsert_agent(id, display, short(display))?;
+        target.upsert_user(id, display, short(display))?;
         if let Some(cursor) = legacy.cursor_by_id.get(id).filter(|c| !c.is_empty()) {
-            target.set_agent_cursor(id, cursor)?;
+            target.set_user_cursor(id, cursor)?;
         }
         migrated += 1;
     }

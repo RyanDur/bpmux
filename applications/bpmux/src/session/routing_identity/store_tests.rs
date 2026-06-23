@@ -36,7 +36,7 @@ fn drain_floor_clamps_a_stale_client_cursor_forward_the_durable_cure_for_tmp_rep
     assert_eq!(
         reloaded.cursor("sess-1").as_deref(),
         Some("2026-06-11T20:00:09Z"),
-        "the durable cursor survives a server restart — the drain position is recovered from the agents table, not a volatile /tmp file"
+        "the durable cursor survives a server restart — the drain position is recovered from the users table, not a volatile /tmp file"
     );
 }
 
@@ -247,7 +247,7 @@ fn register_agent_reclaim_preserves_a_renamed_display_not_clobbered_by_the_defau
     assert_eq!(
         reloaded.resolve("dev"),
         vec!["sess-1".to_string()],
-        "a returning agent keeps the owner-forged name (dev) — re-detection re-supplies the folder-default (bpmux-dev) but must NOT clobber the rename back, in the durable agents table"
+        "a returning agent keeps the owner-forged name (dev) — re-detection re-supplies the folder-default (bpmux-dev) but must NOT clobber the rename back, in the durable users table"
     );
     assert!(
         reloaded.resolve("bpmux-dev").is_empty(),
@@ -290,32 +290,32 @@ fn reaping_stale_duplicates_persists_so_a_reload_recovers_only_the_live_id() {
 }
 
 #[test]
-fn register_and_drain_write_through_to_the_agents_table() {
+fn register_and_drain_write_through_to_the_users_table() {
     let dir = tempfile::TempDir::new().expect("dir");
     let storage = sqlite_test_storage(dir.path());
     let store = RoutingStore::new(storage.clone());
     store.register("sess-dev", "dev:claude-code");
     store.drain_floor("sess-dev", Some("2026-06-11T20:00:05Z"));
 
-    let agents = storage.load_agents().expect("load agents");
-    let agent = agents
+    let users = storage.load_users().expect("load users");
+    let user = users
         .iter()
-        .find(|a| a.id == "sess-dev")
-        .expect("the registered agent is a real row in the agents table");
+        .find(|u| u.id == "sess-dev")
+        .expect("the registered identity is a real row in the users table");
     assert_eq!(
-        agent.name, "dev:claude-code",
-        "the opaque display persists as the agent name"
+        user.name, "dev:claude-code",
+        "the opaque display persists as the user name"
     );
-    assert_eq!(agent.role, "dev", "the role token is short(display)");
+    assert_eq!(user.role, "dev", "the role token is short(display)");
     assert_eq!(
-        agent.cursor.as_deref(),
+        user.cursor.as_deref(),
         Some("2026-06-11T20:00:05Z"),
-        "the drain-floor advance writes through into the agents.cursor column"
+        "the drain-floor advance writes through into the users.cursor column"
     );
 }
 
 #[test]
-fn register_agent_reap_deletes_the_unclaimed_duplicate_row_from_the_agents_table() {
+fn register_agent_reap_deletes_the_unclaimed_duplicate_row_from_the_users_table() {
     let dir = tempfile::TempDir::new().expect("dir");
     let storage = sqlite_test_storage(dir.path());
     let store = RoutingStore::new(storage.clone());
@@ -323,17 +323,17 @@ fn register_agent_reap_deletes_the_unclaimed_duplicate_row_from_the_agents_table
     store.register_agent("dev-live", "dev", "term-live", "2026-06-13T10:00:00Z");
 
     let ids: Vec<String> = storage
-        .load_agents()
-        .expect("load agents")
+        .load_users()
+        .expect("load users")
         .into_iter()
-        .map(|a| a.id)
+        .map(|u| u.id)
         .collect();
     assert!(
         ids.contains(&"dev-live".to_string()),
-        "the live claimed agent persists in the table"
+        "the live claimed identity persists in the table"
     );
     assert!(
         !ids.contains(&"dev-stale".to_string()),
-        "the reap of the unclaimed duplicate deletes its row from the agents table"
+        "the reap of the unclaimed duplicate deletes its row from the users table"
     );
 }

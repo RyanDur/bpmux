@@ -507,7 +507,7 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
         spawn_terminal(&bpmux).await;
         assert!(
             probe_until_live(&bpmux, &farm, role).await,
-            "{role} registers and goes live on the SQLite-backed server — the agent-detect → register → agents-table write path runs clean on sqlite (the cutover substrate)"
+            "{role} registers and goes live on the SQLite-backed server — the agent-detect → register → users-table write path runs clean on sqlite (the cutover substrate)"
         );
     }
 
@@ -556,8 +556,8 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
     let storage = SqliteStorage::new(bpmux.sessions_base_path().join("current"))
         .expect("open the server's sqlite session store");
     let mut roles: Vec<String> = storage
-        .load_agents()
-        .expect("load the agents table")
+        .load_users()
+        .expect("load the users table")
         .into_iter()
         .map(|record| record.role)
         .collect();
@@ -567,7 +567,7 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
         ["designer", "dev", "pm"]
             .iter()
             .all(|wanted| roles.iter().any(|role| role == wanted)),
-        "SUBSTRATE: the three routed identities are durable rows in the SQLite agents table — registration wrote routing identity THROUGH to sqlite, so the database genuinely IS the routing store under the cutover. The startup rebuild-from-sqlite read path is unit-pinned by routing_identity::store_tests (reload via a fresh RoutingStore over the same storage). got {roles:?}"
+        "SUBSTRATE: the three routed identities are durable rows in the SQLite users table — registration wrote routing identity THROUGH to sqlite, so the database genuinely IS the routing store under the cutover. The startup rebuild-from-sqlite read path is unit-pinned by routing_identity::store_tests (reload via a fresh RoutingStore over the same storage). got {roles:?}"
     );
 }
 

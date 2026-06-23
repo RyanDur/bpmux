@@ -176,14 +176,14 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         self.inner.dir()
     }
 
-    fn load_agents(
+    fn load_users(
         &self,
-    ) -> Result<Vec<crate::session::storage::AgentRecord>, crate::board::store::PersistError> {
+    ) -> Result<Vec<crate::session::storage::UserRecord>, crate::board::store::PersistError> {
         let start = Instant::now();
-        let result = self.inner.load_agents();
+        let result = self.inner.load_users();
         if let Ok(ref records) = result {
             self.log(&format!(
-                "load_agents {} agents {:.1}ms",
+                "load_users {} users {:.1}ms",
                 records.len(),
                 start.elapsed().as_secs_f64() * 1000.0
             ));
@@ -191,42 +191,42 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn upsert_agent(
+    fn upsert_user(
         &self,
         id: &str,
         name: &str,
         role: &str,
     ) -> Result<(), crate::board::store::PersistError> {
         let start = Instant::now();
-        let result = self.inner.upsert_agent(id, name, role);
+        let result = self.inner.upsert_user(id, name, role);
         self.log(&format!(
-            "upsert_agent '{}' {:.1}ms",
+            "upsert_user '{}' {:.1}ms",
             id,
             start.elapsed().as_secs_f64() * 1000.0
         ));
         result
     }
 
-    fn set_agent_cursor(
+    fn set_user_cursor(
         &self,
         id: &str,
         cursor: &str,
     ) -> Result<(), crate::board::store::PersistError> {
         let start = Instant::now();
-        let result = self.inner.set_agent_cursor(id, cursor);
+        let result = self.inner.set_user_cursor(id, cursor);
         self.log(&format!(
-            "set_agent_cursor '{}' {:.1}ms",
+            "set_user_cursor '{}' {:.1}ms",
             id,
             start.elapsed().as_secs_f64() * 1000.0
         ));
         result
     }
 
-    fn delete_agents(&self, ids: &[String]) -> Result<(), crate::board::store::PersistError> {
+    fn delete_users(&self, ids: &[String]) -> Result<(), crate::board::store::PersistError> {
         let start = Instant::now();
-        let result = self.inner.delete_agents(ids);
+        let result = self.inner.delete_users(ids);
         self.log(&format!(
-            "delete_agents {} ids {:.1}ms",
+            "delete_users {} ids {:.1}ms",
             ids.len(),
             start.elapsed().as_secs_f64() * 1000.0
         ));

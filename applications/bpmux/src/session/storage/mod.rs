@@ -16,7 +16,7 @@ pub use global::*;
 pub use session::*;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct AgentRecord {
+pub struct UserRecord {
     pub id: String,
     pub name: String,
     pub role: String,
@@ -60,10 +60,10 @@ pub trait Storage: Send + Sync {
 
     fn dir(&self) -> &Path;
 
-    fn load_agents(&self) -> Result<Vec<AgentRecord>, PersistError>;
-    fn upsert_agent(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError>;
-    fn set_agent_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError>;
-    fn delete_agents(&self, ids: &[String]) -> Result<(), PersistError>;
+    fn load_users(&self) -> Result<Vec<UserRecord>, PersistError>;
+    fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError>;
+    fn set_user_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError>;
+    fn delete_users(&self, ids: &[String]) -> Result<(), PersistError>;
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError>;

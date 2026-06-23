@@ -4,14 +4,14 @@ use std::sync::Mutex;
 
 use rusqlite::Connection;
 
-use super::sqlite_agents as agents;
 use super::sqlite_bookmarks as bookmarks;
 use super::sqlite_engine as engine;
 use super::sqlite_messages as messages;
 use super::sqlite_meta as meta;
 use super::sqlite_outbox as outbox;
 use super::sqlite_reactions as reactions;
-use super::{AgentRecord, Storage};
+use super::sqlite_users as users;
+use super::{Storage, UserRecord};
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 use crate::session::bookmark::Bookmark;
@@ -129,24 +129,24 @@ impl Storage for SqliteStorage {
         &self.dir
     }
 
-    fn load_agents(&self) -> Result<Vec<AgentRecord>, PersistError> {
-        agents::load_all(&self.lock()).map_err(engine::persist_err)
+    fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {
+        users::load_all(&self.lock()).map_err(engine::persist_err)
     }
 
-    fn upsert_agent(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError> {
-        agents::upsert(&self.lock(), id, name, role)
+    fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError> {
+        users::upsert(&self.lock(), id, name, role)
             .map(|_| ())
             .map_err(engine::persist_err)
     }
 
-    fn set_agent_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
-        agents::set_cursor(&self.lock(), id, cursor)
+    fn set_user_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
+        users::set_cursor(&self.lock(), id, cursor)
             .map(|_| ())
             .map_err(engine::persist_err)
     }
 
-    fn delete_agents(&self, ids: &[String]) -> Result<(), PersistError> {
-        agents::delete(&self.lock(), ids)
+    fn delete_users(&self, ids: &[String]) -> Result<(), PersistError> {
+        users::delete(&self.lock(), ids)
             .map(|_| ())
             .map_err(engine::persist_err)
     }

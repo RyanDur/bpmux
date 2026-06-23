@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 
-use super::{AgentRecord, Storage, default_kind};
+use super::{Storage, UserRecord, default_kind};
 use crate::session::lessons::LessonIndex;
 use crate::session::log::LogError;
 use crate::session::message::Message;
@@ -35,8 +35,8 @@ impl FileStorage {
         crate::board::orchestrator::default_outbox_path()
     }
 
-    fn write_agents(&self, records: &[AgentRecord]) -> Result<(), PersistError> {
-        let path = self.dir.join("agents.json");
+    fn write_users(&self, records: &[UserRecord]) -> Result<(), PersistError> {
+        let path = self.dir.join("users.json");
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -137,8 +137,8 @@ impl Storage for FileStorage {
         &self.dir
     }
 
-    fn load_agents(&self) -> Result<Vec<AgentRecord>, PersistError> {
-        let path = self.dir.join("agents.json");
+    fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {
+        let path = self.dir.join("users.json");
         if !path.exists() {
             return Ok(Vec::new());
         }
@@ -149,14 +149,14 @@ impl Storage for FileStorage {
         Ok(serde_json::from_slice(&bytes)?)
     }
 
-    fn upsert_agent(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError> {
-        let mut records = self.load_agents()?;
+    fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError> {
+        let mut records = self.load_users()?;
         match records.iter_mut().find(|r| r.id == id) {
             Some(existing) => {
                 existing.name = name.to_string();
                 existing.role = role.to_string();
             }
-            None => records.push(AgentRecord {
+            None => records.push(UserRecord {
                 id: id.to_string(),
                 name: name.to_string(),
                 role: role.to_string(),
@@ -164,21 +164,21 @@ impl Storage for FileStorage {
                 cursor: None,
             }),
         }
-        self.write_agents(&records)
+        self.write_users(&records)
     }
 
-    fn set_agent_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
-        let mut records = self.load_agents()?;
+    fn set_user_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
+        let mut records = self.load_users()?;
         if let Some(existing) = records.iter_mut().find(|r| r.id == id) {
             existing.cursor = Some(cursor.to_string());
         }
-        self.write_agents(&records)
+        self.write_users(&records)
     }
 
-    fn delete_agents(&self, ids: &[String]) -> Result<(), PersistError> {
-        let mut records = self.load_agents()?;
+    fn delete_users(&self, ids: &[String]) -> Result<(), PersistError> {
+        let mut records = self.load_users()?;
         records.retain(|r| !ids.iter().any(|id| id == &r.id));
-        self.write_agents(&records)
+        self.write_users(&records)
     }
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
@@ -223,13 +223,13 @@ impl Storage for FileStorage {
 }
 
 mod sqlite;
-mod sqlite_agents;
 mod sqlite_bookmarks;
 mod sqlite_engine;
 mod sqlite_messages;
 mod sqlite_meta;
 mod sqlite_outbox;
 mod sqlite_reactions;
+mod sqlite_users;
 pub use sqlite::*;
 
 mod migrate;

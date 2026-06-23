@@ -1,4 +1,4 @@
-CREATE TABLE agents (
+CREATE TABLE users (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
     role       TEXT NOT NULL,

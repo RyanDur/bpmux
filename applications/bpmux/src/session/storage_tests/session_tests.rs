@@ -285,20 +285,20 @@ contract!(save_outbox_overwrites_previous, |storage: &dyn Storage| {
     assert_eq!(loaded.len(), 2);
 });
 
-contract!(load_agents_empty_when_unset, |storage: &dyn Storage| {
-    assert!(storage.load_agents().unwrap().is_empty());
+contract!(load_users_empty_when_unset, |storage: &dyn Storage| {
+    assert!(storage.load_users().unwrap().is_empty());
 });
 
 contract!(
-    upsert_then_load_agents_roundtrips,
+    upsert_then_load_users_roundtrips,
     |storage: &dyn Storage| {
         storage
-            .upsert_agent("sess-dev", "dev:claude-code", "dev")
+            .upsert_user("sess-dev", "dev:claude-code", "dev")
             .unwrap();
         storage
-            .upsert_agent("sess-pm", "pm:claude-code", "pm")
+            .upsert_user("sess-pm", "pm:claude-code", "pm")
             .unwrap();
-        let mut loaded = storage.load_agents().unwrap();
+        let mut loaded = storage.load_users().unwrap();
         loaded.sort_by(|a, b| a.id.cmp(&b.id));
         assert_eq!(loaded.len(), 2);
         assert_eq!(loaded[0].id, "sess-dev");
@@ -313,13 +313,13 @@ contract!(
 );
 
 contract!(
-    upsert_agent_updates_name_and_role_for_same_id,
+    upsert_user_updates_name_and_role_for_same_id,
     |storage: &dyn Storage| {
-        storage.upsert_agent("sess-x", "dev", "dev").unwrap();
+        storage.upsert_user("sess-x", "dev", "dev").unwrap();
         storage
-            .upsert_agent("sess-x", "dev-renamed", "designer")
+            .upsert_user("sess-x", "dev-renamed", "designer")
             .unwrap();
-        let loaded = storage.load_agents().unwrap();
+        let loaded = storage.load_users().unwrap();
         assert_eq!(loaded.len(), 1, "upsert on the same id must not duplicate");
         assert_eq!(loaded[0].name, "dev-renamed");
         assert_eq!(loaded[0].role, "designer");
@@ -327,24 +327,24 @@ contract!(
 );
 
 contract!(
-    set_agent_cursor_persists_the_floor,
+    set_user_cursor_persists_the_floor,
     |storage: &dyn Storage| {
-        storage.upsert_agent("sess-c", "dev", "dev").unwrap();
+        storage.upsert_user("sess-c", "dev", "dev").unwrap();
         storage
-            .set_agent_cursor("sess-c", "2026-06-23T10:00:00Z")
+            .set_user_cursor("sess-c", "2026-06-23T10:00:00Z")
             .unwrap();
-        let loaded = storage.load_agents().unwrap();
+        let loaded = storage.load_users().unwrap();
         assert_eq!(loaded[0].cursor.as_deref(), Some("2026-06-23T10:00:00Z"));
     }
 );
 
 contract!(
-    delete_agents_removes_only_named_ids,
+    delete_users_removes_only_named_ids,
     |storage: &dyn Storage| {
-        storage.upsert_agent("sess-a", "a", "dev").unwrap();
-        storage.upsert_agent("sess-b", "b", "pm").unwrap();
-        storage.delete_agents(&["sess-a".to_string()]).unwrap();
-        let loaded = storage.load_agents().unwrap();
+        storage.upsert_user("sess-a", "a", "dev").unwrap();
+        storage.upsert_user("sess-b", "b", "pm").unwrap();
+        storage.delete_users(&["sess-a".to_string()]).unwrap();
+        let loaded = storage.load_users().unwrap();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].id, "sess-b");
     }
