@@ -1,5 +1,6 @@
 CREATE TABLE users (
-    id         TEXT PRIMARY KEY,
+    id         INTEGER PRIMARY KEY,
+    session_id TEXT NOT NULL UNIQUE,
     name       TEXT NOT NULL,
     role       TEXT NOT NULL,
     kind       TEXT NOT NULL DEFAULT 'agent' CHECK (kind IN ('agent', 'owner', 'system')),
@@ -11,7 +12,7 @@ CREATE TABLE users (
 CREATE TABLE messages (
     seq          INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at   INTEGER NOT NULL,
-    sender       TEXT NOT NULL,
+    sender       INTEGER REFERENCES users(id),
     message_type TEXT NOT NULL,
     payload      TEXT NOT NULL
 ) STRICT;

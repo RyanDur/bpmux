@@ -24,9 +24,9 @@ impl RoutingStore {
         let mut identity = RoutingIdentity::new();
         if let Ok(records) = storage.load_users() {
             for record in records {
-                identity.register(&record.id, &record.name);
+                identity.register(&record.session_id, &record.name);
                 if let Some(cursor) = record.cursor {
-                    identity.advance_cursor(&record.id, &cursor);
+                    identity.advance_cursor(&record.session_id, &cursor);
                 }
             }
         }

@@ -299,9 +299,9 @@ contract!(
             .upsert_user("sess-pm", "pm:claude-code", "pm")
             .unwrap();
         let mut loaded = storage.load_users().unwrap();
-        loaded.sort_by(|a, b| a.id.cmp(&b.id));
+        loaded.sort_by(|a, b| a.session_id.cmp(&b.session_id));
         assert_eq!(loaded.len(), 2);
-        assert_eq!(loaded[0].id, "sess-dev");
+        assert_eq!(loaded[0].session_id, "sess-dev");
         assert_eq!(loaded[0].name, "dev:claude-code");
         assert_eq!(loaded[0].role, "dev");
         assert_eq!(
@@ -346,7 +346,7 @@ contract!(
         storage.delete_users(&["sess-a".to_string()]).unwrap();
         let loaded = storage.load_users().unwrap();
         assert_eq!(loaded.len(), 1);
-        assert_eq!(loaded[0].id, "sess-b");
+        assert_eq!(loaded[0].session_id, "sess-b");
     }
 );
 

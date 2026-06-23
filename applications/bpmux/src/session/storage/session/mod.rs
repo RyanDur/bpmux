@@ -151,13 +151,13 @@ impl Storage for FileStorage {
 
     fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError> {
         let mut records = self.load_users()?;
-        match records.iter_mut().find(|r| r.id == id) {
+        match records.iter_mut().find(|r| r.session_id == id) {
             Some(existing) => {
                 existing.name = name.to_string();
                 existing.role = role.to_string();
             }
             None => records.push(UserRecord {
-                id: id.to_string(),
+                session_id: id.to_string(),
                 name: name.to_string(),
                 role: role.to_string(),
                 kind: default_kind(),
@@ -169,7 +169,7 @@ impl Storage for FileStorage {
 
     fn set_user_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
         let mut records = self.load_users()?;
-        if let Some(existing) = records.iter_mut().find(|r| r.id == id) {
+        if let Some(existing) = records.iter_mut().find(|r| r.session_id == id) {
             existing.cursor = Some(cursor.to_string());
         }
         self.write_users(&records)
@@ -177,7 +177,7 @@ impl Storage for FileStorage {
 
     fn delete_users(&self, ids: &[String]) -> Result<(), PersistError> {
         let mut records = self.load_users()?;
-        records.retain(|r| !ids.iter().any(|id| id == &r.id));
+        records.retain(|r| !ids.iter().any(|id| id == &r.session_id));
         self.write_users(&records)
     }
 

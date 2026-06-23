@@ -17,7 +17,7 @@ pub use session::*;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UserRecord {
-    pub id: String,
+    pub session_id: String,
     pub name: String,
     pub role: String,
     #[serde(default = "default_kind")]

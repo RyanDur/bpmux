@@ -300,7 +300,7 @@ fn register_and_drain_write_through_to_the_users_table() {
     let users = storage.load_users().expect("load users");
     let user = users
         .iter()
-        .find(|u| u.id == "sess-dev")
+        .find(|u| u.session_id == "sess-dev")
         .expect("the registered identity is a real row in the users table");
     assert_eq!(
         user.name, "dev:claude-code",
@@ -326,7 +326,7 @@ fn register_agent_reap_deletes_the_unclaimed_duplicate_row_from_the_users_table(
         .load_users()
         .expect("load users")
         .into_iter()
-        .map(|u| u.id)
+        .map(|u| u.session_id)
         .collect();
     assert!(
         ids.contains(&"dev-live".to_string()),

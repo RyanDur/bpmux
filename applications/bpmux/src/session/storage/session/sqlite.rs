@@ -29,6 +29,7 @@ pub struct SqliteStorage {
 impl SqliteStorage {
     pub fn new(dir: PathBuf) -> rusqlite::Result<Self> {
         let conn = engine::open(&dir)?;
+        users::seed_system(&conn)?;
         Ok(Self {
             dir,
             conn: Mutex::new(conn),
@@ -38,21 +39,28 @@ impl SqliteStorage {
     fn lock(&self) -> std::sync::MutexGuard<'_, Connection> {
         self.conn.lock().unwrap_or_else(|e| e.into_inner())
     }
+
+    fn resolve_sender(&self, conn: &Connection, msg: &Message) -> Option<i64> {
+        let session = if crate::transport::ws::short_name(&msg.from) == "bpmux" {
+            users::SYSTEM_SESSION_ID
+        } else {
+            msg.sender_id.as_deref()?
+        };
+        users::id_for_session(conn, session).ok().flatten()
+    }
 }
 
 impl Storage for SqliteStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let payload = serde_json::to_string(msg)?;
         let created_at = msg.ts.timestamp();
-        let sender = msg
-            .sender_id
-            .as_deref()
-            .unwrap_or_else(|| crate::transport::ws::short_name(&msg.from));
         let message_type = msg
             .message_type
             .to_wire()
             .unwrap_or_else(|| "chat".to_string());
-        messages::append(&self.lock(), created_at, sender, &message_type, &payload)
+        let conn = self.lock();
+        let sender = self.resolve_sender(&conn, msg);
+        messages::append(&conn, created_at, sender, &message_type, &payload)
             .map_err(engine::io_err)?;
         Ok(())
     }
@@ -175,3 +183,6 @@ impl Storage for SqliteStorage {
         reactions::replace(&self.lock(), store)
     }
 }
+
+#[cfg(test)]
+mod tests;

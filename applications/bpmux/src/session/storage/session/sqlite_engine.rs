@@ -24,6 +24,7 @@ pub fn open(dir: &Path) -> rusqlite::Result<Connection> {
     let mut conn = Connection::open(dir.join(DB_FILE))?;
     let _journal_mode: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
     conn.busy_timeout(BUSY_TIMEOUT)?;
+    conn.pragma_update(None, "foreign_keys", true)?;
     embedded::migrations::runner().run(&mut conn).map_err(|e| {
         rusqlite::Error::SqliteFailure(
             rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_ERROR),

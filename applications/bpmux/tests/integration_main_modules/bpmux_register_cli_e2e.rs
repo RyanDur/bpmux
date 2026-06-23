@@ -65,7 +65,7 @@ async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_serve
         .expect("the server persists the routing-identity store after register");
     let user = users
         .iter()
-        .find(|u| u.id == session_id)
+        .find(|u| u.session_id == session_id)
         .unwrap_or_else(|| {
             panic!("the registered id is a durable row in the users table; got {users:?}")
         });

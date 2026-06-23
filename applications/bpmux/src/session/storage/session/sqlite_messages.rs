@@ -9,7 +9,7 @@ const RECENT_DESC_SQL: &str = "SELECT payload FROM messages ORDER BY seq DESC";
 pub fn append(
     conn: &Connection,
     created_at: i64,
-    sender: &str,
+    sender: Option<i64>,
     message_type: &str,
     payload: &str,
 ) -> rusqlite::Result<usize> {
