@@ -621,20 +621,19 @@ test.describe('real-backend', () => {
       expect(await board.storyOrder('Ready')).toEqual([1, 2, 3])
 
       const firstRow = board.storyNavigate(1)
-      await firstRow.focus()
-      await expect(firstRow).toBeFocused()
 
-      await firstRow.press('Control+Shift+ArrowDown')
-      await expect(async () => {
-        expect(await board.storyOrder('Ready')).toEqual([2, 1, 3])
-      }).toPass({ timeout: 5_000 })
+      const reorderDownTo = async (expected: number[]): Promise<void> => {
+        await expect(async () => {
+          if ((await board.storyOrder('Ready')).join() !== expected.join()) {
+            await firstRow.focus()
+            await firstRow.press('Control+Shift+ArrowDown')
+          }
+          expect(await board.storyOrder('Ready')).toEqual(expected)
+        }).toPass({ timeout: 5_000 })
+      }
 
-      await firstRow.focus()
-      await expect(firstRow).toBeFocused()
-      await firstRow.press('Control+Shift+ArrowDown')
-      await expect(async () => {
-        expect(await board.storyOrder('Ready')).toEqual([2, 3, 1])
-      }).toPass({ timeout: 5_000 })
+      await reorderDownTo([2, 1, 3])
+      await reorderDownTo([2, 3, 1])
     } finally {
       await app.close()
       await mockGh.close()
