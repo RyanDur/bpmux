@@ -74,28 +74,7 @@ impl Storage for SqliteStorage {
         offset: usize,
         matches: &dyn Fn(&Message) -> bool,
     ) -> Result<Vec<Message>, LogError> {
-        let conn = self.lock();
-        let mut stmt = conn
-            .prepare(messages::RECENT_DESC_SQL)
-            .map_err(engine::io_err)?;
-        let mut rows = stmt.query([]).map_err(engine::io_err)?;
-        let mut out = Vec::new();
-        let mut to_skip = offset;
-        while let Some(row) = rows.next().map_err(engine::io_err)? {
-            let payload: String = row.get(0).map_err(engine::io_err)?;
-            let msg: Message = serde_json::from_str(&payload)?;
-            if matches(&msg) {
-                if to_skip > 0 {
-                    to_skip -= 1;
-                    continue;
-                }
-                if out.len() >= limit {
-                    break;
-                }
-                out.push(msg);
-            }
-        }
-        Ok(out)
+        messages::read_recent(&self.lock(), limit, offset, matches)
     }
 
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {

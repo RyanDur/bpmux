@@ -6,9 +6,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::broadcast;
 
 use super::file_log::LogError;
-use crate::session::instrumented_storage::InstrumentedStorage;
+use super::storage_backend::StorageBackend;
 use crate::session::message::Message;
-use crate::session::storage::{FileStorage, Storage};
+use crate::session::storage::Storage;
 
 pub const BROADCAST_CHANNEL_CAPACITY: usize = 10_000;
 
@@ -43,44 +43,6 @@ impl std::fmt::Debug for Session {
             .field("id", &self.id)
             .field("owner_name", &self.owner_name)
             .finish()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageBackend {
-    File,
-    Sqlite,
-}
-
-impl StorageBackend {
-    pub fn from_env_value(value: Option<&str>) -> Self {
-        match value {
-            Some("sqlite") => Self::Sqlite,
-            _ => Self::File,
-        }
-    }
-
-    pub fn resolve() -> Self {
-        Self::from_env_value(std::env::var("BPMUX_STORAGE_BACKEND").ok().as_deref())
-    }
-
-    pub fn build(self, dir: &std::path::Path) -> Arc<dyn Storage> {
-        match self {
-            Self::Sqlite => match crate::session::storage::SqliteStorage::new(dir.to_path_buf()) {
-                Ok(store) => Arc::new(InstrumentedStorage::new(store)),
-                Err(e) => {
-                    crate::session::diag::log_diag(&format!(
-                        "sqlite storage backend failed to open ({e}); falling back to file backend"
-                    ));
-                    Arc::new(InstrumentedStorage::new(FileStorage::new(
-                        dir.to_path_buf(),
-                    )))
-                }
-            },
-            Self::File => Arc::new(InstrumentedStorage::new(FileStorage::new(
-                dir.to_path_buf(),
-            ))),
-        }
     }
 }
 
