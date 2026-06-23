@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::path::Path;
 
 use crate::session::Session;
 use crate::session::lessons;
@@ -14,10 +13,10 @@ pub struct RecallSystem {
 }
 
 impl RecallSystem {
-    pub fn new(session_dir: &Path) -> Self {
-        let surfaced_topics = load_surfaced_topics(session_dir);
+    pub fn new(session: &Session) -> Self {
+        let surfaced_topics = session.storage.load_surfaced_topics();
         let recall_count = surfaced_topics.len();
-        let cached_index = lessons::load_index(session_dir);
+        let cached_index = lessons::load_index(&session.dir);
         Self {
             surfaced_topics,
             recall_count,
@@ -77,9 +76,7 @@ impl RecallSystem {
             let _ = session.broadcast(&nudge);
             self.surfaced_topics.insert(lesson.topic.clone());
             self.recall_count += 1;
-            if let Ok(json) = serde_json::to_string(&self.surfaced_topics) {
-                session.storage.save_state("surfaced-topics", &json);
-            }
+            let _ = session.storage.save_surfaced_topics(&self.surfaced_topics);
         }
     }
 }
@@ -105,14 +102,5 @@ fn reinforcement_trend(lesson: &lessons::AgentLesson) -> String {
             }
         }
         None => format!("reinforced {count}x"),
-    }
-}
-
-fn load_surfaced_topics(session_dir: &Path) -> HashSet<String> {
-    let path = session_dir.join("surfaced-topics.json");
-    if let Ok(data) = std::fs::read_to_string(&path) {
-        serde_json::from_str(&data).unwrap_or_default()
-    } else {
-        HashSet::new()
     }
 }

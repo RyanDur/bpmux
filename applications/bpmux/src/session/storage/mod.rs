@@ -58,6 +58,12 @@ pub trait Storage: Send + Sync {
     fn load_state(&self, key: &str) -> Option<String>;
     fn save_state(&self, key: &str, value: &str);
 
+    fn load_surfaced_topics(&self) -> std::collections::HashSet<String>;
+    fn save_surfaced_topics(
+        &self,
+        topics: &std::collections::HashSet<String>,
+    ) -> Result<(), std::io::Error>;
+
     fn dir(&self) -> &Path;
 
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError>;

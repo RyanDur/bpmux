@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -10,6 +10,7 @@ use super::sqlite_messages as messages;
 use super::sqlite_meta as meta;
 use super::sqlite_outbox as outbox;
 use super::sqlite_reactions as reactions;
+use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
 use super::{Storage, UserRecord};
 use crate::board::orchestrator::QueuedEvent;
@@ -131,6 +132,14 @@ impl Storage for SqliteStorage {
 
     fn save_state(&self, key: &str, value: &str) {
         let _ = meta::put(&self.lock(), key, value);
+    }
+
+    fn load_surfaced_topics(&self) -> HashSet<String> {
+        surfaced_topics::load(&self.lock())
+    }
+
+    fn save_surfaced_topics(&self, topics: &HashSet<String>) -> Result<(), std::io::Error> {
+        surfaced_topics::replace(&self.lock(), topics)
     }
 
     fn dir(&self) -> &Path {

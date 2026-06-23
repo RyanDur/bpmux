@@ -412,6 +412,24 @@ contract!(
     }
 );
 
+contract!(
+    load_surfaced_topics_empty_when_unset,
+    |storage: &dyn Storage| {
+        assert!(storage.load_surfaced_topics().is_empty());
+    }
+);
+
+contract!(
+    save_then_load_surfaced_topics_roundtrips,
+    |storage: &dyn Storage| {
+        let mut topics = std::collections::HashSet::new();
+        topics.insert("railway-errors".to_string());
+        topics.insert("vertical-slices".to_string());
+        storage.save_surfaced_topics(&topics).unwrap();
+        assert_eq!(storage.load_surfaced_topics(), topics);
+    }
+);
+
 #[test]
 fn storage_backend_resolves_from_env_value_purely() {
     assert_eq!(StorageBackend::from_env_value(None), StorageBackend::File);

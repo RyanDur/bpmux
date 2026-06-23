@@ -172,6 +172,17 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         self.inner.save_state(key, value)
     }
 
+    fn load_surfaced_topics(&self) -> std::collections::HashSet<String> {
+        self.inner.load_surfaced_topics()
+    }
+
+    fn save_surfaced_topics(
+        &self,
+        topics: &std::collections::HashSet<String>,
+    ) -> Result<(), std::io::Error> {
+        self.inner.save_surfaced_topics(topics)
+    }
+
     fn dir(&self) -> &Path {
         self.inner.dir()
     }

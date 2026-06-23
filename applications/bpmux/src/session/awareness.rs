@@ -30,7 +30,7 @@ pub fn spawn(session: Arc<Session>, owner_name: String) {
     tokio::spawn(async move {
         let mut agents = AgentTracker::new(&owner_name);
         let mut experience = ExperienceDetector::new(&messages, &owner_name);
-        let mut recall = RecallSystem::new(&session.dir);
+        let mut recall = RecallSystem::new(&session);
         let mut pileon = PileonDetector::new(&owner_name);
         let mut handoff = HandoffTracker::new();
 

@@ -32,6 +32,10 @@ CREATE TABLE bookmarks (
     bookmark TEXT NOT NULL
 ) STRICT;
 
+CREATE TABLE surfaced_topics (
+    topic TEXT PRIMARY KEY
+) STRICT;
+
 CREATE TABLE meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
