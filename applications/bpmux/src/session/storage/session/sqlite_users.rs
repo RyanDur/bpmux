@@ -66,6 +66,15 @@ pub fn id_for_session(conn: &Connection, session_id: &str) -> rusqlite::Result<O
     )
 }
 
+pub fn id_for_role(conn: &Connection, role: &str) -> rusqlite::Result<Option<String>> {
+    engine::query_opt(
+        conn,
+        "SELECT id FROM users WHERE role = ?1 ORDER BY updated_at DESC LIMIT 1",
+        (role,),
+        |row| row.get(0),
+    )
+}
+
 pub fn seed_system(conn: &Connection) -> rusqlite::Result<usize> {
     engine::execute(
         conn,

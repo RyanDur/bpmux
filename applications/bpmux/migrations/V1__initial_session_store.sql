@@ -28,7 +28,7 @@ CREATE TABLE reactions (
 ) STRICT;
 
 CREATE TABLE bookmarks (
-    role     TEXT PRIMARY KEY,
+    user_id  TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     bookmark TEXT NOT NULL
 ) STRICT;
 

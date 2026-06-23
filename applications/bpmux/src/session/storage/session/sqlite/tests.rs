@@ -106,3 +106,48 @@ fn the_sender_foreign_key_is_enforced_so_a_dangling_reference_cannot_be_written(
         "foreign_keys=ON rejects a sender that references no user row — the FK has teeth"
     );
 }
+
+#[test]
+fn a_bookmark_keys_by_the_resolved_user_id_and_cascades_when_the_user_is_deleted() {
+    let (_dir, storage) = store();
+    storage.upsert_user("sess-dev", "dev", "dev").unwrap();
+    let bm = crate::session::bookmark::Bookmark {
+        current_task: "wire the bookmark FK".to_string(),
+        ..Default::default()
+    };
+    storage.save_bookmark("dev", &bm).unwrap();
+    assert_eq!(
+        storage.load_bookmark("dev").current_task,
+        "wire the bookmark FK",
+        "a bookmark is reachable by role, resolved through to the user's id"
+    );
+
+    let dev_id = users::id_for_role(&storage.lock(), "dev")
+        .unwrap()
+        .expect("the dev user resolves to an id");
+    let keyed_by_user: Option<String> = engine::query_opt(
+        &storage.lock(),
+        "SELECT bookmark FROM bookmarks WHERE user_id = ?1",
+        [&dev_id],
+        |row| row.get(0),
+    )
+    .unwrap();
+    assert!(
+        keyed_by_user.is_some(),
+        "the bookmark row is keyed by the user's uuid, not the bare role string"
+    );
+
+    storage.delete_users(&["sess-dev".to_string()]).unwrap();
+    let remaining: i64 = engine::query_opt(
+        &storage.lock(),
+        "SELECT count(*) FROM bookmarks",
+        [],
+        |row| row.get(0),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        remaining, 0,
+        "ON DELETE CASCADE removes the bookmark when its user row is reaped"
+    );
+}

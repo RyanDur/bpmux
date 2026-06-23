@@ -372,6 +372,7 @@ contract!(
             notes: "test note".to_string(),
             last_updated: "2026-05-11T13:00:00Z".to_string(),
         };
+        storage.upsert_user("sess-dev", "dev", "dev").unwrap();
         storage.save_bookmark("dev", &bm).unwrap();
         let loaded = storage.load_bookmark("dev");
         assert_eq!(loaded.current_task, "refactor storage trait");
@@ -388,6 +389,8 @@ contract!(per_role_bookmark_isolation, |storage: &dyn Storage| {
         current_task: "pm task".to_string(),
         ..Default::default()
     };
+    storage.upsert_user("sess-dev", "dev", "dev").unwrap();
+    storage.upsert_user("sess-pm", "pm", "pm").unwrap();
     storage.save_bookmark("dev", &dev_bm).unwrap();
     storage.save_bookmark("pm", &pm_bm).unwrap();
     assert_eq!(storage.load_bookmark("dev").current_task, "dev task");
