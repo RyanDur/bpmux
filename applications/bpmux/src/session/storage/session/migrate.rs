@@ -1,11 +1,17 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use super::{FileStorage, SqliteStorage, Storage};
+use crate::board::store::PersistError;
 use crate::session::log::LogError;
 use crate::session::message::{Message, StateDeltaPayload};
+use crate::session::routing_identity::short;
 
 const MIGRATION_FLAG_KEY: &str = "migration:file_log_to_sqlite";
 const MIGRATION_DONE: &str = "done";
+
+const ROUTING_FLAG_KEY: &str = "migration:routing_identity_to_agents";
+const ROUTING_JSON_FILE: &str = "routing_identity.json";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MigrationReport {
@@ -22,6 +28,22 @@ pub enum MigrationError {
     Store(#[from] LogError),
     #[error("clear sqlite target: {0}")]
     Clear(std::io::Error),
+    #[error("write agents table: {0}")]
+    Agents(#[from] PersistError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoutingMigrationReport {
+    pub migrated: usize,
+    pub already_complete: bool,
+}
+
+#[derive(Default, serde::Deserialize)]
+struct LegacyRoutingIdentity {
+    #[serde(default)]
+    display_by_id: HashMap<String, String>,
+    #[serde(default)]
+    cursor_by_id: HashMap<String, String>,
 }
 
 fn is_ephemeral_board_snapshot(msg: &Message) -> bool {
@@ -57,6 +79,36 @@ pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, Migrati
     Ok(MigrationReport {
         migrated,
         filtered,
+        already_complete: false,
+    })
+}
+
+pub fn migrate_routing_identity_to_agents(
+    session_dir: &Path,
+) -> Result<RoutingMigrationReport, MigrationError> {
+    let target = SqliteStorage::new(session_dir.to_path_buf())?;
+    if target.load_state(ROUTING_FLAG_KEY).as_deref() == Some(MIGRATION_DONE) {
+        return Ok(RoutingMigrationReport {
+            migrated: 0,
+            already_complete: true,
+        });
+    }
+    let base = session_dir.parent().unwrap_or(session_dir);
+    let legacy: LegacyRoutingIdentity = std::fs::read_to_string(base.join(ROUTING_JSON_FILE))
+        .ok()
+        .and_then(|json| serde_json::from_str(&json).ok())
+        .unwrap_or_default();
+    let mut migrated = 0;
+    for (id, display) in &legacy.display_by_id {
+        target.upsert_agent(id, display, short(display))?;
+        if let Some(cursor) = legacy.cursor_by_id.get(id).filter(|c| !c.is_empty()) {
+            target.set_agent_cursor(id, cursor)?;
+        }
+        migrated += 1;
+    }
+    target.save_state(ROUTING_FLAG_KEY, MIGRATION_DONE);
+    Ok(RoutingMigrationReport {
+        migrated,
         already_complete: false,
     })
 }

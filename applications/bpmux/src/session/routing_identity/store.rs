@@ -5,7 +5,7 @@ use super::cursor_time::{cursor_after, is_future, later_cursor};
 use super::identity::RoutingIdentity;
 use crate::session::storage::Storage;
 
-fn short(identity: &str) -> &str {
+pub(crate) fn short(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 

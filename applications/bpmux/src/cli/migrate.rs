@@ -16,5 +16,16 @@ pub(crate) fn run_migrate_storage() -> anyhow::Result<()> {
             report.migrated, report.filtered
         );
     }
+    let routing = crate::session::storage::migrate_routing_identity_to_agents(&session_dir)?;
+    if routing.already_complete {
+        println!(
+            "routing-identity migration already complete — no-op (the agents table already holds the routing identities)"
+        );
+    } else {
+        println!(
+            "migrated {} routing identit(y/ies) — display + durable drain cursor — from routing_identity.json into the sqlite agents table; cursors are preserved so agents don't re-flood history after the flip",
+            routing.migrated
+        );
+    }
     Ok(())
 }

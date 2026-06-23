@@ -3,6 +3,7 @@ mod identity;
 mod store;
 
 pub use identity::*;
+pub(crate) use store::short;
 pub use store::*;
 
 #[cfg(test)]

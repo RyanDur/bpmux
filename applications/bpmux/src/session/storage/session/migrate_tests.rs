@@ -5,7 +5,7 @@ use std::path::Path;
 use chrono::Utc;
 use tempfile::TempDir;
 
-use super::migrate::migrate_file_log_to_sqlite;
+use super::migrate::{migrate_file_log_to_sqlite, migrate_routing_identity_to_agents};
 use super::{FileStorage, SqliteStorage, Storage};
 use crate::session::message::{Message, MessageType, StateDeltaPayload};
 
@@ -162,5 +162,119 @@ fn recovers_from_a_partial_interrupted_run() {
         texts,
         vec!["a", "b"],
         "the stale partial row is cleared; the store converges to exactly the source survivors"
+    );
+}
+
+fn routing_layout(base: &TempDir) -> std::path::PathBuf {
+    let session_dir = base.path().join("current");
+    std::fs::create_dir_all(&session_dir).unwrap();
+    session_dir
+}
+
+fn seed_routing_json(base: &TempDir, entries: &[(&str, &str, &str)]) {
+    let display: std::collections::HashMap<&str, &str> =
+        entries.iter().map(|(id, d, _)| (*id, *d)).collect();
+    let cursor: std::collections::HashMap<&str, &str> =
+        entries.iter().map(|(id, _, c)| (*id, *c)).collect();
+    let json = serde_json::json!({ "display_by_id": display, "cursor_by_id": cursor });
+    std::fs::write(
+        base.path().join("routing_identity.json"),
+        serde_json::to_string(&json).unwrap(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn migrates_legacy_routing_json_display_and_durable_cursor_into_the_agents_table() {
+    let base = TempDir::new().unwrap();
+    let session_dir = routing_layout(&base);
+    seed_routing_json(
+        &base,
+        &[
+            ("sess-dev", "dev", "2026-06-20T10:00:00Z"),
+            ("sess-pm", "pm:claude-code", "2026-06-20T11:00:00Z"),
+        ],
+    );
+
+    let report = migrate_routing_identity_to_agents(&session_dir).unwrap();
+    assert_eq!(report.migrated, 2);
+    assert!(!report.already_complete);
+
+    let agents = SqliteStorage::new(session_dir.clone())
+        .unwrap()
+        .load_agents()
+        .unwrap();
+    let dev = agents.iter().find(|a| a.id == "sess-dev").unwrap();
+    assert_eq!(
+        dev.name, "dev",
+        "the opaque display migrates as the agent name"
+    );
+    assert_eq!(dev.role, "dev", "the role-col is short(display)");
+    assert_eq!(
+        dev.cursor.as_deref(),
+        Some("2026-06-20T10:00:00Z"),
+        "the durable drain cursor is carried across the flip — so the agent resumes from where it left off and never re-floods already-seen history"
+    );
+    let pm = agents.iter().find(|a| a.id == "sess-pm").unwrap();
+    assert_eq!(
+        pm.role, "pm",
+        "the role-col is short(display) even for a full id:client display"
+    );
+    assert_eq!(pm.cursor.as_deref(), Some("2026-06-20T11:00:00Z"));
+}
+
+#[test]
+fn routing_migration_is_idempotent_and_never_reverts_a_post_flip_advanced_cursor() {
+    let base = TempDir::new().unwrap();
+    let session_dir = routing_layout(&base);
+    seed_routing_json(&base, &[("sess-dev", "dev", "2026-06-20T10:00:00Z")]);
+
+    let first = migrate_routing_identity_to_agents(&session_dir).unwrap();
+    assert_eq!(first.migrated, 1);
+    assert!(!first.already_complete);
+
+    let storage = SqliteStorage::new(session_dir.clone()).unwrap();
+    storage
+        .set_agent_cursor("sess-dev", "2026-06-25T00:00:00Z")
+        .unwrap();
+
+    let second = migrate_routing_identity_to_agents(&session_dir).unwrap();
+    assert!(
+        second.already_complete,
+        "a completed routing migration re-runs as a no-op"
+    );
+    assert_eq!(second.migrated, 0);
+
+    let dev = storage
+        .load_agents()
+        .unwrap()
+        .into_iter()
+        .find(|a| a.id == "sess-dev")
+        .unwrap();
+    assert_eq!(
+        dev.cursor.as_deref(),
+        Some("2026-06-25T00:00:00Z"),
+        "the cursor advanced by real post-flip drains is NEVER reverted to the stale JSON value — the migration flag makes the re-run a no-op, so running migrate-storage twice can't clobber live drain positions"
+    );
+}
+
+#[test]
+fn routing_migration_with_no_legacy_json_is_a_clean_noop() {
+    let base = TempDir::new().unwrap();
+    let session_dir = routing_layout(&base);
+
+    let report = migrate_routing_identity_to_agents(&session_dir).unwrap();
+    assert_eq!(
+        report.migrated, 0,
+        "a fresh install with no legacy routing_identity.json migrates nothing — a clean no-op, never an error"
+    );
+    assert!(!report.already_complete);
+    assert!(
+        SqliteStorage::new(session_dir)
+            .unwrap()
+            .load_agents()
+            .unwrap()
+            .is_empty(),
+        "no JSON ⇒ no agent rows fabricated"
     );
 }
