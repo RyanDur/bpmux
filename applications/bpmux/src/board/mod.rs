@@ -46,5 +46,5 @@ pub use orchestrator::{
     mark_recovering_from_corruption, sync_transition,
 };
 pub use peer::PeerId;
-pub use store::{BoardStore, PersistError, default_store_path};
+pub use store::{BoardStore, PersistError};
 pub use sync::{SourceAdapter, SyncError};

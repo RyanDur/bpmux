@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use tokio::sync::broadcast;
 
@@ -11,17 +10,14 @@ mod apply;
 mod apply_events;
 mod label_sync;
 mod persist_error;
-mod persistence;
 
 pub use persist_error::PersistError;
-pub use persistence::default_store_path;
 
 const SUBSCRIBE_BUFFER: usize = 1_000;
 
 pub struct BoardStore {
     stories: RwLock<HashMap<u64, Story>>,
     event_tx: broadcast::Sender<BoardEvent>,
-    dirty: AtomicBool,
     #[cfg(test)]
     test_post_send_hook: std::sync::Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
 }
@@ -32,7 +28,6 @@ impl BoardStore {
         Self {
             stories: RwLock::new(HashMap::new()),
             event_tx,
-            dirty: AtomicBool::new(false),
             #[cfg(test)]
             test_post_send_hook: std::sync::Mutex::new(None),
         }
@@ -54,29 +49,20 @@ impl BoardStore {
         for story in stories {
             w.insert(story.number, story);
         }
-        drop(w);
-        self.dirty.store(true, Ordering::Release);
     }
 
     pub fn clear(&self) {
-        let mut w = self.stories.write().unwrap_or_else(|e| e.into_inner());
-        if !w.is_empty() {
-            w.clear();
-            drop(w);
-            self.dirty.store(true, Ordering::Release);
-        }
+        self.stories
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
     }
 
     pub fn remove(&self, number: u64) -> Option<Story> {
-        let removed = self
-            .stories
+        self.stories
             .write()
             .unwrap_or_else(|e| e.into_inner())
-            .remove(&number);
-        if removed.is_some() {
-            self.dirty.store(true, Ordering::Release);
-        }
-        removed
+            .remove(&number)
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<BoardEvent> {

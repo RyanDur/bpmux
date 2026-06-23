@@ -1,7 +1,6 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
-use crate::board::domain::Story;
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 
@@ -13,7 +12,6 @@ use crate::session::search::{self, SearchFilters, SearchResult};
 
 pub struct FileStorage {
     dir: PathBuf,
-    board_store_path: Option<PathBuf>,
     outbox_path: Option<PathBuf>,
 }
 
@@ -21,26 +19,13 @@ impl FileStorage {
     pub fn new(dir: PathBuf) -> Self {
         Self {
             dir,
-            board_store_path: None,
             outbox_path: None,
         }
-    }
-
-    pub fn with_board_store_path(mut self, path: PathBuf) -> Self {
-        self.board_store_path = Some(path);
-        self
     }
 
     pub fn with_outbox_path(mut self, path: PathBuf) -> Self {
         self.outbox_path = Some(path);
         self
-    }
-
-    fn resolve_board_store_path(&self) -> Result<PathBuf, std::io::Error> {
-        if let Some(p) = &self.board_store_path {
-            return Ok(p.clone());
-        }
-        crate::board::store::default_store_path()
     }
 
     fn resolve_outbox_path(&self) -> Result<PathBuf, std::io::Error> {
@@ -138,30 +123,6 @@ impl Storage for FileStorage {
 
     fn dir(&self) -> &Path {
         &self.dir
-    }
-
-    fn load_board_snapshot(&self) -> Result<HashMap<u64, Story>, PersistError> {
-        let path = self.resolve_board_store_path()?;
-        if !path.exists() {
-            return Ok(HashMap::new());
-        }
-        let bytes = std::fs::read(&path)?;
-        if bytes.is_empty() {
-            return Ok(HashMap::new());
-        }
-        Ok(serde_json::from_slice(&bytes)?)
-    }
-
-    fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError> {
-        let path = self.resolve_board_store_path()?;
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let bytes = serde_json::to_vec(snapshot)?;
-        let tmp = path.with_extension("tmp");
-        std::fs::write(&tmp, &bytes)?;
-        std::fs::rename(&tmp, &path)?;
-        Ok(())
     }
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {

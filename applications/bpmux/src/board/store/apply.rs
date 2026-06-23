@@ -1,6 +1,5 @@
 use super::*;
 use crate::board::events::BoardEvent;
-use std::sync::atomic::Ordering;
 
 impl BoardStore {
     pub fn apply(&self, event: &BoardEvent) {
@@ -17,7 +16,5 @@ impl BoardStore {
         }
         let mut w = self.stories.write().unwrap_or_else(|e| e.into_inner());
         super::apply_events::apply_event(&mut w, event);
-        drop(w);
-        self.dirty.store(true, Ordering::Release);
     }
 }

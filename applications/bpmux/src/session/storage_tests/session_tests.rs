@@ -1,11 +1,9 @@
-use crate::board::domain::{Story, StoryState};
 use crate::session::lessons::LessonIndex;
 use crate::session::log::StorageBackend;
 use crate::session::message::Message;
 use crate::session::search::SearchFilters;
 use crate::session::storage::{FileStorage, SqliteStorage, Storage};
 use chrono::{TimeZone, Utc};
-use std::collections::HashMap;
 use std::sync::Arc;
 
 fn fresh_message(text: &str) -> Message {
@@ -19,13 +17,9 @@ fn fresh_message(text: &str) -> Message {
 
 fn file_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    let board_path = dir.path().join("board-store.json");
     let outbox_path = dir.path().join("board-outbox.json");
-    let storage: Arc<dyn Storage> = Arc::new(
-        FileStorage::new(dir.path().to_path_buf())
-            .with_board_store_path(board_path)
-            .with_outbox_path(outbox_path),
-    );
+    let storage: Arc<dyn Storage> =
+        Arc::new(FileStorage::new(dir.path().to_path_buf()).with_outbox_path(outbox_path));
     (storage, dir)
 }
 
@@ -33,16 +27,6 @@ fn sqlite_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let storage: Arc<dyn Storage> = Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap());
     (storage, dir)
-}
-
-fn seed_story(number: u64, title: &str) -> Story {
-    Story::new_minimal(
-        number,
-        title.to_string(),
-        StoryState::Icebox,
-        Utc.with_ymd_and_hms(2026, 5, 11, 12, 0, 0).unwrap(),
-        "dev".to_string(),
-    )
 }
 
 macro_rules! contract {
@@ -257,46 +241,6 @@ contract!(
     }
 );
 
-contract!(
-    load_board_snapshot_empty_when_unset,
-    |storage: &dyn Storage| {
-        let snap = storage.load_board_snapshot().unwrap();
-        assert!(snap.is_empty());
-    }
-);
-
-contract!(
-    save_then_load_board_snapshot_roundtrips,
-    |storage: &dyn Storage| {
-        let mut snap = HashMap::new();
-        snap.insert(100, seed_story(100, "story-100"));
-        snap.insert(200, seed_story(200, "story-200"));
-        storage.save_board_snapshot(&snap).unwrap();
-        let loaded = storage.load_board_snapshot().unwrap();
-        assert_eq!(loaded.len(), 2);
-        assert_eq!(loaded.get(&100).unwrap().title, "story-100");
-        assert_eq!(loaded.get(&200).unwrap().title, "story-200");
-    }
-);
-
-contract!(
-    save_board_snapshot_overwrites_previous,
-    |storage: &dyn Storage| {
-        let mut snap_v1 = HashMap::new();
-        snap_v1.insert(100, seed_story(100, "v1"));
-        storage.save_board_snapshot(&snap_v1).unwrap();
-
-        let mut snap_v2 = HashMap::new();
-        snap_v2.insert(100, seed_story(100, "v2"));
-        snap_v2.insert(200, seed_story(200, "added"));
-        storage.save_board_snapshot(&snap_v2).unwrap();
-
-        let loaded = storage.load_board_snapshot().unwrap();
-        assert_eq!(loaded.len(), 2);
-        assert_eq!(loaded.get(&100).unwrap().title, "v2");
-    }
-);
-
 fn seed_outbox_event(number: u64, label: &str) -> crate::board::orchestrator::QueuedEvent {
     use crate::board::events::{BoardEvent, EventMeta};
     use crate::board::peer::PeerId;
@@ -394,33 +338,6 @@ contract!(
         assert!(loaded.channels.is_empty());
     }
 );
-
-#[test]
-fn board_store_roundtrips_via_sqlite_storage() {
-    use crate::board::store::BoardStore;
-    let (storage, _dir) = sqlite_storage();
-    let source = BoardStore::new();
-    source.seed_all(vec![seed_story(100, "alpha"), seed_story(200, "beta")]);
-    source.persist_to_storage(storage.as_ref()).unwrap();
-
-    let restored = BoardStore::load_from_storage(storage.as_ref()).unwrap();
-    let stories = restored.all_stories();
-    assert_eq!(stories.len(), 2);
-    assert!(
-        stories
-            .iter()
-            .any(|s| s.number == 100 && s.title == "alpha")
-    );
-    assert!(stories.iter().any(|s| s.number == 200 && s.title == "beta"));
-}
-
-#[test]
-fn board_store_load_from_empty_storage_returns_empty() {
-    use crate::board::store::BoardStore;
-    let (storage, _dir) = sqlite_storage();
-    let store = BoardStore::load_from_storage(storage.as_ref()).unwrap();
-    assert!(store.all_stories().is_empty());
-}
 
 #[test]
 fn storage_backend_resolves_from_env_value_purely() {

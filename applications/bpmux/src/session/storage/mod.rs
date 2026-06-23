@@ -1,7 +1,6 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::path::Path;
 
-use crate::board::domain::Story;
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 
@@ -46,9 +45,6 @@ pub trait Storage: Send + Sync {
     fn save_state(&self, key: &str, value: &str);
 
     fn dir(&self) -> &Path;
-
-    fn load_board_snapshot(&self) -> Result<HashMap<u64, Story>, PersistError>;
-    fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError>;
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError>;

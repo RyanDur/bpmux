@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -8,7 +8,6 @@ use super::Storage;
 use super::sqlite_documents as documents;
 use super::sqlite_engine as engine;
 use super::sqlite_messages as messages;
-use crate::board::domain::Story;
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 use crate::session::bookmark::Bookmark;
@@ -166,17 +165,6 @@ impl Storage for SqliteStorage {
 
     fn dir(&self) -> &Path {
         &self.dir
-    }
-
-    fn load_board_snapshot(&self) -> Result<HashMap<u64, Story>, PersistError> {
-        Ok(documents::load_doc(&self.lock(), documents::BOARD_SNAPSHOT_KEY).unwrap_or_default())
-    }
-
-    fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError> {
-        let value = serde_json::to_string(snapshot)?;
-        documents::doc_put(&self.lock(), documents::BOARD_SNAPSHOT_KEY, &value)
-            .map(|_| ())
-            .map_err(engine::persist_err)
     }
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {

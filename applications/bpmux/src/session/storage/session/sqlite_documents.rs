@@ -3,7 +3,6 @@ use rusqlite::Connection;
 use super::sqlite_engine as engine;
 
 pub const LESSONS_KEY: &str = "lessons";
-pub const BOARD_SNAPSHOT_KEY: &str = "board_snapshot";
 pub const OUTBOX_KEY: &str = "outbox";
 pub const REACTIONS_KEY: &str = "reactions";
 

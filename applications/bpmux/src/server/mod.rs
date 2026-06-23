@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::board::{BoardStore, RefreshDriver};
+use crate::board::RefreshDriver;
 use crate::session;
 use crate::transport;
 
@@ -17,27 +17,6 @@ fn startup_routing_id(
         .into_iter()
         .next()
         .unwrap_or_else(|| identity.to_string())
-}
-
-fn spawn_periodic_snapshot(
-    store: Arc<BoardStore>,
-    storage: Arc<dyn crate::session::storage::Storage>,
-) {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
-        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        loop {
-            interval.tick().await;
-            if !store.is_dirty() {
-                continue;
-            }
-            if let Err(e) = store.persist_to_storage(storage.as_ref()) {
-                crate::session::diag::log_diag(&format!(
-                    "server: periodic board-store snapshot failed: {e}"
-                ));
-            }
-        }
-    });
 }
 
 pub async fn run_server(
@@ -70,16 +49,13 @@ pub async fn run_server(
             .await,
         )
     } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-        Some(
-            build_prod_orchestrator(
-                session.clone(),
-                tracker_arc,
-                Some(action_tx.clone()),
-                ci_state_store.clone(),
-                race_window_barrier.clone(),
-            )
-            .await,
-        )
+        Some(build_prod_orchestrator(
+            session.clone(),
+            tracker_arc,
+            Some(action_tx.clone()),
+            ci_state_store.clone(),
+            race_window_barrier.clone(),
+        ))
     } else {
         None
     };
@@ -171,6 +147,7 @@ pub async fn run_server(
 mod routes;
 mod setup;
 mod startup_sequence;
+mod startup_tasks;
 mod wiring;
 use routes::{gated_routes, test_routes, test_seed_routes};
 use setup::*;

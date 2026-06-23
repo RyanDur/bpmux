@@ -1,4 +1,3 @@
-use super::*;
 use std::sync::Arc;
 
 use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
@@ -47,19 +46,7 @@ pub(super) async fn build_test_orchestrator(
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
     race_window_barrier: Option<Arc<crate::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
-    let mut corruption_detected = false;
-    let store = match BoardStore::load_from_storage(session.storage.as_ref()) {
-        Ok(s) => Arc::new(s),
-        Err(e) => {
-            if matches!(e, crate::board::PersistError::Serde(_)) {
-                corruption_detected = true;
-            }
-            crate::session::diag::log_diag(&format!(
-                "server: BPMUX_TEST_MODE board-store disk-load failed ({e}); starting empty"
-            ));
-            Arc::new(BoardStore::new())
-        }
-    };
+    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
     let orch_concrete = match SyncOrchestrator::with_storage(
         store.clone(),
@@ -79,9 +66,6 @@ pub(super) async fn build_test_orchestrator(
         orch_concrete = orch_concrete.with_race_window_barrier(barrier);
     }
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-    if corruption_detected {
-        orch.mark_recovering_from_corruption();
-    }
     if let Err(e) = orch.refresh_all().await {
         crate::session::diag::log_diag(&format!(
             "server: BPMUX_TEST_MODE initial ingest skipped — {e}"
@@ -90,32 +74,14 @@ pub(super) async fn build_test_orchestrator(
     orch
 }
 
-pub(super) async fn build_prod_orchestrator(
+pub(super) fn build_prod_orchestrator(
     session: Arc<session::Session>,
     adapter: Arc<crate::board::adapters::github::GitHubSourceAdapter>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
     race_window_barrier: Option<Arc<crate::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
-    let mut corruption_detected = false;
-    let store = match BoardStore::load_from_storage(session.storage.as_ref()) {
-        Ok(s) => {
-            let count = s.all_stories().len();
-            crate::session::diag::log_diag(&format!(
-                "server: board-store hydrated via storage ({count} stories)"
-            ));
-            Arc::new(s)
-        }
-        Err(e) => {
-            if matches!(e, crate::board::PersistError::Serde(_)) {
-                corruption_detected = true;
-            }
-            crate::session::diag::log_diag(&format!(
-                "server: board-store disk-load failed ({e}); starting empty"
-            ));
-            Arc::new(BoardStore::new())
-        }
-    };
+    let store = Arc::new(BoardStore::new());
     let orch_concrete = match SyncOrchestrator::with_storage(
         store.clone(),
         adapter.clone(),
@@ -145,47 +111,6 @@ pub(super) async fn build_prod_orchestrator(
         orch_concrete = orch_concrete.with_race_window_barrier(barrier);
     }
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-    if corruption_detected {
-        orch.mark_recovering_from_corruption();
-        crate::session::diag::log_diag(
-            "server: corruption-detected on board-store load; sync-status flagged recovering until first ingest succeeds",
-        );
-    }
-    let backoffs = [0u64, 500, 1500, 4000];
-    for (attempt, delay_ms) in backoffs.iter().enumerate() {
-        if *delay_ms > 0 {
-            tokio::time::sleep(std::time::Duration::from_millis(*delay_ms)).await;
-        }
-        match orch.refresh_all().await {
-            Ok(()) => {
-                let count = orch.all_stories().len();
-                crate::session::diag::log_diag(&format!(
-                    "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
-                    attempt + 1
-                ));
-                crate::board::iteration_order_backfill::backfill_iteration_order(orch.as_ref());
-                if let Err(e) = store.persist_to_storage(session.storage.as_ref()) {
-                    crate::session::diag::log_diag(&format!(
-                        "server: post-ingest snapshot to storage failed: {e}"
-                    ));
-                }
-                spawn_periodic_snapshot(store.clone(), session.storage.clone());
-                return orch;
-            }
-            Err(e) if attempt + 1 < backoffs.len() => {
-                crate::session::diag::log_diag(&format!(
-                    "server: production orchestrator ingest attempt {} failed: {e}; retrying with backoff",
-                    attempt + 1
-                ));
-            }
-            Err(e) => {
-                let count = orch.all_stories().len();
-                crate::session::diag::log_diag(&format!(
-                    "server: production orchestrator ingest exhausted retries; last error: {e}; BoardStore has {count} stories from disk-hydrate (read paths offline-capable)"
-                ));
-                spawn_periodic_snapshot(store.clone(), session.storage.clone());
-            }
-        }
-    }
+    super::startup_tasks::spawn_background_ingest(orch.clone());
     orch
 }
