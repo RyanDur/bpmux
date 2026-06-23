@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 
-use super::Storage;
+use super::{AgentRecord, Storage};
 use crate::session::lessons::LessonIndex;
 use crate::session::log::LogError;
 use crate::session::message::Message;
@@ -33,6 +33,18 @@ impl FileStorage {
             return Ok(p.clone());
         }
         crate::board::orchestrator::default_outbox_path()
+    }
+
+    fn write_agents(&self, records: &[AgentRecord]) -> Result<(), PersistError> {
+        let path = self.dir.join("agents.json");
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let bytes = serde_json::to_vec(records)?;
+        let tmp = path.with_extension("tmp");
+        std::fs::write(&tmp, &bytes)?;
+        std::fs::rename(&tmp, &path)?;
+        Ok(())
     }
 }
 
@@ -125,6 +137,49 @@ impl Storage for FileStorage {
         &self.dir
     }
 
+    fn load_agents(&self) -> Result<Vec<AgentRecord>, PersistError> {
+        let path = self.dir.join("agents.json");
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        let bytes = std::fs::read(&path)?;
+        if bytes.is_empty() {
+            return Ok(Vec::new());
+        }
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    fn upsert_agent(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError> {
+        let mut records = self.load_agents()?;
+        match records.iter_mut().find(|r| r.id == id) {
+            Some(existing) => {
+                existing.name = name.to_string();
+                existing.role = role.to_string();
+            }
+            None => records.push(AgentRecord {
+                id: id.to_string(),
+                name: name.to_string(),
+                role: role.to_string(),
+                cursor: None,
+            }),
+        }
+        self.write_agents(&records)
+    }
+
+    fn set_agent_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
+        let mut records = self.load_agents()?;
+        if let Some(existing) = records.iter_mut().find(|r| r.id == id) {
+            existing.cursor = Some(cursor.to_string());
+        }
+        self.write_agents(&records)
+    }
+
+    fn delete_agents(&self, ids: &[String]) -> Result<(), PersistError> {
+        let mut records = self.load_agents()?;
+        records.retain(|r| !ids.iter().any(|id| id == &r.id));
+        self.write_agents(&records)
+    }
+
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
         let path = self.resolve_outbox_path()?;
         crate::board::orchestrator::load_outbox_from_disk(&path)
@@ -167,6 +222,7 @@ impl Storage for FileStorage {
 }
 
 mod sqlite;
+mod sqlite_agents;
 mod sqlite_documents;
 mod sqlite_engine;
 mod sqlite_messages;

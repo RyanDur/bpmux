@@ -285,6 +285,67 @@ contract!(save_outbox_overwrites_previous, |storage: &dyn Storage| {
     assert_eq!(loaded.len(), 2);
 });
 
+contract!(load_agents_empty_when_unset, |storage: &dyn Storage| {
+    assert!(storage.load_agents().unwrap().is_empty());
+});
+
+contract!(
+    upsert_then_load_agents_roundtrips,
+    |storage: &dyn Storage| {
+        storage
+            .upsert_agent("sess-dev", "dev:claude-code", "dev")
+            .unwrap();
+        storage
+            .upsert_agent("sess-pm", "pm:claude-code", "pm")
+            .unwrap();
+        let mut loaded = storage.load_agents().unwrap();
+        loaded.sort_by(|a, b| a.id.cmp(&b.id));
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].id, "sess-dev");
+        assert_eq!(loaded[0].name, "dev:claude-code");
+        assert_eq!(loaded[0].role, "dev");
+        assert_eq!(loaded[0].cursor, None);
+    }
+);
+
+contract!(
+    upsert_agent_updates_name_and_role_for_same_id,
+    |storage: &dyn Storage| {
+        storage.upsert_agent("sess-x", "dev", "dev").unwrap();
+        storage
+            .upsert_agent("sess-x", "dev-renamed", "designer")
+            .unwrap();
+        let loaded = storage.load_agents().unwrap();
+        assert_eq!(loaded.len(), 1, "upsert on the same id must not duplicate");
+        assert_eq!(loaded[0].name, "dev-renamed");
+        assert_eq!(loaded[0].role, "designer");
+    }
+);
+
+contract!(
+    set_agent_cursor_persists_the_floor,
+    |storage: &dyn Storage| {
+        storage.upsert_agent("sess-c", "dev", "dev").unwrap();
+        storage
+            .set_agent_cursor("sess-c", "2026-06-23T10:00:00Z")
+            .unwrap();
+        let loaded = storage.load_agents().unwrap();
+        assert_eq!(loaded[0].cursor.as_deref(), Some("2026-06-23T10:00:00Z"));
+    }
+);
+
+contract!(
+    delete_agents_removes_only_named_ids,
+    |storage: &dyn Storage| {
+        storage.upsert_agent("sess-a", "a", "dev").unwrap();
+        storage.upsert_agent("sess-b", "b", "pm").unwrap();
+        storage.delete_agents(&["sess-a".to_string()]).unwrap();
+        let loaded = storage.load_agents().unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].id, "sess-b");
+    }
+);
+
 contract!(load_bookmark_default_when_unset, |storage: &dyn Storage| {
     let bm = storage.load_bookmark("dev");
     assert!(bm.current_task.is_empty());

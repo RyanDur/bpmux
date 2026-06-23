@@ -1,0 +1,45 @@
+use rusqlite::Connection;
+
+use super::sqlite_engine as engine;
+use crate::session::storage::AgentRecord;
+
+pub fn load_all(conn: &Connection) -> rusqlite::Result<Vec<AgentRecord>> {
+    engine::query(
+        conn,
+        "SELECT id, name, role, cursor FROM agents",
+        [],
+        |row| {
+            Ok(AgentRecord {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                role: row.get(2)?,
+                cursor: row.get(3)?,
+            })
+        },
+    )
+}
+
+pub fn upsert(conn: &Connection, id: &str, name: &str, role: &str) -> rusqlite::Result<usize> {
+    engine::execute(
+        conn,
+        "INSERT INTO agents (id, name, role) VALUES (?1, ?2, ?3) \
+         ON CONFLICT(id) DO UPDATE SET name = excluded.name, role = excluded.role",
+        (id, name, role),
+    )
+}
+
+pub fn set_cursor(conn: &Connection, id: &str, cursor: &str) -> rusqlite::Result<usize> {
+    engine::execute(
+        conn,
+        "UPDATE agents SET cursor = ?2 WHERE id = ?1",
+        (id, cursor),
+    )
+}
+
+pub fn delete(conn: &Connection, ids: &[String]) -> rusqlite::Result<usize> {
+    let mut affected = 0;
+    for id in ids {
+        affected += engine::execute(conn, "DELETE FROM agents WHERE id = ?1", (id,))?;
+    }
+    Ok(affected)
+}

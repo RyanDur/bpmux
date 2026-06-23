@@ -176,6 +176,63 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         self.inner.dir()
     }
 
+    fn load_agents(
+        &self,
+    ) -> Result<Vec<crate::session::storage::AgentRecord>, crate::board::store::PersistError> {
+        let start = Instant::now();
+        let result = self.inner.load_agents();
+        if let Ok(ref records) = result {
+            self.log(&format!(
+                "load_agents {} agents {:.1}ms",
+                records.len(),
+                start.elapsed().as_secs_f64() * 1000.0
+            ));
+        }
+        result
+    }
+
+    fn upsert_agent(
+        &self,
+        id: &str,
+        name: &str,
+        role: &str,
+    ) -> Result<(), crate::board::store::PersistError> {
+        let start = Instant::now();
+        let result = self.inner.upsert_agent(id, name, role);
+        self.log(&format!(
+            "upsert_agent '{}' {:.1}ms",
+            id,
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
+
+    fn set_agent_cursor(
+        &self,
+        id: &str,
+        cursor: &str,
+    ) -> Result<(), crate::board::store::PersistError> {
+        let start = Instant::now();
+        let result = self.inner.set_agent_cursor(id, cursor);
+        self.log(&format!(
+            "set_agent_cursor '{}' {:.1}ms",
+            id,
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
+
+    fn delete_agents(&self, ids: &[String]) -> Result<(), crate::board::store::PersistError> {
+        let start = Instant::now();
+        let result = self.inner.delete_agents(ids);
+        self.log(&format!(
+            "delete_agents {} ids {:.1}ms",
+            ids.len(),
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
+
     fn load_outbox(
         &self,
     ) -> Result<

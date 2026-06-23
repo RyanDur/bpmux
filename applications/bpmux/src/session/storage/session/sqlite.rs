@@ -4,10 +4,11 @@ use std::sync::Mutex;
 
 use rusqlite::Connection;
 
-use super::Storage;
+use super::sqlite_agents as agents;
 use super::sqlite_documents as documents;
 use super::sqlite_engine as engine;
 use super::sqlite_messages as messages;
+use super::{AgentRecord, Storage};
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 use crate::session::bookmark::Bookmark;
@@ -165,6 +166,28 @@ impl Storage for SqliteStorage {
 
     fn dir(&self) -> &Path {
         &self.dir
+    }
+
+    fn load_agents(&self) -> Result<Vec<AgentRecord>, PersistError> {
+        agents::load_all(&self.lock()).map_err(engine::persist_err)
+    }
+
+    fn upsert_agent(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError> {
+        agents::upsert(&self.lock(), id, name, role)
+            .map(|_| ())
+            .map_err(engine::persist_err)
+    }
+
+    fn set_agent_cursor(&self, id: &str, cursor: &str) -> Result<(), PersistError> {
+        agents::set_cursor(&self.lock(), id, cursor)
+            .map(|_| ())
+            .map_err(engine::persist_err)
+    }
+
+    fn delete_agents(&self, ids: &[String]) -> Result<(), PersistError> {
+        agents::delete(&self.lock(), ids)
+            .map(|_| ())
+            .map_err(engine::persist_err)
     }
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
