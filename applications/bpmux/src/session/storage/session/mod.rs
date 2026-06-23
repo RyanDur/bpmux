@@ -224,9 +224,12 @@ impl Storage for FileStorage {
 
 mod sqlite;
 mod sqlite_agents;
-mod sqlite_documents;
+mod sqlite_bookmarks;
 mod sqlite_engine;
 mod sqlite_messages;
+mod sqlite_meta;
+mod sqlite_outbox;
+mod sqlite_reactions;
 pub use sqlite::*;
 
 mod migrate;

@@ -5,9 +5,12 @@ use std::sync::Mutex;
 use rusqlite::Connection;
 
 use super::sqlite_agents as agents;
-use super::sqlite_documents as documents;
+use super::sqlite_bookmarks as bookmarks;
 use super::sqlite_engine as engine;
 use super::sqlite_messages as messages;
+use super::sqlite_meta as meta;
+use super::sqlite_outbox as outbox;
+use super::sqlite_reactions as reactions;
 use super::{AgentRecord, Storage};
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
@@ -40,7 +43,7 @@ impl SqliteStorage {
 impl Storage for SqliteStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let payload = serde_json::to_string(msg)?;
-        let ts = msg.ts.to_rfc3339();
+        let created_at = msg.ts.timestamp();
         let sender = msg
             .sender_id
             .as_deref()
@@ -49,7 +52,7 @@ impl Storage for SqliteStorage {
             .message_type
             .to_wire()
             .unwrap_or_else(|| "chat".to_string());
-        messages::append(&self.lock(), &ts, sender, &message_type, &payload)
+        messages::append(&self.lock(), created_at, sender, &message_type, &payload)
             .map_err(engine::io_err)?;
         Ok(())
     }
@@ -115,13 +118,11 @@ impl Storage for SqliteStorage {
     }
 
     fn load_state(&self, key: &str) -> Option<String> {
-        documents::doc_get(&self.lock(), &documents::state_key(key))
-            .ok()
-            .flatten()
+        meta::get(&self.lock(), key).ok().flatten()
     }
 
     fn save_state(&self, key: &str, value: &str) {
-        let _ = documents::doc_put(&self.lock(), &documents::state_key(key), value);
+        let _ = meta::put(&self.lock(), key, value);
     }
 
     fn dir(&self) -> &Path {
@@ -151,29 +152,26 @@ impl Storage for SqliteStorage {
     }
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
-        Ok(documents::load_doc(&self.lock(), documents::OUTBOX_KEY).unwrap_or_default())
+        outbox::load(&self.lock())
     }
 
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {
-        let value = serde_json::to_string(events)?;
-        documents::doc_put(&self.lock(), documents::OUTBOX_KEY, &value)
-            .map(|_| ())
-            .map_err(engine::persist_err)
+        outbox::replace(&self.lock(), events)
     }
 
     fn load_bookmark(&self, role: &str) -> Bookmark {
-        documents::load_doc(&self.lock(), &documents::bookmark_key(role)).unwrap_or_default()
+        bookmarks::get(&self.lock(), role)
     }
 
     fn save_bookmark(&self, role: &str, bookmark: &Bookmark) -> Result<(), std::io::Error> {
-        documents::save_doc(&self.lock(), &documents::bookmark_key(role), bookmark)
+        bookmarks::put(&self.lock(), role, bookmark)
     }
 
     fn load_reactions(&self) -> ReactionsStore {
-        documents::load_doc(&self.lock(), documents::REACTIONS_KEY).unwrap_or_default()
+        reactions::load(&self.lock())
     }
 
     fn save_reactions(&self, store: &ReactionsStore) -> Result<(), std::io::Error> {
-        documents::save_doc(&self.lock(), documents::REACTIONS_KEY, store)
+        reactions::replace(&self.lock(), store)
     }
 }

@@ -24,7 +24,8 @@ pub fn upsert(conn: &Connection, id: &str, name: &str, role: &str) -> rusqlite::
     engine::execute(
         conn,
         "INSERT INTO agents (id, name, role) VALUES (?1, ?2, ?3) \
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name, role = excluded.role",
+         ON CONFLICT(id) DO UPDATE SET name = excluded.name, role = excluded.role, \
+         updated_at = unixepoch()",
         (id, name, role),
     )
 }
@@ -32,7 +33,7 @@ pub fn upsert(conn: &Connection, id: &str, name: &str, role: &str) -> rusqlite::
 pub fn set_cursor(conn: &Connection, id: &str, cursor: &str) -> rusqlite::Result<usize> {
     engine::execute(
         conn,
-        "UPDATE agents SET cursor = ?2 WHERE id = ?1",
+        "UPDATE agents SET cursor = ?2, updated_at = unixepoch() WHERE id = ?1",
         (id, cursor),
     )
 }
