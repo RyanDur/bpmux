@@ -51,7 +51,9 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
       const board = new BoardPage(win)
       await expect(board.region()).toBeVisible()
       await seedCurrentIterationViaRpc(rpc, 'HumanBoardDeskCheckCol-3')
+      await win.mouse.move(0, 0)
       await win.reload()
+      await win.mouse.move(0, 0)
       await waitForBoardLoaded(win)
 
       const deskCheck = board.columnToggle('Desk Check')

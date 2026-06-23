@@ -46,7 +46,9 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
       await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
       await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
 
+      await win.mouse.move(0, 0)
       await win.reload()
+      await win.mouse.move(0, 0)
       await waitForBoardLoaded(win)
 
       const board = new BoardPage(win)
