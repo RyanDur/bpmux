@@ -39,32 +39,16 @@ impl TestBpmux {
         Self::start_with_session(name, session_dir)
     }
 
-    /// Spawn bpmux with an extra env var set (on top of the usual test
-    /// environment). Useful for features like `/tokens` (#179) that
-    /// read paths from env vars so tests can redirect writes into a
-    /// tempdir.
     pub fn start_with_env(name: &str, key: &str, value: &str) -> Self {
         let session_dir = tempfile::TempDir::new().expect("temp dir");
         Self::start_with_session_and_env(name, session_dir, &[(key, value)])
     }
 
-    /// Spawn bpmux with multiple extra env vars. Sister to `start_with_env`
-    /// for callers that need to set more than one variable at startup
-    /// (e.g., #1290 seed endpoints requiring both `BPMUX_TEST_SEED_API=1`
-    /// and `BPMUX_STORAGE_BACKEND=memory`).
     pub fn start_with_envs(name: &str, extra_env: &[(&str, &str)]) -> Self {
         let session_dir = tempfile::TempDir::new().expect("temp dir");
         Self::start_with_session_and_env(name, session_dir, extra_env)
     }
 
-    /// #599: spawn bpmux with the SERVER's `GitHubSourceAdapter` aimed
-    /// at a test MockServer via `BPMUX_GH_BASE_URL`. Required for the
-    /// cross_bridge_mutation_propagation suite post-#516 canonical-
-    /// store unification — view_board + create_story now dispatch
-    /// through the server's tracker, so setting `BPMUX_GH_BASE_URL`
-    /// on the BRIDGE subprocess (the pre-#516 #482 pattern) became a
-    /// no-op. `BPMUX_POLL_INTERVAL_SECS=1` so the server's ingest
-    /// poll lands within the test's 2.5s wait window.
     pub fn start_with_mock_gh(mock_gh_base_url: &str) -> Self {
         let session_dir = tempfile::TempDir::new().expect("temp dir");
         Self::start_with_session_and_env(
@@ -78,19 +62,10 @@ impl TestBpmux {
         )
     }
 
-    /// Spawn bpmux reusing an existing session base directory.
-    /// Useful for testing restart scenarios where persisted state matters.
     pub fn start_with_session(name: &str, session_dir: tempfile::TempDir) -> Self {
         Self::start_with_session_and_env(name, session_dir, &[])
     }
 
-    /// Spawn bpmux on an explicit port, reusing an existing
-    /// session_dir. Used by #130 bridge-reconnect e2e to verify
-    /// server-restart-on-same-port → bridge auto-reconnect cascade.
-    /// The caller is responsible for ensuring the port is free at
-    /// spawn time (typically via `free_port()` immediately before
-    /// calling this); test isolation otherwise mirrors `start_with_
-    /// session_and_env`.
     pub fn start_with_session_and_port(
         name: &str,
         session_dir: tempfile::TempDir,
@@ -139,30 +114,16 @@ impl TestBpmux {
         cmd.arg("--session-base");
         cmd.arg(&session_base);
         cmd.env("TERM", "xterm-256color");
-        // Forward BPMUX_REPO so /board works in tests (no git repo in temp dir)
         if let Ok(repo) = std::env::var("BPMUX_REPO") {
             cmd.env("BPMUX_REPO", repo);
         }
-        // Set BPMUX_ROOT to the actual repo root so view_roadmap can find
-        // ROADMAP.md. CARGO_MANIFEST_DIR points at applications/bpmux/
-        // post-workspace-refactor, and ROADMAP.md sits at the repo root
-        // two parents up.
         let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .ancestors()
             .nth(2)
             .expect("workspace root two parents up from CARGO_MANIFEST_DIR")
             .to_path_buf();
         cmd.env("BPMUX_ROOT", &workspace_root);
-        // Isolate the shared usage-counter file so tests don't read from
-        // (or clobber) the developer's real ~/.bpmux/usage.json. Landed
-        // with #230 when cross-session persistence started pulling that
-        // file into App startup — a populated real file overflowed the
-        // /tokens overlay in PTY tests.
         cmd.env("BPMUX_USAGE_PATH", session_dir.path().join("usage.json"));
-        // Isolate the auth token file (#235) so each test gets its own
-        // per-run secret. Without this, tests would either clobber the
-        // developer's real ~/.bpmux/auth_token or inherit it — both
-        // break reproducibility.
         cmd.env(
             "BPMUX_AUTH_TOKEN_PATH",
             session_dir.path().join("auth_token"),
@@ -179,34 +140,8 @@ impl TestBpmux {
             "BPMUX_PRIORITY_PATH",
             session_dir.path().join("priority.json"),
         );
-        // #662: isolate the sessions-base directory so spawned bridge
-        // subprocesses (which call `default_sessions_base()` for
-        // bookmark + get_session_dir) read the per-test tempdir
-        // instead of the developer's real `~/.bpmux/sessions/`.
-        // Without this, parallel tests cross-contaminate via shared
-        // bookmark / session-dir / current-symlink state. Mirrors
-        // BPMUX_AUTH_TOKEN_PATH (#537) and BPMUX_USAGE_PATH (#230).
         cmd.env("BPMUX_SESSIONS_BASE", session_dir.path());
         cmd.env("BPMUX_BRIEFINGS_DIR", session_dir.path().join("briefings"));
-        // #724 slice 30: route the spawned bpmux's `log_diag` to the
-        // canonical test-diag path instead of the developer's
-        // `~/.bpmux/diag.log`. `session::diag::resolve_diag_path` walks
-        // BPMUX_LOG → BPMUX_TEST_MODE → exe-has-deps → prod-default.
-        // Subprocesses run from `target/debug/bpmux` (no `deps` segment)
-        // so without an explicit signal they fall through to prod.
-        // BPMUX_TEST_MODE *would* fix the diag route — but it ALSO
-        // switches `run_server` to the InMemorySourceAdapter, breaking
-        // every httpmock-based test that exercises the real
-        // GitHubSourceAdapter. BPMUX_LOG is the orthogonal signal:
-        // precedence-1, log-only, no other behavior change. Path matches
-        // what `session::diag` resolves under exe-has-deps so the
-        // diag_routing_test sees the same file. Mirrors
-        // BPMUX_AUTH_TOKEN_PATH / BPMUX_USAGE_PATH / BPMUX_SESSIONS_BASE
-        // — the default-isolation pattern. Pre-nextest cargo-test
-        // serialized binaries so subprocess prod pollution never raced
-        // `diag_routing_test`'s "prod untouched" assertion; nextest's
-        // binary-level concurrency surfaced the gap (TRY 2 FAIL on the
-        // slice-29 push).
         cmd.env(
             "BPMUX_LOG",
             std::env::temp_dir().join("bpmux-test-diag.log"),
@@ -222,22 +157,12 @@ impl TestBpmux {
                     .header("content-type", "application/json")
                     .body("[]");
             });
-            // POST /issues returns a canned issue #1. httpmock's
-            // first-match wins, so all create_story calls in a single
-            // test get #1. Tests needing distinct numbers per
-            // create_story must override via start_with_mock_gh.
             server.mock(|when, then| {
                 when.method(Method::POST).path("/repos/acme/bpmux/issues");
                 then.status(201)
                     .header("content-type", "application/json")
                     .body(default_issue_json(1, "test-target").to_string());
             });
-            // Mutation endpoints for issues #1..=8 — gate-tools on
-            // created or seeded targets exercise these. Includes a
-            // generous range so tests that pass explicit numbers
-            // (#100, #200, #300, #400, #500, #700, #777, #999...)
-            // outside #1 still resolve. Without these, drain_pending
-            // fails on the first label-add or comment-create.
             for n in 1..=8u64 {
                 let body = format!(
                     "## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n",
