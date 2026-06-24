@@ -95,13 +95,13 @@ fn broadcast_reaction_event(
     scope: Option<Vec<String>>,
 ) {
     let text = build_reaction_event_text_with_excerpt(body, present, excerpt);
-    let msg = session::Message {
+    let msg = crate::message::Message {
         from: "bpmux".to_string(),
         text,
         ts: chrono::Utc::now(),
-        message_type: session::MessageType::Insight,
+        message_type: crate::message::MessageType::Insight,
         to: scope,
-        ..session::Message::default()
+        ..crate::message::Message::default()
     };
     if let Err(e) = session.broadcast(&msg) {
         crate::diag::log_diag(&format!("rest: reaction-event broadcast failed: {e}"));

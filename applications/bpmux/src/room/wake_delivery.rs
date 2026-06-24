@@ -1,6 +1,6 @@
+use crate::message::Message;
 use crate::room::CommitmentStore;
 use crate::room::LivePtyRegistry;
-use crate::session::message::Message;
 use crate::session::routing_identity::RoutingStore;
 use crate::session::terminal_inject::frame_team_message;
 

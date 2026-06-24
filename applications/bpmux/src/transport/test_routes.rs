@@ -9,8 +9,9 @@ use serde::Deserialize;
 
 use crate::board::RefreshDriver;
 use crate::bridge;
+use crate::message::{Message, MessageType};
 use crate::server::TestRefreshHandle;
-use crate::session::{self, Message, MessageType};
+use crate::session;
 
 fn fire_board_invalidate(session: &Arc<session::Session>) {
     let delta = Message {
@@ -18,11 +19,9 @@ fn fire_board_invalidate(session: &Arc<session::Session>) {
         text: String::new(),
         ts: Utc::now(),
         message_type: MessageType::StateDelta,
-        state_delta: Some(
-            crate::session::message::StateDeltaPayload::BoardInvalidated {
-                reason: "board changed".to_string(),
-            },
-        ),
+        state_delta: Some(crate::message::StateDeltaPayload::BoardInvalidated {
+            reason: "board changed".to_string(),
+        }),
         ..Default::default()
     };
     if let Err(e) = session.broadcast(&delta) {

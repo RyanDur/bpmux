@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::log::*;
-use crate::session::Message;
+use crate::message::Message;
 use chrono::Utc;
 use tempfile::TempDir;
 

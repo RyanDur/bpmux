@@ -1,4 +1,4 @@
-use crate::session::Message;
+use crate::message::Message;
 use aho_corasick::AhoCorasick;
 use serde::{Deserialize, Serialize};
 

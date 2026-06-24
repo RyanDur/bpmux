@@ -18,7 +18,7 @@ pub struct PostMessage {
     #[serde(default)]
     pub addressee: Option<String>,
     #[serde(default)]
-    pub multi_depth: Option<session::message::MultiDepthPayload>,
+    pub multi_depth: Option<crate::message::MultiDepthPayload>,
     #[serde(default)]
     pub to: Option<Vec<String>>,
 }
@@ -44,13 +44,13 @@ pub async fn get_messages(
     let wanted_type = params
         .message_type
         .as_deref()
-        .map(|mt| session::MessageType::from(Some(mt)));
+        .map(|mt| crate::message::MessageType::from(Some(mt)));
     let before_ts = params
         .before
         .as_deref()
         .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok());
     let as_peer = params.as_peer.clone();
-    let matches = |m: &session::Message| -> bool {
+    let matches = |m: &crate::message::Message| -> bool {
         let type_ok = match &wanted_type {
             Some(t) => m.message_type == *t,
             None => !chat_only || m.is_chat(),
@@ -118,13 +118,13 @@ pub async fn post_message(
         .resolve(crate::transport::ws::short_name(&payload.from))
         .into_iter()
         .next();
-    let msg = session::Message {
+    let msg = crate::message::Message {
         id: String::new(),
         from: payload.from,
         sender_id,
         text: payload.text,
         ts: chrono::Utc::now(),
-        message_type: session::MessageType::from(payload.message_type.as_deref()),
+        message_type: crate::message::MessageType::from(payload.message_type.as_deref()),
         to: payload.to,
         addressee: payload.addressee,
         explicit_privacy,

@@ -7,7 +7,7 @@ pub(in crate::bridge) fn parse_share_scope(scope: &str) -> Result<Option<Vec<Str
     if scope.is_empty() {
         return Err("empty scope".to_string());
     }
-    if scope == crate::session::message::BROADCAST_ALL {
+    if scope == crate::message::BROADCAST_ALL {
         return Ok(None);
     }
     let recipients: Vec<String> = scope
@@ -143,7 +143,7 @@ pub(in crate::bridge) async fn handle_share_message(
 }
 
 fn scope_str_or_all(scope: &str) -> &str {
-    if scope == crate::session::message::BROADCAST_ALL {
+    if scope == crate::message::BROADCAST_ALL {
         "all"
     } else {
         scope

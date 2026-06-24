@@ -7,8 +7,8 @@ use crate::board::store::PersistError;
 use super::{Storage, UserRecord, default_kind};
 use crate::comprehension::search::{self, SearchFilters, SearchResult};
 use crate::memory::lessons::LessonIndex;
+use crate::message::Message;
 use crate::session::log::LogError;
-use crate::session::message::Message;
 
 pub struct FileStorage {
     dir: PathBuf,

@@ -141,7 +141,7 @@ pub(crate) async fn run_ws_connection(
                 Some(recipients)
                     if recipients
                         .iter()
-                        .any(|r| r == crate::session::message::BROADCAST_ALL) =>
+                        .any(|r| r == crate::message::BROADCAST_ALL) =>
                 {
                     "broadcast".to_string()
                 }
@@ -155,9 +155,9 @@ pub(crate) async fn run_ws_connection(
             let current_name = name.lock().await;
             let addressed_to_me = addressee.as_deref() == Some(current_name.as_str())
                 || to.as_ref().is_some_and(|recipients| {
-                    recipients.iter().any(|r| {
-                        r != crate::session::message::BROADCAST_ALL && r == current_name.as_str()
-                    })
+                    recipients
+                        .iter()
+                        .any(|r| r != crate::message::BROADCAST_ALL && r == current_name.as_str())
                 });
             drop(current_name);
             let sender_is_owner = crate::transport::ws::role_from_short_name(from_short)
@@ -225,7 +225,7 @@ pub(crate) fn chat_event_classes(channel: &str, addressee: Option<&str>) -> Vec<
     if channel == "broadcast" {
         classes.push("broadcast_received");
     }
-    if matches!(addressee, Some(a) if a != crate::session::message::BROADCAST_ALL) {
+    if matches!(addressee, Some(a) if a != crate::message::BROADCAST_ALL) {
         classes.push("addressed_to_me");
     }
     classes

@@ -4,7 +4,6 @@ pub mod bookmark;
 pub mod briefing;
 pub mod location;
 pub mod log;
-pub mod message;
 pub mod precommit;
 pub mod reactions;
 pub mod routing_identity;
@@ -24,7 +23,6 @@ pub use location::{
     resume_or_create_session,
 };
 pub use log::{LogError, append_message, read_messages};
-pub use message::{Message, MessageType};
 
 #[cfg(test)]
 mod aggregate_tests;
@@ -34,8 +32,6 @@ mod awareness_tests;
 mod location_tests;
 #[cfg(test)]
 mod log_tests;
-#[cfg(test)]
-mod message_tests;
 #[cfg(test)]
 mod precommit_tests;
 #[cfg(test)]

@@ -1,6 +1,6 @@
 use super::bayes::*;
 use super::classifier::{ExperienceKind, MessageClass};
-use crate::session::Message;
+use crate::message::Message;
 use chrono::Utc;
 
 fn msg(from: &str, text: &str) -> Message {

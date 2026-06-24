@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use super::{CiEvent, CiState};
-use crate::session::Message;
-use crate::session::message::{DeepDetail, MultiDepthPayload};
+use crate::message::Message;
+use crate::message::{DeepDetail, MultiDepthPayload};
 
 pub(crate) fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
     match next.state {

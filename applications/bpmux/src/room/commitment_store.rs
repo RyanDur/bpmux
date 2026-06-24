@@ -3,7 +3,7 @@ use std::sync::Mutex;
 
 use serde_json::{Map, Value};
 
-use crate::session::message::payload_matches_filter;
+use crate::message::payload_matches_filter;
 
 struct Commitment {
     event_class: String,

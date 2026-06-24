@@ -8,7 +8,7 @@ pub(in crate::bridge) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY_
 
 pub(in crate::bridge) async fn fetch_messages_via_http(
     port: u16,
-) -> Result<Vec<crate::session::Message>, String> {
+) -> Result<Vec<crate::message::Message>, String> {
     let url = crate::transport::local_url::api_url(port, "/api/messages?limit=2000");
     let body = reqwest::get(&url)
         .await
@@ -26,7 +26,7 @@ pub(in crate::bridge) async fn handle_view_velocity<F, Fut>(
 ) -> Result<String, String>
 where
     F: FnOnce() -> Fut,
-    Fut: Future<Output = Result<Vec<crate::session::Message>, String>>,
+    Fut: Future<Output = Result<Vec<crate::message::Message>, String>>,
 {
     let messages = fetch_messages().await?;
 

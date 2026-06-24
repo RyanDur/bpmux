@@ -1,9 +1,8 @@
 use super::{CiPollFetch, Orchestrator};
-use crate::session;
 
 impl<T: CiPollFetch> Orchestrator<T> {
-    pub fn build_snapshot(&self) -> crate::session::message::StateSnapshotPayload {
-        use crate::session::message::{
+    pub fn build_snapshot(&self) -> crate::message::StateSnapshotPayload {
+        use crate::message::{
             CiSnapshotWire, ReactionAggregateWire, ReactionsChannelSnapshot, RosterMemberWire,
             StateSnapshotPayload,
         };
@@ -58,7 +57,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
 
     pub fn broadcast_ci_poll(&self, last_successful_poll_at: Option<String>) {
         let snap = self.ci_store.snapshot();
-        let wire = crate::session::message::CiSnapshotWire {
+        let wire = crate::message::CiSnapshotWire {
             state: snap
                 .as_ref()
                 .map(|s| s.state)
@@ -69,15 +68,13 @@ impl<T: CiPollFetch> Orchestrator<T> {
             last_successful_poll_at,
             url: Some(crate::ci::github_actions_url()),
         };
-        let msg = session::Message {
+        let msg = crate::message::Message {
             from: "bpmux".to_string(),
             text: String::new(),
             ts: chrono::Utc::now(),
-            message_type: session::MessageType::StateDelta,
-            state_delta: Some(crate::session::message::StateDeltaPayload::CiPoll {
-                snapshot: wire,
-            }),
-            ..session::Message::default()
+            message_type: crate::message::MessageType::StateDelta,
+            state_delta: Some(crate::message::StateDeltaPayload::CiPoll { snapshot: wire }),
+            ..crate::message::Message::default()
         };
         self.session.broadcast_ephemeral(&msg);
     }

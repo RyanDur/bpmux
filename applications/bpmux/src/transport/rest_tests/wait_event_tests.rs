@@ -35,25 +35,25 @@ async fn body_json(response: axum::http::Response<Body>) -> serde_json::Value {
     serde_json::from_slice(&bytes).expect("parse json")
 }
 
-fn broadcast_chat(from: &str, text: &str) -> session::Message {
-    session::Message {
+fn broadcast_chat(from: &str, text: &str) -> crate::message::Message {
+    crate::message::Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: chrono::Utc::now(),
-        message_type: session::MessageType::Chat,
-        ..session::Message::default()
+        message_type: crate::message::MessageType::Chat,
+        ..crate::message::Message::default()
     }
 }
 
-fn directed_chat(from: &str, text: &str, to: &[&str]) -> session::Message {
-    session::Message {
+fn directed_chat(from: &str, text: &str, to: &[&str]) -> crate::message::Message {
+    crate::message::Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: chrono::Utc::now(),
-        message_type: session::MessageType::Chat,
+        message_type: crate::message::MessageType::Chat,
         to: Some(to.iter().map(|r| (*r).to_string()).collect()),
         explicit_privacy: true,
-        ..session::Message::default()
+        ..crate::message::Message::default()
     }
 }
 
@@ -179,14 +179,14 @@ async fn an_agents_own_broadcast_is_not_delivered_back_to_it() {
     assert_eq!(event["timed_out"], true);
 }
 
-fn state_delta_message(delta: session::message::StateDeltaPayload) -> session::Message {
-    session::Message {
+fn state_delta_message(delta: crate::message::StateDeltaPayload) -> crate::message::Message {
+    crate::message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
+        message_type: crate::message::MessageType::StateDelta,
         state_delta: Some(delta),
-        ..session::Message::default()
+        ..crate::message::Message::default()
     }
 }
 
@@ -197,8 +197,8 @@ async fn delivers_a_story_transition_state_delta_as_a_subscription_event() {
     let (session, router) = wait_app(&dir);
     session
         .broadcast(&state_delta_message(
-            session::message::StateDeltaPayload::StoryTransition {
-                transition: session::message::StoryTransitionWire {
+            crate::message::StateDeltaPayload::StoryTransition {
+                transition: crate::message::StoryTransitionWire {
                     story_id: 42,
                     from_state: "ready".to_string(),
                     target_state: "in-progress".to_string(),
@@ -224,7 +224,7 @@ async fn a_gui_only_delta_is_not_delivered_as_an_agent_event() {
     let (session, router) = wait_app(&dir);
     session
         .broadcast(&state_delta_message(
-            session::message::StateDeltaPayload::Roster { members: vec![] },
+            crate::message::StateDeltaPayload::Roster { members: vec![] },
         ))
         .expect("broadcast");
     let request = Request::builder()

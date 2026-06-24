@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::ci::*;
-use crate::session::message::DeepDetail;
+use crate::message::DeepDetail;
 
 fn run(status: &str, conclusion: Option<&str>) -> RunEntry {
     RunEntry {
@@ -357,7 +357,7 @@ fn build_dev_ci_signal_addresses_dev_only() {
 #[test]
 fn build_dev_ci_signal_uses_chat_message_type() {
     let signal = build_dev_ci_signal("anything");
-    assert_eq!(signal.message_type, crate::session::MessageType::Chat);
+    assert_eq!(signal.message_type, crate::message::MessageType::Chat);
 }
 
 #[test]

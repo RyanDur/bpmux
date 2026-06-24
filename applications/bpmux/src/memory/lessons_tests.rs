@@ -2,7 +2,7 @@
 
 use super::lessons::*;
 use crate::comprehension::classifier::{ExperienceKind, MessageClass};
-use crate::session::message::Message;
+use crate::message::Message;
 use chrono::Utc;
 use tempfile::TempDir;
 

@@ -2,8 +2,8 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 
 use super::{PeerMessage, RemotePeer};
+use crate::message::Message;
 use crate::session::Session;
-use crate::session::message::Message;
 
 pub fn spawn_relay(
     session: Arc<Session>,
@@ -57,7 +57,7 @@ pub fn spawn_relay(
                         from: "bpmux".to_string(),
                         text: format!("{name} joined"),
                         ts: chrono::Utc::now(),
-                        message_type: crate::session::MessageType::System,
+                        message_type: crate::message::MessageType::System,
                         ..Message::default()
                     };
                     let _ = session_for_inbound.broadcast(&joined);
@@ -114,7 +114,7 @@ pub fn spawn_relay(
             from: "bpmux".to_string(),
             text: format!("{current_name} left"),
             ts: chrono::Utc::now(),
-            message_type: crate::session::MessageType::System,
+            message_type: crate::message::MessageType::System,
             ..Message::default()
         };
         let _ = session_for_inbound.broadcast(&left);

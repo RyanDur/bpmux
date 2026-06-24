@@ -20,15 +20,15 @@ pub(crate) fn json_headers() -> [(axum::http::HeaderName, &'static str); 1] {
 }
 
 pub(crate) fn broadcast_board_invalidate(session: &session::Session) {
-    let delta = session::Message {
+    let delta = crate::message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
-        state_delta: Some(session::message::StateDeltaPayload::BoardInvalidated {
+        message_type: crate::message::MessageType::StateDelta,
+        state_delta: Some(crate::message::StateDeltaPayload::BoardInvalidated {
             reason: "board changed".to_string(),
         }),
-        ..session::Message::default()
+        ..crate::message::Message::default()
     };
     if let Err(e) = session.broadcast(&delta) {
         crate::diag::log_diag(&format!(
@@ -37,14 +37,14 @@ pub(crate) fn broadcast_board_invalidate(session: &session::Session) {
     }
 }
 
-pub(crate) fn board_snapshot_message(stories: serde_json::Value) -> session::Message {
-    session::Message {
+pub(crate) fn board_snapshot_message(stories: serde_json::Value) -> crate::message::Message {
+    crate::message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
-        state_delta: Some(session::message::StateDeltaPayload::BoardSnapshot { stories }),
-        ..session::Message::default()
+        message_type: crate::message::MessageType::StateDelta,
+        state_delta: Some(crate::message::StateDeltaPayload::BoardSnapshot { stories }),
+        ..crate::message::Message::default()
     }
 }
 
@@ -65,7 +65,7 @@ mod tests {
 
     use crate::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-    use crate::session::message::StateDeltaPayload;
+    use crate::message::StateDeltaPayload;
     use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 
     #[tokio::test]

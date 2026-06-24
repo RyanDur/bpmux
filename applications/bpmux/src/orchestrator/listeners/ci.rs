@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::ci::RunEntry;
+use crate::message::{CiSnapshotWire, StateDeltaPayload};
 use crate::orchestrator::{CiBroadcastListener, CiSnapshot};
 use crate::session;
-use crate::session::message::{CiSnapshotWire, StateDeltaPayload};
 use crate::transport::ci_state_store::CiStateStore;
 
 use super::broadcast_state_delta;
@@ -58,13 +58,13 @@ impl CiBroadcastListener for CiSessionBroadcaster {
             return;
         };
         let multi_depth = crate::ci::build_multi_depth_for_transition(&event);
-        let activity_msg = session::Message {
+        let activity_msg = crate::message::Message {
             from: "bpmux".to_string(),
             text: text.clone(),
             ts: chrono::Utc::now(),
-            message_type: session::MessageType::Activity,
+            message_type: crate::message::MessageType::Activity,
             multi_depth: Some(multi_depth),
-            ..session::Message::default()
+            ..crate::message::Message::default()
         };
         if let Err(e) = self.session.broadcast(&activity_msg) {
             crate::diag::log_diag(&format!("ci_listener: activity broadcast failed: {e}"));

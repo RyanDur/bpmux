@@ -694,7 +694,7 @@ mod ingest_poll_loop_tests {
         assert!(
             matches!(
                 received.state_delta,
-                Some(crate::session::message::StateDeltaPayload::SyncPoll { .. })
+                Some(crate::message::StateDeltaPayload::SyncPoll { .. })
             ),
             "the per-tick heartbeat is a sync_poll state-delta carrying the full status; got: {received:?}"
         );
@@ -726,7 +726,7 @@ mod ingest_poll_loop_tests {
         assert!(
             matches!(
                 received.state_delta,
-                Some(crate::session::message::StateDeltaPayload::SyncPoll { .. })
+                Some(crate::message::StateDeltaPayload::SyncPoll { .. })
             ),
             "zero-drain ticks still heartbeat sync_poll; got: {received:?}"
         );

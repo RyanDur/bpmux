@@ -8,7 +8,8 @@ use tokio::sync::{broadcast, mpsc};
 use tokio::time::timeout;
 
 use super::peer::{PeerMessage, spawn_relay};
-use crate::session::{Message, MessageType, Session};
+use crate::message::{Message, MessageType};
+use crate::session::Session;
 
 fn make_session() -> (Arc<Session>, broadcast::Receiver<Message>, TempDir) {
     let dir = TempDir::new().expect("tempdir");

@@ -17,7 +17,7 @@ use recall::RecallSystem;
 
 const TRAIN_WINDOW: usize = 2000;
 
-fn training_messages(session: &Session) -> Vec<crate::session::message::Message> {
+fn training_messages(session: &Session) -> Vec<crate::message::Message> {
     session
         .read_recent(TRAIN_WINDOW, 0, &|_| true)
         .unwrap_or_default()

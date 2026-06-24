@@ -13,7 +13,8 @@ use super::stores::{
     RosterBroadcastListener, RosterMember, RosterRole,
 };
 use crate::board::adapters::github::GitHubSourceAdapter;
-use crate::session::{Message, Session};
+use crate::message::Message;
+use crate::session::Session;
 use crate::transport::ci_state_store::CiStateStore;
 
 fn fresh_orch() -> Arc<Orchestrator<GitHubSourceAdapter>> {
@@ -507,7 +508,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
 
 #[test]
 fn blocked_roster_member_wire_serializes_blocked_presence() {
-    use crate::session::message::RosterMemberWire;
+    use crate::message::RosterMemberWire;
     let wire = RosterMemberWire {
         routing_id: "sess-dev".to_string(),
         name: "dev".to_string(),

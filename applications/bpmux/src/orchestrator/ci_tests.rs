@@ -17,7 +17,8 @@ use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::github::RateLimitObserver;
-use crate::session::{Message, Session};
+use crate::message::Message;
+use crate::session::Session;
 use crate::transport::ci_state_store::CiStateStore;
 
 fn fresh_session() -> (Arc<Session>, TempDir) {
@@ -424,7 +425,7 @@ async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
 
 #[tokio::test]
 async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
-    use crate::session::message::StateDeltaPayload;
+    use crate::message::StateDeltaPayload;
 
     let (session, _dir) = fresh_session();
     let mut frames = session.subscribe();

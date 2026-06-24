@@ -22,11 +22,13 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use crate::bridge::tracker::OctocrabStoryTracker;
+use crate::message::MessageType;
 use crate::session;
-use crate::session::MessageType;
 use crate::transport::rest::{TrackerHandle, *};
 
-pub(super) fn test_app(dir: &TempDir) -> (axum::Router, broadcast::Sender<session::Message>) {
+pub(super) fn test_app(
+    dir: &TempDir,
+) -> (axum::Router, broadcast::Sender<crate::message::Message>) {
     let (tx, _rx) = broadcast::channel(16);
     let session = Arc::new(session::Session::new(
         dir.path().to_path_buf(),
@@ -59,11 +61,11 @@ pub(super) fn seed_messages(dir: &TempDir, count: usize) -> Arc<session::Session
         tx,
     ));
     for i in 0..count {
-        let msg = session::Message {
+        let msg = crate::message::Message {
             from: "user".to_string(),
             text: format!("msg {i}"),
             ts: chrono::Utc::now(),
-            ..session::Message::default()
+            ..crate::message::Message::default()
         };
         session.broadcast(&msg).expect("broadcast");
     }
@@ -84,12 +86,12 @@ pub(super) fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
         ("available", MessageType::Activity),
         ("goodbye", MessageType::Chat),
     ] {
-        let msg = session::Message {
+        let msg = crate::message::Message {
             from: "dev".to_string(),
             text: text.to_string(),
             ts: chrono::Utc::now(),
             message_type: msg_type,
-            ..session::Message::default()
+            ..crate::message::Message::default()
         };
         session.broadcast(&msg).expect("broadcast");
     }
@@ -98,7 +100,10 @@ pub(super) fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
 
 pub(super) fn board_test_session(
     dir: &TempDir,
-) -> (Arc<session::Session>, broadcast::Sender<session::Message>) {
+) -> (
+    Arc<session::Session>,
+    broadcast::Sender<crate::message::Message>,
+) {
     let (tx, _rx) = broadcast::channel(16);
     let session = Arc::new(session::Session::new(
         dir.path().to_path_buf(),

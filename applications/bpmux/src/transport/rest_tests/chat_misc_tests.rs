@@ -10,8 +10,8 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use crate::message::MessageType;
 use crate::session;
-use crate::session::MessageType;
 use crate::transport::rest::*;
 
 fn bpmux_log_env_lock() -> std::sync::MutexGuard<'static, ()> {

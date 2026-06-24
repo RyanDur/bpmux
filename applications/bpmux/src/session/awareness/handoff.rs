@@ -1,8 +1,8 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
+use crate::message::{Message, MessageType};
 use crate::session::Session;
-use crate::session::message::{Message, MessageType};
 
 use super::agents::AgentTracker;
 

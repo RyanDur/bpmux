@@ -92,10 +92,7 @@ fn format_share_marker_form2_omits_source_scope() {
 
 #[test]
 fn parse_share_scope_all_widens_to_broadcast() {
-    assert_eq!(
-        parse_share_scope(crate::session::message::BROADCAST_ALL),
-        Ok(None)
-    );
+    assert_eq!(parse_share_scope(crate::message::BROADCAST_ALL), Ok(None));
 }
 
 #[test]

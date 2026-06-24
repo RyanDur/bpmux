@@ -9,8 +9,8 @@ use crate::velocity::classify_story;
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod notification_bridge_push_filter_integration_1432 {
     use crate::bridge::message_type_reaches_llm_stream;
-    use crate::session::Message;
-    use crate::session::MessageType;
+    use crate::message::Message;
+    use crate::message::MessageType;
     use crate::session::Session;
     use std::path::PathBuf;
     use std::sync::Arc;

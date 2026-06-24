@@ -2,9 +2,9 @@
 
 use super::agnostic_delivery::*;
 use super::wake_delivery::wake_committed_terminals;
+use crate::message::MessageType;
+use crate::message::{CiSnapshotWire, Message, StateDeltaPayload};
 use crate::room::{CommitmentStore, LivePtyRegistry, spawn_pty_retained};
-use crate::session::MessageType;
-use crate::session::message::{CiSnapshotWire, Message, StateDeltaPayload};
 use crate::session::routing_identity::RoutingStore;
 use std::sync::Arc;
 use tokio::sync::broadcast;

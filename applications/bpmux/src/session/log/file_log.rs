@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use super::reverse_line_reader::ReverseLineReader;
-use crate::session::message::Message;
+use crate::message::Message;
 
 #[derive(Error, Debug)]
 pub enum LogError {
@@ -76,7 +76,7 @@ mod tests {
     #![allow(clippy::panic)]
 
     use super::*;
-    use crate::session::message::{Message, MessageType};
+    use crate::message::{Message, MessageType};
 
     fn chat(text: &str) -> Message {
         Message {

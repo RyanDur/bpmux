@@ -133,11 +133,7 @@ impl RoutingStore {
         let sender_ids = identity.resolve(short(sender));
         let recipient_ids: Vec<String> = match to {
             None => identity.all_ids(),
-            Some(names)
-                if names
-                    .iter()
-                    .any(|n| n == crate::session::message::BROADCAST_ALL) =>
-            {
+            Some(names) if names.iter().any(|n| n == crate::message::BROADCAST_ALL) => {
                 identity.all_ids()
             }
             Some(names) => names

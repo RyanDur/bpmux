@@ -27,7 +27,7 @@ pub(crate) fn scope_reaches_live_stream(to: Option<&[String]>, recipient_short: 
         Some(recipients) => {
             recipients
                 .iter()
-                .any(|r| r == crate::session::message::BROADCAST_ALL)
+                .any(|r| r == crate::message::BROADCAST_ALL)
                 || recipients.iter().any(|r| r == recipient_short)
         }
     }

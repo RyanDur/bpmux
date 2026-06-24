@@ -6,8 +6,7 @@ use futures::stream::SplitSink;
 
 use super::client::ClientCtx;
 use super::send_json;
-use crate::session;
-use crate::session::MessageType;
+use crate::message::MessageType;
 use crate::transport::protocol::ServerMessage;
 
 pub(super) fn handle_send(
@@ -19,7 +18,7 @@ pub(super) fn handle_send(
     message_type: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let explicit_privacy = to.is_some();
-    let msg = session::Message {
+    let msg = crate::message::Message {
         from: identity.to_string(),
         text: msg_text,
         ts: chrono::Utc::now(),
@@ -27,7 +26,7 @@ pub(super) fn handle_send(
         to,
         addressee,
         explicit_privacy,
-        ..session::Message::default()
+        ..crate::message::Message::default()
     };
     ctx.session.broadcast(&msg)?;
     Ok(())

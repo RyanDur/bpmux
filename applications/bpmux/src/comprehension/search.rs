@@ -1,5 +1,5 @@
 use super::classifier::{MessageClass, classify};
-use crate::session::Message;
+use crate::message::Message;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 

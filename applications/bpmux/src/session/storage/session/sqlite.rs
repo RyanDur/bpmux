@@ -17,9 +17,9 @@ use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 use crate::comprehension::search::{self, SearchFilters, SearchResult};
 use crate::memory::lessons::LessonIndex;
+use crate::message::Message;
 use crate::session::bookmark::Bookmark;
 use crate::session::log::LogError;
-use crate::session::message::Message;
 use crate::session::reactions::ReactionsStore;
 
 pub struct SqliteStorage {

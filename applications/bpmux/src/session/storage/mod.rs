@@ -9,7 +9,7 @@ use crate::comprehension::search::{SearchFilters, SearchResult};
 use crate::memory::lessons::LessonIndex;
 
 use super::log::LogError;
-use super::message::Message;
+use crate::message::Message;
 
 mod backend;
 mod global;

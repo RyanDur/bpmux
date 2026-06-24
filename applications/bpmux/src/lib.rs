@@ -16,6 +16,9 @@ mod diag_tests;
 pub mod github;
 pub mod mcp;
 pub mod memory;
+pub mod message;
+#[cfg(test)]
+mod message_tests;
 pub mod orchestrator;
 pub mod reload;
 pub mod roadmap;

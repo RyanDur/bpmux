@@ -10,8 +10,8 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use crate::message::MessageType;
 use crate::session;
-use crate::session::MessageType;
 use crate::transport::rest::*;
 
 #[tokio::test]
@@ -207,27 +207,27 @@ fn seed_to_arity_messages(dir: &TempDir) -> Arc<session::Session> {
         "test".to_string(),
         tx,
     ));
-    let broadcast_msg = session::Message {
+    let broadcast_msg = crate::message::Message {
         from: "owner".to_string(),
         text: "all-hands broadcast".to_string(),
         ts: chrono::Utc::now(),
-        ..session::Message::default()
+        ..crate::message::Message::default()
     };
-    let multi_recipient = session::Message {
+    let multi_recipient = crate::message::Message {
         from: "owner".to_string(),
         text: "multi-recipient pm+dev".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["pm".to_string(), "dev".to_string()]),
         explicit_privacy: true,
-        ..session::Message::default()
+        ..crate::message::Message::default()
     };
-    let single_dm = session::Message {
+    let single_dm = crate::message::Message {
         from: "owner".to_string(),
         text: "single dm to designer".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["designer".to_string()]),
         explicit_privacy: true,
-        ..session::Message::default()
+        ..crate::message::Message::default()
     };
     session.broadcast(&broadcast_msg).expect("broadcast 1");
     session.broadcast(&multi_recipient).expect("broadcast 2");
@@ -344,13 +344,13 @@ async fn issue_1568_full_identity_to_recipient_delivers_on_reload() {
         "test".to_string(),
         tx,
     ));
-    let full_identity_dm = session::Message {
+    let full_identity_dm = crate::message::Message {
         from: "dev:claude-code".to_string(),
         text: "full-identity recipient dm".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["pm:claude-code".to_string()]),
         explicit_privacy: true,
-        ..session::Message::default()
+        ..crate::message::Message::default()
     };
     session.broadcast(&full_identity_dm).expect("broadcast");
     let router = axum::Router::new()

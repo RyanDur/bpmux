@@ -5,8 +5,8 @@ use std::time::Instant;
 use super::Storage;
 use crate::comprehension::search::{SearchFilters, SearchResult};
 use crate::memory::lessons::LessonIndex;
+use crate::message::Message;
 use crate::session::log::LogError;
-use crate::session::message::Message;
 
 pub struct InstrumentedStorage<S: Storage> {
     inner: S,

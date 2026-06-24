@@ -10,8 +10,8 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use crate::message::MessageType;
 use crate::session;
-use crate::session::MessageType;
 use crate::transport::rest::*;
 
 #[tokio::test]
@@ -50,11 +50,11 @@ async fn gets_messages_before_timestamp_returns_only_older() {
     ));
     let base = chrono::Utc::now() - chrono::Duration::seconds(60);
     for i in 0..5 {
-        let msg = session::Message {
+        let msg = crate::message::Message {
             from: "user".to_string(),
             text: format!("msg {i}"),
             ts: base + chrono::Duration::seconds(i as i64),
-            ..session::Message::default()
+            ..crate::message::Message::default()
         };
         session.broadcast(&msg).expect("broadcast");
     }

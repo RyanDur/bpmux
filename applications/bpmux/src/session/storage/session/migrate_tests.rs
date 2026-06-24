@@ -7,7 +7,7 @@ use tempfile::TempDir;
 
 use super::migrate::{migrate_file_log_to_sqlite, migrate_routing_identity_to_agents};
 use super::{FileStorage, SqliteStorage, Storage};
-use crate::session::message::{Message, MessageType, StateDeltaPayload};
+use crate::message::{Message, MessageType, StateDeltaPayload};
 
 fn ms(rfc3339: &str) -> i64 {
     chrono::DateTime::parse_from_rfc3339(rfc3339)

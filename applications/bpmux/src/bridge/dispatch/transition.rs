@@ -16,15 +16,15 @@ pub(super) fn broadcast_client_msg_via_session(
     {
         let explicit_privacy = to.is_some();
         let from_short = crate::transport::ws::short_name(agent_name);
-        let session_msg = crate::session::Message {
+        let session_msg = crate::message::Message {
             from: format!("{from_short}:claude-code"),
             text,
             ts: chrono::Utc::now(),
-            message_type: crate::session::message::MessageType::from(message_type.as_deref()),
+            message_type: crate::message::MessageType::from(message_type.as_deref()),
             to,
             addressee,
             explicit_privacy,
-            ..crate::session::Message::default()
+            ..crate::message::Message::default()
         };
         if let Err(e) = session.broadcast(&session_msg) {
             crate::diag::log_diag(&format!("rpc: workflow-signal broadcast failed: {e}"));

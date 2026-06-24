@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::aggregate::{BROADCAST_CHANNEL_CAPACITY, Session};
-use crate::session::message::Message;
+use crate::message::Message;
 use chrono::Utc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;

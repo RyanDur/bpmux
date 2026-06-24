@@ -2,8 +2,8 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use crate::comprehension::classifier;
+use crate::message::Message;
 use crate::session::Session;
-use crate::session::message::Message;
 
 use super::agents::AgentTracker;
 
@@ -59,7 +59,7 @@ impl PileonDetector {
                         self.responders.len()
                     ),
                     ts: chrono::Utc::now(),
-                    message_type: crate::session::MessageType::Nudge,
+                    message_type: crate::message::MessageType::Nudge,
                     to: Some(self.responders.clone()),
                     ..Message::default()
                 };

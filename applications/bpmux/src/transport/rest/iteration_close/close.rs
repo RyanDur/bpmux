@@ -102,17 +102,17 @@ async fn post_close_iteration_canonical(
             err_body(&format!("close_iteration(canonical) failed: {close_err}")),
         );
     }
-    let payload = session::message::StateDeltaPayload::IterationClose {
+    let payload = crate::message::StateDeltaPayload::IterationClose {
         promoted: Vec::new(),
         deleted_marker_id: None,
     };
-    let delta_msg = session::Message {
+    let delta_msg = crate::message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
+        message_type: crate::message::MessageType::StateDelta,
         state_delta: Some(payload),
-        ..session::Message::default()
+        ..crate::message::Message::default()
     };
     if let Some(t) = tracker.as_ref() {
         let body = "iteration-close: terminal close, promote-on-close retired (#1556).";

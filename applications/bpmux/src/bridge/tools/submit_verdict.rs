@@ -1,5 +1,5 @@
+use crate::message::{Message, MessageType};
 use crate::session::verdicts::{AddVerdictOutcome, Verdict, add_or_replace_verdict, load, save};
-use crate::session::{Message, MessageType};
 use std::sync::Arc;
 
 pub(in crate::bridge) async fn handle_submit_verdict(

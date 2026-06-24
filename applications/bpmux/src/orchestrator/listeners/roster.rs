@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use crate::message::{RosterMemberWire, StateDeltaPayload};
 use crate::orchestrator::{RosterBroadcastListener, RosterMember};
 use crate::session;
-use crate::session::message::{RosterMemberWire, StateDeltaPayload};
 
 use super::broadcast_state_delta;
 

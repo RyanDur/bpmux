@@ -34,13 +34,13 @@ pub(crate) fn broadcast_sync_status_heartbeat(
     snapshot: &crate::board::SyncStatus,
 ) {
     let status = serde_json::to_value(snapshot).unwrap_or(serde_json::Value::Null);
-    let msg = crate::session::Message {
+    let msg = crate::message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: crate::session::MessageType::StateDelta,
-        state_delta: Some(crate::session::message::StateDeltaPayload::SyncPoll { status }),
-        ..crate::session::Message::default()
+        message_type: crate::message::MessageType::StateDelta,
+        state_delta: Some(crate::message::StateDeltaPayload::SyncPoll { status }),
+        ..crate::message::Message::default()
     };
     session.broadcast_ephemeral(&msg);
 }
@@ -50,20 +50,20 @@ pub(crate) fn broadcast_sync_status_transition(
     snapshot: &crate::board::SyncStatus,
 ) {
     if let Some(transition) = crate::board::sync_transition(snapshot) {
-        let delta = crate::session::Message {
+        let delta = crate::message::Message {
             from: "bpmux".to_string(),
             text: String::new(),
             ts: chrono::Utc::now(),
-            message_type: crate::session::MessageType::StateDelta,
-            state_delta: Some(crate::session::message::StateDeltaPayload::Sync {
-                transition: crate::session::message::SyncTransitionWire {
+            message_type: crate::message::MessageType::StateDelta,
+            state_delta: Some(crate::message::StateDeltaPayload::Sync {
+                transition: crate::message::SyncTransitionWire {
                     status: transition.status.to_string(),
                     why: transition.why,
                     pending_events: transition.pending_events,
                     conflicts_pending: transition.conflicts_pending,
                 },
             }),
-            ..crate::session::Message::default()
+            ..crate::message::Message::default()
         };
         if let Err(e) = session.broadcast(&delta) {
             crate::diag::log_diag(&format!(

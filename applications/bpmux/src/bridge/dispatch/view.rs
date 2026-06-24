@@ -12,7 +12,7 @@ fn require_store(
 }
 
 pub(crate) async fn dispatch_view_velocity(
-    messages: Vec<crate::session::Message>,
+    messages: Vec<crate::message::Message>,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let no_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);

@@ -1,5 +1,4 @@
 use super::ReactionToggle;
-use crate::session;
 
 pub(crate) const EXCERPT_MAX_LEN: usize = 40;
 
@@ -30,7 +29,7 @@ pub(crate) fn truncate_excerpt(text: &str, max_len: usize) -> String {
 }
 
 pub(crate) fn find_message_excerpt(
-    messages: &[session::Message],
+    messages: &[crate::message::Message],
     message_key: &str,
     max_len: usize,
 ) -> Option<String> {
@@ -54,7 +53,7 @@ pub(crate) fn find_message_excerpt(
 }
 
 pub(crate) fn message_scope_from_key(
-    messages: &[session::Message],
+    messages: &[crate::message::Message],
     message_key: &str,
 ) -> Option<Vec<String>> {
     let (ts_str, from) = message_key.split_once('|')?;
@@ -69,7 +68,7 @@ pub(crate) fn message_scope_from_key(
         if recipients.is_empty()
             || recipients
                 .iter()
-                .any(|r| r == crate::session::message::BROADCAST_ALL)
+                .any(|r| r == crate::message::BROADCAST_ALL)
         {
             return None;
         }

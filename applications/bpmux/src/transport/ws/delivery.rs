@@ -1,6 +1,5 @@
 use super::role_from_short_name;
-use crate::session;
-use crate::session::MessageType;
+use crate::message::MessageType;
 
 pub(crate) const MAX_MESSAGE_SIZE: usize = 65536;
 
@@ -8,7 +7,7 @@ pub(crate) fn short_name(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
-pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> bool {
+pub(crate) fn should_deliver(msg: &crate::message::Message, peer_identity: &str) -> bool {
     if matches!(
         role_from_short_name(short_name(peer_identity)),
         crate::orchestrator::stores::RosterRole::Owner
@@ -21,7 +20,7 @@ pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> boo
     };
     if recipients
         .iter()
-        .any(|r| r == crate::session::message::BROADCAST_ALL)
+        .any(|r| r == crate::message::BROADCAST_ALL)
     {
         return true;
     }

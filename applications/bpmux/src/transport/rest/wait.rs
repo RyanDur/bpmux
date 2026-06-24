@@ -106,7 +106,7 @@ fn first_pending_after(
         .find_map(|message| event_for_role(&message, role))
 }
 
-fn event_for_role(message: &session::Message, role: &str) -> Option<serde_json::Value> {
+fn event_for_role(message: &crate::message::Message, role: &str) -> Option<serde_json::Value> {
     if short_name(&message.from) == short_name(role) {
         return None;
     }
@@ -127,7 +127,7 @@ fn event_for_role(message: &session::Message, role: &str) -> Option<serde_json::
     Some(broadcast_event(message))
 }
 
-fn broadcast_event(message: &session::Message) -> serde_json::Value {
+fn broadcast_event(message: &crate::message::Message) -> serde_json::Value {
     let url_safe_ts = message
         .ts
         .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true);
@@ -149,7 +149,7 @@ fn channel_label(to: &Option<Vec<String>>) -> String {
         Some(recipients)
             if recipients
                 .iter()
-                .any(|recipient| recipient == crate::session::message::BROADCAST_ALL) =>
+                .any(|recipient| recipient == crate::message::BROADCAST_ALL) =>
         {
             "broadcast".to_string()
         }

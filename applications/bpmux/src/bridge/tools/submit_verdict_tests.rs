@@ -32,7 +32,7 @@ fn make_session_with_rx(
     dir: PathBuf,
 ) -> (
     Arc<Session>,
-    tokio::sync::broadcast::Receiver<crate::session::Message>,
+    tokio::sync::broadcast::Receiver<crate::message::Message>,
 ) {
     let (tx, rx) = broadcast::channel(16);
     let session = Arc::new(Session::new(dir, "owner".to_string(), tx));
@@ -55,7 +55,7 @@ async fn verdict_cast_broadcast_carries_message_type_system_not_chat() {
     assert_eq!(received.from, "bpmux");
     assert_eq!(
         received.message_type,
-        crate::session::MessageType::System,
+        crate::message::MessageType::System,
         "verdict-cast notification must use MessageType::System so chat-filter bpmux pill catches it; default Chat lets the message leak past the consumer filter (sister to #1456 producer-axis bug)"
     );
     let wire = serde_json::to_value(&received).expect("serialize");

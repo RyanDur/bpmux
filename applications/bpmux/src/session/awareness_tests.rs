@@ -2,7 +2,7 @@
 
 use super::awareness::agents::AgentTracker;
 use super::awareness::experience;
-use crate::session::message::{Message, MessageType};
+use crate::message::{Message, MessageType};
 use chrono::Utc;
 
 fn system_join(name: &str) -> Message {

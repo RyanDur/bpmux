@@ -110,7 +110,7 @@ mod tests {
     -> Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>
     {
         let dir = tempfile::TempDir::new().expect("tempdir");
-        let (tx, _rx) = tokio::sync::broadcast::channel::<crate::session::Message>(64);
+        let (tx, _rx) = tokio::sync::broadcast::channel::<crate::message::Message>(64);
         let session = Arc::new(crate::session::Session::new(
             dir.path().to_path_buf(),
             "local".to_string(),

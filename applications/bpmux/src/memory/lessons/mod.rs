@@ -1,5 +1,5 @@
 use crate::comprehension::classifier::classify;
-use crate::session::Message;
+use crate::message::Message;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

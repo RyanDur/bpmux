@@ -14,10 +14,10 @@ use super::stores::{
     RosterMember, RosterRole,
 };
 use crate::ci::CiState;
+use crate::message::{Message, MessageType, StateDeltaPayload};
 use crate::orchestrator::CiBroadcastListener;
 use crate::orchestrator::ci::CiSnapshot;
-use crate::session::message::{MessageType, StateDeltaPayload};
-use crate::session::{Message, Session};
+use crate::session::Session;
 
 fn fresh_session() -> (Arc<Session>, broadcast::Receiver<Message>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
