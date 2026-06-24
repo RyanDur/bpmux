@@ -3,8 +3,8 @@
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
-use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
+use crate::velocity::classify_story;
 
 mod stale_workflow_labels_filter {
     use super::*;

@@ -20,6 +20,9 @@ pub mod session;
 #[cfg(test)]
 mod session_id_pin_tests;
 pub mod transport;
+pub mod velocity;
+#[cfg(test)]
+mod velocity_tests;
 pub mod workflow;
 
 pub use cli::bootstrap::run;

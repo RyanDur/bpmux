@@ -19,7 +19,7 @@ pub async fn get_metrics(State(session): State<Arc<session::Session>>) -> impl I
         }
     };
     let now = chrono::Utc::now();
-    let metrics = crate::session::velocity::compute(&messages, now, |_| true);
+    let metrics = crate::velocity::compute(&messages, now, |_| true);
     (
         StatusCode::OK,
         json_headers(),

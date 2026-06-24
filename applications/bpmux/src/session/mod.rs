@@ -22,7 +22,6 @@ mod storage_tests;
 pub mod terminal_inject;
 pub mod tokens;
 pub mod usage;
-pub mod velocity;
 pub mod verdicts;
 
 #[cfg(test)]
@@ -66,5 +65,3 @@ mod speech_guard_tests;
 mod tokens_tests;
 #[cfg(test)]
 mod usage_tests;
-#[cfg(test)]
-mod velocity_tests;

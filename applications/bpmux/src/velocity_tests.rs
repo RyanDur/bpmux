@@ -241,7 +241,7 @@ fn no_features_produces_zero_velocity() {
 
 #[test]
 fn is_feature_verdict_matches_feature_label() {
-    use crate::session::velocity::is_feature_verdict;
+    use crate::velocity::is_feature_verdict;
     assert!(is_feature_verdict(&["Feature".to_string()], ""));
     assert!(is_feature_verdict(
         &["ready".to_string(), "Feature".to_string()],
@@ -251,14 +251,14 @@ fn is_feature_verdict_matches_feature_label() {
 
 #[test]
 fn is_feature_verdict_rejects_chore_and_bug_labels() {
-    use crate::session::velocity::is_feature_verdict;
+    use crate::velocity::is_feature_verdict;
     assert!(!is_feature_verdict(&["Chore".to_string()], ""));
     assert!(!is_feature_verdict(&["Bug".to_string()], ""));
 }
 
 #[test]
 fn is_feature_verdict_falls_back_to_title_prefix() {
-    use crate::session::velocity::is_feature_verdict;
+    use crate::velocity::is_feature_verdict;
     assert!(is_feature_verdict(&[], "[Feature] ship the thing"));
     assert!(!is_feature_verdict(&[], "[Chore] refactor the thing"));
     assert!(!is_feature_verdict(&[], "[Bug] fix the thing"));
@@ -267,7 +267,7 @@ fn is_feature_verdict_falls_back_to_title_prefix() {
 
 #[test]
 fn is_feature_verdict_supports_legacy_prefixes_during_migration() {
-    use crate::session::velocity::is_feature_verdict;
+    use crate::velocity::is_feature_verdict;
     assert!(is_feature_verdict(&[], "[vertical] a feature"));
     assert!(is_feature_verdict(
         &[],
@@ -279,7 +279,7 @@ fn is_feature_verdict_supports_legacy_prefixes_during_migration() {
 
 #[test]
 fn is_feature_verdict_defaults_to_feature_for_untagged() {
-    use crate::session::velocity::is_feature_verdict;
+    use crate::velocity::is_feature_verdict;
     assert!(is_feature_verdict(&[], ""));
     assert!(is_feature_verdict(
         &["ready".to_string()],
@@ -289,7 +289,7 @@ fn is_feature_verdict_defaults_to_feature_for_untagged() {
 
 #[test]
 fn is_feature_verdict_label_beats_title() {
-    use crate::session::velocity::is_feature_verdict;
+    use crate::velocity::is_feature_verdict;
     assert!(!is_feature_verdict(
         &["Chore".to_string()],
         "[Feature] misleading prefix"
@@ -299,7 +299,7 @@ fn is_feature_verdict_label_beats_title() {
 #[test]
 fn classify_story_decodes_epic_from_title_prefix() {
     use crate::board::domain::StoryType;
-    use crate::session::velocity::classify_story;
+    use crate::velocity::classify_story;
     assert_eq!(classify_story(&[], "[Epic] big arc"), StoryType::Epic);
     assert_eq!(
         classify_story(&[], "[epic] case-insensitive"),
@@ -310,7 +310,7 @@ fn classify_story_decodes_epic_from_title_prefix() {
 #[test]
 fn classify_story_decodes_epic_from_label() {
     use crate::board::domain::StoryType;
-    use crate::session::velocity::classify_story;
+    use crate::velocity::classify_story;
     let labels = vec!["epic".to_string()];
     assert_eq!(
         classify_story(&labels, "[Feature] mismatched"),
