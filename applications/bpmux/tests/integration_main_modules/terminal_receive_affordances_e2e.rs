@@ -395,7 +395,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
         "FILTERING: a group message to:[dev,pm] is WITHHELD from designer (outside the group)"
     );
 
-    let dev_bridge_name = bpmux::session::routing_identity::bridge_agent_name(&dev_terminal);
+    let dev_bridge_name = bpmux::routing::bridge_agent_name(&dev_terminal);
     post_message(
         &bpmux,
         json!({ "from": dev_bridge_name, "text": "DEVS-OWN-LINE" }),

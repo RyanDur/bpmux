@@ -147,7 +147,7 @@ fn after_the_agent_leaves_a_fresh_foreground_job_re_mints() {
 #[tokio::test]
 async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
-    use crate::session::routing_identity::RoutingStore;
+    use crate::routing::RoutingStore;
 
     let store_dir = tempfile::TempDir::new().unwrap();
     let routing = Arc::new(RoutingStore::new(
@@ -214,7 +214,7 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
 #[tokio::test]
 async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
-    use crate::session::routing_identity::RoutingStore;
+    use crate::routing::RoutingStore;
 
     let store_dir = tempfile::TempDir::new().unwrap();
     let routing = Arc::new(RoutingStore::new(
@@ -269,7 +269,7 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
 #[tokio::test]
 async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
-    use crate::session::routing_identity::RoutingStore;
+    use crate::routing::RoutingStore;
 
     let store_dir = tempfile::TempDir::new().unwrap();
     let routing = Arc::new(RoutingStore::new(

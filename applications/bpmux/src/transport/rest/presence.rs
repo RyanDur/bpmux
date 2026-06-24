@@ -7,7 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use crate::orchestrator::stores::Presence;
-use crate::session::routing_identity::RoutingStore;
+use crate::routing::RoutingStore;
 
 #[derive(Deserialize)]
 pub struct PresenceRequest {

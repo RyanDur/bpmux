@@ -1,7 +1,7 @@
 use crate::message::Message;
 use crate::room::CommitmentStore;
 use crate::room::LivePtyRegistry;
-use crate::session::routing_identity::RoutingStore;
+use crate::routing::RoutingStore;
 use crate::session::terminal_inject::frame_team_message;
 
 use super::agnostic_delivery::{HeldInject, owner_mid_typing};

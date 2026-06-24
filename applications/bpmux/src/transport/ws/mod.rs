@@ -35,7 +35,7 @@ struct WsDeps {
     orchestrator:
         Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
-    routing: Arc<crate::session::routing_identity::RoutingStore>,
+    routing: Arc<crate::routing::RoutingStore>,
     tracker: crate::transport::rest::TrackerHandle,
     test_refresh: crate::server::TestRefreshHandle,
 }
@@ -47,7 +47,7 @@ pub async fn ws_handler(
         Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
     >,
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
-    axum::Extension(routing): axum::Extension<Arc<crate::session::routing_identity::RoutingStore>>,
+    axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
     axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
 ) -> Response {

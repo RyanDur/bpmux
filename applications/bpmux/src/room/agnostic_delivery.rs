@@ -6,8 +6,8 @@ use tokio::sync::broadcast;
 use crate::message::{BROADCAST_ALL, Message};
 use crate::room::CommitmentStore;
 use crate::room::LivePtyRegistry;
+use crate::routing::RoutingStore;
 use crate::session::Session;
-use crate::session::routing_identity::RoutingStore;
 use crate::session::terminal_inject::frame_team_message;
 use crate::transport::ws::short_name;
 

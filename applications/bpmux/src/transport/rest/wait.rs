@@ -7,8 +7,8 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
 
+use crate::routing::RoutingStore;
 use crate::session;
-use crate::session::routing_identity::RoutingStore;
 use crate::transport::ws::should_deliver;
 
 pub const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;

@@ -6,7 +6,8 @@ use crate::board::RefreshDriver;
 use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::orchestrator::Orchestrator;
 use crate::room::LivePtyRegistry;
-use crate::session::{self, routing_identity::RoutingStore};
+use crate::routing::RoutingStore;
+use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 
 type ProdOrchestrator = Orchestrator<GitHubSourceAdapter>;

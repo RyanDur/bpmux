@@ -23,6 +23,7 @@ pub mod orchestrator;
 pub mod reload;
 pub mod roadmap;
 pub mod room;
+pub mod routing;
 pub mod server;
 pub mod session;
 #[cfg(test)]

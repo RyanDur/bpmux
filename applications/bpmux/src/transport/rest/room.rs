@@ -6,7 +6,7 @@ use axum::response::IntoResponse;
 
 use super::shared::json_headers;
 use crate::room::LivePtyRegistry;
-use crate::session::routing_identity::RoutingStore;
+use crate::routing::RoutingStore;
 
 #[derive(serde::Deserialize)]
 pub struct TerminalCloseRequest {
@@ -42,7 +42,7 @@ pub async fn post_terminal_spawn(
     let bridge = crate::room::BridgeWiring {
         binary,
         port,
-        agent_name: crate::session::routing_identity::bridge_agent_name(&terminal_id),
+        agent_name: crate::routing::bridge_agent_name(&terminal_id),
     };
     let integration =
         crate::room::terminal_provisioning(&command, Some(&bridge)).unwrap_or_default();

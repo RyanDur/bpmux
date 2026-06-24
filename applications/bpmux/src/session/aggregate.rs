@@ -111,7 +111,7 @@ impl Session {
     }
 
     pub fn reconcile_roster(&self, live_terminal_ids: &[String]) -> Vec<String> {
-        use crate::session::routing_identity::bridge_agent_name;
+        use crate::routing::bridge_agent_name;
         const AUTO_AGENT_PREFIX: &str = "agent-";
         let live_auto_names: HashSet<String> = live_terminal_ids
             .iter()

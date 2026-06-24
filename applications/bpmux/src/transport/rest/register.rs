@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::session::routing_identity::RoutingStore;
+use crate::routing::RoutingStore;
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {

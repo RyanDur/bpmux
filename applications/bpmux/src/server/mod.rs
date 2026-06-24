@@ -8,10 +8,7 @@ use crate::transport;
 
 pub type TestRefreshHandle = Option<Arc<dyn RefreshDriver>>;
 
-fn startup_routing_id(
-    routing: &crate::session::routing_identity::RoutingStore,
-    identity: &str,
-) -> String {
+fn startup_routing_id(routing: &crate::routing::RoutingStore, identity: &str) -> String {
     routing
         .resolve(crate::transport::ws::short_name(identity))
         .into_iter()
@@ -71,9 +68,8 @@ pub async fn run_server(
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
-    let routing_store = std::sync::Arc::new(crate::session::routing_identity::RoutingStore::new(
-        session.storage.clone(),
-    ));
+    let routing_store =
+        std::sync::Arc::new(crate::routing::RoutingStore::new(session.storage.clone()));
     let commitment_store = std::sync::Arc::new(crate::room::CommitmentStore::new());
     crate::room::spawn_terminal_delivery_loop(
         session.clone(),

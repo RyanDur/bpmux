@@ -6,7 +6,6 @@ pub mod location;
 pub mod log;
 pub mod precommit;
 pub mod reactions;
-pub mod routing_identity;
 pub mod speech_guard;
 pub mod storage;
 #[cfg(test)]

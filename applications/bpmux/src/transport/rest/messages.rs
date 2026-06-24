@@ -84,7 +84,7 @@ pub async fn get_messages(
 
 pub async fn post_message(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(routing): axum::Extension<Arc<crate::session::routing_identity::RoutingStore>>,
+    axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
     Json(payload): Json<PostMessage>,
 ) -> impl IntoResponse {
     if payload.text.is_empty() {

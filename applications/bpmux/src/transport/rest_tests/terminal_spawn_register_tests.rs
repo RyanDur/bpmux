@@ -7,7 +7,7 @@ use tower::ServiceExt;
 
 use super::response_json;
 use crate::room::LivePtyRegistry;
-use crate::session::routing_identity::RoutingStore;
+use crate::routing::RoutingStore;
 use crate::transport::rest::post_terminal_spawn;
 
 fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Arc<RoutingStore>) {

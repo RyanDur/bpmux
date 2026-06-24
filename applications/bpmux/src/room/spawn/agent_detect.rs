@@ -5,8 +5,8 @@ use tokio::sync::broadcast;
 
 use super::Osc7CwdParser;
 use crate::room::LivePtyRegistry;
+use crate::routing::RoutingStore;
 use crate::session::read_or_create_dir_session;
-use crate::session::routing_identity::RoutingStore;
 
 const AGENT_RUN_GATE: Duration = Duration::from_millis(1000);
 const DETECTOR_POLL: Duration = Duration::from_millis(200);
