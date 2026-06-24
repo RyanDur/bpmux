@@ -6,6 +6,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use super::shared::TrackerHandle;
+use crate::comprehension;
 use crate::session;
 
 #[derive(Deserialize)]
@@ -26,14 +27,14 @@ pub async fn search_messages(
     let messages_part = match session.read_messages() {
         Ok(all_messages) => {
             let message_class = params.message_type.as_deref().and_then(|t| match t {
-                "correction" | "experience" => Some(session::MessageClass::Experience(
-                    session::classifier::ExperienceKind::Correction,
+                "correction" | "experience" => Some(comprehension::MessageClass::Experience(
+                    comprehension::classifier::ExperienceKind::Correction,
                 )),
-                "decision" => Some(session::MessageClass::Decision),
-                "discussion" => Some(session::MessageClass::Discussion),
+                "decision" => Some(comprehension::MessageClass::Decision),
+                "discussion" => Some(comprehension::MessageClass::Discussion),
                 _ => None,
             });
-            let filters = session::SearchFilters {
+            let filters = comprehension::SearchFilters {
                 query: params.query.clone(),
                 sender: params.sender.clone(),
                 after: params.after.as_ref().and_then(|s| s.parse().ok()),
@@ -43,7 +44,7 @@ pub async fn search_messages(
                 insight_only: params.message_type.as_deref() == Some("insight"),
                 owner_name: session.owner_name.clone(),
             };
-            session::search(&all_messages, &filters)
+            comprehension::search(&all_messages, &filters)
         }
         Err(_) => Vec::new(),
     };

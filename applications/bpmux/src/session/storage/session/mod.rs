@@ -5,10 +5,10 @@ use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 
 use super::{Storage, UserRecord, default_kind};
+use crate::comprehension::search::{self, SearchFilters, SearchResult};
 use crate::session::lessons::LessonIndex;
 use crate::session::log::LogError;
 use crate::session::message::Message;
-use crate::session::search::{self, SearchFilters, SearchResult};
 
 pub struct FileStorage {
     dir: PathBuf,

@@ -4,10 +4,11 @@ use std::path::Path;
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 
+use crate::comprehension::search::{SearchFilters, SearchResult};
+
 use super::lessons::LessonIndex;
 use super::log::LogError;
 use super::message::Message;
-use super::search::{SearchFilters, SearchResult};
 
 mod backend;
 mod global;

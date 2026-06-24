@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
-use super::classifier::{ExperienceKind, MessageClass};
 use super::lessons::*;
 use super::message::Message;
+use crate::comprehension::classifier::{ExperienceKind, MessageClass};
 use chrono::Utc;
 use tempfile::TempDir;
 
@@ -134,7 +134,7 @@ fn empty_log_produces_empty_index() {
 
 #[test]
 fn classifier_tags_search_result() {
-    use super::search::{SearchFilters, search};
+    use crate::comprehension::search::{SearchFilters, search};
     let messages = vec![
         msg("owner:human", "you should focus on the problem not the fix"),
         msg("dev:claude-code", "understood, focusing on the problem"),

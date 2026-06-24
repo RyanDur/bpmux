@@ -9,6 +9,7 @@ pub mod ci;
 #[cfg(test)]
 mod ci_tests;
 mod cli;
+pub mod comprehension;
 pub mod diag;
 #[cfg(test)]
 mod diag_tests;

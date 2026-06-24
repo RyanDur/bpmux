@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use super::Storage;
+use crate::comprehension::search::{SearchFilters, SearchResult};
 use crate::session::lessons::LessonIndex;
 use crate::session::log::LogError;
 use crate::session::message::Message;
-use crate::session::search::{SearchFilters, SearchResult};
 
 pub struct InstrumentedStorage<S: Storage> {
     inner: S,
