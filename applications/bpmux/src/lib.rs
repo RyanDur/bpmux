@@ -1,5 +1,8 @@
 #![deny(unsafe_code)]
 
+pub mod auth;
+#[cfg(test)]
+mod auth_tests;
 pub mod board;
 pub mod bridge;
 pub mod ci;

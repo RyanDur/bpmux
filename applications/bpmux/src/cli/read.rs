@@ -132,9 +132,9 @@ pub(crate) fn run_capture(window: bool) -> anyhow::Result<()> {
     }
     let role = crate::resolve_role(&None);
     let port = crate::resolve_bpmux_port();
-    let token_path = crate::session::auth_token::default_auth_token_path()
+    let token_path = crate::auth::default_auth_token_path()
         .ok_or_else(|| anyhow::anyhow!("cannot resolve auth-token path (HOME unset?)"))?;
-    let token = crate::session::auth_token::read(&token_path)
+    let token = crate::auth::read(&token_path)
         .map_err(|e| anyhow::anyhow!("read auth-token from {}: {e}", token_path.display()))?;
     let url =
         crate::transport::local_url::api_url(port, &format!("/api/electron-capture?role={role}"));

@@ -2,9 +2,9 @@ pub(in crate::bridge) async fn handle_capture_electron_window(
     role: &str,
     port: u16,
 ) -> Result<String, String> {
-    let token_path = crate::session::auth_token::default_auth_token_path()
+    let token_path = crate::auth::default_auth_token_path()
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
-    let token = crate::session::auth_token::read(&token_path)
+    let token = crate::auth::read(&token_path)
         .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
     let role_encoded = url_encode(role);
     let url = crate::transport::local_url::api_url(

@@ -21,7 +21,7 @@ use axum::Extension;
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 
-use bpmux::session::auth_token;
+use bpmux::auth as auth_token;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rest::{TrackerHandle, get_ci};
 

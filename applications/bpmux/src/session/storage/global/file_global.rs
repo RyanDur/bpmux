@@ -84,7 +84,7 @@ impl FileGlobalStore {
         if let Some(p) = &self.auth_token_path {
             return Ok(p.clone());
         }
-        crate::session::auth_token::default_auth_token_path().ok_or_else(|| {
+        crate::auth::default_auth_token_path().ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::NotFound,
                 "home directory not found for auth_token",
@@ -152,11 +152,11 @@ impl GlobalStore for FileGlobalStore {
 
     fn ensure_auth_token(&self) -> std::io::Result<String> {
         let path = self.resolve_auth_token_path()?;
-        crate::session::auth_token::ensure(&path)
+        crate::auth::ensure(&path)
     }
 
     fn read_auth_token(&self) -> std::io::Result<String> {
         let path = self.resolve_auth_token_path()?;
-        crate::session::auth_token::read(&path)
+        crate::auth::read(&path)
     }
 }

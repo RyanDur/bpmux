@@ -7,7 +7,7 @@ use axum::{
 use serde_json::json;
 use std::sync::Arc;
 
-use crate::session::auth_token;
+use crate::auth as auth_token;
 
 #[derive(Clone)]
 pub struct AuthState {

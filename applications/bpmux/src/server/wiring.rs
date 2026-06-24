@@ -113,9 +113,9 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
 }
 
 pub(super) fn build_auth_state() -> anyhow::Result<AuthState> {
-    let token_path = session::auth_token::default_auth_token_path()
+    let token_path = crate::auth::default_auth_token_path()
         .ok_or_else(|| anyhow::anyhow!("cannot locate ~/.bpmux auth token path"))?;
-    let token = session::auth_token::ensure(&token_path).map_err(|e| {
+    let token = crate::auth::ensure(&token_path).map_err(|e| {
         anyhow::anyhow!(
             "Unable to write auth token to {}: {e}",
             token_path.display()

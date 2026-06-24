@@ -108,9 +108,9 @@ pub(crate) async fn handle_close_iteration(
 }
 
 async fn post_close_iteration(port: u16, iteration_number: Option<u64>) -> Result<(), String> {
-    let token_path = crate::session::auth_token::default_auth_token_path()
+    let token_path = crate::auth::default_auth_token_path()
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
-    let token = crate::session::auth_token::read(&token_path)
+    let token = crate::auth::read(&token_path)
         .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
     let url = crate::transport::local_url::api_url(port, "/api/close_iteration");
     let body = serde_json::json!({ "iteration_number": iteration_number });

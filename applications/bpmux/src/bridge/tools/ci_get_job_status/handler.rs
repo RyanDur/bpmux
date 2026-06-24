@@ -24,9 +24,9 @@ pub(in crate::bridge) async fn handle_ci_get_job_status(
         .get("verbose")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let token_path = crate::session::auth_token::default_auth_token_path()
+    let token_path = crate::auth::default_auth_token_path()
         .ok_or_else(|| serialize_error(&CiJobStatusError::auth_failed()))?;
-    let token = crate::session::auth_token::read(&token_path)
+    let token = crate::auth::read(&token_path)
         .map_err(|e| serialize_error(&CiJobStatusError::auth_failed_with_detail(&e.to_string())))?;
     let url = crate::transport::local_url::api_url(port, &format!("/api/ci/jobs/{run_id}"));
     let mut url_for_verbose = url.clone();

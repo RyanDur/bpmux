@@ -37,9 +37,9 @@ pub(in crate::bridge) async fn handle_get_ci_log_for_run(
         .get("run_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'run_id' argument")?;
-    let token_path = crate::session::auth_token::default_auth_token_path()
+    let token_path = crate::auth::default_auth_token_path()
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
-    let token = crate::session::auth_token::read(&token_path)
+    let token = crate::auth::read(&token_path)
         .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
     let url = crate::transport::local_url::api_url(port, &format!("/api/ci/log/{run_id}"));
     let res = reqwest::Client::new()

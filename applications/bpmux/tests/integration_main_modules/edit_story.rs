@@ -16,10 +16,11 @@ use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
+use bpmux::auth as auth_token;
 use bpmux::board::adapters::in_memory::InMemorySourceAdapter;
 use bpmux::board::domain::StoryType;
 use bpmux::board::{BoardStore, RefreshDriver, Story, StoryState, SyncOrchestrator};
-use bpmux::session::{Session, auth_token};
+use bpmux::session::Session;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
 
