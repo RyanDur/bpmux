@@ -1,8 +1,8 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::domain::StoryType;
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{BoardEvent, PeerId, Story};
+use crate::product_management::board::{BoardEvent, PeerId};
+use crate::product_management::story::{Story, StoryType};
 use std::sync::Arc;
 
 fn meta_for(agent_name: &str) -> EventMeta {

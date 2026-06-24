@@ -6,8 +6,8 @@ use chrono::{TimeZone, Utc};
 
 use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState, StoryType};
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::story::{Gate, GateComment, Story, StoryState, StoryType};
 
 async fn seeded_orchestrator(
     mut stories: Vec<Story>,

@@ -420,7 +420,7 @@ mod ingest_poll_loop_tests {
         fn refresh_story(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Option<crate::product_management::board::Story>, SyncError>>
+        ) -> BoxedFuture<'_, Result<Option<crate::product_management::story::Story>, SyncError>>
         {
             Box::pin(async { Ok(None) })
         }
@@ -456,7 +456,7 @@ mod ingest_poll_loop_tests {
         }
         fn apply_server_rollback(
             &self,
-            _story: crate::product_management::board::Story,
+            _story: crate::product_management::story::Story,
         ) -> BoxedFuture<'_, ()> {
             Box::pin(async {})
         }
@@ -495,14 +495,14 @@ mod ingest_poll_loop_tests {
         fn fetch_free_comments(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::board::FreeComment>, SyncError>>
+        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::story::FreeComment>, SyncError>>
         {
             Box::pin(async { Ok(Vec::new()) })
         }
         fn fetch_gate_comments(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::board::GateComment>, SyncError>>
+        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::story::GateComment>, SyncError>>
         {
             Box::pin(async { Ok(Vec::new()) })
         }
@@ -514,10 +514,10 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, Result<u64, SyncError>> {
             Box::pin(async { Ok(0) })
         }
-        fn story(&self, _number: u64) -> Option<crate::product_management::board::Story> {
+        fn story(&self, _number: u64) -> Option<crate::product_management::story::Story> {
             None
         }
-        fn all_stories(&self) -> Vec<crate::product_management::board::Story> {
+        fn all_stories(&self) -> Vec<crate::product_management::story::Story> {
             Vec::new()
         }
         fn store(&self) -> Arc<crate::product_management::board::BoardStore> {

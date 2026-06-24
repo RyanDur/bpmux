@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::product_management::board::domain::Story;
+use crate::product_management::story::Story;
 use crate::workflow::config::WorkflowConfig;
 
 pub const ITERATION_REVIEWER_PURPOSE: &str = "iteration-reviewer";
@@ -37,7 +37,7 @@ pub struct OutcomeReadiness {
 pub fn building_iterations(outcome_number: u64, all: &[Story]) -> Vec<&Story> {
     all.iter()
         .filter(|s| {
-            s.story_type == crate::product_management::board::domain::StoryType::Iteration
+            s.story_type == crate::product_management::story::StoryType::Iteration
                 && s.outcome_membership.map(|(o, _)| o) == Some(outcome_number)
         })
         .collect()

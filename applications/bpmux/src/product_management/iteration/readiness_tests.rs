@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::readiness::*;
-use crate::product_management::board::domain::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use crate::workflow::config::WorkflowConfig;
 use chrono::Utc;

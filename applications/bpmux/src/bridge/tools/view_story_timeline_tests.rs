@@ -43,7 +43,7 @@ async fn handler_reads_gates_from_canonical_store() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -91,7 +91,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -126,7 +126,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
 #[test]
 fn build_timeline_from_board_sorts_chronologically() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
@@ -160,7 +160,7 @@ fn build_timeline_from_board_sorts_chronologically() {
 #[test]
 fn build_timeline_from_board_renders_full_rework_cycle() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
@@ -213,7 +213,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

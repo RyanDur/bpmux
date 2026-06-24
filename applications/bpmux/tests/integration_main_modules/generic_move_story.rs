@@ -24,8 +24,8 @@ use bpmux::product_management::board::PeerId;
 use bpmux::product_management::board::RefreshDriver;
 use bpmux::product_management::board::SyncOrchestrator;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use bpmux::product_management::board::domain::{Story, StoryState};
 use bpmux::product_management::board::events::EventMeta;
+use bpmux::product_management::story::{Story, StoryState};
 use chrono::{TimeZone, Utc};
 
 #[tokio::test]

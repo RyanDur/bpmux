@@ -79,7 +79,7 @@ pub(in crate::bridge) fn is_feature_for_velocity(
     refresh.and_then(|r| r.story(n)).is_some_and(|s| {
         matches!(
             s.story_type,
-            crate::product_management::board::domain::StoryType::Feature
+            crate::product_management::story::StoryType::Feature
         )
     })
 }
@@ -93,7 +93,7 @@ mod tests {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

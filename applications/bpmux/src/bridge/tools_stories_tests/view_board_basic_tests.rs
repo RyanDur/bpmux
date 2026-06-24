@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::board::domain::StoryType;
-use crate::product_management::board::domain::story_type_from_labels_or_title;
+use crate::product_management::story::StoryType;
+use crate::product_management::story::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -19,7 +19,7 @@ async fn view_board_auto_reingests_when_store_is_empty() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -123,7 +123,7 @@ async fn view_board_buckets_stories_by_story_state() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -202,7 +202,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -265,7 +265,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -336,7 +336,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         pushed.iter().any(|e| matches!(
             e,
             BoardEvent::StateTransitioned { number: 301, new_state, .. }
-                if *new_state == crate::product_management::board::domain::StoryState::Retired
+                if *new_state == crate::product_management::story::StoryState::Retired
         )),
         "StateTransitioned → Retired must fire for retire-class reason"
     );

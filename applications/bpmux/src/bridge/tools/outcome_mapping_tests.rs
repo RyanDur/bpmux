@@ -6,9 +6,9 @@ use crate::bridge::tools_stories::{
 };
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{Story, StoryState, StoryType};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::{Story, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -23,7 +23,7 @@ fn outcome(number: u64) -> Story {
     );
     s.story_type = StoryType::Outcome;
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
-    s.horizon = Some(crate::product_management::board::domain::Horizon::Now);
+    s.horizon = Some(crate::product_management::story::Horizon::Now);
     s
 }
 

@@ -121,7 +121,7 @@ pub(crate) async fn accept_via_canonical_store(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
                 number,
-                gate: crate::product_management::board::domain::Gate::Accepted,
+                gate: crate::product_management::story::Gate::Accepted,
                 payload: bypass.map(format_bypass_payload),
             },
         )
@@ -131,7 +131,7 @@ pub(crate) async fn accept_via_canonical_store(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta: meta.clone(),
                 number,
-                new_state: crate::product_management::board::domain::StoryState::Accepted,
+                new_state: crate::product_management::story::StoryState::Accepted,
             },
         )
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;

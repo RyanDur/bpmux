@@ -92,9 +92,9 @@ async fn reactions_listener_emits_typed_state_delta() {
     }
 }
 
-fn owner_parked_story(number: u64) -> crate::product_management::board::Story {
-    use crate::product_management::board::domain::{Acceptor, StoryState};
-    let mut story = crate::product_management::board::Story::new_minimal(
+fn owner_parked_story(number: u64) -> crate::product_management::story::Story {
+    use crate::product_management::story::{Acceptor, StoryState};
+    let mut story = crate::product_management::story::Story::new_minimal(
         number,
         format!("story {number}"),
         StoryState::Delivered,
@@ -109,9 +109,9 @@ fn ready_story(
     number: u64,
     iteration: u64,
     position: u32,
-) -> crate::product_management::board::Story {
-    use crate::product_management::board::domain::StoryState;
-    let mut story = crate::product_management::board::Story::new_minimal(
+) -> crate::product_management::story::Story {
+    use crate::product_management::story::StoryState;
+    let mut story = crate::product_management::story::Story::new_minimal(
         number,
         format!("ready {number}"),
         StoryState::Ready,
@@ -125,7 +125,7 @@ fn ready_story(
 fn state_transitioned(
     number: u64,
     actor: &str,
-    new_state: crate::product_management::board::StoryState,
+    new_state: crate::product_management::story::StoryState,
 ) -> crate::product_management::board::BoardEvent {
     crate::product_management::board::BoardEvent::StateTransitioned {
         meta: crate::product_management::board::events::EventMeta {
@@ -185,7 +185,7 @@ async fn seed_dev_online(
 #[tokio::test]
 async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
     use crate::product_management::board::BoardStore;
-    use crate::product_management::board::StoryState;
+    use crate::product_management::story::StoryState;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
@@ -228,7 +228,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
 #[tokio::test]
 async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     use crate::product_management::board::BoardStore;
-    use crate::product_management::board::StoryState;
+    use crate::product_management::story::StoryState;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);

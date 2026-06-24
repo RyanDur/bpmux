@@ -92,8 +92,8 @@ pub async fn post_story_labels(
 mod reorder_label_ops_tests {
     use super::*;
     use crate::product_management::board::adapters::github::iteration_membership_from_labels;
-    use crate::product_management::board::domain::{Story, StoryState};
     use crate::product_management::board::{BoardEvent, BoardStore};
+    use crate::product_management::story::{Story, StoryState};
 
     fn membered_fixture(number: u64, label: &str) -> Story {
         let mut story = Story::new_minimal(

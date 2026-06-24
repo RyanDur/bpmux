@@ -2,9 +2,9 @@ use crate::bridge::tracker::{
     ConditionalIssue, ConditionalRunEntry, OctocrabStoryTracker, StoryTracker,
 };
 use crate::orchestrator::CiPollFetch;
-use crate::product_management::board::domain::{FreeComment, GateComment, Story};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
+use crate::product_management::story::{FreeComment, GateComment, Story};
 
 mod comment_codec;
 mod label_fields;

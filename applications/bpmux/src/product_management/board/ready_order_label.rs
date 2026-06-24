@@ -1,4 +1,4 @@
-use crate::product_management::board::domain::StoryState;
+use crate::product_management::story::StoryState;
 
 pub fn sort_board_ready_by_membership(stories: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
     let current = stories.iter().find_map(|s| {

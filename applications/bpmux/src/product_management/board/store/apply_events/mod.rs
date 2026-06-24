@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::product_management::board::domain::Story;
 use crate::product_management::board::events::BoardEvent;
+use crate::product_management::story::Story;
 
 mod comments;
 mod labels;

@@ -9,9 +9,9 @@ use crate::product_management::board::adapters::github::{
     iteration_order_from_labels, parent_epic_from_labels, state_from_labels, state_to_label,
     tags_from_labels, warn_on_inconsistent_state_labels,
 };
-use crate::product_management::board::domain::story_type_from_labels_or_title;
-use crate::product_management::board::domain::{Gate, StoryState, StoryType, Tag};
 use crate::product_management::board::sync::{SyncError, classify_close_error};
+use crate::product_management::story::story_type_from_labels_or_title;
+use crate::product_management::story::{Gate, StoryState, StoryType, Tag};
 
 #[test]
 fn is_iteration_position_label_matches_iteration_theme_dot_number() {

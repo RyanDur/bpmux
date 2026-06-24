@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use crate::product_management::board::domain::{FreeComment, GateComment, Story};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SyncError};
+use crate::product_management::story::{FreeComment, GateComment, Story};
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
 

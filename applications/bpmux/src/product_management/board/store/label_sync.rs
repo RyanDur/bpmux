@@ -1,4 +1,4 @@
-use super::super::domain::{Story, Tag};
+use crate::product_management::story::{Story, Tag};
 
 pub(super) fn tag_from_label_string(s: &str) -> Option<Tag> {
     if s.eq_ignore_ascii_case("blocked") {

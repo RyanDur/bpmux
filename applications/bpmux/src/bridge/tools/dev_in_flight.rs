@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::product_management::board::{BoardStore, StoryState};
+use crate::product_management::board::BoardStore;
+use crate::product_management::story::StoryState;
 
 #[derive(Serialize)]
 struct DevInFlight {
@@ -23,7 +24,7 @@ pub(in crate::bridge) async fn handle_dev_in_flight(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::product_management::board::Story;
+    use crate::product_management::story::Story;
     use chrono::{TimeZone, Utc};
 
     fn seed(state: StoryState, number: u64) -> Story {

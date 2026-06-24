@@ -4,8 +4,8 @@
 use std::sync::Arc;
 
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{Story, StoryState};
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::story::{Story, StoryState};
 
 use super::spawn_background_ingest;
 

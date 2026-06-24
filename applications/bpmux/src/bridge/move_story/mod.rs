@@ -4,10 +4,10 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::bridge::tools_stories::{KEEP_NONE, reap_workflow_labels};
-use crate::product_management::board::domain::StoryState;
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 use crate::product_management::iteration::label::current_iteration_number;
+use crate::product_management::story::StoryState;
 
 mod target;
 

@@ -1,7 +1,7 @@
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod gate_class_from_labels_and_story_type_tests_1460 {
-    use crate::product_management::board::domain::StoryType;
+    use crate::product_management::story::StoryType;
     use crate::workflow::config::*;
 
     fn lbl(s: &str) -> String {

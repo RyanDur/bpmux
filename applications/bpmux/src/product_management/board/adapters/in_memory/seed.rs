@@ -1,6 +1,6 @@
 use super::InMemorySourceAdapter;
-use crate::product_management::board::domain::{FreeComment, GateComment, Story};
 use crate::product_management::board::events::BoardEvent;
+use crate::product_management::story::{FreeComment, GateComment, Story};
 
 impl InMemorySourceAdapter {
     pub fn new() -> Self {

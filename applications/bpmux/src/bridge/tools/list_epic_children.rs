@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::product_management::board::domain::StoryType;
-use crate::product_management::board::{BoardStore, Story};
+use crate::product_management::board::BoardStore;
+use crate::product_management::story::{Story, StoryType};
 
 pub(in crate::bridge) async fn handle_list_epic_children(
     args: &serde_json::Map<String, serde_json::Value>,

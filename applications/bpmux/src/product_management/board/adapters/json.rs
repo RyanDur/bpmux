@@ -1,7 +1,7 @@
-use crate::product_management::board::domain::{
+use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::story::{
     Story, StoryType, Tag, most_recent_backward_transition, replay_transitions,
 };
-use crate::product_management::board::label_codec::LabelCodec;
 
 fn is_renderer_badge_label(raw: &str) -> bool {
     let lower = raw.to_ascii_lowercase();

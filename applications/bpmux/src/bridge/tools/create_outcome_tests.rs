@@ -4,9 +4,9 @@
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{Horizon, Story, StoryState, StoryType};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;

@@ -4,7 +4,7 @@ use crate::bridge::tools_stories::helpers::{
 
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
 
-fn label_for_state(state: crate::product_management::board::domain::StoryState) -> &'static str {
+fn label_for_state(state: crate::product_management::story::StoryState) -> &'static str {
     state.github_label()
 }
 
@@ -42,9 +42,7 @@ pub(crate) async fn handle_fail_desk_check(
     }
     let was_accepted = prior
         .as_ref()
-        .map(|s| {
-            s.is_closed || s.state == crate::product_management::board::domain::StoryState::Accepted
-        })
+        .map(|s| s.is_closed || s.state == crate::product_management::story::StoryState::Accepted)
         .unwrap_or(false);
     let reason = args
         .get("reason")
@@ -61,15 +59,13 @@ pub(crate) async fn handle_fail_desk_check(
         });
         return Err(err.to_string());
     }
-    let target_state = crate::product_management::board::domain::StoryState::parse(
-        transition.to.as_str(),
-    )
-    .ok_or_else(|| {
-        format!(
-            "workflow.toml fail-desk-check transition.to='{}' is not a recognized StoryState",
-            transition.to
-        )
-    })?;
+    let target_state = crate::product_management::story::StoryState::parse(transition.to.as_str())
+        .ok_or_else(|| {
+            format!(
+                "workflow.toml fail-desk-check transition.to='{}' is not a recognized StoryState",
+                transition.to
+            )
+        })?;
     if let Some(r) = refresh {
         let meta = crate::product_management::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
@@ -91,7 +87,7 @@ pub(crate) async fn handle_fail_desk_check(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
                 number,
-                gate: crate::product_management::board::domain::Gate::FailDeskCheck,
+                gate: crate::product_management::story::Gate::FailDeskCheck,
                 payload: Some(reason.to_string()),
             },
         )

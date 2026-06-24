@@ -11,10 +11,10 @@ pub(crate) fn ordered_board_stories(
         .map(|s| {
             let mut json =
                 crate::product_management::board::adapters::json::story_to_board_json(&codec, s);
-            if s.story_type == crate::product_management::board::domain::StoryType::Iteration
+            if s.story_type == crate::product_management::story::StoryType::Iteration
                 && let serde_json::Value::Object(map) = &mut json
             {
-                let members: Vec<&crate::product_management::board::domain::Story> = all
+                let members: Vec<&crate::product_management::story::Story> = all
                     .iter()
                     .filter(|m| m.iteration_membership.map(|(it, _)| it) == Some(s.number))
                     .collect();
@@ -26,7 +26,7 @@ pub(crate) fn ordered_board_stories(
                     map.insert("readiness".to_string(), value);
                 }
             }
-            if s.story_type == crate::product_management::board::domain::StoryType::Outcome
+            if s.story_type == crate::product_management::story::StoryType::Outcome
                 && let serde_json::Value::Object(map) = &mut json
             {
                 let rolled = crate::product_management::iteration::readiness::outcome_readiness(
@@ -48,8 +48,8 @@ mod tests {
     use super::ordered_board_stories;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use crate::product_management::board::{BoardStore, SyncOrchestrator};
+    use crate::product_management::story::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

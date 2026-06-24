@@ -3,8 +3,8 @@ use std::sync::RwLock;
 
 use tokio::sync::broadcast;
 
-use super::domain::{Story, StoryState};
 use super::events::BoardEvent;
+use crate::product_management::story::{Story, StoryState};
 
 mod apply;
 mod apply_events;

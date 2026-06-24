@@ -107,8 +107,8 @@ pub async fn post_reject_story(
     let target_state = workflow
         .transition_for("reject", crate::workflow::GateClass::TeamVerifiable)
         .or_else(|| workflow.transition_by_id("reject"))
-        .and_then(|t| crate::product_management::board::domain::StoryState::parse(&t.to))
-        .unwrap_or(crate::product_management::board::domain::StoryState::Ready);
+        .and_then(|t| crate::product_management::story::StoryState::parse(&t.to))
+        .unwrap_or(crate::product_management::story::StoryState::Ready);
     match crate::bridge::tools_stories::reject_via_canonical_store(
         &refresh,
         number,

@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::board::domain::StoryType;
-use crate::product_management::board::domain::story_type_from_labels_or_title;
+use crate::product_management::story::StoryType;
+use crate::product_management::story::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -13,7 +13,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -65,7 +65,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState, Tag};
+    use crate::product_management::story::{Story, StoryState, Tag};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -115,7 +115,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -180,7 +180,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -267,7 +267,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

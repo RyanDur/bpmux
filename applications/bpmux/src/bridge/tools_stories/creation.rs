@@ -9,8 +9,7 @@ pub(crate) async fn handle_create_story(
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
-    let story_type =
-        crate::product_management::board::domain::story_type_from_labels_or_title(&[], title);
+    let story_type = crate::product_management::story::story_type_from_labels_or_title(&[], title);
     validate_actor_role_can_create(agent_name, story_type)?;
     let user_job = require_nonempty_string(
         args,
@@ -34,7 +33,7 @@ pub(crate) async fn handle_create_story(
         acceptance_test_path,
         author_body,
     );
-    if story_type != crate::product_management::board::domain::StoryType::Chore {
+    if story_type != crate::product_management::story::StoryType::Chore {
         crate::bridge::atp_substantive_gate::verify_atp_pre_filing(
             &composed_body,
             acceptance_test_path,
@@ -76,7 +75,7 @@ pub(crate) async fn handle_create_story(
 
 fn validate_actor_role_can_create(
     agent_name: &str,
-    story_type: crate::product_management::board::domain::StoryType,
+    story_type: crate::product_management::story::StoryType,
 ) -> Result<(), String> {
     let workflow = crate::workflow::current_workflow();
     let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
@@ -88,7 +87,7 @@ fn validate_actor_role_can_create(
     {
         return Ok(());
     }
-    let is_chore = story_type == crate::product_management::board::domain::StoryType::Chore;
+    let is_chore = story_type == crate::product_management::story::StoryType::Chore;
     if actor_role != pm && !(actor_role == dev && is_chore) {
         return Err(
             "create_story is pm-lane (dev may author [Chore]-class stories per chore-ownership \
@@ -112,7 +111,7 @@ fn validate_parent_epic(
             "epic #{epic_number} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
         )
     })?;
-    if parent.story_type != crate::product_management::board::domain::StoryType::Epic {
+    if parent.story_type != crate::product_management::story::StoryType::Epic {
         return Err(format!(
             "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
             parent.story_type
@@ -126,7 +125,7 @@ async fn create_and_broadcast_story_events(
     agent_name: &str,
     title: &str,
     composed_body: String,
-    story_type: crate::product_management::board::domain::StoryType,
+    story_type: crate::product_management::story::StoryType,
     parent_epic: Option<u64>,
     acceptor_label: Option<&'static str>,
 ) -> Result<u64, String> {
@@ -144,7 +143,7 @@ async fn create_and_broadcast_story_events(
         number,
         title: title.to_string(),
         body: composed_body,
-        initial_state: crate::product_management::board::domain::StoryState::Icebox,
+        initial_state: crate::product_management::story::StoryState::Icebox,
         story_type,
     })
     .map_err(|e| format!("#{number} created but enqueue failed: {e}"))?;

@@ -62,7 +62,7 @@ async fn post_close_iteration_canonical(
         Some(s)
             if matches!(
                 s.story_type,
-                crate::product_management::board::domain::StoryType::Iteration
+                crate::product_management::story::StoryType::Iteration
             ) =>
         {
             s

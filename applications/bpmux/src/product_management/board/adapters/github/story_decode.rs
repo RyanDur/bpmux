@@ -5,7 +5,7 @@ use super::label_fields::{
     iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
     iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
 };
-use crate::product_management::board::domain::{Story, StoryState, Tag};
+use crate::product_management::story::{Story, StoryState, Tag};
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     let state_labels = [
@@ -60,7 +60,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
         .unwrap_or_else(|| "unknown".to_string());
     let mut story = Story::new_minimal(number, title.clone(), state, filed_at, filed_by);
     story.story_type =
-        crate::product_management::board::domain::story_type_from_labels_or_title(&labels, &title);
+        crate::product_management::story::story_type_from_labels_or_title(&labels, &title);
     story.tags = tags_from_labels(&labels);
     story.is_closed = is_closed;
     story.parent_epic = parent_epic_from_labels(&labels);

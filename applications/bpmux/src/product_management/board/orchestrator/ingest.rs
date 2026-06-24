@@ -50,7 +50,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn refresh_story(
         &self,
         number: u64,
-    ) -> Result<Option<crate::product_management::board::domain::Story>, SyncError> {
+    ) -> Result<Option<crate::product_management::story::Story>, SyncError> {
         match self.adapter.fetch_story_metadata(number).await {
             Ok(Some(story)) => {
                 self.store.seed_all(vec![story.clone()]);

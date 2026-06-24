@@ -25,7 +25,7 @@ pub(crate) async fn handle_create_iteration(
     let r = refresh
         .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
     let existing_open_iteration = r.all_stories().into_iter().find(|s| {
-        s.story_type == crate::product_management::board::domain::StoryType::Iteration
+        s.story_type == crate::product_management::story::StoryType::Iteration
             && !s.is_closed
             && s.title
                 .eq_ignore_ascii_case(&format!("Iteration {theme_name}"))
@@ -52,8 +52,8 @@ pub(crate) async fn handle_create_iteration(
         number,
         title: title.clone(),
         body: body.clone(),
-        initial_state: crate::product_management::board::domain::StoryState::Icebox,
-        story_type: crate::product_management::board::domain::StoryType::Iteration,
+        initial_state: crate::product_management::story::StoryState::Icebox,
+        story_type: crate::product_management::story::StoryType::Iteration,
     })
     .map_err(|e| format!("#{number} iteration created but enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
@@ -66,7 +66,7 @@ pub(crate) async fn handle_create_iteration(
         .all_stories()
         .into_iter()
         .filter(|s| {
-            s.story_type == crate::product_management::board::domain::StoryType::Iteration
+            s.story_type == crate::product_management::story::StoryType::Iteration
                 && !s.is_closed
                 && s.number != number
         })

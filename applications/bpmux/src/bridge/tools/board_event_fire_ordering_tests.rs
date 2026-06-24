@@ -3,9 +3,9 @@
 #![allow(clippy::panic)]
 
 use crate::product_management::board::BoardStore;
-use crate::product_management::board::domain::{Story, StoryState};
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::{Story, StoryState};
 use chrono::Utc;
 use std::sync::Arc;
 

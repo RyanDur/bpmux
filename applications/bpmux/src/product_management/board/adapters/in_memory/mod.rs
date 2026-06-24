@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::product_management::board::domain::{FreeComment, GateComment, Story};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
+use crate::product_management::story::{FreeComment, GateComment, Story};
 
 mod mutation;
 mod seed;
@@ -144,7 +144,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         let story = Story::new_minimal(
             number,
             title.to_string(),
-            crate::product_management::board::domain::StoryState::Icebox,
+            crate::product_management::story::StoryState::Icebox,
             chrono::Utc::now(),
             "in-memory".to_string(),
         );

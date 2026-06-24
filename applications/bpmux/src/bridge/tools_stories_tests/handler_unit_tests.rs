@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::board::domain::StoryType;
-use crate::product_management::board::domain::story_type_from_labels_or_title;
+use crate::product_management::story::StoryType;
+use crate::product_management::story::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -133,10 +133,10 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
 #[tokio::test]
 async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
     use crate::product_management::board::{
         BoardEvent, BoardStore, RefreshDriver, SyncOrchestrator,
     };
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

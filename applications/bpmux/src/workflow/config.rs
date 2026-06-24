@@ -128,7 +128,7 @@ pub fn gate_class_from_labels(labels: &[String]) -> GateClass {
 
 pub fn gate_class_from_labels_and_story_type(
     labels: &[String],
-    story_type: crate::product_management::board::domain::StoryType,
+    story_type: crate::product_management::story::StoryType,
 ) -> GateClass {
     for l in labels {
         let lower = l.to_ascii_lowercase();
@@ -151,11 +151,11 @@ pub fn gate_class_from_labels_and_story_type(
         }
     }
     match story_type {
-        crate::product_management::board::domain::StoryType::Feature
-        | crate::product_management::board::domain::StoryType::Epic
-        | crate::product_management::board::domain::StoryType::Iteration
-        | crate::product_management::board::domain::StoryType::Outcome => GateClass::OwnerWalk,
-        crate::product_management::board::domain::StoryType::Bug => GateClass::TeamVerifiable,
-        crate::product_management::board::domain::StoryType::Chore => GateClass::DevVerifiable,
+        crate::product_management::story::StoryType::Feature
+        | crate::product_management::story::StoryType::Epic
+        | crate::product_management::story::StoryType::Iteration
+        | crate::product_management::story::StoryType::Outcome => GateClass::OwnerWalk,
+        crate::product_management::story::StoryType::Bug => GateClass::TeamVerifiable,
+        crate::product_management::story::StoryType::Chore => GateClass::DevVerifiable,
     }
 }

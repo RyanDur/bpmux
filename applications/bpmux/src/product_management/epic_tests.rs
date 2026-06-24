@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::product_management::board::domain::{Story, StoryState};
 use crate::product_management::epic::{derive_epic_counts, derive_epic_state};
+use crate::product_management::story::{Story, StoryState};
 use chrono::{TimeZone, Utc};
 
 fn epic_child(number: u64, state: StoryState) -> Story {

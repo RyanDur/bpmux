@@ -1,6 +1,6 @@
 use super::Stories;
-use crate::product_management::board::domain::{FreeComment, Gate, GateComment};
 use crate::product_management::board::events::EventMeta;
+use crate::product_management::story::{FreeComment, Gate, GateComment};
 
 pub(super) fn apply_gate_comment_appended(
     w: &mut Stories,

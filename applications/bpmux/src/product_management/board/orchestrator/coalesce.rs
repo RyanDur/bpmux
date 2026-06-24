@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
-use crate::product_management::board::domain::{Story, StoryState};
 use crate::product_management::board::events::BoardEvent;
+use crate::product_management::story::{Story, StoryState};
 
 use super::{MutationId, QueuedEvent};
 

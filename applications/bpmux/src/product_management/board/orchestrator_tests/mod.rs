@@ -11,9 +11,9 @@ mod staleness_tests;
 
 use chrono::{TimeZone, Utc};
 
-use super::domain::{Story, StoryState};
 use super::events::EventMeta;
 use super::peer::PeerId;
+use crate::product_management::story::{Story, StoryState};
 
 pub(super) fn meta() -> EventMeta {
     EventMeta {

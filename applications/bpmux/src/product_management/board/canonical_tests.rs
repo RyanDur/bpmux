@@ -3,9 +3,9 @@
 
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::decode_story_metadata;
-use crate::product_management::board::domain::{Story, StoryState, StoryType};
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::{BoardEvent, PeerId, events::EventMeta};
+use crate::product_management::story::{Story, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 

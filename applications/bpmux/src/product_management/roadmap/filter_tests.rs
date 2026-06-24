@@ -2,7 +2,7 @@
 
 use super::filter::*;
 use super::view::{OutcomeState, RoadmapBand, RoadmapOutcome};
-use crate::product_management::board::domain::Horizon;
+use crate::product_management::story::Horizon;
 
 fn outcome(number: u64, name: &str, state: OutcomeState, gap_count: u32) -> RoadmapOutcome {
     RoadmapOutcome {

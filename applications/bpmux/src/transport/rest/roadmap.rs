@@ -38,8 +38,7 @@ pub async fn get_roadmap(
                 .iter()
                 .find(|s| {
                     s.number == number
-                        && s.story_type
-                            == crate::product_management::board::domain::StoryType::Outcome
+                        && s.story_type == crate::product_management::story::StoryType::Outcome
                 })
                 .map(|s| s.title.clone());
             serde_json::json!({

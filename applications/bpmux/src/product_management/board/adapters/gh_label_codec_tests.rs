@@ -1,5 +1,5 @@
 use super::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::domain::Acceptor;
+use crate::product_management::story::Acceptor;
 
 #[test]
 fn decode_acceptor_maps_each_awaiting_label_1551() {
@@ -104,7 +104,7 @@ fn decode_iteration_dev_ok_rejects_other_labels() {
 
 #[test]
 fn horizon_round_trips_each_bucket() {
-    use crate::product_management::board::domain::Horizon;
+    use crate::product_management::story::Horizon;
     for (h, label) in [
         (Horizon::Now, "horizon.now"),
         (Horizon::Next, "horizon.next"),

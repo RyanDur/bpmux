@@ -1,4 +1,4 @@
-use super::domain::StoryState;
+use crate::product_management::story::StoryState;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColumnBucket {

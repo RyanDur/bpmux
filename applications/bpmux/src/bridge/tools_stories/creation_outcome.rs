@@ -29,9 +29,9 @@ pub(crate) async fn handle_create_outcome(
         "horizon is required: one of now | next | later (sequence, not calendar).",
     )?;
     let horizon = match horizon_raw.to_ascii_lowercase().as_str() {
-        "now" => crate::product_management::board::domain::Horizon::Now,
-        "next" => crate::product_management::board::domain::Horizon::Next,
-        "later" => crate::product_management::board::domain::Horizon::Later,
+        "now" => crate::product_management::story::Horizon::Now,
+        "next" => crate::product_management::story::Horizon::Next,
+        "later" => crate::product_management::story::Horizon::Later,
         other => {
             return Err(format!(
                 "invalid horizon '{other}': must be now, next, or later (sequence, not calendar)"
@@ -59,8 +59,8 @@ pub(crate) async fn handle_create_outcome(
         number,
         title: title.clone(),
         body,
-        initial_state: crate::product_management::board::domain::StoryState::Icebox,
-        story_type: crate::product_management::board::domain::StoryType::Outcome,
+        initial_state: crate::product_management::story::StoryState::Icebox,
+        story_type: crate::product_management::story::StoryType::Outcome,
     })
     .map_err(|e| format!("#{number} outcome created but enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {

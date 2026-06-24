@@ -1,6 +1,6 @@
 use super::InnerState;
-use crate::product_management::board::domain::{FreeComment, GateComment};
 use crate::product_management::board::events::BoardEvent;
+use crate::product_management::story::{FreeComment, GateComment};
 
 pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
     match event {
@@ -38,11 +38,11 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                 && let Some(story) = s.stories.get_mut(number)
                 && !story
                     .tags
-                    .contains(&crate::product_management::board::domain::Tag::Blocked)
+                    .contains(&crate::product_management::story::Tag::Blocked)
             {
                 story
                     .tags
-                    .push(crate::product_management::board::domain::Tag::Blocked);
+                    .push(crate::product_management::story::Tag::Blocked);
             }
         }
         BoardEvent::TagRemoved { number, label, .. } => {
@@ -54,7 +54,7 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
             {
                 story
                     .tags
-                    .retain(|t| *t != crate::product_management::board::domain::Tag::Blocked);
+                    .retain(|t| *t != crate::product_management::story::Tag::Blocked);
             }
         }
         BoardEvent::StoryClosed { number, .. } => {

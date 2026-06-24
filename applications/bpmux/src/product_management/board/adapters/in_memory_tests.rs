@@ -3,10 +3,10 @@
 use chrono::{TimeZone, Utc};
 
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{FreeComment, Story, StoryState};
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
+use crate::product_management::story::{FreeComment, Story, StoryState};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -176,7 +176,7 @@ async fn push_event_accepts_story_created_variant() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Icebox,
-        story_type: crate::product_management::board::domain::StoryType::Feature,
+        story_type: crate::product_management::story::StoryType::Feature,
     };
     adapter.push_event(&event).await.unwrap();
     let pushed = adapter.pushed_events();

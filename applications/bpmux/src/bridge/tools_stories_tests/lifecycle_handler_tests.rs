@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::board::domain::StoryType;
-use crate::product_management::board::domain::story_type_from_labels_or_title;
+use crate::product_management::story::StoryType;
+use crate::product_management::story::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -13,7 +13,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -26,7 +26,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = crate::product_management::board::domain::StoryType::Chore;
+    seeded.story_type = crate::product_management::story::StoryType::Chore;
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -103,7 +103,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -116,7 +116,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = crate::product_management::board::domain::StoryType::Chore;
+    seeded.story_type = crate::product_management::story::StoryType::Chore;
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -178,7 +178,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -268,7 +268,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -350,7 +350,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -432,7 +432,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -517,7 +517,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -530,7 +530,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = crate::product_management::board::domain::StoryType::Chore;
+    seeded.story_type = crate::product_management::story::StoryType::Chore;
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -578,7 +578,7 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -639,7 +639,7 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -709,7 +709,7 @@ mod classify_for_pass_desk_check_tests {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

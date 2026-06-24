@@ -1,6 +1,5 @@
 pub mod adapters;
 pub mod column;
-pub mod domain;
 pub mod events;
 pub mod label_codec;
 pub mod orchestrator;
@@ -15,8 +14,6 @@ mod canonical_tests;
 #[cfg(test)]
 mod conflict_classifier_tests;
 #[cfg(test)]
-mod domain_tests;
-#[cfg(test)]
 mod event_messages_audit_tests;
 #[cfg(test)]
 mod orchestrator_tests;
@@ -25,7 +22,6 @@ mod store_tests;
 #[cfg(test)]
 mod velocity_tests;
 
-pub use domain::{FreeComment, Gate, GateComment, Story, StoryState};
 pub use events::BoardEvent;
 pub use orchestrator::{
     DrainOneOutcome, MutationId, QueuedEvent, RaceWindowBarrier, RefreshDriver, SyncOrchestrator,

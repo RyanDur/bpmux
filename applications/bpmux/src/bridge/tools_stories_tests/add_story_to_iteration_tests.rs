@@ -6,7 +6,7 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 

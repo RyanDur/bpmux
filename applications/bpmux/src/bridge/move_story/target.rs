@@ -1,7 +1,7 @@
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::product_management::board::domain::StoryState;
+use crate::product_management::story::StoryState;
 
 const TARGET_STATE_RETIRED: &str = "retired";
 
@@ -82,7 +82,7 @@ pub(super) fn require_nonempty(
 }
 
 pub(super) fn current_state_display(
-    story: Option<&crate::product_management::board::domain::Story>,
+    story: Option<&crate::product_management::story::Story>,
 ) -> &'static str {
     match story {
         Some(s) if s.is_closed => "retired-or-accepted",

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::domain::StoryState;
+use super::enums::StoryState;
 
 #[test]
 fn story_state_parse_round_trips_via_as_str() {

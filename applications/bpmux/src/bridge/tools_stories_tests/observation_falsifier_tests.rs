@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::board::domain::StoryType;
-use crate::product_management::board::domain::story_type_from_labels_or_title;
+use crate::product_management::story::StoryType;
+use crate::product_management::story::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -264,7 +264,7 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

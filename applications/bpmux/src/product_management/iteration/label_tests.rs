@@ -1,6 +1,6 @@
 use super::label::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::domain::{Story, StoryState};
+use crate::product_management::story::{Story, StoryState};
 use chrono::{TimeZone, Utc};
 
 fn seed(number: u64, raw_labels: Vec<String>) -> Story {

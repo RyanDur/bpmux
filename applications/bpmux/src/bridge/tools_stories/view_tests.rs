@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::view::*;
-use crate::product_management::board::Story;
-use crate::product_management::board::StoryState;
 use crate::product_management::board::column::ColumnBucket;
+use crate::product_management::story::Story;
+use crate::product_management::story::StoryState;
 use chrono::{TimeZone, Utc};
 
 fn story(num: u64, title: &str, state: StoryState) -> Story {
@@ -36,7 +36,7 @@ fn default_scope_is_unchanged_full_board() {
 
 #[test]
 fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
-    use crate::product_management::board::domain::Acceptor;
+    use crate::product_management::story::Acceptor;
     let mut s = story(77, "acceptor-visible", StoryState::Ready);
     s.acceptor = Some(Acceptor::Owner);
     let out = build_board_text(&[s], &BoardScope::default());

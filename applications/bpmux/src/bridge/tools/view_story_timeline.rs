@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::product_management::board::domain::{Gate, GateComment, Story};
 use crate::product_management::board::{BoardStore, RefreshDriver};
+use crate::product_management::story::{Gate, GateComment, Story};
 
 pub fn gate_as_str(gate: Gate) -> &'static str {
     match gate {

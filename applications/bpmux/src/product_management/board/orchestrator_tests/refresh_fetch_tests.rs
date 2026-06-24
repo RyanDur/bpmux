@@ -6,11 +6,11 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{Story, StoryState, StoryType};
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::{Story, StoryState, StoryType};
 
 #[tokio::test]
 async fn refresh_story_pulls_single_story_from_adapter_into_store() {
@@ -129,7 +129,7 @@ async fn fetch_body_records_error_when_source_fails() {
 
 #[tokio::test]
 async fn fetch_free_comments_caches_comments_and_fires_event() {
-    use crate::product_management::board::domain::FreeComment;
+    use crate::product_management::story::FreeComment;
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(9, StoryState::Ready)]);
@@ -156,7 +156,7 @@ async fn fetch_free_comments_caches_comments_and_fires_event() {
 
 #[tokio::test]
 async fn fetch_gate_comments_caches_comments_and_fires_event() {
-    use crate::product_management::board::domain::{Gate, GateComment};
+    use crate::product_management::story::{Gate, GateComment};
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(11, StoryState::Ready)]);

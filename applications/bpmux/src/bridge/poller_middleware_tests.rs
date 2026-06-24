@@ -6,8 +6,8 @@ use chrono::{TimeZone, Utc};
 
 use crate::bridge::tools::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{Story, StoryState};
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::story::{Story, StoryState};
 
 fn seed_minimal(number: u64, state: StoryState) -> Story {
     Story::new_minimal(

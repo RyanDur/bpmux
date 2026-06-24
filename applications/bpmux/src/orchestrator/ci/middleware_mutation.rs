@@ -58,7 +58,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
     pub(super) async fn middleware_mutation_rolled_back(
         self: &Arc<Self>,
         mutation_id: MutationId,
-        server_story: Option<crate::product_management::board::domain::Story>,
+        server_story: Option<crate::product_management::story::Story>,
     ) {
         {
             let mut tokens = self.mutation_tokens.lock().await;

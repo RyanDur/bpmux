@@ -111,7 +111,7 @@ pub(crate) async fn handle_pass_desk_check(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
                 number,
-                gate: crate::product_management::board::domain::Gate::PassDeskCheck,
+                gate: crate::product_management::story::Gate::PassDeskCheck,
                 payload: bypass.clone().map(format_bypass_payload),
             },
         )
@@ -120,7 +120,7 @@ pub(crate) async fn handle_pass_desk_check(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta,
                 number,
-                new_state: crate::product_management::board::domain::StoryState::Delivered,
+                new_state: crate::product_management::story::StoryState::Delivered,
             },
         )
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;

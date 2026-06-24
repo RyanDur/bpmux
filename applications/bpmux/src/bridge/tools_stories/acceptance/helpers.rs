@@ -29,15 +29,15 @@ impl BugGate {
     }
 }
 
-pub(crate) fn gate_to_id(gate: crate::product_management::board::domain::Gate) -> &'static str {
+pub(crate) fn gate_to_id(gate: crate::product_management::story::Gate) -> &'static str {
     match gate {
-        crate::product_management::board::domain::Gate::Filed => "filed",
-        crate::product_management::board::domain::Gate::Pickup => "pickup",
-        crate::product_management::board::domain::Gate::Delivered => "deliver",
-        crate::product_management::board::domain::Gate::PassDeskCheck => "pass-desk-check",
-        crate::product_management::board::domain::Gate::FailDeskCheck => "fail-desk-check",
-        crate::product_management::board::domain::Gate::Rejected => "reject",
-        crate::product_management::board::domain::Gate::Accepted => "accept",
+        crate::product_management::story::Gate::Filed => "filed",
+        crate::product_management::story::Gate::Pickup => "pickup",
+        crate::product_management::story::Gate::Delivered => "deliver",
+        crate::product_management::story::Gate::PassDeskCheck => "pass-desk-check",
+        crate::product_management::story::Gate::FailDeskCheck => "fail-desk-check",
+        crate::product_management::story::Gate::Rejected => "reject",
+        crate::product_management::story::Gate::Accepted => "accept",
     }
 }
 

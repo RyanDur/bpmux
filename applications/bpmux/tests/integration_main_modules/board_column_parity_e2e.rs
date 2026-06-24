@@ -18,7 +18,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bpmux::product_management::board::column::{ColumnBucket, column_for};
-use bpmux::product_management::board::domain::StoryState;
+use bpmux::product_management::story::StoryState;
 
 /// Truth-table mirror of the renderer's `columnFor` from
 /// `applications/electron/src/renderer/src/board/types.ts`.

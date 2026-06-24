@@ -1,6 +1,6 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::domain::StoryType;
+use crate::product_management::story::StoryType;
 use std::sync::Arc;
 
 pub(crate) async fn handle_edit_outcome(

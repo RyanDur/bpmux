@@ -58,15 +58,13 @@ pub fn is_current_from_labels(labels: &[String]) -> bool {
 
 pub fn acceptor_from_labels(
     labels: &[String],
-) -> Option<crate::product_management::board::domain::Acceptor> {
+) -> Option<crate::product_management::story::Acceptor> {
     labels.iter().find_map(|l| {
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec.decode_acceptor(l)
     })
 }
 
-pub fn horizon_from_labels(
-    labels: &[String],
-) -> Option<crate::product_management::board::domain::Horizon> {
+pub fn horizon_from_labels(labels: &[String]) -> Option<crate::product_management::story::Horizon> {
     labels.iter().find_map(|l| {
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec.decode_horizon(l)
     })

@@ -1,5 +1,5 @@
-use crate::product_management::board::domain::Story;
 use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::story::Story;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IterationLabelParts {
@@ -51,7 +51,7 @@ pub fn current_iteration_number(stories: &[Story]) -> Option<u64> {
         .find(|s| {
             !s.is_closed
                 && s.is_current
-                && s.story_type == crate::product_management::board::domain::StoryType::Iteration
+                && s.story_type == crate::product_management::story::StoryType::Iteration
         })
         .map(|s| s.number)
 }

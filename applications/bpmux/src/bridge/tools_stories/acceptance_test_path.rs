@@ -57,11 +57,11 @@ fn is_acceptable_acceptance_test_path(candidate: &str) -> bool {
         && OPS_EXTS.iter().any(|ext| candidate.ends_with(ext))
 }
 
-fn user_facing_story_type(t: crate::product_management::board::domain::StoryType) -> bool {
+fn user_facing_story_type(t: crate::product_management::story::StoryType) -> bool {
     matches!(
         t,
-        crate::product_management::board::domain::StoryType::Feature
-            | crate::product_management::board::domain::StoryType::Bug
+        crate::product_management::story::StoryType::Feature
+            | crate::product_management::story::StoryType::Bug
     )
 }
 

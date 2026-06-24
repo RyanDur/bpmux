@@ -1,5 +1,5 @@
 use super::*;
-use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
+use crate::product_management::story::{Gate, GateComment, Story, StoryState};
 use chrono::{TimeZone, Utc};
 
 fn story_with_pickup(pickup_ts: DateTime<Utc>) -> Story {

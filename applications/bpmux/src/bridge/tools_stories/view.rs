@@ -70,10 +70,10 @@ pub(in crate::bridge) struct BoardScope {
 }
 
 pub(in crate::bridge) fn build_board_text(
-    stories: &[crate::product_management::board::domain::Story],
+    stories: &[crate::product_management::story::Story],
     scope: &BoardScope,
 ) -> String {
-    let format_entry = |s: &crate::product_management::board::domain::Story| -> (u64, String) {
+    let format_entry = |s: &crate::product_management::story::Story| -> (u64, String) {
         let prefix = if s.parent_epic.is_some() { "↳ " } else { "" };
         let suffix = match s.parent_epic {
             Some(n) => format!(" (epic #{n})"),
@@ -89,7 +89,7 @@ pub(in crate::bridge) fn build_board_text(
         )
     };
     use crate::product_management::board::column::{ColumnBucket, column_for};
-    let in_scope_iteration = |s: &crate::product_management::board::domain::Story| -> bool {
+    let in_scope_iteration = |s: &crate::product_management::story::Story| -> bool {
         match scope.iteration {
             Some(n) => s.iteration_membership.map(|(it, _)| it) == Some(n),
             None => true,
@@ -98,7 +98,7 @@ pub(in crate::bridge) fn build_board_text(
     let bucket_section = |bucket: ColumnBucket| -> (usize, Vec<String>) {
         let mut entries: Vec<(u64, String)> = stories
             .iter()
-            .filter(|s| s.story_type != crate::product_management::board::domain::StoryType::Epic)
+            .filter(|s| s.story_type != crate::product_management::story::StoryType::Epic)
             .filter(|s| in_scope_iteration(s))
             .filter(|s| column_for(s.state, s.is_closed) == bucket)
             .map(format_entry)
@@ -113,15 +113,15 @@ pub(in crate::bridge) fn build_board_text(
     };
     let mut out = String::new();
     if scope.state.is_none() && scope.iteration.is_none() {
-        let mut epics: Vec<&crate::product_management::board::domain::Story> = stories
+        let mut epics: Vec<&crate::product_management::story::Story> = stories
             .iter()
-            .filter(|s| s.story_type == crate::product_management::board::domain::StoryType::Epic)
+            .filter(|s| s.story_type == crate::product_management::story::StoryType::Epic)
             .collect();
         epics.sort_by_key(|s| s.number);
         if !epics.is_empty() {
             out.push_str(&format!("EPICS ({})\n", epics.len()));
             for epic in &epics {
-                let children: Vec<&crate::product_management::board::domain::Story> = stories
+                let children: Vec<&crate::product_management::story::Story> = stories
                     .iter()
                     .filter(|c| c.parent_epic == Some(epic.number))
                     .collect();

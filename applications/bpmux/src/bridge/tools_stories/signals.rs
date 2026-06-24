@@ -70,15 +70,15 @@ pub(crate) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
 pub(crate) fn classify_for_pass_desk_check(
     number: u64,
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
-) -> crate::product_management::board::domain::StoryType {
+) -> crate::product_management::story::StoryType {
     refresh
         .and_then(|r| r.story(number))
         .map(|s| s.story_type)
-        .unwrap_or(crate::product_management::board::domain::StoryType::Feature)
+        .unwrap_or(crate::product_management::story::StoryType::Feature)
 }
 
 pub(crate) fn addressee_for_pass_desk_check(
-    story_type: crate::product_management::board::domain::StoryType,
+    story_type: crate::product_management::story::StoryType,
     labels: &[String],
 ) -> &'static str {
     let workflow = crate::workflow::current_workflow();
@@ -94,12 +94,12 @@ pub(crate) fn addressee_for_pass_desk_check(
     }
 
     match story_type {
-        crate::product_management::board::domain::StoryType::Feature
-        | crate::product_management::board::domain::StoryType::Epic
-        | crate::product_management::board::domain::StoryType::Iteration
-        | crate::product_management::board::domain::StoryType::Outcome => owner(),
-        crate::product_management::board::domain::StoryType::Bug
-        | crate::product_management::board::domain::StoryType::Chore => team(),
+        crate::product_management::story::StoryType::Feature
+        | crate::product_management::story::StoryType::Epic
+        | crate::product_management::story::StoryType::Iteration
+        | crate::product_management::story::StoryType::Outcome => owner(),
+        crate::product_management::story::StoryType::Bug
+        | crate::product_management::story::StoryType::Chore => team(),
     }
 }
 
@@ -124,7 +124,7 @@ pub(crate) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMess
 
 pub(crate) fn build_pass_desk_check_signals(
     number: u64,
-    story_type: crate::product_management::board::domain::StoryType,
+    story_type: crate::product_management::story::StoryType,
     labels: &[String],
 ) -> Vec<ClientMessage> {
     let primary = addressee_for_pass_desk_check(story_type, labels);

@@ -2,7 +2,7 @@
 
 use super::list_epic_children::handle_list_epic_children;
 use crate::product_management::board::BoardStore;
-use crate::product_management::board::domain::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryState, StoryType};
 use chrono::Utc;
 use std::sync::Arc;
 

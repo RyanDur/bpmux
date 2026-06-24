@@ -2,7 +2,7 @@
 
 use bpmux::product_management::board::adapters::github::state_from_labels;
 use bpmux::product_management::board::column::{ColumnBucket, column_for};
-use bpmux::product_management::board::domain::StoryState;
+use bpmux::product_management::story::StoryState;
 
 #[test]
 fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_ready() {

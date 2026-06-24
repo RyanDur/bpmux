@@ -6,11 +6,11 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::domain::{Story, StoryState, StoryType};
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::{Story, StoryState, StoryType};
 
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {

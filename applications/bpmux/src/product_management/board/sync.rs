@@ -1,5 +1,5 @@
-use super::domain::Story;
 use super::events::BoardEvent;
+use crate::product_management::story::Story;
 
 #[derive(Debug, Clone)]
 pub enum SyncError {
@@ -89,12 +89,16 @@ pub trait SourceAdapter: Send + Sync {
     fn fetch_free_comments(
         &self,
         number: u64,
-    ) -> impl std::future::Future<Output = Result<Vec<super::domain::FreeComment>, SyncError>> + Send;
+    ) -> impl std::future::Future<
+        Output = Result<Vec<crate::product_management::story::FreeComment>, SyncError>,
+    > + Send;
 
     fn fetch_gate_comments(
         &self,
         number: u64,
-    ) -> impl std::future::Future<Output = Result<Vec<super::domain::GateComment>, SyncError>> + Send;
+    ) -> impl std::future::Future<
+        Output = Result<Vec<crate::product_management::story::GateComment>, SyncError>,
+    > + Send;
 
     fn push_event(
         &self,
@@ -112,11 +116,15 @@ pub trait SourceAdapter: Send + Sync {
         &self,
         number: u64,
         body: &str,
-    ) -> impl std::future::Future<Output = Result<super::domain::Story, SyncError>> + Send;
+    ) -> impl std::future::Future<
+        Output = Result<crate::product_management::story::Story, SyncError>,
+    > + Send;
 
     fn update_title(
         &self,
         number: u64,
         title: &str,
-    ) -> impl std::future::Future<Output = Result<super::domain::Story, SyncError>> + Send;
+    ) -> impl std::future::Future<
+        Output = Result<crate::product_management::story::Story, SyncError>,
+    > + Send;
 }

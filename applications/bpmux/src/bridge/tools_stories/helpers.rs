@@ -24,7 +24,7 @@ pub(crate) const KEEP_NONE: &str = "";
 pub(crate) async fn ensure_story_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     number: u64,
-) -> Result<crate::product_management::board::Story, String> {
+) -> Result<crate::product_management::story::Story, String> {
     if let Some(story) = refresh.story(number) {
         return Ok(story);
     }

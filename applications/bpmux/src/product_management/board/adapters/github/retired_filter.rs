@@ -1,4 +1,4 @@
-use crate::product_management::board::domain::{Story, StoryState};
+use crate::product_management::story::{Story, StoryState};
 
 pub fn filter_retired_empty_iterations(stories: Vec<Story>) -> Vec<Story> {
     let purge: Vec<u64> = iteration_numbers_to_purge_as_retired_empty(&stories);
@@ -12,7 +12,7 @@ pub fn filter_retired_empty_iterations(stories: Vec<Story>) -> Vec<Story> {
 }
 
 pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64> {
-    use crate::product_management::board::domain::StoryType;
+    use crate::product_management::story::StoryType;
     stories
         .iter()
         .filter(|s| s.story_type == StoryType::Iteration && s.state == StoryState::Retired)
@@ -29,7 +29,7 @@ pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64
 #[cfg(test)]
 mod filter_retired_empty_iterations_tests {
     use super::*;
-    use crate::product_management::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState, StoryType};
     use chrono::Utc;
 
     fn iter_story(number: u64, theme: &str, state: StoryState) -> Story {

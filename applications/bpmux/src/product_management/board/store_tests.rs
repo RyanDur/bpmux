@@ -2,10 +2,12 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::domain::{Acceptor, FreeComment, Gate, Story, StoryState, StoryType, Tag};
 use super::events::{BoardEvent, EventMeta, event_wins};
 use super::peer::PeerId;
 use super::store::BoardStore;
+use crate::product_management::story::{
+    Acceptor, FreeComment, Gate, Story, StoryState, StoryType, Tag,
+};
 
 fn meta(actor: &str, ts_year: i32, peer: &str) -> EventMeta {
     EventMeta {
@@ -455,7 +457,7 @@ fn tag_added_horizon_label_rederives_horizon_then_removal_clears_it_1738() {
     });
     assert_eq!(
         store.story(1).unwrap().horizon,
-        Some(crate::product_management::board::domain::Horizon::Next),
+        Some(crate::product_management::story::Horizon::Next),
         "the horizon label add re-derives the typed horizon"
     );
     store.apply(&BoardEvent::TagRemoved {

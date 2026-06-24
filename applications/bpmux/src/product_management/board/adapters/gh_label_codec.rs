@@ -93,11 +93,8 @@ impl GhLabelCodec {
         format!("iteration-dev-ok.{role}")
     }
 
-    pub fn decode_horizon(
-        &self,
-        label: &str,
-    ) -> Option<crate::product_management::board::domain::Horizon> {
-        use crate::product_management::board::domain::Horizon;
+    pub fn decode_horizon(&self, label: &str) -> Option<crate::product_management::story::Horizon> {
+        use crate::product_management::story::Horizon;
         match label.strip_prefix("horizon.")? {
             "now" => Some(Horizon::Now),
             "next" => Some(Horizon::Next),
@@ -106,10 +103,7 @@ impl GhLabelCodec {
         }
     }
 
-    pub fn encode_horizon(
-        &self,
-        horizon: crate::product_management::board::domain::Horizon,
-    ) -> String {
+    pub fn encode_horizon(&self, horizon: crate::product_management::story::Horizon) -> String {
         format!("horizon.{}", horizon.as_str())
     }
 
@@ -142,8 +136,8 @@ impl GhLabelCodec {
     pub fn decode_acceptor(
         &self,
         label: &str,
-    ) -> Option<crate::product_management::board::domain::Acceptor> {
-        use crate::product_management::board::domain::Acceptor;
+    ) -> Option<crate::product_management::story::Acceptor> {
+        use crate::product_management::story::Acceptor;
         match label {
             ACCEPTOR_TEAM_LABEL => Some(Acceptor::Team),
             ACCEPTOR_OWNER_LABEL => Some(Acceptor::Owner),

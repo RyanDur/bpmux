@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
-use crate::product_management::board::domain::{FreeComment, Gate, GateComment};
 use crate::product_management::board::events::EventMeta;
+use crate::product_management::story::{FreeComment, Gate, GateComment};
 
 pub(crate) fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> {
     let body = v.get("body").and_then(|x| x.as_str())?.to_string();

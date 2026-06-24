@@ -6,10 +6,10 @@ use std::sync::atomic::AtomicU64;
 
 use chrono::Utc;
 
-use super::domain::{FreeComment, GateComment, Story};
 use super::events::BoardEvent;
 use super::store::{BoardStore, PersistError};
 use super::sync::{SourceAdapter, SyncError};
+use crate::product_management::story::{FreeComment, GateComment, Story};
 
 mod coalesce;
 mod conflict;

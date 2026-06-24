@@ -2,7 +2,7 @@
 #![allow(clippy::expect_used)]
 
 use crate::product_management::board::adapters::github::decode_story_metadata;
-use crate::product_management::board::domain::Story;
+use crate::product_management::story::Story;
 
 #[test]
 fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
@@ -67,12 +67,12 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     );
     assert_eq!(
         *state,
-        crate::product_management::board::domain::StoryState::InProgress,
+        crate::product_management::story::StoryState::InProgress,
         "state must decode from labels"
     );
     assert_eq!(
         *story_type,
-        crate::product_management::board::domain::StoryType::Feature,
+        crate::product_management::story::StoryType::Feature,
         "story_type must decode from labels"
     );
     assert_eq!(tags.len(), 1, "tags must decode from labels (blocked)");
@@ -108,7 +108,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     );
     assert_eq!(
         *acceptor,
-        Some(crate::product_management::board::domain::Acceptor::Owner),
+        Some(crate::product_management::story::Acceptor::Owner),
         "acceptor must decode from the 'awaiting owner' label"
     );
     assert_eq!(
@@ -123,7 +123,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     );
     assert_eq!(
         *horizon,
-        Some(crate::product_management::board::domain::Horizon::Next),
+        Some(crate::product_management::story::Horizon::Next),
         "horizon must decode from the horizon.next label"
     );
     assert_eq!(

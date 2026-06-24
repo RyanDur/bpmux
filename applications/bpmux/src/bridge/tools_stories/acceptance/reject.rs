@@ -52,7 +52,7 @@ pub(crate) async fn handle_reject_story(
         crate::workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
     }
-    let target_state = crate::product_management::board::domain::StoryState::parse(&transition.to)
+    let target_state = crate::product_management::story::StoryState::parse(&transition.to)
         .ok_or_else(|| {
             format!(
                 "workflow.toml reject.to '{}' is not a known state",
@@ -69,20 +69,20 @@ pub(crate) async fn reject_via_canonical_store(
     number: u64,
     actor: String,
     reason: String,
-    target_state: crate::product_management::board::domain::StoryState,
+    target_state: crate::product_management::story::StoryState,
 ) -> Result<(), String> {
     let prior = ensure_story_in_canonical_store(refresh, number).await?;
-    let was_accepted = prior.is_closed
-        || prior.state == crate::product_management::board::domain::StoryState::Accepted;
+    let was_accepted =
+        prior.is_closed || prior.state == crate::product_management::story::StoryState::Accepted;
     let meta = crate::product_management::board::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
     let keep_label = match target_state {
-        crate::product_management::board::domain::StoryState::Ready => LABEL_READY,
-        crate::product_management::board::domain::StoryState::InProgress => LABEL_IN_PROGRESS,
-        crate::product_management::board::domain::StoryState::Delivered => LABEL_DELIVERED,
+        crate::product_management::story::StoryState::Ready => LABEL_READY,
+        crate::product_management::story::StoryState::InProgress => LABEL_IN_PROGRESS,
+        crate::product_management::story::StoryState::Delivered => LABEL_DELIVERED,
         _ => LABEL_READY,
     };
     reap_workflow_labels(refresh.as_ref(), number, &meta, keep_label)?;
@@ -101,7 +101,7 @@ pub(crate) async fn reject_via_canonical_store(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
                 number,
-                gate: crate::product_management::board::domain::Gate::Rejected,
+                gate: crate::product_management::story::Gate::Rejected,
                 payload: Some(reason),
             },
         )

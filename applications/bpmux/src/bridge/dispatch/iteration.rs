@@ -35,7 +35,7 @@ pub(crate) async fn dispatch_close_iteration(
     })?;
     if !matches!(
         iteration.story_type,
-        crate::product_management::board::domain::StoryType::Iteration
+        crate::product_management::story::StoryType::Iteration
     ) {
         return Err(format!(
             "close_iteration: #{iteration_number} is not an Iteration (story_type={:?})",

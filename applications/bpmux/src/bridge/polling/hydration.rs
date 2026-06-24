@@ -3,10 +3,10 @@ use std::sync::Arc;
 const HYDRATION_MAX_PER_TICK: usize = 3;
 
 pub(crate) fn select_stories_to_hydrate(
-    stories: &[crate::product_management::board::Story],
+    stories: &[crate::product_management::story::Story],
     limit: usize,
 ) -> Vec<u64> {
-    use crate::product_management::board::domain::StoryState;
+    use crate::product_management::story::StoryState;
     stories
         .iter()
         .filter(|s| {
@@ -24,10 +24,10 @@ pub(crate) fn select_stories_to_hydrate(
 }
 
 pub(crate) fn select_stories_to_revalidate(
-    stories: &[crate::product_management::board::Story],
+    stories: &[crate::product_management::story::Story],
     limit: usize,
 ) -> Vec<(u64, Option<String>)> {
-    use crate::product_management::board::domain::StoryState;
+    use crate::product_management::story::StoryState;
     stories
         .iter()
         .filter(|s| {

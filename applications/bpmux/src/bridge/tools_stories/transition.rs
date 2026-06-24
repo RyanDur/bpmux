@@ -5,9 +5,9 @@ use super::helpers::{
     LABEL_IN_PROGRESS, ensure_story_in_canonical_store, reap_workflow_labels,
     require_nonempty_string, role_from_name,
 };
-use crate::product_management::board::domain::{Gate, Story, StoryState};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
+use crate::product_management::story::{Gate, Story, StoryState};
 
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,

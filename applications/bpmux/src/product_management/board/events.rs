@@ -1,8 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::domain::{FreeComment, Gate, GateComment, Story, StoryState, StoryType};
 use super::peer::PeerId;
+use crate::product_management::story::{
+    FreeComment, Gate, GateComment, Story, StoryState, StoryType,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EventMeta {

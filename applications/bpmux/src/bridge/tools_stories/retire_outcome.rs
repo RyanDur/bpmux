@@ -1,8 +1,8 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::domain::StoryType;
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId};
+use crate::product_management::story::StoryType;
 use std::sync::Arc;
 
 pub(crate) async fn handle_retire_outcome(
@@ -38,7 +38,7 @@ pub(crate) async fn handle_retire_outcome(
     r.mutate_sync(BoardEvent::StateTransitioned {
         meta: meta(),
         number: outcome_number,
-        new_state: crate::product_management::board::domain::StoryState::Retired,
+        new_state: crate::product_management::story::StoryState::Retired,
     })
     .map_err(|e| format!("#{outcome_number} retire state-transition failed: {e}"))?;
     r.mutate_sync(BoardEvent::StoryClosed {
