@@ -9,9 +9,12 @@ use super::log::LogError;
 use super::message::Message;
 use super::search::{SearchFilters, SearchResult};
 
+mod backend;
 mod global;
+mod instrumented;
 mod session;
 
+pub use backend::StorageBackend;
 pub use global::*;
 pub use session::*;
 

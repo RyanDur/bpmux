@@ -2,11 +2,11 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use super::lessons::LessonIndex;
-use super::log::LogError;
-use super::message::Message;
-use super::search::{SearchFilters, SearchResult};
-use super::storage::Storage;
+use super::Storage;
+use crate::session::lessons::LessonIndex;
+use crate::session::log::LogError;
+use crate::session::message::Message;
+use crate::session::search::{SearchFilters, SearchResult};
 
 pub struct InstrumentedStorage<S: Storage> {
     inner: S,
@@ -276,7 +276,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn load_bookmark(&self, role: &str) -> super::bookmark::Bookmark {
+    fn load_bookmark(&self, role: &str) -> crate::session::bookmark::Bookmark {
         let start = Instant::now();
         let result = self.inner.load_bookmark(role);
         self.log(&format!(
@@ -290,7 +290,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn save_bookmark(
         &self,
         role: &str,
-        bookmark: &super::bookmark::Bookmark,
+        bookmark: &crate::session::bookmark::Bookmark,
     ) -> Result<(), std::io::Error> {
         let start = Instant::now();
         let result = self.inner.save_bookmark(role, bookmark);
@@ -302,7 +302,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn load_reactions(&self) -> super::reactions::ReactionsStore {
+    fn load_reactions(&self) -> crate::session::reactions::ReactionsStore {
         let start = Instant::now();
         let result = self.inner.load_reactions();
         self.log(&format!(
@@ -314,7 +314,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
 
     fn save_reactions(
         &self,
-        store: &super::reactions::ReactionsStore,
+        store: &crate::session::reactions::ReactionsStore,
     ) -> Result<(), std::io::Error> {
         let start = Instant::now();
         let result = self.inner.save_reactions(store);

@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::session::instrumented_storage::InstrumentedStorage;
-use crate::session::storage::{FileStorage, SqliteStorage, Storage};
+use super::instrumented::InstrumentedStorage;
+use super::{FileStorage, SqliteStorage, Storage};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageBackend {

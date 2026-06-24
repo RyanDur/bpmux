@@ -7,8 +7,8 @@ pub mod briefing;
 pub mod classifier;
 pub mod diag;
 pub mod identity;
-pub mod instrumented_storage;
 pub mod lessons;
+pub mod location;
 pub mod log;
 pub mod message;
 pub mod precommit;
@@ -31,10 +31,11 @@ mod team_roster_tests;
 
 pub use aggregate::{BROADCAST_CHANNEL_CAPACITY, Session};
 pub use classifier::{MessageClass, classify};
-pub use log::{
-    DirSession, LogError, append_message, create_session, default_sessions_base, read_messages,
-    read_or_create_dir_session, resume_or_create_session,
+pub use location::{
+    DirSession, create_session, default_sessions_base, read_or_create_dir_session,
+    resume_or_create_session,
 };
+pub use log::{LogError, append_message, read_messages};
 pub use message::{Message, MessageType};
 pub use search::{SearchFilters, SearchResult, search};
 
@@ -52,6 +53,8 @@ mod classifier_tests;
 mod diag_tests;
 #[cfg(test)]
 mod lessons_tests;
+#[cfg(test)]
+mod location_tests;
 #[cfg(test)]
 mod log_tests;
 #[cfg(test)]

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use super::file_log::LogError;
+use crate::session::log::LogError;
 
 pub fn default_sessions_base() -> Result<PathBuf, LogError> {
     if let Ok(override_path) = std::env::var("BPMUX_SESSIONS_BASE")

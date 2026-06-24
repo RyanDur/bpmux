@@ -1,7 +1,7 @@
 use crate::session::lessons::LessonIndex;
-use crate::session::log::StorageBackend;
 use crate::session::message::Message;
 use crate::session::search::SearchFilters;
+use crate::session::storage::StorageBackend;
 use crate::session::storage::{FileStorage, SqliteStorage, Storage};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
