@@ -43,12 +43,16 @@ pub mod server;
 pub mod session;
 #[cfg(test)]
 mod session_id_pin_tests;
+#[cfg(test)]
+mod session_tests;
 pub mod speech_guard;
 #[cfg(test)]
 mod speech_guard_tests;
 pub mod storage;
 #[cfg(test)]
 mod storage_tests;
+#[cfg(test)]
+mod team_roster_tests;
 pub mod telemetry;
 pub mod transport;
 pub mod velocity;
