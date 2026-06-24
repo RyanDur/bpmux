@@ -118,10 +118,10 @@ fn classify_log_does_not_affect_classification_behavior() {
     );
 }
 
-use super::Session;
 use super::awareness::handoff::HandoffTracker;
 use crate::comprehension::bayes::BayesModel;
 use crate::comprehension::classifier::MessageClass;
+use crate::session::Session;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;

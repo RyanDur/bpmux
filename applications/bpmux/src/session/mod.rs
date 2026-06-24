@@ -1,5 +1,4 @@
 pub mod aggregate;
-pub mod awareness;
 pub mod bookmark;
 pub mod briefing;
 pub mod location;
@@ -24,8 +23,6 @@ pub use log::{LogError, append_message, read_messages};
 
 #[cfg(test)]
 mod aggregate_tests;
-#[cfg(test)]
-mod awareness_tests;
 #[cfg(test)]
 mod location_tests;
 #[cfg(test)]
