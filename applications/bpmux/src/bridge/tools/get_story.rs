@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
 use crate::product_management::board::domain::{
-    Gate, GateComment, StoryState, StoryType, derive_iteration_member_section,
-    most_recent_backward_transition, replay_transitions, substitute_member_stories_section,
+    Gate, GateComment, StoryState, StoryType, most_recent_backward_transition, replay_transitions,
 };
 use crate::product_management::board::{BoardStore, RefreshDriver};
 use crate::product_management::iteration::label::members_of_iteration;
+use crate::product_management::iteration::section::{
+    derive_iteration_member_section, substitute_member_stories_section,
+};
 
 use super::rework_context::enrich_body;
 
