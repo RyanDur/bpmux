@@ -61,7 +61,7 @@ impl Storage for SqliteStorage {
             .unwrap_or_else(|| "chat".to_string());
         let conn = self.lock();
         let sender = self.resolve_sender(&conn, msg);
-        messages::append(&conn, created_at, sender, &message_type, &payload)
+        messages::append(&conn, &msg.id, created_at, sender, &message_type, &payload)
             .map_err(engine::io_err)?;
         Ok(())
     }

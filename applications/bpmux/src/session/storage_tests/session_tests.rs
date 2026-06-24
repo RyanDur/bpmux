@@ -7,12 +7,14 @@ use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
 fn fresh_message(text: &str) -> Message {
-    Message {
+    let mut msg = Message {
         from: "dev".to_string(),
         text: text.to_string(),
         ts: chrono::Utc::now(),
         ..Message::default()
-    }
+    };
+    msg.ensure_id();
+    msg
 }
 
 fn ms(rfc3339: &str) -> i64 {
@@ -74,6 +76,59 @@ contract!(
         assert!(msgs.is_empty());
     }
 );
+
+contract!(append_preserves_the_message_id, |storage: &dyn Storage| {
+    let mut msg = fresh_message("identified");
+    msg.id = "11111111-1111-4111-8111-111111111111".to_string();
+    storage.append_message(&msg).unwrap();
+    let msgs = storage.read_messages().unwrap();
+    assert_eq!(msgs.len(), 1);
+    assert_eq!(
+        msgs[0].id, "11111111-1111-4111-8111-111111111111",
+        "a message's id round-trips through storage unchanged"
+    );
+});
+
+#[test]
+fn sqlite_rejects_a_message_with_no_id() {
+    let (storage, _dir) = sqlite_storage();
+    let msg = Message {
+        from: "dev".to_string(),
+        text: "no identity".to_string(),
+        ts: chrono::Utc::now(),
+        ..Message::default()
+    };
+    assert!(msg.id.is_empty());
+    assert!(
+        storage.append_message(&msg).is_err(),
+        "the id column refuses a message that was never minted an identity"
+    );
+}
+
+#[test]
+fn sqlite_rejects_a_non_uuid_message_id() {
+    let (storage, _dir) = sqlite_storage();
+    let mut msg = fresh_message("malformed");
+    msg.id = "not-a-uuid".to_string();
+    assert!(
+        storage.append_message(&msg).is_err(),
+        "the id column enforces uuid shape — a non-uuid string is refused"
+    );
+}
+
+#[test]
+fn sqlite_rejects_a_duplicate_message_id() {
+    let (storage, _dir) = sqlite_storage();
+    let mut first = fresh_message("first");
+    first.id = "22222222-2222-4222-8222-222222222222".to_string();
+    let mut second = fresh_message("second");
+    second.id = "22222222-2222-4222-8222-222222222222".to_string();
+    storage.append_message(&first).unwrap();
+    assert!(
+        storage.append_message(&second).is_err(),
+        "the UNIQUE id column refuses a second message claiming the same identity"
+    );
+}
 
 contract!(
     read_recent_returns_newest_first_after_offset,

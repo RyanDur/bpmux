@@ -72,7 +72,9 @@ pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, Migrati
             filtered += 1;
             continue;
         }
-        target.append_message(msg)?;
+        let mut msg = msg.clone();
+        msg.ensure_id();
+        target.append_message(&msg)?;
         migrated += 1;
     }
     target.save_state(MIGRATION_FLAG_KEY, MIGRATION_DONE);

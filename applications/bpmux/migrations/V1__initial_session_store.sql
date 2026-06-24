@@ -1,5 +1,7 @@
+-- uuid shape: 8-4-4-4-12 lowercase hex, as produced by Uuid::new_v4().to_string()
 CREATE TABLE users (
-    id         TEXT PRIMARY KEY,
+    id         TEXT PRIMARY KEY
+               CHECK (id GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
     session_id TEXT NOT NULL UNIQUE,
     name       TEXT NOT NULL,
     role       TEXT NOT NULL,
@@ -11,6 +13,8 @@ CREATE TABLE users (
 
 CREATE TABLE messages (
     seq          INTEGER PRIMARY KEY AUTOINCREMENT,
+    id           TEXT NOT NULL UNIQUE
+                 CHECK (id GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
     created_at   INTEGER NOT NULL,
     sender       TEXT REFERENCES users(id),
     message_type TEXT NOT NULL,

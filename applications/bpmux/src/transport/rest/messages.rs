@@ -119,6 +119,7 @@ pub async fn post_message(
         .into_iter()
         .next();
     let msg = session::Message {
+        id: String::new(),
         from: payload.from,
         sender_id,
         text: payload.text,

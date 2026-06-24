@@ -8,6 +8,7 @@ const RECENT_DESC_SQL: &str = "SELECT payload FROM messages ORDER BY seq DESC";
 
 pub fn append(
     conn: &Connection,
+    id: &str,
     created_at: i64,
     sender: Option<String>,
     message_type: &str,
@@ -15,9 +16,9 @@ pub fn append(
 ) -> rusqlite::Result<usize> {
     engine::execute(
         conn,
-        "INSERT INTO messages (created_at, sender, message_type, payload) \
-         VALUES (?1, ?2, ?3, ?4)",
-        (created_at, sender, message_type, payload),
+        "INSERT INTO messages (id, created_at, sender, message_type, payload) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        (id, created_at, sender, message_type, payload),
     )
 }
 

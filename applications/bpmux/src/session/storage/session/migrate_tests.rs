@@ -16,24 +16,28 @@ fn ms(rfc3339: &str) -> i64 {
 }
 
 fn chat(text: &str) -> Message {
-    Message {
+    let mut msg = Message {
         from: "dev".to_string(),
         text: text.to_string(),
         ts: Utc::now(),
         message_type: MessageType::Chat,
         ..Message::default()
-    }
+    };
+    msg.ensure_id();
+    msg
 }
 
 fn delta(payload: StateDeltaPayload) -> Message {
-    Message {
+    let mut msg = Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: Utc::now(),
         message_type: MessageType::StateDelta,
         state_delta: Some(payload),
         ..Message::default()
-    }
+    };
+    msg.ensure_id();
+    msg
 }
 
 fn board_snapshot() -> Message {

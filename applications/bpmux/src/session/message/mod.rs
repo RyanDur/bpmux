@@ -26,6 +26,8 @@ pub enum MessageType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Message {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
     pub from: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sender_id: Option<String>,
@@ -128,6 +130,12 @@ impl From<Option<&str>> for MessageType {
 }
 
 impl Message {
+    pub fn ensure_id(&mut self) {
+        if self.id.is_empty() {
+            self.id = uuid::Uuid::new_v4().to_string();
+        }
+    }
+
     pub fn is_chat(&self) -> bool {
         self.message_type.is_chat()
     }
@@ -138,5 +146,28 @@ impl Message {
             Some(BROADCAST_ALL) => true,
             Some(target) => target == role,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_id_mints_a_valid_uuid_when_absent() {
+        let mut msg = Message::default();
+        assert!(msg.id.is_empty());
+        msg.ensure_id();
+        assert!(uuid::Uuid::parse_str(&msg.id).is_ok());
+    }
+
+    #[test]
+    fn ensure_id_preserves_an_id_that_is_already_set() {
+        let mut msg = Message {
+            id: "already-minted".to_string(),
+            ..Message::default()
+        };
+        msg.ensure_id();
+        assert_eq!(msg.id, "already-minted");
     }
 }

@@ -10,14 +10,16 @@ fn store() -> (tempfile::TempDir, SqliteStorage) {
 }
 
 fn chat(from: &str, sender_id: Option<&str>) -> Message {
-    Message {
+    let mut msg = Message {
         from: from.to_string(),
         sender_id: sender_id.map(str::to_string),
         text: "hi".to_string(),
         ts: chrono::Utc::now(),
         message_type: MessageType::Chat,
         ..Message::default()
-    }
+    };
+    msg.ensure_id();
+    msg
 }
 
 fn senders(storage: &SqliteStorage) -> Vec<Option<String>> {
@@ -98,7 +100,7 @@ fn the_sender_foreign_key_is_enforced_so_a_dangling_reference_cannot_be_written(
     let (_dir, storage) = store();
     let dangling = engine::execute(
         &storage.lock(),
-        "INSERT INTO messages (created_at, sender, message_type, payload) VALUES (1, 'no-such-user-uuid', 'chat', '{}')",
+        "INSERT INTO messages (id, created_at, sender, message_type, payload) VALUES ('33333333-3333-4333-8333-333333333333', 1, 'no-such-user-uuid', 'chat', '{}')",
         [],
     );
     assert!(

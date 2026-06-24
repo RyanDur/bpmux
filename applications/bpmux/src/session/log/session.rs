@@ -134,8 +134,10 @@ impl Session {
     }
 
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {
-        self.storage.append_message(msg)?;
-        let _ = self.wake_tx.send(msg.clone());
+        let mut msg = msg.clone();
+        msg.ensure_id();
+        self.storage.append_message(&msg)?;
+        let _ = self.wake_tx.send(msg);
         Ok(())
     }
 
@@ -176,3 +178,6 @@ fn load_seed_roster(dir: &Path) -> HashSet<String> {
     };
     list.into_iter().collect()
 }
+
+#[cfg(test)]
+mod message_identity;

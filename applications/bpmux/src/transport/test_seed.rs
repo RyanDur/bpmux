@@ -24,7 +24,9 @@ pub async fn post_seed_messages(
     Json(body): Json<SeedMessagesBody>,
 ) -> impl IntoResponse {
     for msg in &body.messages {
-        if let Err(e) = session.storage.append_message(msg) {
+        let mut msg = msg.clone();
+        msg.ensure_id();
+        if let Err(e) = session.storage.append_message(&msg) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_messages append failed: {e}"),
