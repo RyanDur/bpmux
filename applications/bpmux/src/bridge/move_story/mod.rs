@@ -4,9 +4,10 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::bridge::tools_stories::{KEEP_NONE, reap_workflow_labels};
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::domain::StoryState;
 use crate::product_management::board::events::EventMeta;
+use crate::product_management::board::iteration_label::current_iteration_number;
+use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 
 mod target;
 
@@ -74,16 +75,14 @@ pub(in crate::bridge) async fn handle_move_story(
     let meta = EventMeta {
         actor: actor_short.clone(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
+        peer_id: PeerId::local(),
     };
 
     if was_closed && !target.closes_issue() {
-        r.mutate_sync(
-            crate::product_management::board::BoardEvent::StoryReopened {
-                meta: meta.clone(),
-                number,
-            },
-        )
+        r.mutate_sync(BoardEvent::StoryReopened {
+            meta: meta.clone(),
+            number,
+        })
         .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
     }
 
@@ -96,7 +95,7 @@ pub(in crate::bridge) async fn handle_move_story(
             .map(|s| s.raw_labels.iter().any(|l| l == label))
             .unwrap_or(false);
         if !already_labeled {
-            r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+            r.mutate_sync(BoardEvent::TagAdded {
                 meta: meta.clone(),
                 number,
                 label: label.to_string(),
@@ -107,16 +106,14 @@ pub(in crate::bridge) async fn handle_move_story(
 
     match target {
         TargetState::Workflow(state) => {
-            r.mutate_sync(
-                crate::product_management::board::BoardEvent::StateTransitioned {
-                    meta: meta.clone(),
-                    number,
-                    new_state: state,
-                },
-            )
+            r.mutate_sync(BoardEvent::StateTransitioned {
+                meta: meta.clone(),
+                number,
+                new_state: state,
+            })
             .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
             if matches!(state, StoryState::Accepted) && !was_closed {
-                r.mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
+                r.mutate_sync(BoardEvent::StoryClosed {
                     meta: meta.clone(),
                     number,
                     reason: Some(rationale.clone()),
@@ -125,7 +122,7 @@ pub(in crate::bridge) async fn handle_move_story(
             }
         }
         TargetState::Retired => {
-            r.mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
+            r.mutate_sync(BoardEvent::StoryClosed {
                 meta: meta.clone(),
                 number,
                 reason: Some(format!("retired: {rationale}")),
@@ -140,7 +137,7 @@ pub(in crate::bridge) async fn handle_move_story(
                 })
                 .unwrap_or(false);
             if !already_retired {
-                r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+                r.mutate_sync(BoardEvent::TagAdded {
                     meta: meta.clone(),
                     number,
                     label: "retired".to_string(),
@@ -157,27 +154,20 @@ pub(in crate::bridge) async fn handle_move_story(
     }
     if target_is_ready
         && let Some(pos) = position
-        && let Some(iteration_number) =
-            crate::product_management::board::iteration_label::current_iteration_number(
-                &r.all_stories(),
-            )
+        && let Some(iteration_number) = current_iteration_number(&r.all_stories())
     {
-        r.mutate_sync(
-            crate::product_management::board::BoardEvent::IterationMembershipSet {
-                meta: meta.clone(),
-                number,
-                iteration_number,
-                position: pos as u32,
-            },
-        )
+        r.mutate_sync(BoardEvent::IterationMembershipSet {
+            meta: meta.clone(),
+            number,
+            iteration_number,
+            position: pos as u32,
+        })
         .map_err(|e| format!("#{number} ready-order (iteration-membership) enqueue failed: {e}"))?;
     }
 
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
-    r.mutate_sync(
-        crate::product_management::board::BoardEvent::FreeCommentAppended { meta, number, body },
-    )
-    .map_err(|e| format!("#{number} audit-comment enqueue failed: {e}"))?;
+    r.mutate_sync(BoardEvent::FreeCommentAppended { meta, number, body })
+        .map_err(|e| format!("#{number} audit-comment enqueue failed: {e}"))?;
 
     let pos_msg = match position {
         Some(p) => format!(" at position {p}"),

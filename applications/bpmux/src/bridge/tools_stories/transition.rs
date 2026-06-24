@@ -5,11 +5,14 @@ use super::helpers::{
     LABEL_IN_PROGRESS, ensure_story_in_canonical_store, reap_workflow_labels,
     require_nonempty_string, role_from_name,
 };
+use crate::product_management::board::domain::{Gate, Story, StoryState};
+use crate::product_management::board::events::EventMeta;
+use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -60,37 +63,31 @@ pub(crate) async fn handle_start_story(
     let pickup_payload =
         format!("{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}");
     if let Some(r) = refresh {
-        let meta = crate::product_management::board::events::EventMeta {
+        let meta = EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::board::PeerId::local(),
+            peer_id: PeerId::local(),
         };
         if was_closed {
-            r.mutate_sync(
-                crate::product_management::board::BoardEvent::StoryReopened {
-                    meta: meta.clone(),
-                    number,
-                },
-            )
+            r.mutate_sync(BoardEvent::StoryReopened {
+                meta: meta.clone(),
+                number,
+            })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), number, &meta, LABEL_IN_PROGRESS)?;
-        r.mutate_sync(
-            crate::product_management::board::BoardEvent::GateCommentAppended {
-                meta: meta.clone(),
-                number,
-                gate: crate::product_management::board::domain::Gate::Pickup,
-                payload: Some(pickup_payload.clone()),
-            },
-        )
+        r.mutate_sync(BoardEvent::GateCommentAppended {
+            meta: meta.clone(),
+            number,
+            gate: Gate::Pickup,
+            payload: Some(pickup_payload.clone()),
+        })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
-        r.mutate_sync(
-            crate::product_management::board::BoardEvent::StateTransitioned {
-                meta,
-                number,
-                new_state: crate::product_management::board::domain::StoryState::InProgress,
-            },
-        )
+        r.mutate_sync(BoardEvent::StateTransitioned {
+            meta,
+            number,
+            new_state: StoryState::InProgress,
+        })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()
             .await
@@ -109,7 +106,7 @@ pub(crate) async fn handle_start_story(
 pub(crate) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -126,7 +123,7 @@ pub(crate) async fn handle_deliver_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let refreshed: Option<Option<crate::product_management::board::domain::Story>> = match refresh {
+    let refreshed: Option<Option<Story>> = match refresh {
         Some(r) => {
             let story = ensure_story_in_canonical_store(r, number).await?;
             let _ = r.fetch_body(number).await;
@@ -161,37 +158,31 @@ pub(crate) async fn handle_deliver_story(
             .and_then(|s| s.as_ref())
             .map(|s| s.is_closed)
             .unwrap_or(false);
-        let meta = crate::product_management::board::events::EventMeta {
+        let meta = EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::board::PeerId::local(),
+            peer_id: PeerId::local(),
         };
         if was_closed {
-            r.mutate_sync(
-                crate::product_management::board::BoardEvent::StoryReopened {
-                    meta: meta.clone(),
-                    number,
-                },
-            )
+            r.mutate_sync(BoardEvent::StoryReopened {
+                meta: meta.clone(),
+                number,
+            })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), number, &meta, "desk-check")?;
-        r.mutate_sync(
-            crate::product_management::board::BoardEvent::GateCommentAppended {
-                meta: meta.clone(),
-                number,
-                gate: crate::product_management::board::domain::Gate::Delivered,
-                payload: Some(verified_observation.to_string()),
-            },
-        )
+        r.mutate_sync(BoardEvent::GateCommentAppended {
+            meta: meta.clone(),
+            number,
+            gate: Gate::Delivered,
+            payload: Some(verified_observation.to_string()),
+        })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
-        r.mutate_sync(
-            crate::product_management::board::BoardEvent::StateTransitioned {
-                meta,
-                number,
-                new_state: crate::product_management::board::domain::StoryState::DeskCheck,
-            },
-        )
+        r.mutate_sync(BoardEvent::StateTransitioned {
+            meta,
+            number,
+            new_state: StoryState::DeskCheck,
+        })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()
             .await
