@@ -1,5 +1,5 @@
 pub(in crate::bridge) async fn handle_get_token_report() -> Result<String, String> {
-    use crate::session::tokens::{build_token_report, default_tokens_log_path, read_token_rows};
+    use crate::telemetry::tokens::{build_token_report, default_tokens_log_path, read_token_rows};
     let path = default_tokens_log_path().map_err(|e| format!("path resolution failed: {e}"))?;
     let rows = read_token_rows(&path).map_err(|e| format!("log read failed: {e}"))?;
     let report = build_token_report(&rows);

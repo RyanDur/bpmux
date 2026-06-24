@@ -118,8 +118,8 @@ global_contract!(per_role_briefing_isolation, |global: &dyn GlobalStore| {
     assert_eq!(global.load_briefing("pm"), "pm-content");
 });
 
-fn sample_token_row(ts: &str, output: u64) -> crate::session::tokens::TokenRow {
-    crate::session::tokens::TokenRow {
+fn sample_token_row(ts: &str, output: u64) -> crate::telemetry::tokens::TokenRow {
+    crate::telemetry::tokens::TokenRow {
         ts: ts.to_string(),
         role: "dev".to_string(),
         harness: "claude-code".to_string(),
@@ -182,7 +182,7 @@ global_contract!(
         let mut map = HashMap::new();
         map.insert(
             "mcp:start_story".to_string(),
-            crate::session::usage::Record {
+            crate::telemetry::usage::Record {
                 count: 5,
                 last_used: "2026-05-11T16:00:00Z".to_string(),
             },
@@ -200,7 +200,7 @@ global_contract!(
         let mut v1 = HashMap::new();
         v1.insert(
             "slash:tokens".to_string(),
-            crate::session::usage::Record {
+            crate::telemetry::usage::Record {
                 count: 1,
                 last_used: "2026-05-11T16:00:00Z".to_string(),
             },
@@ -210,7 +210,7 @@ global_contract!(
         let mut v2 = HashMap::new();
         v2.insert(
             "mcp:view_board".to_string(),
-            crate::session::usage::Record {
+            crate::telemetry::usage::Record {
                 count: 10,
                 last_used: "2026-05-11T16:01:00Z".to_string(),
             },

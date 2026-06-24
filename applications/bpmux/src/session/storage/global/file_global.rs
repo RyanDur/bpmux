@@ -70,14 +70,14 @@ impl FileGlobalStore {
         if let Some(p) = &self.tokens_log_path {
             return Ok(p.clone());
         }
-        crate::session::tokens::default_tokens_log_path()
+        crate::telemetry::tokens::default_tokens_log_path()
     }
 
     fn resolve_usage_path(&self) -> Option<PathBuf> {
         if let Some(p) = &self.usage_path {
             return Some(p.clone());
         }
-        crate::session::usage::default_usage_path()
+        crate::telemetry::usage::default_usage_path()
     }
 
     fn resolve_auth_token_path(&self) -> std::io::Result<PathBuf> {
@@ -120,34 +120,34 @@ impl GlobalStore for FileGlobalStore {
 
     fn append_token_row(
         &self,
-        row: &crate::session::tokens::TokenRow,
+        row: &crate::telemetry::tokens::TokenRow,
     ) -> Result<(), crate::session::log::LogError> {
         let path = self.resolve_tokens_log_path()?;
-        crate::session::tokens::append_token_row(&path, row)
+        crate::telemetry::tokens::append_token_row(&path, row)
     }
 
     fn read_token_rows(
         &self,
-    ) -> Result<Vec<crate::session::tokens::TokenRow>, crate::session::log::LogError> {
+    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, crate::session::log::LogError> {
         let path = self.resolve_tokens_log_path()?;
-        crate::session::tokens::read_token_rows(&path)
+        crate::telemetry::tokens::read_token_rows(&path)
     }
 
-    fn load_usage(&self) -> std::collections::HashMap<String, crate::session::usage::Record> {
+    fn load_usage(&self) -> std::collections::HashMap<String, crate::telemetry::usage::Record> {
         let Some(path) = self.resolve_usage_path() else {
             return std::collections::HashMap::new();
         };
-        crate::session::usage::load_from(&path)
+        crate::telemetry::usage::load_from(&path)
     }
 
     fn save_usage(
         &self,
-        map: &std::collections::HashMap<String, crate::session::usage::Record>,
+        map: &std::collections::HashMap<String, crate::telemetry::usage::Record>,
     ) -> Result<(), std::io::Error> {
         let Some(path) = self.resolve_usage_path() else {
             return Ok(());
         };
-        crate::session::usage::save_to(&path, map)
+        crate::telemetry::usage::save_to(&path, map)
     }
 
     fn ensure_auth_token(&self) -> std::io::Result<String> {

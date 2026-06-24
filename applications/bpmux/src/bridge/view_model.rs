@@ -51,8 +51,8 @@ pub struct TokenReportEntryView {
     pub tool_call_count: u32,
 }
 
-impl From<&session::tokens::TokenReport> for TokenReportView {
-    fn from(report: &session::tokens::TokenReport) -> Self {
+impl From<&crate::telemetry::tokens::TokenReport> for TokenReportView {
+    fn from(report: &crate::telemetry::tokens::TokenReport) -> Self {
         Self {
             total_tokens: report.total_tokens,
             row_count: report.row_count,
@@ -66,8 +66,8 @@ impl From<&session::tokens::TokenReport> for TokenReportView {
     }
 }
 
-impl From<&session::tokens::TokenReportEntry> for TokenReportEntryView {
-    fn from(entry: &session::tokens::TokenReportEntry) -> Self {
+impl From<&crate::telemetry::tokens::TokenReportEntry> for TokenReportEntryView {
+    fn from(entry: &crate::telemetry::tokens::TokenReportEntry) -> Self {
         Self {
             ts: entry.ts.clone(),
             role: entry.role.clone(),

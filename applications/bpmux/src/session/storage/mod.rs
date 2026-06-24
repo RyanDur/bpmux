@@ -102,13 +102,18 @@ pub trait GlobalStore: Send + Sync {
     fn load_briefing(&self, role: &str) -> String;
     fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error>;
 
-    fn append_token_row(&self, row: &super::tokens::TokenRow) -> Result<(), super::log::LogError>;
-    fn read_token_rows(&self) -> Result<Vec<super::tokens::TokenRow>, super::log::LogError>;
+    fn append_token_row(
+        &self,
+        row: &crate::telemetry::tokens::TokenRow,
+    ) -> Result<(), super::log::LogError>;
+    fn read_token_rows(
+        &self,
+    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, super::log::LogError>;
 
-    fn load_usage(&self) -> std::collections::HashMap<String, super::usage::Record>;
+    fn load_usage(&self) -> std::collections::HashMap<String, crate::telemetry::usage::Record>;
     fn save_usage(
         &self,
-        map: &std::collections::HashMap<String, super::usage::Record>,
+        map: &std::collections::HashMap<String, crate::telemetry::usage::Record>,
     ) -> Result<(), std::io::Error>;
 
     fn ensure_auth_token(&self) -> std::io::Result<String>;

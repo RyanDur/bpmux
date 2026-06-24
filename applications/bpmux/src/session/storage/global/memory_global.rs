@@ -6,8 +6,8 @@ use super::GlobalStore;
 pub struct MemoryGlobalStore {
     identity: Mutex<HashMap<String, crate::session::identity::IdentityIndex>>,
     briefings: Mutex<HashMap<String, String>>,
-    tokens: Mutex<Vec<crate::session::tokens::TokenRow>>,
-    usage: Mutex<HashMap<String, crate::session::usage::Record>>,
+    tokens: Mutex<Vec<crate::telemetry::tokens::TokenRow>>,
+    usage: Mutex<HashMap<String, crate::telemetry::usage::Record>>,
 }
 
 impl Default for MemoryGlobalStore {
@@ -68,7 +68,7 @@ impl GlobalStore for MemoryGlobalStore {
 
     fn append_token_row(
         &self,
-        row: &crate::session::tokens::TokenRow,
+        row: &crate::telemetry::tokens::TokenRow,
     ) -> Result<(), crate::session::log::LogError> {
         self.tokens
             .lock()
@@ -79,7 +79,7 @@ impl GlobalStore for MemoryGlobalStore {
 
     fn read_token_rows(
         &self,
-    ) -> Result<Vec<crate::session::tokens::TokenRow>, crate::session::log::LogError> {
+    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, crate::session::log::LogError> {
         Ok(self
             .tokens
             .lock()
@@ -87,13 +87,13 @@ impl GlobalStore for MemoryGlobalStore {
             .clone())
     }
 
-    fn load_usage(&self) -> HashMap<String, crate::session::usage::Record> {
+    fn load_usage(&self) -> HashMap<String, crate::telemetry::usage::Record> {
         self.usage.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     fn save_usage(
         &self,
-        map: &HashMap<String, crate::session::usage::Record>,
+        map: &HashMap<String, crate::telemetry::usage::Record>,
     ) -> Result<(), std::io::Error> {
         *self.usage.lock().unwrap_or_else(|e| e.into_inner()) = map.clone();
         Ok(())

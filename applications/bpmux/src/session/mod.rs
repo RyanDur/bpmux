@@ -19,8 +19,6 @@ pub mod storage;
 #[cfg(test)]
 mod storage_tests;
 pub mod terminal_inject;
-pub mod tokens;
-pub mod usage;
 pub mod verdicts;
 
 #[cfg(test)]
@@ -58,7 +56,3 @@ mod precommit_tests;
 mod recall_tests;
 #[cfg(test)]
 mod speech_guard_tests;
-#[cfg(test)]
-mod tokens_tests;
-#[cfg(test)]
-mod usage_tests;

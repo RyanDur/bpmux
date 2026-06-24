@@ -22,6 +22,7 @@ pub mod server;
 pub mod session;
 #[cfg(test)]
 mod session_id_pin_tests;
+pub mod telemetry;
 pub mod transport;
 pub mod velocity;
 #[cfg(test)]

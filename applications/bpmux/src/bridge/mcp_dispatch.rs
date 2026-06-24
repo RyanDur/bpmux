@@ -14,7 +14,7 @@ pub(super) async fn dispatch_tool_call(
     request: CallToolRequestParams,
 ) -> Result<CallToolResult, McpError> {
     let args = request.arguments.unwrap_or_default();
-    crate::session::usage::record(crate::session::usage::Source::Mcp, request.name.as_ref());
+    crate::telemetry::usage::record(crate::telemetry::usage::Source::Mcp, request.name.as_ref());
     let result = match request.name.as_ref() {
         "send_message" => {
             let current_name = name.lock().await.clone();

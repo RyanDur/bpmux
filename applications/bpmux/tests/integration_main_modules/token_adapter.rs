@@ -18,7 +18,7 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use bpmux::session::tokens::{TokenRow, read_token_rows};
+use bpmux::telemetry::tokens::{TokenRow, read_token_rows};
 
 /// Build a minimal Claude Code transcript jsonl with a single assistant
 /// entry carrying usage data. Matches the shape observed in real
