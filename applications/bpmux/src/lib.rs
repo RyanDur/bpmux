@@ -7,7 +7,9 @@ pub mod awareness;
 #[cfg(test)]
 mod awareness_tests;
 pub mod board;
+pub mod bookmark;
 pub mod bridge;
+pub mod briefing;
 pub mod ci;
 #[cfg(test)]
 mod ci_tests;
@@ -23,6 +25,7 @@ pub mod message;
 #[cfg(test)]
 mod message_tests;
 pub mod orchestrator;
+pub mod reactions;
 pub mod reload;
 pub mod roadmap;
 pub mod room;

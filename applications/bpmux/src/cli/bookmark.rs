@@ -1,4 +1,4 @@
-use crate::session::bookmark::{Bookmark, load_bookmark, save_bookmark};
+use crate::bookmark::{Bookmark, load_bookmark, save_bookmark};
 
 fn current_session_dir() -> anyhow::Result<std::path::PathBuf> {
     let base = crate::session::default_sessions_base()?;

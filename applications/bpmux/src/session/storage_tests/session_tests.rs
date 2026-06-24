@@ -419,7 +419,7 @@ contract!(load_bookmark_default_when_unset, |storage: &dyn Storage| {
 contract!(
     save_then_load_bookmark_roundtrips,
     |storage: &dyn Storage| {
-        let bm = crate::session::bookmark::Bookmark {
+        let bm = crate::bookmark::Bookmark {
             current_task: "refactor storage trait".to_string(),
             decisions: vec!["use DI pattern".to_string()],
             open_questions: vec!["global vs session scope?".to_string()],
@@ -436,11 +436,11 @@ contract!(
 );
 
 contract!(per_role_bookmark_isolation, |storage: &dyn Storage| {
-    let dev_bm = crate::session::bookmark::Bookmark {
+    let dev_bm = crate::bookmark::Bookmark {
         current_task: "dev task".to_string(),
         ..Default::default()
     };
-    let pm_bm = crate::session::bookmark::Bookmark {
+    let pm_bm = crate::bookmark::Bookmark {
         current_task: "pm task".to_string(),
         ..Default::default()
     };
@@ -460,7 +460,7 @@ contract!(load_reactions_empty_when_unset, |storage: &dyn Storage| {
 contract!(
     save_then_load_reactions_roundtrips,
     |storage: &dyn Storage| {
-        let store = crate::session::reactions::ReactionsStore::default();
+        let store = crate::reactions::ReactionsStore::default();
         storage.save_reactions(&store).unwrap();
         let loaded = storage.load_reactions();
         assert!(loaded.channels.is_empty());

@@ -15,12 +15,12 @@ use super::sqlite_users as users;
 use super::{Storage, UserRecord};
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
+use crate::bookmark::Bookmark;
 use crate::comprehension::search::{self, SearchFilters, SearchResult};
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
-use crate::session::bookmark::Bookmark;
+use crate::reactions::ReactionsStore;
 use crate::session::log::LogError;
-use crate::session::reactions::ReactionsStore;
 
 pub struct SqliteStorage {
     dir: PathBuf,

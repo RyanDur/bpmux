@@ -276,7 +276,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn load_bookmark(&self, role: &str) -> crate::session::bookmark::Bookmark {
+    fn load_bookmark(&self, role: &str) -> crate::bookmark::Bookmark {
         let start = Instant::now();
         let result = self.inner.load_bookmark(role);
         self.log(&format!(
@@ -290,7 +290,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn save_bookmark(
         &self,
         role: &str,
-        bookmark: &crate::session::bookmark::Bookmark,
+        bookmark: &crate::bookmark::Bookmark,
     ) -> Result<(), std::io::Error> {
         let start = Instant::now();
         let result = self.inner.save_bookmark(role, bookmark);
@@ -302,7 +302,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn load_reactions(&self) -> crate::session::reactions::ReactionsStore {
+    fn load_reactions(&self) -> crate::reactions::ReactionsStore {
         let start = Instant::now();
         let result = self.inner.load_reactions();
         self.log(&format!(
@@ -314,7 +314,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
 
     fn save_reactions(
         &self,
-        store: &crate::session::reactions::ReactionsStore,
+        store: &crate::reactions::ReactionsStore,
     ) -> Result<(), std::io::Error> {
         let start = Instant::now();
         let result = self.inner.save_reactions(store);

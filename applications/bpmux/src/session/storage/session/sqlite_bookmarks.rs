@@ -2,7 +2,7 @@ use rusqlite::Connection;
 
 use super::sqlite_engine as engine;
 use super::sqlite_users as users;
-use crate::session::bookmark::Bookmark;
+use crate::bookmark::Bookmark;
 
 pub fn get(conn: &Connection, role: &str) -> Bookmark {
     let Some(user_id) = users::id_for_role(conn, role).ok().flatten() else {

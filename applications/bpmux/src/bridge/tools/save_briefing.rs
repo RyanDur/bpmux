@@ -7,7 +7,7 @@ pub(in crate::bridge) async fn handle_save_briefing(
         .and_then(|v| v.as_str())
         .ok_or("missing 'content' argument")?;
     let role = name.split(':').next().unwrap_or(name);
-    crate::session::briefing::save_briefing(role, content)
+    crate::briefing::save_briefing(role, content)
         .map_err(|e| format!("save_briefing({role}): {e}"))?;
     Ok(format!(
         "briefing saved for {role} ({} bytes)",

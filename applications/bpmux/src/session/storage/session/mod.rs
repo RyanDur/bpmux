@@ -214,27 +214,27 @@ impl Storage for FileStorage {
         Ok(())
     }
 
-    fn load_bookmark(&self, role: &str) -> crate::session::bookmark::Bookmark {
-        crate::session::bookmark::load_bookmark(&self.dir, role)
+    fn load_bookmark(&self, role: &str) -> crate::bookmark::Bookmark {
+        crate::bookmark::load_bookmark(&self.dir, role)
     }
 
     fn save_bookmark(
         &self,
         role: &str,
-        bookmark: &crate::session::bookmark::Bookmark,
+        bookmark: &crate::bookmark::Bookmark,
     ) -> Result<(), std::io::Error> {
-        crate::session::bookmark::save_bookmark(&self.dir, role, bookmark)
+        crate::bookmark::save_bookmark(&self.dir, role, bookmark)
     }
 
-    fn load_reactions(&self) -> crate::session::reactions::ReactionsStore {
-        crate::session::reactions::load(&self.dir)
+    fn load_reactions(&self) -> crate::reactions::ReactionsStore {
+        crate::reactions::load(&self.dir)
     }
 
     fn save_reactions(
         &self,
-        store: &crate::session::reactions::ReactionsStore,
+        store: &crate::reactions::ReactionsStore,
     ) -> Result<(), std::io::Error> {
-        crate::session::reactions::save(&self.dir, store)
+        crate::reactions::save(&self.dir, store)
     }
 }
 

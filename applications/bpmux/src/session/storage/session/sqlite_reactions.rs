@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 
 use super::sqlite_engine as engine;
-use crate::session::reactions::ReactionsStore;
+use crate::reactions::ReactionsStore;
 
 pub fn load(conn: &Connection) -> ReactionsStore {
     let mut store = ReactionsStore::default();

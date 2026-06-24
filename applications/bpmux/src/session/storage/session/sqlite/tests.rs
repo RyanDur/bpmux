@@ -113,7 +113,7 @@ fn the_sender_foreign_key_is_enforced_so_a_dangling_reference_cannot_be_written(
 fn a_bookmark_keys_by_the_resolved_user_id_and_cascades_when_the_user_is_deleted() {
     let (_dir, storage) = store();
     storage.upsert_user("sess-dev", "dev", "dev").unwrap();
-    let bm = crate::session::bookmark::Bookmark {
+    let bm = crate::bookmark::Bookmark {
         current_task: "wire the bookmark FK".to_string(),
         ..Default::default()
     };

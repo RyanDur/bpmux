@@ -5,7 +5,7 @@ pub(in crate::bridge) async fn handle_get_bookmark(
     _port: u16,
     name: &str,
 ) -> Result<String, String> {
-    use crate::session::bookmark::load_bookmark;
+    use crate::bookmark::load_bookmark;
     let session_dir = get_session_dir().await?;
     let default_role = name.split(':').next().unwrap_or(name);
     let role = args

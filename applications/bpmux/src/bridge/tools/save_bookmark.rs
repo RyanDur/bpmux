@@ -5,7 +5,7 @@ pub(in crate::bridge) async fn handle_save_bookmark(
     _port: u16,
     name: &str,
 ) -> Result<String, String> {
-    use crate::session::bookmark::{Bookmark, save_bookmark};
+    use crate::bookmark::{Bookmark, save_bookmark};
     let session_dir = get_session_dir().await?;
     let bookmark = Bookmark {
         current_task: args

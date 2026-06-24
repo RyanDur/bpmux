@@ -15,7 +15,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use bpmux::session::bookmark::{Bookmark, bookmark_path, load_bookmark, save_bookmark};
+use bpmux::bookmark::{Bookmark, bookmark_path, load_bookmark, save_bookmark};
 
 fn repo_root() -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

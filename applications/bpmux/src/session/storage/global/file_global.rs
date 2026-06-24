@@ -63,7 +63,7 @@ impl FileGlobalStore {
         if let Some(d) = &self.briefings_dir {
             return d.clone();
         }
-        crate::session::briefing::briefings_dir()
+        crate::briefing::briefings_dir()
     }
 
     fn resolve_tokens_log_path(&self) -> Result<PathBuf, crate::session::log::LogError> {
@@ -111,11 +111,11 @@ impl GlobalStore for FileGlobalStore {
     }
 
     fn load_briefing(&self, role: &str) -> String {
-        crate::session::briefing::load_briefing_in(&self.resolve_briefings_dir(), role)
+        crate::briefing::load_briefing_in(&self.resolve_briefings_dir(), role)
     }
 
     fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error> {
-        crate::session::briefing::save_briefing_in(&self.resolve_briefings_dir(), role, content)
+        crate::briefing::save_briefing_in(&self.resolve_briefings_dir(), role, content)
     }
 
     fn append_token_row(

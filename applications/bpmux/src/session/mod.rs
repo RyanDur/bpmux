@@ -1,10 +1,7 @@
 pub mod aggregate;
-pub mod bookmark;
-pub mod briefing;
 pub mod location;
 pub mod log;
 pub mod precommit;
-pub mod reactions;
 pub mod speech_guard;
 pub mod storage;
 #[cfg(test)]

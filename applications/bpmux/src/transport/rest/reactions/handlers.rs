@@ -16,8 +16,8 @@ pub async fn get_reactions(
     State(session): State<Arc<session::Session>>,
     Query(params): Query<ReactionsChannelQuery>,
 ) -> impl IntoResponse {
-    let store = session::reactions::load(&session.dir);
-    let agg = session::reactions::aggregate_for_channel(&store, &params.channel);
+    let store = crate::reactions::load(&session.dir);
+    let agg = crate::reactions::aggregate_for_channel(&store, &params.channel);
     (
         StatusCode::OK,
         json_headers(),
@@ -53,9 +53,9 @@ pub async fn apply_reaction_toggle(
     >,
     body: &ReactionToggle,
 ) -> Result<bool, String> {
-    let mut store = session::reactions::load(&session.dir);
+    let mut store = crate::reactions::load(&session.dir);
     let now = chrono::Utc::now().to_rfc3339();
-    let present = session::reactions::toggle_reaction(
+    let present = crate::reactions::toggle_reaction(
         &mut store,
         &body.channel,
         &body.message_key,
@@ -63,7 +63,7 @@ pub async fn apply_reaction_toggle(
         &body.user,
         &now,
     );
-    session::reactions::save(&session.dir, &store).map_err(|e| format!("save reactions: {e}"))?;
+    crate::reactions::save(&session.dir, &store).map_err(|e| format!("save reactions: {e}"))?;
     orchestrator
         .dispatch(crate::orchestrator::OrchestratorAction::Reactions(
             crate::orchestrator::ReactionsAction::ReactionToggled {

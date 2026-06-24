@@ -24,7 +24,7 @@ pub(in crate::bridge) async fn handle_get_briefing(
         .get("role")
         .and_then(|v| v.as_str())
         .unwrap_or(default_role);
-    let briefing = crate::session::briefing::load_briefing(role);
+    let briefing = crate::briefing::load_briefing(role);
     let docs_root = resolve_docs_root();
     let team_doctrine = build_team_doctrine_pointers(docs_root.as_deref());
     let body = BriefingResponse {

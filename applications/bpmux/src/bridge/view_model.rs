@@ -1,7 +1,6 @@
 use serde::Serialize;
 
 use crate::memory;
-use crate::session;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IdentityValueView {
@@ -91,8 +90,8 @@ pub struct BookmarkView {
     pub last_updated: String,
 }
 
-impl From<&session::bookmark::Bookmark> for BookmarkView {
-    fn from(b: &session::bookmark::Bookmark) -> Self {
+impl From<&crate::bookmark::Bookmark> for BookmarkView {
+    fn from(b: &crate::bookmark::Bookmark) -> Self {
         Self {
             current_task: b.current_task.clone(),
             decisions: b.decisions.clone(),

@@ -79,17 +79,17 @@ pub trait Storage: Send + Sync {
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError>;
 
-    fn load_bookmark(&self, role: &str) -> super::bookmark::Bookmark;
+    fn load_bookmark(&self, role: &str) -> crate::bookmark::Bookmark;
     fn save_bookmark(
         &self,
         role: &str,
-        bookmark: &super::bookmark::Bookmark,
+        bookmark: &crate::bookmark::Bookmark,
     ) -> Result<(), std::io::Error>;
 
-    fn load_reactions(&self) -> super::reactions::ReactionsStore;
+    fn load_reactions(&self) -> crate::reactions::ReactionsStore;
     fn save_reactions(
         &self,
-        store: &super::reactions::ReactionsStore,
+        store: &crate::reactions::ReactionsStore,
     ) -> Result<(), std::io::Error>;
 }
 
