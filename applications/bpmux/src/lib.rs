@@ -55,9 +55,6 @@ mod storage_tests;
 mod team_roster_tests;
 pub mod telemetry;
 pub mod transport;
-pub mod velocity;
-#[cfg(test)]
-mod velocity_tests;
 pub mod workflow;
 
 pub use cli::bootstrap::run;

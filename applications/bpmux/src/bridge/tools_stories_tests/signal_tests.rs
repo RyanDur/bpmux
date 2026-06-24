@@ -3,8 +3,8 @@
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
 use crate::board::domain::StoryType;
+use crate::board::domain::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
-use crate::velocity::classify_story;
 
 #[test]
 fn delivery_signals_target_designer_and_pm() {
@@ -158,19 +158,24 @@ fn pass_desk_check_signal_addresses_pm_for_bug_label() {
 
 #[test]
 fn pass_desk_check_signal_falls_back_to_title_prefix() {
-    let addressee =
-        addressee_for_pass_desk_check(classify_story(&[], "[Chore] split app_state"), &[]);
+    let addressee = addressee_for_pass_desk_check(
+        story_type_from_labels_or_title(&[], "[Chore] split app_state"),
+        &[],
+    );
     assert_eq!(addressee, "pm");
-    let addressee = addressee_for_pass_desk_check(classify_story(&[], "[Feature] new view"), &[]);
+    let addressee = addressee_for_pass_desk_check(
+        story_type_from_labels_or_title(&[], "[Feature] new view"),
+        &[],
+    );
     assert_eq!(addressee, "owner");
 }
 
 #[test]
 fn pass_desk_check_signal_defaults_owner_on_empty() {
-    let addressee = addressee_for_pass_desk_check(classify_story(&[], ""), &[]);
+    let addressee = addressee_for_pass_desk_check(story_type_from_labels_or_title(&[], ""), &[]);
     assert_eq!(addressee, "owner");
     let addressee = addressee_for_pass_desk_check(
-        classify_story(&["ready".to_string()], "unlabeled story"),
+        story_type_from_labels_or_title(&["ready".to_string()], "unlabeled story"),
         &[],
     );
     assert_eq!(addressee, "owner");
@@ -215,7 +220,7 @@ fn pass_desk_check_signal_acceptor_label_case_insensitive() {
 
 #[test]
 fn pass_desk_check_signal_does_not_target_dev() {
-    let addressee = addressee_for_pass_desk_check(classify_story(&[], ""), &[]);
+    let addressee = addressee_for_pass_desk_check(story_type_from_labels_or_title(&[], ""), &[]);
     if let ClientMessage::Send { to, .. } = build_pass_desk_check_signal(203, addressee) {
         let recipients = to.as_ref().unwrap();
         assert!(
@@ -273,7 +278,7 @@ fn pass_desk_check_signals_emits_one_for_infra() {
 
 #[test]
 fn pass_desk_check_signals_ambiguous_routes_to_owner_and_pm() {
-    let signals = build_pass_desk_check_signals(999, classify_story(&[], ""), &[]);
+    let signals = build_pass_desk_check_signals(999, story_type_from_labels_or_title(&[], ""), &[]);
     assert_eq!(signals.len(), 2);
 }
 

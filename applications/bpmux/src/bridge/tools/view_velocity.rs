@@ -48,7 +48,7 @@ where
         }
     }
 
-    let metrics = crate::velocity::compute(&messages, chrono::Utc::now(), |n| {
+    let metrics = crate::board::velocity::compute(&messages, chrono::Utc::now(), |n| {
         feature_numbers.contains(&n)
     });
 

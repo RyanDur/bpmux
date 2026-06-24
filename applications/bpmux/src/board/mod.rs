@@ -14,6 +14,7 @@ pub mod roadmap_filter;
 pub mod roadmap_view;
 pub mod store;
 pub mod sync;
+pub mod velocity;
 
 #[cfg(test)]
 mod canonical_tests;
@@ -37,6 +38,8 @@ mod roadmap_filter_tests;
 mod roadmap_view_tests;
 #[cfg(test)]
 mod store_tests;
+#[cfg(test)]
+mod velocity_tests;
 
 pub use domain::{FreeComment, Gate, GateComment, Story, StoryState};
 pub use events::BoardEvent;

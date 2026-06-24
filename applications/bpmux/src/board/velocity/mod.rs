@@ -36,9 +36,6 @@ enum Lifecycle {
     FailedDeskCheck,
 }
 
-mod classify;
-pub use classify::*;
-
 mod wip_history;
 pub use wip_history::WipPoint;
 
