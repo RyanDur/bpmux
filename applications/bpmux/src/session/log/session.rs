@@ -178,6 +178,3 @@ fn load_seed_roster(dir: &Path) -> HashSet<String> {
     };
     list.into_iter().collect()
 }
-
-#[cfg(test)]
-mod message_identity;

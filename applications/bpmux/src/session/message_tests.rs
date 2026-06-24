@@ -4,6 +4,24 @@ use super::message::*;
 use chrono::{DateTime, Utc};
 
 #[test]
+fn ensure_id_mints_a_valid_uuid_when_absent() {
+    let mut msg = Message::default();
+    assert!(msg.id.is_empty());
+    msg.ensure_id();
+    assert!(uuid::Uuid::parse_str(&msg.id).is_ok());
+}
+
+#[test]
+fn ensure_id_preserves_an_id_that_is_already_set() {
+    let mut msg = Message {
+        id: "already-minted".to_string(),
+        ..Message::default()
+    };
+    msg.ensure_id();
+    assert_eq!(msg.id, "already-minted");
+}
+
+#[test]
 fn chat_message_is_chat() {
     let msg = Message {
         from: "dev:human".to_string(),

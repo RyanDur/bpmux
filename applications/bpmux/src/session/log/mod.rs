@@ -4,6 +4,9 @@ mod reverse_line_reader;
 mod session;
 mod storage_backend;
 
+#[cfg(test)]
+mod session_tests;
+
 pub use dir_session::{
     DIR_SESSION_ID_MARKER, DirSession, create_session, default_sessions_base,
     read_or_create_dir_session, resume_or_create_session,

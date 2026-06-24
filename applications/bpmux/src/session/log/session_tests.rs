@@ -1,5 +1,8 @@
 #![allow(clippy::unwrap_used)]
-use super::*;
+
+use super::session::{BROADCAST_CHANNEL_CAPACITY, Session};
+use crate::session::message::Message;
+use tokio::sync::broadcast;
 
 #[test]
 fn broadcast_mints_and_persists_a_message_id() {
