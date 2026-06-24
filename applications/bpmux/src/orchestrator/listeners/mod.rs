@@ -21,6 +21,6 @@ fn broadcast_state_delta(session: &session::Session, payload: StateDeltaPayload,
         ..session::Message::default()
     };
     if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
+        crate::diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
     }
 }

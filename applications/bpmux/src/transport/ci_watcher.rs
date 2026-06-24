@@ -4,7 +4,6 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::orchestrator::{CiAction, CiPollFetch, CiSnapshot, Orchestrator};
-use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -78,7 +77,7 @@ pub fn spawn<T: CiPollFetch>(
                         backoff,
                         std::time::SystemTime::now(),
                     ) {
-                        session::diag::log_diag(&format!(
+                        crate::diag::log_diag(&format!(
                             "ci_watcher: rate-limited; backoff signal={} wait={}s",
                             crate::github::signal_label(decision.signal),
                             decision.wait.as_secs()
@@ -89,7 +88,7 @@ pub fn spawn<T: CiPollFetch>(
                         }
                         backoff = (backoff * 2).min(max_backoff);
                     } else {
-                        session::diag::log_diag(&format!("ci_watcher: fetch failed: {e}"));
+                        crate::diag::log_diag(&format!("ci_watcher: fetch failed: {e}"));
                     }
                     continue;
                 }

@@ -2,7 +2,7 @@ use serde::Serialize;
 use tokio::sync::Mutex;
 
 use super::helpers::{WsSink, ws_send};
-use crate::session::diag::log_diag;
+use crate::diag::log_diag;
 use crate::transport::protocol::ClientMessage;
 
 fn owner_role_id() -> String {

@@ -99,7 +99,7 @@ pub(crate) async fn handle_close_iteration(
     let signal = build_iteration_close_signal();
     let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, json).await {
-        crate::session::diag::log_diag(&format!("bridge: iteration-close signal send failed: {e}"));
+        crate::diag::log_diag(&format!("bridge: iteration-close signal send failed: {e}"));
     }
     Ok(
         "iteration closed (terminal; promote-on-close retired #1556) — agents prompted to flush unsaved findings."

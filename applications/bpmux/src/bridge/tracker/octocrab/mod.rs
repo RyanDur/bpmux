@@ -55,14 +55,14 @@ impl OctocrabStoryTracker {
             } => match Self::with_base_url(&base_url, owner, repo) {
                 Ok(tracker) => Some(tracker),
                 Err(e) => {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "OctocrabStoryTracker::from_env: BPMUX_GH_BASE_URL build failed: {e}"
                     ));
                     None
                 }
             },
             TrackerSelection::Fallback(reason) => {
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "OctocrabStoryTracker::from_env: missing env config ({reason:?})"
                 ));
                 None

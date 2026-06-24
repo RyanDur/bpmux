@@ -13,13 +13,11 @@ pub(crate) async fn run_drain_loop(
         let state_changed = match refresh.drain_pending().await {
             Ok(0) => false,
             Ok(n) => {
-                crate::session::diag::log_diag(&format!(
-                    "bridge: background drain pushed {n} event(s)"
-                ));
+                crate::diag::log_diag(&format!("bridge: background drain pushed {n} event(s)"));
                 true
             }
             Err(e) => {
-                crate::session::diag::log_diag(&format!("bridge: background drain: {e}"));
+                crate::diag::log_diag(&format!("bridge: background drain: {e}"));
                 true
             }
         };
@@ -68,7 +66,7 @@ pub(crate) fn broadcast_sync_status_transition(
             ..crate::session::Message::default()
         };
         if let Err(e) = session.broadcast(&delta) {
-            crate::session::diag::log_diag(&format!(
+            crate::diag::log_diag(&format!(
                 "run_drain_loop: sync-status state-delta broadcast failed: {e}"
             ));
         }

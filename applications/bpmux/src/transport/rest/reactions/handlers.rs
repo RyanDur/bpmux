@@ -104,6 +104,6 @@ fn broadcast_reaction_event(
         ..session::Message::default()
     };
     if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!("rest: reaction-event broadcast failed: {e}"));
+        crate::diag::log_diag(&format!("rest: reaction-event broadcast failed: {e}"));
     }
 }

@@ -115,10 +115,10 @@ fn spawn_shutdown_signal_listener(ct: CancellationToken) {
         let sigint = tokio::signal::ctrl_c();
         tokio::select! {
             _ = sigterm => {
-                crate::session::diag::log_diag("server: SIGTERM received; cancelling CT");
+                crate::diag::log_diag("server: SIGTERM received; cancelling CT");
             }
             _ = sigint => {
-                crate::session::diag::log_diag("server: SIGINT received; cancelling CT");
+                crate::diag::log_diag("server: SIGINT received; cancelling CT");
             }
         }
         ct.cancel();

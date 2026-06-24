@@ -91,7 +91,7 @@ pub async fn post_reset_stories(
         ..session::Message::default()
     };
     if let Err(e) = session.broadcast(&invalidate_delta) {
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "post_reset_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
@@ -230,7 +230,7 @@ pub async fn post_seed_stories(
         ..session::Message::default()
     };
     if let Err(e) = session.broadcast(&invalidate_delta) {
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "post_seed_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }

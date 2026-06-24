@@ -31,7 +31,7 @@ pub(crate) fn broadcast_board_invalidate(session: &session::Session) {
         ..session::Message::default()
     };
     if let Err(e) = session.broadcast(&delta) {
-        session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "rest: board-invalidated state-delta broadcast failed: {e}"
         ));
     }

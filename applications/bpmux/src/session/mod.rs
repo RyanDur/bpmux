@@ -5,7 +5,6 @@ pub mod bayes;
 pub mod bookmark;
 pub mod briefing;
 pub mod classifier;
-pub mod diag;
 pub mod identity;
 pub mod lessons;
 pub mod location;
@@ -49,8 +48,6 @@ mod awareness_tests;
 mod bayes_tests;
 #[cfg(test)]
 mod classifier_tests;
-#[cfg(test)]
-mod diag_tests;
 #[cfg(test)]
 mod lessons_tests;
 #[cfg(test)]

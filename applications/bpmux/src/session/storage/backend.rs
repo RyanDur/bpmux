@@ -27,7 +27,7 @@ impl StorageBackend {
             Self::Sqlite => match SqliteStorage::new(dir.to_path_buf()) {
                 Ok(store) => Arc::new(InstrumentedStorage::new(store)),
                 Err(e) => {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "sqlite storage backend failed to open ({e}); falling back to file backend"
                     ));
                     Arc::new(InstrumentedStorage::new(FileStorage::new(

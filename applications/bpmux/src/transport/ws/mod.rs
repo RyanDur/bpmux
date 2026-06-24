@@ -65,7 +65,7 @@ pub async fn ws_handler(
 async fn handle_ws(socket: WebSocket, deps: WsDeps) {
     let (tx, rx) = socket.split();
     if let Err(e) = run_ws_session(tx, rx, deps).await {
-        crate::session::diag::log_diag(&format!("ws: session error: {e}"));
+        crate::diag::log_diag(&format!("ws: session error: {e}"));
     }
 }
 
@@ -133,7 +133,7 @@ async fn run_ws_session(
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(n)) => {
-                            crate::session::diag::log_diag(&format!(
+                            crate::diag::log_diag(&format!(
                                 "ws: client {identity} lagged by {n} messages"
                             ));
                             let lag_notice = ServerMessage::Error {
@@ -146,7 +146,7 @@ async fn run_ws_session(
                                 chrono::Utc::now(),
                             );
                             if let Err(e) = session.broadcast(&lag_broadcast) {
-                                session::diag::log_diag(&format!(
+                                crate::diag::log_diag(&format!(
                                     "ws: peer-lag broadcast failed for {identity}: {e}"
                                 ));
                             }
@@ -222,7 +222,7 @@ async fn run_ws_session(
                         }
                         Some(Ok(WsMessage::Close(_))) | None => break,
                         Some(Err(e)) => {
-                            crate::session::diag::log_diag(&format!(
+                            crate::diag::log_diag(&format!(
                                 "ws: read error for {identity}: {e}"
                             ));
                             break;

@@ -12,7 +12,7 @@ pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>) {
             match orch.refresh_all().await {
                 Ok(()) => {
                     let count = orch.all_stories().len();
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
                         attempt + 1
                     ));
@@ -20,13 +20,13 @@ pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>) {
                     return;
                 }
                 Err(e) if attempt + 1 < backoffs.len() => {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "server: production orchestrator ingest attempt {} failed: {e}; retrying with backoff",
                         attempt + 1
                     ));
                 }
                 Err(e) => {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "server: production orchestrator ingest exhausted retries; last error: {e}; board stays empty until a later refresh re-derives it from the source"
                     ));
                 }

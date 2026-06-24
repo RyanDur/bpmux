@@ -117,13 +117,13 @@ async fn post_close_iteration_canonical(
     if let Some(t) = tracker.as_ref() {
         let body = "iteration-close: terminal close, promote-on-close retired (#1556).";
         if let Err(e) = t.post_story_comment(iteration_number, body).await {
-            session::diag::log_diag(&format!(
+            crate::diag::log_diag(&format!(
                 "[#1556] comment_on_story #{iteration_number} (close) failed: {e}"
             ));
         }
     }
     if let Err(e) = session.broadcast(&delta_msg) {
-        session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "post_close_iteration_canonical: state-delta broadcast failed: {e}"
         ));
     }

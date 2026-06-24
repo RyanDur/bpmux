@@ -1,10 +1,10 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
+use crate::diag::log_diag;
 use crate::session::Session;
 use crate::session::bayes::BayesModel;
 use crate::session::classifier;
-use crate::session::diag::log_diag;
 use crate::session::message::{Message, MessageType};
 
 use super::agents::AgentTracker;

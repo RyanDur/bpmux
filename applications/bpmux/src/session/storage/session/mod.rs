@@ -123,13 +123,11 @@ impl Storage for FileStorage {
         let path = self.dir.join(format!("{safe_key}.json"));
         let tmp = self.dir.join(format!("{safe_key}.json.tmp"));
         if let Err(e) = std::fs::write(&tmp, value) {
-            crate::session::diag::log_diag(&format!("save_state write failed for {safe_key}: {e}"));
+            crate::diag::log_diag(&format!("save_state write failed for {safe_key}: {e}"));
             return;
         }
         if let Err(e) = std::fs::rename(&tmp, &path) {
-            crate::session::diag::log_diag(&format!(
-                "save_state rename failed for {safe_key}: {e}"
-            ));
+            crate::diag::log_diag(&format!("save_state rename failed for {safe_key}: {e}"));
         }
     }
 

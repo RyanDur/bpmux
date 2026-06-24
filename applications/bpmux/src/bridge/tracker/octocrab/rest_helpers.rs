@@ -12,7 +12,7 @@ impl OctocrabStoryTracker {
                 octocrab::Error::GitHub { ref source, .. }
                     if source.status_code.as_u16() == 404 => {}
                 other => {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "rest: accept_story remove-label delivered failed for #{number}: {}",
                         Self::classify(other)
                     ));
@@ -40,7 +40,7 @@ impl OctocrabStoryTracker {
                 octocrab::Error::GitHub { ref source, .. }
                     if source.status_code.as_u16() == 404 => {}
                 other => {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "rest: reject_story remove-label delivered failed for #{number}: {}",
                         Self::classify(other)
                     ));
@@ -53,7 +53,7 @@ impl OctocrabStoryTracker {
             .add_labels(number, &["rejected".to_string()])
             .await
         {
-            crate::session::diag::log_diag(&format!(
+            crate::diag::log_diag(&format!(
                 "rest: reject_story add-label rejected failed for #{number}: {}",
                 Self::classify(e)
             ));

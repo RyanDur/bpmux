@@ -67,11 +67,11 @@ impl CiBroadcastListener for CiSessionBroadcaster {
             ..session::Message::default()
         };
         if let Err(e) = self.session.broadcast(&activity_msg) {
-            session::diag::log_diag(&format!("ci_listener: activity broadcast failed: {e}"));
+            crate::diag::log_diag(&format!("ci_listener: activity broadcast failed: {e}"));
         }
         let dev_signal = crate::ci::build_dev_ci_signal(&text);
         if let Err(e) = self.session.broadcast(&dev_signal) {
-            session::diag::log_diag(&format!("ci_listener: dev signal failed: {e}"));
+            crate::diag::log_diag(&format!("ci_listener: dev signal failed: {e}"));
         }
     }
 }

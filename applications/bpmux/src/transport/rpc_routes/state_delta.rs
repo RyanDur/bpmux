@@ -16,7 +16,7 @@ pub(crate) fn fire_view_backlog_marker(session: &Arc<session::Session>) {
         ..Default::default()
     };
     if let Err(e) = session.broadcast(&msg) {
-        crate::session::diag::log_diag(&format!("rpc: VIEW_BACKLOG_MARKER broadcast failed: {e}"));
+        crate::diag::log_diag(&format!("rpc: VIEW_BACKLOG_MARKER broadcast failed: {e}"));
     }
 }
 
@@ -32,7 +32,7 @@ pub(crate) fn fire_board_invalidate(session: &Arc<session::Session>) {
         ..Default::default()
     };
     if let Err(e) = session.broadcast(&delta) {
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "rpc: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
@@ -89,7 +89,7 @@ pub(crate) fn fire_story_transition(
         ..Default::default()
     };
     if let Err(e) = session.broadcast(&delta) {
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "rpc: story_state_transition state-delta broadcast failed: {e}"
         ));
     }

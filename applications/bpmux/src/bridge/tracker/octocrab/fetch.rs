@@ -107,7 +107,7 @@ impl OctocrabStoryTracker {
             }
             closed_page += 1;
         }
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "github fetch_board_stories_since(since={:?}): {open_count} open (paginated) + {closed_count} closed (paginated) = {} total",
             since.map(|s| s.to_rfc3339()),
             all_issues.len()

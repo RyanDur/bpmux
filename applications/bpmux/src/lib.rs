@@ -6,6 +6,9 @@ pub mod ci;
 #[cfg(test)]
 mod ci_tests;
 mod cli;
+pub mod diag;
+#[cfg(test)]
+mod diag_tests;
 pub mod github;
 pub mod mcp;
 pub mod orchestrator;

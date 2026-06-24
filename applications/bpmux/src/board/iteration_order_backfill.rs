@@ -34,7 +34,7 @@ pub fn backfill_iteration_order(orch: &dyn RefreshDriver) {
             number,
             label: GhLabelCodec.encode_iteration_order(next),
         }) {
-            crate::session::diag::log_diag(&format!(
+            crate::diag::log_diag(&format!(
                 "iteration-order backfill: #{number} order-assign failed: {e}; idempotent retry next boot"
             ));
         }

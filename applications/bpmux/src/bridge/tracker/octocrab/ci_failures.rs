@@ -17,9 +17,7 @@ impl OctocrabStoryTracker {
         let jobs: JobsResponse = match self.client.get(jobs_path, None::<&()>).await {
             Ok(r) => r,
             Err(e) => {
-                crate::session::diag::log_diag(&format!(
-                    "tracker: fetch jobs for run {run_id} failed: {e}"
-                ));
+                crate::diag::log_diag(&format!("tracker: fetch jobs for run {run_id} failed: {e}"));
                 return None;
             }
         };
@@ -35,7 +33,7 @@ impl OctocrabStoryTracker {
         let check_run: CheckRun = match self.client.get(check_run_url.as_str(), None::<&()>).await {
             Ok(r) => r,
             Err(e) => {
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "tracker: fetch check-run failed for run {run_id}: {e}"
                 ));
                 return None;
@@ -50,7 +48,7 @@ impl OctocrabStoryTracker {
             match self.client.get(annotations_url.as_str(), None::<&()>).await {
                 Ok(r) => r,
                 Err(e) => {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "tracker: fetch annotations failed for run {run_id}: {e}"
                     ));
                     return None;
@@ -125,7 +123,7 @@ impl OctocrabStoryTracker {
                     match body {
                         Ok(collected) => String::from_utf8_lossy(&collected.to_bytes()).to_string(),
                         Err(e) => {
-                            crate::session::diag::log_diag(&format!(
+                            crate::diag::log_diag(&format!(
                                 "tracker: collect log body for job {} failed: {e}",
                                 job.id
                             ));
@@ -134,7 +132,7 @@ impl OctocrabStoryTracker {
                     }
                 }
                 Err(e) => {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "tracker: get log for job {} failed: {e}",
                         job.id
                     ));

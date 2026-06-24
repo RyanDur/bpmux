@@ -39,7 +39,7 @@ pub fn spawn_binary_watcher(
     let path = match resolve_watch_path() {
         Ok(p) => p,
         Err(e) => {
-            crate::session::diag::log_diag(&format!(
+            crate::diag::log_diag(&format!(
                 "self-update: cannot resolve watch path ({e}); watcher disabled"
             ));
             return tokio::spawn(async {});
@@ -74,7 +74,7 @@ pub fn spawn_binary_watcher_at(
         let initial_mtime = match read_mtime(&path) {
             Some(t) => t,
             None => {
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "self-update: cannot stat binary {}; watcher disabled",
                     path.display()
                 ));
@@ -90,7 +90,7 @@ pub fn spawn_binary_watcher_at(
                     if let Some(now_mtime) = read_mtime(&path)
                         && now_mtime != initial_mtime
                     {
-                        crate::session::diag::log_diag(&format!(
+                        crate::diag::log_diag(&format!(
                             "self-update: binary mtime changed at {}; firing graceful shutdown for restart",
                             path.display()
                         ));

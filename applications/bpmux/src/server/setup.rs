@@ -67,7 +67,7 @@ pub(super) async fn build_test_orchestrator(
     }
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     if let Err(e) = orch.refresh_all().await {
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "server: BPMUX_TEST_MODE initial ingest skipped — {e}"
         ));
     }
@@ -89,13 +89,13 @@ pub(super) fn build_prod_orchestrator(
     ) {
         Ok(o) => {
             let pending_count = o.snapshot_status().pending_events;
-            crate::session::diag::log_diag(&format!(
+            crate::diag::log_diag(&format!(
                 "server: board-outbox hydrated via storage ({pending_count} pending events)"
             ));
             o
         }
         Err(e) => {
-            crate::session::diag::log_diag(&format!(
+            crate::diag::log_diag(&format!(
                 "server: board-outbox storage-load failed ({e}); starting with empty outbox"
             ));
             SyncOrchestrator::new(store.clone(), adapter.clone())

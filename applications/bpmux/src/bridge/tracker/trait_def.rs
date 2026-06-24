@@ -5,7 +5,7 @@ pub(crate) fn log_labels_fetch_failure<E: std::fmt::Display>(
     number: u64,
     err: E,
 ) -> Vec<String> {
-    crate::session::diag::log_diag(&format!(
+    crate::diag::log_diag(&format!(
         "get_story_labels ({backend}) #{number} failed: {err}"
     ));
     Vec::new()

@@ -11,20 +11,18 @@ pub(crate) async fn handle_view_board(
             Ok(()) => {
                 stories = r.all_stories();
                 if stories.is_empty() {
-                    crate::session::diag::log_diag(
+                    crate::diag::log_diag(
                         "view_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
                     );
                 } else {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "view_board: empty store; refresh_all recovered {} stories",
                         stories.len()
                     ));
                 }
             }
             Err(e) => {
-                crate::session::diag::log_diag(&format!(
-                    "view_board: empty store; refresh_all failed: {e}"
-                ));
+                crate::diag::log_diag(&format!("view_board: empty store; refresh_all failed: {e}"));
                 stories = r.all_stories();
             }
         }

@@ -53,5 +53,5 @@ pub(super) fn validate_and_log(action: &OrchestratorAction) {
         OrchestratorAction::MutationConfirmed { .. } => "MutationConfirmed",
         OrchestratorAction::MutationRolledBack { .. } => "MutationRolledBack",
     };
-    crate::session::diag::log_diag(&format!("orchestrator: dispatch {label}"));
+    crate::diag::log_diag(&format!("orchestrator: dispatch {label}"));
 }

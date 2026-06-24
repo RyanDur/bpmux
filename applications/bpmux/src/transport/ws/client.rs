@@ -34,7 +34,7 @@ pub(crate) async fn handle_client_message(
     pty_readers: &mut std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
 ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
     if !message_size_ok(text) {
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "ws: rejected oversized message from {identity}: {} bytes (max {MAX_MESSAGE_SIZE})",
             text.len()
         ));

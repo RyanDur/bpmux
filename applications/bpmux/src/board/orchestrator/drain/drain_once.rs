@@ -43,7 +43,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     number: event.story_number(),
                     origin: ConflictResolveOrigin::DrainAutoReclassify,
                 });
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "orchestrator: conflict auto-resolved on drain re-classify for #{}",
                     event.story_number()
                 ));
@@ -60,7 +60,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     });
                     self.persist_outbox();
                     decrement_pending(&self.status);
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "orchestrator: idempotent-skip dropped #{} (already-applied at canonical store)",
                         event.story_number()
                     ));
@@ -80,7 +80,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                             number: event.story_number(),
                             kind: divergent,
                         });
-                        crate::session::diag::log_diag(&format!(
+                        crate::diag::log_diag(&format!(
                             "orchestrator: conflict-detected {divergent:?} on #{}; left in outbox for slice-B click-to-resolve",
                             event.story_number()
                         ));
@@ -127,7 +127,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         self.persist_outbox();
                         decrement_pending(&self.status);
                         record_dropped(&self.status, event.story_number(), format!("{e}"));
-                        crate::session::diag::log_diag(&format!(
+                        crate::diag::log_diag(&format!(
                             "orchestrator: dropped event after permanent push failure ({e}); event #{}",
                             event.story_number()
                         ));

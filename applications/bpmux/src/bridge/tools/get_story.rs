@@ -81,7 +81,7 @@ pub(in crate::bridge) async fn handle_get_story(
                     .ok_or_else(|| format!("story #{number} not found in board after fetch"))?;
             }
             Err(e) => {
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "get_story #{number} read-through fetch_body failed: {e}"
                 ));
             }
@@ -101,7 +101,7 @@ pub(in crate::bridge) async fn handle_get_story(
                 })?;
             }
             Err(e) => {
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "get_story #{number} read-through fetch_gate_comments failed: {e}"
                 ));
             }

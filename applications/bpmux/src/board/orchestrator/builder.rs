@@ -111,7 +111,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let snapshot: Vec<QueuedEvent> = self.with_pending(|p| p.iter().cloned().collect());
         if let Some(storage) = self.storage.as_ref() {
             if let Err(e) = storage.save_outbox(&snapshot) {
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "orchestrator: outbox persist via storage failed: {e}"
                 ));
             }
@@ -121,7 +121,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             return;
         };
         if let Err(e) = persist_outbox_to_disk(path, &snapshot) {
-            crate::session::diag::log_diag(&format!("orchestrator: outbox persist failed: {e}"));
+            crate::diag::log_diag(&format!("orchestrator: outbox persist failed: {e}"));
         }
     }
 }

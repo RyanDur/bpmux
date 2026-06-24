@@ -60,7 +60,7 @@ pub(super) fn verify_deliver_drift(
     let changed_paths = match changed_paths_since(ts, git) {
         Ok(p) => p,
         Err(e) => {
-            crate::session::diag::log_diag(&format!(
+            crate::diag::log_diag(&format!(
                 "[#1378] deliver_story body-diff gate: git-changed-paths failed ({e}); skipping (lenient on git-error)"
             ));
             return Ok(());

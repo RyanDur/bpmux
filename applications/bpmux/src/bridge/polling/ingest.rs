@@ -48,7 +48,7 @@ pub async fn run_ingest_poll_loop_cancellable(
                     backoff,
                     std::time::SystemTime::now(),
                 ) {
-                    crate::session::diag::log_diag(&format!(
+                    crate::diag::log_diag(&format!(
                         "bridge: ingest rate-limited; backoff signal={} wait={}s",
                         crate::github::signal_label(decision.signal),
                         decision.wait.as_secs()
@@ -56,9 +56,7 @@ pub async fn run_ingest_poll_loop_cancellable(
                     tokio::time::sleep(decision.wait).await;
                     backoff = (backoff * 2).min(max_backoff);
                 } else {
-                    crate::session::diag::log_diag(&format!(
-                        "bridge: background ingest poll failed: {e}"
-                    ));
+                    crate::diag::log_diag(&format!("bridge: background ingest poll failed: {e}"));
                 }
             }
         }

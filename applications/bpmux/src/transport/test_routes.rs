@@ -26,7 +26,7 @@ fn fire_board_invalidate(session: &Arc<session::Session>) {
         ..Default::default()
     };
     if let Err(e) = session.broadcast(&delta) {
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "test-route: board_invalidated state-delta broadcast failed: {e}"
         ));
     }

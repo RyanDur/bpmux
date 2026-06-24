@@ -57,7 +57,7 @@ pub(super) fn broadcast_iteration_close_blocked(
         ..session::Message::default()
     };
     if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "post_close_iteration: iteration-close-blocked broadcast failed: {e}"
         ));
     }

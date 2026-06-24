@@ -62,7 +62,7 @@ pub(in crate::bridge) async fn handle_view_story_timeline(
                 })?;
             }
             Err(e) => {
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "view_story_timeline #{number} read-through fetch_gate_comments failed: {e}"
                 ));
             }

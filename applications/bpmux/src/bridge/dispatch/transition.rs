@@ -27,7 +27,7 @@ pub(super) fn broadcast_client_msg_via_session(
             ..crate::session::Message::default()
         };
         if let Err(e) = session.broadcast(&session_msg) {
-            crate::session::diag::log_diag(&format!("rpc: workflow-signal broadcast failed: {e}"));
+            crate::diag::log_diag(&format!("rpc: workflow-signal broadcast failed: {e}"));
         }
     }
 }

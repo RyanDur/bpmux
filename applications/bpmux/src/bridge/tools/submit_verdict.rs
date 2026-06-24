@@ -61,7 +61,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         ..Message::default()
     };
     if let Err(e) = session.broadcast(&notification) {
-        crate::session::diag::log_diag(&format!(
+        crate::diag::log_diag(&format!(
             "submit_verdict: verdict-cast broadcast failed for #{story_number}: {e}"
         ));
     }

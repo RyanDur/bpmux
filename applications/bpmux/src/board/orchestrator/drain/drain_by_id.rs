@@ -27,7 +27,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 self.remove_pending_by_id(id);
                 self.persist_outbox();
                 decrement_pending(&self.status);
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "orchestrator: idempotent-skip dropped #{} via drain_one_by_id (already-applied)",
                     event.story_number()
                 ));
@@ -42,7 +42,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     number: event.story_number(),
                     kind: divergent,
                 });
-                crate::session::diag::log_diag(&format!(
+                crate::diag::log_diag(&format!(
                     "orchestrator: drain_one_by_id rolled back #{} ({divergent:?}); applying server_story",
                     event.story_number()
                 ));
@@ -68,7 +68,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         self.persist_outbox();
                         decrement_pending(&self.status);
                         record_dropped(&self.status, event.story_number(), format!("{e}"));
-                        crate::session::diag::log_diag(&format!(
+                        crate::diag::log_diag(&format!(
                             "orchestrator: drain_one_by_id dropped #{} after permanent push failure ({e})",
                             event.story_number()
                         ));

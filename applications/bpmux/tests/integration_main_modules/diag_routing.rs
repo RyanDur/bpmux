@@ -1,8 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use bpmux::session::diag::{
-    DiagSink, MemoryDiagSink, clear_thread_sink, install_thread_sink, log_diag,
-};
+use bpmux::diag::{DiagSink, MemoryDiagSink, clear_thread_sink, install_thread_sink, log_diag};
 use std::rc::Rc;
 
 #[test]

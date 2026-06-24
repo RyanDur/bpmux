@@ -61,12 +61,10 @@ where
     match serde_json::to_string(&marker_msg) {
         Ok(json) => {
             if let Err(e) = ws_send(ws_tx, json).await {
-                crate::session::diag::log_diag(&format!("view_velocity marker send failed: {e}"));
+                crate::diag::log_diag(&format!("view_velocity marker send failed: {e}"));
             }
         }
-        Err(e) => {
-            crate::session::diag::log_diag(&format!("view_velocity marker serialize failed: {e}"))
-        }
+        Err(e) => crate::diag::log_diag(&format!("view_velocity marker serialize failed: {e}")),
     }
 
     let view = crate::bridge::view_model::VelocityMetricsView::from(&metrics);
