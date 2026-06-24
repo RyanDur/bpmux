@@ -12,7 +12,6 @@ pub mod storage;
 #[cfg(test)]
 mod storage_tests;
 pub mod terminal_inject;
-pub mod verdicts;
 
 #[cfg(test)]
 mod team_roster_tests;

@@ -2,7 +2,7 @@
 
 use super::submit_verdict::*;
 use crate::session::Session;
-use crate::session::verdicts::{load, verdicts_for_story};
+use crate::workflow::verdicts::{load, verdicts_for_story};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;

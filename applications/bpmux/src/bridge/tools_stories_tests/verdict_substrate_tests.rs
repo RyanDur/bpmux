@@ -17,7 +17,7 @@ mod verdict_substrate_integration_1407 {
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
     use crate::session::Session;
-    use crate::session::verdicts::{load, verdicts_for_story};
+    use crate::workflow::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -55,7 +55,7 @@ mod verdict_substrate_integration_1407 {
     }
 
     fn seed_expired_verdict(session: &Arc<Session>, number: u64, role: &str) {
-        use crate::session::verdicts::{Verdict, add_or_replace_verdict, save};
+        use crate::workflow::verdicts::{Verdict, add_or_replace_verdict, save};
         let mut store = load(&session.dir);
         add_or_replace_verdict(
             &mut store,
@@ -72,7 +72,7 @@ mod verdict_substrate_integration_1407 {
     }
 
     fn seed_verdict_grounded_on(session: &Arc<Session>, number: u64, role: &str, head: &str) {
-        use crate::session::verdicts::{Verdict, add_or_replace_verdict, save};
+        use crate::workflow::verdicts::{Verdict, add_or_replace_verdict, save};
         let mut store = load(&session.dir);
         add_or_replace_verdict(
             &mut store,

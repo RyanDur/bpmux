@@ -2,6 +2,7 @@ pub mod bundled_default;
 pub mod config;
 pub mod gate;
 pub mod loader;
+pub mod verdicts;
 
 #[cfg(test)]
 mod config_tests;
