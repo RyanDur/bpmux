@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::board::{BoardStore, RefreshDriver};
+use crate::product_management::board::{BoardStore, RefreshDriver};
 
 pub(in crate::bridge) async fn handle_view_comments(
     args: &serde_json::Map<String, serde_json::Value>,

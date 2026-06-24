@@ -87,11 +87,9 @@ pub(super) async fn handle_board_hydrate(
             }
             Some(crate::transport::rest::ordered_board_stories(refresh))
         } else if let Some(tracker) = tracker.as_ref() {
-            tracker
-                .fetch_board_stories()
-                .await
-                .ok()
-                .map(crate::board::ready_order_label::sort_board_ready_by_membership)
+            tracker.fetch_board_stories().await.ok().map(
+                crate::product_management::board::ready_order_label::sort_board_ready_by_membership,
+            )
         } else {
             None
         };

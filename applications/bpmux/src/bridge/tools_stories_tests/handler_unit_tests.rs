@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::board::domain::StoryType;
-use crate::board::domain::story_type_from_labels_or_title;
+use crate::product_management::board::domain::StoryType;
+use crate::product_management::board::domain::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -19,8 +19,8 @@ async fn accept_requires_refresh_after_5n_fallback_retirement() {
 
 #[tokio::test]
 async fn accept_rejects_unknown_role_via_handler() {
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
     use std::sync::Arc;
 
     let store = Arc::new(BoardStore::new());
@@ -132,9 +132,11 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
 
 #[tokio::test]
 async fn accept_force_bypass_with_reason_records_in_gate_payload() {
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
-    use crate::board::{BoardEvent, BoardStore, RefreshDriver, SyncOrchestrator};
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::board::{
+        BoardEvent, BoardStore, RefreshDriver, SyncOrchestrator,
+    };
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -204,8 +206,8 @@ async fn reject_allows_pm_designer_dev_owner() {
 
 #[tokio::test]
 async fn reject_rejects_unknown_role_via_handler() {
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
     use std::sync::Arc;
 
     let store = Arc::new(BoardStore::new());

@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};
 
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Story, StoryState};
-use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::bridge::tools::handle_get_story;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Story, StoryState};
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 
 fn seed_minimal(number: u64, state: StoryState) -> Story {
     Story::new_minimal(
@@ -147,11 +147,11 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 
 #[tokio::test]
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
-    use crate::board::events::BoardEvent;
+    use crate::product_management::board::events::BoardEvent;
     let store = BoardStore::new();
     store.seed_all(vec![seed_minimal(9000, StoryState::Ready)]);
     store.apply(&BoardEvent::BodyFetched {
-        meta: crate::board::orchestrator::cache_fill_meta(),
+        meta: crate::product_management::board::orchestrator::cache_fill_meta(),
         number: 9000,
         body: "hydrated body content".to_string(),
         etag: Some("W/\"deadbeef\"".to_string()),
@@ -163,8 +163,8 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 
 #[tokio::test]
 async fn local_body_mutate_invalidates_prior_etag() {
-    use crate::board::events::{BoardEvent, EventMeta};
-    use crate::board::peer::PeerId;
+    use crate::product_management::board::events::{BoardEvent, EventMeta};
+    use crate::product_management::board::peer::PeerId;
     let store = BoardStore::new();
     let mut seed = seed_minimal(9100, StoryState::Ready);
     seed.body = Some("v1".to_string());
@@ -191,9 +191,9 @@ async fn local_body_mutate_invalidates_prior_etag() {
 
 #[tokio::test]
 async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
-    use crate::board::events::BoardEvent;
-    use crate::board::sync::ConditionalBody;
-    use crate::board::{RefreshDriver, SyncOrchestrator};
+    use crate::product_management::board::events::BoardEvent;
+    use crate::product_management::board::sync::ConditionalBody;
+    use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_minimal(9001, StoryState::Ready)]);

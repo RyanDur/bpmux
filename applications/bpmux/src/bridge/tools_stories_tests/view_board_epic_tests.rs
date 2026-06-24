@@ -2,18 +2,18 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::board::domain::StoryType;
-use crate::board::domain::story_type_from_labels_or_title;
+use crate::product_management::board::domain::StoryType;
+use crate::product_management::board::domain::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
 async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
-    use crate::board::BoardEvent;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -66,11 +66,11 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
 
 #[tokio::test]
 async fn set_parent_epic_rejects_non_existent_epic() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -100,11 +100,11 @@ async fn set_parent_epic_rejects_non_existent_epic() {
 
 #[tokio::test]
 async fn set_parent_epic_rejects_non_epic_parent() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -143,12 +143,12 @@ async fn set_parent_epic_rejects_non_epic_parent() {
 
 #[tokio::test]
 async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
-    use crate::board::BoardEvent;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -213,12 +213,12 @@ async fn set_parent_epic_rejects_self_parent() {
 
 #[tokio::test]
 async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set() {
-    use crate::board::BoardEvent;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -269,11 +269,11 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
 
 #[tokio::test]
 async fn create_story_with_non_epic_parent_rejects_before_create() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -311,11 +311,11 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
 
 #[tokio::test]
 async fn view_board_renders_epic_summary_section_with_child_progress() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -381,11 +381,11 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
 
 #[tokio::test]
 async fn view_board_omits_epic_section_when_no_epics_present() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -415,11 +415,11 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
 
 #[tokio::test]
 async fn view_board_filters_epic_stories_out_of_state_lanes() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -471,11 +471,11 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
 
 #[tokio::test]
 async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -511,11 +511,11 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
 
 #[tokio::test]
 async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

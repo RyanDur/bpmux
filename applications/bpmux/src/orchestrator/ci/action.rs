@@ -1,6 +1,6 @@
 use super::CiSnapshot;
-use crate::board::MutationId;
 use crate::orchestrator::stores::{ReactionsAction, RosterAction};
+use crate::product_management::board::MutationId;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PollKind {
@@ -31,7 +31,7 @@ pub enum OrchestratorAction {
     },
     MutationRolledBack {
         mutation_id: MutationId,
-        server_story: Option<Box<crate::board::domain::Story>>,
+        server_story: Option<Box<crate::product_management::board::domain::Story>>,
     },
 }
 

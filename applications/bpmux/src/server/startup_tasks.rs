@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::board::RefreshDriver;
+use crate::product_management::board::RefreshDriver;
 
 pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>) {
     tokio::spawn(async move {
@@ -16,7 +16,7 @@ pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>) {
                         "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
                         attempt + 1
                     ));
-                    crate::board::iteration_order_backfill::backfill_iteration_order(orch.as_ref());
+                    crate::product_management::board::iteration_order_backfill::backfill_iteration_order(orch.as_ref());
                     return;
                 }
                 Err(e) if attempt + 1 < backoffs.len() => {

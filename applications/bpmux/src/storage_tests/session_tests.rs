@@ -302,9 +302,12 @@ contract!(
     }
 );
 
-fn seed_outbox_event(number: u64, label: &str) -> crate::board::orchestrator::QueuedEvent {
-    use crate::board::events::{BoardEvent, EventMeta};
-    use crate::board::peer::PeerId;
+fn seed_outbox_event(
+    number: u64,
+    label: &str,
+) -> crate::product_management::board::orchestrator::QueuedEvent {
+    use crate::product_management::board::events::{BoardEvent, EventMeta};
+    use crate::product_management::board::peer::PeerId;
     let event = BoardEvent::TagAdded {
         meta: EventMeta {
             actor: "dev".to_string(),
@@ -314,7 +317,7 @@ fn seed_outbox_event(number: u64, label: &str) -> crate::board::orchestrator::Qu
         number,
         label: label.to_string(),
     };
-    crate::board::orchestrator::QueuedEvent::new(event, None)
+    crate::product_management::board::orchestrator::QueuedEvent::new(event, None)
 }
 
 contract!(load_outbox_empty_when_unset, |storage: &dyn Storage| {

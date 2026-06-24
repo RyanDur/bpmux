@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::orchestrator::Orchestrator;
+use crate::product_management::board::adapters::github::GitHubSourceAdapter;
 use crate::room::{CommitmentStore, LivePtyRegistry};
 use crate::routing::RoutingStore;
 use crate::session;

@@ -2,12 +2,12 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use crate::board::RefreshDriver;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Story, StoryState};
-use crate::board::orchestrator::SyncOrchestrator;
-use crate::board::store::BoardStore;
 use crate::bridge::tools_stories::handle_edit_story;
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Story, StoryState};
+use crate::product_management::board::orchestrator::SyncOrchestrator;
+use crate::product_management::board::store::BoardStore;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -110,15 +110,15 @@ async fn edit_story_with_both_title_and_body_updates_both() {
 
 #[tokio::test]
 async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
-    use crate::board::BoardEvent;
-    use crate::board::domain::Acceptor;
-    use crate::board::events::EventMeta;
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::domain::Acceptor;
+    use crate::product_management::board::events::EventMeta;
 
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let meta = EventMeta {
         actor: "pm".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
-        peer_id: crate::board::PeerId::local(),
+        peer_id: crate::product_management::board::PeerId::local(),
     };
     refresh
         .mutate_sync(BoardEvent::TagAdded {

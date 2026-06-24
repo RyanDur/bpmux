@@ -6,8 +6,8 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use serde_json::Value;
 
-use crate::board::RefreshDriver;
 use crate::bridge;
+use crate::product_management::board::RefreshDriver;
 use crate::server::TestRefreshHandle;
 use crate::session;
 
@@ -156,7 +156,7 @@ pub async fn post_rpc_tool(
     let declared_target_state = if tool == "move_story" {
         args.get("target_state")
             .and_then(|v| v.as_str())
-            .and_then(crate::board::domain::StoryState::parse)
+            .and_then(crate::product_management::board::domain::StoryState::parse)
             .map(|s| s.as_str())
     } else {
         None

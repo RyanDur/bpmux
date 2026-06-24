@@ -3,13 +3,14 @@ use super::helpers::{compose_story_body, require_nonempty_string, role_from_name
 pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let title = args
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
-    let story_type = crate::board::domain::story_type_from_labels_or_title(&[], title);
+    let story_type =
+        crate::product_management::board::domain::story_type_from_labels_or_title(&[], title);
     validate_actor_role_can_create(agent_name, story_type)?;
     let user_job = require_nonempty_string(
         args,
@@ -33,7 +34,7 @@ pub(crate) async fn handle_create_story(
         acceptance_test_path,
         author_body,
     );
-    if story_type != crate::board::domain::StoryType::Chore {
+    if story_type != crate::product_management::board::domain::StoryType::Chore {
         crate::bridge::atp_substantive_gate::verify_atp_pre_filing(
             &composed_body,
             acceptance_test_path,
@@ -75,7 +76,7 @@ pub(crate) async fn handle_create_story(
 
 fn validate_actor_role_can_create(
     agent_name: &str,
-    story_type: crate::board::domain::StoryType,
+    story_type: crate::product_management::board::domain::StoryType,
 ) -> Result<(), String> {
     let workflow = crate::workflow::current_workflow();
     let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
@@ -87,7 +88,7 @@ fn validate_actor_role_can_create(
     {
         return Ok(());
     }
-    let is_chore = story_type == crate::board::domain::StoryType::Chore;
+    let is_chore = story_type == crate::product_management::board::domain::StoryType::Chore;
     if actor_role != pm && !(actor_role == dev && is_chore) {
         return Err(
             "create_story is pm-lane (dev may author [Chore]-class stories per chore-ownership \
@@ -100,7 +101,7 @@ fn validate_actor_role_can_create(
 }
 
 fn validate_parent_epic(
-    r: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    r: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     parent_epic: Option<u64>,
 ) -> Result<(), String> {
     let Some(epic_number) = parent_epic else {
@@ -111,7 +112,7 @@ fn validate_parent_epic(
             "epic #{epic_number} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
         )
     })?;
-    if parent.story_type != crate::board::domain::StoryType::Epic {
+    if parent.story_type != crate::product_management::board::domain::StoryType::Epic {
         return Err(format!(
             "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
             parent.story_type
@@ -121,11 +122,11 @@ fn validate_parent_epic(
 }
 
 async fn create_and_broadcast_story_events(
-    r: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    r: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     agent_name: &str,
     title: &str,
     composed_body: String,
-    story_type: crate::board::domain::StoryType,
+    story_type: crate::product_management::board::domain::StoryType,
     parent_epic: Option<u64>,
     acceptor_label: Option<&'static str>,
 ) -> Result<u64, String> {
@@ -133,22 +134,22 @@ async fn create_and_broadcast_story_events(
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
-    let meta = crate::board::events::EventMeta {
+    let meta = crate::product_management::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::board::PeerId::local(),
+        peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::board::BoardEvent::StoryCreated {
+    r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
         meta: meta.clone(),
         number,
         title: title.to_string(),
         body: composed_body,
-        initial_state: crate::board::domain::StoryState::Icebox,
+        initial_state: crate::product_management::board::domain::StoryState::Icebox,
         story_type,
     })
     .map_err(|e| format!("#{number} created but enqueue failed: {e}"))?;
     if let Some(label) = acceptor_label {
-        r.mutate_sync(crate::board::BoardEvent::TagAdded {
+        r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
             meta: meta.clone(),
             number,
             label: label.to_string(),
@@ -156,11 +157,13 @@ async fn create_and_broadcast_story_events(
         .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
     }
     if let Some(epic_number) = parent_epic {
-        r.mutate_sync(crate::board::BoardEvent::ParentEpicSet {
-            meta,
-            number,
-            epic_number,
-        })
+        r.mutate_sync(
+            crate::product_management::board::BoardEvent::ParentEpicSet {
+                meta,
+                number,
+                epic_number,
+            },
+        )
         .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
     }
     Ok(number)

@@ -3,7 +3,7 @@ use super::helpers::{ensure_story_in_canonical_store, require_purpose, role_from
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -39,23 +39,25 @@ pub(crate) async fn handle_add_story_to_iteration(
     let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, story_number).await?;
     let parent = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if parent.story_type != crate::board::domain::StoryType::Iteration {
+    if parent.story_type != crate::product_management::board::domain::StoryType::Iteration {
         return Err(format!(
             "story #{iteration_number} is not an Iteration (story_type={:?}); only Iteration stories can carry iteration-members",
             parent.story_type
         ));
     }
-    let meta = crate::board::events::EventMeta {
+    let meta = crate::product_management::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::board::PeerId::local(),
+        peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::board::BoardEvent::IterationMembershipSet {
-        meta,
-        number: story_number,
-        iteration_number,
-        position,
-    })
+    r.mutate_sync(
+        crate::product_management::board::BoardEvent::IterationMembershipSet {
+            meta,
+            number: story_number,
+            iteration_number,
+            position,
+        },
+    )
     .map_err(|e| format!("#{story_number} iteration-membership enqueue failed: {e}"))?;
     Ok(format!(
         "#{story_number} added to iteration #{iteration_number} at position {position}"
@@ -65,7 +67,7 @@ pub(crate) async fn handle_add_story_to_iteration(
 pub(crate) async fn handle_map_iteration_to_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "map an iteration to an outcome")?;
     let outcome_number = args
@@ -82,30 +84,32 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .ok_or("missing 'position' argument")? as u32;
     let r = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if iteration.story_type != crate::board::domain::StoryType::Iteration {
+    if iteration.story_type != crate::product_management::board::domain::StoryType::Iteration {
         return Err(format!(
             "story #{iteration_number} is not an Iteration (story_type={:?}); only iterations build outcomes",
             iteration.story_type
         ));
     }
     let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    if outcome.story_type != crate::board::domain::StoryType::Outcome {
+    if outcome.story_type != crate::product_management::board::domain::StoryType::Outcome {
         return Err(format!(
             "story #{outcome_number} is not an Outcome (story_type={:?}); iterations map only to outcomes",
             outcome.story_type
         ));
     }
-    let meta = crate::board::events::EventMeta {
+    let meta = crate::product_management::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::board::PeerId::local(),
+        peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::board::BoardEvent::OutcomeMembershipSet {
-        meta,
-        number: iteration_number,
-        outcome_number,
-        position,
-    })
+    r.mutate_sync(
+        crate::product_management::board::BoardEvent::OutcomeMembershipSet {
+            meta,
+            number: iteration_number,
+            outcome_number,
+            position,
+        },
+    )
     .map_err(|e| format!("#{iteration_number} outcome-membership enqueue failed: {e}"))?;
     Ok(format!(
         "iteration #{iteration_number} maps to outcome #{outcome_number} at position {position}"

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use crate::board::domain::{
+use crate::product_management::board::domain::{
     Gate, GateComment, StoryState, StoryType, derive_iteration_member_section,
     most_recent_backward_transition, replay_transitions, substitute_member_stories_section,
 };
-use crate::board::iteration_label::members_of_iteration;
-use crate::board::{BoardStore, RefreshDriver};
+use crate::product_management::board::iteration_label::members_of_iteration;
+use crate::product_management::board::{BoardStore, RefreshDriver};
 
 use super::rework_context::enrich_body;
 

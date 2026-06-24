@@ -2,20 +2,20 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::board::domain::StoryType;
-use crate::board::domain::story_type_from_labels_or_title;
+use crate::product_management::board::domain::StoryType;
+use crate::product_management::board::domain::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod verdict_substrate_integration_1407 {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState};
     use crate::session::Session;
     use crate::workflow::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};

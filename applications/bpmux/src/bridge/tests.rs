@@ -372,11 +372,11 @@ mod ingest_poll_loop_tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
 
-    use crate::board::RefreshDriver;
-    use crate::board::events::BoardEvent;
-    use crate::board::orchestrator::{BoxedFuture, SyncStatus};
-    use crate::board::sync::SyncError;
     use crate::bridge::run_ingest_poll_loop;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::events::BoardEvent;
+    use crate::product_management::board::orchestrator::{BoxedFuture, SyncStatus};
+    use crate::product_management::board::sync::SyncError;
 
     struct CountingDriver {
         refresh_all: AtomicUsize,
@@ -420,7 +420,8 @@ mod ingest_poll_loop_tests {
         fn refresh_story(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Option<crate::board::Story>, SyncError>> {
+        ) -> BoxedFuture<'_, Result<Option<crate::product_management::board::Story>, SyncError>>
+        {
             Box::pin(async { Ok(None) })
         }
         fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>> {
@@ -449,14 +450,20 @@ mod ingest_poll_loop_tests {
         }
         fn drain_one_by_id(
             &self,
-            _id: crate::board::MutationId,
-        ) -> BoxedFuture<'_, crate::board::DrainOneOutcome> {
-            Box::pin(async { crate::board::DrainOneOutcome::NotFound })
+            _id: crate::product_management::board::MutationId,
+        ) -> BoxedFuture<'_, crate::product_management::board::DrainOneOutcome> {
+            Box::pin(async { crate::product_management::board::DrainOneOutcome::NotFound })
         }
-        fn apply_server_rollback(&self, _story: crate::board::Story) -> BoxedFuture<'_, ()> {
+        fn apply_server_rollback(
+            &self,
+            _story: crate::product_management::board::Story,
+        ) -> BoxedFuture<'_, ()> {
             Box::pin(async {})
         }
-        fn snapshot_pending_for_mutation(&self, _id: crate::board::MutationId) -> Option<u64> {
+        fn snapshot_pending_for_mutation(
+            &self,
+            _id: crate::product_management::board::MutationId,
+        ) -> Option<u64> {
             None
         }
         fn issue_lock(
@@ -488,13 +495,15 @@ mod ingest_poll_loop_tests {
         fn fetch_free_comments(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<crate::board::FreeComment>, SyncError>> {
+        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::board::FreeComment>, SyncError>>
+        {
             Box::pin(async { Ok(Vec::new()) })
         }
         fn fetch_gate_comments(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<crate::board::GateComment>, SyncError>> {
+        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::board::GateComment>, SyncError>>
+        {
             Box::pin(async { Ok(Vec::new()) })
         }
         fn create_story(
@@ -505,14 +514,14 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, Result<u64, SyncError>> {
             Box::pin(async { Ok(0) })
         }
-        fn story(&self, _number: u64) -> Option<crate::board::Story> {
+        fn story(&self, _number: u64) -> Option<crate::product_management::board::Story> {
             None
         }
-        fn all_stories(&self) -> Vec<crate::board::Story> {
+        fn all_stories(&self) -> Vec<crate::product_management::board::Story> {
             Vec::new()
         }
-        fn store(&self) -> Arc<crate::board::BoardStore> {
-            Arc::new(crate::board::BoardStore::new())
+        fn store(&self) -> Arc<crate::product_management::board::BoardStore> {
+            Arc::new(crate::product_management::board::BoardStore::new())
         }
         fn update_body(
             &self,

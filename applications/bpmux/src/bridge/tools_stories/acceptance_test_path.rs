@@ -57,10 +57,11 @@ fn is_acceptable_acceptance_test_path(candidate: &str) -> bool {
         && OPS_EXTS.iter().any(|ext| candidate.ends_with(ext))
 }
 
-fn user_facing_story_type(t: crate::board::domain::StoryType) -> bool {
+fn user_facing_story_type(t: crate::product_management::board::domain::StoryType) -> bool {
     matches!(
         t,
-        crate::board::domain::StoryType::Feature | crate::board::domain::StoryType::Bug
+        crate::product_management::board::domain::StoryType::Feature
+            | crate::product_management::board::domain::StoryType::Bug
     )
 }
 
@@ -123,7 +124,7 @@ fn walk_for_git_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
 pub(crate) fn validate_acceptance_test_path_at_pickup(
     args: &serde_json::Map<String, serde_json::Value>,
     number: u64,
-    refresh: &dyn crate::board::RefreshDriver,
+    refresh: &dyn crate::product_management::board::RefreshDriver,
 ) -> Result<(), String> {
     let Some(story) = refresh.story(number) else {
         return Ok(());
@@ -144,7 +145,7 @@ pub(crate) fn validate_acceptance_test_path_at_pickup(
 
 pub(crate) fn validate_acceptance_test_path_at_deliver(
     number: u64,
-    refresh: &dyn crate::board::RefreshDriver,
+    refresh: &dyn crate::product_management::board::RefreshDriver,
 ) -> Result<(), String> {
     let Some(story) = refresh.story(number) else {
         return Ok(());

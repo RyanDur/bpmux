@@ -1,12 +1,12 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use crate::board::RefreshDriver;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Story, StoryState, StoryType};
-use crate::board::orchestrator::SyncOrchestrator;
-use crate::board::store::BoardStore;
 use crate::bridge::tools_stories::handle_retire_outcome;
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Story, StoryState, StoryType};
+use crate::product_management::board::orchestrator::SyncOrchestrator;
+use crate::product_management::board::store::BoardStore;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -21,7 +21,8 @@ fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Sto
     );
     s.story_type = story_type;
     s.raw_labels = labels.iter().map(ToString::to_string).collect();
-    s.horizon = crate::board::adapters::github::horizon_from_labels(&s.raw_labels);
+    s.horizon =
+        crate::product_management::board::adapters::github::horizon_from_labels(&s.raw_labels);
     s
 }
 
@@ -56,11 +57,14 @@ fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
 
 fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
-    crate::board::roadmap_view::derive_roadmap_view(&refresh.all_stories(), workflow)
-        .into_iter()
-        .flat_map(|b| b.outcomes)
-        .map(|o| o.number)
-        .collect()
+    crate::product_management::board::roadmap_view::derive_roadmap_view(
+        &refresh.all_stories(),
+        workflow,
+    )
+    .into_iter()
+    .flat_map(|b| b.outcomes)
+    .map(|o| o.number)
+    .collect()
 }
 
 #[tokio::test]

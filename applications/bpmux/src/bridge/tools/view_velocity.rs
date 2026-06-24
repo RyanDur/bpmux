@@ -22,7 +22,7 @@ pub(in crate::bridge) async fn fetch_messages_via_http(
 pub(in crate::bridge) async fn handle_view_velocity<F, Fut>(
     fetch_messages: F,
     ws_tx: &Mutex<Option<WsSink>>,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String>
 where
     F: FnOnce() -> Fut,
@@ -48,9 +48,10 @@ where
         }
     }
 
-    let metrics = crate::board::velocity::compute(&messages, chrono::Utc::now(), |n| {
-        feature_numbers.contains(&n)
-    });
+    let metrics =
+        crate::product_management::board::velocity::compute(&messages, chrono::Utc::now(), |n| {
+            feature_numbers.contains(&n)
+        });
 
     let marker_msg = crate::transport::protocol::ClientMessage::Send {
         text: VIEW_VELOCITY_MARKER.to_string(),
@@ -73,11 +74,14 @@ where
 
 pub(in crate::bridge) fn is_feature_for_velocity(
     n: u64,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> bool {
-    refresh
-        .and_then(|r| r.story(n))
-        .is_some_and(|s| matches!(s.story_type, crate::board::domain::StoryType::Feature))
+    refresh.and_then(|r| r.story(n)).is_some_and(|s| {
+        matches!(
+            s.story_type,
+            crate::product_management::board::domain::StoryType::Feature
+        )
+    })
 }
 
 #[cfg(test)]
@@ -85,11 +89,11 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
 
     use super::*;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

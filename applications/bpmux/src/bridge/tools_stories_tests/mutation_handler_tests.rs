@@ -2,18 +2,18 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::board::domain::StoryType;
-use crate::board::domain::story_type_from_labels_or_title;
+use crate::product_management::board::domain::StoryType;
+use crate::product_management::board::domain::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
 async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
-    use crate::board::BoardEvent;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -60,12 +60,12 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
 
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_added_event() {
-    use crate::board::BoardEvent;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, Tag};
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, Tag};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -110,12 +110,12 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
 
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_removed_event() {
-    use crate::board::BoardEvent;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -175,12 +175,12 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 
 #[tokio::test]
 async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
-    use crate::board::BoardEvent;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Gate, Story, StoryState};
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Gate, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -262,12 +262,12 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
 
 #[tokio::test]
 async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events() {
-    use crate::board::BoardEvent;
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Gate, Story, StoryState};
+    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Gate, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

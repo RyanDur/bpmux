@@ -1,8 +1,8 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
-    use crate::board::label_codec::LabelCodec;
-    crate::board::adapters::gh_label_codec::GhLabelCodec
+    use crate::product_management::board::label_codec::LabelCodec;
+    crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .decode_iteration(label)
         .is_some()
 }
@@ -26,7 +26,7 @@ pub(crate) fn retired_iteration_label_axis_error(label: &str) -> String {
 pub(crate) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "label")?;
     let number = args
@@ -46,14 +46,14 @@ pub(crate) async fn handle_label_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, number).await?;
-        let meta = crate::board::events::EventMeta {
+        let meta = crate::product_management::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::board::PeerId::local(),
+            peer_id: crate::product_management::board::PeerId::local(),
         };
         let (event, ok_msg) = match operation {
             "add" => (
-                crate::board::BoardEvent::TagAdded {
+                crate::product_management::board::BoardEvent::TagAdded {
                     meta,
                     number,
                     label: label.to_string(),
@@ -61,7 +61,7 @@ pub(crate) async fn handle_label_story(
                 format!("#{number} labeled '{label}'"),
             ),
             "remove" => (
-                crate::board::BoardEvent::TagRemoved {
+                crate::product_management::board::BoardEvent::TagRemoved {
                     meta,
                     number,
                     label: label.to_string(),
@@ -90,7 +90,7 @@ pub(crate) async fn handle_label_story(
 pub(crate) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
         .get("number")
@@ -105,11 +105,11 @@ pub(crate) async fn handle_comment_on_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, number).await?;
-        let event = crate::board::BoardEvent::FreeCommentAppended {
-            meta: crate::board::events::EventMeta {
+        let event = crate::product_management::board::BoardEvent::FreeCommentAppended {
+            meta: crate::product_management::board::events::EventMeta {
                 actor: crate::transport::ws::short_name(agent_name).to_string(),
                 ts: chrono::Utc::now(),
-                peer_id: crate::board::PeerId::local(),
+                peer_id: crate::product_management::board::PeerId::local(),
             },
             number,
             body: body.to_string(),
@@ -127,7 +127,7 @@ pub(crate) async fn handle_comment_on_story(
 pub(crate) async fn handle_edit_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "edit story")?;
     let number = args
@@ -154,7 +154,7 @@ pub(crate) async fn handle_edit_story(
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
     if let Some(b) = body {
         let story = ensure_story_in_canonical_store(r, number).await?;
-        if story.story_type != crate::board::domain::StoryType::Chore {
+        if story.story_type != crate::product_management::board::domain::StoryType::Chore {
             crate::bridge::atp_substantive_gate::verify_atp_pre_filing(b, None)
                 .map_err(|e| e.as_json_string())?;
         }
@@ -174,10 +174,10 @@ pub(crate) async fn handle_edit_story(
     }
     if let Some(acceptor) = acceptor {
         ensure_story_in_canonical_store(r, number).await?;
-        let meta = crate::board::events::EventMeta {
+        let meta = crate::product_management::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::board::PeerId::local(),
+            peer_id: crate::product_management::board::PeerId::local(),
         };
         let current_labels = r.story(number).map(|s| s.raw_labels).unwrap_or_default();
         for event in

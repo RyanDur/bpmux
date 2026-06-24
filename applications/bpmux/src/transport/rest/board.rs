@@ -1,33 +1,38 @@
 use std::sync::Arc;
 
 pub(crate) fn ordered_board_stories(
-    refresh: &Arc<dyn crate::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     let all = refresh.all_stories();
-    let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
+    let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
     let workflow = crate::workflow::current_workflow();
     let stories: Vec<serde_json::Value> = all
         .iter()
         .map(|s| {
-            let mut json = crate::board::adapters::json::story_to_board_json(&codec, s);
-            if s.story_type == crate::board::domain::StoryType::Iteration
+            let mut json =
+                crate::product_management::board::adapters::json::story_to_board_json(&codec, s);
+            if s.story_type == crate::product_management::board::domain::StoryType::Iteration
                 && let serde_json::Value::Object(map) = &mut json
             {
-                let members: Vec<&crate::board::domain::Story> = all
+                let members: Vec<&crate::product_management::board::domain::Story> = all
                     .iter()
                     .filter(|m| m.iteration_membership.map(|(it, _)| it) == Some(s.number))
                     .collect();
                 let readiness =
-                    crate::board::iteration_readiness::iteration_readiness(s, &members, workflow);
+                    crate::product_management::board::iteration_readiness::iteration_readiness(
+                        s, &members, workflow,
+                    );
                 if let Ok(value) = serde_json::to_value(readiness) {
                     map.insert("readiness".to_string(), value);
                 }
             }
-            if s.story_type == crate::board::domain::StoryType::Outcome
+            if s.story_type == crate::product_management::board::domain::StoryType::Outcome
                 && let serde_json::Value::Object(map) = &mut json
             {
                 let rolled =
-                    crate::board::iteration_readiness::outcome_readiness(s, &all, workflow);
+                    crate::product_management::board::iteration_readiness::outcome_readiness(
+                        s, &all, workflow,
+                    );
                 if let Ok(value) = serde_json::to_value(rolled) {
                     map.insert("outcome_readiness".to_string(), value);
                 }
@@ -35,17 +40,17 @@ pub(crate) fn ordered_board_stories(
             json
         })
         .collect();
-    crate::board::ready_order_label::sort_board_ready_by_membership(stories)
+    crate::product_management::board::ready_order_label::sort_board_ready_by_membership(stories)
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::ordered_board_stories;
-    use crate::board::RefreshDriver;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
-    use crate::board::{BoardStore, SyncOrchestrator};
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::{BoardStore, SyncOrchestrator};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

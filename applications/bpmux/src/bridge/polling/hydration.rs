@@ -2,8 +2,11 @@ use std::sync::Arc;
 
 const HYDRATION_MAX_PER_TICK: usize = 3;
 
-pub(crate) fn select_stories_to_hydrate(stories: &[crate::board::Story], limit: usize) -> Vec<u64> {
-    use crate::board::domain::StoryState;
+pub(crate) fn select_stories_to_hydrate(
+    stories: &[crate::product_management::board::Story],
+    limit: usize,
+) -> Vec<u64> {
+    use crate::product_management::board::domain::StoryState;
     stories
         .iter()
         .filter(|s| {
@@ -21,10 +24,10 @@ pub(crate) fn select_stories_to_hydrate(stories: &[crate::board::Story], limit: 
 }
 
 pub(crate) fn select_stories_to_revalidate(
-    stories: &[crate::board::Story],
+    stories: &[crate::product_management::board::Story],
     limit: usize,
 ) -> Vec<(u64, Option<String>)> {
-    use crate::board::domain::StoryState;
+    use crate::product_management::board::domain::StoryState;
     stories
         .iter()
         .filter(|s| {
@@ -42,7 +45,7 @@ pub(crate) fn select_stories_to_revalidate(
 }
 
 pub async fn run_hydration_loop_cancellable(
-    refresh: Arc<dyn crate::board::RefreshDriver>,
+    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
     interval: std::time::Duration,
     observer: crate::github::RateLimitObserver,
     ct: tokio_util::sync::CancellationToken,

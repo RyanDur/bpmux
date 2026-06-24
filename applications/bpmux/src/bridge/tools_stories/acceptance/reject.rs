@@ -6,7 +6,7 @@ use crate::bridge::tools_stories::helpers::{
 pub(crate) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -52,8 +52,8 @@ pub(crate) async fn handle_reject_story(
         crate::workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
     }
-    let target_state =
-        crate::board::domain::StoryState::parse(&transition.to).ok_or_else(|| {
+    let target_state = crate::product_management::board::domain::StoryState::parse(&transition.to)
+        .ok_or_else(|| {
             format!(
                 "workflow.toml reject.to '{}' is not a known state",
                 transition.to
@@ -65,48 +65,55 @@ pub(crate) async fn handle_reject_story(
 }
 
 pub(crate) async fn reject_via_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     number: u64,
     actor: String,
     reason: String,
-    target_state: crate::board::domain::StoryState,
+    target_state: crate::product_management::board::domain::StoryState,
 ) -> Result<(), String> {
     let prior = ensure_story_in_canonical_store(refresh, number).await?;
-    let was_accepted = prior.is_closed || prior.state == crate::board::domain::StoryState::Accepted;
-    let meta = crate::board::events::EventMeta {
+    let was_accepted = prior.is_closed
+        || prior.state == crate::product_management::board::domain::StoryState::Accepted;
+    let meta = crate::product_management::board::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),
-        peer_id: crate::board::PeerId::local(),
+        peer_id: crate::product_management::board::PeerId::local(),
     };
     let keep_label = match target_state {
-        crate::board::domain::StoryState::Ready => LABEL_READY,
-        crate::board::domain::StoryState::InProgress => LABEL_IN_PROGRESS,
-        crate::board::domain::StoryState::Delivered => LABEL_DELIVERED,
+        crate::product_management::board::domain::StoryState::Ready => LABEL_READY,
+        crate::product_management::board::domain::StoryState::InProgress => LABEL_IN_PROGRESS,
+        crate::product_management::board::domain::StoryState::Delivered => LABEL_DELIVERED,
         _ => LABEL_READY,
     };
     reap_workflow_labels(refresh.as_ref(), number, &meta, keep_label)?;
     if was_accepted {
         refresh
-            .mutate_sync(crate::board::BoardEvent::StoryReopened {
-                meta: meta.clone(),
-                number,
-            })
+            .mutate_sync(
+                crate::product_management::board::BoardEvent::StoryReopened {
+                    meta: meta.clone(),
+                    number,
+                },
+            )
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
     }
     refresh
-        .mutate_sync(crate::board::BoardEvent::GateCommentAppended {
-            meta: meta.clone(),
-            number,
-            gate: crate::board::domain::Gate::Rejected,
-            payload: Some(reason),
-        })
+        .mutate_sync(
+            crate::product_management::board::BoardEvent::GateCommentAppended {
+                meta: meta.clone(),
+                number,
+                gate: crate::product_management::board::domain::Gate::Rejected,
+                payload: Some(reason),
+            },
+        )
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
     refresh
-        .mutate_sync(crate::board::BoardEvent::StateTransitioned {
-            meta,
-            number,
-            new_state: target_state,
-        })
+        .mutate_sync(
+            crate::product_management::board::BoardEvent::StateTransitioned {
+                meta,
+                number,
+                new_state: target_state,
+            },
+        )
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
     refresh
         .drain_pending()

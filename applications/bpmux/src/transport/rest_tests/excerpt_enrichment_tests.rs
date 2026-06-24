@@ -198,7 +198,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     session.broadcast(&target_msg).expect("seed target message");
 
     let orch = std::sync::Arc::new(crate::orchestrator::Orchestrator::<
-        crate::board::adapters::github::GitHubSourceAdapter,
+        crate::product_management::board::adapters::github::GitHubSourceAdapter,
     >::new(
         session.clone(),
         None,
@@ -264,7 +264,7 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
     ));
 
     let orch = std::sync::Arc::new(crate::orchestrator::Orchestrator::<
-        crate::board::adapters::github::GitHubSourceAdapter,
+        crate::product_management::board::adapters::github::GitHubSourceAdapter,
     >::new(
         session.clone(),
         None,

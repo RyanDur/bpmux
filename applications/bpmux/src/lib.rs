@@ -6,7 +6,6 @@ mod auth_tests;
 pub mod awareness;
 #[cfg(test)]
 mod awareness_tests;
-pub mod board;
 pub mod bookmark;
 pub mod bridge;
 pub mod briefing;

@@ -23,7 +23,7 @@ pub async fn post_terminal_spawn(
         Extension<
             Arc<
                 crate::orchestrator::Orchestrator<
-                    crate::board::adapters::github::GitHubSourceAdapter,
+                    crate::product_management::board::adapters::github::GitHubSourceAdapter,
                 >,
             >,
         >,

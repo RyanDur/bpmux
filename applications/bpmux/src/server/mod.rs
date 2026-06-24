@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::board::RefreshDriver;
+use crate::product_management::board::RefreshDriver;
 use crate::session;
 use crate::transport;
 
@@ -24,7 +24,8 @@ pub async fn run_server(
     let auth_state = build_auth_state()?;
 
     let tracker: transport::rest::TrackerHandle =
-        crate::board::adapters::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
+        crate::product_management::board::adapters::github::GitHubSourceAdapter::from_env()
+            .map(std::sync::Arc::new);
 
     let (action_tx, action_rx) =
         tokio::sync::mpsc::unbounded_channel::<crate::orchestrator::OrchestratorAction>();

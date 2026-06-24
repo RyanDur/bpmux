@@ -4,7 +4,8 @@ use serde::Deserialize;
 
 use crate::session;
 
-pub type TrackerHandle = Option<Arc<crate::board::adapters::github::GitHubSourceAdapter>>;
+pub type TrackerHandle =
+    Option<Arc<crate::product_management::board::adapters::github::GitHubSourceAdapter>>;
 
 #[derive(Deserialize)]
 pub struct CommentPayload {
@@ -50,7 +51,7 @@ pub(crate) fn board_snapshot_message(stories: serde_json::Value) -> crate::messa
 
 pub(crate) fn broadcast_board_snapshot(
     session: &session::Session,
-    refresh: &Arc<dyn crate::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) {
     let stories = serde_json::Value::Array(super::board::ordered_board_stories(refresh));
     let delta = board_snapshot_message(stories);
@@ -63,9 +64,9 @@ mod tests {
 
     use std::sync::Arc;
 
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
     use crate::message::StateDeltaPayload;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
     use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 
     #[tokio::test]

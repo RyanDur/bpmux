@@ -22,9 +22,9 @@ pub(crate) const ALL_STATE_LABELS: &[&str] = &[
 pub(crate) const KEEP_NONE: &str = "";
 
 pub(crate) async fn ensure_story_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     number: u64,
-) -> Result<crate::board::Story, String> {
+) -> Result<crate::product_management::board::Story, String> {
     if let Some(story) = refresh.story(number) {
         return Ok(story);
     }
@@ -59,9 +59,9 @@ pub(crate) fn stale_workflow_labels<'a>(current: &'a [String], keep: &str) -> Ve
 }
 
 pub(crate) fn reap_workflow_labels(
-    refresh: &dyn crate::board::RefreshDriver,
+    refresh: &dyn crate::product_management::board::RefreshDriver,
     number: u64,
-    meta: &crate::board::events::EventMeta,
+    meta: &crate::product_management::board::events::EventMeta,
     keep: &str,
 ) -> Result<(), String> {
     let current = refresh
@@ -70,7 +70,7 @@ pub(crate) fn reap_workflow_labels(
         .unwrap_or_default();
     for stale in stale_workflow_labels(&current, keep) {
         refresh
-            .mutate_sync(crate::board::BoardEvent::TagRemoved {
+            .mutate_sync(crate::product_management::board::BoardEvent::TagRemoved {
                 meta: meta.clone(),
                 number,
                 label: stale.to_string(),

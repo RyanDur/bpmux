@@ -13,13 +13,13 @@ use super::sqlite_reactions as reactions;
 use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
 use super::{Storage, UserRecord};
-use crate::board::orchestrator::QueuedEvent;
-use crate::board::store::PersistError;
 use crate::bookmark::Bookmark;
 use crate::comprehension::search::{self, SearchFilters, SearchResult};
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
+use crate::product_management::board::orchestrator::QueuedEvent;
+use crate::product_management::board::store::PersistError;
 use crate::reactions::ReactionsStore;
 
 pub struct SqliteStorage {

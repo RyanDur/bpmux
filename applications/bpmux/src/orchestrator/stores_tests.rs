@@ -12,8 +12,8 @@ use super::stores::{
     AggregatedReaction, Presence, ReactionsAction, ReactionsBroadcastListener, RosterAction,
     RosterBroadcastListener, RosterMember, RosterRole,
 };
-use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::message::Message;
+use crate::product_management::board::adapters::github::GitHubSourceAdapter;
 use crate::session::Session;
 use crate::transport::ci_state_store::CiStateStore;
 

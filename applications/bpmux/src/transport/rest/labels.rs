@@ -46,12 +46,12 @@ pub async fn post_story_labels(
         );
     };
     for op in reorder_label_ops(&payload) {
-        let meta = crate::board::orchestrator::cache_fill_meta();
+        let meta = crate::product_management::board::orchestrator::cache_fill_meta();
         let (event, descriptor) = match op {
             LabelOp::Add(label) => {
                 let descriptor = format!("TagAdded {label} on #{number}");
                 (
-                    crate::board::BoardEvent::TagAdded {
+                    crate::product_management::board::BoardEvent::TagAdded {
                         meta,
                         number,
                         label,
@@ -62,7 +62,7 @@ pub async fn post_story_labels(
             LabelOp::Remove(label) => {
                 let descriptor = format!("TagRemoved {label} on #{number}");
                 (
-                    crate::board::BoardEvent::TagRemoved {
+                    crate::product_management::board::BoardEvent::TagRemoved {
                         meta,
                         number,
                         label,
@@ -91,9 +91,9 @@ pub async fn post_story_labels(
 #[cfg(test)]
 mod reorder_label_ops_tests {
     use super::*;
-    use crate::board::adapters::github::iteration_membership_from_labels;
-    use crate::board::domain::{Story, StoryState};
-    use crate::board::{BoardEvent, BoardStore};
+    use crate::product_management::board::adapters::github::iteration_membership_from_labels;
+    use crate::product_management::board::domain::{Story, StoryState};
+    use crate::product_management::board::{BoardEvent, BoardStore};
 
     fn membered_fixture(number: u64, label: &str) -> Story {
         let mut story = Story::new_minimal(
@@ -127,7 +127,7 @@ mod reorder_label_ops_tests {
         };
 
         for op in reorder_label_ops(&payload) {
-            let meta = crate::board::orchestrator::cache_fill_meta();
+            let meta = crate::product_management::board::orchestrator::cache_fill_meta();
             let event = match op {
                 LabelOp::Add(label) => BoardEvent::TagAdded {
                     meta,

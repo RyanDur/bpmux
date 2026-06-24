@@ -92,9 +92,9 @@ async fn reactions_listener_emits_typed_state_delta() {
     }
 }
 
-fn owner_parked_story(number: u64) -> crate::board::Story {
-    use crate::board::domain::{Acceptor, StoryState};
-    let mut story = crate::board::Story::new_minimal(
+fn owner_parked_story(number: u64) -> crate::product_management::board::Story {
+    use crate::product_management::board::domain::{Acceptor, StoryState};
+    let mut story = crate::product_management::board::Story::new_minimal(
         number,
         format!("story {number}"),
         StoryState::Delivered,
@@ -105,9 +105,13 @@ fn owner_parked_story(number: u64) -> crate::board::Story {
     story
 }
 
-fn ready_story(number: u64, iteration: u64, position: u32) -> crate::board::Story {
-    use crate::board::domain::StoryState;
-    let mut story = crate::board::Story::new_minimal(
+fn ready_story(
+    number: u64,
+    iteration: u64,
+    position: u32,
+) -> crate::product_management::board::Story {
+    use crate::product_management::board::domain::StoryState;
+    let mut story = crate::product_management::board::Story::new_minimal(
         number,
         format!("ready {number}"),
         StoryState::Ready,
@@ -121,13 +125,13 @@ fn ready_story(number: u64, iteration: u64, position: u32) -> crate::board::Stor
 fn state_transitioned(
     number: u64,
     actor: &str,
-    new_state: crate::board::StoryState,
-) -> crate::board::BoardEvent {
-    crate::board::BoardEvent::StateTransitioned {
-        meta: crate::board::events::EventMeta {
+    new_state: crate::product_management::board::StoryState,
+) -> crate::product_management::board::BoardEvent {
+    crate::product_management::board::BoardEvent::StateTransitioned {
+        meta: crate::product_management::board::events::EventMeta {
             actor: actor.to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::board::peer::PeerId::local(),
+            peer_id: crate::product_management::board::peer::PeerId::local(),
         },
         number,
         new_state,
@@ -159,7 +163,9 @@ fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMem
 
 async fn seed_dev_online(
     orch: &Arc<
-        crate::orchestrator::ci::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
+        crate::orchestrator::ci::Orchestrator<
+            crate::product_management::board::adapters::github::GitHubSourceAdapter,
+        >,
     >,
 ) {
     use crate::orchestrator::ci::OrchestratorAction;
@@ -178,8 +184,8 @@ async fn seed_dev_online(
 
 #[tokio::test]
 async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
-    use crate::board::BoardStore;
-    use crate::board::StoryState;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::StoryState;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
@@ -221,8 +227,8 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
 
 #[tokio::test]
 async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
-    use crate::board::BoardStore;
-    use crate::board::StoryState;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::StoryState;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);

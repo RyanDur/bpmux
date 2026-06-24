@@ -1,5 +1,5 @@
-use crate::board::Story;
-use crate::board::column::{ColumnBucket, column_for};
+use crate::product_management::board::Story;
+use crate::product_management::board::column::{ColumnBucket, column_for};
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
@@ -44,7 +44,7 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use crate::board::StoryState;
+    use crate::product_management::board::StoryState;
     use chrono::{TimeZone, Utc};
 
     fn story(num: u64, title: &str, state: StoryState) -> Story {

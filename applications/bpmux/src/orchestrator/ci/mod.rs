@@ -6,13 +6,13 @@ use std::time::Duration;
 use tokio::sync::Mutex as AsyncMutex;
 use tokio_util::sync::CancellationToken;
 
-use crate::board::{MutationId, RefreshDriver};
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::{CiEvent, CiState};
 use crate::github::RateLimitObserver;
 use crate::orchestrator::stores::{
     ReactionsBroadcastListener, ReactionsStore, RosterBroadcastListener, RosterStore,
 };
+use crate::product_management::board::{MutationId, RefreshDriver};
 use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 

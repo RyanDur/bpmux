@@ -32,8 +32,11 @@ const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3
 
 struct WsDeps {
     session: Arc<session::Session>,
-    orchestrator:
-        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    orchestrator: Arc<
+        crate::orchestrator::Orchestrator<
+            crate::product_management::board::adapters::github::GitHubSourceAdapter,
+        >,
+    >,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
     routing: Arc<crate::routing::RoutingStore>,
     tracker: crate::transport::rest::TrackerHandle,
@@ -44,7 +47,11 @@ pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(session): State<Arc<session::Session>>,
     axum::Extension(orchestrator): axum::Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+        Arc<
+            crate::orchestrator::Orchestrator<
+                crate::product_management::board::adapters::github::GitHubSourceAdapter,
+            >,
+        >,
     >,
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
     axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,

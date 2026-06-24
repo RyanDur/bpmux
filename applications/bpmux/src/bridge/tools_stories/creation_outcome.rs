@@ -3,7 +3,7 @@ use super::helpers::{require_nonempty_string, role_from_name};
 pub(crate) async fn handle_create_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let workflow = crate::workflow::current_workflow();
     let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
@@ -29,9 +29,9 @@ pub(crate) async fn handle_create_outcome(
         "horizon is required: one of now | next | later (sequence, not calendar).",
     )?;
     let horizon = match horizon_raw.to_ascii_lowercase().as_str() {
-        "now" => crate::board::domain::Horizon::Now,
-        "next" => crate::board::domain::Horizon::Next,
-        "later" => crate::board::domain::Horizon::Later,
+        "now" => crate::product_management::board::domain::Horizon::Now,
+        "next" => crate::product_management::board::domain::Horizon::Next,
+        "later" => crate::product_management::board::domain::Horizon::Later,
         other => {
             return Err(format!(
                 "invalid horizon '{other}': must be now, next, or later (sequence, not calendar)"
@@ -49,30 +49,31 @@ pub(crate) async fn handle_create_outcome(
         .create_story(title.clone(), body.clone(), vec!["outcome".to_string()])
         .await
         .map_err(|e| format!("create_outcome adapter call failed: {e}"))?;
-    let meta = crate::board::events::EventMeta {
+    let meta = crate::product_management::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::board::PeerId::local(),
+        peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::board::BoardEvent::StoryCreated {
+    r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
         meta: meta.clone(),
         number,
         title: title.clone(),
         body,
-        initial_state: crate::board::domain::StoryState::Icebox,
-        story_type: crate::board::domain::StoryType::Outcome,
+        initial_state: crate::product_management::board::domain::StoryState::Icebox,
+        story_type: crate::product_management::board::domain::StoryType::Outcome,
     })
     .map_err(|e| format!("#{number} outcome created but enqueue failed: {e}"))?;
-    r.mutate_sync(crate::board::BoardEvent::TagAdded {
+    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta: meta.clone(),
         number,
         label: "outcome".to_string(),
     })
     .map_err(|e| format!("#{number} outcome label enqueue failed: {e}"))?;
-    r.mutate_sync(crate::board::BoardEvent::TagAdded {
+    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
         number,
-        label: crate::board::adapters::gh_label_codec::GhLabelCodec.encode_horizon(horizon),
+        label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            .encode_horizon(horizon),
     })
     .map_err(|e| format!("#{number} outcome horizon label enqueue failed: {e}"))?;
     Ok(format!(

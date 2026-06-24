@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use chrono::Utc;
 
-use crate::board::RefreshDriver;
-use crate::board::domain::{Story, StoryState};
 use crate::message::{Message, MessageType};
 use crate::message::{StateDeltaPayload, StoryTransitionWire};
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::domain::{Story, StoryState};
 use crate::session;
 
 pub(crate) fn fire_view_backlog_marker(session: &Arc<session::Session>) {

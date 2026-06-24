@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::board::BoardStore;
-use crate::board::RefreshDriver;
-use crate::board::SyncOrchestrator;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Story, StoryState};
 use crate::bridge::dispatch::{dispatch_list_ready, dispatch_move_story};
+use crate::product_management::board::BoardStore;
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::SyncOrchestrator;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Story, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -27,7 +27,7 @@ fn current_iteration_story(number: u64) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    s.story_type = crate::board::domain::StoryType::Iteration;
+    s.story_type = crate::product_management::board::domain::StoryType::Iteration;
     s.is_current = true;
     s
 }

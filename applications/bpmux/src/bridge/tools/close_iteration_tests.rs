@@ -4,11 +4,11 @@
 #![allow(unsafe_code)]
 
 mod canonical_via_gh_1300 {
-    use crate::board::RefreshDriver;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
-    use crate::board::orchestrator::SyncOrchestrator;
-    use crate::board::store::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState, StoryType};
+    use crate::product_management::board::orchestrator::SyncOrchestrator;
+    use crate::product_management::board::store::BoardStore;
     use crate::transport::rest::{close_iteration_canonical, collect_ready_queue_blockers};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
@@ -179,8 +179,8 @@ mod canonical_via_gh_1300 {
         let member_promotion_touch = events.iter().any(|e| {
             matches!(
                 e,
-                crate::board::BoardEvent::TagAdded { number, .. }
-                    | crate::board::BoardEvent::StateTransitioned { number, .. }
+                crate::product_management::board::BoardEvent::TagAdded { number, .. }
+                    | crate::product_management::board::BoardEvent::StateTransitioned { number, .. }
                     if *number == 200
             )
         });
@@ -189,9 +189,10 @@ mod canonical_via_gh_1300 {
             "#1556: close promotes nothing — no member TagAdded/StateTransitioned: {events:?}"
         );
         assert!(
-            events
-                .iter()
-                .any(|e| matches!(e, crate::board::BoardEvent::StoryClosed { .. })),
+            events.iter().any(|e| matches!(
+                e,
+                crate::product_management::board::BoardEvent::StoryClosed { .. }
+            )),
             "StoryClosed still fires for the iteration-issue: {events:?}"
         );
     }

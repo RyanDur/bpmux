@@ -10,12 +10,17 @@ pub(crate) struct IterationCloseBlocker {
 }
 
 pub(crate) async fn collect_ready_queue_blockers(
-    refresh: &dyn crate::board::RefreshDriver,
+    refresh: &dyn crate::product_management::board::RefreshDriver,
 ) -> Vec<IterationCloseBlocker> {
     refresh
         .all_stories()
         .into_iter()
-        .filter(|s| matches!(s.state, crate::board::domain::StoryState::Ready) && !s.is_closed)
+        .filter(|s| {
+            matches!(
+                s.state,
+                crate::product_management::board::domain::StoryState::Ready
+            ) && !s.is_closed
+        })
         .map(|s| IterationCloseBlocker {
             number: s.number,
             title: s.title,

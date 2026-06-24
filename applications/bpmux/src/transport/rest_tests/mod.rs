@@ -164,14 +164,14 @@ pub(super) fn board_issue(number: u64, title: &str, state: &str, body: Option<&s
 
 pub(super) fn tracker_for(
     server: &MockServer,
-) -> crate::board::adapters::github::GitHubSourceAdapter {
+) -> crate::product_management::board::adapters::github::GitHubSourceAdapter {
     let inner = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
         "acme".to_string(),
         "bpmux".to_string(),
     )
     .expect("build tracker against mock");
-    crate::board::adapters::github::GitHubSourceAdapter::new(inner)
+    crate::product_management::board::adapters::github::GitHubSourceAdapter::new(inner)
 }
 
 pub(super) fn board_router(session: Arc<session::Session>, tracker: TrackerHandle) -> axum::Router {

@@ -1,8 +1,8 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
-use crate::board::RefreshDriver;
-use crate::board::domain::{StoryState, StoryType};
-use crate::board::events::EventMeta;
-use crate::board::{BoardEvent, PeerId};
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::domain::{StoryState, StoryType};
+use crate::product_management::board::events::EventMeta;
+use crate::product_management::board::{BoardEvent, PeerId};
 use std::sync::Arc;
 
 fn meta_for(agent_name: &str) -> EventMeta {
@@ -17,7 +17,7 @@ async fn member_of(
     r: &Arc<dyn RefreshDriver>,
     iteration_number: u64,
     story_number: u64,
-) -> Result<crate::board::Story, String> {
+) -> Result<crate::product_management::board::Story, String> {
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
     if iteration.story_type != StoryType::Iteration {
         return Err(format!(

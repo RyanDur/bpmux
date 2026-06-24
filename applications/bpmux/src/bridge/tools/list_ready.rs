@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::board::iteration_label::current_iteration_number;
-use crate::board::{BoardStore, StoryState};
+use crate::product_management::board::iteration_label::current_iteration_number;
+use crate::product_management::board::{BoardStore, StoryState};
 
 pub(in crate::bridge) async fn handle_list_ready(
     store: &Arc<BoardStore>,

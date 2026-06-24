@@ -40,13 +40,13 @@ impl AcceptorClass {
 pub(crate) fn acceptor_label_events(
     acceptor: AcceptorClass,
     current_labels: &[String],
-    meta: &crate::board::events::EventMeta,
+    meta: &crate::product_management::board::events::EventMeta,
     number: u64,
-) -> Vec<crate::board::BoardEvent> {
+) -> Vec<crate::product_management::board::BoardEvent> {
     let mut events = Vec::new();
     for stale in acceptor.stale_labels() {
         if current_labels.iter().any(|l| l == stale) {
-            events.push(crate::board::BoardEvent::TagRemoved {
+            events.push(crate::product_management::board::BoardEvent::TagRemoved {
                 meta: meta.clone(),
                 number,
                 label: stale.to_string(),
@@ -55,7 +55,7 @@ pub(crate) fn acceptor_label_events(
     }
     let keep = acceptor.label();
     if !current_labels.iter().any(|l| l == keep) {
-        events.push(crate::board::BoardEvent::TagAdded {
+        events.push(crate::product_management::board::BoardEvent::TagAdded {
             meta: meta.clone(),
             number,
             label: keep.to_string(),

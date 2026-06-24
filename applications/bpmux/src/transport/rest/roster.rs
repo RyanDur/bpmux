@@ -15,7 +15,11 @@ pub struct RosterEntry {
 
 pub async fn get_roster(
     Extension(orchestrator): Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+        Arc<
+            crate::orchestrator::Orchestrator<
+                crate::product_management::board::adapters::github::GitHubSourceAdapter,
+            >,
+        >,
     >,
 ) -> impl IntoResponse {
     let roster: Vec<RosterEntry> = orchestrator
@@ -40,7 +44,7 @@ pub async fn get_sync_status(
 ) -> impl IntoResponse {
     let status = match refresh {
         Some(r) => r.snapshot_status(),
-        None => crate::board::SyncStatus::default(),
+        None => crate::product_management::board::SyncStatus::default(),
     };
     (
         StatusCode::OK,

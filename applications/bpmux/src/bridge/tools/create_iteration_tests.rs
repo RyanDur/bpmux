@@ -3,12 +3,12 @@
 #![allow(clippy::panic)]
 #![allow(unsafe_code)]
 
-use crate::board::RefreshDriver;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Story, StoryState, StoryType};
-use crate::board::orchestrator::SyncOrchestrator;
-use crate::board::store::BoardStore;
 use crate::bridge::tools_stories::handle_create_iteration;
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Story, StoryState, StoryType};
+use crate::product_management::board::orchestrator::SyncOrchestrator;
+use crate::product_management::board::store::BoardStore;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -154,7 +154,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
         refetched.raw_labels
     );
     assert_eq!(
-        crate::board::domain::story_type_from_labels_or_title(
+        crate::product_management::board::domain::story_type_from_labels_or_title(
             &refetched.raw_labels,
             &refetched.title
         ),

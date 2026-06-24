@@ -1,14 +1,14 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use crate::board::RefreshDriver;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Story, StoryState, StoryType};
-use crate::board::orchestrator::SyncOrchestrator;
-use crate::board::store::BoardStore;
 use crate::bridge::tools_stories::{
     handle_edit_iteration_theme, handle_move_iteration_member, handle_remove_iteration_member,
 };
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Story, StoryState, StoryType};
+use crate::product_management::board::orchestrator::SyncOrchestrator;
+use crate::product_management::board::store::BoardStore;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;

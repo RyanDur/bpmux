@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::session;
 
 pub(super) fn test_mode_enabled() -> bool {
@@ -9,13 +9,16 @@ pub(super) fn test_mode_enabled() -> bool {
         .unwrap_or(false)
 }
 
-pub(super) fn race_window_barrier_from_env() -> Option<Arc<crate::board::RaceWindowBarrier>> {
+pub(super) fn race_window_barrier_from_env()
+-> Option<Arc<crate::product_management::board::RaceWindowBarrier>> {
     let raw = std::env::var("BPMUX_TEST_RACE_WINDOW_REQUESTS").ok()?;
     let target: usize = raw.trim().parse().ok()?;
     if target < 2 {
         return None;
     }
-    Some(Arc::new(crate::board::RaceWindowBarrier::new(target)))
+    Some(Arc::new(
+        crate::product_management::board::RaceWindowBarrier::new(target),
+    ))
 }
 
 pub(super) fn seed_ci_green_for_tests(store: &crate::transport::ci_state_store::CiStateStore) {
@@ -44,10 +47,12 @@ pub(super) async fn build_test_orchestrator(
     session: Arc<session::Session>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
-    race_window_barrier: Option<Arc<crate::board::RaceWindowBarrier>>,
+    race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
-    let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
+    let adapter = Arc::new(
+        crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
+    );
     let orch_concrete = match SyncOrchestrator::with_storage(
         store.clone(),
         adapter.clone(),
@@ -76,10 +81,10 @@ pub(super) async fn build_test_orchestrator(
 
 pub(super) fn build_prod_orchestrator(
     session: Arc<session::Session>,
-    adapter: Arc<crate::board::adapters::github::GitHubSourceAdapter>,
+    adapter: Arc<crate::product_management::board::adapters::github::GitHubSourceAdapter>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
-    race_window_barrier: Option<Arc<crate::board::RaceWindowBarrier>>,
+    race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let orch_concrete = match SyncOrchestrator::with_storage(

@@ -1,9 +1,9 @@
-use crate::board::BoardStore;
-use crate::board::RefreshDriver;
-use crate::board::SyncOrchestrator;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Story, StoryState};
 use crate::bridge::tools_stories::reorder_icebox_story_via_labels;
+use crate::product_management::board::BoardStore;
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::SyncOrchestrator;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Story, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 

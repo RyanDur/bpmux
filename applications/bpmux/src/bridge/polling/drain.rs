@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 pub(crate) async fn run_drain_loop(
-    refresh: Arc<dyn crate::board::RefreshDriver>,
+    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
     session: Arc<crate::session::Session>,
     interval: std::time::Duration,
 ) {
@@ -31,7 +31,7 @@ pub(crate) async fn run_drain_loop(
 
 pub(crate) fn broadcast_sync_status_heartbeat(
     session: &crate::session::Session,
-    snapshot: &crate::board::SyncStatus,
+    snapshot: &crate::product_management::board::SyncStatus,
 ) {
     let status = serde_json::to_value(snapshot).unwrap_or(serde_json::Value::Null);
     let msg = crate::message::Message {
@@ -47,9 +47,9 @@ pub(crate) fn broadcast_sync_status_heartbeat(
 
 pub(crate) fn broadcast_sync_status_transition(
     session: &crate::session::Session,
-    snapshot: &crate::board::SyncStatus,
+    snapshot: &crate::product_management::board::SyncStatus,
 ) {
-    if let Some(transition) = crate::board::sync_transition(snapshot) {
+    if let Some(transition) = crate::product_management::board::sync_transition(snapshot) {
         let delta = crate::message::Message {
             from: "bpmux".to_string(),
             text: String::new(),

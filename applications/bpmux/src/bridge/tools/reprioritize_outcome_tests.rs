@@ -1,12 +1,12 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use crate::board::RefreshDriver;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Horizon, Story, StoryState, StoryType};
-use crate::board::orchestrator::SyncOrchestrator;
-use crate::board::store::BoardStore;
 use crate::bridge::tools_stories::handle_reprioritize_outcome;
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Horizon, Story, StoryState, StoryType};
+use crate::product_management::board::orchestrator::SyncOrchestrator;
+use crate::product_management::board::store::BoardStore;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -21,8 +21,11 @@ fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Sto
     );
     s.story_type = story_type;
     s.raw_labels = labels.iter().map(ToString::to_string).collect();
-    s.horizon = crate::board::adapters::github::horizon_from_labels(&s.raw_labels);
-    s.horizon_order = crate::board::adapters::github::horizon_order_from_labels(&s.raw_labels);
+    s.horizon =
+        crate::product_management::board::adapters::github::horizon_from_labels(&s.raw_labels);
+    s.horizon_order = crate::product_management::board::adapters::github::horizon_order_from_labels(
+        &s.raw_labels,
+    );
     s
 }
 
@@ -40,11 +43,14 @@ fn args_full(outcome: u64, to: Option<&str>, position: Option<u32>) -> Map<Strin
 
 fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
-    crate::board::roadmap_view::derive_roadmap_view(&refresh.all_stories(), workflow)
-        .into_iter()
-        .find(|b| b.horizon == horizon)
-        .map(|b| b.outcomes.iter().map(|o| o.number).collect())
-        .unwrap_or_default()
+    crate::product_management::board::roadmap_view::derive_roadmap_view(
+        &refresh.all_stories(),
+        workflow,
+    )
+    .into_iter()
+    .find(|b| b.horizon == horizon)
+    .map(|b| b.outcomes.iter().map(|o| o.number).collect())
+    .unwrap_or_default()
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
@@ -96,7 +102,10 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
     )])
     .await;
     let workflow = crate::workflow::current_workflow();
-    let before = crate::board::roadmap_view::derive_roadmap_view(&refresh.all_stories(), workflow);
+    let before = crate::product_management::board::roadmap_view::derive_roadmap_view(
+        &refresh.all_stories(),
+        workflow,
+    );
     assert!(
         before
             .iter()
@@ -108,7 +117,10 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
         .await
         .expect("pm reprioritizes the outcome");
 
-    let after = crate::board::roadmap_view::derive_roadmap_view(&refresh.all_stories(), workflow);
+    let after = crate::product_management::board::roadmap_view::derive_roadmap_view(
+        &refresh.all_stories(),
+        workflow,
+    );
     assert!(
         after
             .iter()

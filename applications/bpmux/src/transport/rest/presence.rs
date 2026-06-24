@@ -27,7 +27,11 @@ pub async fn post_presence(
     headers: HeaderMap,
     Extension(routing): Extension<Arc<RoutingStore>>,
     Extension(orchestrator): Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+        Arc<
+            crate::orchestrator::Orchestrator<
+                crate::product_management::board::adapters::github::GitHubSourceAdapter,
+            >,
+        >,
     >,
     Json(payload): Json<PresenceRequest>,
 ) -> impl IntoResponse {

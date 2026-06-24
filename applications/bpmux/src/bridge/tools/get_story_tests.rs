@@ -5,9 +5,9 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::get_story::handle_get_story;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Gate, GateComment, Story, StoryState, StoryType};
-use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState, StoryType};
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 
 async fn seeded_orchestrator(
     mut stories: Vec<Story>,
@@ -672,13 +672,13 @@ async fn latest_reject_survives_an_iteration_move() {
         "pre-move: the rejected story surfaces its reject"
     );
 
-    let meta = crate::board::orchestrator::cache_fill_meta();
-    store.apply(&crate::board::BoardEvent::TagAdded {
+    let meta = crate::product_management::board::orchestrator::cache_fill_meta();
+    store.apply(&crate::product_management::board::BoardEvent::TagAdded {
         meta: meta.clone(),
         number: 1524,
         label: "parent-iteration-#1656.1".to_string(),
     });
-    store.apply(&crate::board::BoardEvent::TagRemoved {
+    store.apply(&crate::product_management::board::BoardEvent::TagRemoved {
         meta,
         number: 1524,
         label: "parent-iteration-#1655.1".to_string(),

@@ -7,9 +7,9 @@ use axum::response::IntoResponse;
 use chrono::Utc;
 use serde::Deserialize;
 
-use crate::board::RefreshDriver;
 use crate::bridge;
 use crate::message::{Message, MessageType};
+use crate::product_management::board::RefreshDriver;
 use crate::server::TestRefreshHandle;
 use crate::session;
 
@@ -392,7 +392,11 @@ fn ci_state_for_conclusion(conclusion: &str) -> crate::ci::CiState {
 
 pub async fn post_test_fire_ci_state(
     axum::Extension(orchestrator): axum::Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+        Arc<
+            crate::orchestrator::Orchestrator<
+                crate::product_management::board::adapters::github::GitHubSourceAdapter,
+            >,
+        >,
     >,
     Json(req): Json<FireCiStateReq>,
 ) -> impl IntoResponse {
@@ -437,7 +441,7 @@ pub async fn post_test_fire_sync_status(
     let handle = refresh.status_handle();
     {
         let mut status = handle.lock().unwrap_or_else(|e| e.into_inner());
-        *status = crate::board::SyncStatus::default();
+        *status = crate::product_management::board::SyncStatus::default();
         match req.status.as_str() {
             "conflict" => status.conflicts_pending = count,
             "stale" => status.stale = true,

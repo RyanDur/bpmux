@@ -12,7 +12,7 @@ const REASON_CITE_MIN_CHARS: usize = 16;
 pub(crate) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -50,27 +50,29 @@ pub(crate) async fn handle_close_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, number).await?;
-        let meta = crate::board::events::EventMeta {
+        let meta = crate::product_management::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::board::PeerId::local(),
+            peer_id: crate::product_management::board::PeerId::local(),
         };
         reap_workflow_labels(r.as_ref(), number, &meta, KEEP_NONE)?;
         if disposition == "retire" || disposition == "wontfix" {
-            r.mutate_sync(crate::board::BoardEvent::TagAdded {
+            r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
                 meta: meta.clone(),
                 number,
                 label: "retired".to_string(),
             })
             .map_err(|e| format!("#{number} retired-tag enqueue failed: {e}"))?;
-            r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
-                meta: meta.clone(),
-                number,
-                new_state: crate::board::domain::StoryState::Retired,
-            })
+            r.mutate_sync(
+                crate::product_management::board::BoardEvent::StateTransitioned {
+                    meta: meta.clone(),
+                    number,
+                    new_state: crate::product_management::board::domain::StoryState::Retired,
+                },
+            )
             .map_err(|e| format!("#{number} retired-state enqueue failed: {e}"))?;
         }
-        r.mutate_sync(crate::board::BoardEvent::StoryClosed {
+        r.mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
             meta,
             number,
             reason: Some(reason.to_string()),

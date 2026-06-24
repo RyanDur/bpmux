@@ -8,10 +8,10 @@ use httpmock::{Method, MockServer};
 use serde_json::Value;
 use tower::ServiceExt;
 
-use crate::board::adapters::github::GitHubSourceAdapter;
-use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
+use crate::product_management::board::adapters::github::GitHubSourceAdapter;
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::server::TestRefreshHandle;
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 
@@ -243,7 +243,7 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
     assert!(
         matches!(
             refresh.story(99).map(|s| s.story_type),
-            Some(crate::board::domain::StoryType::Feature)
+            Some(crate::product_management::board::domain::StoryType::Feature)
         ),
         "fixture must seed #99 as a non-Epic (Feature) in the canonical store: create_story \
          reads its parent from the store, so without the seed the not-an-Epic rejection would \

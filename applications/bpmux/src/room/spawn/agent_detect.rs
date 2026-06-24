@@ -73,8 +73,11 @@ impl AgentRunDetector {
     }
 }
 
-type DetectorOrchestrator =
-    Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>;
+type DetectorOrchestrator = Arc<
+    crate::orchestrator::Orchestrator<
+        crate::product_management::board::adapters::github::GitHubSourceAdapter,
+    >,
+>;
 
 pub fn spawn_agent_run_detector(
     terminal_id: String,

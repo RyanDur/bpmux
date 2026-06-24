@@ -13,11 +13,11 @@ use super::ci::{
     CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, Orchestrator, OrchestratorAction,
     PollKind,
 };
-use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::github::RateLimitObserver;
 use crate::message::Message;
+use crate::product_management::board::adapters::github::GitHubSourceAdapter;
 use crate::session::Session;
 use crate::transport::ci_state_store::CiStateStore;
 
@@ -488,10 +488,14 @@ async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
     );
 }
 
-fn refresh_for_tests() -> Arc<dyn crate::board::RefreshDriver> {
-    let store = Arc::new(crate::board::BoardStore::new());
-    let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
-    Arc::new(crate::board::SyncOrchestrator::new(store, adapter))
+fn refresh_for_tests() -> Arc<dyn crate::product_management::board::RefreshDriver> {
+    let store = Arc::new(crate::product_management::board::BoardStore::new());
+    let adapter = Arc::new(
+        crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
+    );
+    Arc::new(crate::product_management::board::SyncOrchestrator::new(
+        store, adapter,
+    ))
 }
 
 #[tokio::test]

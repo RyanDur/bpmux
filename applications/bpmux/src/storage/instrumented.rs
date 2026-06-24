@@ -189,7 +189,10 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
 
     fn load_users(
         &self,
-    ) -> Result<Vec<crate::storage::UserRecord>, crate::board::store::PersistError> {
+    ) -> Result<
+        Vec<crate::storage::UserRecord>,
+        crate::product_management::board::store::PersistError,
+    > {
         let start = Instant::now();
         let result = self.inner.load_users();
         if let Ok(ref records) = result {
@@ -207,7 +210,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         id: &str,
         name: &str,
         role: &str,
-    ) -> Result<(), crate::board::store::PersistError> {
+    ) -> Result<(), crate::product_management::board::store::PersistError> {
         let start = Instant::now();
         let result = self.inner.upsert_user(id, name, role);
         self.log(&format!(
@@ -222,7 +225,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         &self,
         id: &str,
         at: i64,
-    ) -> Result<(), crate::board::store::PersistError> {
+    ) -> Result<(), crate::product_management::board::store::PersistError> {
         let start = Instant::now();
         let result = self.inner.set_user_last_delivered(id, at);
         self.log(&format!(
@@ -233,7 +236,10 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn delete_users(&self, ids: &[String]) -> Result<(), crate::board::store::PersistError> {
+    fn delete_users(
+        &self,
+        ids: &[String],
+    ) -> Result<(), crate::product_management::board::store::PersistError> {
         let start = Instant::now();
         let result = self.inner.delete_users(ids);
         self.log(&format!(
@@ -247,8 +253,8 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn load_outbox(
         &self,
     ) -> Result<
-        std::collections::VecDeque<crate::board::orchestrator::QueuedEvent>,
-        crate::board::store::PersistError,
+        std::collections::VecDeque<crate::product_management::board::orchestrator::QueuedEvent>,
+        crate::product_management::board::store::PersistError,
     > {
         let start = Instant::now();
         let result = self.inner.load_outbox();
@@ -264,8 +270,8 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
 
     fn save_outbox(
         &self,
-        events: &[crate::board::orchestrator::QueuedEvent],
-    ) -> Result<(), crate::board::store::PersistError> {
+        events: &[crate::product_management::board::orchestrator::QueuedEvent],
+    ) -> Result<(), crate::product_management::board::store::PersistError> {
         let start = Instant::now();
         let result = self.inner.save_outbox(events);
         self.log(&format!(

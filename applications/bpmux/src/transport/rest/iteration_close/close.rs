@@ -59,7 +59,14 @@ async fn post_close_iteration_canonical(
         );
     };
     let iteration = match refresh.story(iteration_number) {
-        Some(s) if matches!(s.story_type, crate::board::domain::StoryType::Iteration) => s,
+        Some(s)
+            if matches!(
+                s.story_type,
+                crate::product_management::board::domain::StoryType::Iteration
+            ) =>
+        {
+            s
+        }
         Some(s) => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -138,24 +145,26 @@ async fn post_close_iteration_canonical(
 }
 
 pub(crate) async fn close_iteration_canonical(
-    refresh: &Arc<dyn crate::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
     iteration_number: u64,
 ) -> Result<(), String> {
-    let meta = || crate::board::events::EventMeta {
+    let meta = || crate::product_management::board::events::EventMeta {
         actor: "pm".to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::board::PeerId::local(),
+        peer_id: crate::product_management::board::PeerId::local(),
     };
     refresh
-        .mutate_sync(crate::board::BoardEvent::CurrentIterationCleared {
-            meta: meta(),
-            number: iteration_number,
-        })
+        .mutate_sync(
+            crate::product_management::board::BoardEvent::CurrentIterationCleared {
+                meta: meta(),
+                number: iteration_number,
+            },
+        )
         .map_err(|e| {
             format!("#{iteration_number} current-designation-clear enqueue failed: {e}")
         })?;
     refresh
-        .mutate_sync(crate::board::BoardEvent::StoryClosed {
+        .mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
             meta: meta(),
             number: iteration_number,
             reason: Some("iteration-close (terminal; promote-on-close retired #1556)".to_string()),

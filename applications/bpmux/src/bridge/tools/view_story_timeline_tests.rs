@@ -15,10 +15,10 @@ async fn handler_requires_board_after_canonical_only_refactor() {
 
 #[tokio::test]
 async fn handler_errors_when_story_not_in_board() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use std::sync::Arc;
 
     let store = Arc::new(BoardStore::new());
@@ -39,11 +39,11 @@ async fn handler_errors_when_story_not_in_board() {
 
 #[tokio::test]
 async fn handler_reads_gates_from_canonical_store() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -87,11 +87,11 @@ async fn handler_reads_gates_from_canonical_store() {
 
 #[tokio::test]
 async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_missing() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -126,7 +126,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
 #[test]
 fn build_timeline_from_board_sorts_chronologically() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
@@ -160,7 +160,7 @@ fn build_timeline_from_board_sorts_chronologically() {
 #[test]
 fn build_timeline_from_board_renders_full_rework_cycle() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
@@ -209,11 +209,11 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
 
 #[tokio::test]
 async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::board::domain::{Gate, GateComment, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

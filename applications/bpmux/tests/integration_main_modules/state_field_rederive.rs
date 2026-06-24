@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use bpmux::board::adapters::github::state_from_labels;
-use bpmux::board::column::{ColumnBucket, column_for};
-use bpmux::board::domain::StoryState;
+use bpmux::product_management::board::adapters::github::state_from_labels;
+use bpmux::product_management::board::column::{ColumnBucket, column_for};
+use bpmux::product_management::board::domain::StoryState;
 
 #[test]
 fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_ready() {

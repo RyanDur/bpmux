@@ -2,10 +2,10 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use crate::board::BoardStore;
-use crate::board::domain::{Story, StoryState};
-use crate::board::events::{BoardEvent, EventMeta};
-use crate::board::peer::PeerId;
+use crate::product_management::board::BoardStore;
+use crate::product_management::board::domain::{Story, StoryState};
+use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::peer::PeerId;
 use chrono::Utc;
 use std::sync::Arc;
 

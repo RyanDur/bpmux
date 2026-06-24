@@ -33,7 +33,7 @@ fn parse_acceptor_arg(
 pub(crate) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
     session: Option<&std::sync::Arc<crate::session::Session>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -82,16 +82,18 @@ pub(crate) async fn handle_pass_desk_check(
         false
     };
     if let Some(r) = refresh {
-        let meta = crate::board::events::EventMeta {
+        let meta = crate::product_management::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::board::PeerId::local(),
+            peer_id: crate::product_management::board::PeerId::local(),
         };
         if was_closed {
-            r.mutate_sync(crate::board::BoardEvent::StoryReopened {
-                meta: meta.clone(),
-                number,
-            })
+            r.mutate_sync(
+                crate::product_management::board::BoardEvent::StoryReopened {
+                    meta: meta.clone(),
+                    number,
+                },
+            )
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), number, &meta, LABEL_DELIVERED)?;
@@ -105,18 +107,22 @@ pub(crate) async fn handle_pass_desk_check(
             r.mutate_sync(event)
                 .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
         }
-        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
-            meta: meta.clone(),
-            number,
-            gate: crate::board::domain::Gate::PassDeskCheck,
-            payload: bypass.clone().map(format_bypass_payload),
-        })
+        r.mutate_sync(
+            crate::product_management::board::BoardEvent::GateCommentAppended {
+                meta: meta.clone(),
+                number,
+                gate: crate::product_management::board::domain::Gate::PassDeskCheck,
+                payload: bypass.clone().map(format_bypass_payload),
+            },
+        )
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
-        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
-            meta,
-            number,
-            new_state: crate::board::domain::StoryState::Delivered,
-        })
+        r.mutate_sync(
+            crate::product_management::board::BoardEvent::StateTransitioned {
+                meta,
+                number,
+                new_state: crate::product_management::board::domain::StoryState::Delivered,
+            },
+        )
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()
             .await

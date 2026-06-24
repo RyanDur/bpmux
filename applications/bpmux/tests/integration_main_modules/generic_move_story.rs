@@ -18,14 +18,14 @@
 
 use std::sync::Arc;
 
-use bpmux::board::BoardEvent;
-use bpmux::board::BoardStore;
-use bpmux::board::PeerId;
-use bpmux::board::RefreshDriver;
-use bpmux::board::SyncOrchestrator;
-use bpmux::board::adapters::in_memory::InMemorySourceAdapter;
-use bpmux::board::domain::{Story, StoryState};
-use bpmux::board::events::EventMeta;
+use bpmux::product_management::board::BoardEvent;
+use bpmux::product_management::board::BoardStore;
+use bpmux::product_management::board::PeerId;
+use bpmux::product_management::board::RefreshDriver;
+use bpmux::product_management::board::SyncOrchestrator;
+use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use bpmux::product_management::board::domain::{Story, StoryState};
+use bpmux::product_management::board::events::EventMeta;
 use chrono::{TimeZone, Utc};
 
 #[tokio::test]

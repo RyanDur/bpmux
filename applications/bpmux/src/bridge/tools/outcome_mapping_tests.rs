@@ -1,14 +1,14 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use crate::board::RefreshDriver;
-use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Story, StoryState, StoryType};
-use crate::board::orchestrator::SyncOrchestrator;
-use crate::board::store::BoardStore;
 use crate::bridge::tools_stories::{
     handle_reorder_outcome_iteration, handle_unmap_outcome_iteration,
 };
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::domain::{Story, StoryState, StoryType};
+use crate::product_management::board::orchestrator::SyncOrchestrator;
+use crate::product_management::board::store::BoardStore;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -23,7 +23,7 @@ fn outcome(number: u64) -> Story {
     );
     s.story_type = StoryType::Outcome;
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
-    s.horizon = Some(crate::board::domain::Horizon::Now);
+    s.horizon = Some(crate::product_management::board::domain::Horizon::Now);
     s
 }
 
@@ -59,11 +59,15 @@ fn args(outcome: u64, iteration: u64) -> Map<String, Value> {
 
 fn drill_iteration_numbers(refresh: &Arc<dyn RefreshDriver>, outcome: u64) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
-    crate::board::roadmap_drill::derive_outcome_drill_in(outcome, &refresh.all_stories(), workflow)
-        .iterations
-        .iter()
-        .map(|it| it.number)
-        .collect()
+    crate::product_management::board::roadmap_drill::derive_outcome_drill_in(
+        outcome,
+        &refresh.all_stories(),
+        workflow,
+    )
+    .iterations
+    .iter()
+    .map(|it| it.number)
+    .collect()
 }
 
 #[tokio::test]

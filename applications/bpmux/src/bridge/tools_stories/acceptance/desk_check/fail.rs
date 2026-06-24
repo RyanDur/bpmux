@@ -4,14 +4,14 @@ use crate::bridge::tools_stories::helpers::{
 
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
 
-fn label_for_state(state: crate::board::domain::StoryState) -> &'static str {
+fn label_for_state(state: crate::product_management::board::domain::StoryState) -> &'static str {
     state.github_label()
 }
 
 pub(crate) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -42,7 +42,9 @@ pub(crate) async fn handle_fail_desk_check(
     }
     let was_accepted = prior
         .as_ref()
-        .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
+        .map(|s| {
+            s.is_closed || s.state == crate::product_management::board::domain::StoryState::Accepted
+        })
         .unwrap_or(false);
     let reason = args
         .get("reason")
@@ -59,40 +61,48 @@ pub(crate) async fn handle_fail_desk_check(
         });
         return Err(err.to_string());
     }
-    let target_state =
-        crate::board::domain::StoryState::parse(transition.to.as_str()).ok_or_else(|| {
-            format!(
-                "workflow.toml fail-desk-check transition.to='{}' is not a recognized StoryState",
-                transition.to
-            )
-        })?;
+    let target_state = crate::product_management::board::domain::StoryState::parse(
+        transition.to.as_str(),
+    )
+    .ok_or_else(|| {
+        format!(
+            "workflow.toml fail-desk-check transition.to='{}' is not a recognized StoryState",
+            transition.to
+        )
+    })?;
     if let Some(r) = refresh {
-        let meta = crate::board::events::EventMeta {
+        let meta = crate::product_management::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::board::PeerId::local(),
+            peer_id: crate::product_management::board::PeerId::local(),
         };
         if was_accepted {
-            r.mutate_sync(crate::board::BoardEvent::StoryReopened {
-                meta: meta.clone(),
-                number,
-            })
+            r.mutate_sync(
+                crate::product_management::board::BoardEvent::StoryReopened {
+                    meta: meta.clone(),
+                    number,
+                },
+            )
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
         let keep_label = label_for_state(target_state);
         reap_workflow_labels(r.as_ref(), number, &meta, keep_label)?;
-        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
-            meta: meta.clone(),
-            number,
-            gate: crate::board::domain::Gate::FailDeskCheck,
-            payload: Some(reason.to_string()),
-        })
+        r.mutate_sync(
+            crate::product_management::board::BoardEvent::GateCommentAppended {
+                meta: meta.clone(),
+                number,
+                gate: crate::product_management::board::domain::Gate::FailDeskCheck,
+                payload: Some(reason.to_string()),
+            },
+        )
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
-        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
-            meta,
-            number,
-            new_state: target_state,
-        })
+        r.mutate_sync(
+            crate::product_management::board::BoardEvent::StateTransitioned {
+                meta,
+                number,
+                new_state: target_state,
+            },
+        )
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()
             .await

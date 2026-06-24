@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::board::MutationId;
+use crate::product_management::board::MutationId;
 
 impl<T: CiPollFetch> Orchestrator<T> {
     pub(super) async fn middleware_start_update_github(self: &Arc<Self>, mutation_id: MutationId) {
@@ -28,15 +28,15 @@ impl<T: CiPollFetch> Orchestrator<T> {
                 r = refresh.drain_one_by_id(mutation_id) => r,
             };
             match outcome {
-                crate::board::DrainOneOutcome::Confirmed => {
+                crate::product_management::board::DrainOneOutcome::Confirmed => {
                     this.middleware_mutation_confirmed(mutation_id).await;
                 }
-                crate::board::DrainOneOutcome::RolledBack { server_story } => {
+                crate::product_management::board::DrainOneOutcome::RolledBack { server_story } => {
                     this.middleware_mutation_rolled_back(mutation_id, server_story.map(|b| *b))
                         .await;
                 }
-                crate::board::DrainOneOutcome::TransientError(_)
-                | crate::board::DrainOneOutcome::NotFound => {
+                crate::product_management::board::DrainOneOutcome::TransientError(_)
+                | crate::product_management::board::DrainOneOutcome::NotFound => {
                     this.middleware_stop_update_github(mutation_id).await;
                 }
             }
@@ -58,7 +58,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
     pub(super) async fn middleware_mutation_rolled_back(
         self: &Arc<Self>,
         mutation_id: MutationId,
-        server_story: Option<crate::board::domain::Story>,
+        server_story: Option<crate::product_management::board::domain::Story>,
     ) {
         {
             let mut tokens = self.mutation_tokens.lock().await;
