@@ -169,8 +169,3 @@ pub fn remove_principle(
     value.principles.remove(pos);
     Ok(())
 }
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-#[path = "identity_tests.rs"]
-mod tests;

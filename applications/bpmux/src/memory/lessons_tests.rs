@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
 use super::lessons::*;
-use super::message::Message;
 use crate::comprehension::classifier::{ExperienceKind, MessageClass};
+use crate::session::message::Message;
 use chrono::Utc;
 use tempfile::TempDir;
 

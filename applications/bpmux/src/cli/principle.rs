@@ -1,4 +1,4 @@
-use crate::session::identity::{
+use crate::memory::identity::{
     add_principle, add_value, default_identity_dir, load_identity, remove_principle, save_identity,
     update_principle,
 };

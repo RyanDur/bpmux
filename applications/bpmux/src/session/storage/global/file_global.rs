@@ -56,7 +56,7 @@ impl FileGlobalStore {
         if let Some(d) = &self.identity_dir {
             return Ok(d.clone());
         }
-        crate::session::identity::default_identity_dir()
+        crate::memory::identity::default_identity_dir()
     }
 
     fn resolve_briefings_dir(&self) -> PathBuf {
@@ -94,20 +94,20 @@ impl FileGlobalStore {
 }
 
 impl GlobalStore for FileGlobalStore {
-    fn load_identity(&self, role: &str) -> crate::session::identity::IdentityIndex {
+    fn load_identity(&self, role: &str) -> crate::memory::identity::IdentityIndex {
         match self.resolve_identity_dir() {
-            Ok(dir) => crate::session::identity::load_identity(&dir, role),
-            Err(_) => crate::session::identity::IdentityIndex::default(),
+            Ok(dir) => crate::memory::identity::load_identity(&dir, role),
+            Err(_) => crate::memory::identity::IdentityIndex::default(),
         }
     }
 
     fn save_identity(
         &self,
         role: &str,
-        index: &crate::session::identity::IdentityIndex,
+        index: &crate::memory::identity::IdentityIndex,
     ) -> Result<(), std::io::Error> {
         let dir = self.resolve_identity_dir()?;
-        crate::session::identity::save_identity(&dir, role, index)
+        crate::memory::identity::save_identity(&dir, role, index)
     }
 
     fn load_briefing(&self, role: &str) -> String {

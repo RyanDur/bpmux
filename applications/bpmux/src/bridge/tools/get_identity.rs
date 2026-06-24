@@ -2,7 +2,7 @@ pub(in crate::bridge) async fn handle_get_identity(
     args: &serde_json::Map<String, serde_json::Value>,
     default_role: &str,
 ) -> Result<String, String> {
-    use crate::session::identity::{default_identity_dir, load_identity};
+    use crate::memory::identity::{default_identity_dir, load_identity};
     let role = args
         .get("role")
         .and_then(|v| v.as_str())

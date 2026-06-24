@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::session::lessons::{self, AgentLesson};
+use super::lessons::{self, AgentLesson};
 
 pub const MAX_SURFACED_LESSONS: usize = 10;
 

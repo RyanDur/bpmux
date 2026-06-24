@@ -1,4 +1,8 @@
-use super::*;
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use std::path::PathBuf;
+
+use super::identity::*;
 use tempfile::tempdir;
 
 fn value(name: &str, desc: &str, principles: &[&str]) -> IdentityValue {

@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use super::GlobalStore;
 
 pub struct MemoryGlobalStore {
-    identity: Mutex<HashMap<String, crate::session::identity::IdentityIndex>>,
+    identity: Mutex<HashMap<String, crate::memory::identity::IdentityIndex>>,
     briefings: Mutex<HashMap<String, String>>,
     tokens: Mutex<Vec<crate::telemetry::tokens::TokenRow>>,
     usage: Mutex<HashMap<String, crate::telemetry::usage::Record>>,
@@ -28,7 +28,7 @@ impl MemoryGlobalStore {
 }
 
 impl GlobalStore for MemoryGlobalStore {
-    fn load_identity(&self, role: &str) -> crate::session::identity::IdentityIndex {
+    fn load_identity(&self, role: &str) -> crate::memory::identity::IdentityIndex {
         self.identity
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -40,7 +40,7 @@ impl GlobalStore for MemoryGlobalStore {
     fn save_identity(
         &self,
         role: &str,
-        index: &crate::session::identity::IdentityIndex,
+        index: &crate::memory::identity::IdentityIndex,
     ) -> Result<(), std::io::Error> {
         self.identity
             .lock()

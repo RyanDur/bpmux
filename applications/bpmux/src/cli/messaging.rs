@@ -1,7 +1,7 @@
 const WAIT_CLIENT_GRACE_MS: u64 = 5_000;
 
 pub(crate) fn emit_recall_activity(role: &str, count: usize) {
-    let body = crate::session::recall::build_recall_activity_payload(role, count);
+    let body = crate::memory::recall::build_recall_activity_payload(role, count);
     post_activity(&body);
 }
 

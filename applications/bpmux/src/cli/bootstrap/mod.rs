@@ -55,8 +55,11 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
         Ok(dir) => dir,
         Err(_) => return Ok(()),
     };
-    let lessons = session::recall::surface_for_role(&session_dir, &role);
-    print!("{}", session::recall::format_for_surface(&role, &lessons));
+    let lessons = crate::memory::recall::surface_for_role(&session_dir, &role);
+    print!(
+        "{}",
+        crate::memory::recall::format_for_surface(&role, &lessons)
+    );
     cli::emit_recall_activity(&role, lessons.len());
     Ok(())
 }

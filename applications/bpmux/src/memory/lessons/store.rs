@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use super::{AgentLesson, LessonIndex};
-use crate::session::identity::sanitize_name;
+use crate::memory::identity::sanitize_name;
 
 pub fn add_lesson(
     session_dir: &Path,

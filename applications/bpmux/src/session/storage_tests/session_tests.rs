@@ -1,5 +1,5 @@
 use crate::comprehension::search::SearchFilters;
-use crate::session::lessons::LessonIndex;
+use crate::memory::lessons::LessonIndex;
 use crate::session::message::Message;
 use crate::session::storage::StorageBackend;
 use crate::session::storage::{FileStorage, SqliteStorage, Storage};
@@ -203,7 +203,7 @@ contract!(
     save_then_load_lessons_roundtrips,
     |storage: &dyn Storage| {
         let mut idx = LessonIndex::default();
-        idx.lessons.push(crate::session::lessons::AgentLesson {
+        idx.lessons.push(crate::memory::lessons::AgentLesson {
             topic: "test-topic".to_string(),
             lesson: "test-lesson-text".to_string(),
             author_role: "dev".to_string(),
@@ -247,7 +247,7 @@ contract!(
     save_then_load_peer_lessons_roundtrips,
     |storage: &dyn Storage| {
         let mut idx = LessonIndex::default();
-        idx.lessons.push(crate::session::lessons::AgentLesson {
+        idx.lessons.push(crate::memory::lessons::AgentLesson {
             topic: "peer-topic".to_string(),
             lesson: "peer-lesson".to_string(),
             author_role: "designer".to_string(),

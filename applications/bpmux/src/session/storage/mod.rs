@@ -6,7 +6,8 @@ use crate::board::store::PersistError;
 
 use crate::comprehension::search::{SearchFilters, SearchResult};
 
-use super::lessons::LessonIndex;
+use crate::memory::lessons::LessonIndex;
+
 use super::log::LogError;
 use super::message::Message;
 
@@ -93,11 +94,11 @@ pub trait Storage: Send + Sync {
 }
 
 pub trait GlobalStore: Send + Sync {
-    fn load_identity(&self, role: &str) -> super::identity::IdentityIndex;
+    fn load_identity(&self, role: &str) -> crate::memory::identity::IdentityIndex;
     fn save_identity(
         &self,
         role: &str,
-        index: &super::identity::IdentityIndex,
+        index: &crate::memory::identity::IdentityIndex,
     ) -> Result<(), std::io::Error>;
 
     fn load_briefing(&self, role: &str) -> String;

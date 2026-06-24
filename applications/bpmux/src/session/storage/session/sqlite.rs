@@ -16,8 +16,8 @@ use super::{Storage, UserRecord};
 use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 use crate::comprehension::search::{self, SearchFilters, SearchResult};
+use crate::memory::lessons::LessonIndex;
 use crate::session::bookmark::Bookmark;
-use crate::session::lessons::LessonIndex;
 use crate::session::log::LogError;
 use crate::session::message::Message;
 use crate::session::reactions::ReactionsStore;
@@ -97,11 +97,11 @@ impl Storage for SqliteStorage {
     }
 
     fn load_lessons(&self) -> LessonIndex {
-        crate::session::lessons::load_index(&self.dir)
+        crate::memory::lessons::load_index(&self.dir)
     }
 
     fn save_lessons(&self, index: &LessonIndex) -> Result<(), std::io::Error> {
-        crate::session::lessons::save_index(&self.dir, index)
+        crate::memory::lessons::save_index(&self.dir, index)
     }
 
     fn add_lesson(
@@ -111,19 +111,19 @@ impl Storage for SqliteStorage {
         author_role: &str,
         evidence: Vec<String>,
     ) -> Result<(), std::io::Error> {
-        crate::session::lessons::add_lesson(&self.dir, topic, lesson, author_role, evidence)
+        crate::memory::lessons::add_lesson(&self.dir, topic, lesson, author_role, evidence)
     }
 
     fn load_peer_lessons(&self, peer: &str) -> LessonIndex {
-        crate::session::lessons::load_peer_index(&self.dir, peer)
+        crate::memory::lessons::load_peer_index(&self.dir, peer)
     }
 
     fn save_peer_lessons(&self, peer: &str, index: &LessonIndex) -> Result<(), std::io::Error> {
-        crate::session::lessons::save_peer_index(&self.dir, peer, index)
+        crate::memory::lessons::save_peer_index(&self.dir, peer, index)
     }
 
     fn list_peers(&self) -> Vec<String> {
-        crate::session::lessons::list_peer_names(&self.dir)
+        crate::memory::lessons::list_peer_names(&self.dir)
     }
 
     fn load_state(&self, key: &str) -> Option<String> {

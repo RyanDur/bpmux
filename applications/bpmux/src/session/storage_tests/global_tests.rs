@@ -57,8 +57,8 @@ global_contract!(
 global_contract!(
     save_then_load_identity_roundtrips,
     |global: &dyn GlobalStore| {
-        let mut idx = crate::session::identity::IdentityIndex::default();
-        idx.values.push(crate::session::identity::IdentityValue {
+        let mut idx = crate::memory::identity::IdentityIndex::default();
+        idx.values.push(crate::memory::identity::IdentityValue {
             name: "test-name".to_string(),
             description: "test-value".to_string(),
             principles: vec![],
@@ -72,16 +72,14 @@ global_contract!(
 );
 
 global_contract!(per_role_identity_isolation, |global: &dyn GlobalStore| {
-    let mut dev_idx = crate::session::identity::IdentityIndex::default();
-    dev_idx
-        .values
-        .push(crate::session::identity::IdentityValue {
-            name: "k".to_string(),
-            description: "dev-val".to_string(),
-            principles: vec![],
-        });
-    let mut pm_idx = crate::session::identity::IdentityIndex::default();
-    pm_idx.values.push(crate::session::identity::IdentityValue {
+    let mut dev_idx = crate::memory::identity::IdentityIndex::default();
+    dev_idx.values.push(crate::memory::identity::IdentityValue {
+        name: "k".to_string(),
+        description: "dev-val".to_string(),
+        principles: vec![],
+    });
+    let mut pm_idx = crate::memory::identity::IdentityIndex::default();
+    pm_idx.values.push(crate::memory::identity::IdentityValue {
         name: "k".to_string(),
         description: "pm-val".to_string(),
         principles: vec![],

@@ -1,5 +1,5 @@
 use crate::bridge::tools_stories::role_from_name;
-use crate::session::identity::{
+use crate::memory::identity::{
     default_identity_dir, load_identity, remove_principle, save_identity,
 };
 

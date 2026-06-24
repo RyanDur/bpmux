@@ -43,7 +43,7 @@ async fn bpmux_value_principle_identity_round_trip_off_mcp() {
     .await;
     assert!(
         v.status.success(),
-        "bpmux value add persists to this role's crate::session::identity store off MCP; stderr: {}",
+        "bpmux value add persists to this role's crate::memory::identity store off MCP; stderr: {}",
         stderr(&v)
     );
 
@@ -75,7 +75,7 @@ async fn bpmux_value_principle_identity_round_trip_off_mcp() {
     let o = stdout(&i);
     assert!(
         o.contains("Quality") && o.contains("ship the right thing simply"),
-        "the round-trip proves value-add + principle-add + identity hit the SAME crate::session::identity store off MCP (non-vacuous: the added value + principle read back); stdout: {o}"
+        "the round-trip proves value-add + principle-add + identity hit the SAME crate::memory::identity store off MCP (non-vacuous: the added value + principle read back); stdout: {o}"
     );
 }
 

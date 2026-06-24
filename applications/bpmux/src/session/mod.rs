@@ -2,14 +2,11 @@ pub mod aggregate;
 pub mod awareness;
 pub mod bookmark;
 pub mod briefing;
-pub mod identity;
-pub mod lessons;
 pub mod location;
 pub mod log;
 pub mod message;
 pub mod precommit;
 pub mod reactions;
-pub mod recall;
 pub mod routing_identity;
 pub mod speech_guard;
 pub mod storage;
@@ -34,8 +31,6 @@ mod aggregate_tests;
 #[cfg(test)]
 mod awareness_tests;
 #[cfg(test)]
-mod lessons_tests;
-#[cfg(test)]
 mod location_tests;
 #[cfg(test)]
 mod log_tests;
@@ -43,7 +38,5 @@ mod log_tests;
 mod message_tests;
 #[cfg(test)]
 mod precommit_tests;
-#[cfg(test)]
-mod recall_tests;
 #[cfg(test)]
 mod speech_guard_tests;

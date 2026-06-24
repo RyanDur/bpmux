@@ -64,7 +64,7 @@ pub fn spawn_relay(
                 }
                 PeerMessage::LessonSync { lessons_json } => {
                     if let Ok(remote_index) =
-                        serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json)
+                        serde_json::from_str::<crate::memory::lessons::LessonIndex>(&lessons_json)
                     {
                         let _ = session_for_inbound
                             .storage
@@ -73,7 +73,7 @@ pub fn spawn_relay(
                 }
                 PeerMessage::LessonUpdate { lesson_json } => {
                     if let Ok(lesson) =
-                        serde_json::from_str::<crate::session::lessons::AgentLesson>(&lesson_json)
+                        serde_json::from_str::<crate::memory::lessons::AgentLesson>(&lesson_json)
                     {
                         let mut peer_index =
                             session_for_inbound.storage.load_peer_lessons(&current_name);
@@ -101,7 +101,7 @@ pub fn spawn_relay(
                 }
                 PeerMessage::LessonQueryResponse { lessons_json } => {
                     if let Ok(remote_index) =
-                        serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json)
+                        serde_json::from_str::<crate::memory::lessons::LessonIndex>(&lessons_json)
                     {
                         let _ = session_for_inbound
                             .storage

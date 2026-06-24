@@ -28,7 +28,7 @@ pub(crate) enum IdentityCommands {
         action: CiAction,
     },
     #[command(
-        about = "Principle operations off Claude's MCP — add/update/remove principles in this role's identity (filesystem-direct, ungated; same crate::session::identity store the bridge uses)."
+        about = "Principle operations off Claude's MCP — add/update/remove principles in this role's identity (filesystem-direct, ungated; same crate::memory::identity store the bridge uses)."
     )]
     Principle {
         #[command(subcommand)]
@@ -42,7 +42,7 @@ pub(crate) enum IdentityCommands {
         action: ValueAction,
     },
     #[command(
-        about = "Print this role's identity (values + principles) off Claude's MCP, from the same crate::session::identity store the bridge uses."
+        about = "Print this role's identity (values + principles) off Claude's MCP, from the same crate::memory::identity store the bridge uses."
     )]
     Identity,
     #[command(

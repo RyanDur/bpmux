@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::memory;
 use crate::session;
 
 #[derive(Debug, Clone, Serialize)]
@@ -9,8 +10,8 @@ pub struct IdentityValueView {
     pub principles: Vec<String>,
 }
 
-impl From<&session::identity::IdentityValue> for IdentityValueView {
-    fn from(value: &session::identity::IdentityValue) -> Self {
+impl From<&memory::identity::IdentityValue> for IdentityValueView {
+    fn from(value: &memory::identity::IdentityValue) -> Self {
         Self {
             name: value.name.clone(),
             description: value.description.clone(),
@@ -24,8 +25,8 @@ pub struct IdentityIndexView {
     pub values: Vec<IdentityValueView>,
 }
 
-impl From<&session::identity::IdentityIndex> for IdentityIndexView {
-    fn from(index: &session::identity::IdentityIndex) -> Self {
+impl From<&memory::identity::IdentityIndex> for IdentityIndexView {
+    fn from(index: &memory::identity::IdentityIndex) -> Self {
         Self {
             values: index.values.iter().map(IdentityValueView::from).collect(),
         }
@@ -136,7 +137,7 @@ mod tests {
 
     #[test]
     fn identity_value_view_mirrors_source_fields() {
-        let src = session::identity::IdentityValue {
+        let src = memory::identity::IdentityValue {
             name: "iteration over prediction".to_string(),
             description: "ship and learn".to_string(),
             principles: vec!["small steps".to_string()],
@@ -149,14 +150,14 @@ mod tests {
 
     #[test]
     fn identity_index_view_translates_full_collection() {
-        let src = session::identity::IdentityIndex {
+        let src = memory::identity::IdentityIndex {
             values: vec![
-                session::identity::IdentityValue {
+                memory::identity::IdentityValue {
                     name: "alpha".to_string(),
                     description: "a".to_string(),
                     principles: vec![],
                 },
-                session::identity::IdentityValue {
+                memory::identity::IdentityValue {
                     name: "beta".to_string(),
                     description: "b".to_string(),
                     principles: vec!["p1".to_string(), "p2".to_string()],
@@ -171,8 +172,8 @@ mod tests {
 
     #[test]
     fn identity_index_view_serializes_to_stable_json_shape() {
-        let src = session::identity::IdentityIndex {
-            values: vec![session::identity::IdentityValue {
+        let src = memory::identity::IdentityIndex {
+            values: vec![memory::identity::IdentityValue {
                 name: "iteration".to_string(),
                 description: "ship".to_string(),
                 principles: vec!["small".to_string()],
