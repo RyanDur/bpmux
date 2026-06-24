@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::session::log::{BROADCAST_CHANNEL_CAPACITY, Session};
+use crate::session::{BROADCAST_CHANNEL_CAPACITY, Session};
 use tempfile::tempdir;
 use tokio::sync::broadcast;
 

@@ -5,8 +5,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::broadcast;
 
-use super::file_log::LogError;
-use super::storage_backend::StorageBackend;
+use crate::session::log::{LogError, StorageBackend};
 use crate::session::message::Message;
 use crate::session::storage::Storage;
 

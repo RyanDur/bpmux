@@ -540,7 +540,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
 
     let dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx0) = tokio::sync::broadcast::channel(16);
-    let session = Arc::new(crate::session::log::Session::new(
+    let session = Arc::new(crate::session::Session::new(
         dir.path().to_path_buf(),
         "owner".to_string(),
         tx,

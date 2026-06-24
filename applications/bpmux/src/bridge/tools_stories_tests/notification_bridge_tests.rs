@@ -11,7 +11,7 @@ mod notification_bridge_push_filter_integration_1432 {
     use crate::bridge::message_type_reaches_llm_stream;
     use crate::session::Message;
     use crate::session::MessageType;
-    use crate::session::log::Session;
+    use crate::session::Session;
     use std::path::PathBuf;
     use std::sync::Arc;
     use tempfile::TempDir;

@@ -71,7 +71,7 @@ pub(in crate::bridge) async fn handle_view_verdicts(
 mod tests {
     use super::*;
     use crate::bridge::tools::handle_submit_verdict;
-    use crate::session::log::Session;
+    use crate::session::Session;
     use std::path::PathBuf;
     use tempfile::TempDir;
     use tokio::sync::broadcast;

@@ -1,3 +1,4 @@
+pub mod aggregate;
 pub mod auth_token;
 pub mod awareness;
 pub mod bayes;
@@ -28,14 +29,17 @@ pub mod verdicts;
 #[cfg(test)]
 mod team_roster_tests;
 
+pub use aggregate::{BROADCAST_CHANNEL_CAPACITY, Session};
 pub use classifier::{MessageClass, classify};
 pub use log::{
-    BROADCAST_CHANNEL_CAPACITY, DirSession, LogError, Session, append_message, create_session,
-    default_sessions_base, read_messages, read_or_create_dir_session, resume_or_create_session,
+    DirSession, LogError, append_message, create_session, default_sessions_base, read_messages,
+    read_or_create_dir_session, resume_or_create_session,
 };
 pub use message::{Message, MessageType};
 pub use search::{SearchFilters, SearchResult, search};
 
+#[cfg(test)]
+mod aggregate_tests;
 #[cfg(test)]
 mod auth_token_tests;
 #[cfg(test)]

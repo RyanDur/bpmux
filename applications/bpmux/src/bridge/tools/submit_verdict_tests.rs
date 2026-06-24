@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::submit_verdict::*;
-use crate::session::log::Session;
+use crate::session::Session;
 use crate::session::verdicts::{load, verdicts_for_story};
 use std::path::PathBuf;
 use std::sync::Arc;

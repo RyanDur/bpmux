@@ -16,7 +16,7 @@ mod verdict_substrate_integration_1407 {
     use crate::board::domain::{Story, StoryState};
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
-    use crate::session::log::Session;
+    use crate::session::Session;
     use crate::session::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};
     use std::path::PathBuf;
