@@ -37,7 +37,7 @@ async fn bpmux_briefing_save_then_get_round_trips_off_mcp() {
     let saved = run_verb(&["briefing", "save", body], &env).await;
     assert!(
         saved.status.success(),
-        "bpmux briefing save writes to the same crate::session::briefing store the bridge uses; stderr: {}",
+        "bpmux briefing save writes to the same crate::briefing store the bridge uses; stderr: {}",
         stderr(&saved)
     );
 

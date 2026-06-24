@@ -46,14 +46,14 @@ pub(crate) enum IdentityCommands {
     )]
     Identity,
     #[command(
-        about = "Bookmark operations off Claude's MCP — save/get a session-continuity bookmark for this role (filesystem-direct in the current session dir; ungated; same crate::session::bookmark store the bridge uses)."
+        about = "Bookmark operations off Claude's MCP — save/get a session-continuity bookmark for this role (filesystem-direct in the current session dir; ungated; same crate::bookmark store the bridge uses)."
     )]
     Bookmark {
         #[command(subcommand)]
         action: BookmarkAction,
     },
     #[command(
-        about = "Briefing operations off Claude's MCP — save/get this role's briefing (filesystem-direct under BPMUX_BRIEFINGS_DIR; ungated; same crate::session::briefing store the bridge uses)."
+        about = "Briefing operations off Claude's MCP — save/get this role's briefing (filesystem-direct under BPMUX_BRIEFINGS_DIR; ungated; same crate::briefing store the bridge uses)."
     )]
     Briefing {
         #[command(subcommand)]

@@ -55,7 +55,7 @@ async fn bpmux_bookmark_save_then_get_round_trips_off_mcp() {
     );
     assert!(
         stdout(&g).contains("re-homing the bookmark verb") && stdout(&g).contains("ship it"),
-        "the round-trip proves save + get hit the SAME crate::session::bookmark store in the current session off MCP (non-vacuous: the saved fields read back); stdout: {}",
+        "the round-trip proves save + get hit the SAME crate::bookmark store in the current session off MCP (non-vacuous: the saved fields read back); stdout: {}",
         stdout(&g)
     );
 }
