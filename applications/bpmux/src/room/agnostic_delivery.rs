@@ -8,8 +8,9 @@ use crate::room::CommitmentStore;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
 use crate::session::Session;
-use crate::session::terminal_inject::frame_team_message;
 use crate::transport::ws::short_name;
+
+use super::terminal_inject::frame_team_message;
 
 const HOLD_DEBOUNCE: Duration = Duration::from_millis(600);
 const HOLD_MAX: Duration = Duration::from_secs(10);

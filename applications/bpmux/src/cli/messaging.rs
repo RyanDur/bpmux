@@ -151,7 +151,7 @@ pub(crate) fn run_emit_precommit_passed(
     role_arg: &Option<String>,
 ) -> anyhow::Result<()> {
     let role = crate::resolve_role(role_arg);
-    let body = crate::session::precommit::build_precommit_activity_payload(&role, sha);
+    let body = crate::precommit::build_precommit_activity_payload(&role, sha);
     post_activity(&body);
     Ok(())
 }

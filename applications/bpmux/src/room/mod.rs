@@ -7,6 +7,7 @@ pub mod commitment_store;
 pub mod file_storage;
 pub mod live_registry;
 pub mod spawn;
+mod terminal_inject;
 pub mod wake_delivery;
 
 #[cfg(test)]

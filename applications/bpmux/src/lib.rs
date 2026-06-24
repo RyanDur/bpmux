@@ -25,6 +25,9 @@ pub mod message;
 #[cfg(test)]
 mod message_tests;
 pub mod orchestrator;
+pub mod precommit;
+#[cfg(test)]
+mod precommit_tests;
 pub mod reactions;
 pub mod reload;
 pub mod roadmap;
@@ -34,6 +37,9 @@ pub mod server;
 pub mod session;
 #[cfg(test)]
 mod session_id_pin_tests;
+pub mod speech_guard;
+#[cfg(test)]
+mod speech_guard_tests;
 pub mod telemetry;
 pub mod transport;
 pub mod velocity;

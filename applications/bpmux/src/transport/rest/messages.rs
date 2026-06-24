@@ -109,7 +109,7 @@ pub async fn post_message(
         );
     }
     if payload.from.ends_with(":claude-code")
-        && let Some(reason) = crate::session::speech_guard::pause_vocab_violation(&payload.text)
+        && let Some(reason) = crate::speech_guard::pause_vocab_violation(&payload.text)
     {
         return (StatusCode::BAD_REQUEST, reason);
     }
