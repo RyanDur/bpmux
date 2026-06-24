@@ -1,4 +1,4 @@
-use crate::{session, transport};
+use crate::{location, transport};
 
 pub(super) fn resolve_session_base(
     cli_base: &Option<String>,
@@ -7,7 +7,7 @@ pub(super) fn resolve_session_base(
         Some(path) => Ok(std::path::PathBuf::from(path)),
         None => match std::env::var("BPMUX_SESSION_BASE") {
             Ok(path) => Ok(std::path::PathBuf::from(path)),
-            Err(_) => Ok(session::default_sessions_base()?),
+            Err(_) => Ok(location::default_sessions_base()?),
         },
     }
 }
@@ -41,5 +41,5 @@ pub(crate) fn session_id_from_pin_or_dir(
             return Ok(pin.to_string());
         }
     }
-    Ok(session::read_or_create_dir_session(cwd)?.id)
+    Ok(location::read_or_create_dir_session(cwd)?.id)
 }

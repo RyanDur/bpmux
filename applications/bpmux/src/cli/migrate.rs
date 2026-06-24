@@ -1,6 +1,6 @@
 fn current_session_dir() -> anyhow::Result<std::path::PathBuf> {
-    let base = crate::session::default_sessions_base()?;
-    Ok(crate::session::resume_or_create_session(&base)?)
+    let base = crate::location::default_sessions_base()?;
+    Ok(crate::location::resume_or_create_session(&base)?)
 }
 
 pub(crate) fn run_migrate_storage() -> anyhow::Result<()> {

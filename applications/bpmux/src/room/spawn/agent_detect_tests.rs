@@ -203,7 +203,7 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
         marker.is_file(),
         "the agent-run detector read_or_create'd the work-dir's .bpmux-session-id marker on a SUSTAINED foreground-job (cd-emit gave the cwd, the sleep is the foreground-child)"
     );
-    let session = crate::session::read_or_create_dir_session(work.path()).unwrap();
+    let session = crate::location::read_or_create_dir_session(work.path()).unwrap();
     assert_eq!(
         routing.resolve(&work_name),
         vec![session.id],
@@ -320,7 +320,7 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
         marker.is_file(),
         "an agent that STARTS in the work-dir (no later cd) registers via the STARTUP OSC-7 emit (zsh .zshrc-load / bash PROMPT_COMMAND) — the cwd is tracked without a cd"
     );
-    let session = crate::session::read_or_create_dir_session(work.path()).unwrap();
+    let session = crate::location::read_or_create_dir_session(work.path()).unwrap();
     assert_eq!(
         routing.resolve(&work_name),
         vec![session.id],

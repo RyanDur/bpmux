@@ -4,7 +4,7 @@ use clap::Parser;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use crate::{bridge, cli, server, session, transport};
+use crate::{bridge, cli, location, server, session, transport};
 
 mod resolve;
 mod room;
@@ -51,7 +51,7 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
         return Ok(());
     }
     let base = resolve_session_base(&cli.session_base)?;
-    let session_dir = match session::resume_or_create_session(&base) {
+    let session_dir = match location::resume_or_create_session(&base) {
         Ok(dir) => dir,
         Err(_) => return Ok(()),
     };
@@ -67,7 +67,7 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;
-    let session_dir = session::resume_or_create_session(&base)?;
+    let session_dir = location::resume_or_create_session(&base)?;
     let (wake_tx, _wake_rx) =
         broadcast::channel::<crate::message::Message>(session::BROADCAST_CHANNEL_CAPACITY);
     let session = Arc::new(session::Session::new(

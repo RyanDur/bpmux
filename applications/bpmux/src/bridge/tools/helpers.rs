@@ -38,7 +38,7 @@ pub(super) fn identity_error(e: &crate::memory::identity::IdentityError) -> Stri
 }
 
 pub(super) async fn get_session_dir() -> Result<std::path::PathBuf, String> {
-    use crate::session::default_sessions_base;
+    use crate::location::default_sessions_base;
     let base = default_sessions_base().map_err(|e| format!("sessions base: {e}"))?;
     let current = base.join("current");
     if current.is_symlink() {

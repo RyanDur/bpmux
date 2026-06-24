@@ -74,7 +74,7 @@ async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_
         marker.is_file(),
         "the ＋-spawned terminal's detector minted the work-dir's marker on a sustained foreground-job — the handler wires detection for a bare shell, no BPMUX_ROOM_AGENT gate"
     );
-    let session = crate::session::read_or_create_dir_session(work.path()).expect("read marker");
+    let session = crate::location::read_or_create_dir_session(work.path()).expect("read marker");
     assert_eq!(
         routing.resolve(&work_name),
         vec![session.id],

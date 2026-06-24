@@ -4,9 +4,9 @@ use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 
 use super::Osc7CwdParser;
+use crate::location::read_or_create_dir_session;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
-use crate::session::read_or_create_dir_session;
 
 const AGENT_RUN_GATE: Duration = Duration::from_millis(1000);
 const DETECTOR_POLL: Duration = Duration::from_millis(200);

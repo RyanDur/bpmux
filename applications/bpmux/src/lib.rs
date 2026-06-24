@@ -19,6 +19,9 @@ pub mod diag;
 #[cfg(test)]
 mod diag_tests;
 pub mod github;
+pub mod location;
+#[cfg(test)]
+mod location_tests;
 pub mod log;
 #[cfg(test)]
 mod log_tests;
