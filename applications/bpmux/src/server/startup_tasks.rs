@@ -16,9 +16,6 @@ pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>) {
                         "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
                         attempt + 1
                     ));
-                    crate::product_management::iteration::order_backfill::backfill_iteration_order(
-                        orch.as_ref(),
-                    );
                     return;
                 }
                 Err(e) if attempt + 1 < backoffs.len() => {
