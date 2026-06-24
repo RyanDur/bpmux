@@ -19,7 +19,7 @@ pub(crate) fn ordered_board_stories(
                     .filter(|m| m.iteration_membership.map(|(it, _)| it) == Some(s.number))
                     .collect();
                 let readiness =
-                    crate::product_management::board::iteration_readiness::iteration_readiness(
+                    crate::product_management::iteration::readiness::iteration_readiness(
                         s, &members, workflow,
                     );
                 if let Ok(value) = serde_json::to_value(readiness) {
@@ -29,10 +29,9 @@ pub(crate) fn ordered_board_stories(
             if s.story_type == crate::product_management::board::domain::StoryType::Outcome
                 && let serde_json::Value::Object(map) = &mut json
             {
-                let rolled =
-                    crate::product_management::board::iteration_readiness::outcome_readiness(
-                        s, &all, workflow,
-                    );
+                let rolled = crate::product_management::iteration::readiness::outcome_readiness(
+                    s, &all, workflow,
+                );
                 if let Ok(value) = serde_json::to_value(rolled) {
                     map.insert("outcome_readiness".to_string(), value);
                 }

@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bpmux::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use bpmux::product_management::board::iteration_label::theme_name_from_title;
 use bpmux::product_management::board::label_codec::LabelCodec;
+use bpmux::product_management::iteration::label::theme_name_from_title;
 
 fn renderer_theme_name_from_title(title: &str) -> String {
     let raw = match title.strip_prefix("Iteration ") {

@@ -2,9 +2,6 @@ pub mod adapters;
 pub mod column;
 pub mod domain;
 pub mod events;
-pub mod iteration_label;
-pub mod iteration_order_backfill;
-pub mod iteration_readiness;
 pub mod label_codec;
 pub mod orchestrator;
 pub mod peer;
@@ -21,10 +18,6 @@ mod conflict_classifier_tests;
 mod domain_tests;
 #[cfg(test)]
 mod event_messages_audit_tests;
-#[cfg(test)]
-mod iteration_label_tests;
-#[cfg(test)]
-mod iteration_readiness_tests;
 #[cfg(test)]
 mod orchestrator_tests;
 #[cfg(test)]

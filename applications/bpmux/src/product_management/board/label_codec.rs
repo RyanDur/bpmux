@@ -1,4 +1,4 @@
-use crate::product_management::board::iteration_label::IterationLabelParts;
+use crate::product_management::iteration::label::IterationLabelParts;
 
 pub trait LabelCodec {
     fn decode_ready_order(&self, label: &str) -> Option<u32>;

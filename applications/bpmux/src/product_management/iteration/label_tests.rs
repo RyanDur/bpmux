@@ -1,4 +1,4 @@
-use super::iteration_label::*;
+use super::label::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::domain::{Story, StoryState};
 use chrono::{TimeZone, Utc};

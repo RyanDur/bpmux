@@ -28,7 +28,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
         .ok_or_else(|| format!("story #{number} not found in canonical store"))?;
     let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
     let current_iteration = story.raw_labels.iter().find_map(|l| {
-        crate::product_management::board::iteration_label::parse_iteration_label(&codec, l)
+        crate::product_management::iteration::label::parse_iteration_label(&codec, l)
             .map(|p| (p.theme_name, l.clone()))
     });
     let theme_name = current_iteration
@@ -41,14 +41,14 @@ pub(crate) fn reorder_icebox_story_via_labels(
         .filter(|s| s.number != number && !s.is_closed)
         .filter_map(|s| {
             s.raw_labels.iter().find_map(|l| {
-                crate::product_management::board::iteration_label::parse_iteration_label(&codec, l)
+                crate::product_management::iteration::label::parse_iteration_label(&codec, l)
                     .filter(|p| p.theme_name == theme_name)
                     .map(|p| p.position)
             })
         })
         .collect();
     let insert_index = position.saturating_sub(1).min(other_positions.len());
-    let new_position = crate::product_management::board::iteration_label::compute_insert_position(
+    let new_position = crate::product_management::iteration::label::compute_insert_position(
         insert_index,
         &other_positions,
     );

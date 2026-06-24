@@ -73,8 +73,8 @@ pub(crate) async fn handle_create_iteration(
         .filter_map(|s| s.iteration_order)
         .max()
         .map_or(
-            crate::product_management::board::iteration_label::DEFAULT_FIRST_POSITION,
-            |m| m + crate::product_management::board::iteration_label::DEFAULT_STEP,
+            crate::product_management::iteration::label::DEFAULT_FIRST_POSITION,
+            |m| m + crate::product_management::iteration::label::DEFAULT_STEP,
         );
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,

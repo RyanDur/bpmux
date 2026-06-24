@@ -1,9 +1,7 @@
 use serde::Serialize;
 
 use crate::product_management::board::domain::{Horizon, Story, StoryState, StoryType};
-use crate::product_management::board::iteration_readiness::{
-    building_iterations, outcome_readiness,
-};
+use crate::product_management::iteration::readiness::{building_iterations, outcome_readiness};
 use crate::workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

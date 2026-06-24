@@ -362,7 +362,7 @@ impl crate::product_management::board::label_codec::LabelCodec for StubLabelCode
     fn decode_iteration(
         &self,
         label: &str,
-    ) -> Option<crate::product_management::board::iteration_label::IterationLabelParts> {
+    ) -> Option<crate::product_management::iteration::label::IterationLabelParts> {
         let rest = label.strip_prefix("iter|")?;
         let (theme, pos_str) = rest.rsplit_once(':')?;
         let position = pos_str.parse().ok()?;
@@ -370,7 +370,7 @@ impl crate::product_management::board::label_codec::LabelCodec for StubLabelCode
             return None;
         }
         Some(
-            crate::product_management::board::iteration_label::IterationLabelParts {
+            crate::product_management::iteration::label::IterationLabelParts {
                 theme_name: theme.to_string(),
                 position,
             },

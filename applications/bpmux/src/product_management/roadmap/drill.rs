@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::product_management::board::domain::Story;
-use crate::product_management::board::iteration_readiness::{
+use crate::product_management::iteration::readiness::{
     IterationReadiness, building_iterations, iteration_readiness,
 };
 use crate::workflow::config::WorkflowConfig;

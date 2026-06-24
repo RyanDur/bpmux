@@ -14,8 +14,8 @@ use crate::product_management::board::store::BoardStore;
 
 mod codec_injection_substrate {
     use super::*;
-    use crate::product_management::board::iteration_label::IterationLabelParts;
     use crate::product_management::board::label_codec::LabelCodec;
+    use crate::product_management::iteration::label::IterationLabelParts;
     use std::sync::Arc;
 
     struct StubLabelCodec;

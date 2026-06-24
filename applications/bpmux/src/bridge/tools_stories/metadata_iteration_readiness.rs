@@ -62,7 +62,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
 ) -> Result<String, String> {
     require_purpose_any(
         agent_name,
-        crate::product_management::board::iteration_readiness::ITERATION_REVIEWER_PURPOSE,
+        crate::product_management::iteration::readiness::ITERATION_REVIEWER_PURPOSE,
         "close the pre-pickup review",
     )?;
     let iteration_number = args
@@ -106,7 +106,7 @@ pub(crate) async fn handle_dev_ok_iteration(
 ) -> Result<String, String> {
     require_purpose_any(
         agent_name,
-        crate::product_management::board::iteration_readiness::ITERATION_BUILDER_PURPOSE,
+        crate::product_management::iteration::readiness::ITERATION_BUILDER_PURPOSE,
         "record dev-OK for the iteration",
     )?;
     let iteration_number = args

@@ -4,8 +4,8 @@ use crate::orchestrator::RosterMember;
 use crate::orchestrator::ci::{CiPollFetch, Orchestrator, OrchestratorAction};
 use crate::orchestrator::stores::{Presence, RosterAction};
 use crate::product_management::board::domain::{Acceptor, StoryState};
-use crate::product_management::board::iteration_label::current_iteration_number;
 use crate::product_management::board::{BoardEvent, BoardStore, Story};
+use crate::product_management::iteration::label::current_iteration_number;
 
 fn ready_queue_is_empty(stories: &[Story]) -> bool {
     let current = current_iteration_number(stories);

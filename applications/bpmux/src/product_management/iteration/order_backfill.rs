@@ -1,8 +1,8 @@
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::domain::StoryType;
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::iteration_label::{DEFAULT_FIRST_POSITION, DEFAULT_STEP};
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
+use crate::product_management::iteration::label::{DEFAULT_FIRST_POSITION, DEFAULT_STEP};
 
 pub fn backfill_iteration_order(orch: &dyn RefreshDriver) {
     let stories = orch.all_stories();

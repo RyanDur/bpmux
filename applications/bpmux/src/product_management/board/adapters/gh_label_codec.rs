@@ -1,5 +1,5 @@
-use crate::product_management::board::iteration_label::IterationLabelParts;
 use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::iteration::label::IterationLabelParts;
 
 pub struct GhLabelCodec;
 
