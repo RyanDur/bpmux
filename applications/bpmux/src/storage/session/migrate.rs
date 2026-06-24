@@ -3,9 +3,9 @@ use std::path::Path;
 
 use super::{FileStorage, SqliteStorage, Storage};
 use crate::board::store::PersistError;
+use crate::log::LogError;
 use crate::message::{Message, StateDeltaPayload};
 use crate::routing::short;
-use crate::session::log::LogError;
 
 const MIGRATION_FLAG_KEY: &str = "migration:file_log_to_sqlite";
 const MIGRATION_DONE: &str = "done";

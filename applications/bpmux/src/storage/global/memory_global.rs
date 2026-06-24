@@ -69,7 +69,7 @@ impl GlobalStore for MemoryGlobalStore {
     fn append_token_row(
         &self,
         row: &crate::telemetry::tokens::TokenRow,
-    ) -> Result<(), crate::session::log::LogError> {
+    ) -> Result<(), crate::log::LogError> {
         self.tokens
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -79,7 +79,7 @@ impl GlobalStore for MemoryGlobalStore {
 
     fn read_token_rows(
         &self,
-    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, crate::session::log::LogError> {
+    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, crate::log::LogError> {
         Ok(self
             .tokens
             .lock()

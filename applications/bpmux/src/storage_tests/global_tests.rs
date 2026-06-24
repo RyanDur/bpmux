@@ -1,4 +1,4 @@
-use crate::session::storage::{FileGlobalStore, GlobalStore, MemoryGlobalStore};
+use crate::storage::{FileGlobalStore, GlobalStore, MemoryGlobalStore};
 use std::collections::HashMap;
 use std::sync::Arc;
 

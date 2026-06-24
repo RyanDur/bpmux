@@ -57,7 +57,7 @@ async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_serve
         "the {{id, name}} marker holds the minted session-id"
     );
 
-    use bpmux::session::storage::StorageBackend;
+    use bpmux::storage::StorageBackend;
     let session_dir = bpmux.sessions_base_path().join("current");
     let storage = StorageBackend::resolve().build(&session_dir);
     let users = storage

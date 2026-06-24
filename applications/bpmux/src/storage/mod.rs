@@ -8,7 +8,7 @@ use crate::comprehension::search::{SearchFilters, SearchResult};
 
 use crate::memory::lessons::LessonIndex;
 
-use super::log::LogError;
+use crate::log::LogError;
 use crate::message::Message;
 
 mod backend;
@@ -107,10 +107,10 @@ pub trait GlobalStore: Send + Sync {
     fn append_token_row(
         &self,
         row: &crate::telemetry::tokens::TokenRow,
-    ) -> Result<(), super::log::LogError>;
+    ) -> Result<(), crate::log::LogError>;
     fn read_token_rows(
         &self,
-    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, super::log::LogError>;
+    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, crate::log::LogError>;
 
     fn load_usage(&self) -> std::collections::HashMap<String, crate::telemetry::usage::Record>;
     fn save_usage(

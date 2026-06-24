@@ -4,9 +4,9 @@ use std::time::Instant;
 
 use super::Storage;
 use crate::comprehension::search::{SearchFilters, SearchResult};
+use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
-use crate::session::log::LogError;
 
 pub struct InstrumentedStorage<S: Storage> {
     inner: S,
@@ -189,7 +189,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
 
     fn load_users(
         &self,
-    ) -> Result<Vec<crate::session::storage::UserRecord>, crate::board::store::PersistError> {
+    ) -> Result<Vec<crate::storage::UserRecord>, crate::board::store::PersistError> {
         let start = Instant::now();
         let result = self.inner.load_users();
         if let Ok(ref records) = result {

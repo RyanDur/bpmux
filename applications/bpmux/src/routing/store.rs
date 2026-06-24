@@ -3,7 +3,7 @@ use std::sync::Mutex;
 
 use super::cursor_time::{cursor_after, from_millis, is_future, later_cursor, to_millis};
 use super::identity::RoutingIdentity;
-use crate::session::storage::Storage;
+use crate::storage::Storage;
 
 pub(crate) fn short(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)

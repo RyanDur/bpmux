@@ -76,7 +76,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn with_storage(
         store: Arc<BoardStore>,
         adapter: Arc<A>,
-        storage: Arc<dyn crate::session::storage::Storage>,
+        storage: Arc<dyn crate::storage::Storage>,
     ) -> Result<Self, PersistError> {
         let pending = storage.load_outbox()?;
         let next = pending.iter().map(|e| e.id.0).max().unwrap_or(0) + 1;

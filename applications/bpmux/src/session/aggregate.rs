@@ -5,9 +5,9 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::broadcast;
 
+use crate::log::LogError;
 use crate::message::Message;
-use crate::session::log::LogError;
-use crate::session::storage::{Storage, StorageBackend};
+use crate::storage::{Storage, StorageBackend};
 
 pub const BROADCAST_CHANNEL_CAPACITY: usize = 10_000;
 

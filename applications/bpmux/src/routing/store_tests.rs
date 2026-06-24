@@ -2,7 +2,7 @@
 
 use super::cursor_time::later_cursor;
 use super::*;
-use crate::session::storage::sqlite_test_storage;
+use crate::storage::sqlite_test_storage;
 
 fn instant(rfc3339: &str) -> i64 {
     chrono::DateTime::parse_from_rfc3339(rfc3339)

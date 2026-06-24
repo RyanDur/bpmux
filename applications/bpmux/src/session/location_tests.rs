@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::location::*;
+use crate::log::{append_message, read_messages};
 use crate::message::Message;
-use crate::session::log::{append_message, read_messages};
 use chrono::Utc;
 use tempfile::TempDir;
 

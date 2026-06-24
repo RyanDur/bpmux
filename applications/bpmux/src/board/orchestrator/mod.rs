@@ -44,7 +44,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) status: Arc<Mutex<SyncStatus>>,
     pub(super) pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
     pub(super) outbox_path: Option<PathBuf>,
-    pub(super) storage: Option<Arc<dyn crate::session::storage::Storage>>,
+    pub(super) storage: Option<Arc<dyn crate::storage::Storage>>,
     pub(super) codec: Arc<dyn crate::board::label_codec::LabelCodec + Send + Sync>,
     pub(super) next_mutation_id: AtomicU64,
     pub(super) action_tx:

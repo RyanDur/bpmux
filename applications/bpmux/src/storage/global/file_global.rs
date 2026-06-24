@@ -66,7 +66,7 @@ impl FileGlobalStore {
         crate::briefing::briefings_dir()
     }
 
-    fn resolve_tokens_log_path(&self) -> Result<PathBuf, crate::session::log::LogError> {
+    fn resolve_tokens_log_path(&self) -> Result<PathBuf, crate::log::LogError> {
         if let Some(p) = &self.tokens_log_path {
             return Ok(p.clone());
         }
@@ -121,14 +121,14 @@ impl GlobalStore for FileGlobalStore {
     fn append_token_row(
         &self,
         row: &crate::telemetry::tokens::TokenRow,
-    ) -> Result<(), crate::session::log::LogError> {
+    ) -> Result<(), crate::log::LogError> {
         let path = self.resolve_tokens_log_path()?;
         crate::telemetry::tokens::append_token_row(&path, row)
     }
 
     fn read_token_rows(
         &self,
-    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, crate::session::log::LogError> {
+    ) -> Result<Vec<crate::telemetry::tokens::TokenRow>, crate::log::LogError> {
         let path = self.resolve_tokens_log_path()?;
         crate::telemetry::tokens::read_token_rows(&path)
     }

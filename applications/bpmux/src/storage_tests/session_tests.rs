@@ -1,8 +1,8 @@
 use crate::comprehension::search::SearchFilters;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
-use crate::session::storage::StorageBackend;
-use crate::session::storage::{FileStorage, SqliteStorage, Storage};
+use crate::storage::StorageBackend;
+use crate::storage::{FileStorage, SqliteStorage, Storage};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -515,7 +515,7 @@ fn file_backend_writes_the_jsonl_log_to_disk() {
         .append_message(&fresh_message("file-mode-test"))
         .unwrap();
 
-    let log_path = crate::session::log::log_path(dir.path());
+    let log_path = crate::log::log_path(dir.path());
     assert!(
         log_path.exists(),
         "the file backend must write the jsonl log to disk at {log_path:?}"
@@ -544,7 +544,7 @@ fn sqlite_backend_writes_the_db_not_the_flat_log() {
         sqlite_path.exists(),
         "the sqlite backend must write to session.db at {sqlite_path:?}"
     );
-    let jsonl_path = crate::session::log::log_path(dir.path());
+    let jsonl_path = crate::log::log_path(dir.path());
     assert!(
         !jsonl_path.exists(),
         "the sqlite backend must NOT also write the flat jsonl log at {jsonl_path:?}"

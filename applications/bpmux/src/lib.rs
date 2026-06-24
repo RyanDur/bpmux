@@ -19,6 +19,9 @@ pub mod diag;
 #[cfg(test)]
 mod diag_tests;
 pub mod github;
+pub mod log;
+#[cfg(test)]
+mod log_tests;
 pub mod mcp;
 pub mod memory;
 pub mod message;
@@ -40,6 +43,9 @@ mod session_id_pin_tests;
 pub mod speech_guard;
 #[cfg(test)]
 mod speech_guard_tests;
+pub mod storage;
+#[cfg(test)]
+mod storage_tests;
 pub mod telemetry;
 pub mod transport;
 pub mod velocity;

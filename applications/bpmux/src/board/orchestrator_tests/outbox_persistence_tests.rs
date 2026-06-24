@@ -11,7 +11,7 @@ use crate::board::events::{BoardEvent, EventMeta};
 use crate::board::orchestrator::SyncOrchestrator;
 use crate::board::peer::PeerId;
 use crate::board::store::BoardStore;
-use crate::session::storage::{SqliteStorage, Storage};
+use crate::storage::{SqliteStorage, Storage};
 
 mod outbox_persistence {
     use super::*;

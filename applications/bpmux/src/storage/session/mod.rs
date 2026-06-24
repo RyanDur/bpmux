@@ -6,9 +6,9 @@ use crate::board::store::PersistError;
 
 use super::{Storage, UserRecord, default_kind};
 use crate::comprehension::search::{self, SearchFilters, SearchResult};
+use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
-use crate::session::log::LogError;
 
 pub struct FileStorage {
     dir: PathBuf,
@@ -50,11 +50,11 @@ impl FileStorage {
 
 impl Storage for FileStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
-        crate::session::log::append_message(&self.dir, msg)
+        crate::log::append_message(&self.dir, msg)
     }
 
     fn read_messages(&self) -> Result<Vec<Message>, LogError> {
-        crate::session::log::read_messages(&self.dir)
+        crate::log::read_messages(&self.dir)
     }
 
     fn read_recent(
@@ -63,7 +63,7 @@ impl Storage for FileStorage {
         offset: usize,
         matches: &dyn Fn(&Message) -> bool,
     ) -> Result<Vec<Message>, LogError> {
-        crate::session::log::read_recent(&self.dir, limit, offset, matches)
+        crate::log::read_recent(&self.dir, limit, offset, matches)
     }
 
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {

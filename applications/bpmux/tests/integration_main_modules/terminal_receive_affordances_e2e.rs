@@ -552,7 +552,7 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
         "SELF-ECHO on sqlite: dev's own broadcast is never reflected back into dev's terminal"
     );
 
-    use bpmux::session::storage::{SqliteStorage, Storage};
+    use bpmux::storage::{SqliteStorage, Storage};
     let storage = SqliteStorage::new(bpmux.sessions_base_path().join("current"))
         .expect("open the server's sqlite session store");
     let mut roles: Vec<String> = storage

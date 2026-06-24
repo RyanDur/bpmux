@@ -17,10 +17,10 @@ use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 use crate::bookmark::Bookmark;
 use crate::comprehension::search::{self, SearchFilters, SearchResult};
+use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
 use crate::reactions::ReactionsStore;
-use crate::session::log::LogError;
 
 pub struct SqliteStorage {
     dir: PathBuf,
