@@ -1,4 +1,4 @@
-use super::{Story, StoryState};
+use crate::product_management::board::domain::{Story, StoryState};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]

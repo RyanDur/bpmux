@@ -125,11 +125,9 @@ pub(in crate::bridge) fn build_board_text(
                     .iter()
                     .filter(|c| c.parent_epic == Some(epic.number))
                     .collect();
-                let counts =
-                    crate::product_management::board::domain::derive_epic_counts(&children);
-                let derived = crate::product_management::board::domain::derive_epic_state(
-                    epic.state, &children,
-                );
+                let counts = crate::product_management::epic::derive_epic_counts(&children);
+                let derived =
+                    crate::product_management::epic::derive_epic_state(epic.state, &children);
                 out.push_str(&format!(
                     "  #{} [{}] {} ({total} children: {accepted} accepted, {retired} retired, {active} active, {icebox} icebox)\n",
                     epic.number,
