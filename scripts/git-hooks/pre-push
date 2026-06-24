@@ -82,9 +82,8 @@ size_gate_allowlisted() {
         applications/bpmux/src/board/events.rs) return 0 ;;                   # BoardEvent: one declarative enum + its exhaustive meta()/story_number() matches; nesting would ripple to every construction + match site
         applications/bpmux/src/bridge/connection.rs) return 0 ;;              # run_ws_connection: one connect/identify/receive async state-machine loop over shared loop-state
         applications/bpmux/src/transport/ws/mod.rs) return 0 ;;               # run_ws_session: one select! loop; branches share heavy mutable loop-state (cutting = param-threading noise)
-        applications/bpmux/src/session/storage/instrumented.rs) return 0 ;;   # single `impl Storage for InstrumentedStorage` block (decorator); Rust can't split one trait impl across files
-        applications/bpmux/src/session/storage/session/memory.rs) return 0 ;; # single `impl Storage for MemoryStorage` block (in-memory test double); one trait impl
-        applications/bpmux/src/session/storage/session/mod.rs) return 0 ;;    # single `impl Storage for FileStorage` block (file-backed prod sibling to memory.rs); Rust can't split one trait impl across files
+        applications/bpmux/src/storage/instrumented.rs) return 0 ;;   # single `impl Storage for InstrumentedStorage` block (decorator); Rust can't split one trait impl across files
+        applications/bpmux/src/storage/session/mod.rs) return 0 ;;    # single `impl Storage for FileStorage` block (file-backed prod store); Rust can't split one trait impl across files
     esac
     return 1
 }
