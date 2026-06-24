@@ -9,9 +9,6 @@ pub mod label_codec;
 pub mod orchestrator;
 pub mod peer;
 pub mod ready_order_label;
-pub mod roadmap_drill;
-pub mod roadmap_filter;
-pub mod roadmap_view;
 pub mod store;
 pub mod sync;
 pub mod velocity;
@@ -30,12 +27,6 @@ mod iteration_label_tests;
 mod iteration_readiness_tests;
 #[cfg(test)]
 mod orchestrator_tests;
-#[cfg(test)]
-mod roadmap_drill_tests;
-#[cfg(test)]
-mod roadmap_filter_tests;
-#[cfg(test)]
-mod roadmap_view_tests;
 #[cfg(test)]
 mod store_tests;
 #[cfg(test)]

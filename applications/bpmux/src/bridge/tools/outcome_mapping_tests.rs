@@ -59,7 +59,7 @@ fn args(outcome: u64, iteration: u64) -> Map<String, Value> {
 
 fn drill_iteration_numbers(refresh: &Arc<dyn RefreshDriver>, outcome: u64) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
-    crate::product_management::board::roadmap_drill::derive_outcome_drill_in(
+    crate::product_management::roadmap::drill::derive_outcome_drill_in(
         outcome,
         &refresh.all_stories(),
         workflow,

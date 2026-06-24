@@ -31,7 +31,7 @@ pub async fn get_roadmap(
     let workflow = crate::workflow::current_workflow();
     let body = match query.outcome {
         Some(number) => {
-            let drill = crate::product_management::board::roadmap_drill::derive_outcome_drill_in(
+            let drill = crate::product_management::roadmap::drill::derive_outcome_drill_in(
                 number, &all, workflow,
             );
             let outcome_name = all
@@ -51,25 +51,21 @@ pub async fn get_roadmap(
         }
         None => {
             let bands =
-                crate::product_management::board::roadmap_view::derive_roadmap_view(&all, workflow);
-            let filter = crate::product_management::board::roadmap_filter::RoadmapQuery {
-                state: query.state.as_deref().and_then(
-                    crate::product_management::board::roadmap_view::OutcomeState::from_cli,
-                ),
+                crate::product_management::roadmap::view::derive_roadmap_view(&all, workflow);
+            let filter = crate::product_management::roadmap::filter::RoadmapQuery {
+                state: query
+                    .state
+                    .as_deref()
+                    .and_then(crate::product_management::roadmap::view::OutcomeState::from_cli),
                 order: query
                     .order
                     .as_deref()
-                    .and_then(
-                        crate::product_management::board::roadmap_filter::RoadmapOrder::from_cli,
-                    )
-                    .unwrap_or(
-                        crate::product_management::board::roadmap_filter::RoadmapOrder::Priority,
-                    ),
+                    .and_then(crate::product_management::roadmap::filter::RoadmapOrder::from_cli)
+                    .unwrap_or(crate::product_management::roadmap::filter::RoadmapOrder::Priority),
                 limit: query.limit,
             };
-            let filtered = crate::product_management::board::roadmap_filter::apply_roadmap_query(
-                bands, &filter,
-            );
+            let filtered =
+                crate::product_management::roadmap::filter::apply_roadmap_query(bands, &filter);
             serde_json::json!({
                 "bands": filtered.bands,
                 "total": filtered.total,

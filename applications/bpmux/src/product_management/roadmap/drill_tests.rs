@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::roadmap_drill::*;
+use super::drill::*;
 use crate::product_management::board::domain::{Story, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;

@@ -1,3 +1,14 @@
+pub mod drill;
+pub mod filter;
+pub mod view;
+
+#[cfg(test)]
+mod drill_tests;
+#[cfg(test)]
+mod filter_tests;
+#[cfg(test)]
+mod view_tests;
+
 use std::path::{Path, PathBuf};
 
 fn resolve_root(bpmux_root_env: Option<String>, executable: Option<PathBuf>) -> Option<PathBuf> {

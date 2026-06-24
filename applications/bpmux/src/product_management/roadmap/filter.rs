@@ -1,4 +1,4 @@
-use crate::product_management::board::roadmap_view::{OutcomeState, RoadmapBand};
+use crate::product_management::roadmap::view::{OutcomeState, RoadmapBand};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoadmapOrder {

@@ -49,14 +49,11 @@ fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Va
 
 fn roadmap_name(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Option<String> {
     let workflow = crate::workflow::current_workflow();
-    crate::product_management::board::roadmap_view::derive_roadmap_view(
-        &refresh.all_stories(),
-        workflow,
-    )
-    .into_iter()
-    .flat_map(|b| b.outcomes)
-    .find(|o| o.number == number)
-    .map(|o| o.name)
+    crate::product_management::roadmap::view::derive_roadmap_view(&refresh.all_stories(), workflow)
+        .into_iter()
+        .flat_map(|b| b.outcomes)
+        .find(|o| o.number == number)
+        .map(|o| o.name)
 }
 
 #[tokio::test]

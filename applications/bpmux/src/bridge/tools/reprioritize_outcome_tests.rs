@@ -43,14 +43,11 @@ fn args_full(outcome: u64, to: Option<&str>, position: Option<u32>) -> Map<Strin
 
 fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
-    crate::product_management::board::roadmap_view::derive_roadmap_view(
-        &refresh.all_stories(),
-        workflow,
-    )
-    .into_iter()
-    .find(|b| b.horizon == horizon)
-    .map(|b| b.outcomes.iter().map(|o| o.number).collect())
-    .unwrap_or_default()
+    crate::product_management::roadmap::view::derive_roadmap_view(&refresh.all_stories(), workflow)
+        .into_iter()
+        .find(|b| b.horizon == horizon)
+        .map(|b| b.outcomes.iter().map(|o| o.number).collect())
+        .unwrap_or_default()
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
@@ -102,7 +99,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
     )])
     .await;
     let workflow = crate::workflow::current_workflow();
-    let before = crate::product_management::board::roadmap_view::derive_roadmap_view(
+    let before = crate::product_management::roadmap::view::derive_roadmap_view(
         &refresh.all_stories(),
         workflow,
     );
@@ -117,7 +114,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
         .await
         .expect("pm reprioritizes the outcome");
 
-    let after = crate::product_management::board::roadmap_view::derive_roadmap_view(
+    let after = crate::product_management::roadmap::view::derive_roadmap_view(
         &refresh.all_stories(),
         workflow,
     );

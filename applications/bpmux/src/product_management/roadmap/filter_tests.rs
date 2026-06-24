@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::roadmap_filter::*;
-use super::roadmap_view::{OutcomeState, RoadmapBand, RoadmapOutcome};
+use super::filter::*;
+use super::view::{OutcomeState, RoadmapBand, RoadmapOutcome};
 use crate::product_management::board::domain::Horizon;
 
 fn outcome(number: u64, name: &str, state: OutcomeState, gap_count: u32) -> RoadmapOutcome {
