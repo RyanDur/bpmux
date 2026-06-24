@@ -34,9 +34,9 @@ pub mod orchestrator;
 pub mod precommit;
 #[cfg(test)]
 mod precommit_tests;
+pub mod product_management;
 pub mod reactions;
 pub mod reload;
-pub mod roadmap;
 pub mod room;
 pub mod routing;
 pub mod server;

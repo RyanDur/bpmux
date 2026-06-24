@@ -17,7 +17,7 @@ pub(in crate::bridge) async fn handle_view_roadmap(
     ws_send(ws_tx, json)
         .await
         .map_err(|e| format!("view_roadmap send failed: {e}"))?;
-    match crate::roadmap::fetch_roadmap() {
+    match crate::product_management::roadmap::fetch_roadmap() {
         Ok(text) => Ok(text),
         Err(e) => Ok(format!("roadmap view opened, but content unavailable: {e}")),
     }
