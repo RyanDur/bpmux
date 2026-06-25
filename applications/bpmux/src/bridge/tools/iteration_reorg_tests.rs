@@ -34,7 +34,8 @@ fn member(number: u64, iteration_number: u64, position: u32, state: StoryState) 
         "pm".into(),
     );
     s.story_type = StoryType::Feature;
-    s.iteration_membership = Some((iteration_number, position));
+    s.raw_labels
+        .push(format!("parent-iteration-#{iteration_number}.{position}"));
     s
 }
 
@@ -72,7 +73,9 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
     .await
     .expect("pm removes the member");
     assert_eq!(
-        refresh.story(710).expect("present").iteration_membership,
+        crate::product_management::board::adapters::github::iteration_membership_from_labels(
+            &refresh.story(710).expect("present").raw_labels
+        ),
         None,
         "the membership is cleared (the only intentional vanish-path) — board no longer renders it under the iteration"
     );
@@ -121,11 +124,10 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
         "the error names the required reason: {err}"
     );
     assert!(
-        refresh
-            .story(710)
-            .expect("present")
-            .iteration_membership
-            .is_some(),
+        crate::product_management::board::adapters::github::iteration_membership_from_labels(
+            &refresh.story(710).expect("present").raw_labels
+        )
+        .is_some(),
         "a reasonless remove mutates nothing"
     );
 }
@@ -182,7 +184,9 @@ async fn move_member_reorders_within_the_iteration_1762() {
         .await
         .expect("pm reorders the member");
     assert_eq!(
-        refresh.story(710).expect("present").iteration_membership,
+        crate::product_management::board::adapters::github::iteration_membership_from_labels(
+            &refresh.story(710).expect("present").raw_labels
+        ),
         Some((1700, 3)),
         "the member reads its new position within the iteration"
     );

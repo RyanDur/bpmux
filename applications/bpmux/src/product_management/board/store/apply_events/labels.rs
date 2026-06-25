@@ -5,7 +5,6 @@ pub(super) fn apply_label_delta(w: &mut Stories, number: u64, fields: &LabelDeri
     if let Some(story) = w.get_mut(&number) {
         story.raw_labels = fields.raw_labels.clone();
         story.parent_epic = fields.parent_epic;
-        story.iteration_membership = fields.iteration_membership;
     }
 }
 
@@ -21,7 +20,6 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
     }
     if let Some(existing) = w.get_mut(&number) {
         existing.parent_epic = fields.parent_epic;
-        existing.iteration_membership = fields.iteration_membership;
         existing.raw_labels = fields.raw_labels.clone();
     }
 }

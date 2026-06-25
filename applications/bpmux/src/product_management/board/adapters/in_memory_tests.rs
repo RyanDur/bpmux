@@ -305,13 +305,17 @@ async fn iteration_membership_set_surfaces_in_ingested_metadata() {
     let stories = adapter.ingest_metadata().await.unwrap();
     let story = stories.iter().find(|s| s.number == 42).unwrap();
     assert_eq!(
-        story.iteration_membership,
+        crate::product_management::board::adapters::github::iteration_membership_from_labels(
+            &story.raw_labels
+        ),
         Some((1300, 200)),
         "IterationMembershipSet must surface iteration_membership in the round-tripped Story"
     );
     let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
     assert_eq!(
-        fetched.iteration_membership,
+        crate::product_management::board::adapters::github::iteration_membership_from_labels(
+            &fetched.raw_labels
+        ),
         Some((1300, 200)),
         "IterationMembershipSet must also surface via fetch_story_metadata"
     );

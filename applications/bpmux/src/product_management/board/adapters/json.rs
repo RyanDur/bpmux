@@ -1,6 +1,6 @@
 use crate::product_management::board::adapters::github::{
     acceptor_from_labels, horizon_from_labels, is_current_from_labels,
-    iteration_dev_ok_by_from_labels, iteration_order_from_labels,
+    iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
     iteration_review_closers_from_labels, outcome_membership_from_labels, tags_from_labels,
 };
 use crate::product_management::board::label_codec::LabelCodec;
@@ -52,9 +52,8 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         .as_deref()
         .and_then(|ts| most_recent_backward_transition(ts).cloned())
         .and_then(|t| t.comment);
-    let iteration_membership = story
-        .iteration_membership
-        .map(|(iteration_number, position)| {
+    let iteration_membership =
+        iteration_membership_from_labels(&story.raw_labels).map(|(iteration_number, position)| {
             serde_json::json!({
                 "iteration_number": iteration_number,
                 "position": position,

@@ -19,7 +19,7 @@ pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64
         .map(|s| s.number)
         .filter(|iteration_number| {
             !stories.iter().any(|s| {
-                s.iteration_membership
+                super::iteration_membership_from_labels(&s.raw_labels)
                     .is_some_and(|(member_of, _)| member_of == *iteration_number)
             })
         })
@@ -53,7 +53,8 @@ mod filter_retired_empty_iterations_tests {
             "test".to_string(),
         );
         s.story_type = StoryType::Feature;
-        s.iteration_membership = Some((iteration_number, position));
+        s.raw_labels
+            .push(format!("parent-iteration-#{iteration_number}.{position}"));
         s
     }
 

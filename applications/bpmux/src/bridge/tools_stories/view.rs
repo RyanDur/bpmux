@@ -94,7 +94,13 @@ pub(in crate::bridge) fn build_board_text(
     use crate::product_management::board::column::{ColumnBucket, column_for};
     let in_scope_iteration = |s: &crate::product_management::story::Story| -> bool {
         match scope.iteration {
-            Some(n) => s.iteration_membership.map(|(it, _)| it) == Some(n),
+            Some(n) => {
+                crate::product_management::board::adapters::github::iteration_membership_from_labels(
+                    &s.raw_labels,
+                )
+                .map(|(it, _)| it)
+                    == Some(n)
+            }
             None => true,
         }
     };

@@ -20,7 +20,6 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         acceptance_test_path: None,
         raw_labels: Vec::new(),
         body_etag: None,
-        iteration_membership: None,
     }
 }
 
@@ -73,7 +72,7 @@ fn story_to_board_json_iteration_membership_null_when_none_1492() {
 #[test]
 fn story_to_board_json_iteration_membership_object_when_set_1492() {
     let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    s.iteration_membership = Some((1464, 100));
+    s.raw_labels.push("parent-iteration-#1464.100".to_string());
     let json = story_to_board_json(&GhLabelCodec, &s);
     let membership = json["iteration_membership"]
         .as_object()

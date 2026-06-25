@@ -104,12 +104,13 @@ mod reorder_label_ops_tests {
             "tester".to_string(),
         );
         story.raw_labels = vec![label.to_string()];
-        story.iteration_membership = iteration_membership_from_labels(&story.raw_labels);
         story
     }
 
     fn membership_of(store: &BoardStore, number: u64) -> Option<(u64, u32)> {
-        store.story(number).and_then(|s| s.iteration_membership)
+        store
+            .story(number)
+            .and_then(|s| iteration_membership_from_labels(&s.raw_labels))
     }
 
     #[test]

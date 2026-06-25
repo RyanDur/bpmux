@@ -10,9 +10,16 @@ pub(in crate::bridge) async fn handle_list_ready(
     let all = store.all_stories();
     let current = current_iteration_number(&all);
     let mut ready_stories = store.stories_in_state(StoryState::Ready);
-    ready_stories.sort_by_cached_key(|s| match (current, s.iteration_membership) {
-        (Some(ci), Some((it, pos))) if it == ci => (0u8, pos, s.number),
-        _ => (1u8, u32::MAX, s.number),
+    ready_stories.sort_by_cached_key(|s| {
+        match (
+            current,
+            crate::product_management::board::adapters::github::iteration_membership_from_labels(
+                &s.raw_labels,
+            ),
+        ) {
+            (Some(ci), Some((it, pos))) if it == ci => (0u8, pos, s.number),
+            _ => (1u8, u32::MAX, s.number),
+        }
     });
     let queue: Vec<serde_json::Value> = ready_stories
         .iter()

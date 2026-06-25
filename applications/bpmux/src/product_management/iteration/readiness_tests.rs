@@ -28,7 +28,8 @@ fn member(number: u64, iteration_number: u64, position: u32) -> Story {
         Utc::now(),
         "pm".to_string(),
     );
-    s.iteration_membership = Some((iteration_number, position));
+    s.raw_labels
+        .push(format!("parent-iteration-#{iteration_number}.{position}"));
     s
 }
 

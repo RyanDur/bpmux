@@ -13,9 +13,8 @@ use comments::{
 };
 use labels::{apply_label_delta, apply_labels_refreshed, apply_raw_labels_only};
 use lifecycle::{
-    apply_body_fetched, apply_iteration_membership_cleared, apply_iteration_membership_set,
-    apply_parent_epic_set, apply_parent_epic_unset, apply_state_transitioned, apply_story_closed,
-    apply_story_created, apply_story_refreshed, apply_story_reopened,
+    apply_body_fetched, apply_parent_epic_set, apply_parent_epic_unset, apply_state_transitioned,
+    apply_story_closed, apply_story_created, apply_story_refreshed, apply_story_reopened,
 };
 
 pub(super) type Stories = HashMap<u64, Story>;
@@ -65,15 +64,9 @@ pub(super) fn apply_event(
             apply_parent_epic_set(w, number, *epic_number)
         }
         BoardEvent::ParentEpicUnset { .. } => apply_parent_epic_unset(w, number),
-        BoardEvent::IterationMembershipSet {
-            iteration_number,
-            position,
-            ..
-        } => apply_iteration_membership_set(w, number, *iteration_number, *position),
-        BoardEvent::IterationMembershipCleared { .. } => {
-            apply_iteration_membership_cleared(w, number)
-        }
-        BoardEvent::OutcomeMembershipSet { .. }
+        BoardEvent::IterationMembershipSet { .. }
+        | BoardEvent::IterationMembershipCleared { .. }
+        | BoardEvent::OutcomeMembershipSet { .. }
         | BoardEvent::OutcomeMembershipCleared { .. }
         | BoardEvent::CurrentIterationDesignated { .. }
         | BoardEvent::CurrentIterationCleared { .. } => {

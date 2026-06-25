@@ -16,7 +16,13 @@ pub(crate) fn ordered_board_stories(
             {
                 let members: Vec<&crate::product_management::story::Story> = all
                     .iter()
-                    .filter(|m| m.iteration_membership.map(|(it, _)| it) == Some(s.number))
+                    .filter(|m| {
+                        crate::product_management::board::adapters::github::iteration_membership_from_labels(
+                            &m.raw_labels,
+                        )
+                        .map(|(it, _)| it)
+                            == Some(s.number)
+                    })
                     .collect();
                 let readiness =
                     crate::product_management::iteration::readiness::iteration_readiness(
@@ -89,7 +95,6 @@ mod tests {
             Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
             "pm".into(),
         );
-        s.iteration_membership = Some((iteration_number, position));
         s.raw_labels = vec![format!("parent-iteration-#{iteration_number}.{position}")];
         s
     }

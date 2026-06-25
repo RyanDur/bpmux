@@ -98,7 +98,13 @@ fn first_unmet_label(r: &IterationReadiness) -> Option<String> {
 fn readiness_of(iteration: &Story, all: &[Story], workflow: &WorkflowConfig) -> IterationReadiness {
     let members: Vec<&Story> = all
         .iter()
-        .filter(|m| m.iteration_membership.map(|(it, _)| it) == Some(iteration.number))
+        .filter(|m| {
+            crate::product_management::board::adapters::github::iteration_membership_from_labels(
+                &m.raw_labels,
+            )
+            .map(|(it, _)| it)
+                == Some(iteration.number)
+        })
         .collect();
     iteration_readiness(iteration, &members, workflow)
 }

@@ -7,7 +7,7 @@ use super::peer::PeerId;
 use super::store::BoardStore;
 use crate::product_management::board::adapters::github::{
     acceptor_from_labels, horizon_from_labels, iteration_dev_ok_by_from_labels,
-    iteration_review_closers_from_labels, tags_from_labels,
+    iteration_membership_from_labels, iteration_review_closers_from_labels, tags_from_labels,
 };
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, Story, StoryState, StoryType, Tag,
@@ -80,7 +80,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
         number: 77,
         fields: LabelDerivedFields {
             parent_epic: Some(7),
-            iteration_membership: Some((1655, 106)),
             raw_labels: vec![
                 "parent-epic-#7".to_string(),
                 "parent-iteration-#1655.106".to_string(),
@@ -91,7 +90,10 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
 
     let s = store.story(77).expect("story exists");
     assert_eq!(s.parent_epic, Some(7));
-    assert_eq!(s.iteration_membership, Some((1655, 106)));
+    assert_eq!(
+        iteration_membership_from_labels(&s.raw_labels),
+        Some((1655, 106))
+    );
     assert_eq!(acceptor_from_labels(&s.raw_labels), Some(Acceptor::Dev));
     assert_eq!(
         s.raw_labels,
@@ -659,7 +661,7 @@ fn tag_added_parent_iteration_label_rederives_iteration_membership_1553() {
         label: "parent-iteration-#9301.100".to_string(),
     });
     assert_eq!(
-        store.story(1).unwrap().iteration_membership,
+        iteration_membership_from_labels(&store.story(1).unwrap().raw_labels),
         Some((9301, 100))
     );
 }
@@ -685,7 +687,10 @@ fn tag_removed_parent_iteration_label_clears_iteration_membership_1553() {
         number: 1,
         label: "parent-iteration-#9301.100".to_string(),
     });
-    assert_eq!(store.story(1).unwrap().iteration_membership, None);
+    assert_eq!(
+        iteration_membership_from_labels(&store.story(1).unwrap().raw_labels),
+        None
+    );
 }
 
 #[test]

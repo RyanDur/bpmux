@@ -451,8 +451,10 @@ fn make_member(number: u64, title: &str, iteration_number: u64, position: u32) -
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["ready".into()];
-    s.iteration_membership = Some((iteration_number, position));
+    s.raw_labels = vec![
+        "ready".into(),
+        format!("parent-iteration-#{iteration_number}.{position}"),
+    ];
     s
 }
 

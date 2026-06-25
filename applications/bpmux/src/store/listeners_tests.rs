@@ -115,7 +115,9 @@ fn ready_story(
         chrono::Utc::now(),
         "pm".to_string(),
     );
-    story.iteration_membership = Some((iteration, position));
+    story
+        .raw_labels
+        .push(format!("parent-iteration-#{iteration}.{position}"));
     story
 }
 

@@ -152,7 +152,6 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = seed_story(1687, StoryState::Ready);
-    seeded.iteration_membership = Some((1655, 125));
     seeded.raw_labels = vec!["parent-iteration-#1655.125".to_string()];
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(1687, vec!["parent-iteration-#1655.125".to_string()]);
@@ -160,7 +159,11 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
 
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(
-        store.story(1687).and_then(|s| s.iteration_membership),
+        store.story(1687).and_then(|s| {
+            crate::product_management::board::adapters::github::iteration_membership_from_labels(
+                &s.raw_labels,
+            )
+        }),
         Some((1655, 125)),
         "baseline: story starts membered at the old position"
     );
@@ -180,7 +183,11 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
         })
         .unwrap();
     assert_eq!(
-        store.story(1687).and_then(|s| s.iteration_membership),
+        store.story(1687).and_then(|s| {
+            crate::product_management::board::adapters::github::iteration_membership_from_labels(
+                &s.raw_labels,
+            )
+        }),
         Some((1655, 106)),
         "optimistic reorder moves the story to the new position"
     );
@@ -188,7 +195,11 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     orchestrator.ingest_once().await.unwrap();
 
     assert_eq!(
-        store.story(1687).and_then(|s| s.iteration_membership),
+        store.story(1687).and_then(|s| {
+            crate::product_management::board::adapters::github::iteration_membership_from_labels(
+                &s.raw_labels,
+            )
+        }),
         Some((1655, 106)),
         "a refresh that reads the source before the reorder's write has drained must NOT clobber the un-acknowledged optimistic position"
     );

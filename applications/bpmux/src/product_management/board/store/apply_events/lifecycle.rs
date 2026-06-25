@@ -27,7 +27,6 @@ pub(super) fn apply_story_created(
         acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
         raw_labels: Vec::new(),
         body_etag: None,
-        iteration_membership: None,
     };
     w.insert(number, story);
 }
@@ -70,23 +69,6 @@ pub(super) fn apply_parent_epic_unset(w: &mut Stories, number: u64) {
     }
 }
 
-pub(super) fn apply_iteration_membership_set(
-    w: &mut Stories,
-    number: u64,
-    iteration_number: u64,
-    position: u32,
-) {
-    if let Some(story) = w.get_mut(&number) {
-        story.iteration_membership = Some((iteration_number, position));
-    }
-}
-
-pub(super) fn apply_iteration_membership_cleared(w: &mut Stories, number: u64) {
-    if let Some(story) = w.get_mut(&number) {
-        story.iteration_membership = None;
-    }
-}
-
 pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story) {
     if let Some(existing) = w.get_mut(&number) {
         existing.title = story.title.clone();
@@ -95,7 +77,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
         existing.raw_labels = story.raw_labels.clone();
         existing.is_closed = story.is_closed;
         existing.parent_epic = story.parent_epic;
-        existing.iteration_membership = story.iteration_membership;
         if story.body.is_some() {
             existing.body = story.body.clone();
             existing.acceptance_test_path = story.acceptance_test_path.clone();

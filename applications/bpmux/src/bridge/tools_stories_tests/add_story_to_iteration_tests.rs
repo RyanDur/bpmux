@@ -228,9 +228,11 @@ async fn enqueues_iteration_membership_set_event_with_correct_args_1399() {
     );
     let updated = store.story(1500).expect("member story present");
     assert_eq!(
-        updated.iteration_membership,
+        crate::product_management::board::adapters::github::iteration_membership_from_labels(
+            &updated.raw_labels
+        ),
         Some((1397, 250)),
-        "typed field populated post-mutation"
+        "membership label populated post-mutation"
     );
 }
 
@@ -241,7 +243,6 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
     let it1 = iteration_seed(1397, "Telescopium");
     let it2 = iteration_seed(1396, "Sextans");
     let mut member = member_seed(1500, "moving target");
-    member.iteration_membership = Some((1397, 100));
     member.raw_labels = vec!["ready".into(), "parent-iteration-#1397.100".into()];
     adapter.seed_stories(vec![it1, it2, member]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
@@ -254,7 +255,9 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
         .unwrap();
     let updated = store.story(1500).expect("member present after move");
     assert_eq!(
-        updated.iteration_membership,
+        crate::product_management::board::adapters::github::iteration_membership_from_labels(
+            &updated.raw_labels
+        ),
         Some((1396, 300)),
         "single-iteration-membership invariant: prior (1397, 100) replaced by (1396, 300)"
     );
