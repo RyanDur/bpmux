@@ -25,7 +25,10 @@ fn fully_ready(number: u64, outcome_number: u64, position: u32, member: u64) -> 
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
             .encode_iteration_review_closed("designer"),
     );
-    it.iteration_dev_ok_by = vec!["dev".to_string()];
+    it.raw_labels.push(
+        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            .encode_iteration_dev_ok("dev"),
+    );
     let mut m = Story::new_minimal(
         member,
         "member".to_string(),

@@ -7,7 +7,6 @@ pub(super) fn apply_label_delta(w: &mut Stories, number: u64, fields: &LabelDeri
         story.raw_labels = fields.raw_labels.clone();
         story.parent_epic = fields.parent_epic;
         story.iteration_membership = fields.iteration_membership;
-        story.iteration_dev_ok_by = fields.iteration_dev_ok_by.clone();
         story.horizon = fields.horizon;
         story.is_current = fields.is_current;
     }
@@ -22,7 +21,6 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
         existing.parent_epic = fields.parent_epic;
         existing.iteration_membership = fields.iteration_membership;
         existing.outcome_membership = fields.outcome_membership;
-        existing.iteration_dev_ok_by = fields.iteration_dev_ok_by.clone();
         existing.horizon = fields.horizon;
         existing.is_current = fields.is_current;
         existing.raw_labels = fields.raw_labels.clone();

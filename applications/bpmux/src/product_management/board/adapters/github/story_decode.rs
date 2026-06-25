@@ -1,9 +1,8 @@
 use chrono::{DateTime, Utc};
 
 use super::label_fields::{
-    horizon_from_labels, is_current_from_labels, iteration_dev_ok_by_from_labels,
-    iteration_membership_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
-    story_type_from_labels,
+    horizon_from_labels, is_current_from_labels, iteration_membership_from_labels,
+    outcome_membership_from_labels, parent_epic_from_labels, story_type_from_labels,
 };
 use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::story::{Story, StoryState, StoryType, Tag, story_type_from_title};
@@ -18,7 +17,6 @@ pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
         parent_epic: parent_epic_from_labels(labels),
         iteration_membership: iteration_membership_from_labels(labels),
         outcome_membership: outcome_membership_from_labels(labels),
-        iteration_dev_ok_by: iteration_dev_ok_by_from_labels(labels),
         horizon: horizon_from_labels(labels),
         is_current: is_current_from_labels(labels),
         raw_labels: labels.to_vec(),
@@ -83,7 +81,6 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.parent_epic = parent_epic_from_labels(&labels);
     story.iteration_membership = iteration_membership_from_labels(&labels);
     story.outcome_membership = outcome_membership_from_labels(&labels);
-    story.iteration_dev_ok_by = iteration_dev_ok_by_from_labels(&labels);
     story.horizon = horizon_from_labels(&labels);
     story.is_current = is_current_from_labels(&labels);
     story.raw_labels = labels;

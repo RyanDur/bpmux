@@ -63,7 +63,9 @@ async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
         .expect("a configured iteration-builder can record dev-OK");
     let story = store.story(1552).unwrap();
     assert_eq!(
-        story.iteration_dev_ok_by,
+        crate::product_management::board::adapters::github::iteration_dev_ok_by_from_labels(
+            &story.raw_labels
+        ),
         vec!["dev".to_string()],
         "the dev-OK is recorded as a board-event re-derived into the approver-set"
     );

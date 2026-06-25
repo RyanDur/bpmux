@@ -72,7 +72,6 @@ mod tests {
         );
         s.story_type = StoryType::Iteration;
         s.body = Some("## Iteration overview\n\ncomposed".to_string());
-        s.iteration_dev_ok_by = vec!["dev".to_string()];
         s.raw_labels = vec![
             "iteration".into(),
             "ready".into(),

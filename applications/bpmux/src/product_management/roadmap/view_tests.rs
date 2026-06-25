@@ -156,7 +156,8 @@ fn an_outcome_whose_iteration_meets_every_check_reads_ready() {
     let mut it = iteration_for(20, 11, 1);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
-    it.iteration_dev_ok_by = vec!["dev".to_string()];
+    it.raw_labels
+        .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     let mut member = Story::new_minimal(
         30,
         "member".to_string(),

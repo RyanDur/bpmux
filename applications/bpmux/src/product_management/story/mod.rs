@@ -48,8 +48,6 @@ pub struct Story {
     #[serde(default)]
     pub iteration_membership: Option<(u64, u32)>,
     #[serde(default)]
-    pub iteration_dev_ok_by: Vec<String>,
-    #[serde(default)]
     pub horizon: Option<Horizon>,
     #[serde(default)]
     pub outcome_membership: Option<(u64, u32)>,
@@ -86,7 +84,6 @@ impl Story {
             raw_labels,
             body_etag: None,
             iteration_membership: None,
-            iteration_dev_ok_by: Vec::new(),
             horizon: None,
             outcome_membership: None,
             is_current: false,

@@ -109,7 +109,8 @@ fn all_met_requires_every_check() {
     let mut it = iteration(200);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
-    it.iteration_dev_ok_by = vec!["dev".to_string()];
+    it.raw_labels
+        .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     let m1 = member(1, 200, 100);
     let r = iteration_readiness(&it, &[&m1], &bundled_default());
     assert!(
@@ -134,7 +135,8 @@ fn all_met_false_when_dev_ok_missing() {
 #[test]
 fn dev_ok_true_when_a_configured_builder_approved() {
     let mut it = iteration(200);
-    it.iteration_dev_ok_by = vec!["dev".to_string()];
+    it.raw_labels
+        .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     assert!(
         iteration_readiness(&it, &[], &bundled_default()).dev_ok,
         "dev is the configured iteration-builder; their dev-OK derives dev_ok"
@@ -144,7 +146,8 @@ fn dev_ok_true_when_a_configured_builder_approved() {
 #[test]
 fn dev_ok_false_when_approver_is_not_a_configured_builder() {
     let mut it = iteration(200);
-    it.iteration_dev_ok_by = vec!["pm".to_string()];
+    it.raw_labels
+        .push(GhLabelCodec.encode_iteration_dev_ok("pm"));
     assert!(
         !iteration_readiness(&it, &[], &bundled_default()).dev_ok,
         "pm is not a configured iteration-builder; their label must not flip the check"
@@ -164,13 +167,17 @@ fn dev_ok_false_when_nothing_on_record() {
 fn dev_ok_is_config_driven_not_hardcoded_dev() {
     let workflow = workflow_with_builder_role("release-eng");
     let mut approved = iteration(200);
-    approved.iteration_dev_ok_by = vec!["release-eng".to_string()];
+    approved
+        .raw_labels
+        .push(GhLabelCodec.encode_iteration_dev_ok("release-eng"));
     assert!(
         iteration_readiness(&approved, &[], &workflow).dev_ok,
         "the config-designated builder (release-eng, not dev) flips dev_ok"
     );
     let mut dev_approved = iteration(200);
-    dev_approved.iteration_dev_ok_by = vec!["dev".to_string()];
+    dev_approved
+        .raw_labels
+        .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     assert!(
         !iteration_readiness(&dev_approved, &[], &workflow).dev_ok,
         "dev is not a builder in this config; their label must not flip the check — proves no hard-coded dev"
@@ -258,7 +265,9 @@ fn outcome_readiness_rolls_up_gaps_from_building_iterations() {
     ready_it
         .raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
-    ready_it.iteration_dev_ok_by = vec!["dev".to_string()];
+    ready_it
+        .raw_labels
+        .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     let ready_member = member(7101, 710, 100);
     let gappy_it = building_iteration(720, 700, 2);
     let gappy_member = member(7201, 720, 100);
@@ -290,7 +299,8 @@ fn outcome_readiness_all_ready_when_every_building_iteration_is_met() {
     let mut it = building_iteration(710, 700, 1);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
-    it.iteration_dev_ok_by = vec!["dev".to_string()];
+    it.raw_labels
+        .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     let m = member(7101, 710, 100);
     let all = vec![outcome.clone(), it, m];
     let rolled = outcome_readiness(&outcome, &all, &bundled_default());
