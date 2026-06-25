@@ -123,12 +123,25 @@ feature-cohered submodules), #1360 (orchestrator.rs Mutex sites
 refactored to transactional-closure pattern), #1361 (snapshot_status
 immutable-derivation).
 
-Candidate next v4 step: extract a `board::view_model` mirror at the
-canonical-store↔consumer boundary. The pattern's leverage was high
-for bridge — single translation point per response class — and the
-same shape applies to `Story` / `BoardEvent` types crossing into
-renderer wire shapes. Sequential or parallel to the renderer-side
-TypeScript-codegen friction (#3 above).
+Second v4 step landed: `board::view_model::StoryView` mirrors the bridge
+boundary at the canonical-store↔renderer seam. The board card was a
+hand-built 18-field `serde_json::json!` inside `story_to_board_json`;
+it is now a typed `Serialize` view (with `IterationMembershipView` /
+`OutcomeMembershipView` sub-views) and a single `project(codec, story)`
+translation over the `raw_labels` selectors. `story_to_board_json`
+collapses to a one-line delegation, so the REST board endpoint crosses
+the boundary through one typed point — the renderer board-card wire is
+now a Rust type, closing Friction #3's board-card drift class.
+Discovered in the extraction: of the `Story` / `BoardEvent` pair only
+`Story` crosses to the renderer wire (`BoardEvent` is outbox-internal),
+so the one view covers the whole board→renderer surface. Landed as a
+direct dev refactor (no story number; preceded by the board-fold that
+made every wire field a selector over `raw_labels`).
+
+Candidate next v4 step: the renderer-side TypeScript-codegen friction
+(#3 above) — now that both wire boundaries (bridge + board) are typed
+view structs, generating the renderer's wire types from those structs
+would close the last leg of the type-duplication coordination cost.
 
 bpmux likely doesn't need v6+ (microservices) at any foreseeable point
 — it's a single coordination substrate, not a service mesh. The
