@@ -50,7 +50,9 @@ pub fn current_iteration_number(stories: &[Story]) -> Option<u64> {
         .iter()
         .find(|s| {
             !s.is_closed
-                && s.is_current
+                && crate::product_management::board::adapters::github::is_current_from_labels(
+                    &s.raw_labels,
+                )
                 && s.story_type == crate::product_management::story::StoryType::Iteration
         })
         .map(|s| s.number)

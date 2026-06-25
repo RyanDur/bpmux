@@ -74,13 +74,24 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
             }
         }
         BoardEvent::CurrentIterationDesignated { number, .. } => {
-            if let Some(story) = s.stories.get_mut(number) {
-                story.is_current = true;
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            if let Some(story) = s.stories.get_mut(number)
+                && !story
+                    .raw_labels
+                    .iter()
+                    .any(|l| GhLabelCodec.is_current_iteration_label(l))
+            {
+                story
+                    .raw_labels
+                    .push(GhLabelCodec.encode_current_iteration());
             }
         }
         BoardEvent::CurrentIterationCleared { number, .. } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
             if let Some(story) = s.stories.get_mut(number) {
-                story.is_current = false;
+                story
+                    .raw_labels
+                    .retain(|l| !GhLabelCodec.is_current_iteration_label(l));
             }
         }
         BoardEvent::StoryCreated {

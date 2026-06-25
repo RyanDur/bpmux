@@ -1,4 +1,5 @@
 use super::apply_events::Stories;
+use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::project_labels;
 use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};
 
@@ -17,6 +18,21 @@ pub(super) fn project_label_delta(
         BoardEvent::TagRemoved { number, label, .. } => {
             let mut labels = stories.get(number)?.raw_labels.clone();
             labels.retain(|l| l != label);
+            labels
+        }
+        BoardEvent::CurrentIterationDesignated { number, .. } => {
+            let mut labels = stories.get(number)?.raw_labels.clone();
+            if !labels
+                .iter()
+                .any(|l| GhLabelCodec.is_current_iteration_label(l))
+            {
+                labels.push(GhLabelCodec.encode_current_iteration());
+            }
+            labels
+        }
+        BoardEvent::CurrentIterationCleared { number, .. } => {
+            let mut labels = stories.get(number)?.raw_labels.clone();
+            labels.retain(|l| !GhLabelCodec.is_current_iteration_label(l));
             labels
         }
         _ => return None,

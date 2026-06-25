@@ -6,7 +6,12 @@ pub(super) fn apply_label_delta(w: &mut Stories, number: u64, fields: &LabelDeri
         story.raw_labels = fields.raw_labels.clone();
         story.parent_epic = fields.parent_epic;
         story.iteration_membership = fields.iteration_membership;
-        story.is_current = fields.is_current;
+    }
+}
+
+pub(super) fn apply_raw_labels_only(w: &mut Stories, number: u64, fields: &LabelDerivedFields) {
+    if let Some(story) = w.get_mut(&number) {
+        story.raw_labels = fields.raw_labels.clone();
     }
 }
 
@@ -18,7 +23,6 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
         existing.parent_epic = fields.parent_epic;
         existing.iteration_membership = fields.iteration_membership;
         existing.outcome_membership = fields.outcome_membership;
-        existing.is_current = fields.is_current;
         existing.raw_labels = fields.raw_labels.clone();
     }
 }

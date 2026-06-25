@@ -28,7 +28,7 @@ fn current_iteration_story(number: u64) -> Story {
         "pm".to_string(),
     );
     s.story_type = crate::product_management::story::StoryType::Iteration;
-    s.is_current = true;
+    s.raw_labels.push("current-iteration".to_string());
     s
 }
 

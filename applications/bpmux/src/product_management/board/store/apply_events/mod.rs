@@ -11,10 +11,9 @@ use comments::{
     apply_free_comment_appended, apply_free_comments_fetched, apply_gate_comment_appended,
     apply_gate_comments_fetched,
 };
-use labels::{apply_label_delta, apply_labels_refreshed};
+use labels::{apply_label_delta, apply_labels_refreshed, apply_raw_labels_only};
 use lifecycle::{
-    apply_body_fetched, apply_current_iteration_cleared, apply_current_iteration_designated,
-    apply_iteration_membership_cleared, apply_iteration_membership_set,
+    apply_body_fetched, apply_iteration_membership_cleared, apply_iteration_membership_set,
     apply_outcome_membership_cleared, apply_outcome_membership_set, apply_parent_epic_set,
     apply_parent_epic_unset, apply_state_transitioned, apply_story_closed, apply_story_created,
     apply_story_refreshed, apply_story_reopened,
@@ -81,10 +80,12 @@ pub(super) fn apply_event(
             ..
         } => apply_outcome_membership_set(w, number, *outcome_number, *position),
         BoardEvent::OutcomeMembershipCleared { .. } => apply_outcome_membership_cleared(w, number),
-        BoardEvent::CurrentIterationDesignated { .. } => {
-            apply_current_iteration_designated(w, number)
+        BoardEvent::CurrentIterationDesignated { .. }
+        | BoardEvent::CurrentIterationCleared { .. } => {
+            if let Some(fields) = label_projection {
+                apply_raw_labels_only(w, number, fields);
+            }
         }
-        BoardEvent::CurrentIterationCleared { .. } => apply_current_iteration_cleared(w, number),
         BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, number, story),
         BoardEvent::LabelsRefreshed { fields, .. } => apply_labels_refreshed(w, number, fields),
         BoardEvent::ConflictDetected { .. } | BoardEvent::ConflictResolved { .. } => {}

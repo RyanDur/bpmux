@@ -91,10 +91,11 @@ mod canonical_via_gh_1300 {
     async fn closing_the_current_iteration_clears_its_designation_1540() {
         let mut current = seed_iteration_issue(1400, "Pegasus");
         current.raw_labels.push("current-iteration".to_string());
-        current.is_current = true;
         let refresh = build_refresh(vec![current]).await;
         assert!(
-            refresh.story(1400).expect("iteration exists").is_current,
+            crate::product_management::board::adapters::github::is_current_from_labels(
+                &refresh.story(1400).expect("iteration exists").raw_labels
+            ),
             "precondition: iteration #1400 is the current designation"
         );
 
@@ -105,7 +106,9 @@ mod canonical_via_gh_1300 {
         let iter = refresh.story(1400).expect("iteration-issue still exists");
         assert!(iter.is_closed, "iteration closed");
         assert!(
-            !iter.is_current,
+            !crate::product_management::board::adapters::github::is_current_from_labels(
+                &iter.raw_labels
+            ),
             "#1540 AC1: closing the current iteration clears its designation — NOW falls to honest-empty, never auto-jumps"
         );
     }

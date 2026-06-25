@@ -33,7 +33,11 @@ pub(crate) async fn handle_designate_current_iteration(
     let prior: Vec<u64> = r
         .all_stories()
         .into_iter()
-        .filter(|s| s.is_current && s.number != iteration_number)
+        .filter(|s| {
+            crate::product_management::board::adapters::github::is_current_from_labels(
+                &s.raw_labels,
+            ) && s.number != iteration_number
+        })
         .map(|s| s.number)
         .collect();
     for n in prior {

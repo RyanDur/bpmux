@@ -24,7 +24,6 @@ fn epic(number: u64) -> Story {
         body_etag: None,
         iteration_membership: None,
         outcome_membership: None,
-        is_current: false,
     }
 }
 
@@ -46,7 +45,6 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         body_etag: None,
         iteration_membership: None,
         outcome_membership: None,
-        is_current: false,
     }
 }
 

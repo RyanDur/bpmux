@@ -133,6 +133,10 @@ impl GhLabelCodec {
         label == CURRENT_ITERATION_LABEL
     }
 
+    pub fn encode_current_iteration(&self) -> String {
+        CURRENT_ITERATION_LABEL.to_string()
+    }
+
     pub fn decode_acceptor(
         &self,
         label: &str,

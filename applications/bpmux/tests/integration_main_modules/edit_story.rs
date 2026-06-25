@@ -42,7 +42,6 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64) {
         body_etag: None,
         iteration_membership: None,
         outcome_membership: None,
-        is_current: false,
     };
     adapter.seed_stories(vec![story]);
     adapter.seed_body(number, "## What\n\noriginal body\n".to_string());

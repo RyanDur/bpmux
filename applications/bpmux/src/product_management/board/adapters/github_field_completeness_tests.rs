@@ -49,7 +49,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         body_etag,
         iteration_membership: _,
         outcome_membership,
-        is_current: _,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
