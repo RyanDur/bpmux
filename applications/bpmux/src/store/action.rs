@@ -1,4 +1,4 @@
-use super::CiSnapshot;
+use super::ci::CiSnapshot;
 use crate::product_management::board::MutationId;
 use crate::store::stores::{ReactionsAction, RosterAction};
 

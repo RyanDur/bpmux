@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
+use super::action::validate_and_log;
+use crate::store::ci::CiReduceOutcome;
 use crate::store::stores::{
     ReactionsAction, RosterAction, StoreReduceOutcome, apply_reactions, apply_roster,
 };

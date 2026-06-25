@@ -9,9 +9,8 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use super::ci::{
-    CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, PollKind, Store, StoreAction,
-};
+use super::ci::{CiBroadcastListener, CiPollFetch, CiSnapshot};
+use super::{CiAction, PollKind, Store, StoreAction};
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::github::RateLimitObserver;

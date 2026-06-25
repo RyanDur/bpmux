@@ -161,8 +161,8 @@ fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMem
     }
 }
 
-async fn seed_dev_online(orch: &Arc<crate::store::ci::Store>) {
-    use crate::store::ci::StoreAction;
+async fn seed_dev_online(orch: &Arc<crate::store::Store>) {
+    use crate::store::StoreAction;
     use crate::store::stores::RosterAction;
     orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
@@ -187,7 +187,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
         tx,
     ));
     std::mem::forget(dir);
-    let orch = Arc::new(crate::store::ci::Store::new(
+    let orch = Arc::new(crate::store::Store::new(
         session.clone(),
         None,
         crate::transport::ci_state_store::CiStateStore::new(),
@@ -230,7 +230,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
         tx,
     ));
     std::mem::forget(dir);
-    let orch = Arc::new(crate::store::ci::Store::new(
+    let orch = Arc::new(crate::store::Store::new(
         session.clone(),
         None,
         crate::transport::ci_state_store::CiStateStore::new(),

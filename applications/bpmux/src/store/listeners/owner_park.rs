@@ -3,9 +3,8 @@ use std::sync::Arc;
 use crate::product_management::board::{BoardEvent, BoardStore};
 use crate::product_management::iteration::label::current_iteration_number;
 use crate::product_management::story::{Acceptor, Story, StoryState};
-use crate::store::RosterMember;
-use crate::store::ci::{Store, StoreAction};
 use crate::store::stores::{Presence, RosterAction};
+use crate::store::{RosterMember, Store, StoreAction};
 
 fn ready_queue_is_empty(stories: &[Story]) -> bool {
     let current = current_iteration_number(stories);
