@@ -43,7 +43,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         free_comments,
         gate_comments,
         is_closed,
-        parent_epic,
         acceptance_test_path,
         raw_labels,
         body_etag,
@@ -87,7 +86,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     );
     assert!(!*is_closed, "is_closed must decode from gh_state");
     assert_eq!(
-        *parent_epic,
+        crate::product_management::board::adapters::github::parent_epic_from_labels(raw_labels),
         Some(100),
         "parent_epic must decode from labels"
     );

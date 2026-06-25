@@ -677,7 +677,7 @@ fn decode_story_metadata_populates_parent_epic_from_label() {
         "user": {"login": "pm"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert_eq!(story.parent_epic, Some(457));
+    assert_eq!(parent_epic_from_labels(&story.raw_labels), Some(457));
 }
 
 #[test]
@@ -691,7 +691,7 @@ fn decode_story_metadata_parent_epic_none_when_label_absent() {
         "user": {"login": "pm"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert_eq!(story.parent_epic, None);
+    assert_eq!(parent_epic_from_labels(&story.raw_labels), None);
 }
 
 #[test]

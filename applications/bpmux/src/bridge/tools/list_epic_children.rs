@@ -23,7 +23,11 @@ pub(in crate::bridge) async fn handle_list_epic_children(
     let mut children: Vec<Story> = store
         .all_stories()
         .into_iter()
-        .filter(|s| s.parent_epic == Some(epic_number))
+        .filter(|s| {
+            crate::product_management::board::adapters::github::parent_epic_from_labels(
+                &s.raw_labels,
+            ) == Some(epic_number)
+        })
         .collect();
     children.sort_by_key(|s| s.number);
     let body = serde_json::json!({

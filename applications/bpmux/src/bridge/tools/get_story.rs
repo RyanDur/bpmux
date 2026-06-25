@@ -150,7 +150,7 @@ pub(in crate::bridge) async fn handle_get_story(
         "workflow_state": workflow_state,
         "is_closed": story.is_closed,
         "labels": labels,
-        "parent_epic": story.parent_epic,
+        "parent_epic": crate::product_management::board::adapters::github::parent_epic_from_labels(&story.raw_labels),
         "body_hydrated": body_cached.is_some(),
         "gate_comments_hydrated": story.gate_comments.is_some(),
         "latest_reject": latest_reject,

@@ -7,7 +7,8 @@ use super::peer::PeerId;
 use super::store::BoardStore;
 use crate::product_management::board::adapters::github::{
     acceptor_from_labels, horizon_from_labels, iteration_dev_ok_by_from_labels,
-    iteration_membership_from_labels, iteration_review_closers_from_labels, tags_from_labels,
+    iteration_membership_from_labels, iteration_review_closers_from_labels,
+    parent_epic_from_labels, tags_from_labels,
 };
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, Story, StoryState, StoryType, Tag,
@@ -79,7 +80,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
         meta: meta("pm", 2026, "local"),
         number: 77,
         fields: LabelDerivedFields {
-            parent_epic: Some(7),
             raw_labels: vec![
                 "parent-epic-#7".to_string(),
                 "parent-iteration-#1655.106".to_string(),
@@ -89,7 +89,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     });
 
     let s = store.story(77).expect("story exists");
-    assert_eq!(s.parent_epic, Some(7));
+    assert_eq!(parent_epic_from_labels(&s.raw_labels), Some(7));
     assert_eq!(
         iteration_membership_from_labels(&s.raw_labels),
         Some((1655, 106))
@@ -708,7 +708,7 @@ fn story_created_event_carries_story_type() {
 }
 
 #[test]
-fn parent_epic_set_event_assigns_parent_epic_field() {
+fn parent_epic_set_event_makes_story_read_its_parent_epic() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
@@ -723,11 +723,14 @@ fn parent_epic_set_event_assigns_parent_epic_field() {
         number: 100,
         epic_number: 50,
     });
-    assert_eq!(store.story(100).unwrap().parent_epic, Some(50));
+    assert_eq!(
+        parent_epic_from_labels(&store.story(100).unwrap().raw_labels),
+        Some(50)
+    );
 }
 
 #[test]
-fn parent_epic_unset_event_clears_parent_epic_field() {
+fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
@@ -746,7 +749,10 @@ fn parent_epic_unset_event_clears_parent_epic_field() {
         meta: meta("pm", 2026, "local"),
         number: 101,
     });
-    assert_eq!(store.story(101).unwrap().parent_epic, None);
+    assert_eq!(
+        parent_epic_from_labels(&store.story(101).unwrap().raw_labels),
+        None
+    );
 }
 
 #[test]

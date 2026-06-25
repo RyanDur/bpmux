@@ -23,7 +23,6 @@ pub(super) fn apply_story_created(
         free_comments: Some(Vec::new()),
         gate_comments: Some(Vec::new()),
         is_closed: false,
-        parent_epic: None,
         acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
         raw_labels: Vec::new(),
         body_etag: None,
@@ -57,18 +56,6 @@ pub(super) fn apply_story_reopened(w: &mut Stories, number: u64) {
     }
 }
 
-pub(super) fn apply_parent_epic_set(w: &mut Stories, number: u64, epic_number: u64) {
-    if let Some(story) = w.get_mut(&number) {
-        story.parent_epic = Some(epic_number);
-    }
-}
-
-pub(super) fn apply_parent_epic_unset(w: &mut Stories, number: u64) {
-    if let Some(story) = w.get_mut(&number) {
-        story.parent_epic = None;
-    }
-}
-
 pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story) {
     if let Some(existing) = w.get_mut(&number) {
         existing.title = story.title.clone();
@@ -76,7 +63,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
         existing.story_type = story.story_type;
         existing.raw_labels = story.raw_labels.clone();
         existing.is_closed = story.is_closed;
-        existing.parent_epic = story.parent_epic;
         if story.body.is_some() {
             existing.body = story.body.clone();
             existing.acceptance_test_path = story.acceptance_test_path.clone();

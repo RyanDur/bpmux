@@ -18,7 +18,6 @@ fn epic(number: u64) -> Story {
         free_comments: None,
         gate_comments: None,
         is_closed: false,
-        parent_epic: None,
         acceptance_test_path: None,
         raw_labels: vec!["Epic".to_string(), "icebox".to_string()],
         body_etag: None,
@@ -37,9 +36,8 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         free_comments: None,
         gate_comments: None,
         is_closed: false,
-        parent_epic: Some(parent),
         acceptance_test_path: None,
-        raw_labels: vec![],
+        raw_labels: vec![format!("parent-epic-#{parent}")],
         body_etag: None,
     }
 }
@@ -119,7 +117,7 @@ async fn excludes_stories_without_parent_epic() {
         epic(100),
         child(101, 100, StoryType::Feature, StoryState::Ready),
         Story {
-            parent_epic: None,
+            raw_labels: vec![],
             ..child(202, 999, StoryType::Feature, StoryState::Ready)
         },
     ]);

@@ -110,13 +110,23 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
             epic_number,
             ..
         } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            use crate::product_management::board::label_codec::LabelCodec;
             if let Some(story) = s.stories.get_mut(number) {
-                story.parent_epic = Some(*epic_number);
+                story
+                    .raw_labels
+                    .retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
+                story
+                    .raw_labels
+                    .push(GhLabelCodec.encode_parent_epic(*epic_number));
             }
         }
         BoardEvent::ParentEpicUnset { number, .. } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
             if let Some(story) = s.stories.get_mut(number) {
-                story.parent_epic = None;
+                story
+                    .raw_labels
+                    .retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
             }
         }
         BoardEvent::IterationMembershipSet {

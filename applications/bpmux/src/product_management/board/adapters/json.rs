@@ -1,7 +1,8 @@
 use crate::product_management::board::adapters::github::{
     acceptor_from_labels, horizon_from_labels, is_current_from_labels,
     iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
-    iteration_review_closers_from_labels, outcome_membership_from_labels, tags_from_labels,
+    iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
+    tags_from_labels,
 };
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::{
@@ -31,7 +32,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
             Tag::Blocked => labels.push("blocked".to_string()),
         }
     }
-    if let Some(epic) = story.parent_epic {
+    if let Some(epic) = parent_epic_from_labels(&story.raw_labels) {
         labels.push(codec.encode_parent_epic(epic));
     }
     for raw in &story.raw_labels {
@@ -72,7 +73,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         "state": story.state.as_str(),
         "gh_state": if story.is_closed { "closed" } else { "open" },
         "labels": labels,
-        "parent_epic": story.parent_epic,
+        "parent_epic": parent_epic_from_labels(&story.raw_labels),
         "iteration_membership": iteration_membership,
         "outcome_membership": outcome_membership,
         "iteration_order": iteration_order_from_labels(&story.raw_labels),

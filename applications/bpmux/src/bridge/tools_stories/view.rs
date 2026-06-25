@@ -74,8 +74,12 @@ pub(in crate::bridge) fn build_board_text(
     scope: &BoardScope,
 ) -> String {
     let format_entry = |s: &crate::product_management::story::Story| -> (u64, String) {
-        let prefix = if s.parent_epic.is_some() { "↳ " } else { "" };
-        let suffix = match s.parent_epic {
+        let parent_epic =
+            crate::product_management::board::adapters::github::parent_epic_from_labels(
+                &s.raw_labels,
+            );
+        let prefix = if parent_epic.is_some() { "↳ " } else { "" };
+        let suffix = match parent_epic {
             Some(n) => format!(" (epic #{n})"),
             None => String::new(),
         };
@@ -132,7 +136,11 @@ pub(in crate::bridge) fn build_board_text(
             for epic in &epics {
                 let children: Vec<&crate::product_management::story::Story> = stories
                     .iter()
-                    .filter(|c| c.parent_epic == Some(epic.number))
+                    .filter(|c| {
+                        crate::product_management::board::adapters::github::parent_epic_from_labels(
+                            &c.raw_labels,
+                        ) == Some(epic.number)
+                    })
                     .collect();
                 let counts = crate::product_management::epic::derive_epic_counts(&children);
                 let derived =

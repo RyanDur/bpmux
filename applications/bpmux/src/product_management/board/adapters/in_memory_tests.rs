@@ -245,13 +245,17 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
     let stories = adapter.ingest_metadata().await.unwrap();
     let story = stories.iter().find(|s| s.number == 42).unwrap();
     assert_eq!(
-        story.parent_epic,
+        crate::product_management::board::adapters::github::parent_epic_from_labels(
+            &story.raw_labels
+        ),
         Some(7),
         "ParentEpicSet must surface parent_epic in the round-tripped Story"
     );
     let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
     assert_eq!(
-        fetched.parent_epic,
+        crate::product_management::board::adapters::github::parent_epic_from_labels(
+            &fetched.raw_labels
+        ),
         Some(7),
         "ParentEpicSet must also surface via fetch_story_metadata"
     );
@@ -279,12 +283,18 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
     let stories = adapter.ingest_metadata().await.unwrap();
     let story = stories.iter().find(|s| s.number == 42).unwrap();
     assert_eq!(
-        story.parent_epic, None,
+        crate::product_management::board::adapters::github::parent_epic_from_labels(
+            &story.raw_labels
+        ),
+        None,
         "ParentEpicUnset must clear parent_epic in the round-tripped Story"
     );
     let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
     assert_eq!(
-        fetched.parent_epic, None,
+        crate::product_management::board::adapters::github::parent_epic_from_labels(
+            &fetched.raw_labels
+        ),
+        None,
         "ParentEpicUnset must also clear via fetch_story_metadata"
     );
 }

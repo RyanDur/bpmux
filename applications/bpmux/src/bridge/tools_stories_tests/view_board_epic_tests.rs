@@ -47,7 +47,12 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(300).unwrap();
-    assert_eq!(story.parent_epic, Some(457));
+    assert_eq!(
+        crate::product_management::board::adapters::github::parent_epic_from_labels(
+            &story.raw_labels
+        ),
+        Some(457)
+    );
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 1);
@@ -160,7 +165,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    seeded.parent_epic = Some(457);
+    seeded.raw_labels.push("parent-epic-#457".to_string());
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -174,7 +179,12 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(301).unwrap();
-    assert_eq!(story.parent_epic, None);
+    assert_eq!(
+        crate::product_management::board::adapters::github::parent_epic_from_labels(
+            &story.raw_labels
+        ),
+        None
+    );
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 1);
@@ -331,7 +341,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     epic.story_type = StoryType::Epic;
     let mut child_a =
         Story::new_minimal(701, "child a".into(), StoryState::Accepted, ts, "pm".into());
-    child_a.parent_epic = Some(700);
+    child_a.raw_labels.push("parent-epic-#700".to_string());
     child_a.is_closed = true;
     let mut child_b = Story::new_minimal(
         702,
@@ -340,7 +350,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         ts,
         "pm".into(),
     );
-    child_b.parent_epic = Some(700);
+    child_b.raw_labels.push("parent-epic-#700".to_string());
     let mut child_c = Story::new_minimal(
         703,
         "child c".into(),
@@ -348,7 +358,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         ts,
         "pm".into(),
     );
-    child_c.parent_epic = Some(700);
+    child_c.raw_labels.push("parent-epic-#700".to_string());
     adapter.seed_stories(vec![epic, child_a, child_b, child_c]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -490,9 +500,9 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     );
     epic.story_type = StoryType::Epic;
     let mut a = Story::new_minimal(721, "a".into(), StoryState::Delivered, ts, "pm".into());
-    a.parent_epic = Some(720);
+    a.raw_labels.push("parent-epic-#720".to_string());
     let mut b = Story::new_minimal(722, "b".into(), StoryState::Delivered, ts, "pm".into());
-    b.parent_epic = Some(720);
+    b.raw_labels.push("parent-epic-#720".to_string());
     adapter.seed_stories(vec![epic, a, b]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -530,7 +540,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     );
     epic.story_type = StoryType::Epic;
     let mut a = Story::new_minimal(731, "a".into(), StoryState::InProgress, ts, "pm".into());
-    a.parent_epic = Some(730);
+    a.raw_labels.push("parent-epic-#730".to_string());
     adapter.seed_stories(vec![epic, a]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
