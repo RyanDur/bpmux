@@ -79,10 +79,13 @@ pub(in crate::bridge) fn build_board_text(
             Some(n) => format!(" (epic #{n})"),
             None => String::new(),
         };
-        let acceptor = match s.acceptor {
-            Some(a) => format!(" · awaiting {}", a.as_str()),
-            None => String::new(),
-        };
+        let acceptor =
+            match crate::product_management::board::adapters::github::acceptor_from_labels(
+                &s.raw_labels,
+            ) {
+                Some(a) => format!(" · awaiting {}", a.as_str()),
+                None => String::new(),
+            };
         (
             s.number,
             format!("{prefix}#{} {}{}{}", s.number, s.title, suffix, acceptor),

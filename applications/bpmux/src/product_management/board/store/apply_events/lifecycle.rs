@@ -34,7 +34,6 @@ pub(super) fn apply_story_created(
         horizon: None,
         outcome_membership: None,
         is_current: false,
-        acceptor: None,
     };
     w.insert(number, story);
 }
@@ -138,7 +137,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
         existing.iteration_dev_ok_by = story.iteration_dev_ok_by.clone();
         existing.horizon = story.horizon;
         existing.is_current = story.is_current;
-        existing.acceptor = story.acceptor;
         if story.body.is_some() {
             existing.body = story.body.clone();
             existing.acceptance_test_path = story.acceptance_test_path.clone();

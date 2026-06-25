@@ -90,7 +90,7 @@ async fn reactions_listener_emits_typed_state_delta() {
 }
 
 fn owner_parked_story(number: u64) -> crate::product_management::story::Story {
-    use crate::product_management::story::{Acceptor, StoryState};
+    use crate::product_management::story::StoryState;
     let mut story = crate::product_management::story::Story::new_minimal(
         number,
         format!("story {number}"),
@@ -98,7 +98,7 @@ fn owner_parked_story(number: u64) -> crate::product_management::story::Story {
         chrono::Utc::now(),
         "dev".to_string(),
     );
-    story.acceptor = Some(Acceptor::Owner);
+    story.raw_labels.push("awaiting owner".to_string());
     story
 }
 

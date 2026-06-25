@@ -29,7 +29,6 @@ fn epic(number: u64) -> Story {
         horizon: None,
         outcome_membership: None,
         is_current: false,
-        acceptor: None,
     }
 }
 
@@ -56,7 +55,6 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         horizon: None,
         outcome_membership: None,
         is_current: false,
-        acceptor: None,
     }
 }
 

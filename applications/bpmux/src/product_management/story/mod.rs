@@ -57,8 +57,6 @@ pub struct Story {
     pub outcome_membership: Option<(u64, u32)>,
     #[serde(default)]
     pub is_current: bool,
-    #[serde(default)]
-    pub acceptor: Option<Acceptor>,
 }
 
 impl Story {
@@ -95,7 +93,6 @@ impl Story {
             horizon: None,
             outcome_membership: None,
             is_current: false,
-            acceptor: None,
         }
     }
 }

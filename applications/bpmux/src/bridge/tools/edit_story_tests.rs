@@ -4,6 +4,7 @@
 
 use crate::bridge::tools_stories::handle_edit_story;
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::github::acceptor_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -129,7 +130,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         .unwrap();
     refresh.drain_pending().await.unwrap();
     assert_eq!(
-        refresh.story(1234).unwrap().acceptor,
+        acceptor_from_labels(&refresh.story(1234).unwrap().raw_labels),
         Some(Acceptor::Dev),
         "precondition: the create-derived acceptor is dev"
     );
@@ -141,7 +142,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
 
     let story = refresh.story(1234).unwrap();
     assert_eq!(
-        story.acceptor,
+        acceptor_from_labels(&story.raw_labels),
         Some(Acceptor::Owner),
         "edit --acceptor owner re-derives the acceptor to owner"
     );

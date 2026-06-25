@@ -1,4 +1,6 @@
-use crate::product_management::board::adapters::github::iteration_order_from_labels;
+use crate::product_management::board::adapters::github::{
+    acceptor_from_labels, iteration_order_from_labels,
+};
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::{
     Story, StoryType, Tag, most_recent_backward_transition, replay_transitions,
@@ -76,7 +78,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         "iteration_dev_ok_by": story.iteration_dev_ok_by,
         "horizon": story.horizon.map(|h| h.as_str()),
         "is_current": story.is_current,
-        "acceptor": story.acceptor.map(|a| a.as_str()),
+        "acceptor": acceptor_from_labels(&story.raw_labels).map(|a| a.as_str()),
         "assignees": Vec::<String>::new(),
         "created_at": story.filed_at.to_rfc3339(),
         "body": story.body.clone().unwrap_or_default(),
