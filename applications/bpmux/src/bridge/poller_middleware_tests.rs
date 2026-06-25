@@ -190,6 +190,35 @@ async fn local_body_mutate_invalidates_prior_etag() {
 }
 
 #[tokio::test]
+async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
+    use crate::product_management::board::events::{BoardEvent, EventMeta};
+    use crate::product_management::board::peer::PeerId;
+    let store = BoardStore::new();
+    let mut seed = seed_minimal(9200, StoryState::InProgress);
+    seed.raw_labels = vec!["in progress".to_string()];
+    store.seed_all(vec![seed.clone()]);
+    let mut refreshed = seed;
+    refreshed.raw_labels = vec!["in progress".to_string(), "iteration-order.300".to_string()];
+    store.apply(&BoardEvent::StoryRefreshed {
+        meta: EventMeta {
+            actor: "test".to_string(),
+            ts: Utc::now(),
+            peer_id: PeerId::local(),
+        },
+        number: 9200,
+        story: Box::new(refreshed),
+    });
+    let after = store.story(9200).expect("story present");
+    assert!(
+        after
+            .raw_labels
+            .contains(&"iteration-order.300".to_string()),
+        "StoryRefreshed must adopt the refreshed raw_labels so derived selectors read fresh values, not the stale pre-refresh label set; got {:?}",
+        after.raw_labels
+    );
+}
+
+#[tokio::test]
 async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     use crate::product_management::board::events::BoardEvent;
     use crate::product_management::board::sync::ConditionalBody;

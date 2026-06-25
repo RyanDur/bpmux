@@ -129,6 +129,7 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
         existing.title = story.title.clone();
         existing.state = story.state;
         existing.story_type = story.story_type;
+        existing.raw_labels = story.raw_labels.clone();
         existing.tags = story.tags.clone();
         existing.is_closed = story.is_closed;
         existing.parent_epic = story.parent_epic;
