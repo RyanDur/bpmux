@@ -13,25 +13,37 @@ impl Store {
     pub async fn dispatch(self: &Arc<Self>, action: StoreAction) {
         validate_and_log(&action);
         match action {
-            StoreAction::StartCiPolling => self.middleware_start_ci().await,
-            StoreAction::StopCiPolling => self.middleware_stop(PollKind::Ci).await,
-            StoreAction::CiUpdated(_) => self.middleware_ci_updated(action).await,
-            StoreAction::StartIngestPolling => self.middleware_start_ingest().await,
-            StoreAction::StopIngestPolling => self.middleware_stop(PollKind::Ingest).await,
-            StoreAction::StartHydrationPolling => self.middleware_start_hydration().await,
-            StoreAction::StopHydrationPolling => self.middleware_stop(PollKind::Hydration).await,
+            StoreAction::Ci(a) => self.dispatch_ci(a).await,
+            StoreAction::Sync(a) => self.dispatch_sync(a).await,
             StoreAction::Reactions(a) => self.middleware_reactions(a),
             StoreAction::Roster(a) => self.middleware_roster(a),
-            StoreAction::StartUpdateGithub { mutation_id } => {
+        }
+    }
+
+    async fn dispatch_ci(self: &Arc<Self>, action: CiAction) {
+        match action {
+            CiAction::StartPolling => self.middleware_start_ci().await,
+            CiAction::StopPolling => self.middleware_stop(PollKind::Ci).await,
+            CiAction::Updated(_) => self.middleware_ci_updated(action).await,
+        }
+    }
+
+    async fn dispatch_sync(self: &Arc<Self>, action: SyncAction) {
+        match action {
+            SyncAction::StartIngestPolling => self.middleware_start_ingest().await,
+            SyncAction::StopIngestPolling => self.middleware_stop(PollKind::Ingest).await,
+            SyncAction::StartHydrationPolling => self.middleware_start_hydration().await,
+            SyncAction::StopHydrationPolling => self.middleware_stop(PollKind::Hydration).await,
+            SyncAction::StartUpdateGithub { mutation_id } => {
                 self.middleware_start_update_github(mutation_id).await
             }
-            StoreAction::StopUpdateGithub { mutation_id } => {
+            SyncAction::StopUpdateGithub { mutation_id } => {
                 self.middleware_stop_update_github(mutation_id).await
             }
-            StoreAction::MutationConfirmed { mutation_id } => {
+            SyncAction::MutationConfirmed { mutation_id } => {
                 self.middleware_mutation_confirmed(mutation_id).await
             }
-            StoreAction::MutationRolledBack {
+            SyncAction::MutationRolledBack {
                 mutation_id,
                 server_story,
             } => {
@@ -169,11 +181,11 @@ impl Store {
         }
     }
 
-    async fn middleware_ci_updated(&self, action: StoreAction) {
+    async fn middleware_ci_updated(&self, action: CiAction) {
         let outcome = self.ci_store.apply(&action);
         if outcome == CiReduceOutcome::Changed {
             let snap = match action {
-                StoreAction::CiUpdated(s) => s,
+                CiAction::Updated(s) => s,
                 _ => return,
             };
             let listeners = {

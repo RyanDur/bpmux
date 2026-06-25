@@ -409,7 +409,9 @@ pub async fn post_test_fire_ci_state(
         workflows: Vec::new(),
     };
     store
-        .dispatch(crate::store::StoreAction::CiUpdated(snapshot))
+        .dispatch(crate::store::StoreAction::Ci(
+            crate::store::CiAction::Updated(snapshot),
+        ))
         .await;
     (
         StatusCode::OK,

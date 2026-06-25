@@ -26,7 +26,7 @@ mod listeners_tests;
 #[cfg(test)]
 mod stores_tests;
 
-pub use action::{CiAction, PollKind, StoreAction};
+pub use action::{CiAction, PollKind, StoreAction, SyncAction};
 pub use ci::{BoxedFuture, CiBroadcastListener, CiPollFetch, CiSnapshot};
 pub use listeners::{
     CiSessionBroadcaster, CiStateStoreWriter, OwnerParkBroadcaster, ReactionsSessionBroadcaster,

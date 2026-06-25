@@ -25,7 +25,9 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.persist_outbox();
         set_pending_events(&self.status, queue_len);
         if let Some(tx) = &self.action_tx {
-            let _ = tx.send(crate::store::StoreAction::StartUpdateGithub { mutation_id: id });
+            let _ = tx.send(crate::store::StoreAction::Sync(
+                crate::store::SyncAction::StartUpdateGithub { mutation_id: id },
+            ));
         }
         Ok(())
     }

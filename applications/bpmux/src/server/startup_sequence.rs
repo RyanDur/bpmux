@@ -71,14 +71,20 @@ pub(super) fn spawn_owner_park_loop(
 
 pub(super) async fn start_polling(store: &Arc<Store>, has_refresh: bool) {
     store
-        .dispatch(crate::store::StoreAction::StartCiPolling)
+        .dispatch(crate::store::StoreAction::Ci(
+            crate::store::CiAction::StartPolling,
+        ))
         .await;
     if has_refresh {
         store
-            .dispatch(crate::store::StoreAction::StartIngestPolling)
+            .dispatch(crate::store::StoreAction::Sync(
+                crate::store::SyncAction::StartIngestPolling,
+            ))
             .await;
         store
-            .dispatch(crate::store::StoreAction::StartHydrationPolling)
+            .dispatch(crate::store::StoreAction::Sync(
+                crate::store::SyncAction::StartHydrationPolling,
+            ))
             .await;
     }
 }

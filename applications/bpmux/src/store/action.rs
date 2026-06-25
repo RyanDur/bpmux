@@ -11,15 +11,25 @@ pub enum PollKind {
 
 #[derive(Clone, Debug)]
 pub enum StoreAction {
-    StartCiPolling,
-    StopCiPolling,
-    CiUpdated(CiSnapshot),
+    Ci(CiAction),
+    Sync(SyncAction),
+    Reactions(ReactionsAction),
+    Roster(RosterAction),
+}
+
+#[derive(Clone, Debug)]
+pub enum CiAction {
+    StartPolling,
+    StopPolling,
+    Updated(CiSnapshot),
+}
+
+#[derive(Clone, Debug)]
+pub enum SyncAction {
     StartIngestPolling,
     StopIngestPolling,
     StartHydrationPolling,
     StopHydrationPolling,
-    Reactions(ReactionsAction),
-    Roster(RosterAction),
     StartUpdateGithub {
         mutation_id: MutationId,
     },
@@ -35,23 +45,21 @@ pub enum StoreAction {
     },
 }
 
-pub type CiAction = StoreAction;
-
 pub(super) fn validate_and_log(action: &StoreAction) {
     let label = match action {
-        StoreAction::StartCiPolling => "StartCiPolling",
-        StoreAction::StopCiPolling => "StopCiPolling",
-        StoreAction::CiUpdated(_) => "CiUpdated",
-        StoreAction::StartIngestPolling => "StartIngestPolling",
-        StoreAction::StopIngestPolling => "StopIngestPolling",
-        StoreAction::StartHydrationPolling => "StartHydrationPolling",
-        StoreAction::StopHydrationPolling => "StopHydrationPolling",
+        StoreAction::Ci(CiAction::StartPolling) => "Ci.StartPolling",
+        StoreAction::Ci(CiAction::StopPolling) => "Ci.StopPolling",
+        StoreAction::Ci(CiAction::Updated(_)) => "Ci.Updated",
+        StoreAction::Sync(SyncAction::StartIngestPolling) => "Sync.StartIngestPolling",
+        StoreAction::Sync(SyncAction::StopIngestPolling) => "Sync.StopIngestPolling",
+        StoreAction::Sync(SyncAction::StartHydrationPolling) => "Sync.StartHydrationPolling",
+        StoreAction::Sync(SyncAction::StopHydrationPolling) => "Sync.StopHydrationPolling",
+        StoreAction::Sync(SyncAction::StartUpdateGithub { .. }) => "Sync.StartUpdateGithub",
+        StoreAction::Sync(SyncAction::StopUpdateGithub { .. }) => "Sync.StopUpdateGithub",
+        StoreAction::Sync(SyncAction::MutationConfirmed { .. }) => "Sync.MutationConfirmed",
+        StoreAction::Sync(SyncAction::MutationRolledBack { .. }) => "Sync.MutationRolledBack",
         StoreAction::Reactions(_) => "Reactions",
         StoreAction::Roster(_) => "Roster",
-        StoreAction::StartUpdateGithub { .. } => "StartUpdateGithub",
-        StoreAction::StopUpdateGithub { .. } => "StopUpdateGithub",
-        StoreAction::MutationConfirmed { .. } => "MutationConfirmed",
-        StoreAction::MutationRolledBack { .. } => "MutationRolledBack",
     };
     crate::diag::log_diag(&format!("store: dispatch {label}"));
 }

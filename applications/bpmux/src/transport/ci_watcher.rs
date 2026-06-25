@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::store::{CiAction, CiPollFetch, CiSnapshot, Store};
+use crate::store::{CiAction, CiPollFetch, CiSnapshot, Store, StoreAction};
 use crate::transport::ci_state_store::CiStateStore;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -121,7 +121,9 @@ pub fn spawn(
                 conclusion: current,
                 workflows: classified.workflows.clone(),
             };
-            store.dispatch(CiAction::CiUpdated(snapshot)).await;
+            store
+                .dispatch(StoreAction::Ci(CiAction::Updated(snapshot)))
+                .await;
             ci_state_store.mark_poll_succeeded();
             store.broadcast_ci_poll(poll_time(&ci_state_store));
         }

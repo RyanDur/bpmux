@@ -10,7 +10,7 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use super::ci::{CiBroadcastListener, CiPollFetch, CiSnapshot};
-use super::{CiAction, PollKind, Store, StoreAction};
+use super::{CiAction, PollKind, Store, StoreAction, SyncAction};
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::github::RateLimitObserver;
@@ -132,7 +132,7 @@ async fn ci_updated_action_drives_reducer_and_fires_listener() {
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
-    orch.dispatch(CiAction::CiUpdated(snap(42, "success")))
+    orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(42, "success"))))
         .await;
 
     let store = orch.ci_store();
@@ -155,9 +155,9 @@ async fn ci_updated_dedup_same_run_and_conclusion_no_listener_fire() {
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
-    orch.dispatch(CiAction::CiUpdated(snap(42, "success")))
+    orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(42, "success"))))
         .await;
-    orch.dispatch(CiAction::CiUpdated(snap(42, "success")))
+    orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(42, "success"))))
         .await;
 
     let received = recorder.received.lock().unwrap();
@@ -176,11 +176,11 @@ async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
-    orch.dispatch(CiAction::CiUpdated(snap(42, "in_progress")))
+    orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(42, "in_progress"))))
         .await;
-    orch.dispatch(CiAction::CiUpdated(snap(42, "success")))
+    orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(42, "success"))))
         .await;
-    orch.dispatch(CiAction::CiUpdated(snap(43, "success")))
+    orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(43, "success"))))
         .await;
 
     let received = recorder.received.lock().unwrap();
@@ -200,7 +200,7 @@ async fn start_ci_polling_no_op_without_tracker() {
         CiStateStore::new(),
         CancellationToken::new(),
     ));
-    orch.dispatch(CiAction::StartCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StartPolling)).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
 
@@ -213,7 +213,7 @@ async fn stop_ci_polling_without_start_no_op() {
         CiStateStore::new(),
         CancellationToken::new(),
     ));
-    orch.dispatch(CiAction::StopCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StopPolling)).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
 
@@ -278,10 +278,10 @@ async fn parent_cancel_propagates_when_running_no_tracker() {
         CiStateStore::new(),
         parent.clone(),
     ));
-    orch.dispatch(CiAction::StartCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StartPolling)).await;
     parent.cancel();
     tokio::time::sleep(Duration::from_millis(50)).await;
-    orch.dispatch(CiAction::StopCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StopPolling)).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
 
@@ -314,7 +314,7 @@ async fn live_loop_dispatches_ci_updated_through_action_chain() {
     orch.add_ci_listener(recorder.clone());
 
     tokio::time::pause();
-    orch.dispatch(CiAction::StartCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StartPolling)).await;
     assert!(
         orch.is_running(PollKind::Ci).await,
         "live spawn-path took the tracker.is_some() branch"
@@ -338,14 +338,14 @@ async fn live_loop_dispatches_ci_updated_through_action_chain() {
         let received = recorder.received.lock().unwrap();
         assert!(
             !received.is_empty(),
-            "loop ticked + dispatched CiAction::CiUpdated through store → reducer → listener"
+            "loop ticked + dispatched CiAction::Updated through store → reducer → listener"
         );
         (received[0].run_id, received[0].conclusion)
     };
     assert_eq!(got_run_id, Some(7777));
     assert_eq!(got_conclusion, "success");
 
-    orch.dispatch(CiAction::StopCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StopPolling)).await;
     let stop_deadline = std::time::Instant::now() + Duration::from_secs(2);
     while std::time::Instant::now() < stop_deadline && orch.is_running(PollKind::Ci).await {
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -374,7 +374,7 @@ async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
     ));
 
     tokio::time::pause();
-    orch.dispatch(CiAction::StartCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StartPolling)).await;
     assert!(orch.is_running(PollKind::Ci).await);
 
     for _ in 0..3 {
@@ -412,7 +412,7 @@ async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
          last_successful_poll_at must be Some after all 3 outcomes consumed"
     );
 
-    orch.dispatch(CiAction::StopCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StopPolling)).await;
     let stop_deadline = std::time::Instant::now() + Duration::from_secs(2);
     while std::time::Instant::now() < stop_deadline && orch.is_running(PollKind::Ci).await {
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -439,7 +439,7 @@ async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
     ));
 
     tokio::time::pause();
-    orch.dispatch(CiAction::StartCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StartPolling)).await;
     assert!(orch.is_running(PollKind::Ci).await);
 
     tokio::time::advance(Duration::from_secs(10)).await;
@@ -465,7 +465,7 @@ async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
         }
     }
 
-    orch.dispatch(CiAction::StopCiPolling).await;
+    orch.dispatch(StoreAction::Ci(CiAction::StopPolling)).await;
 
     assert!(
         ci_poll_times.len() >= 2,
@@ -504,7 +504,8 @@ async fn start_ingest_polling_no_op_without_refresh() {
         CiStateStore::new(),
         CancellationToken::new(),
     ));
-    orch.dispatch(StoreAction::StartIngestPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StartIngestPolling))
+        .await;
     assert!(!orch.is_running(PollKind::Ingest).await);
 }
 
@@ -517,7 +518,8 @@ async fn start_hydration_polling_no_op_without_refresh() {
         CiStateStore::new(),
         CancellationToken::new(),
     ));
-    orch.dispatch(StoreAction::StartHydrationPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StartHydrationPolling))
+        .await;
     assert!(!orch.is_running(PollKind::Hydration).await);
 }
 
@@ -530,7 +532,8 @@ async fn stop_ingest_without_start_no_op() {
         CiStateStore::new(),
         CancellationToken::new(),
     ));
-    orch.dispatch(StoreAction::StopIngestPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StopIngestPolling))
+        .await;
     assert!(!orch.is_running(PollKind::Ingest).await);
 }
 
@@ -543,7 +546,8 @@ async fn stop_hydration_without_start_no_op() {
         CiStateStore::new(),
         CancellationToken::new(),
     ));
-    orch.dispatch(StoreAction::StopHydrationPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StopHydrationPolling))
+        .await;
     assert!(!orch.is_running(PollKind::Hydration).await);
 }
 
@@ -557,13 +561,15 @@ async fn start_ingest_polling_spawns_loop_with_refresh() {
             Duration::from_secs(15),
         ),
     );
-    orch.dispatch(StoreAction::StartIngestPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StartIngestPolling))
+        .await;
     assert!(
         orch.is_running(PollKind::Ingest).await,
         "ingest spawn-path takes the refresh.is_some() branch"
     );
 
-    orch.dispatch(StoreAction::StopIngestPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StopIngestPolling))
+        .await;
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     while std::time::Instant::now() < deadline && orch.is_running(PollKind::Ingest).await {
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -584,13 +590,15 @@ async fn start_hydration_polling_spawns_loop_with_refresh() {
             Duration::from_secs(15),
         ),
     );
-    orch.dispatch(StoreAction::StartHydrationPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StartHydrationPolling))
+        .await;
     assert!(
         orch.is_running(PollKind::Hydration).await,
         "hydration spawn-path takes the refresh.is_some() branch"
     );
 
-    orch.dispatch(StoreAction::StopHydrationPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StopHydrationPolling))
+        .await;
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     while std::time::Instant::now() < deadline && orch.is_running(PollKind::Hydration).await {
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -611,14 +619,17 @@ async fn start_ingest_idempotent_no_op_when_already_running() {
             Duration::from_secs(15),
         ),
     );
-    orch.dispatch(StoreAction::StartIngestPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StartIngestPolling))
+        .await;
     assert!(orch.is_running(PollKind::Ingest).await);
-    orch.dispatch(StoreAction::StartIngestPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StartIngestPolling))
+        .await;
     assert!(
         orch.is_running(PollKind::Ingest).await,
         "second StartIngestPolling stays running (no-op)"
     );
-    orch.dispatch(StoreAction::StopIngestPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StopIngestPolling))
+        .await;
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     while std::time::Instant::now() < deadline && orch.is_running(PollKind::Ingest).await {
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -636,14 +647,17 @@ async fn start_hydration_idempotent_no_op_when_already_running() {
             Duration::from_secs(15),
         ),
     );
-    orch.dispatch(StoreAction::StartHydrationPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StartHydrationPolling))
+        .await;
     assert!(orch.is_running(PollKind::Hydration).await);
-    orch.dispatch(StoreAction::StartHydrationPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StartHydrationPolling))
+        .await;
     assert!(
         orch.is_running(PollKind::Hydration).await,
         "second StartHydrationPolling stays running (no-op)"
     );
-    orch.dispatch(StoreAction::StopHydrationPolling).await;
+    orch.dispatch(StoreAction::Sync(SyncAction::StopHydrationPolling))
+        .await;
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     while std::time::Instant::now() < deadline && orch.is_running(PollKind::Hydration).await {
         tokio::time::sleep(Duration::from_millis(10)).await;
