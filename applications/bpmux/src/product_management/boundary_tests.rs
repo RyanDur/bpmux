@@ -11,6 +11,15 @@ const FORBIDDEN_VENDOR_TOKENS: &[&str] = &[
 
 const SELF_FILE: &str = "boundary_tests.rs";
 
+const REDUCER_DIR: &str = "src/product_management/board/store/apply_events";
+
+const REDUCER_FORBIDDEN_DECODE_TOKENS: &[&str] = &[
+    "adapters::github",
+    "gh_label_codec",
+    "_from_labels",
+    "project_labels",
+];
+
 fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).expect("read product_management dir") {
         let path = entry.expect("dir entry").path();
@@ -49,6 +58,34 @@ fn product_management_domain_imports_no_vendor_integration() {
     assert!(
         violations.is_empty(),
         "product_management is the integration-agnostic domain: it depends on the SourceAdapter port, never on a concrete integration mechanism (octocrab, reqwest, crate::github wire client, crate::bridge::tracker). Move the offending code into integrations/<provider>/ (gateway + mapper + adapter) and inject the concrete gateway at the composition root. Violations:\n{}",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn board_reducer_does_no_label_decode() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(REDUCER_DIR);
+    let mut files = Vec::new();
+    collect_rs_files(&root, &mut files);
+    assert!(
+        !files.is_empty(),
+        "expected to find board reducer source files under {}",
+        root.display()
+    );
+
+    let mut violations: Vec<String> = Vec::new();
+    for file in &files {
+        let contents = std::fs::read_to_string(file).expect("read reducer file");
+        for token in REDUCER_FORBIDDEN_DECODE_TOKENS {
+            if contents.contains(token) {
+                violations.push(format!("{}: {token}", file.display()));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "the board reducer (store/apply_events) is a PURE (state, action) -> state assign: it must not decode GitHub label format. Decoding belongs in the store middleware (store/middleware.rs), which projects a label set into typed LabelDerivedFields that the reducer assigns. Move the offending decode into the middleware. Violations:\n{}",
         violations.join("\n")
     );
 }
