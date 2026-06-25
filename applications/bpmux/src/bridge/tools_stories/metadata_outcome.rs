@@ -1,6 +1,8 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::horizon_order_from_labels;
+use crate::product_management::board::adapters::github::{
+    horizon_from_labels, horizon_order_from_labels,
+};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 use crate::product_management::story::{Horizon, Story, StoryType};
@@ -45,7 +47,7 @@ pub(crate) async fn handle_reprioritize_outcome(
 
     let target_band = match requested_band {
         Some(band) => band,
-        None => outcome.horizon.ok_or_else(|| {
+        None => horizon_from_labels(&outcome.raw_labels).ok_or_else(|| {
             format!("#{outcome_number} has no band yet; pass --to <now|next|later> to set one")
         })?,
     };
@@ -57,7 +59,7 @@ pub(crate) async fn handle_reprioritize_outcome(
         peer_id: PeerId::local(),
     };
 
-    let band_changed = outcome.horizon != Some(target_band);
+    let band_changed = horizon_from_labels(&outcome.raw_labels) != Some(target_band);
     if band_changed {
         move_to_band(r, &codec, &meta, &outcome, target_band)?;
     }
@@ -126,7 +128,9 @@ fn reorder_within_band(
     let members: Vec<Story> = r
         .all_stories()
         .into_iter()
-        .filter(|s| s.story_type == StoryType::Outcome && s.horizon == Some(band))
+        .filter(|s| {
+            s.story_type == StoryType::Outcome && horizon_from_labels(&s.raw_labels) == Some(band)
+        })
         .collect();
     let mut ordered: Vec<&Story> = members.iter().collect();
     ordered.sort_by_key(|s| {

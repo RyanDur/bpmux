@@ -48,8 +48,6 @@ pub struct Story {
     #[serde(default)]
     pub iteration_membership: Option<(u64, u32)>,
     #[serde(default)]
-    pub horizon: Option<Horizon>,
-    #[serde(default)]
     pub outcome_membership: Option<(u64, u32)>,
     #[serde(default)]
     pub is_current: bool,
@@ -84,7 +82,6 @@ impl Story {
             raw_labels,
             body_etag: None,
             iteration_membership: None,
-            horizon: None,
             outcome_membership: None,
             is_current: false,
         }

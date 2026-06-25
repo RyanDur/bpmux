@@ -49,7 +49,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         raw_labels,
         body_etag,
         iteration_membership: _,
-        horizon,
         outcome_membership,
         is_current: _,
     } = decoded;
@@ -123,7 +122,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         "iteration_dev_ok_by must decode the approver role from the dev-ok label"
     );
     assert_eq!(
-        *horizon,
+        crate::product_management::board::adapters::github::horizon_from_labels(raw_labels),
         Some(crate::product_management::story::Horizon::Next),
         "horizon must decode from the horizon.next label"
     );

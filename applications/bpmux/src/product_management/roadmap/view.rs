@@ -1,6 +1,8 @@
 use serde::Serialize;
 
-use crate::product_management::board::adapters::github::horizon_order_from_labels;
+use crate::product_management::board::adapters::github::{
+    horizon_from_labels, horizon_order_from_labels,
+};
 use crate::product_management::iteration::readiness::{building_iterations, outcome_readiness};
 use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
 use crate::workflow::config::WorkflowConfig;
@@ -57,7 +59,7 @@ pub fn derive_roadmap_view(stories: &[Story], workflow: &WorkflowConfig) -> Vec<
                 .iter()
                 .filter(|s| {
                     s.story_type == StoryType::Outcome
-                        && s.horizon == Some(*horizon)
+                        && horizon_from_labels(&s.raw_labels) == Some(*horizon)
                         && s.state != StoryState::Retired
                 })
                 .collect();

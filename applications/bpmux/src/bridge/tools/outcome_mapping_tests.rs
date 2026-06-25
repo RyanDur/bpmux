@@ -23,7 +23,6 @@ fn outcome(number: u64) -> Story {
     );
     s.story_type = StoryType::Outcome;
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
-    s.horizon = Some(crate::product_management::story::Horizon::Now);
     s
 }
 

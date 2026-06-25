@@ -15,7 +15,7 @@ fn outcome(number: u64, title: &str, horizon: Horizon) -> Story {
         "pm".to_string(),
     );
     s.story_type = StoryType::Outcome;
-    s.horizon = Some(horizon);
+    s.raw_labels.push(GhLabelCodec.encode_horizon(horizon));
     s
 }
 
@@ -100,9 +100,9 @@ fn outcomes_within_a_band_sort_by_number() {
 #[test]
 fn an_explicit_within_band_position_overrides_number_order() {
     let mut first = outcome(13, "B", Horizon::Now);
-    first.raw_labels = vec![GhLabelCodec.encode_horizon_order(1)];
+    first.raw_labels.push(GhLabelCodec.encode_horizon_order(1));
     let mut second = outcome(11, "A", Horizon::Now);
-    second.raw_labels = vec![GhLabelCodec.encode_horizon_order(2)];
+    second.raw_labels.push(GhLabelCodec.encode_horizon_order(2));
     let unpositioned = outcome(12, "C", Horizon::Now);
     let bands = derive_roadmap_view(&[second, unpositioned, first], &bundled_default());
     let numbers: Vec<u64> = bands[0].outcomes.iter().map(|o| o.number).collect();
@@ -122,7 +122,9 @@ fn a_non_outcome_story_is_never_a_roadmap_row_even_with_a_horizon() {
         Utc::now(),
         "pm".to_string(),
     );
-    feature.horizon = Some(Horizon::Now);
+    feature
+        .raw_labels
+        .push(GhLabelCodec.encode_horizon(Horizon::Now));
     let stories = vec![outcome(11, "Now thing", Horizon::Now), feature];
     let bands = derive_roadmap_view(&stories, &bundled_default());
     assert_eq!(bands[0].outcomes.len(), 1, "only the outcome is a row");

@@ -82,7 +82,9 @@ async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738()
         "an outcome must never be modelled as an epic"
     );
     assert_eq!(
-        outcome.horizon,
+        crate::product_management::board::adapters::github::horizon_from_labels(
+            &outcome.raw_labels
+        ),
         Some(Horizon::Next),
         "the outcome carries its horizon, derived from the recorded horizon label"
     );

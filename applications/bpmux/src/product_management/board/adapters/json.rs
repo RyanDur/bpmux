@@ -1,6 +1,6 @@
 use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, iteration_dev_ok_by_from_labels, iteration_order_from_labels,
-    iteration_review_closers_from_labels,
+    acceptor_from_labels, horizon_from_labels, iteration_dev_ok_by_from_labels,
+    iteration_order_from_labels, iteration_review_closers_from_labels,
 };
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::{
@@ -77,7 +77,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         "iteration_order": iteration_order_from_labels(&story.raw_labels),
         "iteration_review_closed_by": iteration_review_closers_from_labels(&story.raw_labels),
         "iteration_dev_ok_by": iteration_dev_ok_by_from_labels(&story.raw_labels),
-        "horizon": story.horizon.map(|h| h.as_str()),
+        "horizon": horizon_from_labels(&story.raw_labels).map(|h| h.as_str()),
         "is_current": story.is_current,
         "acceptor": acceptor_from_labels(&story.raw_labels).map(|a| a.as_str()),
         "assignees": Vec::<String>::new(),

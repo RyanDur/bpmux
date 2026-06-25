@@ -21,8 +21,6 @@ fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Sto
     );
     s.story_type = story_type;
     s.raw_labels = labels.iter().map(ToString::to_string).collect();
-    s.horizon =
-        crate::product_management::board::adapters::github::horizon_from_labels(&s.raw_labels);
     s
 }
 

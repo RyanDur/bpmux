@@ -29,7 +29,6 @@ pub(super) fn apply_story_created(
         raw_labels: Vec::new(),
         body_etag: None,
         iteration_membership: None,
-        horizon: None,
         outcome_membership: None,
         is_current: false,
     };
@@ -131,7 +130,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
         existing.parent_epic = story.parent_epic;
         existing.iteration_membership = story.iteration_membership;
         existing.outcome_membership = story.outcome_membership;
-        existing.horizon = story.horizon;
         existing.is_current = story.is_current;
         if story.body.is_some() {
             existing.body = story.body.clone();
