@@ -15,6 +15,7 @@ impl BoardStore {
             }
         }
         let mut w = self.stories.write().unwrap_or_else(|e| e.into_inner());
-        super::apply_events::apply_event(&mut w, event);
+        let label_projection = super::middleware::project_label_delta(&w, event);
+        super::apply_events::apply_event(&mut w, event, label_projection.as_ref());
     }
 }

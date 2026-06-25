@@ -1,11 +1,29 @@
 use chrono::{DateTime, Utc};
 
 use super::label_fields::{
-    acceptor_from_labels, horizon_from_labels, is_current_from_labels,
+    acceptor_from_labels, horizon_from_labels, horizon_order_from_labels, is_current_from_labels,
     iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
     iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
 };
+use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::story::{Story, StoryState, Tag};
+
+pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
+    LabelDerivedFields {
+        tags: tags_from_labels(labels),
+        parent_epic: parent_epic_from_labels(labels),
+        iteration_membership: iteration_membership_from_labels(labels),
+        outcome_membership: outcome_membership_from_labels(labels),
+        iteration_order: iteration_order_from_labels(labels),
+        iteration_review_closed_by: iteration_review_closers_from_labels(labels),
+        iteration_dev_ok_by: iteration_dev_ok_by_from_labels(labels),
+        horizon: horizon_from_labels(labels),
+        horizon_order: horizon_order_from_labels(labels),
+        is_current: is_current_from_labels(labels),
+        acceptor: acceptor_from_labels(labels),
+        raw_labels: labels.to_vec(),
+    }
+}
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     let state_labels = [

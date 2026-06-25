@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};
 use crate::product_management::story::Story;
 
 mod comments;
@@ -11,7 +11,7 @@ use comments::{
     apply_free_comment_appended, apply_free_comments_fetched, apply_gate_comment_appended,
     apply_gate_comments_fetched,
 };
-use labels::{apply_labels_refreshed, apply_tag_added, apply_tag_removed};
+use labels::{apply_label_delta, apply_labels_refreshed};
 use lifecycle::{
     apply_body_fetched, apply_current_iteration_cleared, apply_current_iteration_designated,
     apply_iteration_membership_cleared, apply_iteration_membership_set,
@@ -22,7 +22,11 @@ use lifecycle::{
 
 pub(super) type Stories = HashMap<u64, Story>;
 
-pub(super) fn apply_event(w: &mut Stories, event: &BoardEvent) {
+pub(super) fn apply_event(
+    w: &mut Stories,
+    event: &BoardEvent,
+    label_projection: Option<&LabelDerivedFields>,
+) {
     let number = event.story_number();
     match event {
         BoardEvent::StoryCreated {
@@ -36,8 +40,11 @@ pub(super) fn apply_event(w: &mut Stories, event: &BoardEvent) {
         BoardEvent::StateTransitioned { new_state, .. } => {
             apply_state_transitioned(w, number, *new_state)
         }
-        BoardEvent::TagAdded { label, .. } => apply_tag_added(w, number, label),
-        BoardEvent::TagRemoved { label, .. } => apply_tag_removed(w, number, label),
+        BoardEvent::TagAdded { .. } | BoardEvent::TagRemoved { .. } => {
+            if let Some(fields) = label_projection {
+                apply_label_delta(w, number, fields);
+            }
+        }
         BoardEvent::GateCommentAppended {
             meta,
             gate,

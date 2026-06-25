@@ -1,39 +1,19 @@
 use super::Stories;
-use crate::product_management::board::adapters::github;
 use crate::product_management::board::events::LabelDerivedFields;
-use crate::product_management::board::store::label_sync::{
-    sync_raw_labels_on_tag_added, sync_raw_labels_on_tag_removed, tag_from_label_string,
-};
 
-pub(super) fn apply_tag_added(w: &mut Stories, number: u64, label: &str) {
+pub(super) fn apply_label_delta(w: &mut Stories, number: u64, fields: &LabelDerivedFields) {
     if let Some(story) = w.get_mut(&number) {
-        if let Some(tag) = tag_from_label_string(label)
-            && !story.tags.contains(&tag)
-        {
-            story.tags.push(tag);
-        }
-        sync_raw_labels_on_tag_added(story, label);
-        story.iteration_order = github::iteration_order_from_labels(&story.raw_labels);
-        story.iteration_review_closed_by =
-            github::iteration_review_closers_from_labels(&story.raw_labels);
-        story.iteration_dev_ok_by = github::iteration_dev_ok_by_from_labels(&story.raw_labels);
-        story.horizon = github::horizon_from_labels(&story.raw_labels);
-        story.horizon_order = github::horizon_order_from_labels(&story.raw_labels);
-    }
-}
-
-pub(super) fn apply_tag_removed(w: &mut Stories, number: u64, label: &str) {
-    if let Some(story) = w.get_mut(&number) {
-        if let Some(tag) = tag_from_label_string(label) {
-            story.tags.retain(|t| *t != tag);
-        }
-        sync_raw_labels_on_tag_removed(story, label);
-        story.iteration_order = github::iteration_order_from_labels(&story.raw_labels);
-        story.iteration_review_closed_by =
-            github::iteration_review_closers_from_labels(&story.raw_labels);
-        story.iteration_dev_ok_by = github::iteration_dev_ok_by_from_labels(&story.raw_labels);
-        story.horizon = github::horizon_from_labels(&story.raw_labels);
-        story.horizon_order = github::horizon_order_from_labels(&story.raw_labels);
+        story.tags = fields.tags.clone();
+        story.raw_labels = fields.raw_labels.clone();
+        story.parent_epic = fields.parent_epic;
+        story.iteration_membership = fields.iteration_membership;
+        story.iteration_order = fields.iteration_order;
+        story.iteration_review_closed_by = fields.iteration_review_closed_by.clone();
+        story.iteration_dev_ok_by = fields.iteration_dev_ok_by.clone();
+        story.horizon = fields.horizon;
+        story.horizon_order = fields.horizon_order;
+        story.is_current = fields.is_current;
+        story.acceptor = fields.acceptor;
     }
 }
 

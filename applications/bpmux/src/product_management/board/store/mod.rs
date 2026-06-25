@@ -8,7 +8,7 @@ use crate::product_management::story::{Story, StoryState};
 
 mod apply;
 mod apply_events;
-mod label_sync;
+mod middleware;
 mod persist_error;
 
 pub use persist_error::PersistError;
