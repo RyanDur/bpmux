@@ -19,7 +19,7 @@ pub struct BoardStore {
     stories: RwLock<HashMap<u64, Story>>,
     event_tx: broadcast::Sender<BoardEvent>,
     #[cfg(test)]
-    test_post_send_hook: std::sync::Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
+    test_post_broadcast_hook: std::sync::Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
 }
 
 impl BoardStore {
@@ -29,17 +29,17 @@ impl BoardStore {
             stories: RwLock::new(HashMap::new()),
             event_tx,
             #[cfg(test)]
-            test_post_send_hook: std::sync::Mutex::new(None),
+            test_post_broadcast_hook: std::sync::Mutex::new(None),
         }
     }
 
     #[cfg(test)]
-    pub fn set_test_post_send_hook<F>(&self, f: F)
+    pub fn set_test_post_broadcast_hook<F>(&self, f: F)
     where
         F: Fn() + Send + Sync + 'static,
     {
         *self
-            .test_post_send_hook
+            .test_post_broadcast_hook
             .lock()
             .unwrap_or_else(|e| e.into_inner()) = Some(Box::new(f));
     }

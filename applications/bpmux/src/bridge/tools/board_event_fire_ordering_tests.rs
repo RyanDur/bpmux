@@ -127,7 +127,7 @@ async fn multiple_subscribers_each_receive_state_transition_event() {
 }
 
 #[tokio::test]
-async fn pre_commit_fire_ordering_observable_via_post_send_hook() {
+async fn broadcast_fires_after_reduce_so_listeners_observe_new_state() {
     let store = Arc::new(BoardStore::new());
     seed_story_at(&store, 600, StoryState::Ready);
 
@@ -135,7 +135,7 @@ async fn pre_commit_fire_ordering_observable_via_post_send_hook() {
         Arc::new(std::sync::Mutex::new(None));
     let observed_clone = Arc::clone(&observed_at_hook);
     let store_for_hook = Arc::clone(&store);
-    store.set_test_post_send_hook(move || {
+    store.set_test_post_broadcast_hook(move || {
         let state = store_for_hook.story(600).map(|s| s.state);
         *observed_clone.lock().unwrap_or_else(|e| e.into_inner()) = state;
     });
@@ -149,12 +149,13 @@ async fn pre_commit_fire_ordering_observable_via_post_send_hook() {
     let observed = observed_at_hook
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .expect("hook fired between event_tx.send and write-lock acquire");
+        .expect("hook fired immediately after event_tx.send broadcast the event");
     assert_eq!(
         observed,
-        StoryState::Ready,
-        "hook ran AFTER event_tx.send but BEFORE write-lock acquired the mutation; \
-         observed pre-mutation state per #1282 fire-ordering invariant"
+        StoryState::InProgress,
+        "the reducer mutated state BEFORE event_tx.send broadcast to listeners, \
+         so a listener observes the reduced state per the redux pipeline \
+         (dispatch -> middleware -> reducer -> listeners): #1282 listener-after-reducer invariant"
     );
     assert_eq!(
         store.story(600).unwrap().state,
