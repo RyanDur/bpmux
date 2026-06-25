@@ -248,7 +248,7 @@ pub async fn post_seed_stories(
 }
 
 pub async fn post_seed_roster(
-    axum::Extension(orchestrator): axum::Extension<Arc<crate::store::Store>>,
+    axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     Json(body): Json<SeedRosterBody>,
 ) -> impl IntoResponse {
     for identity in &body.identities {
@@ -258,7 +258,7 @@ pub async fn post_seed_roster(
             .unwrap_or(identity.as_str())
             .to_string();
         let role = crate::transport::ws::role_from_short_name(&name);
-        orchestrator
+        store
             .dispatch(crate::store::StoreAction::Roster(
                 crate::store::RosterAction::RosterMemberUpserted {
                     routing_id: identity.clone(),

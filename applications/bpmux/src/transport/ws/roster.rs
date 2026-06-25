@@ -25,7 +25,7 @@ pub(crate) fn role_from_short_name(short: &str) -> crate::store::stores::RosterR
 }
 
 pub(crate) async fn dispatch_roster_join(
-    orchestrator: &Arc<crate::store::Store>,
+    store: &Arc<crate::store::Store>,
     routing_id: &str,
     identity: &str,
 ) {
@@ -33,7 +33,7 @@ pub(crate) async fn dispatch_roster_join(
     use crate::store::stores::{Presence, RosterAction};
     let short = short_name(identity).to_string();
     let role = role_from_short_name(&short);
-    orchestrator
+    store
         .dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
             routing_id: routing_id.to_string(),
             name: short,
@@ -44,13 +44,10 @@ pub(crate) async fn dispatch_roster_join(
         .await;
 }
 
-pub(crate) async fn dispatch_roster_leave(
-    orchestrator: &Arc<crate::store::Store>,
-    routing_id: &str,
-) {
+pub(crate) async fn dispatch_roster_leave(store: &Arc<crate::store::Store>, routing_id: &str) {
     use crate::store::StoreAction;
     use crate::store::stores::RosterAction;
-    orchestrator
+    store
         .dispatch(StoreAction::Roster(RosterAction::RosterMemberRemoved {
             routing_id: routing_id.to_string(),
         }))
@@ -58,13 +55,13 @@ pub(crate) async fn dispatch_roster_leave(
 }
 
 pub(crate) async fn dispatch_roster_presence(
-    orchestrator: &Arc<crate::store::Store>,
+    store: &Arc<crate::store::Store>,
     routing_id: &str,
     presence: crate::store::stores::Presence,
 ) {
     use crate::store::StoreAction;
     use crate::store::stores::RosterAction;
-    orchestrator
+    store
         .dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
             routing_id: routing_id.to_string(),
             presence,

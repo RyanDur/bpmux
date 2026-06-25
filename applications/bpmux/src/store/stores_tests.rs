@@ -337,7 +337,7 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
     assert_eq!(
         agg.len(),
         1,
-        "REST POST mutated orchestrator's ReactionsStore via dispatch"
+        "REST POST mutated store's ReactionsStore via dispatch"
     );
     assert_eq!(agg[0].count, 1);
 
@@ -345,7 +345,7 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
     assert_eq!(
         received.len(),
         1,
-        "REST POST → orchestrator.dispatch → reducer Changed → listener fired"
+        "REST POST → store.dispatch → reducer Changed → listener fired"
     );
     assert_eq!(received[0].0, "broadcast");
 }

@@ -51,16 +51,13 @@ pub fn owner_park_presence(
 }
 
 pub struct OwnerParkBroadcaster {
-    orchestrator: Arc<Store>,
-    store: Arc<BoardStore>,
+    store: Arc<Store>,
+    board_store: Arc<BoardStore>,
 }
 
 impl OwnerParkBroadcaster {
-    pub fn new(orchestrator: Arc<Store>, store: Arc<BoardStore>) -> Self {
-        Self {
-            orchestrator,
-            store,
-        }
+    pub fn new(store: Arc<Store>, board_store: Arc<BoardStore>) -> Self {
+        Self { store, board_store }
     }
 
     fn delivering_role(event: &BoardEvent) -> Option<String> {
@@ -75,11 +72,11 @@ impl OwnerParkBroadcaster {
     }
 
     async fn dispatch_changes(&self, delivering: Option<&str>) {
-        let stories = self.store.all_stories();
-        let roster = self.orchestrator.roster_store().members();
+        let stories = self.board_store.all_stories();
+        let roster = self.store.roster_store().members();
         let changes = owner_park_presence(&stories, &roster, delivering);
         for (routing_id, presence) in changes {
-            self.orchestrator
+            self.store
                 .dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
                     routing_id,
                     presence,

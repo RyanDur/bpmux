@@ -16,7 +16,7 @@ use crate::transport::protocol::{ClientMessage, ServerMessage};
 
 pub(crate) struct ClientCtx<'a> {
     pub session: &'a session::Session,
-    pub orchestrator: &'a Arc<crate::store::Store>,
+    pub store: &'a Arc<crate::store::Store>,
     pub pty_registry: &'a crate::room::LivePtyRegistry,
     pub pty_tx: &'a tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
     pub tracker: &'a crate::transport::rest::TrackerHandle,

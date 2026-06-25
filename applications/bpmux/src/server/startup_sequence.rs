@@ -9,27 +9,27 @@ use crate::session;
 use crate::store::Store;
 use crate::transport::ci_state_store::CiStateStore;
 
-pub(super) fn wire_orchestrator_listeners(
-    orchestrator: &Arc<Store>,
+pub(super) fn wire_store_listeners(
+    store: &Arc<Store>,
     session: &Arc<session::Session>,
     ci_state_store: &CiStateStore,
 ) {
-    orchestrator.add_ci_listener(Arc::new(crate::store::CiStateStoreWriter::new(
+    store.add_ci_listener(Arc::new(crate::store::CiStateStoreWriter::new(
         ci_state_store.clone(),
     )));
-    orchestrator.add_ci_listener(Arc::new(crate::store::CiSessionBroadcaster::new(
+    store.add_ci_listener(Arc::new(crate::store::CiSessionBroadcaster::new(
         session.clone(),
     )));
-    orchestrator.add_reactions_listener(Arc::new(crate::store::ReactionsSessionBroadcaster::new(
+    store.add_reactions_listener(Arc::new(crate::store::ReactionsSessionBroadcaster::new(
         session.clone(),
     )));
-    orchestrator.add_roster_listener(Arc::new(crate::store::RosterSessionBroadcaster::new(
+    store.add_roster_listener(Arc::new(crate::store::RosterSessionBroadcaster::new(
         session.clone(),
     )));
 }
 
 pub(super) async fn wire_startup_roster(
-    orchestrator: &Arc<Store>,
+    store: &Arc<Store>,
     session: &Arc<session::Session>,
     pty_registry: &Arc<LivePtyRegistry>,
     routing_store: &Arc<RoutingStore>,
@@ -38,20 +38,20 @@ pub(super) async fn wire_startup_roster(
     let reaped_ghosts = session.reconcile_roster(&live_terminal_ids);
     for identity in &reaped_ghosts {
         let routing_id = super::startup_routing_id(routing_store, identity);
-        crate::transport::ws::dispatch_roster_leave(orchestrator, &routing_id).await;
+        crate::transport::ws::dispatch_roster_leave(store, &routing_id).await;
     }
     for identity in session.roster_snapshot() {
         let routing_id = super::startup_routing_id(routing_store, &identity);
-        crate::transport::ws::dispatch_roster_join(orchestrator, &routing_id, &identity).await;
+        crate::transport::ws::dispatch_roster_join(store, &routing_id, &identity).await;
     }
 }
 
 pub(super) fn spawn_owner_park_loop(
     refresh: Arc<dyn RefreshDriver>,
-    orchestrator: Arc<Store>,
+    store: Arc<Store>,
     ct: CancellationToken,
 ) {
-    let owner_park = crate::store::OwnerParkBroadcaster::new(orchestrator, refresh.store());
+    let owner_park = crate::store::OwnerParkBroadcaster::new(store, refresh.store());
     let mut events = refresh.store().subscribe();
     tokio::spawn(async move {
         loop {
@@ -69,15 +69,15 @@ pub(super) fn spawn_owner_park_loop(
     });
 }
 
-pub(super) async fn start_polling(orchestrator: &Arc<Store>, has_refresh: bool) {
-    orchestrator
+pub(super) async fn start_polling(store: &Arc<Store>, has_refresh: bool) {
+    store
         .dispatch(crate::store::StoreAction::StartCiPolling)
         .await;
     if has_refresh {
-        orchestrator
+        store
             .dispatch(crate::store::StoreAction::StartIngestPolling)
             .await;
-        orchestrator
+        store
             .dispatch(crate::store::StoreAction::StartHydrationPolling)
             .await;
     }

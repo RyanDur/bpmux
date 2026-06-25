@@ -93,7 +93,7 @@ pub(super) async fn handle_reaction_toggle(
         user,
     };
     if let Err(e) =
-        crate::transport::rest::apply_reaction_toggle(ctx.session, ctx.orchestrator, &body).await
+        crate::transport::rest::apply_reaction_toggle(ctx.session, ctx.store, &body).await
     {
         send_json(
             tx,

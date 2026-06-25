@@ -10,10 +10,8 @@ pub(super) fn system_announcement(text: &str) -> crate::message::Message {
     }
 }
 
-pub(super) fn build_state_snapshot_message(
-    orchestrator: &crate::store::Store,
-) -> crate::message::Message {
-    let snapshot = orchestrator.build_snapshot();
+pub(super) fn build_state_snapshot_message(store: &crate::store::Store) -> crate::message::Message {
+    let snapshot = store.build_snapshot();
     crate::message::Message {
         from: "bpmux".to_string(),
         text: String::new(),

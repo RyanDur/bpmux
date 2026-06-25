@@ -29,12 +29,12 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
 }
 
 pub fn spawn(
-    orchestrator: Arc<Store>,
+    store: Arc<Store>,
     tracker: Arc<dyn CiPollFetch>,
     ci_state_store: CiStateStore,
     ct: CancellationToken,
 ) {
-    let observer = orchestrator.rate_limit_observer().clone();
+    let observer = store.rate_limit_observer().clone();
     tokio::spawn(async move {
         let mut last_etag: Option<String> = None;
         let mut interval = tokio::time::interval(POLL_INTERVAL);
@@ -55,7 +55,7 @@ pub fn spawn(
                 Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
-                    orchestrator.broadcast_ci_poll(poll_time(&ci_state_store));
+                    store.broadcast_ci_poll(poll_time(&ci_state_store));
                     continue;
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entries, etag }) => {
@@ -66,11 +66,11 @@ pub fn spawn(
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
-                    orchestrator.broadcast_ci_poll(poll_time(&ci_state_store));
+                    store.broadcast_ci_poll(poll_time(&ci_state_store));
                     continue;
                 }
                 Err(e) => {
-                    orchestrator.broadcast_ci_poll(poll_time(&ci_state_store));
+                    store.broadcast_ci_poll(poll_time(&ci_state_store));
                     if let Some(decision) = crate::github::classify_and_decide(
                         &e,
                         observer.snapshot(),
@@ -121,9 +121,9 @@ pub fn spawn(
                 conclusion: current,
                 workflows: classified.workflows.clone(),
             };
-            orchestrator.dispatch(CiAction::CiUpdated(snapshot)).await;
+            store.dispatch(CiAction::CiUpdated(snapshot)).await;
             ci_state_store.mark_poll_succeeded();
-            orchestrator.broadcast_ci_poll(poll_time(&ci_state_store));
+            store.broadcast_ci_poll(poll_time(&ci_state_store));
         }
     });
 }

@@ -26,7 +26,7 @@ fn presence_from_state(state: &str) -> Option<Presence> {
 pub async fn post_presence(
     headers: HeaderMap,
     Extension(routing): Extension<Arc<RoutingStore>>,
-    Extension(orchestrator): Extension<Arc<crate::store::Store>>,
+    Extension(store): Extension<Arc<crate::store::Store>>,
     Json(payload): Json<PresenceRequest>,
 ) -> impl IntoResponse {
     let agent = match crate::transport::rpc_routes::agent_from_headers(&headers) {
@@ -50,7 +50,7 @@ pub async fn post_presence(
         );
     }
     for routing_id in &routing_ids {
-        crate::transport::ws::dispatch_roster_presence(&orchestrator, routing_id, presence).await;
+        crate::transport::ws::dispatch_roster_presence(&store, routing_id, presence).await;
     }
     (
         StatusCode::OK,

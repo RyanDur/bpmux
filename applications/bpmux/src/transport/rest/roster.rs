@@ -14,9 +14,9 @@ pub struct RosterEntry {
 }
 
 pub async fn get_roster(
-    Extension(orchestrator): Extension<Arc<crate::store::Store>>,
+    Extension(store): Extension<Arc<crate::store::Store>>,
 ) -> impl IntoResponse {
-    let roster: Vec<RosterEntry> = orchestrator
+    let roster: Vec<RosterEntry> = store
         .roster_store()
         .members()
         .into_iter()

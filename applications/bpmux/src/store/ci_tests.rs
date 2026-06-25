@@ -339,7 +339,7 @@ async fn live_loop_dispatches_ci_updated_through_action_chain() {
         let received = recorder.received.lock().unwrap();
         assert!(
             !received.is_empty(),
-            "loop ticked + dispatched CiAction::CiUpdated through orchestrator → reducer → listener"
+            "loop ticked + dispatched CiAction::CiUpdated through store → reducer → listener"
         );
         (received[0].run_id, received[0].conclusion)
     };

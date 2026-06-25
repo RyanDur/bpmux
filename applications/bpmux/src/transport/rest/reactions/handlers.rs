@@ -27,10 +27,10 @@ pub async fn get_reactions(
 
 pub async fn post_reaction(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(orchestrator): axum::Extension<Arc<crate::store::Store>>,
+    axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     axum::Json(body): axum::Json<ReactionToggle>,
 ) -> impl IntoResponse {
-    match apply_reaction_toggle(&session, &orchestrator, &body).await {
+    match apply_reaction_toggle(&session, &store, &body).await {
         Ok(present) => (
             StatusCode::OK,
             json_headers(),
@@ -46,21 +46,22 @@ pub async fn post_reaction(
 
 pub async fn apply_reaction_toggle(
     session: &session::Session,
-    orchestrator: &Arc<crate::store::Store>,
+    store: &Arc<crate::store::Store>,
     body: &ReactionToggle,
 ) -> Result<bool, String> {
-    let mut store = crate::reactions::load(&session.dir);
+    let mut reactions_store = crate::reactions::load(&session.dir);
     let now = chrono::Utc::now().to_rfc3339();
     let present = crate::reactions::toggle_reaction(
-        &mut store,
+        &mut reactions_store,
         &body.channel,
         &body.message_key,
         &body.emoji,
         &body.user,
         &now,
     );
-    crate::reactions::save(&session.dir, &store).map_err(|e| format!("save reactions: {e}"))?;
-    orchestrator
+    crate::reactions::save(&session.dir, &reactions_store)
+        .map_err(|e| format!("save reactions: {e}"))?;
+    store
         .dispatch(crate::store::StoreAction::Reactions(
             crate::store::ReactionsAction::ReactionToggled {
                 channel: body.channel.clone(),

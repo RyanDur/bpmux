@@ -73,7 +73,7 @@ impl AgentRunDetector {
     }
 }
 
-type DetectorOrchestrator = Arc<crate::store::Store>;
+type DetectorStore = Arc<crate::store::Store>;
 
 pub fn spawn_agent_run_detector(
     terminal_id: String,
@@ -81,7 +81,7 @@ pub fn spawn_agent_run_detector(
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
     session: Arc<crate::session::Session>,
-    orchestrator: Option<DetectorOrchestrator>,
+    store: Option<DetectorStore>,
 ) {
     tokio::spawn(async move {
         let mut detector = AgentRunDetector::new(AGENT_RUN_GATE);
@@ -123,9 +123,9 @@ pub fn spawn_agent_run_detector(
                             &dir_session.name,
                             &mint.job_start_ts,
                         );
-                        if let Some(orchestrator) = &orchestrator {
+                        if let Some(store) = &store {
                             crate::transport::ws::dispatch_roster_join(
-                                orchestrator,
+                                store,
                                 &dir_session.id,
                                 &dir_session.name,
                             )
@@ -135,25 +135,19 @@ pub fn spawn_agent_run_detector(
                     if foreground {
                         present = present || routing.is_terminal_linked(&terminal_id);
                     } else if present {
-                        leave_terminal(&orchestrator, &routing, &terminal_id).await;
+                        leave_terminal(&store, &routing, &terminal_id).await;
                         present = false;
                         detector.on_left();
                     }
                 }
             }
         }
-        leave_terminal(&orchestrator, &routing, &terminal_id).await;
+        leave_terminal(&store, &routing, &terminal_id).await;
     });
 }
 
-async fn leave_terminal(
-    orchestrator: &Option<DetectorOrchestrator>,
-    routing: &RoutingStore,
-    terminal_id: &str,
-) {
-    if let (Some(orchestrator), Some(routing_id)) =
-        (orchestrator, routing.session_for_terminal(terminal_id))
-    {
-        crate::transport::ws::dispatch_roster_leave(orchestrator, &routing_id).await;
+async fn leave_terminal(store: &Option<DetectorStore>, routing: &RoutingStore, terminal_id: &str) {
+    if let (Some(store), Some(routing_id)) = (store, routing.session_for_terminal(terminal_id)) {
+        crate::transport::ws::dispatch_roster_leave(store, &routing_id).await;
     }
 }

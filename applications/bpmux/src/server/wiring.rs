@@ -20,7 +20,7 @@ pub(super) struct RouterDeps {
     pub ci_log_store: CiLogStore,
     pub electron_capture_lock: Arc<tokio::sync::Mutex<()>>,
     pub test_refresh: TestRefreshHandle,
-    pub orchestrator: Arc<Store>,
+    pub store: Arc<Store>,
     pub pty_registry: Arc<LivePtyRegistry>,
     pub routing_store: Arc<RoutingStore>,
     pub commitment_store: Arc<CommitmentStore>,
@@ -37,7 +37,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         ci_log_store,
         electron_capture_lock,
         test_refresh,
-        orchestrator,
+        store,
         pty_registry,
         routing_store,
         commitment_store,
@@ -97,7 +97,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(ci_log_store))
         .layer(axum::Extension(electron_capture_lock))
         .layer(axum::Extension(test_refresh))
-        .layer(axum::Extension(orchestrator))
+        .layer(axum::Extension(store))
         .layer(axum::Extension(pty_registry))
         .layer(axum::Extension(routing_store))
         .layer(axum::Extension(commitment_store))

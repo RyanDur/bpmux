@@ -18,7 +18,7 @@ pub struct RegisterRequest {
 
 pub async fn post_register(
     Extension(routing): Extension<Arc<RoutingStore>>,
-    Extension(orchestrator): Extension<Arc<crate::store::Store>>,
+    Extension(store): Extension<Arc<crate::store::Store>>,
     Json(payload): Json<RegisterRequest>,
 ) -> impl IntoResponse {
     if crate::transport::ws::is_reserved_display(&payload.display) {
@@ -38,13 +38,8 @@ pub async fn post_register(
         routing.reap_unclaimed_duplicates_of(&payload.display);
     }
     if let Some(prior) = superseded {
-        crate::transport::ws::dispatch_roster_leave(&orchestrator, &prior).await;
+        crate::transport::ws::dispatch_roster_leave(&store, &prior).await;
     }
-    crate::transport::ws::dispatch_roster_join(
-        &orchestrator,
-        &payload.session_id,
-        &payload.display,
-    )
-    .await;
+    crate::transport::ws::dispatch_roster_join(&store, &payload.session_id, &payload.display).await;
     (StatusCode::CREATED, "registered".to_string())
 }

@@ -391,7 +391,7 @@ fn ci_state_for_conclusion(conclusion: &str) -> crate::ci::CiState {
 }
 
 pub async fn post_test_fire_ci_state(
-    axum::Extension(orchestrator): axum::Extension<Arc<crate::store::Store>>,
+    axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     Json(req): Json<FireCiStateReq>,
 ) -> impl IntoResponse {
     let conclusion: &'static str = match req.conclusion.as_str() {
@@ -408,7 +408,7 @@ pub async fn post_test_fire_ci_state(
         conclusion,
         workflows: Vec::new(),
     };
-    orchestrator
+    store
         .dispatch(crate::store::StoreAction::CiUpdated(snapshot))
         .await;
     (

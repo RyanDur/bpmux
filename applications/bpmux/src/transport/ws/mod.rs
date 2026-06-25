@@ -32,7 +32,7 @@ const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3
 
 struct WsDeps {
     session: Arc<session::Session>,
-    orchestrator: Arc<crate::store::Store>,
+    store: Arc<crate::store::Store>,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
     routing: Arc<crate::routing::RoutingStore>,
     tracker: crate::transport::rest::TrackerHandle,
@@ -42,7 +42,7 @@ struct WsDeps {
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(session): State<Arc<session::Session>>,
-    axum::Extension(orchestrator): axum::Extension<Arc<crate::store::Store>>,
+    axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
     axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
     axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
@@ -50,7 +50,7 @@ pub async fn ws_handler(
 ) -> Response {
     let deps = WsDeps {
         session,
-        orchestrator,
+        store,
         pty_registry,
         routing,
         tracker,
@@ -73,7 +73,7 @@ async fn run_ws_session(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let WsDeps {
         session,
-        orchestrator,
+        store,
         pty_registry,
         routing,
         tracker,
@@ -84,7 +84,7 @@ async fn run_ws_session(
     let mut roster_key = roster_key_for(&routing_session_id, &identity);
     session.peer_connected();
     if let Some(ref key) = roster_key {
-        dispatch_roster_join(&orchestrator, key, &identity).await;
+        dispatch_roster_join(&store, key, &identity).await;
     }
     let mut broadcast_rx = session.subscribe();
     let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
@@ -96,7 +96,7 @@ async fn run_ws_session(
         },
     )
     .await?;
-    let snapshot_msg = build_state_snapshot_message(&orchestrator);
+    let snapshot_msg = build_state_snapshot_message(&store);
     send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;
@@ -193,7 +193,7 @@ async fn run_ws_session(
                         Some(Ok(WsMessage::Text(text))) => {
                             let client_ctx = client::ClientCtx {
                                 session: &session,
-                                orchestrator: &orchestrator,
+                                store: &store,
                                 pty_registry: &pty_registry,
                                 pty_tx: &pty_tx,
                                 tracker: &tracker,
@@ -208,10 +208,10 @@ async fn run_ws_session(
                                 }
                                 let new_key = roster_key_for(&routing_session_id, &identity);
                                 if new_key != roster_key && let Some(ref old) = roster_key {
-                                    dispatch_roster_leave(&orchestrator, old).await;
+                                    dispatch_roster_leave(&store, old).await;
                                 }
                                 if let Some(ref key) = new_key {
-                                    dispatch_roster_join(&orchestrator, key, &identity).await;
+                                    dispatch_roster_join(&store, key, &identity).await;
                                 }
                                 roster_key = new_key;
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} joined")));
@@ -236,7 +236,7 @@ async fn run_ws_session(
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
     if let Some(ref key) = roster_key {
-        dispatch_roster_leave(&orchestrator, key).await;
+        dispatch_roster_leave(&store, key).await;
     }
     result
 }

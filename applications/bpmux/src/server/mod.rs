@@ -77,7 +77,7 @@ pub async fn run_server(
         routing_store.clone(),
         commitment_store.clone(),
     );
-    let mut orchestrator_inner = crate::store::Store::new(
+    let mut store_inner = crate::store::Store::new(
         session.clone(),
         tracker
             .as_ref()
@@ -87,20 +87,20 @@ pub async fn run_server(
         ct.clone(),
     );
     if let Some(refresh) = test_refresh.as_ref().cloned() {
-        orchestrator_inner = orchestrator_inner.with_refresh(
+        store_inner = store_inner.with_refresh(
             refresh,
             crate::bridge::poll_interval_from_env(),
             crate::bridge::hydration_interval_from_env(),
         );
     }
-    let orchestrator = std::sync::Arc::new(orchestrator_inner);
-    orchestrator.spawn_action_drainer(action_rx);
-    wire_orchestrator_listeners(&orchestrator, &session, &ci_state_store);
-    wire_startup_roster(&orchestrator, &session, &pty_registry, &routing_store).await;
+    let store = std::sync::Arc::new(store_inner);
+    store.spawn_action_drainer(action_rx);
+    wire_store_listeners(&store, &session, &ci_state_store);
+    wire_startup_roster(&store, &session, &pty_registry, &routing_store).await;
     if let Some(refresh) = test_refresh.as_ref().cloned() {
-        spawn_owner_park_loop(refresh, orchestrator.clone(), ct.clone());
+        spawn_owner_park_loop(refresh, store.clone(), ct.clone());
     }
-    start_polling(&orchestrator, test_refresh.is_some()).await;
+    start_polling(&store, test_refresh.is_some()).await;
 
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
@@ -114,7 +114,7 @@ pub async fn run_server(
         ci_log_store,
         electron_capture_lock,
         test_refresh,
-        orchestrator,
+        store,
         pty_registry,
         routing_store,
         commitment_store,

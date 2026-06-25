@@ -53,5 +53,5 @@ pub(super) fn validate_and_log(action: &StoreAction) {
         StoreAction::MutationConfirmed { .. } => "MutationConfirmed",
         StoreAction::MutationRolledBack { .. } => "MutationRolledBack",
     };
-    crate::diag::log_diag(&format!("orchestrator: dispatch {label}"));
+    crate::diag::log_diag(&format!("store: dispatch {label}"));
 }
