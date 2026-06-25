@@ -14,9 +14,8 @@ use comments::{
 use labels::{apply_label_delta, apply_labels_refreshed, apply_raw_labels_only};
 use lifecycle::{
     apply_body_fetched, apply_iteration_membership_cleared, apply_iteration_membership_set,
-    apply_outcome_membership_cleared, apply_outcome_membership_set, apply_parent_epic_set,
-    apply_parent_epic_unset, apply_state_transitioned, apply_story_closed, apply_story_created,
-    apply_story_refreshed, apply_story_reopened,
+    apply_parent_epic_set, apply_parent_epic_unset, apply_state_transitioned, apply_story_closed,
+    apply_story_created, apply_story_refreshed, apply_story_reopened,
 };
 
 pub(super) type Stories = HashMap<u64, Story>;
@@ -74,13 +73,9 @@ pub(super) fn apply_event(
         BoardEvent::IterationMembershipCleared { .. } => {
             apply_iteration_membership_cleared(w, number)
         }
-        BoardEvent::OutcomeMembershipSet {
-            outcome_number,
-            position,
-            ..
-        } => apply_outcome_membership_set(w, number, *outcome_number, *position),
-        BoardEvent::OutcomeMembershipCleared { .. } => apply_outcome_membership_cleared(w, number),
-        BoardEvent::CurrentIterationDesignated { .. }
+        BoardEvent::OutcomeMembershipSet { .. }
+        | BoardEvent::OutcomeMembershipCleared { .. }
+        | BoardEvent::CurrentIterationDesignated { .. }
         | BoardEvent::CurrentIterationCleared { .. } => {
             if let Some(fields) = label_projection {
                 apply_raw_labels_only(w, number, fields);

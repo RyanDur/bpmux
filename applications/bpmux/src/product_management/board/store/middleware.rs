@@ -35,6 +35,22 @@ pub(super) fn project_label_delta(
             labels.retain(|l| !GhLabelCodec.is_current_iteration_label(l));
             labels
         }
+        BoardEvent::OutcomeMembershipSet {
+            number,
+            outcome_number,
+            position,
+            ..
+        } => {
+            let mut labels = stories.get(number)?.raw_labels.clone();
+            labels.retain(|l| GhLabelCodec.decode_parent_outcome(l).is_none());
+            labels.push(GhLabelCodec.encode_parent_outcome(*outcome_number, *position));
+            labels
+        }
+        BoardEvent::OutcomeMembershipCleared { number, .. } => {
+            let mut labels = stories.get(number)?.raw_labels.clone();
+            labels.retain(|l| GhLabelCodec.decode_parent_outcome(l).is_none());
+            labels
+        }
         _ => return None,
     };
     Some(project_labels(&new_labels))

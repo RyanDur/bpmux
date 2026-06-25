@@ -46,8 +46,6 @@ pub struct Story {
     pub body_etag: Option<String>,
     #[serde(default)]
     pub iteration_membership: Option<(u64, u32)>,
-    #[serde(default)]
-    pub outcome_membership: Option<(u64, u32)>,
 }
 
 impl Story {
@@ -78,7 +76,6 @@ impl Story {
             raw_labels,
             body_etag: None,
             iteration_membership: None,
-            outcome_membership: None,
         }
     }
 }

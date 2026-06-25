@@ -28,7 +28,8 @@ fn iteration_for(number: u64, outcome_number: u64, position: u32) -> Story {
         "pm".to_string(),
     );
     s.story_type = StoryType::Iteration;
-    s.outcome_membership = Some((outcome_number, position));
+    s.raw_labels
+        .push(format!("parent-outcome-#{outcome_number}.{position}"));
     s.body = Some("## composed".to_string());
     s
 }

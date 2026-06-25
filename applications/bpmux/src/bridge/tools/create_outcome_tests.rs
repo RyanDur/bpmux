@@ -123,7 +123,9 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
         .expect("pm maps the iteration to the outcome");
     let iteration = refresh.story(710).expect("iteration present");
     assert_eq!(
-        iteration.outcome_membership,
+        crate::product_management::board::adapters::github::outcome_membership_from_labels(
+            &iteration.raw_labels
+        ),
         Some((700, 1)),
         "the iteration carries its outcome-membership (outcome 700 at position 1) — the drill-mapping"
     );

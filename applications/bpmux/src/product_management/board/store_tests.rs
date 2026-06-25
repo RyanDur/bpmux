@@ -86,7 +86,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                 "parent-iteration-#1655.106".to_string(),
                 "awaiting dev".to_string(),
             ],
-            ..LabelDerivedFields::default()
         },
     });
 
@@ -538,7 +537,9 @@ fn outcome_membership_set_event_records_the_mapping_1738() {
         position: 2,
     });
     assert_eq!(
-        store.story(710).unwrap().outcome_membership,
+        crate::product_management::board::adapters::github::outcome_membership_from_labels(
+            &store.story(710).unwrap().raw_labels
+        ),
         Some((700, 2)),
         "the event records which outcome the iteration builds, and at what position"
     );

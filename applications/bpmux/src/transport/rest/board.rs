@@ -116,7 +116,6 @@ mod tests {
 
     fn building_iteration(number: u64, outcome_number: u64, position: u32) -> Story {
         let mut s = iteration(number);
-        s.outcome_membership = Some((outcome_number, position));
         s.raw_labels
             .push(format!("parent-outcome-#{outcome_number}.{position}"));
         s

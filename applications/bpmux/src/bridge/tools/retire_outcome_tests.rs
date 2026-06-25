@@ -31,7 +31,7 @@ fn iteration_in_outcome(number: u64, outcome: u64) -> Story {
         StoryType::Iteration,
         &[],
     );
-    s.outcome_membership = Some((outcome, 1));
+    s.raw_labels.push(format!("parent-outcome-#{outcome}.1"));
     s
 }
 

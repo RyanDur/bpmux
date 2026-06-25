@@ -26,9 +26,10 @@ async fn mapped_iteration(
         ));
     }
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if iteration
-        .outcome_membership
-        .is_none_or(|(owner, _)| owner != outcome_number)
+    if crate::product_management::board::adapters::github::outcome_membership_from_labels(
+        &iteration.raw_labels,
+    )
+    .is_none_or(|(owner, _)| owner != outcome_number)
     {
         return Err(format!(
             "iteration #{iteration_number} is not mapped to outcome #{outcome_number}"

@@ -111,7 +111,11 @@ pub fn derive_outcome_drill_in(
     let mut building = building_iterations(outcome_number, stories);
     building.sort_by_key(|it| {
         (
-            it.outcome_membership.map(|(_, p)| p).unwrap_or(0),
+            crate::product_management::board::adapters::github::outcome_membership_from_labels(
+                &it.raw_labels,
+            )
+            .map(|(_, p)| p)
+            .unwrap_or(0),
             it.number,
         )
     });

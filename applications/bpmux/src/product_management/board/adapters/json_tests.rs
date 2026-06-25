@@ -21,7 +21,6 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         raw_labels: Vec::new(),
         body_etag: None,
         iteration_membership: None,
-        outcome_membership: None,
     }
 }
 

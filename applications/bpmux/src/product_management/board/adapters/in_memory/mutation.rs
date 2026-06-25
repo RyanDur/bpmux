@@ -140,13 +140,22 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
             position,
             ..
         } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
             if let Some(story) = s.stories.get_mut(number) {
-                story.outcome_membership = Some((*outcome_number, *position));
+                story
+                    .raw_labels
+                    .retain(|l| GhLabelCodec.decode_parent_outcome(l).is_none());
+                story
+                    .raw_labels
+                    .push(GhLabelCodec.encode_parent_outcome(*outcome_number, *position));
             }
         }
         BoardEvent::OutcomeMembershipCleared { number, .. } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
             if let Some(story) = s.stories.get_mut(number) {
-                story.outcome_membership = None;
+                story
+                    .raw_labels
+                    .retain(|l| GhLabelCodec.decode_parent_outcome(l).is_none());
             }
         }
         _ => {}

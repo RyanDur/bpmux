@@ -64,8 +64,10 @@ pub(crate) async fn handle_retire_outcome(
         .all_stories()
         .iter()
         .filter(|s| {
-            s.outcome_membership
-                .is_some_and(|(owner, _)| owner == outcome_number)
+            crate::product_management::board::adapters::github::outcome_membership_from_labels(
+                &s.raw_labels,
+            )
+            .is_some_and(|(owner, _)| owner == outcome_number)
         })
         .count();
     let mapping_note = match orphaned {

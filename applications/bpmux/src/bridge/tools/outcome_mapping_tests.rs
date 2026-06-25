@@ -35,7 +35,8 @@ fn iteration_mapped(number: u64, outcome_number: u64, position: u32) -> Story {
         "pm".into(),
     );
     s.story_type = StoryType::Iteration;
-    s.outcome_membership = Some((outcome_number, position));
+    s.raw_labels
+        .push(format!("parent-outcome-#{outcome_number}.{position}"));
     s.body = Some("## composed".into());
     s
 }
@@ -102,7 +103,10 @@ async fn unmap_leaves_the_iteration_itself_untouched_1763() {
         .expect("pm unmaps");
     let iteration = refresh.story(710).expect("present");
     assert_eq!(
-        iteration.outcome_membership, None,
+        crate::product_management::board::adapters::github::outcome_membership_from_labels(
+            &iteration.raw_labels
+        ),
+        None,
         "only the relation is removed"
     );
     assert_eq!(
@@ -134,7 +138,9 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         .await
         .expect("pm reorders the iteration");
     assert_eq!(
-        refresh.story(710).expect("present").outcome_membership,
+        crate::product_management::board::adapters::github::outcome_membership_from_labels(
+            &refresh.story(710).expect("present").raw_labels
+        ),
         Some((700, 3)),
         "the iteration reads its new priority-order within the outcome"
     );

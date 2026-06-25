@@ -17,7 +17,6 @@ pub struct EventMeta {
 pub struct LabelDerivedFields {
     pub parent_epic: Option<u64>,
     pub iteration_membership: Option<(u64, u32)>,
-    pub outcome_membership: Option<(u64, u32)>,
     pub raw_labels: Vec<String>,
 }
 

@@ -1,8 +1,7 @@
 use chrono::{DateTime, Utc};
 
 use super::label_fields::{
-    iteration_membership_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
-    story_type_from_labels,
+    iteration_membership_from_labels, parent_epic_from_labels, story_type_from_labels,
 };
 use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::story::{Story, StoryState, StoryType, Tag, story_type_from_title};
@@ -15,7 +14,6 @@ pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
     LabelDerivedFields {
         parent_epic: parent_epic_from_labels(labels),
         iteration_membership: iteration_membership_from_labels(labels),
-        outcome_membership: outcome_membership_from_labels(labels),
         raw_labels: labels.to_vec(),
     }
 }
@@ -76,7 +74,6 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.is_closed = is_closed;
     story.parent_epic = parent_epic_from_labels(&labels);
     story.iteration_membership = iteration_membership_from_labels(&labels);
-    story.outcome_membership = outcome_membership_from_labels(&labels);
     story.raw_labels = labels;
     if let Some(body) = v.get("body").and_then(|x| x.as_str()) {
         story.body = Some(body.to_string());

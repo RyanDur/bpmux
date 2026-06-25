@@ -41,7 +41,11 @@ pub fn building_iterations(outcome_number: u64, all: &[Story]) -> Vec<&Story> {
     all.iter()
         .filter(|s| {
             s.story_type == crate::product_management::story::StoryType::Iteration
-                && s.outcome_membership.map(|(o, _)| o) == Some(outcome_number)
+                && crate::product_management::board::adapters::github::outcome_membership_from_labels(
+                    &s.raw_labels,
+                )
+                .map(|(o, _)| o)
+                    == Some(outcome_number)
         })
         .collect()
 }

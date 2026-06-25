@@ -48,7 +48,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         raw_labels,
         body_etag,
         iteration_membership: _,
-        outcome_membership,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
@@ -129,7 +128,9 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         "horizon must decode from the horizon.next label"
     );
     assert_eq!(
-        *outcome_membership,
+        crate::product_management::board::adapters::github::outcome_membership_from_labels(
+            raw_labels
+        ),
         Some((700, 2)),
         "outcome_membership must decode (outcome_number, position) from the parent-outcome label"
     );

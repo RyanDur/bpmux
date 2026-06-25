@@ -22,7 +22,6 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
     if let Some(existing) = w.get_mut(&number) {
         existing.parent_epic = fields.parent_epic;
         existing.iteration_membership = fields.iteration_membership;
-        existing.outcome_membership = fields.outcome_membership;
         existing.raw_labels = fields.raw_labels.clone();
     }
 }
