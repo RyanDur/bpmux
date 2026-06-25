@@ -107,7 +107,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     pub fn with_action_tx(
         mut self,
-        tx: tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>,
+        tx: tokio::sync::mpsc::UnboundedSender<crate::store::StoreAction>,
     ) -> Self {
         self.action_tx = Some(tx);
         self

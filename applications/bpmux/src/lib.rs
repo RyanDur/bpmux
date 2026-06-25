@@ -30,7 +30,6 @@ pub mod memory;
 pub mod message;
 #[cfg(test)]
 mod message_tests;
-pub mod orchestrator;
 pub mod precommit;
 #[cfg(test)]
 mod precommit_tests;
@@ -51,6 +50,7 @@ mod speech_guard_tests;
 pub mod storage;
 #[cfg(test)]
 mod storage_tests;
+pub mod store;
 #[cfg(test)]
 mod team_roster_tests;
 pub mod telemetry;

@@ -5,7 +5,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::product_management::board::MutationId;
 
-impl<T: CiPollFetch> Orchestrator<T> {
+impl Store {
     pub(super) async fn middleware_start_update_github(self: &Arc<Self>, mutation_id: MutationId) {
         let Some(refresh) = self.refresh.as_ref().cloned() else {
             return;

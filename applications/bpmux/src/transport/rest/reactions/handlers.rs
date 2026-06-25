@@ -27,9 +27,7 @@ pub async fn get_reactions(
 
 pub async fn post_reaction(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(orchestrator): axum::Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
-    >,
+    axum::Extension(orchestrator): axum::Extension<Arc<crate::store::Store>>,
     axum::Json(body): axum::Json<ReactionToggle>,
 ) -> impl IntoResponse {
     match apply_reaction_toggle(&session, &orchestrator, &body).await {
@@ -48,9 +46,7 @@ pub async fn post_reaction(
 
 pub async fn apply_reaction_toggle(
     session: &session::Session,
-    orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
-    >,
+    orchestrator: &Arc<crate::store::Store>,
     body: &ReactionToggle,
 ) -> Result<bool, String> {
     let mut store = crate::reactions::load(&session.dir);
@@ -65,8 +61,8 @@ pub async fn apply_reaction_toggle(
     );
     crate::reactions::save(&session.dir, &store).map_err(|e| format!("save reactions: {e}"))?;
     orchestrator
-        .dispatch(crate::orchestrator::OrchestratorAction::Reactions(
-            crate::orchestrator::ReactionsAction::ReactionToggled {
+        .dispatch(crate::store::StoreAction::Reactions(
+            crate::store::ReactionsAction::ReactionToggled {
                 channel: body.channel.clone(),
                 message_key: body.message_key.clone(),
                 emoji: body.emoji.clone(),

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::orchestrator::{CiAction, CiPollFetch, CiSnapshot, Orchestrator};
+use crate::store::{CiAction, CiPollFetch, CiSnapshot, Store};
 use crate::transport::ci_state_store::CiStateStore;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -28,9 +28,9 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
     }
 }
 
-pub fn spawn<T: CiPollFetch>(
-    orchestrator: Arc<Orchestrator<T>>,
-    tracker: Arc<T>,
+pub fn spawn(
+    orchestrator: Arc<Store>,
+    tracker: Arc<dyn CiPollFetch>,
     ci_state_store: CiStateStore,
     ct: CancellationToken,
 ) {

@@ -1,18 +1,15 @@
 use std::sync::Arc;
 
-use crate::integrations::github::GitHubSourceAdapter;
-use crate::orchestrator::Orchestrator;
 use crate::room::{CommitmentStore, LivePtyRegistry};
 use crate::routing::RoutingStore;
 use crate::session;
+use crate::store::Store;
 use crate::transport;
 use crate::transport::auth::AuthState;
 use crate::transport::ci_log_store::CiLogStore;
 use crate::transport::ci_state_store::CiStateStore;
 
 use super::TestRefreshHandle;
-
-type ProdOrchestrator = Orchestrator<GitHubSourceAdapter>;
 
 pub(super) struct RouterDeps {
     pub auth_state: AuthState,
@@ -23,7 +20,7 @@ pub(super) struct RouterDeps {
     pub ci_log_store: CiLogStore,
     pub electron_capture_lock: Arc<tokio::sync::Mutex<()>>,
     pub test_refresh: TestRefreshHandle,
-    pub orchestrator: Arc<ProdOrchestrator>,
+    pub orchestrator: Arc<Store>,
     pub pty_registry: Arc<LivePtyRegistry>,
     pub routing_store: Arc<RoutingStore>,
     pub commitment_store: Arc<CommitmentStore>,

@@ -1,6 +1,6 @@
-use super::{CiPollFetch, Orchestrator};
+use super::Store;
 
-impl<T: CiPollFetch> Orchestrator<T> {
+impl Store {
     pub fn build_snapshot(&self) -> crate::message::StateSnapshotPayload {
         use crate::message::{
             CiSnapshotWire, ReactionAggregateWire, ReactionsChannelSnapshot, RosterMemberWire,

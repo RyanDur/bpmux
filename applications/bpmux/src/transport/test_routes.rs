@@ -391,9 +391,7 @@ fn ci_state_for_conclusion(conclusion: &str) -> crate::ci::CiState {
 }
 
 pub async fn post_test_fire_ci_state(
-    axum::Extension(orchestrator): axum::Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
-    >,
+    axum::Extension(orchestrator): axum::Extension<Arc<crate::store::Store>>,
     Json(req): Json<FireCiStateReq>,
 ) -> impl IntoResponse {
     let conclusion: &'static str = match req.conclusion.as_str() {
@@ -402,7 +400,7 @@ pub async fn post_test_fire_ci_state(
         "in_progress" => "in_progress",
         _ => "unknown",
     };
-    let snapshot = crate::orchestrator::CiSnapshot {
+    let snapshot = crate::store::CiSnapshot {
         state: ci_state_for_conclusion(conclusion),
         run_id: Some(req.run_id),
         head_sha: Some(req.head_sha),
@@ -411,7 +409,7 @@ pub async fn post_test_fire_ci_state(
         workflows: Vec::new(),
     };
     orchestrator
-        .dispatch(crate::orchestrator::OrchestratorAction::CiUpdated(snapshot))
+        .dispatch(crate::store::StoreAction::CiUpdated(snapshot))
         .await;
     (
         StatusCode::OK,

@@ -15,9 +15,9 @@ use super::stores::{
 };
 use crate::ci::CiState;
 use crate::message::{Message, MessageType, StateDeltaPayload};
-use crate::orchestrator::CiBroadcastListener;
-use crate::orchestrator::ci::CiSnapshot;
 use crate::session::Session;
+use crate::store::CiBroadcastListener;
+use crate::store::ci::CiSnapshot;
 
 fn fresh_session() -> (Arc<Session>, broadcast::Receiver<Message>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
@@ -161,22 +161,16 @@ fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMem
     }
 }
 
-async fn seed_dev_online(
-    orch: &Arc<
-        crate::orchestrator::ci::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
-    >,
-) {
-    use crate::orchestrator::ci::OrchestratorAction;
-    use crate::orchestrator::stores::RosterAction;
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberUpserted {
-            routing_id: "sess-dev".to_string(),
-            name: "dev".to_string(),
-            identity: "dev:claude-code".to_string(),
-            role: RosterRole::Dev,
-            presence: Presence::Online,
-        },
-    ))
+async fn seed_dev_online(orch: &Arc<crate::store::ci::Store>) {
+    use crate::store::ci::StoreAction;
+    use crate::store::stores::RosterAction;
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-dev".to_string(),
+        name: "dev".to_string(),
+        identity: "dev:claude-code".to_string(),
+        role: RosterRole::Dev,
+        presence: Presence::Online,
+    }))
     .await;
 }
 
@@ -193,7 +187,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
         tx,
     ));
     std::mem::forget(dir);
-    let orch = Arc::new(crate::orchestrator::ci::Orchestrator::new(
+    let orch = Arc::new(crate::store::ci::Store::new(
         session.clone(),
         None,
         crate::transport::ci_state_store::CiStateStore::new(),
@@ -236,7 +230,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
         tx,
     ));
     std::mem::forget(dir);
-    let orch = Arc::new(crate::orchestrator::ci::Orchestrator::new(
+    let orch = Arc::new(crate::store::ci::Store::new(
         session.clone(),
         None,
         crate::transport::ci_state_store::CiStateStore::new(),

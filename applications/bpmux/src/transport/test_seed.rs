@@ -103,7 +103,7 @@ pub async fn post_reset_stories(
 pub struct SeedRosterBody {
     pub identities: Vec<String>,
     #[serde(default)]
-    pub presence: Option<crate::orchestrator::Presence>,
+    pub presence: Option<crate::store::Presence>,
 }
 
 #[derive(Deserialize)]
@@ -248,9 +248,7 @@ pub async fn post_seed_stories(
 }
 
 pub async fn post_seed_roster(
-    axum::Extension(orchestrator): axum::Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
-    >,
+    axum::Extension(orchestrator): axum::Extension<Arc<crate::store::Store>>,
     Json(body): Json<SeedRosterBody>,
 ) -> impl IntoResponse {
     for identity in &body.identities {
@@ -261,15 +259,13 @@ pub async fn post_seed_roster(
             .to_string();
         let role = crate::transport::ws::role_from_short_name(&name);
         orchestrator
-            .dispatch(crate::orchestrator::OrchestratorAction::Roster(
-                crate::orchestrator::RosterAction::RosterMemberUpserted {
+            .dispatch(crate::store::StoreAction::Roster(
+                crate::store::RosterAction::RosterMemberUpserted {
                     routing_id: identity.clone(),
                     name,
                     identity: identity.clone(),
                     role,
-                    presence: body
-                        .presence
-                        .unwrap_or(crate::orchestrator::Presence::Online),
+                    presence: body.presence.unwrap_or(crate::store::Presence::Online),
                 },
             ))
             .await;

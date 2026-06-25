@@ -7,17 +7,16 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use super::ci::{Orchestrator, OrchestratorAction};
+use super::ci::{Store, StoreAction};
 use super::stores::{
     AggregatedReaction, Presence, ReactionsAction, ReactionsBroadcastListener, RosterAction,
     RosterBroadcastListener, RosterMember, RosterRole,
 };
-use crate::integrations::github::GitHubSourceAdapter;
 use crate::message::Message;
 use crate::session::Session;
 use crate::transport::ci_state_store::CiStateStore;
 
-fn fresh_orch() -> Arc<Orchestrator<GitHubSourceAdapter>> {
+fn fresh_orch() -> Arc<Store> {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let session = Arc::new(Session::new(
@@ -26,7 +25,7 @@ fn fresh_orch() -> Arc<Orchestrator<GitHubSourceAdapter>> {
         tx,
     ));
     std::mem::forget(dir);
-    Arc::new(Orchestrator::new(
+    Arc::new(Store::new(
         session,
         None,
         CiStateStore::new(),
@@ -62,15 +61,13 @@ async fn reactions_action_drives_reducer_and_fires_listener() {
     let rec = Arc::new(RecReactions::default());
     orch.add_reactions_listener(rec.clone());
 
-    orch.dispatch(OrchestratorAction::Reactions(
-        ReactionsAction::ReactionToggled {
-            channel: "broadcast".to_string(),
-            message_key: "k1".to_string(),
-            emoji: "👍".to_string(),
-            user: "owner".to_string(),
-            ts_iso: "t0".to_string(),
-        },
-    ))
+    orch.dispatch(StoreAction::Reactions(ReactionsAction::ReactionToggled {
+        channel: "broadcast".to_string(),
+        message_key: "k1".to_string(),
+        emoji: "👍".to_string(),
+        user: "owner".to_string(),
+        ts_iso: "t0".to_string(),
+    }))
     .await;
 
     let agg = orch.reactions_store().aggregated_for_channel("broadcast");
@@ -90,7 +87,7 @@ async fn reactions_toggle_off_clears_and_fires_listener() {
     let rec = Arc::new(RecReactions::default());
     orch.add_reactions_listener(rec.clone());
 
-    let toggle = OrchestratorAction::Reactions(ReactionsAction::ReactionToggled {
+    let toggle = StoreAction::Reactions(ReactionsAction::ReactionToggled {
         channel: "broadcast".to_string(),
         message_key: "k1".to_string(),
         emoji: "👍".to_string(),
@@ -111,7 +108,7 @@ async fn reactions_toggle_off_clears_and_fires_listener() {
 async fn reactions_aggregates_count_per_emoji_not_raw_events() {
     let orch = fresh_orch();
     let toggle_user = |user: &str| {
-        OrchestratorAction::Reactions(ReactionsAction::ReactionToggled {
+        StoreAction::Reactions(ReactionsAction::ReactionToggled {
             channel: "broadcast".to_string(),
             message_key: "k1".to_string(),
             emoji: "👍".to_string(),
@@ -134,15 +131,13 @@ async fn roster_member_upserted_fires_listener() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberUpserted {
-            routing_id: "sess-owner".to_string(),
-            name: "owner".to_string(),
-            identity: "owner:electron".to_string(),
-            role: RosterRole::Owner,
-            presence: Presence::Online,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-owner".to_string(),
+        name: "owner".to_string(),
+        identity: "owner:electron".to_string(),
+        role: RosterRole::Owner,
+        presence: Presence::Online,
+    }))
     .await;
 
     let members = orch.roster_store().members();
@@ -158,25 +153,21 @@ async fn roster_member_upserted_fires_listener() {
 async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_place_no_dup() {
     let orch = fresh_orch();
 
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberUpserted {
-            routing_id: "sess-1".to_string(),
-            name: "bpmux-designer".to_string(),
-            identity: "bpmux-designer".to_string(),
-            role: RosterRole::Other,
-            presence: Presence::Online,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-1".to_string(),
+        name: "bpmux-designer".to_string(),
+        identity: "bpmux-designer".to_string(),
+        role: RosterRole::Other,
+        presence: Presence::Online,
+    }))
     .await;
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberUpserted {
-            routing_id: "sess-1".to_string(),
-            name: "designer".to_string(),
-            identity: "designer".to_string(),
-            role: RosterRole::Designer,
-            presence: Presence::Online,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-1".to_string(),
+        name: "designer".to_string(),
+        identity: "designer".to_string(),
+        role: RosterRole::Designer,
+        presence: Presence::Online,
+    }))
     .await;
 
     let members = orch.roster_store().members();
@@ -196,15 +187,13 @@ async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_pla
 async fn roster_two_agents_sharing_a_display_are_two_rows_keyed_by_routing_id() {
     let orch = fresh_orch();
     for routing_id in ["sess-a", "sess-b"] {
-        orch.dispatch(OrchestratorAction::Roster(
-            RosterAction::RosterMemberUpserted {
-                routing_id: routing_id.to_string(),
-                name: "dev".to_string(),
-                identity: "dev".to_string(),
-                role: RosterRole::Dev,
-                presence: Presence::Online,
-            },
-        ))
+        orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+            routing_id: routing_id.to_string(),
+            name: "dev".to_string(),
+            identity: "dev".to_string(),
+            role: RosterRole::Dev,
+            presence: Presence::Online,
+        }))
         .await;
     }
 
@@ -220,23 +209,19 @@ async fn roster_two_agents_sharing_a_display_are_two_rows_keyed_by_routing_id() 
 async fn roster_presence_change_targets_the_row_by_routing_id_not_a_shared_display() {
     let orch = fresh_orch();
     for routing_id in ["sess-a", "sess-b"] {
-        orch.dispatch(OrchestratorAction::Roster(
-            RosterAction::RosterMemberUpserted {
-                routing_id: routing_id.to_string(),
-                name: "dev".to_string(),
-                identity: "dev".to_string(),
-                role: RosterRole::Dev,
-                presence: Presence::Online,
-            },
-        ))
+        orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+            routing_id: routing_id.to_string(),
+            name: "dev".to_string(),
+            identity: "dev".to_string(),
+            role: RosterRole::Dev,
+            presence: Presence::Online,
+        }))
         .await;
     }
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterPresenceChanged {
-            routing_id: "sess-a".to_string(),
-            presence: Presence::Busy,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+        routing_id: "sess-a".to_string(),
+        presence: Presence::Busy,
+    }))
     .await;
 
     let members = orch.roster_store().members();
@@ -265,29 +250,23 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberUpserted {
-            routing_id: "sess-dev".to_string(),
-            name: "dev".to_string(),
-            identity: "dev:claude-code".to_string(),
-            role: RosterRole::Dev,
-            presence: Presence::Online,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-dev".to_string(),
+        name: "dev".to_string(),
+        identity: "dev:claude-code".to_string(),
+        role: RosterRole::Dev,
+        presence: Presence::Online,
+    }))
     .await;
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterPresenceChanged {
-            routing_id: "sess-dev".to_string(),
-            presence: Presence::Online,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+        routing_id: "sess-dev".to_string(),
+        presence: Presence::Online,
+    }))
     .await;
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterPresenceChanged {
-            routing_id: "sess-dev".to_string(),
-            presence: Presence::Busy,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+        routing_id: "sess-dev".to_string(),
+        presence: Presence::Busy,
+    }))
     .await;
 
     let received = rec.received.lock().unwrap();
@@ -313,7 +292,7 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
         "test".to_string(),
         tx,
     ));
-    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+    let orch: Arc<Store> = Arc::new(Store::new(
         session.clone(),
         None,
         CiStateStore::new(),
@@ -438,27 +417,21 @@ async fn roster_remove_fires_listener_when_member_existed() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberUpserted {
-            routing_id: "sess-designer".to_string(),
-            name: "designer".to_string(),
-            identity: "designer:claude-code".to_string(),
-            role: RosterRole::Designer,
-            presence: Presence::Online,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-designer".to_string(),
+        name: "designer".to_string(),
+        identity: "designer:claude-code".to_string(),
+        role: RosterRole::Designer,
+        presence: Presence::Online,
+    }))
     .await;
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberRemoved {
-            routing_id: "sess-designer".to_string(),
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberRemoved {
+        routing_id: "sess-designer".to_string(),
+    }))
     .await;
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberRemoved {
-            routing_id: "sess-designer".to_string(),
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberRemoved {
+        routing_id: "sess-designer".to_string(),
+    }))
     .await;
 
     assert!(orch.roster_store().members().is_empty());
@@ -476,22 +449,18 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterMemberUpserted {
-            routing_id: "sess-dev".to_string(),
-            name: "dev".to_string(),
-            identity: "dev:claude-code".to_string(),
-            role: RosterRole::Dev,
-            presence: Presence::Online,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-dev".to_string(),
+        name: "dev".to_string(),
+        identity: "dev:claude-code".to_string(),
+        role: RosterRole::Dev,
+        presence: Presence::Online,
+    }))
     .await;
-    orch.dispatch(OrchestratorAction::Roster(
-        RosterAction::RosterPresenceChanged {
-            routing_id: "sess-dev".to_string(),
-            presence: Presence::Blocked,
-        },
-    ))
+    orch.dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+        routing_id: "sess-dev".to_string(),
+        presence: Presence::Blocked,
+    }))
     .await;
 
     let members = orch.roster_store().members();

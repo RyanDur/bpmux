@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use super::{CiSnapshot, OrchestratorAction};
+use super::{CiSnapshot, StoreAction};
 
 #[derive(Default)]
 pub struct CiStore {
@@ -28,9 +28,9 @@ impl CiStore {
         state.last_seen
     }
 
-    pub(super) fn apply(&self, action: &OrchestratorAction) -> CiReduceOutcome {
+    pub(super) fn apply(&self, action: &StoreAction) -> CiReduceOutcome {
         match action {
-            OrchestratorAction::CiUpdated(snap) => {
+            StoreAction::CiUpdated(snap) => {
                 let mut state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
                 let key = (snap.run_id, snap.conclusion);
                 let changed = state.last_seen != Some(key);

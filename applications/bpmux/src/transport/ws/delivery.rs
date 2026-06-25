@@ -10,7 +10,7 @@ pub(crate) fn short_name(identity: &str) -> &str {
 pub(crate) fn should_deliver(msg: &crate::message::Message, peer_identity: &str) -> bool {
     if matches!(
         role_from_short_name(short_name(peer_identity)),
-        crate::orchestrator::stores::RosterRole::Owner
+        crate::store::stores::RosterRole::Owner
     ) {
         return msg.message_type != MessageType::Nudge;
     }

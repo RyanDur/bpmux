@@ -3,12 +3,12 @@ use std::sync::Arc;
 use super::short_name;
 
 pub(crate) fn is_reserved_display(name: &str) -> bool {
-    use crate::orchestrator::stores::RosterRole;
+    use crate::store::stores::RosterRole;
     matches!(role_from_short_name(short_name(name)), RosterRole::Owner)
 }
 
-pub(crate) fn role_from_short_name(short: &str) -> crate::orchestrator::stores::RosterRole {
-    use crate::orchestrator::stores::RosterRole;
+pub(crate) fn role_from_short_name(short: &str) -> crate::store::stores::RosterRole {
+    use crate::store::stores::RosterRole;
     let workflow = crate::workflow::current_workflow();
     let purpose = workflow
         .role
@@ -25,62 +25,50 @@ pub(crate) fn role_from_short_name(short: &str) -> crate::orchestrator::stores::
 }
 
 pub(crate) async fn dispatch_roster_join(
-    orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
-    >,
+    orchestrator: &Arc<crate::store::Store>,
     routing_id: &str,
     identity: &str,
 ) {
-    use crate::orchestrator::OrchestratorAction;
-    use crate::orchestrator::stores::{Presence, RosterAction};
+    use crate::store::StoreAction;
+    use crate::store::stores::{Presence, RosterAction};
     let short = short_name(identity).to_string();
     let role = role_from_short_name(&short);
     orchestrator
-        .dispatch(OrchestratorAction::Roster(
-            RosterAction::RosterMemberUpserted {
-                routing_id: routing_id.to_string(),
-                name: short,
-                identity: identity.to_string(),
-                role,
-                presence: Presence::Online,
-            },
-        ))
+        .dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+            routing_id: routing_id.to_string(),
+            name: short,
+            identity: identity.to_string(),
+            role,
+            presence: Presence::Online,
+        }))
         .await;
 }
 
 pub(crate) async fn dispatch_roster_leave(
-    orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
-    >,
+    orchestrator: &Arc<crate::store::Store>,
     routing_id: &str,
 ) {
-    use crate::orchestrator::OrchestratorAction;
-    use crate::orchestrator::stores::RosterAction;
+    use crate::store::StoreAction;
+    use crate::store::stores::RosterAction;
     orchestrator
-        .dispatch(OrchestratorAction::Roster(
-            RosterAction::RosterMemberRemoved {
-                routing_id: routing_id.to_string(),
-            },
-        ))
+        .dispatch(StoreAction::Roster(RosterAction::RosterMemberRemoved {
+            routing_id: routing_id.to_string(),
+        }))
         .await;
 }
 
 pub(crate) async fn dispatch_roster_presence(
-    orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
-    >,
+    orchestrator: &Arc<crate::store::Store>,
     routing_id: &str,
-    presence: crate::orchestrator::stores::Presence,
+    presence: crate::store::stores::Presence,
 ) {
-    use crate::orchestrator::OrchestratorAction;
-    use crate::orchestrator::stores::RosterAction;
+    use crate::store::StoreAction;
+    use crate::store::stores::RosterAction;
     orchestrator
-        .dispatch(OrchestratorAction::Roster(
-            RosterAction::RosterPresenceChanged {
-                routing_id: routing_id.to_string(),
-                presence,
-            },
-        ))
+        .dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+            routing_id: routing_id.to_string(),
+            presence,
+        }))
         .await;
 }
 
@@ -106,9 +94,7 @@ mod tests {
         assert!(!is_reserved_display("pm") && !is_reserved_display("designer"));
     }
 
-    fn fresh_orchestrator()
-    -> Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>
-    {
+    fn fresh_orchestrator() -> Arc<crate::store::Store> {
         let dir = tempfile::TempDir::new().expect("tempdir");
         let (tx, _rx) = tokio::sync::broadcast::channel::<crate::message::Message>(64);
         let session = Arc::new(crate::session::Session::new(
@@ -117,7 +103,7 @@ mod tests {
             tx,
         ));
         std::mem::forget(dir);
-        Arc::new(crate::orchestrator::Orchestrator::new(
+        Arc::new(crate::store::Store::new(
             session,
             None,
             crate::transport::ci_state_store::CiStateStore::new(),
@@ -127,7 +113,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_agent_pushes_busy_idle_help_setting_its_own_roster_presence() {
-        use crate::orchestrator::stores::Presence;
+        use crate::store::stores::Presence;
         let orch = fresh_orchestrator();
         dispatch_roster_join(&orch, "sess-dev", "dev").await;
 

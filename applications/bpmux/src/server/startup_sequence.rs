@@ -2,37 +2,34 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::integrations::github::GitHubSourceAdapter;
-use crate::orchestrator::Orchestrator;
 use crate::product_management::board::RefreshDriver;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
 use crate::session;
+use crate::store::Store;
 use crate::transport::ci_state_store::CiStateStore;
 
-type ProdOrchestrator = Orchestrator<GitHubSourceAdapter>;
-
 pub(super) fn wire_orchestrator_listeners(
-    orchestrator: &Arc<ProdOrchestrator>,
+    orchestrator: &Arc<Store>,
     session: &Arc<session::Session>,
     ci_state_store: &CiStateStore,
 ) {
-    orchestrator.add_ci_listener(Arc::new(crate::orchestrator::CiStateStoreWriter::new(
+    orchestrator.add_ci_listener(Arc::new(crate::store::CiStateStoreWriter::new(
         ci_state_store.clone(),
     )));
-    orchestrator.add_ci_listener(Arc::new(crate::orchestrator::CiSessionBroadcaster::new(
+    orchestrator.add_ci_listener(Arc::new(crate::store::CiSessionBroadcaster::new(
         session.clone(),
     )));
-    orchestrator.add_reactions_listener(Arc::new(
-        crate::orchestrator::ReactionsSessionBroadcaster::new(session.clone()),
-    ));
-    orchestrator.add_roster_listener(Arc::new(
-        crate::orchestrator::RosterSessionBroadcaster::new(session.clone()),
-    ));
+    orchestrator.add_reactions_listener(Arc::new(crate::store::ReactionsSessionBroadcaster::new(
+        session.clone(),
+    )));
+    orchestrator.add_roster_listener(Arc::new(crate::store::RosterSessionBroadcaster::new(
+        session.clone(),
+    )));
 }
 
 pub(super) async fn wire_startup_roster(
-    orchestrator: &Arc<ProdOrchestrator>,
+    orchestrator: &Arc<Store>,
     session: &Arc<session::Session>,
     pty_registry: &Arc<LivePtyRegistry>,
     routing_store: &Arc<RoutingStore>,
@@ -51,10 +48,10 @@ pub(super) async fn wire_startup_roster(
 
 pub(super) fn spawn_owner_park_loop(
     refresh: Arc<dyn RefreshDriver>,
-    orchestrator: Arc<ProdOrchestrator>,
+    orchestrator: Arc<Store>,
     ct: CancellationToken,
 ) {
-    let owner_park = crate::orchestrator::OwnerParkBroadcaster::new(orchestrator, refresh.store());
+    let owner_park = crate::store::OwnerParkBroadcaster::new(orchestrator, refresh.store());
     let mut events = refresh.store().subscribe();
     tokio::spawn(async move {
         loop {
@@ -72,16 +69,16 @@ pub(super) fn spawn_owner_park_loop(
     });
 }
 
-pub(super) async fn start_polling(orchestrator: &Arc<ProdOrchestrator>, has_refresh: bool) {
+pub(super) async fn start_polling(orchestrator: &Arc<Store>, has_refresh: bool) {
     orchestrator
-        .dispatch(crate::orchestrator::OrchestratorAction::StartCiPolling)
+        .dispatch(crate::store::StoreAction::StartCiPolling)
         .await;
     if has_refresh {
         orchestrator
-            .dispatch(crate::orchestrator::OrchestratorAction::StartIngestPolling)
+            .dispatch(crate::store::StoreAction::StartIngestPolling)
             .await;
         orchestrator
-            .dispatch(crate::orchestrator::OrchestratorAction::StartHydrationPolling)
+            .dispatch(crate::store::StoreAction::StartHydrationPolling)
             .await;
     }
 }

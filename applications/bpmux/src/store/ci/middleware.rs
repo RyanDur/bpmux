@@ -3,35 +3,33 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::orchestrator::stores::{
+use crate::store::stores::{
     ReactionsAction, RosterAction, StoreReduceOutcome, apply_reactions, apply_roster,
 };
 
-impl<T: CiPollFetch> Orchestrator<T> {
-    pub async fn dispatch(self: &Arc<Self>, action: OrchestratorAction) {
+impl Store {
+    pub async fn dispatch(self: &Arc<Self>, action: StoreAction) {
         validate_and_log(&action);
         match action {
-            OrchestratorAction::StartCiPolling => self.middleware_start_ci().await,
-            OrchestratorAction::StopCiPolling => self.middleware_stop(PollKind::Ci).await,
-            OrchestratorAction::CiUpdated(_) => self.middleware_ci_updated(action).await,
-            OrchestratorAction::StartIngestPolling => self.middleware_start_ingest().await,
-            OrchestratorAction::StopIngestPolling => self.middleware_stop(PollKind::Ingest).await,
-            OrchestratorAction::StartHydrationPolling => self.middleware_start_hydration().await,
-            OrchestratorAction::StopHydrationPolling => {
-                self.middleware_stop(PollKind::Hydration).await
-            }
-            OrchestratorAction::Reactions(a) => self.middleware_reactions(a),
-            OrchestratorAction::Roster(a) => self.middleware_roster(a),
-            OrchestratorAction::StartUpdateGithub { mutation_id } => {
+            StoreAction::StartCiPolling => self.middleware_start_ci().await,
+            StoreAction::StopCiPolling => self.middleware_stop(PollKind::Ci).await,
+            StoreAction::CiUpdated(_) => self.middleware_ci_updated(action).await,
+            StoreAction::StartIngestPolling => self.middleware_start_ingest().await,
+            StoreAction::StopIngestPolling => self.middleware_stop(PollKind::Ingest).await,
+            StoreAction::StartHydrationPolling => self.middleware_start_hydration().await,
+            StoreAction::StopHydrationPolling => self.middleware_stop(PollKind::Hydration).await,
+            StoreAction::Reactions(a) => self.middleware_reactions(a),
+            StoreAction::Roster(a) => self.middleware_roster(a),
+            StoreAction::StartUpdateGithub { mutation_id } => {
                 self.middleware_start_update_github(mutation_id).await
             }
-            OrchestratorAction::StopUpdateGithub { mutation_id } => {
+            StoreAction::StopUpdateGithub { mutation_id } => {
                 self.middleware_stop_update_github(mutation_id).await
             }
-            OrchestratorAction::MutationConfirmed { mutation_id } => {
+            StoreAction::MutationConfirmed { mutation_id } => {
                 self.middleware_mutation_confirmed(mutation_id).await
             }
-            OrchestratorAction::MutationRolledBack {
+            StoreAction::MutationRolledBack {
                 mutation_id,
                 server_story,
             } => {
@@ -110,7 +108,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
         let task_ct = CancellationToken::new();
         self.spawn_lifecycle_proxy(local_ct.clone(), task_ct.clone())
             .await;
-        crate::transport::ci_watcher::spawn::<T>(
+        crate::transport::ci_watcher::spawn(
             Arc::clone(self),
             tracker,
             self.ci_state_store.clone(),
@@ -169,11 +167,11 @@ impl<T: CiPollFetch> Orchestrator<T> {
         }
     }
 
-    async fn middleware_ci_updated(&self, action: OrchestratorAction) {
+    async fn middleware_ci_updated(&self, action: StoreAction) {
         let outcome = self.ci_store.apply(&action);
         if outcome == CiReduceOutcome::Changed {
             let snap = match action {
-                OrchestratorAction::CiUpdated(s) => s,
+                StoreAction::CiUpdated(s) => s,
                 _ => return,
             };
             let listeners = {

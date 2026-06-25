@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::future::Future;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -9,18 +10,20 @@ use tokio_util::sync::CancellationToken;
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::{CiEvent, CiState};
 use crate::github::RateLimitObserver;
-use crate::orchestrator::stores::{
-    ReactionsBroadcastListener, ReactionsStore, RosterBroadcastListener, RosterStore,
-};
 use crate::product_management::board::{MutationId, RefreshDriver};
 use crate::session;
+use crate::store::stores::{
+    ReactionsBroadcastListener, ReactionsStore, RosterBroadcastListener, RosterStore,
+};
 use crate::transport::ci_state_store::CiStateStore;
 
+pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
 pub trait CiPollFetch: Send + Sync + 'static {
-    fn list_latest_run_on_main_conditional(
-        &self,
-        prior_etag: Option<&str>,
-    ) -> impl Future<Output = Result<ConditionalRunEntry, String>> + Send;
+    fn list_latest_run_on_main_conditional<'a>(
+        &'a self,
+        prior_etag: Option<&'a str>,
+    ) -> BoxedFuture<'a, Result<ConditionalRunEntry, String>>;
 
     fn rate_limit_observer(&self) -> RateLimitObserver;
 }
@@ -51,9 +54,9 @@ pub trait CiBroadcastListener: Send + Sync {
     fn on_changed(&self, snap: &CiSnapshot);
 }
 
-pub struct Orchestrator<T: CiPollFetch> {
+pub struct Store {
     session: Arc<session::Session>,
-    tracker: Option<Arc<T>>,
+    tracker: Option<Arc<dyn CiPollFetch>>,
     refresh: Option<Arc<dyn RefreshDriver>>,
     ingest_interval: Duration,
     hydration_interval: Duration,
@@ -70,10 +73,10 @@ pub struct Orchestrator<T: CiPollFetch> {
     roster_listeners: Mutex<Vec<Arc<dyn RosterBroadcastListener>>>,
 }
 
-impl<T: CiPollFetch> Orchestrator<T> {
+impl Store {
     pub fn new(
         session: Arc<session::Session>,
-        tracker: Option<Arc<T>>,
+        tracker: Option<Arc<dyn CiPollFetch>>,
         ci_state_store: CiStateStore,
         parent_ct: CancellationToken,
     ) -> Self {
@@ -156,7 +159,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
 
     pub fn spawn_action_drainer(
         self: &Arc<Self>,
-        mut rx: tokio::sync::mpsc::UnboundedReceiver<OrchestratorAction>,
+        mut rx: tokio::sync::mpsc::UnboundedReceiver<StoreAction>,
     ) -> tokio::task::JoinHandle<()> {
         let this = Arc::clone(self);
         let parent_ct = self.parent_ct.clone();
@@ -181,5 +184,5 @@ mod snapshot;
 mod store;
 
 use action::validate_and_log;
-pub use action::{CiAction, OrchestratorAction, PollKind};
+pub use action::{CiAction, PollKind, StoreAction};
 pub use store::{CiReduceOutcome, CiStore};

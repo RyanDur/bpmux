@@ -1,7 +1,6 @@
 use crate::bridge::tracker::{
     ConditionalIssue, ConditionalRunEntry, OctocrabStoryTracker, StoryTracker,
 };
-use crate::orchestrator::CiPollFetch;
 use crate::product_management::board::adapters::github::{
     decode_free_comment, decode_gate_comments, decode_story_metadata,
     filter_retired_empty_iterations,
@@ -9,6 +8,7 @@ use crate::product_management::board::adapters::github::{
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story};
+use crate::store::CiPollFetch;
 
 mod delegates;
 mod mutation;
@@ -22,11 +22,13 @@ pub struct GitHubSourceAdapter {
 }
 
 impl CiPollFetch for GitHubSourceAdapter {
-    fn list_latest_run_on_main_conditional(
-        &self,
-        prior_etag: Option<&str>,
-    ) -> impl std::future::Future<Output = Result<ConditionalRunEntry, String>> + Send {
-        GitHubSourceAdapter::list_latest_run_on_main_conditional(self, prior_etag)
+    fn list_latest_run_on_main_conditional<'a>(
+        &'a self,
+        prior_etag: Option<&'a str>,
+    ) -> crate::store::BoxedFuture<'a, Result<ConditionalRunEntry, String>> {
+        Box::pin(GitHubSourceAdapter::list_latest_run_on_main_conditional(
+            self, prior_etag,
+        ))
     }
 
     fn rate_limit_observer(&self) -> crate::github::RateLimitObserver {

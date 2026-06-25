@@ -27,7 +27,7 @@ pub async fn run_server(
         crate::integrations::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
 
     let (action_tx, action_rx) =
-        tokio::sync::mpsc::unbounded_channel::<crate::orchestrator::OrchestratorAction>();
+        tokio::sync::mpsc::unbounded_channel::<crate::store::StoreAction>();
 
     let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
     let race_window_barrier = race_window_barrier_from_env();
@@ -77,9 +77,12 @@ pub async fn run_server(
         routing_store.clone(),
         commitment_store.clone(),
     );
-    let mut orchestrator_inner = crate::orchestrator::Orchestrator::new(
+    let mut orchestrator_inner = crate::store::Store::new(
         session.clone(),
-        tracker.as_ref().cloned(),
+        tracker
+            .as_ref()
+            .cloned()
+            .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
         ci_state_store.clone(),
         ct.clone(),
     );

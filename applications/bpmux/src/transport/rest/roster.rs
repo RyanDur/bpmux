@@ -10,13 +10,11 @@ use super::shared::{err_body, json_headers};
 pub struct RosterEntry {
     pub identity: String,
     pub role: String,
-    pub presence: crate::orchestrator::stores::Presence,
+    pub presence: crate::store::stores::Presence,
 }
 
 pub async fn get_roster(
-    Extension(orchestrator): Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
-    >,
+    Extension(orchestrator): Extension<Arc<crate::store::Store>>,
 ) -> impl IntoResponse {
     let roster: Vec<RosterEntry> = orchestrator
         .roster_store()

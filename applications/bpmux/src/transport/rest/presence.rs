@@ -6,8 +6,8 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::orchestrator::stores::Presence;
 use crate::routing::RoutingStore;
+use crate::store::stores::Presence;
 
 #[derive(Deserialize)]
 pub struct PresenceRequest {
@@ -26,9 +26,7 @@ fn presence_from_state(state: &str) -> Option<Presence> {
 pub async fn post_presence(
     headers: HeaderMap,
     Extension(routing): Extension<Arc<RoutingStore>>,
-    Extension(orchestrator): Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
-    >,
+    Extension(orchestrator): Extension<Arc<crate::store::Store>>,
     Json(payload): Json<PresenceRequest>,
 ) -> impl IntoResponse {
     let agent = match crate::transport::rpc_routes::agent_from_headers(&headers) {

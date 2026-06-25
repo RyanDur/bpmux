@@ -14,8 +14,8 @@ use crate::product_management::story::{Story, StoryState, StoryType};
 
 mod slice_7_2_mutation_id_dispatch {
     use super::*;
-    use crate::orchestrator::OrchestratorAction;
     use crate::product_management::board::MutationId;
+    use crate::store::StoreAction;
 
     #[tokio::test]
     async fn mutate_dispatches_start_update_github_with_unique_id() {
@@ -25,7 +25,7 @@ mod slice_7_2_mutation_id_dispatch {
             seed_story(101, StoryState::Ready),
             seed_story(102, StoryState::Ready),
         ]);
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<OrchestratorAction>();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StoreAction>();
         let orch =
             SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
         orch.ingest_once().await.unwrap();
@@ -46,11 +46,11 @@ mod slice_7_2_mutation_id_dispatch {
         let action_a = rx.try_recv().expect("first dispatch");
         let action_b = rx.try_recv().expect("second dispatch");
         let id_a = match action_a {
-            OrchestratorAction::StartUpdateGithub { mutation_id } => mutation_id,
+            StoreAction::StartUpdateGithub { mutation_id } => mutation_id,
             other => panic!("expected StartUpdateGithub, got {other:?}"),
         };
         let id_b = match action_b {
-            OrchestratorAction::StartUpdateGithub { mutation_id } => mutation_id,
+            StoreAction::StartUpdateGithub { mutation_id } => mutation_id,
             other => panic!("expected StartUpdateGithub, got {other:?}"),
         };
         assert_ne!(id_a, id_b, "consecutive mutates allocate distinct ids");
@@ -77,7 +77,7 @@ mod slice_7_2_mutation_id_dispatch {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seed_story(301, StoryState::Ready)]);
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<OrchestratorAction>();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StoreAction>();
         let orch =
             SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
         orch.ingest_once().await.unwrap();
@@ -90,7 +90,7 @@ mod slice_7_2_mutation_id_dispatch {
 
         let action = rx.try_recv().expect("dispatch fires");
         let dispatched_id = match action {
-            OrchestratorAction::StartUpdateGithub { mutation_id } => mutation_id,
+            StoreAction::StartUpdateGithub { mutation_id } => mutation_id,
             other => panic!("expected StartUpdateGithub, got {other:?}"),
         };
         let pending = orch.snapshot_pending_for_test();

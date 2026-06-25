@@ -161,7 +161,7 @@ pub(crate) async fn run_ws_connection(
                 });
             drop(current_name);
             let sender_is_owner = crate::transport::ws::role_from_short_name(from_short)
-                == crate::orchestrator::stores::RosterRole::Owner;
+                == crate::store::stores::RosterRole::Owner;
             let declared = subscriptions.declared_chat_classes().await;
             if !crate::bridge::chat_relevance::chat_class_reaches_live_stream(
                 message_type.as_deref().unwrap_or("chat"),

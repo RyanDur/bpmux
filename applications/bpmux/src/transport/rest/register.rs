@@ -18,9 +18,7 @@ pub struct RegisterRequest {
 
 pub async fn post_register(
     Extension(routing): Extension<Arc<RoutingStore>>,
-    Extension(orchestrator): Extension<
-        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
-    >,
+    Extension(orchestrator): Extension<Arc<crate::store::Store>>,
     Json(payload): Json<RegisterRequest>,
 ) -> impl IntoResponse {
     if crate::transport::ws::is_reserved_display(&payload.display) {

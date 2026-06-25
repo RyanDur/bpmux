@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use crate::orchestrator::RosterMember;
-use crate::orchestrator::ci::{CiPollFetch, Orchestrator, OrchestratorAction};
-use crate::orchestrator::stores::{Presence, RosterAction};
 use crate::product_management::board::{BoardEvent, BoardStore};
 use crate::product_management::iteration::label::current_iteration_number;
 use crate::product_management::story::{Acceptor, Story, StoryState};
+use crate::store::RosterMember;
+use crate::store::ci::{Store, StoreAction};
+use crate::store::stores::{Presence, RosterAction};
 
 fn ready_queue_is_empty(stories: &[Story]) -> bool {
     let current = current_iteration_number(stories);
@@ -50,13 +50,13 @@ pub fn owner_park_presence(
     changes
 }
 
-pub struct OwnerParkBroadcaster<T: CiPollFetch> {
-    orchestrator: Arc<Orchestrator<T>>,
+pub struct OwnerParkBroadcaster {
+    orchestrator: Arc<Store>,
     store: Arc<BoardStore>,
 }
 
-impl<T: CiPollFetch> OwnerParkBroadcaster<T> {
-    pub fn new(orchestrator: Arc<Orchestrator<T>>, store: Arc<BoardStore>) -> Self {
+impl OwnerParkBroadcaster {
+    pub fn new(orchestrator: Arc<Store>, store: Arc<BoardStore>) -> Self {
         Self {
             orchestrator,
             store,
@@ -80,12 +80,10 @@ impl<T: CiPollFetch> OwnerParkBroadcaster<T> {
         let changes = owner_park_presence(&stories, &roster, delivering);
         for (routing_id, presence) in changes {
             self.orchestrator
-                .dispatch(OrchestratorAction::Roster(
-                    RosterAction::RosterPresenceChanged {
-                        routing_id,
-                        presence,
-                    },
-                ))
+                .dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+                    routing_id,
+                    presence,
+                }))
                 .await;
         }
     }
