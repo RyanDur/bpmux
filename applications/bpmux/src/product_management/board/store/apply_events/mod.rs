@@ -11,7 +11,7 @@ use comments::{
     apply_free_comment_appended, apply_free_comments_fetched, apply_gate_comment_appended,
     apply_gate_comments_fetched,
 };
-use labels::{apply_label_delta, apply_labels_refreshed, apply_raw_labels_only};
+use labels::{apply_labels_refreshed, apply_raw_labels};
 use lifecycle::{
     apply_body_fetched, apply_state_transitioned, apply_story_closed, apply_story_created,
     apply_story_refreshed, apply_story_reopened,
@@ -37,11 +37,6 @@ pub(super) fn apply_event(
         BoardEvent::StateTransitioned { new_state, .. } => {
             apply_state_transitioned(w, number, *new_state)
         }
-        BoardEvent::TagAdded { .. } | BoardEvent::TagRemoved { .. } => {
-            if let Some(fields) = label_projection {
-                apply_label_delta(w, number, fields);
-            }
-        }
         BoardEvent::GateCommentAppended {
             meta,
             gate,
@@ -60,7 +55,9 @@ pub(super) fn apply_event(
         }
         BoardEvent::StoryClosed { .. } => apply_story_closed(w, number),
         BoardEvent::StoryReopened { .. } => apply_story_reopened(w, number),
-        BoardEvent::ParentEpicSet { .. }
+        BoardEvent::TagAdded { .. }
+        | BoardEvent::TagRemoved { .. }
+        | BoardEvent::ParentEpicSet { .. }
         | BoardEvent::ParentEpicUnset { .. }
         | BoardEvent::IterationMembershipSet { .. }
         | BoardEvent::IterationMembershipCleared { .. }
@@ -69,7 +66,7 @@ pub(super) fn apply_event(
         | BoardEvent::CurrentIterationDesignated { .. }
         | BoardEvent::CurrentIterationCleared { .. } => {
             if let Some(fields) = label_projection {
-                apply_raw_labels_only(w, number, fields);
+                apply_raw_labels(w, number, fields);
             }
         }
         BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, number, story),
