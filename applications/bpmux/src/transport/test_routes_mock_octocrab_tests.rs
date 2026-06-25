@@ -10,7 +10,7 @@ use tower::ServiceExt;
 
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
-use crate::product_management::board::adapters::github::GitHubSourceAdapter;
+use crate::integrations::github::GitHubSourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::server::TestRefreshHandle;
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};

@@ -26,9 +26,7 @@ pub(crate) fn role_from_short_name(short: &str) -> crate::orchestrator::stores::
 
 pub(crate) async fn dispatch_roster_join(
     orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<
-            crate::product_management::board::adapters::github::GitHubSourceAdapter,
-        >,
+        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
     >,
     routing_id: &str,
     identity: &str,
@@ -52,9 +50,7 @@ pub(crate) async fn dispatch_roster_join(
 
 pub(crate) async fn dispatch_roster_leave(
     orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<
-            crate::product_management::board::adapters::github::GitHubSourceAdapter,
-        >,
+        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
     >,
     routing_id: &str,
 ) {
@@ -71,9 +67,7 @@ pub(crate) async fn dispatch_roster_leave(
 
 pub(crate) async fn dispatch_roster_presence(
     orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<
-            crate::product_management::board::adapters::github::GitHubSourceAdapter,
-        >,
+        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
     >,
     routing_id: &str,
     presence: crate::orchestrator::stores::Presence,
@@ -112,11 +106,9 @@ mod tests {
         assert!(!is_reserved_display("pm") && !is_reserved_display("designer"));
     }
 
-    fn fresh_orchestrator() -> Arc<
-        crate::orchestrator::Orchestrator<
-            crate::product_management::board::adapters::github::GitHubSourceAdapter,
-        >,
-    > {
+    fn fresh_orchestrator()
+    -> Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>
+    {
         let dir = tempfile::TempDir::new().expect("tempdir");
         let (tx, _rx) = tokio::sync::broadcast::channel::<crate::message::Message>(64);
         let session = Arc::new(crate::session::Session::new(

@@ -22,9 +22,7 @@ pub async fn post_terminal_spawn(
     orchestrator: Option<
         Extension<
             Arc<
-                crate::orchestrator::Orchestrator<
-                    crate::product_management::board::adapters::github::GitHubSourceAdapter,
-                >,
+                crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
             >,
         >,
     >,

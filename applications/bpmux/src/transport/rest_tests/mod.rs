@@ -162,16 +162,14 @@ pub(super) fn board_issue(number: u64, title: &str, state: &str, body: Option<&s
     })
 }
 
-pub(super) fn tracker_for(
-    server: &MockServer,
-) -> crate::product_management::board::adapters::github::GitHubSourceAdapter {
+pub(super) fn tracker_for(server: &MockServer) -> crate::integrations::github::GitHubSourceAdapter {
     let inner = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
         "acme".to_string(),
         "bpmux".to_string(),
     )
     .expect("build tracker against mock");
-    crate::product_management::board::adapters::github::GitHubSourceAdapter::new(inner)
+    crate::integrations::github::GitHubSourceAdapter::new(inner)
 }
 
 pub(super) fn board_router(session: Arc<session::Session>, tracker: TrackerHandle) -> axum::Router {

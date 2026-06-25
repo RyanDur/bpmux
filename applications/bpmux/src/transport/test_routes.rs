@@ -392,11 +392,7 @@ fn ci_state_for_conclusion(conclusion: &str) -> crate::ci::CiState {
 
 pub async fn post_test_fire_ci_state(
     axum::Extension(orchestrator): axum::Extension<
-        Arc<
-            crate::orchestrator::Orchestrator<
-                crate::product_management::board::adapters::github::GitHubSourceAdapter,
-            >,
-        >,
+        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
     >,
     Json(req): Json<FireCiStateReq>,
 ) -> impl IntoResponse {

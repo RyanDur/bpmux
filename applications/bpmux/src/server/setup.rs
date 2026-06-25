@@ -81,7 +81,7 @@ pub(super) async fn build_test_orchestrator(
 
 pub(super) fn build_prod_orchestrator(
     session: Arc<session::Session>,
-    adapter: Arc<crate::product_management::board::adapters::github::GitHubSourceAdapter>,
+    adapter: Arc<crate::integrations::github::GitHubSourceAdapter>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
     race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,

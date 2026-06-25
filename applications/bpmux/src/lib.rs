@@ -18,6 +18,7 @@ pub mod diag;
 #[cfg(test)]
 mod diag_tests;
 pub mod github;
+pub mod integrations;
 pub mod location;
 #[cfg(test)]
 mod location_tests;

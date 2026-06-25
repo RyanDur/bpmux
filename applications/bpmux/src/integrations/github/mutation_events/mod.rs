@@ -5,19 +5,17 @@ mod grouping;
 mod labels;
 mod lifecycle;
 
-pub(in crate::product_management::board::adapters::github) use comments::{
+pub(in crate::integrations::github) use comments::{
     push_free_comment_appended, push_gate_comment_appended,
 };
-pub(in crate::product_management::board::adapters::github) use grouping::{
+pub(in crate::integrations::github) use grouping::{
     push_current_iteration_cleared, push_current_iteration_designated,
     push_iteration_membership_cleared, push_iteration_membership_set,
     push_outcome_membership_cleared, push_outcome_membership_set, push_parent_epic_set,
     push_parent_epic_unset,
 };
-pub(in crate::product_management::board::adapters::github) use labels::{
-    push_tag_added, push_tag_removed,
-};
-pub(in crate::product_management::board::adapters::github) use lifecycle::{
+pub(in crate::integrations::github) use labels::{push_tag_added, push_tag_removed};
+pub(in crate::integrations::github) use lifecycle::{
     push_state_transitioned, push_story_closed, push_story_reopened,
 };
 

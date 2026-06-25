@@ -5,7 +5,7 @@ use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::SyncError;
 use crate::product_management::story::StoryState;
 
-pub(in crate::product_management::board::adapters::github) async fn push_state_transitioned(
+pub(in crate::integrations::github) async fn push_state_transitioned(
     inner: &OctocrabStoryTracker,
     number: u64,
     new_state: StoryState,
@@ -18,7 +18,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_state_t
     Ok(Some(labels_refreshed(number, labels)))
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_story_closed(
+pub(in crate::integrations::github) async fn push_story_closed(
     inner: &OctocrabStoryTracker,
     number: u64,
     reason: &Option<String>,
@@ -44,7 +44,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_story_c
     }
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_story_reopened(
+pub(in crate::integrations::github) async fn push_story_reopened(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<BoardEvent>, SyncError> {

@@ -16,8 +16,8 @@ use super::ci::{
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::github::RateLimitObserver;
+use crate::integrations::github::GitHubSourceAdapter;
 use crate::message::Message;
-use crate::product_management::board::adapters::github::GitHubSourceAdapter;
 use crate::session::Session;
 use crate::transport::ci_state_store::CiStateStore;
 

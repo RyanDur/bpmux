@@ -17,9 +17,7 @@ use crate::transport::protocol::{ClientMessage, ServerMessage};
 pub(crate) struct ClientCtx<'a> {
     pub session: &'a session::Session,
     pub orchestrator: &'a Arc<
-        crate::orchestrator::Orchestrator<
-            crate::product_management::board::adapters::github::GitHubSourceAdapter,
-        >,
+        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
     >,
     pub pty_registry: &'a crate::room::LivePtyRegistry,
     pub pty_tx: &'a tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,

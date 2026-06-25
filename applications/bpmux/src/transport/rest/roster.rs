@@ -15,11 +15,7 @@ pub struct RosterEntry {
 
 pub async fn get_roster(
     Extension(orchestrator): Extension<
-        Arc<
-            crate::orchestrator::Orchestrator<
-                crate::product_management::board::adapters::github::GitHubSourceAdapter,
-            >,
-        >,
+        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
     >,
 ) -> impl IntoResponse {
     let roster: Vec<RosterEntry> = orchestrator

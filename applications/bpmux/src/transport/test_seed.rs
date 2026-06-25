@@ -249,11 +249,7 @@ pub async fn post_seed_stories(
 
 pub async fn post_seed_roster(
     axum::Extension(orchestrator): axum::Extension<
-        Arc<
-            crate::orchestrator::Orchestrator<
-                crate::product_management::board::adapters::github::GitHubSourceAdapter,
-            >,
-        >,
+        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
     >,
     Json(body): Json<SeedRosterBody>,
 ) -> impl IntoResponse {

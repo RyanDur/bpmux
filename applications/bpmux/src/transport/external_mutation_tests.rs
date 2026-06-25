@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
-use crate::product_management::board::adapters::github::GitHubSourceAdapter;
+use crate::integrations::github::GitHubSourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 
 fn comment(body: &str) -> Value {

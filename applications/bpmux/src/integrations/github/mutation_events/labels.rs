@@ -4,7 +4,7 @@ use crate::product_management::board::adapters::github::is_position_label;
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::SyncError;
 
-pub(in crate::product_management::board::adapters::github) async fn push_tag_added(
+pub(in crate::integrations::github) async fn push_tag_added(
     inner: &OctocrabStoryTracker,
     number: u64,
     label: &str,
@@ -20,7 +20,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_tag_add
     }
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_tag_removed(
+pub(in crate::integrations::github) async fn push_tag_removed(
     inner: &OctocrabStoryTracker,
     number: u64,
     label: &str,

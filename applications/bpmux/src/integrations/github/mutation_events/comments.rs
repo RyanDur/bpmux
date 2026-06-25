@@ -4,7 +4,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::sync::SyncError;
 use crate::product_management::story::Gate;
 
-pub(in crate::product_management::board::adapters::github) async fn push_gate_comment_appended(
+pub(in crate::integrations::github) async fn push_gate_comment_appended(
     inner: &OctocrabStoryTracker,
     number: u64,
     meta: &EventMeta,
@@ -19,7 +19,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_gate_co
     Ok(None)
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_free_comment_appended(
+pub(in crate::integrations::github) async fn push_free_comment_appended(
     inner: &OctocrabStoryTracker,
     number: u64,
     body: &str,

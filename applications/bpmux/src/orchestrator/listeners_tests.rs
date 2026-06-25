@@ -163,9 +163,7 @@ fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMem
 
 async fn seed_dev_online(
     orch: &Arc<
-        crate::orchestrator::ci::Orchestrator<
-            crate::product_management::board::adapters::github::GitHubSourceAdapter,
-        >,
+        crate::orchestrator::ci::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
     >,
 ) {
     use crate::orchestrator::ci::OrchestratorAction;

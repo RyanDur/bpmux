@@ -28,11 +28,7 @@ pub async fn get_reactions(
 pub async fn post_reaction(
     State(session): State<Arc<session::Session>>,
     axum::Extension(orchestrator): axum::Extension<
-        Arc<
-            crate::orchestrator::Orchestrator<
-                crate::product_management::board::adapters::github::GitHubSourceAdapter,
-            >,
-        >,
+        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
     >,
     axum::Json(body): axum::Json<ReactionToggle>,
 ) -> impl IntoResponse {
@@ -53,9 +49,7 @@ pub async fn post_reaction(
 pub async fn apply_reaction_toggle(
     session: &session::Session,
     orchestrator: &Arc<
-        crate::orchestrator::Orchestrator<
-            crate::product_management::board::adapters::github::GitHubSourceAdapter,
-        >,
+        crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>,
     >,
     body: &ReactionToggle,
 ) -> Result<bool, String> {

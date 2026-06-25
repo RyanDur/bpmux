@@ -19,11 +19,7 @@ pub struct RegisterRequest {
 pub async fn post_register(
     Extension(routing): Extension<Arc<RoutingStore>>,
     Extension(orchestrator): Extension<
-        Arc<
-            crate::orchestrator::Orchestrator<
-                crate::product_management::board::adapters::github::GitHubSourceAdapter,
-            >,
-        >,
+        Arc<crate::orchestrator::Orchestrator<crate::integrations::github::GitHubSourceAdapter>>,
     >,
     Json(payload): Json<RegisterRequest>,
 ) -> impl IntoResponse {

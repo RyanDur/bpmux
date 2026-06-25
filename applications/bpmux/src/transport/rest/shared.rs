@@ -4,8 +4,7 @@ use serde::Deserialize;
 
 use crate::session;
 
-pub type TrackerHandle =
-    Option<Arc<crate::product_management::board::adapters::github::GitHubSourceAdapter>>;
+pub type TrackerHandle = Option<Arc<crate::integrations::github::GitHubSourceAdapter>>;
 
 #[derive(Deserialize)]
 pub struct CommentPayload {

@@ -12,7 +12,7 @@ pub(super) fn system_announcement(text: &str) -> crate::message::Message {
 
 pub(super) fn build_state_snapshot_message(
     orchestrator: &crate::orchestrator::Orchestrator<
-        crate::product_management::board::adapters::github::GitHubSourceAdapter,
+        crate::integrations::github::GitHubSourceAdapter,
     >,
 ) -> crate::message::Message {
     let snapshot = orchestrator.build_snapshot();

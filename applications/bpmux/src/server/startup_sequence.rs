@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
+use crate::integrations::github::GitHubSourceAdapter;
 use crate::orchestrator::Orchestrator;
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::GitHubSourceAdapter;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
 use crate::session;

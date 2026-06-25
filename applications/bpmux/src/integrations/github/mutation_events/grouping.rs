@@ -3,7 +3,7 @@ use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::SyncError;
 
-pub(in crate::product_management::board::adapters::github) async fn push_parent_epic_set(
+pub(in crate::integrations::github) async fn push_parent_epic_set(
     inner: &OctocrabStoryTracker,
     number: u64,
     epic_number: u64,
@@ -16,7 +16,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_parent_
     Ok(Some(labels_refreshed(number, labels)))
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_parent_epic_unset(
+pub(in crate::integrations::github) async fn push_parent_epic_unset(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<BoardEvent>, SyncError> {
@@ -32,7 +32,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_parent_
     Ok(last_response.map(|labels| labels_refreshed(number, labels)))
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_iteration_membership_set(
+pub(in crate::integrations::github) async fn push_iteration_membership_set(
     inner: &OctocrabStoryTracker,
     number: u64,
     iteration_number: u64,
@@ -56,7 +56,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_iterati
     Ok(Some(labels_refreshed(number, labels)))
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_iteration_membership_cleared(
+pub(in crate::integrations::github) async fn push_iteration_membership_cleared(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<BoardEvent>, SyncError> {
@@ -75,7 +75,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_iterati
     Ok(last_response.map(|labels| labels_refreshed(number, labels)))
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_outcome_membership_cleared(
+pub(in crate::integrations::github) async fn push_outcome_membership_cleared(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<BoardEvent>, SyncError> {
@@ -91,7 +91,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_outcome
     Ok(last_response.map(|labels| labels_refreshed(number, labels)))
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_outcome_membership_set(
+pub(in crate::integrations::github) async fn push_outcome_membership_set(
     inner: &OctocrabStoryTracker,
     number: u64,
     outcome_number: u64,
@@ -112,7 +112,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_outcome
     Ok(Some(labels_refreshed(number, labels)))
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_current_iteration_designated(
+pub(in crate::integrations::github) async fn push_current_iteration_designated(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<BoardEvent>, SyncError> {
@@ -126,7 +126,7 @@ pub(in crate::product_management::board::adapters::github) async fn push_current
     Ok(Some(labels_refreshed(number, labels)))
 }
 
-pub(in crate::product_management::board::adapters::github) async fn push_current_iteration_cleared(
+pub(in crate::integrations::github) async fn push_current_iteration_cleared(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<BoardEvent>, SyncError> {
