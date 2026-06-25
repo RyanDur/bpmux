@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::view::*;
+use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
@@ -99,9 +100,9 @@ fn outcomes_within_a_band_sort_by_number() {
 #[test]
 fn an_explicit_within_band_position_overrides_number_order() {
     let mut first = outcome(13, "B", Horizon::Now);
-    first.horizon_order = Some(1);
+    first.raw_labels = vec![GhLabelCodec.encode_horizon_order(1)];
     let mut second = outcome(11, "A", Horizon::Now);
-    second.horizon_order = Some(2);
+    second.raw_labels = vec![GhLabelCodec.encode_horizon_order(2)];
     let unpositioned = outcome(12, "C", Horizon::Now);
     let bands = derive_roadmap_view(&[second, unpositioned, first], &bundled_default());
     let numbers: Vec<u64> = bands[0].outcomes.iter().map(|o| o.number).collect();

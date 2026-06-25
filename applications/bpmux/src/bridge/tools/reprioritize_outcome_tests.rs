@@ -23,9 +23,6 @@ fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Sto
     s.raw_labels = labels.iter().map(ToString::to_string).collect();
     s.horizon =
         crate::product_management::board::adapters::github::horizon_from_labels(&s.raw_labels);
-    s.horizon_order = crate::product_management::board::adapters::github::horizon_order_from_labels(
-        &s.raw_labels,
-    );
     s
 }
 
@@ -290,7 +287,9 @@ async fn band_move_resets_a_stale_within_band_position_1759() {
     .await
     .expect("A moves to Later");
     assert_eq!(
-        refresh.story(700).expect("present").horizon_order,
+        crate::product_management::board::adapters::github::horizon_order_from_labels(
+            &refresh.story(700).expect("present").raw_labels
+        ),
         None,
         "moving bands clears the stale within-band position so it doesn't mis-sort in the new band"
     );

@@ -23,7 +23,6 @@ pub struct LabelDerivedFields {
     pub iteration_review_closed_by: Vec<String>,
     pub iteration_dev_ok_by: Vec<String>,
     pub horizon: Option<Horizon>,
-    pub horizon_order: Option<u32>,
     pub is_current: bool,
     pub acceptor: Option<Acceptor>,
     pub raw_labels: Vec<String>,

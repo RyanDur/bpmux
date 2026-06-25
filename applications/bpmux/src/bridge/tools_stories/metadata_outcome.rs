@@ -1,5 +1,6 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::product_management::board::adapters::github::horizon_order_from_labels;
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 use crate::product_management::story::{Horizon, Story, StoryType};
@@ -128,7 +129,12 @@ fn reorder_within_band(
         .filter(|s| s.story_type == StoryType::Outcome && s.horizon == Some(band))
         .collect();
     let mut ordered: Vec<&Story> = members.iter().collect();
-    ordered.sort_by_key(|s| (s.horizon_order.unwrap_or(u32::MAX), s.number));
+    ordered.sort_by_key(|s| {
+        (
+            horizon_order_from_labels(&s.raw_labels).unwrap_or(u32::MAX),
+            s.number,
+        )
+    });
 
     let band_size = ordered.len() as u32;
     let clamped = requested_position.clamp(1, band_size.max(1));
@@ -146,7 +152,7 @@ fn reorder_within_band(
             .iter()
             .find(|s| s.number == *number)
             .ok_or_else(|| format!("#{number} vanished from band mid-reorder"))?;
-        if member.horizon_order == Some(new_position) {
+        if horizon_order_from_labels(&member.raw_labels) == Some(new_position) {
             continue;
         }
         for stale in member

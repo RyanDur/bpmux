@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
 use super::label_fields::{
-    acceptor_from_labels, horizon_from_labels, horizon_order_from_labels, is_current_from_labels,
+    acceptor_from_labels, horizon_from_labels, is_current_from_labels,
     iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
     iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
     story_type_from_labels,
@@ -23,7 +23,6 @@ pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
         iteration_review_closed_by: iteration_review_closers_from_labels(labels),
         iteration_dev_ok_by: iteration_dev_ok_by_from_labels(labels),
         horizon: horizon_from_labels(labels),
-        horizon_order: horizon_order_from_labels(labels),
         is_current: is_current_from_labels(labels),
         acceptor: acceptor_from_labels(labels),
         raw_labels: labels.to_vec(),

@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::product_management::board::adapters::github::horizon_order_from_labels;
 use crate::product_management::iteration::readiness::{building_iterations, outcome_readiness};
 use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
 use crate::workflow::config::WorkflowConfig;
@@ -63,7 +64,12 @@ pub fn derive_roadmap_view(stories: &[Story], workflow: &WorkflowConfig) -> Vec<
             if members.is_empty() {
                 return None;
             }
-            members.sort_by_key(|s| (s.horizon_order.unwrap_or(u32::MAX), s.number));
+            members.sort_by_key(|s| {
+                (
+                    horizon_order_from_labels(&s.raw_labels).unwrap_or(u32::MAX),
+                    s.number,
+                )
+            });
             let outcomes: Vec<RoadmapOutcome> = members
                 .iter()
                 .map(|outcome| roadmap_outcome(outcome, stories, workflow))

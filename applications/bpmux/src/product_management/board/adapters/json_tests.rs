@@ -26,7 +26,6 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         iteration_review_closed_by: Vec::new(),
         iteration_dev_ok_by: Vec::new(),
         horizon: None,
-        horizon_order: None,
         outcome_membership: None,
         is_current: false,
         acceptor: None,
