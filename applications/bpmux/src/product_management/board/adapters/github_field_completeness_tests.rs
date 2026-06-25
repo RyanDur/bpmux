@@ -49,7 +49,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         raw_labels,
         body_etag,
         iteration_membership: _,
-        iteration_review_closed_by,
         iteration_dev_ok_by,
         horizon,
         outcome_membership,
@@ -109,7 +108,10 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         "acceptor must decode from the 'awaiting owner' label"
     );
     assert_eq!(
-        iteration_review_closed_by.as_slice(),
+        crate::product_management::board::adapters::github::iteration_review_closers_from_labels(
+            raw_labels
+        )
+        .as_slice(),
         ["designer".to_string()],
         "iteration_review_closed_by must decode the closer role from the review-close label"
     );

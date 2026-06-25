@@ -5,7 +5,9 @@ use chrono::{TimeZone, Utc};
 use super::events::{BoardEvent, EventMeta, LabelDerivedFields, event_wins};
 use super::peer::PeerId;
 use super::store::BoardStore;
-use crate::product_management::board::adapters::github::acceptor_from_labels;
+use crate::product_management::board::adapters::github::{
+    acceptor_from_labels, iteration_review_closers_from_labels,
+};
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, Story, StoryState, StoryType, Tag,
 };
@@ -435,7 +437,7 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
         label: "iteration-review-closed.designer".to_string(),
     });
     assert_eq!(
-        store.story(1).unwrap().iteration_review_closed_by,
+        iteration_review_closers_from_labels(&store.story(1).unwrap().raw_labels),
         vec!["designer".to_string()],
         "the review-close label add re-derives the closer-set from the recorded act"
     );
@@ -445,11 +447,7 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
         label: "iteration-review-closed.designer".to_string(),
     });
     assert!(
-        store
-            .story(1)
-            .unwrap()
-            .iteration_review_closed_by
-            .is_empty(),
+        iteration_review_closers_from_labels(&store.story(1).unwrap().raw_labels).is_empty(),
         "removing the review-close label clears the closer — derived, never stale"
     );
 }

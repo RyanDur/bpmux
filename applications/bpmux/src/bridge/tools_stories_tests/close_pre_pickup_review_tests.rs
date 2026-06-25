@@ -63,7 +63,9 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
         .expect("a configured iteration-reviewer can close the pre-pickup review");
     let story = store.story(1552).unwrap();
     assert_eq!(
-        story.iteration_review_closed_by,
+        crate::product_management::board::adapters::github::iteration_review_closers_from_labels(
+            &story.raw_labels
+        ),
         vec!["designer".to_string()],
         "the close is recorded as a board-event re-derived into the closer-set"
     );

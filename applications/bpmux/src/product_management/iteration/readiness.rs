@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::product_management::board::adapters::github::iteration_review_closers_from_labels;
 use crate::product_management::story::Story;
 use crate::workflow::config::WorkflowConfig;
 
@@ -106,8 +107,7 @@ fn stories_ordered(members: &[&Story]) -> bool {
 
 fn review_closed(iteration: &Story, workflow: &WorkflowConfig) -> bool {
     let reviewers = workflow.role_ids_for_purpose(ITERATION_REVIEWER_PURPOSE);
-    iteration
-        .iteration_review_closed_by
+    iteration_review_closers_from_labels(&iteration.raw_labels)
         .iter()
         .any(|closer| reviewers.iter().any(|r| r == closer))
 }

@@ -154,7 +154,8 @@ fn an_outcome_with_an_unready_iteration_reads_needs_attention_with_gap_count() {
 #[test]
 fn an_outcome_whose_iteration_meets_every_check_reads_ready() {
     let mut it = iteration_for(20, 11, 1);
-    it.iteration_review_closed_by = vec!["designer".to_string()];
+    it.raw_labels
+        .push(GhLabelCodec.encode_iteration_review_closed("designer"));
     it.iteration_dev_ok_by = vec!["dev".to_string()];
     let mut member = Story::new_minimal(
         30,

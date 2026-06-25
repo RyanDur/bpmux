@@ -19,7 +19,6 @@ pub struct LabelDerivedFields {
     pub parent_epic: Option<u64>,
     pub iteration_membership: Option<(u64, u32)>,
     pub outcome_membership: Option<(u64, u32)>,
-    pub iteration_review_closed_by: Vec<String>,
     pub iteration_dev_ok_by: Vec<String>,
     pub horizon: Option<Horizon>,
     pub is_current: bool,
