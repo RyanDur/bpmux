@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::peer::PeerId;
 use crate::product_management::story::{
-    FreeComment, Gate, GateComment, Story, StoryState, StoryType,
+    Acceptor, FreeComment, Gate, GateComment, Horizon, Story, StoryState, StoryType, Tag,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -11,6 +11,22 @@ pub struct EventMeta {
     pub actor: String,
     pub ts: DateTime<Utc>,
     pub peer_id: PeerId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct LabelDerivedFields {
+    pub tags: Vec<Tag>,
+    pub parent_epic: Option<u64>,
+    pub iteration_membership: Option<(u64, u32)>,
+    pub outcome_membership: Option<(u64, u32)>,
+    pub iteration_order: Option<u32>,
+    pub iteration_review_closed_by: Vec<String>,
+    pub iteration_dev_ok_by: Vec<String>,
+    pub horizon: Option<Horizon>,
+    pub horizon_order: Option<u32>,
+    pub is_current: bool,
+    pub acceptor: Option<Acceptor>,
+    pub raw_labels: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -120,7 +136,7 @@ pub enum BoardEvent {
     LabelsRefreshed {
         meta: EventMeta,
         number: u64,
-        labels: Vec<String>,
+        fields: LabelDerivedFields,
     },
     ConflictDetected {
         meta: EventMeta,

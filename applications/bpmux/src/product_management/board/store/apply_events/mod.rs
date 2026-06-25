@@ -79,7 +79,7 @@ pub(super) fn apply_event(w: &mut Stories, event: &BoardEvent) {
         }
         BoardEvent::CurrentIterationCleared { .. } => apply_current_iteration_cleared(w, number),
         BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, number, story),
-        BoardEvent::LabelsRefreshed { labels, .. } => apply_labels_refreshed(w, number, labels),
+        BoardEvent::LabelsRefreshed { fields, .. } => apply_labels_refreshed(w, number, fields),
         BoardEvent::ConflictDetected { .. } | BoardEvent::ConflictResolved { .. } => {}
     }
 }

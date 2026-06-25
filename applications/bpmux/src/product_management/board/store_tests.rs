@@ -2,7 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::events::{BoardEvent, EventMeta, event_wins};
+use super::events::{BoardEvent, EventMeta, LabelDerivedFields, event_wins};
 use super::peer::PeerId;
 use super::store::BoardStore;
 use crate::product_management::story::{
@@ -57,6 +57,51 @@ fn story_created_event_populates_store() {
     assert_eq!(story.state, StoryState::Ready);
     assert_eq!(story.body.as_deref(), Some("body text"));
     assert_eq!(story.filed_by, "pm");
+}
+
+#[test]
+fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transitioned() {
+    let store = BoardStore::new();
+    let story = Story::new_minimal(
+        77,
+        "membered".to_string(),
+        StoryState::InProgress,
+        Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
+        "pm".to_string(),
+    );
+    store.seed_all(vec![story]);
+
+    store.apply(&BoardEvent::LabelsRefreshed {
+        meta: meta("pm", 2026, "local"),
+        number: 77,
+        fields: LabelDerivedFields {
+            parent_epic: Some(7),
+            iteration_membership: Some((1655, 106)),
+            acceptor: Some(Acceptor::Dev),
+            raw_labels: vec![
+                "parent-epic-#7".to_string(),
+                "parent-iteration-#1655.106".to_string(),
+            ],
+            ..LabelDerivedFields::default()
+        },
+    });
+
+    let s = store.story(77).expect("story exists");
+    assert_eq!(s.parent_epic, Some(7));
+    assert_eq!(s.iteration_membership, Some((1655, 106)));
+    assert_eq!(s.acceptor, Some(Acceptor::Dev));
+    assert_eq!(
+        s.raw_labels,
+        vec![
+            "parent-epic-#7".to_string(),
+            "parent-iteration-#1655.106".to_string()
+        ]
+    );
+    assert_eq!(
+        s.state,
+        StoryState::InProgress,
+        "LabelsRefreshed is a pure typed assign; workflow state flows via StateTransitioned, not the label echo"
+    );
 }
 
 #[test]
