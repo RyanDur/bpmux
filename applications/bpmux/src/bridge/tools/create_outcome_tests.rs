@@ -3,6 +3,7 @@
 
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::github::story_type_from_labels_or_title;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -27,8 +28,11 @@ fn typed_seed(number: u64, story_type: StoryType, label: &str) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.story_type = story_type;
     s.raw_labels = vec![label.to_string()];
+    s.raw_labels.push(
+        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            .encode_story_type(story_type),
+    );
     s
 }
 
@@ -72,12 +76,12 @@ async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738()
         .find(|s| s.title == "The team runs on its own infra")
         .expect("outcome issue persisted");
     assert_eq!(
-        outcome.story_type,
+        story_type_from_labels_or_title(&outcome.raw_labels, &outcome.title),
         StoryType::Outcome,
         "the outcome is a first-class Outcome entity, NOT an Epic — no epic≡outcome conflation"
     );
     assert_ne!(
-        outcome.story_type,
+        story_type_from_labels_or_title(&outcome.raw_labels, &outcome.title),
         StoryType::Epic,
         "an outcome must never be modelled as an epic"
     );

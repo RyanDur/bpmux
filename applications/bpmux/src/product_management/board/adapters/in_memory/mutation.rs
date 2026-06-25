@@ -96,12 +96,10 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
         }
         BoardEvent::StoryCreated {
             number,
-            story_type,
             initial_state,
             ..
         } => {
             if let Some(story) = s.stories.get_mut(number) {
-                story.story_type = *story_type;
                 story.state = *initial_state;
             }
         }

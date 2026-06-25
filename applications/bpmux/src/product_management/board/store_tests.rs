@@ -8,7 +8,7 @@ use super::store::BoardStore;
 use crate::product_management::board::adapters::github::{
     acceptor_from_labels, horizon_from_labels, iteration_dev_ok_by_from_labels,
     iteration_membership_from_labels, iteration_review_closers_from_labels,
-    parent_epic_from_labels, tags_from_labels,
+    parent_epic_from_labels, story_type_from_labels_or_title, tags_from_labels,
 };
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, Story, StoryState, StoryType, Tag,
@@ -704,7 +704,18 @@ fn story_created_event_carries_story_type() {
         initial_state: StoryState::Ready,
         story_type: StoryType::Bug,
     });
-    assert_eq!(store.story(1).unwrap().story_type, StoryType::Bug);
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "bug".to_string(),
+    });
+    assert_eq!(
+        story_type_from_labels_or_title(
+            &store.story(1).unwrap().raw_labels,
+            &store.story(1).unwrap().title
+        ),
+        StoryType::Bug
+    );
 }
 
 #[test]

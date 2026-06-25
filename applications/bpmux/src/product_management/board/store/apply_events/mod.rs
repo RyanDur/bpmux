@@ -32,8 +32,8 @@ pub(super) fn apply_event(
             title,
             body,
             initial_state,
-            story_type,
-        } => apply_story_created(w, *n, meta, title, body, *initial_state, *story_type),
+            ..
+        } => apply_story_created(w, *n, meta, title, body, *initial_state),
         BoardEvent::StateTransitioned { new_state, .. } => {
             apply_state_transitioned(w, number, *new_state)
         }

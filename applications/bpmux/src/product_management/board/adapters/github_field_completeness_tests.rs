@@ -36,7 +36,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         number,
         title,
         state,
-        story_type,
         filed_at,
         filed_by,
         body,
@@ -60,7 +59,9 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         "state must decode from labels"
     );
     assert_eq!(
-        *story_type,
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            raw_labels, title
+        ),
         crate::product_management::story::StoryType::Feature,
         "story_type must decode from labels"
     );

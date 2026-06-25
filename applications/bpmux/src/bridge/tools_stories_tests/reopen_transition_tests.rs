@@ -14,7 +14,7 @@ mod reopen_on_state_transition_tests {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -26,7 +26,7 @@ mod reopen_on_state_transition_tests {
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );
-        s.story_type = StoryType::Chore;
+        s.raw_labels.push("chore".to_string());
         s.is_closed = true;
         s
     }

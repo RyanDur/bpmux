@@ -78,7 +78,10 @@ pub(in crate::bridge) fn is_feature_for_velocity(
 ) -> bool {
     refresh.and_then(|r| r.story(n)).is_some_and(|s| {
         matches!(
-            s.story_type,
+            crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+                &s.raw_labels,
+                &s.title
+            ),
             crate::product_management::story::StoryType::Feature
         )
     })
@@ -117,7 +120,10 @@ mod tests {
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );
-        s.story_type = story_type;
+        s.raw_labels.push(
+            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                .encode_story_type(story_type),
+        );
         s
     }
 

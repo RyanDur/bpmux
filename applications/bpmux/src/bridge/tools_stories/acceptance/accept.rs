@@ -28,7 +28,13 @@ pub(crate) async fn handle_accept_story(
     let class = story_opt
         .as_ref()
         .map(|s| {
-            crate::workflow::gate_class_from_labels_and_story_type(&s.raw_labels, s.story_type)
+            crate::workflow::gate_class_from_labels_and_story_type(
+                &s.raw_labels,
+                crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+                    &s.raw_labels,
+                    &s.title,
+                ),
+            )
         })
         .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
     let transition = crate::workflow::resolve_transition(workflow, "accept", class)

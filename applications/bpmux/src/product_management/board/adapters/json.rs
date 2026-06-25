@@ -17,7 +17,10 @@ fn is_renderer_badge_label(raw: &str) -> bool {
 pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_json::Value {
     let mut labels: Vec<String> = Vec::new();
     labels.push(
-        match story.story_type {
+        match crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &story.raw_labels,
+            &story.title,
+        ) {
             StoryType::Feature => "feature",
             StoryType::Bug => "bug",
             StoryType::Chore => "chore",

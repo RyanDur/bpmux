@@ -14,10 +14,15 @@ pub(in crate::bridge) async fn handle_list_epic_children(
     let epic = store
         .story(epic_number)
         .ok_or_else(|| format!("list_epic_children: epic_number {epic_number} not found"))?;
-    if !matches!(epic.story_type, StoryType::Epic) {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &epic.raw_labels,
+            &epic.title,
+        );
+    if !matches!(story_type, StoryType::Epic) {
         return Err(format!(
             "list_epic_children: #{epic_number} is not an Epic (story_type={:?})",
-            epic.story_type
+            story_type
         ));
     }
     let mut children: Vec<Story> = store
@@ -38,7 +43,7 @@ pub(in crate::bridge) async fn handle_list_epic_children(
                 "number": s.number,
                 "title": s.title,
                 "state": format!("{:?}", s.state).to_lowercase(),
-                "story_type": format!("{:?}", s.story_type).to_lowercase(),
+                "story_type": format!("{:?}", crate::product_management::board::adapters::github::story_type_from_labels_or_title(&s.raw_labels, &s.title)).to_lowercase(),
                 "is_closed": s.is_closed,
             }))
             .collect::<Vec<_>>(),

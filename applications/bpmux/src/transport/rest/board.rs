@@ -11,7 +11,7 @@ pub(crate) fn ordered_board_stories(
         .map(|s| {
             let mut json =
                 crate::product_management::board::adapters::json::story_to_board_json(&codec, s);
-            if s.story_type == crate::product_management::story::StoryType::Iteration
+            if crate::product_management::board::adapters::github::story_type_from_labels_or_title(&s.raw_labels, &s.title) == crate::product_management::story::StoryType::Iteration
                 && let serde_json::Value::Object(map) = &mut json
             {
                 let members: Vec<&crate::product_management::story::Story> = all
@@ -32,7 +32,7 @@ pub(crate) fn ordered_board_stories(
                     map.insert("readiness".to_string(), value);
                 }
             }
-            if s.story_type == crate::product_management::story::StoryType::Outcome
+            if crate::product_management::board::adapters::github::story_type_from_labels_or_title(&s.raw_labels, &s.title) == crate::product_management::story::StoryType::Outcome
                 && let serde_json::Value::Object(map) = &mut json
             {
                 let rolled = crate::product_management::iteration::readiness::outcome_readiness(
@@ -55,7 +55,7 @@ mod tests {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::board::{BoardStore, SyncOrchestrator};
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -76,7 +76,6 @@ mod tests {
             Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
             "pm".into(),
         );
-        s.story_type = StoryType::Iteration;
         s.body = Some("## Iteration overview\n\ncomposed".to_string());
         s.raw_labels = vec![
             "iteration".into(),
@@ -114,7 +113,6 @@ mod tests {
             Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
             "pm".into(),
         );
-        s.story_type = StoryType::Outcome;
         s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
         s
     }

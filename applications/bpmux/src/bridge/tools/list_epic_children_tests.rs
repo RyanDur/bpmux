@@ -11,7 +11,6 @@ fn epic(number: u64) -> Story {
         number,
         title: format!("Epic #{number}"),
         state: StoryState::Icebox,
-        story_type: StoryType::Epic,
         filed_at: Utc::now(),
         filed_by: "pm".to_string(),
         body: None,
@@ -29,7 +28,6 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         number,
         title: format!("child #{number}"),
         state,
-        story_type,
         filed_at: Utc::now(),
         filed_by: "pm".to_string(),
         body: None,
@@ -37,7 +35,11 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         gate_comments: None,
         is_closed: false,
         acceptance_test_path: None,
-        raw_labels: vec![format!("parent-epic-#{parent}")],
+        raw_labels: vec![
+            format!("parent-epic-#{parent}"),
+            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                .encode_story_type(story_type),
+        ],
         body_etag: None,
     }
 }
@@ -129,7 +131,7 @@ async fn excludes_stories_without_parent_epic() {
 #[tokio::test]
 async fn rejects_non_epic_story_type() {
     let mut not_epic = epic(100);
-    not_epic.story_type = StoryType::Feature;
+    not_epic.raw_labels = vec!["feature".to_string(), "icebox".to_string()];
     let store = store_with(vec![not_epic]);
     let err = handle_list_epic_children(&args(100), &store)
         .await

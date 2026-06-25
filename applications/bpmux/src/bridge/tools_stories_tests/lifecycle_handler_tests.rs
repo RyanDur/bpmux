@@ -25,7 +25,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = crate::product_management::story::StoryType::Chore;
+    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -115,7 +115,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = crate::product_management::story::StoryType::Chore;
+    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -479,7 +479,10 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     assert_eq!(story.title, "[Bug] live-verify failure");
     assert_eq!(story.state, StoryState::Icebox);
     assert_eq!(
-        story.story_type,
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &story.raw_labels,
+            &story.title
+        ),
         StoryType::Bug,
         "story_type derived from title prefix [Bug]"
     );
@@ -529,7 +532,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = crate::product_management::story::StoryType::Chore;
+    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -732,7 +735,10 @@ mod classify_for_pass_desk_check_tests {
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );
-        s.story_type = story_type;
+        s.raw_labels.push(
+            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                .encode_story_type(story_type),
+        );
         s
     }
 

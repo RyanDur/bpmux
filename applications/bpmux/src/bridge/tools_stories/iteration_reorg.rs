@@ -19,10 +19,15 @@ async fn member_of(
     story_number: u64,
 ) -> Result<crate::product_management::story::Story, String> {
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if iteration.story_type != StoryType::Iteration {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &iteration.raw_labels,
+            &iteration.title,
+        );
+    if story_type != StoryType::Iteration {
         return Err(format!(
             "#{iteration_number} is not an Iteration (story_type={:?}); only iterations carry members",
-            iteration.story_type
+            story_type
         ));
     }
     let story = ensure_story_in_canonical_store(r, story_number).await?;
@@ -128,10 +133,15 @@ pub(crate) async fn handle_edit_iteration_theme(
 
     let r = refresh.ok_or("edit_iteration_theme requires refresh (RefreshDriver)")?;
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if iteration.story_type != StoryType::Iteration {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &iteration.raw_labels,
+            &iteration.title,
+        );
+    if story_type != StoryType::Iteration {
         return Err(format!(
             "#{iteration_number} is not an Iteration (story_type={:?})",
-            iteration.story_type
+            story_type
         ));
     }
     r.update_title(iteration_number, format!("Iteration {theme}"))

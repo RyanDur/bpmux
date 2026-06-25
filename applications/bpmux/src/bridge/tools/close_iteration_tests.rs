@@ -5,6 +5,7 @@
 
 mod canonical_via_gh_1300 {
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::adapters::github::story_type_from_labels_or_title;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::board::orchestrator::SyncOrchestrator;
     use crate::product_management::board::store::BoardStore;
@@ -39,7 +40,6 @@ mod canonical_via_gh_1300 {
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
-        s.story_type = StoryType::Iteration;
         s.raw_labels = vec!["iteration".to_string()];
         s
     }
@@ -151,7 +151,10 @@ mod canonical_via_gh_1300 {
         close_iteration_canonical(&refresh, 1400).await.unwrap();
         let iter = refresh.story(1400).expect("history-preserved iteration");
         assert!(iter.is_closed);
-        assert!(matches!(iter.story_type, StoryType::Iteration));
+        assert!(matches!(
+            story_type_from_labels_or_title(&iter.raw_labels, &iter.title),
+            StoryType::Iteration
+        ));
         assert_eq!(iter.title, "Iteration Pegasus");
     }
 

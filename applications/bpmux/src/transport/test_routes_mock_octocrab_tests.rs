@@ -242,7 +242,12 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
     let (router, refresh) = fixture_mock_octocrab(&server).await;
     assert!(
         matches!(
-            refresh.story(99).map(|s| s.story_type),
+            refresh.story(99).map(|s| {
+                crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+                    &s.raw_labels,
+                    &s.title,
+                )
+            }),
             Some(crate::product_management::story::StoryType::Feature)
         ),
         "fixture must seed #99 as a non-Epic (Feature) in the canonical store: create_story \

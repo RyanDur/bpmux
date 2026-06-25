@@ -8,7 +8,7 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryState};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -21,7 +21,6 @@ fn outcome(number: u64) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.story_type = StoryType::Outcome;
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
     s
 }
@@ -34,7 +33,7 @@ fn iteration_mapped(number: u64, outcome_number: u64, position: u32) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.story_type = StoryType::Iteration;
+    s.raw_labels.push("iteration".to_string());
     s.raw_labels
         .push(format!("parent-outcome-#{outcome_number}.{position}"));
     s.body = Some("## composed".into());
@@ -181,7 +180,7 @@ async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary_1763() {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    feature.story_type = StoryType::Feature;
+    feature.raw_labels.push("feature".to_string());
     let refresh = build_refresh(vec![feature, iteration_mapped(710, 700, 1)]).await;
     let err = handle_unmap_outcome_iteration(&args(700, 710), "pm:claude-code", Some(&refresh))
         .await

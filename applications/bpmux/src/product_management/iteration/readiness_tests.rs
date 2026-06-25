@@ -2,7 +2,7 @@
 
 use super::readiness::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryState};
 use crate::workflow::bundled_default::bundled_default;
 use crate::workflow::config::WorkflowConfig;
 use chrono::Utc;
@@ -15,7 +15,7 @@ fn iteration(number: u64) -> Story {
         Utc::now(),
         "pm".to_string(),
     );
-    s.story_type = StoryType::Iteration;
+    s.raw_labels.push("iteration".to_string());
     s.body = Some("## Iteration overview\n\ncomposed".to_string());
     s
 }

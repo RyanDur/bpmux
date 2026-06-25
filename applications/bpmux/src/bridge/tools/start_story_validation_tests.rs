@@ -27,7 +27,10 @@ mod gate_retire_1348 {
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "dev".into(),
         );
-        seeded.story_type = story_type;
+        seeded.raw_labels.push(
+            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                .encode_story_type(story_type),
+        );
         adapter.seed_stories(vec![seeded]);
         adapter.seed_body(number, body.into());
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(

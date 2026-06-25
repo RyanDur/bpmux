@@ -2,7 +2,7 @@
 
 use super::view::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
+use crate::product_management::story::{Horizon, Story, StoryState};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
 
@@ -14,7 +14,7 @@ fn outcome(number: u64, title: &str, horizon: Horizon) -> Story {
         Utc::now(),
         "pm".to_string(),
     );
-    s.story_type = StoryType::Outcome;
+    s.raw_labels.push("outcome".to_string());
     s.raw_labels.push(GhLabelCodec.encode_horizon(horizon));
     s
 }
@@ -27,7 +27,7 @@ fn iteration_for(number: u64, outcome_number: u64, position: u32) -> Story {
         Utc::now(),
         "pm".to_string(),
     );
-    s.story_type = StoryType::Iteration;
+    s.raw_labels.push("iteration".to_string());
     s.raw_labels
         .push(format!("parent-outcome-#{outcome_number}.{position}"));
     s.body = Some("## composed".to_string());

@@ -21,10 +21,15 @@ pub(crate) async fn handle_edit_outcome(
 
     let r = refresh.ok_or("edit_outcome requires refresh (RefreshDriver)")?;
     let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    if outcome.story_type != StoryType::Outcome {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &outcome.raw_labels,
+            &outcome.title,
+        );
+    if story_type != StoryType::Outcome {
         return Err(format!(
             "#{outcome_number} is not an Outcome (story_type={:?}); it may be a story, not an outcome — outcomes: bpmux roadmap",
-            outcome.story_type
+            story_type
         ));
     }
 

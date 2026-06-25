@@ -33,13 +33,18 @@ pub(crate) async fn dispatch_close_iteration(
     let iteration = r.story(iteration_number).ok_or_else(|| {
         format!("close_iteration: iteration_number #{iteration_number} not found")
     })?;
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &iteration.raw_labels,
+            &iteration.title,
+        );
     if !matches!(
-        iteration.story_type,
+        story_type,
         crate::product_management::story::StoryType::Iteration
     ) {
         return Err(format!(
             "close_iteration: #{iteration_number} is not an Iteration (story_type={:?})",
-            iteration.story_type
+            story_type
         ));
     }
     if iteration.is_closed {

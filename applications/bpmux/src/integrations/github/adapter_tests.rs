@@ -515,7 +515,10 @@ fn decode_story_metadata_populates_story_type_and_tags_from_labels() {
         "labels": [{"name": "bug"}, {"name": "blocked"}],
     });
     let story = decode_story_metadata(&v).unwrap();
-    assert_eq!(story.story_type, StoryType::Bug);
+    assert_eq!(
+        story_type_from_labels_or_title(&story.raw_labels, &story.title),
+        StoryType::Bug
+    );
     assert_eq!(tags_from_labels(&story.raw_labels), vec![Tag::Blocked]);
 }
 

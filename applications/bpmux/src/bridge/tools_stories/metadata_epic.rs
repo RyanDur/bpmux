@@ -20,10 +20,15 @@ pub(crate) async fn handle_set_parent_epic(
     let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, number).await?;
     let parent = ensure_story_in_canonical_store(r, epic_number).await?;
-    if parent.story_type != crate::product_management::story::StoryType::Epic {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &parent.raw_labels,
+            &parent.title,
+        );
+    if story_type != crate::product_management::story::StoryType::Epic {
         return Err(format!(
             "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
-            parent.story_type
+            story_type
         ));
     }
     let meta = crate::product_management::board::events::EventMeta {

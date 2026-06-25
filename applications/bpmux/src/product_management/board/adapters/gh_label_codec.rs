@@ -173,6 +173,22 @@ impl GhLabelCodec {
             _ => None,
         }
     }
+
+    pub fn encode_story_type(
+        &self,
+        story_type: crate::product_management::story::StoryType,
+    ) -> String {
+        use crate::product_management::story::StoryType;
+        match story_type {
+            StoryType::Feature => "feature",
+            StoryType::Bug => "bug",
+            StoryType::Chore => "chore",
+            StoryType::Epic => "epic",
+            StoryType::Iteration => "iteration",
+            StoryType::Outcome => "outcome",
+        }
+        .to_string()
+    }
 }
 
 pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";

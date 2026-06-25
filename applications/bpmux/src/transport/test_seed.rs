@@ -183,6 +183,27 @@ pub async fn post_seed_stories(
                 format!("seed_stories: StoryCreated #{} failed: {e}", s.number),
             );
         }
+        let type_label_meta = crate::product_management::board::events::EventMeta {
+            actor: "test-seed".to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::product_management::board::PeerId::local(),
+        };
+        if let Err(e) =
+            refresh.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+                meta: type_label_meta,
+                number: s.number,
+                label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                    .encode_story_type(story_type),
+            })
+        {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!(
+                    "seed_stories: type-label TagAdded on #{} failed: {e}",
+                    s.number
+                ),
+            );
+        }
         for label in &s.labels {
             let tag_meta = crate::product_management::board::events::EventMeta {
                 actor: "test-seed".to_string(),

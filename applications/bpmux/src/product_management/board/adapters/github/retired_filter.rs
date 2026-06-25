@@ -15,7 +15,13 @@ pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64
     use crate::product_management::story::StoryType;
     stories
         .iter()
-        .filter(|s| s.story_type == StoryType::Iteration && s.state == StoryState::Retired)
+        .filter(|s| {
+            crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+                &s.raw_labels,
+                &s.title,
+            ) == StoryType::Iteration
+                && s.state == StoryState::Retired
+        })
         .map(|s| s.number)
         .filter(|iteration_number| {
             !stories.iter().any(|s| {
@@ -29,7 +35,7 @@ pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64
 #[cfg(test)]
 mod filter_retired_empty_iterations_tests {
     use super::*;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::Utc;
 
     fn iter_story(number: u64, theme: &str, state: StoryState) -> Story {
@@ -40,7 +46,7 @@ mod filter_retired_empty_iterations_tests {
             Utc::now(),
             "test".to_string(),
         );
-        s.story_type = StoryType::Iteration;
+        s.raw_labels.push("iteration".to_string());
         s
     }
 
@@ -52,7 +58,7 @@ mod filter_retired_empty_iterations_tests {
             Utc::now(),
             "test".to_string(),
         );
-        s.story_type = StoryType::Feature;
+        s.raw_labels.push("feature".to_string());
         s.raw_labels
             .push(format!("parent-iteration-#{iteration_number}.{position}"));
         s
@@ -134,7 +140,7 @@ mod filter_retired_empty_iterations_tests {
             Utc::now(),
             "test".to_string(),
         );
-        s.story_type = StoryType::Chore;
+        s.raw_labels.push("chore".to_string());
         let stories = vec![s];
         let filtered = filter_retired_empty_iterations(stories);
         assert_eq!(filtered.len(), 1, "only iteration-type-class is filtered");

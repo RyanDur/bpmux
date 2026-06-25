@@ -14,10 +14,15 @@ pub(crate) async fn handle_designate_current_iteration(
         .ok_or("missing 'iteration_number' argument")?;
     let r = refresh.ok_or("designate_current_iteration requires refresh (RefreshDriver)")?;
     let target = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if target.story_type != crate::product_management::story::StoryType::Iteration {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &target.raw_labels,
+            &target.title,
+        );
+    if story_type != crate::product_management::story::StoryType::Iteration {
         return Err(format!(
             "story #{iteration_number} is not an Iteration (story_type={:?}); only Iteration stories can be designated current",
-            target.story_type
+            story_type
         ));
     }
     if target.is_closed {
@@ -75,10 +80,15 @@ pub(crate) async fn handle_close_pre_pickup_review(
         .ok_or("missing 'iteration_number' argument")?;
     let r = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
     let target = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if target.story_type != crate::product_management::story::StoryType::Iteration {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &target.raw_labels,
+            &target.title,
+        );
+    if story_type != crate::product_management::story::StoryType::Iteration {
         return Err(format!(
             "story #{iteration_number} is not an Iteration (story_type={:?}); only an Iteration's pre-pickup review can be closed",
-            target.story_type
+            story_type
         ));
     }
     let role = role_from_name(agent_name).to_string();
@@ -119,10 +129,15 @@ pub(crate) async fn handle_dev_ok_iteration(
         .ok_or("missing 'iteration_number' argument")?;
     let r = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
     let target = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if target.story_type != crate::product_management::story::StoryType::Iteration {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &target.raw_labels,
+            &target.title,
+        );
+    if story_type != crate::product_management::story::StoryType::Iteration {
         return Err(format!(
             "story #{iteration_number} is not an Iteration (story_type={:?}); only an Iteration can be dev-OK'd",
-            target.story_type
+            story_type
         ));
     }
     let role = role_from_name(agent_name).to_string();

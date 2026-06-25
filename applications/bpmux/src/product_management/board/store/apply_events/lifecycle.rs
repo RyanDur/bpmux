@@ -1,8 +1,7 @@
 use super::Stories;
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryState};
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn apply_story_created(
     w: &mut Stories,
     number: u64,
@@ -10,13 +9,11 @@ pub(super) fn apply_story_created(
     title: &str,
     body: &str,
     initial_state: StoryState,
-    story_type: StoryType,
 ) {
     let story = Story {
         number,
         title: title.to_string(),
         state: initial_state,
-        story_type,
         filed_at: meta.ts,
         filed_by: meta.actor.clone(),
         body: Some(body.to_string()),
@@ -60,7 +57,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
     if let Some(existing) = w.get_mut(&number) {
         existing.title = story.title.clone();
         existing.state = story.state;
-        existing.story_type = story.story_type;
         existing.raw_labels = story.raw_labels.clone();
         existing.is_closed = story.is_closed;
         if story.body.is_some() {

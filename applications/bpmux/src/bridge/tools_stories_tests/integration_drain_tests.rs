@@ -24,7 +24,7 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = StoryType::Feature;
+    seeded.raw_labels.push("feature".to_string());
     adapter.seed_stories(vec![seeded]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -64,7 +64,7 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = StoryType::Chore;
+    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -100,7 +100,7 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.story_type = StoryType::Bug;
+    seeded.raw_labels.push("bug".to_string());
     seeded.is_closed = true;
     adapter.seed_stories(vec![seeded]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
@@ -152,7 +152,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.story_type = StoryType::Bug;
+    seeded.raw_labels.push("bug".to_string());
     adapter.seed_stories(vec![seeded]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -197,7 +197,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.story_type = StoryType::Bug;
+    seeded.raw_labels.push("bug".to_string());
     seeded.is_closed = true;
     adapter.seed_stories(vec![seeded]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
@@ -262,7 +262,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.story_type = StoryType::Bug;
+    seeded.raw_labels.push("bug".to_string());
     adapter.seed_stories(vec![seeded]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -307,7 +307,7 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.story_type = StoryType::Chore;
+    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),

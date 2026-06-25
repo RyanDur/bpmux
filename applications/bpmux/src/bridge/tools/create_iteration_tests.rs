@@ -6,6 +6,7 @@
 use crate::bridge::tools_stories::handle_create_iteration;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::iteration_order_from_labels;
+use crate::product_management::board::adapters::github::story_type_from_labels_or_title;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -22,7 +23,6 @@ fn seed_iteration_story(number: u64, theme: &str, is_closed: bool) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    s.story_type = StoryType::Iteration;
     s.is_closed = is_closed;
     s.raw_labels = vec!["iteration".to_string()];
     s
@@ -67,7 +67,7 @@ async fn create_iteration_creates_issue_with_iteration_type_and_themed_title() {
         .find(|s| s.title == "Iteration Aquila")
         .expect("iteration issue persisted");
     assert_eq!(
-        iteration.story_type,
+        story_type_from_labels_or_title(&iteration.raw_labels, &iteration.title),
         StoryType::Iteration,
         "story_type=Iteration"
     );

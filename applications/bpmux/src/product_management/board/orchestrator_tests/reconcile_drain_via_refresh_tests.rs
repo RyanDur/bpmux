@@ -40,7 +40,7 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut delivered = seed_story(450, StoryState::Delivered);
-    delivered.story_type = StoryType::Bug;
+    delivered.raw_labels.push("bug".to_string());
     adapter.seed_stories(vec![delivered]);
     adapter.seed_labels(
         450,

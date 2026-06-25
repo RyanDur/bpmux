@@ -27,7 +27,7 @@ fn current_iteration_story(number: u64) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    s.story_type = crate::product_management::story::StoryType::Iteration;
+    s.raw_labels.push("iteration".to_string());
     s.raw_labels.push("current-iteration".to_string());
     s
 }

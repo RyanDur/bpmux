@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::story::{Gate, GateComment, Story, StoryState, StoryType};
+use crate::product_management::story::{Gate, GateComment, Story, StoryState};
 
 async fn seeded_orchestrator(
     mut stories: Vec<Story>,
@@ -438,7 +438,7 @@ fn make_iteration(number: u64, theme: &str, body: &str) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.story_type = StoryType::Iteration;
+    s.raw_labels.push("iteration".to_string());
     s.body = Some(body.to_string());
     s
 }

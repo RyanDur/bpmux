@@ -20,8 +20,13 @@ fn resolve_accept_window_secs(
     story_number: u64,
 ) -> Option<u64> {
     let story = refresh?.store().story(story_number)?;
-    let class =
-        crate::workflow::gate_class_from_labels_and_story_type(&story.raw_labels, story.story_type);
+    let class = crate::workflow::gate_class_from_labels_and_story_type(
+        &story.raw_labels,
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &story.raw_labels,
+            &story.title,
+        ),
+    );
     let transition =
         crate::workflow::resolve_transition(crate::workflow::current_workflow(), "accept", class)
             .ok()?;

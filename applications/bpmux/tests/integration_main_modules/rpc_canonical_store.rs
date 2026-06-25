@@ -31,7 +31,7 @@ use tokio_util::sync::CancellationToken;
 use bpmux::auth as auth_token;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use bpmux::product_management::story::{Story, StoryState, StoryType};
+use bpmux::product_management::story::{Story, StoryState};
 use bpmux::session::Session;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
@@ -46,7 +46,6 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
         ),
         state: StoryState::Ready,
         is_closed: false,
-        story_type: StoryType::Feature,
         gate_comments: None,
         free_comments: None,
         acceptance_test_path: Some("tests/integration_main_modules/rpc_canonical_store.rs".to_string()),

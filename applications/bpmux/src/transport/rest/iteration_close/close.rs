@@ -61,19 +61,26 @@ async fn post_close_iteration_canonical(
     let iteration = match refresh.story(iteration_number) {
         Some(s)
             if matches!(
-                s.story_type,
+                crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+                    &s.raw_labels,
+                    &s.title
+                ),
                 crate::product_management::story::StoryType::Iteration
             ) =>
         {
             s
         }
         Some(s) => {
+            let story_type =
+                crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+                    &s.raw_labels,
+                    &s.title,
+                );
             return (
                 StatusCode::BAD_REQUEST,
                 json_headers(),
                 err_body(&format!(
-                    "close_iteration: #{iteration_number} is not an Iteration (story_type={:?})",
-                    s.story_type
+                    "close_iteration: #{iteration_number} is not an Iteration (story_type={story_type:?})"
                 )),
             );
         }

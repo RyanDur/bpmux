@@ -3,11 +3,10 @@ use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::story::{Story, StoryState, StoryType};
 
 fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> Story {
-    Story {
+    let mut s = Story {
         number: 42,
         title: "[Feature] sample".to_string(),
         state,
-        story_type,
         filed_at: chrono::DateTime::parse_from_rfc3339("2026-04-26T01:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc),
@@ -19,7 +18,10 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         acceptance_test_path: None,
         raw_labels: Vec::new(),
         body_etag: None,
-    }
+    };
+    s.raw_labels
+        .push(GhLabelCodec.encode_story_type(story_type));
+    s
 }
 
 #[test]

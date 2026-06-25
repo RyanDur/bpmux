@@ -8,7 +8,7 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryState};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -21,7 +21,7 @@ fn iteration(number: u64, theme: &str) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.story_type = StoryType::Iteration;
+    s.raw_labels.push("iteration".to_string());
     s
 }
 
@@ -33,7 +33,7 @@ fn member(number: u64, iteration_number: u64, position: u32, state: StoryState) 
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.story_type = StoryType::Feature;
+    s.raw_labels.push("feature".to_string());
     s.raw_labels
         .push(format!("parent-iteration-#{iteration_number}.{position}"));
     s
@@ -218,7 +218,7 @@ async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    feature.story_type = StoryType::Feature;
+    feature.raw_labels.push("feature".to_string());
     let refresh = build_refresh(vec![feature]).await;
     let args = json!({ "iteration_number": 700, "theme": "X" })
         .as_object()

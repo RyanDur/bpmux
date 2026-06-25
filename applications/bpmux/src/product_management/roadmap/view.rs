@@ -58,7 +58,7 @@ pub fn derive_roadmap_view(stories: &[Story], workflow: &WorkflowConfig) -> Vec<
             let mut members: Vec<&Story> = stories
                 .iter()
                 .filter(|s| {
-                    s.story_type == StoryType::Outcome
+                    crate::product_management::board::adapters::github::story_type_from_labels_or_title(&s.raw_labels, &s.title) == StoryType::Outcome
                         && horizon_from_labels(&s.raw_labels) == Some(*horizon)
                         && s.state != StoryState::Retired
                 })

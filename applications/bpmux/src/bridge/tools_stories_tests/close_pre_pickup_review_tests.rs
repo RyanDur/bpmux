@@ -6,7 +6,7 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::readiness::iteration_readiness;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryState};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -31,7 +31,6 @@ fn iteration_seed(number: u64, theme: &str) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.story_type = StoryType::Iteration;
     s.raw_labels = vec!["iteration".into(), "ready".into()];
     s
 }

@@ -39,10 +39,15 @@ pub(crate) async fn handle_add_story_to_iteration(
     let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, story_number).await?;
     let parent = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if parent.story_type != crate::product_management::story::StoryType::Iteration {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &parent.raw_labels,
+            &parent.title,
+        );
+    if story_type != crate::product_management::story::StoryType::Iteration {
         return Err(format!(
             "story #{iteration_number} is not an Iteration (story_type={:?}); only Iteration stories can carry iteration-members",
-            parent.story_type
+            story_type
         ));
     }
     let meta = crate::product_management::board::events::EventMeta {
@@ -84,17 +89,27 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .ok_or("missing 'position' argument")? as u32;
     let r = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if iteration.story_type != crate::product_management::story::StoryType::Iteration {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &iteration.raw_labels,
+            &iteration.title,
+        );
+    if story_type != crate::product_management::story::StoryType::Iteration {
         return Err(format!(
             "story #{iteration_number} is not an Iteration (story_type={:?}); only iterations build outcomes",
-            iteration.story_type
+            story_type
         ));
     }
     let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    if outcome.story_type != crate::product_management::story::StoryType::Outcome {
+    let story_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &outcome.raw_labels,
+            &outcome.title,
+        );
+    if story_type != crate::product_management::story::StoryType::Outcome {
         return Err(format!(
             "story #{outcome_number} is not an Outcome (story_type={:?}); iterations map only to outcomes",
-            outcome.story_type
+            story_type
         ));
     }
     let meta = crate::product_management::board::events::EventMeta {

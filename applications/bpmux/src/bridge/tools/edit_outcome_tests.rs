@@ -19,8 +19,11 @@ fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Sto
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.story_type = story_type;
     s.raw_labels = labels.iter().map(ToString::to_string).collect();
+    s.raw_labels.push(
+        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            .encode_story_type(story_type),
+    );
     s
 }
 
