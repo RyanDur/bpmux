@@ -3,7 +3,6 @@
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
 use crate::product_management::story::StoryType;
-use crate::product_management::story::story_type_from_labels_or_title;
 use crate::transport::protocol::ClientMessage;
 
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]

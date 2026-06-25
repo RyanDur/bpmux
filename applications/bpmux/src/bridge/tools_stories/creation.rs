@@ -9,7 +9,7 @@ pub(crate) async fn handle_create_story(
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
-    let story_type = crate::product_management::story::story_type_from_labels_or_title(&[], title);
+    let story_type = crate::product_management::story::story_type_from_title(title);
     validate_actor_role_can_create(agent_name, story_type)?;
     let user_job = require_nonempty_string(
         args,

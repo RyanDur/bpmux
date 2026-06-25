@@ -4,9 +4,14 @@ use super::label_fields::{
     acceptor_from_labels, horizon_from_labels, horizon_order_from_labels, is_current_from_labels,
     iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
     iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
+    story_type_from_labels,
 };
 use crate::product_management::board::events::LabelDerivedFields;
-use crate::product_management::story::{Story, StoryState, Tag};
+use crate::product_management::story::{Story, StoryState, StoryType, Tag, story_type_from_title};
+
+pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {
+    story_type_from_labels(labels).unwrap_or_else(|| story_type_from_title(title))
+}
 
 pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
     LabelDerivedFields {
@@ -77,8 +82,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
         .map(ToString::to_string)
         .unwrap_or_else(|| "unknown".to_string());
     let mut story = Story::new_minimal(number, title.clone(), state, filed_at, filed_by);
-    story.story_type =
-        crate::product_management::story::story_type_from_labels_or_title(&labels, &title);
+    story.story_type = story_type_from_labels_or_title(&labels, &title);
     story.tags = tags_from_labels(&labels);
     story.is_closed = is_closed;
     story.parent_epic = parent_epic_from_labels(&labels);

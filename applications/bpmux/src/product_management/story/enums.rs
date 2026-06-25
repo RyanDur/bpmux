@@ -64,18 +64,7 @@ pub enum StoryType {
     Outcome,
 }
 
-pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {
-    for l in labels {
-        match l.to_ascii_lowercase().as_str() {
-            "feature" => return StoryType::Feature,
-            "bug" => return StoryType::Bug,
-            "chore" => return StoryType::Chore,
-            "epic" => return StoryType::Epic,
-            "iteration" => return StoryType::Iteration,
-            "outcome" => return StoryType::Outcome,
-            _ => {}
-        }
-    }
+pub fn story_type_from_title(title: &str) -> StoryType {
     let lower = title.to_lowercase();
     if lower.starts_with("[epic") {
         return StoryType::Epic;

@@ -145,6 +145,22 @@ impl GhLabelCodec {
             _ => None,
         }
     }
+
+    pub fn decode_story_type(
+        &self,
+        label: &str,
+    ) -> Option<crate::product_management::story::StoryType> {
+        use crate::product_management::story::StoryType;
+        match label.to_ascii_lowercase().as_str() {
+            "feature" => Some(StoryType::Feature),
+            "bug" => Some(StoryType::Bug),
+            "chore" => Some(StoryType::Chore),
+            "epic" => Some(StoryType::Epic),
+            "iteration" => Some(StoryType::Iteration),
+            "outcome" => Some(StoryType::Outcome),
+            _ => None,
+        }
+    }
 }
 
 pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";

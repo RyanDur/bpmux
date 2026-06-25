@@ -7,10 +7,10 @@ use crate::product_management::board::adapters::github::is_position_label_for_te
 use crate::product_management::board::adapters::github::{
     classify_gate, decode_gate_comments, decode_story_metadata, iteration_membership_from_labels,
     iteration_order_from_labels, parent_epic_from_labels, state_from_labels, state_to_label,
-    tags_from_labels, warn_on_inconsistent_state_labels,
+    story_type_from_labels, story_type_from_labels_or_title, tags_from_labels,
+    warn_on_inconsistent_state_labels,
 };
 use crate::product_management::board::sync::{SyncError, classify_close_error};
-use crate::product_management::story::story_type_from_labels_or_title;
 use crate::product_management::story::{Gate, StoryState, StoryType, Tag};
 
 #[test]
@@ -474,6 +474,16 @@ fn story_type_decodes_epic_from_label() {
         story_type_from_labels_or_title(&labels, "[Feature] mismatched"),
         StoryType::Epic
     );
+}
+
+#[test]
+fn story_type_from_labels_is_some_only_for_a_type_label() {
+    assert_eq!(
+        story_type_from_labels(&["CHORE".to_string()]),
+        Some(StoryType::Chore)
+    );
+    assert_eq!(story_type_from_labels(&["ready".to_string()]), None);
+    assert_eq!(story_type_from_labels(&[]), None);
 }
 
 #[test]

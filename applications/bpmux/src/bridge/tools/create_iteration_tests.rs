@@ -154,7 +154,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
         refetched.raw_labels
     );
     assert_eq!(
-        crate::product_management::story::story_type_from_labels_or_title(
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
             &refetched.raw_labels,
             &refetched.title
         ),

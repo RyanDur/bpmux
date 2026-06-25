@@ -1,3 +1,12 @@
+pub fn story_type_from_labels(
+    labels: &[String],
+) -> Option<crate::product_management::story::StoryType> {
+    labels.iter().find_map(|l| {
+        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            .decode_story_type(l)
+    })
+}
+
 pub fn parent_epic_from_labels(labels: &[String]) -> Option<u64> {
     labels.iter().find_map(|l| {
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec

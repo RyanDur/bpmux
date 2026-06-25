@@ -1,6 +1,37 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::enums::StoryState;
+use super::enums::{StoryState, StoryType, story_type_from_title};
+
+#[test]
+fn story_type_from_title_reads_bpmux_title_conventions() {
+    assert_eq!(story_type_from_title("[Epic] foo"), StoryType::Epic);
+    assert_eq!(
+        story_type_from_title("[Iteration] Aquila"),
+        StoryType::Iteration
+    );
+    assert_eq!(story_type_from_title("[Outcome] reach"), StoryType::Outcome);
+    assert_eq!(story_type_from_title("[Bug] broken"), StoryType::Bug);
+    assert_eq!(
+        story_type_from_title("bug: lowercase prefix"),
+        StoryType::Bug
+    );
+    assert_eq!(story_type_from_title("[Chore] cleanup"), StoryType::Chore);
+    assert_eq!(
+        story_type_from_title("[honest-plumbing] wiring"),
+        StoryType::Chore
+    );
+    assert_eq!(story_type_from_title("[half-slice] part"), StoryType::Chore);
+}
+
+#[test]
+fn story_type_from_title_defaults_to_feature_without_a_known_prefix() {
+    assert_eq!(story_type_from_title("just a title"), StoryType::Feature);
+    assert_eq!(
+        story_type_from_title("[Feature] explicit"),
+        StoryType::Feature
+    );
+    assert_eq!(story_type_from_title(""), StoryType::Feature);
+}
 
 #[test]
 fn story_state_parse_round_trips_via_as_str() {
