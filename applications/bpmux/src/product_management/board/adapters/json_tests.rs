@@ -22,7 +22,6 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         raw_labels: Vec::new(),
         body_etag: None,
         iteration_membership: None,
-        iteration_order: None,
         iteration_review_closed_by: Vec::new(),
         iteration_dev_ok_by: Vec::new(),
         horizon: None,
@@ -96,7 +95,7 @@ fn story_to_board_json_iteration_order_null_when_none_1735() {
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(
         json["iteration_order"].is_null(),
-        "iteration_order emits JSON null when Story.iteration_order is None; got: {}",
+        "iteration_order emits JSON null when no iteration-order label is present; got: {}",
         json["iteration_order"]
     );
 }
@@ -104,7 +103,7 @@ fn story_to_board_json_iteration_order_null_when_none_1735() {
 #[test]
 fn story_to_board_json_iteration_order_number_when_set_1735() {
     let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    s.iteration_order = Some(200);
+    s.raw_labels = vec![GhLabelCodec.encode_iteration_order(200)];
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(
         json["iteration_order"].as_u64(),

@@ -1,3 +1,4 @@
+use crate::product_management::board::adapters::github::iteration_order_from_labels;
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::{
     Story, StoryType, Tag, most_recent_backward_transition, replay_transitions,
@@ -70,7 +71,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         "parent_epic": story.parent_epic,
         "iteration_membership": iteration_membership,
         "outcome_membership": outcome_membership,
-        "iteration_order": story.iteration_order,
+        "iteration_order": iteration_order_from_labels(&story.raw_labels),
         "iteration_review_closed_by": story.iteration_review_closed_by,
         "iteration_dev_ok_by": story.iteration_dev_ok_by,
         "horizon": story.horizon.map(|h| h.as_str()),

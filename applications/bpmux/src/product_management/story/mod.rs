@@ -48,8 +48,6 @@ pub struct Story {
     #[serde(default)]
     pub iteration_membership: Option<(u64, u32)>,
     #[serde(default)]
-    pub iteration_order: Option<u32>,
-    #[serde(default)]
     pub iteration_review_closed_by: Vec<String>,
     #[serde(default)]
     pub iteration_dev_ok_by: Vec<String>,
@@ -92,7 +90,6 @@ impl Story {
             raw_labels,
             body_etag: None,
             iteration_membership: None,
-            iteration_order: None,
             iteration_review_closed_by: Vec::new(),
             iteration_dev_ok_by: Vec::new(),
             horizon: None,

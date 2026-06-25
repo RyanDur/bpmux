@@ -49,7 +49,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         raw_labels,
         body_etag,
         iteration_membership: _,
-        iteration_order: _,
         iteration_review_closed_by,
         iteration_dev_ok_by,
         horizon,

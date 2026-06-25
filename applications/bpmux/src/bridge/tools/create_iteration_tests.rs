@@ -5,6 +5,7 @@
 
 use crate::bridge::tools_stories::handle_create_iteration;
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::github::iteration_order_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -175,16 +176,15 @@ async fn create_iteration_assigns_order_at_birth_1735() {
         .find(|s| s.title == "Iteration Aquila")
         .expect("iteration persisted");
     assert!(
-        iteration.iteration_order.is_some(),
+        iteration_order_from_labels(&iteration.raw_labels).is_some(),
         "a freshly-created iteration is born with a canonical order (no order-less iteration → no Fornax-last); got {:?}",
-        iteration.iteration_order
+        iteration_order_from_labels(&iteration.raw_labels)
     );
 }
 
 #[tokio::test]
 async fn create_iteration_appends_order_after_existing_1735() {
     let mut existing = seed_iteration_story(42, "Aquila", false);
-    existing.iteration_order = Some(100);
     existing.raw_labels = vec!["iteration".to_string(), "iteration-order.100".to_string()];
     let refresh = build_refresh_with_stories(vec![existing]).await;
     handle_create_iteration(&args("Pegasus"), "pm:claude-code", Some(&refresh))
@@ -200,11 +200,11 @@ async fn create_iteration_appends_order_after_existing_1735() {
         .find(|s| s.title == "Iteration Aquila")
         .expect("Aquila persisted");
     assert!(
-        pegasus.iteration_order.expect("Pegasus has order")
-            > aquila.iteration_order.expect("Aquila has order"),
+        iteration_order_from_labels(&pegasus.raw_labels).expect("Pegasus has order")
+            > iteration_order_from_labels(&aquila.raw_labels).expect("Aquila has order"),
         "new iteration appends AFTER existing in canonical order (Pegasus {:?} > Aquila {:?})",
-        pegasus.iteration_order,
-        aquila.iteration_order
+        iteration_order_from_labels(&pegasus.raw_labels),
+        iteration_order_from_labels(&aquila.raw_labels)
     );
 }
 

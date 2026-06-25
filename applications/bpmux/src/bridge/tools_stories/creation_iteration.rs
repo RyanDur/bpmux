@@ -70,7 +70,11 @@ pub(crate) async fn handle_create_iteration(
                 && !s.is_closed
                 && s.number != number
         })
-        .filter_map(|s| s.iteration_order)
+        .filter_map(|s| {
+            crate::product_management::board::adapters::github::iteration_order_from_labels(
+                &s.raw_labels,
+            )
+        })
         .max()
         .map_or(
             crate::product_management::iteration::label::DEFAULT_FIRST_POSITION,

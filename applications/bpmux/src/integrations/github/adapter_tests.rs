@@ -663,7 +663,7 @@ fn decode_story_metadata_sets_iteration_order_from_label_1735() {
         "labels": [{"name": "iteration-Fornax.100"}, {"name": "iteration-order.200"}],
     });
     let story = decode_story_metadata(&v).expect("decodes");
-    assert_eq!(story.iteration_order, Some(200));
+    assert_eq!(iteration_order_from_labels(&story.raw_labels), Some(200));
 }
 
 #[test]
