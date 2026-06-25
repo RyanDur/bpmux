@@ -71,8 +71,3 @@ pub(super) fn verify_deliver_drift(
     }
     verify_body_atp_in_changed_paths(body, &changed_paths)
 }
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-#[path = "deliver_story_body_diff_tests.rs"]
-mod tests;

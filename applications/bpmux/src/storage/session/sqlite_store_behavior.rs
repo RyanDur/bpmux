@@ -1,7 +1,10 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::*;
+use super::sqlite::SqliteStorage;
+use super::sqlite_engine as engine;
+use super::sqlite_users as users;
 use crate::message::{Message, MessageType};
+use crate::storage::Storage;
 
 fn store() -> (tempfile::TempDir, SqliteStorage) {
     let dir = tempfile::TempDir::new().unwrap();

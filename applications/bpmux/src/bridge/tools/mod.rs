@@ -8,6 +8,8 @@ mod capture_electron_window;
 mod ci_get_job_status;
 #[cfg(test)]
 mod ci_get_job_status_tests;
+#[cfg(test)]
+mod ci_log_for_run_parse;
 mod ci_log_parse;
 mod classifier_misfire;
 #[cfg(test)]
@@ -17,6 +19,8 @@ mod create_iteration_tests;
 #[cfg(test)]
 mod create_outcome_tests;
 mod dev_in_flight;
+#[cfg(test)]
+mod dev_in_flight_query;
 #[cfg(test)]
 mod edit_outcome_tests;
 #[cfg(test)]
@@ -52,10 +56,14 @@ mod list_ready;
 #[cfg(test)]
 mod outcome_mapping_tests;
 mod read_messages;
+#[cfg(test)]
+mod read_messages_filtering;
 mod remove_principle;
 #[cfg(test)]
 mod reprioritize_outcome_tests;
 mod rerun_ci;
+#[cfg(test)]
+mod rerun_ci_dispatch;
 #[cfg(test)]
 mod retire_outcome_tests;
 pub(in crate::bridge) mod rework_context;
@@ -78,8 +86,12 @@ mod submit_verdict;
 mod submit_verdict_tests;
 mod update_principle;
 mod user_fn;
+#[cfg(test)]
+mod user_fn_dispatch;
 mod user_fn_parse;
 mod view_backlog;
+#[cfg(test)]
+mod view_backlog_render;
 mod view_comments;
 mod view_commit_diff;
 #[cfg(test)]
@@ -93,7 +105,11 @@ mod view_story_timeline;
 mod view_story_timeline_tests;
 mod view_tokens;
 mod view_velocity;
+#[cfg(test)]
+mod view_velocity_render;
 mod view_verdicts;
+#[cfg(test)]
+mod view_verdicts_render;
 
 pub(in crate::bridge) use helpers::{WsSink, ws_send};
 

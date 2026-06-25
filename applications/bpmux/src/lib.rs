@@ -7,8 +7,12 @@ pub mod awareness;
 #[cfg(test)]
 mod awareness_tests;
 pub mod bookmark;
+#[cfg(test)]
+mod bookmark_round_trip;
 pub mod bridge;
 pub mod briefing;
+#[cfg(test)]
+mod briefing_persistence;
 pub mod ci;
 #[cfg(test)]
 mod ci_tests;
@@ -34,6 +38,8 @@ pub mod precommit;
 #[cfg(test)]
 mod precommit_tests;
 pub mod product_management;
+#[cfg(test)]
+mod reaction_aggregation;
 pub mod reactions;
 pub mod reload;
 pub mod room;

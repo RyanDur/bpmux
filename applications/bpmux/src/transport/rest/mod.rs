@@ -21,6 +21,15 @@ pub(crate) mod shared;
 mod wait;
 mod wake;
 
+#[cfg(test)]
+mod board_endpoint;
+#[cfg(test)]
+mod presence_endpoint;
+#[cfg(test)]
+mod reorder_label_ops;
+#[cfg(test)]
+mod shared_rest_helpers;
+
 pub(crate) use board::ordered_board_stories;
 pub use board_acceptance::{AcceptPayload, RejectPayload, post_accept_story, post_reject_story};
 pub use board_read::{get_board, get_story};

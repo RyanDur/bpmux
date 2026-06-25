@@ -1,4 +1,8 @@
-use super::*;
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use super::user_fn::*;
+use super::user_fn_parse::{parse_definition, substitute_args};
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 static CWD_LOCK: Mutex<()> = Mutex::new(());

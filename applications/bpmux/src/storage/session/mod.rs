@@ -253,3 +253,7 @@ mod migrate;
 pub use migrate::*;
 #[cfg(test)]
 mod migrate_tests;
+#[cfg(test)]
+mod sqlite_engine_behavior;
+#[cfg(test)]
+mod sqlite_store_behavior;

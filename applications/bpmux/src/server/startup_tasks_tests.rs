@@ -7,7 +7,7 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::product_management::story::{Story, StoryState};
 
-use super::spawn_background_ingest;
+use super::startup_tasks::spawn_background_ingest;
 
 #[tokio::test]
 async fn ingest_runs_in_background_not_inline() {

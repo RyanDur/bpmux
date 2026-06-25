@@ -19,6 +19,12 @@ pub use pty::*;
 #[cfg(test)]
 mod agent_detect_tests;
 #[cfg(test)]
+mod osc7_emission;
+#[cfg(test)]
+mod osc7_parsing;
+#[cfg(test)]
+mod paste_mode_detection;
+#[cfg(test)]
 mod provisioning_tests;
 #[cfg(test)]
 mod pty_tests;

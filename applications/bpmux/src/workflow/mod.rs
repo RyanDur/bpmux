@@ -10,6 +10,8 @@ mod config_tests;
 mod gate_tests;
 #[cfg(test)]
 mod loader_tests;
+#[cfg(test)]
+mod verdict_persistence;
 
 pub use config::{
     GateClass, Role, Section, State, Transition, WorkflowConfig, gate_class_from_labels,

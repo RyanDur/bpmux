@@ -1,4 +1,6 @@
-use super::*;
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use super::ready_order_label::*;
 
 fn ready_json(number: u64, membership: Option<(u64, u32)>) -> serde_json::Value {
     serde_json::json!({

@@ -33,7 +33,3 @@ pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>) {
         }
     });
 }
-
-#[cfg(test)]
-#[path = "startup_tasks_tests.rs"]
-mod startup_tasks_tests;

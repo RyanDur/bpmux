@@ -20,6 +20,9 @@ mod roster;
 mod session_io;
 mod snapshot;
 
+#[cfg(test)]
+mod roster_projection;
+
 pub(crate) use client::*;
 pub(crate) use delivery::*;
 pub use peer_lag::*;

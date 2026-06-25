@@ -45,8 +45,3 @@ fn membership_position_for_current(s: &serde_json::Value, current: Option<u64>) 
     }
     membership.get("position")?.as_u64().map(|p| p as u32)
 }
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-#[path = "ready_order_label_tests.rs"]
-mod tests;

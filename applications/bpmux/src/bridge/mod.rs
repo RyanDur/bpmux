@@ -147,9 +147,15 @@ pub fn run_bridge(
 }
 
 #[cfg(test)]
+mod body_diff_gate;
+#[cfg(test)]
+mod chat_relevance_gate;
+#[cfg(test)]
 mod connection_tests;
 #[cfg(test)]
 mod poller_middleware_tests;
+#[cfg(test)]
+mod rpc_dispatch;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -160,3 +166,5 @@ mod tools_stories_tests;
 mod tracker_contract_tests;
 #[cfg(test)]
 mod tracker_tests;
+#[cfg(test)]
+mod view_translation;

@@ -58,11 +58,3 @@ pub(in crate::bridge) async fn handle_get_ci_log_for_run(
     }
     Ok(body)
 }
-
-#[cfg(test)]
-use super::ci_log_parse::{build_non_test_failure_record, parse_playwright_failures_from_log};
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-#[path = "get_ci_log_for_run_tests.rs"]
-mod tests;

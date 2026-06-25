@@ -1,4 +1,6 @@
 mod comment_codec;
+#[cfg(test)]
+mod filter_retired_empty_iterations;
 mod label_fields;
 mod retired_filter;
 mod story_decode;

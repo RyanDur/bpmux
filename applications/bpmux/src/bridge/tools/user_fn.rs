@@ -7,7 +7,7 @@ fn functions_dir() -> Result<PathBuf, String> {
     Ok(cwd.join(".bpmux").join("functions"))
 }
 
-fn definition_path(name: &str) -> Result<PathBuf, String> {
+pub(super) fn definition_path(name: &str) -> Result<PathBuf, String> {
     if name.is_empty() || name.contains('/') || name.contains('\\') || name.contains("..") {
         return Err(format!(
             "user_fn name '{name}' must be a single path segment (no '/', '\\\\', or '..')"
@@ -117,8 +117,3 @@ pub(in crate::bridge) async fn handle_list_user_fns(
     serde_json::to_string_pretty(&serde_json::json!({ "functions": entries }))
         .map_err(|e| format!("serialize: {e}"))
 }
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-#[path = "user_fn_tests.rs"]
-mod tests;

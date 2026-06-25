@@ -19,6 +19,8 @@ mod event_messages_audit_tests;
 #[cfg(test)]
 mod orchestrator_tests;
 #[cfg(test)]
+mod ready_order_label_codec;
+#[cfg(test)]
 mod store_tests;
 #[cfg(test)]
 mod story_view_projection;
