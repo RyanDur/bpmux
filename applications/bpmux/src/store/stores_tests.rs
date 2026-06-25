@@ -7,11 +7,10 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use super::stores::{
+use super::{
     AggregatedReaction, Presence, ReactionsAction, ReactionsBroadcastListener, RosterAction,
-    RosterBroadcastListener, RosterMember, RosterRole,
+    RosterBroadcastListener, RosterMember, RosterRole, Store, StoreAction,
 };
-use super::{Store, StoreAction};
 use crate::message::Message;
 use crate::session::Session;
 use crate::transport::ci_state_store::CiStateStore;

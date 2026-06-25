@@ -153,8 +153,8 @@ pub struct RosterMemberWire {
     pub routing_id: String,
     pub name: String,
     pub identity: String,
-    pub role: crate::store::stores::RosterRole,
-    pub presence: crate::store::stores::Presence,
+    pub role: crate::store::RosterRole,
+    pub presence: crate::store::Presence,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

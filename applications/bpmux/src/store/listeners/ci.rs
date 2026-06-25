@@ -6,7 +6,7 @@ use crate::session;
 use crate::store::{CiBroadcastListener, CiSnapshot};
 use crate::transport::ci_state_store::CiStateStore;
 
-use super::broadcast_state_delta;
+use crate::store::broadcast_state_delta;
 
 pub struct CiStateStoreWriter {
     store: CiStateStore,

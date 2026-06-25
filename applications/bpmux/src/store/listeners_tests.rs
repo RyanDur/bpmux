@@ -5,13 +5,10 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-use super::listeners::{
-    CiSessionBroadcaster, OwnerParkBroadcaster, ReactionsSessionBroadcaster,
-    RosterSessionBroadcaster,
-};
-use super::stores::{
-    AggregatedReaction, Presence, ReactionsBroadcastListener, RosterBroadcastListener,
-    RosterMember, RosterRole,
+use super::{
+    AggregatedReaction, CiSessionBroadcaster, OwnerParkBroadcaster, Presence,
+    ReactionsBroadcastListener, ReactionsSessionBroadcaster, RosterBroadcastListener, RosterMember,
+    RosterRole, RosterSessionBroadcaster,
 };
 use crate::ci::CiState;
 use crate::message::{Message, MessageType, StateDeltaPayload};
@@ -162,8 +159,7 @@ fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMem
 }
 
 async fn seed_dev_online(orch: &Arc<crate::store::Store>) {
-    use crate::store::StoreAction;
-    use crate::store::stores::RosterAction;
+    use crate::store::{RosterAction, StoreAction};
     orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
         name: "dev".to_string(),

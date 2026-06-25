@@ -1,6 +1,6 @@
 use super::ci::CiSnapshot;
 use crate::product_management::board::MutationId;
-use crate::store::stores::{ReactionsAction, RosterAction};
+use crate::store::{ReactionsAction, RosterAction};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PollKind {

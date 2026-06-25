@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use crate::message::{ReactionAggregateWire, StateDeltaPayload};
 use crate::session;
-use crate::store::{AggregatedReaction, ReactionsBroadcastListener};
+use crate::store::broadcast_state_delta;
 
-use super::broadcast_state_delta;
+use super::{AggregatedReaction, ReactionsBroadcastListener};
 
 pub struct ReactionsSessionBroadcaster {
     session: Arc<session::Session>,

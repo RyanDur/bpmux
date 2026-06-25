@@ -2,7 +2,12 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 
-use super::StoreReduceOutcome;
+use crate::store::StoreReduceOutcome;
+
+mod listeners;
+mod middleware;
+
+pub use listeners::RosterSessionBroadcaster;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 pub enum RosterRole {
@@ -70,7 +75,7 @@ impl RosterStore {
         state.members.clone()
     }
 
-    pub(super) fn apply(&self, action: &RosterAction) -> StoreReduceOutcome {
+    pub(crate) fn apply(&self, action: &RosterAction) -> StoreReduceOutcome {
         let mut state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         match action {
             RosterAction::RosterMemberUpserted {

@@ -219,7 +219,7 @@ async fn stop_ci_polling_without_start_no_op() {
 
 #[tokio::test]
 async fn spawn_action_drainer_routes_channel_actions_into_dispatch() {
-    use crate::store::stores::ReactionsAction;
+    use crate::store::ReactionsAction;
     let (session, _dir) = fresh_session();
     let orch: Arc<Store> = Arc::new(Store::new(
         session,

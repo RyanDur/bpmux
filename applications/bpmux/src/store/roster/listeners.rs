@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use crate::message::{RosterMemberWire, StateDeltaPayload};
 use crate::session;
-use crate::store::{RosterBroadcastListener, RosterMember};
+use crate::store::broadcast_state_delta;
 
-use super::broadcast_state_delta;
+use super::{RosterBroadcastListener, RosterMember};
 
 pub struct RosterSessionBroadcaster {
     session: Arc<session::Session>,

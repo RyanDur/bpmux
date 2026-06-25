@@ -3,7 +3,12 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 
-use super::StoreReduceOutcome;
+use crate::store::StoreReduceOutcome;
+
+mod listeners;
+mod middleware;
+
+pub use listeners::ReactionsSessionBroadcaster;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct AggregatedReaction {
@@ -66,7 +71,7 @@ impl ReactionsStore {
             .collect()
     }
 
-    pub(super) fn apply(&self, action: &ReactionsAction) -> StoreReduceOutcome {
+    pub(crate) fn apply(&self, action: &ReactionsAction) -> StoreReduceOutcome {
         match action {
             ReactionsAction::ReactionToggled {
                 channel,

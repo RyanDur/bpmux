@@ -5,9 +5,6 @@ use tokio_util::sync::CancellationToken;
 
 use super::action::validate_and_log;
 use crate::store::ci::CiReduceOutcome;
-use crate::store::stores::{
-    ReactionsAction, RosterAction, StoreReduceOutcome, apply_reactions, apply_roster,
-};
 
 impl Store {
     pub async fn dispatch(self: &Arc<Self>, action: StoreAction) {
@@ -50,45 +47,6 @@ impl Store {
                 self.middleware_mutation_rolled_back(mutation_id, server_story.map(|b| *b))
                     .await;
             }
-        }
-    }
-
-    fn middleware_reactions(&self, action: ReactionsAction) {
-        let outcome = apply_reactions(&self.reactions_store, &action);
-        if outcome != StoreReduceOutcome::Changed {
-            return;
-        }
-        let channel = match &action {
-            ReactionsAction::ReactionToggled { channel, .. } => channel.clone(),
-        };
-        let aggregated = self.reactions_store.aggregated_for_channel(&channel);
-        let listeners = {
-            let l = self
-                .reactions_listeners
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            l.clone()
-        };
-        for listener in listeners {
-            listener.on_changed(&channel, &aggregated);
-        }
-    }
-
-    fn middleware_roster(&self, action: RosterAction) {
-        let outcome = apply_roster(&self.roster_store, &action);
-        if outcome != StoreReduceOutcome::Changed {
-            return;
-        }
-        let members = self.roster_store.members();
-        let listeners = {
-            let l = self
-                .roster_listeners
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            l.clone()
-        };
-        for listener in listeners {
-            listener.on_changed(&members);
         }
     }
 

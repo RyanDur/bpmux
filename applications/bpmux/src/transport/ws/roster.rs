@@ -3,12 +3,12 @@ use std::sync::Arc;
 use super::short_name;
 
 pub(crate) fn is_reserved_display(name: &str) -> bool {
-    use crate::store::stores::RosterRole;
+    use crate::store::RosterRole;
     matches!(role_from_short_name(short_name(name)), RosterRole::Owner)
 }
 
-pub(crate) fn role_from_short_name(short: &str) -> crate::store::stores::RosterRole {
-    use crate::store::stores::RosterRole;
+pub(crate) fn role_from_short_name(short: &str) -> crate::store::RosterRole {
+    use crate::store::RosterRole;
     let workflow = crate::workflow::current_workflow();
     let purpose = workflow
         .role
@@ -30,7 +30,7 @@ pub(crate) async fn dispatch_roster_join(
     identity: &str,
 ) {
     use crate::store::StoreAction;
-    use crate::store::stores::{Presence, RosterAction};
+    use crate::store::{Presence, RosterAction};
     let short = short_name(identity).to_string();
     let role = role_from_short_name(&short);
     store
@@ -45,8 +45,8 @@ pub(crate) async fn dispatch_roster_join(
 }
 
 pub(crate) async fn dispatch_roster_leave(store: &Arc<crate::store::Store>, routing_id: &str) {
+    use crate::store::RosterAction;
     use crate::store::StoreAction;
-    use crate::store::stores::RosterAction;
     store
         .dispatch(StoreAction::Roster(RosterAction::RosterMemberRemoved {
             routing_id: routing_id.to_string(),
@@ -57,10 +57,10 @@ pub(crate) async fn dispatch_roster_leave(store: &Arc<crate::store::Store>, rout
 pub(crate) async fn dispatch_roster_presence(
     store: &Arc<crate::store::Store>,
     routing_id: &str,
-    presence: crate::store::stores::Presence,
+    presence: crate::store::Presence,
 ) {
+    use crate::store::RosterAction;
     use crate::store::StoreAction;
-    use crate::store::stores::RosterAction;
     store
         .dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
             routing_id: routing_id.to_string(),
@@ -110,7 +110,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_agent_pushes_busy_idle_help_setting_its_own_roster_presence() {
-        use crate::store::stores::Presence;
+        use crate::store::Presence;
         let orch = fresh_orchestrator();
         dispatch_roster_join(&orch, "sess-dev", "dev").await;
 

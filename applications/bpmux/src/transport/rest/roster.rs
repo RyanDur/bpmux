@@ -10,7 +10,7 @@ use super::shared::{err_body, json_headers};
 pub struct RosterEntry {
     pub identity: String,
     pub role: String,
-    pub presence: crate::store::stores::Presence,
+    pub presence: crate::store::Presence,
 }
 
 pub async fn get_roster(
