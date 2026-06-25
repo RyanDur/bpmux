@@ -1,7 +1,7 @@
 pub mod client;
 pub mod rate_limit;
 
-pub use client::{ensure_crypto_provider_installed, octocrab_client};
+pub use client::ensure_crypto_provider_installed;
 pub use rate_limit::{
     BackoffDecision, BackoffSignal, CLOCK_SKEW_GRACE_SECS, ObservedWakes, RateLimitObserver,
     classify_and_decide, decide_backoff, is_rate_limit_error, signal_label,
