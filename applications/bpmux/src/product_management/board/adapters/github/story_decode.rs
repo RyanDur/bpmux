@@ -13,7 +13,6 @@ pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryT
 
 pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
     LabelDerivedFields {
-        tags: tags_from_labels(labels),
         parent_epic: parent_epic_from_labels(labels),
         iteration_membership: iteration_membership_from_labels(labels),
         outcome_membership: outcome_membership_from_labels(labels),
@@ -75,7 +74,6 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
         .unwrap_or_else(|| "unknown".to_string());
     let mut story = Story::new_minimal(number, title.clone(), state, filed_at, filed_by);
     story.story_type = story_type_from_labels_or_title(&labels, &title);
-    story.tags = tags_from_labels(&labels);
     story.is_closed = is_closed;
     story.parent_epic = parent_epic_from_labels(&labels);
     story.iteration_membership = iteration_membership_from_labels(&labels);

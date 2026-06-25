@@ -7,7 +7,7 @@ use super::peer::PeerId;
 use super::store::BoardStore;
 use crate::product_management::board::adapters::github::{
     acceptor_from_labels, horizon_from_labels, iteration_dev_ok_by_from_labels,
-    iteration_review_closers_from_labels,
+    iteration_review_closers_from_labels, tags_from_labels,
 };
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, Story, StoryState, StoryType, Tag,
@@ -385,7 +385,10 @@ fn tag_added_event_appends_to_story_tags() {
         number: 1,
         label: "blocked".to_string(),
     });
-    assert_eq!(store.story(1).unwrap().tags, vec![Tag::Blocked]);
+    assert_eq!(
+        tags_from_labels(&store.story(1).unwrap().raw_labels),
+        vec![Tag::Blocked]
+    );
 }
 
 #[test]
@@ -557,7 +560,7 @@ fn tag_added_unknown_label_is_dropped() {
         number: 1,
         label: "high-priority".to_string(),
     });
-    assert!(store.story(1).unwrap().tags.is_empty());
+    assert!(tags_from_labels(&store.story(1).unwrap().raw_labels).is_empty());
 }
 
 #[test]
@@ -581,7 +584,10 @@ fn tag_added_is_idempotent() {
         number: 1,
         label: "blocked".to_string(),
     });
-    assert_eq!(store.story(1).unwrap().tags, vec![Tag::Blocked]);
+    assert_eq!(
+        tags_from_labels(&store.story(1).unwrap().raw_labels),
+        vec![Tag::Blocked]
+    );
 }
 
 #[test]
@@ -605,7 +611,7 @@ fn tag_removed_event_strips_tag() {
         number: 1,
         label: "blocked".to_string(),
     });
-    assert!(store.story(1).unwrap().tags.is_empty());
+    assert!(tags_from_labels(&store.story(1).unwrap().raw_labels).is_empty());
 }
 
 #[test]
@@ -629,7 +635,10 @@ fn tag_removed_unknown_label_is_noop() {
         number: 1,
         label: "high-priority".to_string(),
     });
-    assert_eq!(store.story(1).unwrap().tags, vec![Tag::Blocked]);
+    assert_eq!(
+        tags_from_labels(&store.story(1).unwrap().raw_labels),
+        vec![Tag::Blocked]
+    );
 }
 
 #[test]

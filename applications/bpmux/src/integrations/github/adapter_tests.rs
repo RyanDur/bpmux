@@ -516,7 +516,7 @@ fn decode_story_metadata_populates_story_type_and_tags_from_labels() {
     });
     let story = decode_story_metadata(&v).unwrap();
     assert_eq!(story.story_type, StoryType::Bug);
-    assert_eq!(story.tags, vec![Tag::Blocked]);
+    assert_eq!(tags_from_labels(&story.raw_labels), vec![Tag::Blocked]);
 }
 
 #[test]

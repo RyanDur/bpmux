@@ -37,12 +37,11 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
             if label.eq_ignore_ascii_case("blocked")
                 && let Some(story) = s.stories.get_mut(number)
                 && !story
-                    .tags
-                    .contains(&crate::product_management::story::Tag::Blocked)
+                    .raw_labels
+                    .iter()
+                    .any(|l| l.eq_ignore_ascii_case("blocked"))
             {
-                story
-                    .tags
-                    .push(crate::product_management::story::Tag::Blocked);
+                story.raw_labels.push("blocked".to_string());
             }
         }
         BoardEvent::TagRemoved { number, label, .. } => {
@@ -53,8 +52,8 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                 && let Some(story) = s.stories.get_mut(number)
             {
                 story
-                    .tags
-                    .retain(|t| *t != crate::product_management::story::Tag::Blocked);
+                    .raw_labels
+                    .retain(|l| !l.eq_ignore_ascii_case("blocked"));
             }
         }
         BoardEvent::StoryClosed { number, .. } => {

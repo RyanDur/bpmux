@@ -47,7 +47,6 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
         state: StoryState::Ready,
         is_closed: false,
         story_type: StoryType::Feature,
-        tags: Vec::new(),
         parent_epic: None,
         gate_comments: None,
         free_comments: None,

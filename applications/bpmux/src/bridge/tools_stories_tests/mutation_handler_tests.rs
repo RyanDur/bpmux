@@ -92,7 +92,10 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(200).unwrap();
-    assert_eq!(story.tags, vec![Tag::Blocked]);
+    assert_eq!(
+        crate::product_management::board::adapters::github::tags_from_labels(&story.raw_labels),
+        vec![Tag::Blocked]
+    );
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(
@@ -153,7 +156,11 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     );
 
     let story = store.story(200).unwrap();
-    assert!(story.tags.is_empty(), "tags should be empty after remove");
+    assert!(
+        crate::product_management::board::adapters::github::tags_from_labels(&story.raw_labels)
+            .is_empty(),
+        "tags should be empty after remove"
+    );
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(

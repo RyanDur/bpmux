@@ -1,6 +1,6 @@
 use super::story_to_board_json;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Story, StoryState, StoryType, Tag};
+use crate::product_management::story::{Story, StoryState, StoryType};
 
 fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> Story {
     Story {
@@ -8,7 +8,6 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         title: "[Feature] sample".to_string(),
         state,
         story_type,
-        tags: Vec::new(),
         filed_at: chrono::DateTime::parse_from_rfc3339("2026-04-26T01:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc),
@@ -287,7 +286,7 @@ fn story_to_board_json_labels_include_story_type() {
 #[test]
 fn story_to_board_json_labels_include_blocked_tag() {
     let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    s.tags.push(Tag::Blocked);
+    s.raw_labels.push("blocked".to_string());
     let json = story_to_board_json(&GhLabelCodec, &s);
     let labels = json["labels"].as_array().expect("labels array");
     assert!(labels.iter().any(|l| l.as_str() == Some("blocked")));

@@ -17,7 +17,6 @@ pub(super) fn apply_story_created(
         title: title.to_string(),
         state: initial_state,
         story_type,
-        tags: Vec::new(),
         filed_at: meta.ts,
         filed_by: meta.actor.clone(),
         body: Some(body.to_string()),
@@ -125,7 +124,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
         existing.state = story.state;
         existing.story_type = story.story_type;
         existing.raw_labels = story.raw_labels.clone();
-        existing.tags = story.tags.clone();
         existing.is_closed = story.is_closed;
         existing.parent_epic = story.parent_epic;
         existing.iteration_membership = story.iteration_membership;

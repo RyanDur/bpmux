@@ -37,7 +37,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         title,
         state,
         story_type,
-        tags,
         filed_at,
         filed_by,
         body,
@@ -69,7 +68,11 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         crate::product_management::story::StoryType::Feature,
         "story_type must decode from labels"
     );
-    assert_eq!(tags.len(), 1, "tags must decode from labels (blocked)");
+    assert_eq!(
+        crate::product_management::board::adapters::github::tags_from_labels(raw_labels).len(),
+        1,
+        "tags must decode from labels (blocked)"
+    );
     assert_eq!(
         filed_at.to_rfc3339(),
         "2026-05-15T01:00:00+00:00",
