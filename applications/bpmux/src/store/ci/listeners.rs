@@ -3,10 +3,10 @@ use std::sync::Arc;
 use crate::ci::RunEntry;
 use crate::message::{CiSnapshotWire, StateDeltaPayload};
 use crate::session;
-use crate::store::{CiBroadcastListener, CiSnapshot};
+use crate::store::broadcast_state_delta;
 use crate::transport::ci_state_store::CiStateStore;
 
-use crate::store::broadcast_state_delta;
+use super::{CiBroadcastListener, CiSnapshot};
 
 pub struct CiStateStoreWriter {
     store: CiStateStore,

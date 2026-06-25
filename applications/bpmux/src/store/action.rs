@@ -1,6 +1,4 @@
-use super::ci::CiSnapshot;
-use crate::product_management::board::MutationId;
-use crate::store::{ReactionsAction, RosterAction};
+use crate::store::{CiAction, ReactionsAction, RosterAction, SyncAction};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PollKind {
@@ -15,34 +13,6 @@ pub enum StoreAction {
     Sync(SyncAction),
     Reactions(ReactionsAction),
     Roster(RosterAction),
-}
-
-#[derive(Clone, Debug)]
-pub enum CiAction {
-    StartPolling,
-    StopPolling,
-    Updated(CiSnapshot),
-}
-
-#[derive(Clone, Debug)]
-pub enum SyncAction {
-    StartIngestPolling,
-    StopIngestPolling,
-    StartHydrationPolling,
-    StopHydrationPolling,
-    StartUpdateGithub {
-        mutation_id: MutationId,
-    },
-    StopUpdateGithub {
-        mutation_id: MutationId,
-    },
-    MutationConfirmed {
-        mutation_id: MutationId,
-    },
-    MutationRolledBack {
-        mutation_id: MutationId,
-        server_story: Option<Box<crate::product_management::story::Story>>,
-    },
 }
 
 pub(super) fn validate_and_log(action: &StoreAction) {

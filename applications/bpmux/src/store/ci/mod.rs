@@ -42,6 +42,11 @@ pub trait CiBroadcastListener: Send + Sync {
     fn on_changed(&self, snap: &CiSnapshot);
 }
 
-mod store;
+mod action;
+mod listeners;
+mod middleware;
+mod reducer;
 
-pub use store::{CiReduceOutcome, CiStore};
+pub use action::CiAction;
+pub use listeners::{CiSessionBroadcaster, CiStateStoreWriter};
+pub use reducer::{CiReduceOutcome, CiStore};

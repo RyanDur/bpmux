@@ -7,17 +7,16 @@ use tokio_util::sync::CancellationToken;
 
 use crate::product_management::board::{MutationId, RefreshDriver};
 use crate::session;
-use crate::store::ci::CiStore;
 use crate::transport::ci_state_store::CiStateStore;
 
 pub mod ci;
-pub mod listeners;
 pub mod reactions;
 pub mod roster;
+pub mod sync;
 
 mod action;
-mod middleware;
-mod middleware_mutation;
+mod dispatch;
+mod owner_park;
 mod snapshot;
 
 #[cfg(test)]
@@ -27,9 +26,12 @@ mod listeners_tests;
 #[cfg(test)]
 mod stores_tests;
 
-pub use action::{CiAction, PollKind, StoreAction, SyncAction};
-pub use ci::{BoxedFuture, CiBroadcastListener, CiPollFetch, CiSnapshot};
-pub use listeners::{CiSessionBroadcaster, CiStateStoreWriter, OwnerParkBroadcaster};
+pub use action::{PollKind, StoreAction};
+pub use ci::{
+    BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiReduceOutcome, CiSessionBroadcaster,
+    CiSnapshot, CiStateStoreWriter, CiStore,
+};
+pub use owner_park::{OwnerParkBroadcaster, owner_park_presence};
 pub use reactions::{
     AggregatedReaction, ReactionsAction, ReactionsBroadcastListener, ReactionsSessionBroadcaster,
     ReactionsStore,
@@ -38,6 +40,7 @@ pub use roster::{
     Presence, RosterAction, RosterBroadcastListener, RosterMember, RosterRole,
     RosterSessionBroadcaster, RosterStore,
 };
+pub use sync::SyncAction;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StoreReduceOutcome {
