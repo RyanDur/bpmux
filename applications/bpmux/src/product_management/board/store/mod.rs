@@ -7,9 +7,9 @@ use super::events::BoardEvent;
 use crate::product_management::story::{Story, StoryState};
 
 mod apply;
-mod apply_events;
 mod middleware;
 mod persist_error;
+mod reducers;
 
 pub use persist_error::PersistError;
 

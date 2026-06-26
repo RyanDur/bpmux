@@ -1,4 +1,4 @@
-use super::apply_events::Stories;
+use super::reducers::Stories;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::project_labels;
 use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};

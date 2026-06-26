@@ -11,7 +11,7 @@ const FORBIDDEN_VENDOR_TOKENS: &[&str] = &[
 
 const SELF_FILE: &str = "boundary_tests.rs";
 
-const REDUCER_DIR: &str = "src/product_management/board/store/apply_events";
+const REDUCER_DIR: &str = "src/product_management/board/store/reducers";
 
 const REDUCER_FORBIDDEN_DECODE_TOKENS: &[&str] = &[
     "adapters::github",
@@ -85,7 +85,7 @@ fn board_reducer_does_no_label_decode() {
 
     assert!(
         violations.is_empty(),
-        "the board reducer (store/apply_events) is a PURE (state, action) -> state assign: it must not decode GitHub label format. Decoding belongs in the store middleware (store/middleware.rs), which projects a label set into typed LabelDerivedFields that the reducer assigns. Move the offending decode into the middleware. Violations:\n{}",
+        "the board reducer (store/reducers) is a PURE (state, action) -> state assign: it must not decode GitHub label format. Decoding belongs in the store middleware (store/middleware.rs), which projects a label set into typed LabelDerivedFields that the reducer assigns. Move the offending decode into the middleware. Violations:\n{}",
         violations.join("\n")
     );
 }
