@@ -7,6 +7,7 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
+use super::test_support::eventually;
 use super::{
     AggregatedReaction, Presence, ReactionsAction, ReactionsBroadcastListener, RosterAction,
     RosterBroadcastListener, RosterMember, RosterRole, Store, StoreAction,
@@ -95,8 +96,11 @@ async fn reactions_action_drives_reducer_and_fires_listener() {
     assert_eq!(agg[0].count, 1);
     assert_eq!(agg[0].users, vec!["owner".to_string()]);
 
+    eventually("reactions listener fired once", || {
+        rec.received.lock().unwrap().len() == 1
+    })
+    .await;
     let received = rec.received.lock().unwrap();
-    assert_eq!(received.len(), 1);
     assert_eq!(received[0].0, "broadcast");
     assert_eq!(received[0].1.len(), 1);
 }
@@ -120,8 +124,10 @@ async fn reactions_toggle_off_clears_and_fires_listener() {
     let agg = orch.reactions_aggregated_for_channel("broadcast");
     assert!(agg.is_empty(), "second toggle removes the reaction");
 
-    let received = rec.received.lock().unwrap();
-    assert_eq!(received.len(), 2, "both add + remove fire listener");
+    eventually("both add + remove fire listener", || {
+        rec.received.lock().unwrap().len() == 2
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -165,8 +171,10 @@ async fn roster_member_upserted_fires_listener() {
     assert_eq!(members[0].role, RosterRole::Owner);
     assert_eq!(members[0].presence, Presence::Online);
 
-    let received = rec.received.lock().unwrap();
-    assert_eq!(received.len(), 1);
+    eventually("roster upsert fires listener once", || {
+        rec.received.lock().unwrap().len() == 1
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -289,12 +297,12 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
     }))
     .await;
 
+    eventually(
+        "upsert + transition fire; same-presence-no-op doesn't",
+        || rec.received.lock().unwrap().len() == 2,
+    )
+    .await;
     let received = rec.received.lock().unwrap();
-    assert_eq!(
-        received.len(),
-        2,
-        "upsert + transition fire; same-presence-no-op doesn't fire"
-    );
     assert_eq!(received[1][0].presence, Presence::Busy);
 }
 
@@ -361,12 +369,12 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
     );
     assert_eq!(agg[0].count, 1);
 
+    eventually(
+        "REST POST -> dispatch -> reducer Changed -> listener fired",
+        || rec.received.lock().unwrap().len() == 1,
+    )
+    .await;
     let received = rec.received.lock().unwrap();
-    assert_eq!(
-        received.len(),
-        1,
-        "REST POST → store.dispatch → reducer Changed → listener fired"
-    );
     assert_eq!(received[0].0, "broadcast");
 }
 
@@ -386,8 +394,10 @@ async fn ws_dispatch_roster_join_populates_store_with_identity() {
     assert_eq!(members[0].role, RosterRole::Dev);
     assert_eq!(members[0].presence, Presence::Online);
 
-    let received = rec.received.lock().unwrap();
-    assert_eq!(received.len(), 1, "join dispatches → listener fires");
+    eventually("join dispatches -> listener fires", || {
+        rec.received.lock().unwrap().len() == 1
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -403,8 +413,10 @@ async fn ws_dispatch_roster_leave_removes_member() {
     let members = orch.roster_members();
     assert!(members.is_empty(), "leave removes member from store");
 
-    let received = rec.received.lock().unwrap();
-    assert_eq!(received.len(), 2, "join + leave both fire listeners");
+    eventually("join + leave both fire listeners", || {
+        rec.received.lock().unwrap().len() == 2
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -455,12 +467,11 @@ async fn roster_remove_fires_listener_when_member_existed() {
     .await;
 
     assert!(orch.roster_members().is_empty());
-    let received = rec.received.lock().unwrap();
-    assert_eq!(
-        received.len(),
-        2,
-        "upsert + remove fire; second remove of absent member is no-op"
-    );
+    eventually(
+        "upsert + remove fire; second remove of absent is no-op",
+        || rec.received.lock().unwrap().len() == 2,
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -491,6 +502,10 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
         "owner-park presence is recorded as first-class Blocked, not ephemeral overlay-text"
     );
 
+    eventually("upsert + presence change both fire", || {
+        rec.received.lock().unwrap().len() == 2
+    })
+    .await;
     let received = rec.received.lock().unwrap();
     assert_eq!(received.last().unwrap()[0].presence, Presence::Blocked);
 }

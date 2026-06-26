@@ -137,10 +137,11 @@ fn state_transitioned(
     }
 }
 
-fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMember> {
+async fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMember> {
     loop {
         let msg = rx
-            .try_recv()
+            .recv()
+            .await
             .expect("expected a roster state-delta broadcast");
         if msg.message_type != MessageType::StateDelta {
             continue;
@@ -193,7 +194,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
     ));
     orch.add_roster_listener(Arc::new(RosterSessionBroadcaster::new(session.clone())));
     seed_dev_online(&orch).await;
-    while rx.try_recv().is_ok() {}
+    let _seed = drain_roster_presence(&mut rx).await;
 
     let store = Arc::new(BoardStore::new());
     store.seed_all(vec![owner_parked_story(900)]);
@@ -203,7 +204,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
         .on_board_event(&state_transitioned(900, "dev", StoryState::Delivered))
         .await;
 
-    let members = drain_roster_presence(&mut rx);
+    let members = drain_roster_presence(&mut rx).await;
     let dev = members
         .iter()
         .find(|m| m.name == "dev")

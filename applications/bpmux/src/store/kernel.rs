@@ -2,8 +2,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-use tokio::task::JoinHandle;
-
 pub type ListenerFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
 pub type Dispatch<A> = Arc<dyn Fn(A) + Send + Sync>;
 
@@ -24,7 +22,6 @@ pub struct Store<S, A> {
     state: Mutex<Arc<S>>,
     reducer: RootReducer<S, A>,
     listeners: Mutex<Vec<Arc<dyn Listener<S, A>>>>,
-    in_flight: Mutex<Vec<JoinHandle<()>>>,
 }
 
 impl<S, A> Store<S, A>
@@ -37,7 +34,6 @@ where
             state: Mutex::new(Arc::new(initial)),
             reducer,
             listeners: Mutex::new(Vec::new()),
-            in_flight: Mutex::new(Vec::new()),
         })
     }
 
@@ -78,11 +74,6 @@ where
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .clone();
 
-        let mut in_flight = self
-            .in_flight
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        in_flight.retain(|handle| !handle.is_finished());
         for listener in listeners {
             let reaction = Reaction {
                 action: action.clone(),
@@ -90,7 +81,7 @@ where
                 current: Arc::clone(&current),
                 dispatch: Arc::clone(&dispatch),
             };
-            in_flight.push(tokio::spawn(listener.on_action(reaction)));
+            tokio::spawn(listener.on_action(reaction));
         }
     }
 
@@ -101,23 +92,5 @@ where
                 store.dispatch(action);
             }
         })
-    }
-
-    pub async fn await_listeners(&self) {
-        loop {
-            let batch: Vec<JoinHandle<()>> = {
-                let mut in_flight = self
-                    .in_flight
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
-                std::mem::take(&mut *in_flight)
-            };
-            if batch.is_empty() {
-                break;
-            }
-            for handle in batch {
-                let _ = handle.await;
-            }
-        }
     }
 }

@@ -10,6 +10,7 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use super::ci::{CiBroadcastListener, CiPollFetch, CiSnapshot};
+use super::test_support::eventually;
 use super::{CiAction, PollKind, Store, StoreAction, SyncAction};
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
@@ -136,8 +137,11 @@ async fn ci_updated_action_drives_reducer_and_fires_listener() {
         .await;
 
     assert_eq!(orch.ci_snapshot().expect("snapshot").run_id, Some(42));
+    eventually("listener fires on Changed outcome", || {
+        recorder.received.lock().unwrap().len() == 1
+    })
+    .await;
     let received = recorder.received.lock().unwrap();
-    assert_eq!(received.len(), 1, "listener fires on Changed outcome");
     assert_eq!(received[0].run_id, Some(42));
 }
 
@@ -158,8 +162,15 @@ async fn ci_updated_dedup_same_run_and_conclusion_no_listener_fire() {
     orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(42, "success"))))
         .await;
 
-    let received = recorder.received.lock().unwrap();
-    assert_eq!(received.len(), 1, "second identical CiUpdated is dedup'd");
+    eventually("first CiUpdated fires once", || {
+        recorder.received.lock().unwrap().len() == 1
+    })
+    .await;
+    assert_eq!(
+        recorder.received.lock().unwrap().len(),
+        1,
+        "second identical CiUpdated is dedup'd"
+    );
 }
 
 #[tokio::test]
@@ -181,12 +192,11 @@ async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
     orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(43, "success"))))
         .await;
 
-    let received = recorder.received.lock().unwrap();
-    assert_eq!(
-        received.len(),
-        3,
-        "each transition (status flip + new run_id) fires listener"
-    );
+    eventually(
+        "each transition (status flip + new run_id) fires listener",
+        || recorder.received.lock().unwrap().len() == 3,
+    )
+    .await;
 }
 
 #[tokio::test]

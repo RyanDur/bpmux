@@ -30,6 +30,8 @@ mod kernel_tests;
 mod listeners_tests;
 #[cfg(test)]
 mod stores_tests;
+#[cfg(test)]
+mod test_support;
 
 pub use action::{PollKind, StoreAction};
 pub use ci::{
@@ -131,10 +133,6 @@ impl Store {
             roster_listeners,
             reactions_listeners,
         }
-    }
-
-    pub async fn await_listeners(&self) {
-        self.app_store.await_listeners().await;
     }
 
     pub fn with_refresh(

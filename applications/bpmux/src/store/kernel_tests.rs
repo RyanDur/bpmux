@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use super::kernel::{Listener, ListenerFuture, Reaction, Store};
+use super::test_support::eventually;
 use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
@@ -38,7 +39,6 @@ async fn the_reducer_produces_new_state_for_each_action() {
     let store = counter_store();
     store.dispatch(Count::Increment);
     store.dispatch(Count::Add(5));
-    store.await_listeners().await;
     assert_eq!(value_of(&store), 6);
 }
 
@@ -66,9 +66,15 @@ async fn a_listener_sees_the_action_and_the_previous_and_current_state() {
     }));
 
     store.dispatch(Count::Increment);
-    store.await_listeners().await;
+    eventually("first transition recorded", || {
+        log.lock().unwrap().len() == 1
+    })
+    .await;
     store.dispatch(Count::Add(5));
-    store.await_listeners().await;
+    eventually("second transition recorded", || {
+        log.lock().unwrap().len() == 2
+    })
+    .await;
 
     assert_eq!(*log.lock().unwrap(), vec![(0, 1), (1, 6)]);
 }
@@ -91,7 +97,10 @@ async fn a_listener_can_dispatch_a_follow_up_action() {
     store.add_listener(Arc::new(ReinjectIncrementOnAdd));
 
     store.dispatch(Count::Add(10));
-    store.await_listeners().await;
+    eventually("listener reinjected the follow-up increment", || {
+        value_of(&store) == 11
+    })
+    .await;
 
     assert_eq!(value_of(&store), 11);
 }
