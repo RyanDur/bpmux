@@ -87,8 +87,14 @@ mod submit_verdict_tests;
 mod update_principle;
 mod user_fn;
 #[cfg(test)]
-mod user_fn_dispatch;
+mod user_fn_listing_tests;
 mod user_fn_parse;
+#[cfg(test)]
+mod user_fn_parse_tests;
+#[cfg(test)]
+mod user_fn_test_support;
+#[cfg(test)]
+mod user_fn_tests;
 mod view_backlog;
 #[cfg(test)]
 mod view_backlog_render;
