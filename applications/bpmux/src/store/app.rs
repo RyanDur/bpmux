@@ -4,6 +4,7 @@ use crate::store::ci::{self, CiAction, CiBroadcastListener, CiState};
 use crate::store::kernel::{Listener, ListenerFuture, Reaction};
 use crate::store::reactions::{self, ReactionsAction, ReactionsBroadcastListener, ReactionsState};
 use crate::store::roster::{self, RosterAction, RosterBroadcastListener, RosterState};
+use crate::store::sync::SyncAction;
 
 #[derive(Default, Clone)]
 pub struct AppState {
@@ -17,6 +18,7 @@ pub enum AppAction {
     Roster(RosterAction),
     Reactions(ReactionsAction),
     Ci(CiAction),
+    Sync(SyncAction),
 }
 
 impl From<RosterAction> for AppAction {
@@ -34,6 +36,12 @@ impl From<ReactionsAction> for AppAction {
 impl From<CiAction> for AppAction {
     fn from(action: CiAction) -> Self {
         Self::Ci(action)
+    }
+}
+
+impl From<SyncAction> for AppAction {
+    fn from(action: SyncAction) -> Self {
+        Self::Sync(action)
     }
 }
 
@@ -60,6 +68,7 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
+        AppAction::Sync(_) => state.clone(),
     }
 }
 

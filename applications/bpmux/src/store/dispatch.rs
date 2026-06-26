@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use tokio_util::sync::CancellationToken;
-
 use super::action::validate_and_log;
 use crate::store::{PollKind, Store, StoreAction};
 
@@ -10,7 +8,7 @@ impl Store {
         validate_and_log(&action);
         match action {
             StoreAction::Ci(a) => self.app_store.dispatch(a),
-            StoreAction::Sync(a) => self.dispatch_sync(a).await,
+            StoreAction::Sync(a) => self.app_store.dispatch(a),
             StoreAction::Reactions(a) => self.app_store.dispatch(a),
             StoreAction::Roster(a) => self.app_store.dispatch(a),
         }
@@ -19,34 +17,14 @@ impl Store {
     pub async fn is_running(&self, kind: PollKind) -> bool {
         match kind {
             PollKind::Ci => self.ci_poll.is_running(),
-            PollKind::Ingest | PollKind::Hydration => {
-                let tokens = self.tokens.lock().await;
-                tokens.contains_key(&kind)
-            }
-        }
-    }
-
-    pub(crate) async fn spawn_lifecycle_proxy(
-        &self,
-        local_ct: CancellationToken,
-        task_ct: CancellationToken,
-    ) {
-        let parent_clone = self.parent_ct.clone();
-        let local_clone = local_ct.clone();
-        let task_clone = task_ct.clone();
-        tokio::spawn(async move {
-            tokio::select! {
-                _ = parent_clone.cancelled() => {}
-                _ = local_clone.cancelled() => {}
-            }
-            task_clone.cancel();
-        });
-    }
-
-    pub(crate) async fn middleware_stop(&self, kind: PollKind) {
-        let mut tokens = self.tokens.lock().await;
-        if let Some(token) = tokens.remove(&kind) {
-            token.cancel();
+            PollKind::Ingest => self
+                .sync_poll
+                .as_ref()
+                .is_some_and(|poll| poll.ingest_running()),
+            PollKind::Hydration => self
+                .sync_poll
+                .as_ref()
+                .is_some_and(|poll| poll.hydration_running()),
         }
     }
 }

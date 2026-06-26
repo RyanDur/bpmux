@@ -1,11 +1,9 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use tokio::sync::Mutex as AsyncMutex;
 use tokio_util::sync::CancellationToken;
 
-use crate::product_management::board::{MutationId, RefreshDriver};
+use crate::product_management::board::RefreshDriver;
 use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 
@@ -48,12 +46,6 @@ pub use roster::{
 };
 pub use sync::SyncAction;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum StoreReduceOutcome {
-    Changed,
-    Unchanged,
-}
-
 pub(crate) fn broadcast_state_delta(
     session: &session::Session,
     payload: crate::message::StateDeltaPayload,
@@ -74,15 +66,12 @@ pub(crate) fn broadcast_state_delta(
 
 pub struct Store {
     session: Arc<session::Session>,
-    refresh: Option<Arc<dyn RefreshDriver>>,
-    ingest_interval: Duration,
-    hydration_interval: Duration,
     parent_ct: CancellationToken,
     rate_limit_observer: crate::github::RateLimitObserver,
     ci_poll: Arc<ci::CiPoll>,
+    sync_poll: Option<Arc<sync::SyncPoll>>,
+    github_drain: Option<Arc<sync::GithubDrain>>,
     app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
-    tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
-    mutation_tokens: AsyncMutex<HashMap<MutationId, CancellationToken>>,
     ci_listeners: app::CiListeners,
     roster_listeners: app::RosterListeners,
     reactions_listeners: app::ReactionsListeners,
@@ -120,15 +109,12 @@ impl Store {
         app_store.add_listener(ci_poll.clone());
         Self {
             session,
-            refresh: None,
-            ingest_interval: Duration::from_secs(60),
-            hydration_interval: Duration::from_secs(15),
             parent_ct,
             rate_limit_observer,
             ci_poll,
+            sync_poll: None,
+            github_drain: None,
             app_store,
-            tokens: AsyncMutex::new(HashMap::new()),
-            mutation_tokens: AsyncMutex::new(HashMap::new()),
             ci_listeners,
             roster_listeners,
             reactions_listeners,
@@ -141,9 +127,18 @@ impl Store {
         ingest_interval: Duration,
         hydration_interval: Duration,
     ) -> Self {
-        self.refresh = Some(refresh);
-        self.ingest_interval = ingest_interval;
-        self.hydration_interval = hydration_interval;
+        let sync_poll = Arc::new(sync::SyncPoll::new(
+            refresh.clone(),
+            self.rate_limit_observer.clone(),
+            ingest_interval,
+            hydration_interval,
+            self.parent_ct.clone(),
+        ));
+        self.app_store.add_listener(sync_poll.clone());
+        let github_drain = Arc::new(sync::GithubDrain::new(refresh, self.parent_ct.clone()));
+        self.app_store.add_listener(github_drain.clone());
+        self.sync_poll = Some(sync_poll);
+        self.github_drain = Some(github_drain);
         self
     }
 
