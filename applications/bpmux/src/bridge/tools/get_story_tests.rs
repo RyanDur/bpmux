@@ -430,10 +430,10 @@ async fn cache_hit_does_not_refetch_when_body_already_present() {
     );
 }
 
-fn make_iteration(number: u64, theme: &str, body: &str) -> Story {
+fn make_iteration(number: u64, name: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
         number,
-        format!("Iteration {theme}"),
+        format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),

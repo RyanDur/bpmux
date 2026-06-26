@@ -57,7 +57,7 @@ async fn bpmux_iteration_close_succeeds_for_pm_off_mcp() {
     let create = pm
         .call_tool(
             "create_iteration",
-            serde_json::json!({ "theme_name": "Telescopium" }),
+            serde_json::json!({ "name": "Telescopium" }),
         )
         .await
         .expect("create_iteration should succeed");

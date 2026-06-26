@@ -21,7 +21,7 @@ impl LabelCodec for GhLabelCodec {
             return None;
         }
         Some(IterationLabelParts {
-            theme_name: name.to_string(),
+            name: name.to_string(),
             position,
         })
     }
@@ -30,13 +30,13 @@ impl LabelCodec for GhLabelCodec {
         label.starts_with("iteration-") && label.contains('.')
     }
 
-    fn encode_iteration(&self, theme_name: &str, position: u32) -> String {
-        format!("iteration-{theme_name}.{position}")
+    fn encode_iteration(&self, name: &str, position: u32) -> String {
+        format!("iteration-{name}.{position}")
     }
 
     fn iteration_label_class(&self, label: &str) -> Option<String> {
         let parts = self.decode_iteration(label)?;
-        Some(format!("iteration-{}.", parts.theme_name))
+        Some(format!("iteration-{}.", parts.name))
     }
 
     fn encode_parent_epic(&self, issue_number: u64) -> String {

@@ -5,12 +5,9 @@ import type { Page } from '@playwright/test'
 
 export const MOCK_CURRENT_ITERATION_NUMBER = 999
 
-export const mockCurrentIteration = (
-  themeName: string,
-  createdAt: string
-): Record<string, unknown> => ({
+export const mockCurrentIteration = (name: string, createdAt: string): Record<string, unknown> => ({
   number: MOCK_CURRENT_ITERATION_NUMBER,
-  title: `Iteration ${themeName}`,
+  title: `Iteration ${name}`,
   state: 'in-progress',
   labels: ['iteration'],
   assignees: [],
@@ -28,11 +25,8 @@ export const inMockCurrentIteration = (position: number): Record<string, unknown
 
 export type RpcFn = (tool: string, body: unknown, agent?: string) => Promise<Response>
 
-export const seedCurrentIterationViaRpc = async (
-  rpc: RpcFn,
-  themeName: string
-): Promise<number> => {
-  const iterResp = await rpc('create_iteration', { theme_name: themeName }, 'pm')
+export const seedCurrentIterationViaRpc = async (rpc: RpcFn, name: string): Promise<number> => {
+  const iterResp = await rpc('create_iteration', { name }, 'pm')
   expect(iterResp.status).toBe(200)
   const iterJson = (await iterResp.json()) as { message?: string }
   const iterNumber = Number(iterJson.message?.match(/#(\d+)/)?.[1])
@@ -65,9 +59,9 @@ export const addStoryToIterationViaRpc = async (
 export const setupCurrentIterationViaRpc = async (
   rpc: RpcFn,
   storyNumber: number,
-  themeName: string
+  name: string
 ): Promise<number> => {
-  const iterNumber = await seedCurrentIterationViaRpc(rpc, themeName)
+  const iterNumber = await seedCurrentIterationViaRpc(rpc, name)
   await addStoryToIterationViaRpc(rpc, storyNumber, iterNumber, 1)
   return iterNumber
 }
@@ -75,7 +69,7 @@ export const setupCurrentIterationViaRpc = async (
 export const seedCurrentIterationViaTestApi = async (
   backendPort: number,
   authToken: string,
-  themeName: string
+  name: string
 ): Promise<number> => {
   const post = async (path: string, body: unknown): Promise<{ message?: string }> => {
     const res = await fetch(`http://127.0.0.1:${backendPort}/api/test/${path}`, {
@@ -86,7 +80,7 @@ export const seedCurrentIterationViaTestApi = async (
     expect(res.ok).toBe(true)
     return res.json() as Promise<{ message?: string }>
   }
-  const create = await post('create_iteration', { theme_name: themeName, agent: 'pm:test' })
+  const create = await post('create_iteration', { name, agent: 'pm:test' })
   const iterNumber = Number(create.message?.match(/#(\d+)/)?.[1])
   expect(iterNumber).toBeGreaterThan(0)
   await post('designate_current_iteration', {
@@ -97,14 +91,14 @@ export const seedCurrentIterationViaTestApi = async (
 }
 
 export const launchIsolatedWithSeededIteration = async (
-  opts: LaunchOpts & { themeName?: string } = {}
+  opts: LaunchOpts & { name?: string } = {}
 ): Promise<LaunchResult & { win: Page; currentIterationNumber: number }> => {
-  const { themeName = 'SeededIteration', ...launchOpts } = opts
+  const { name = 'SeededIteration', ...launchOpts } = opts
   const result = await launchIsolatedWithWindow(launchOpts)
   const currentIterationNumber = await seedCurrentIterationViaTestApi(
     result.backendPort,
     result.authToken,
-    themeName
+    name
   )
   await result.win.reload()
   await expect(result.win.locator('[data-test="board-region"]')).toBeVisible()
@@ -112,12 +106,12 @@ export const launchIsolatedWithSeededIteration = async (
 }
 
 export const launchWithMockGhAndSeededIteration = async (
-  opts: LaunchOpts & { themeName?: string } = {}
+  opts: LaunchOpts & { name?: string } = {}
 ): Promise<MockGhLaunchResult & { currentIterationNumber: number }> => {
-  const { themeName = 'SeededIteration', ...launchOpts } = opts
+  const { name = 'SeededIteration', ...launchOpts } = opts
   const result = await launchWithMockGh(launchOpts)
   await expect(result.win.locator('[data-test="board-region"]')).toBeVisible()
-  const currentIterationNumber = await seedCurrentIterationViaRpc(result.rpc, themeName)
+  const currentIterationNumber = await seedCurrentIterationViaRpc(result.rpc, name)
   await result.win.reload()
   await expect(result.win.locator('[data-test="board-region"]')).toBeVisible()
   return { ...result, currentIterationNumber }

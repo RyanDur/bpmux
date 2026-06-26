@@ -31,10 +31,10 @@ mod codec_injection_substrate {
 
         fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts> {
             let rest = label.strip_prefix("STUB|")?;
-            let (theme, pos) = rest.split_once(':')?;
+            let (name, pos) = rest.split_once(':')?;
             let position: u32 = pos.parse().ok()?;
             Some(IterationLabelParts {
-                theme_name: theme.to_string(),
+                name: name.to_string(),
                 position,
             })
         }
@@ -43,14 +43,14 @@ mod codec_injection_substrate {
             label.starts_with("STUB|") && label.contains(':')
         }
 
-        fn encode_iteration(&self, theme_name: &str, position: u32) -> String {
-            format!("STUB|{theme_name}:{position}")
+        fn encode_iteration(&self, name: &str, position: u32) -> String {
+            format!("STUB|{name}:{position}")
         }
 
         fn iteration_label_class(&self, label: &str) -> Option<String> {
             let rest = label.strip_prefix("STUB|")?;
-            let (theme, _pos) = rest.split_once(':')?;
-            Some(format!("STUB|{theme}"))
+            let (name, _pos) = rest.split_once(':')?;
+            Some(format!("STUB|{name}"))
         }
 
         fn encode_parent_epic(&self, issue_number: u64) -> String {

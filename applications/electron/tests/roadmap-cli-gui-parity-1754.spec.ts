@@ -54,7 +54,7 @@ test.describe('#1754 — an agent reading via the CLI and the owner viewing the 
         )
       )
       const buildingIteration = await numberFromMessage(
-        await rpc('create_iteration', { theme_name: 'Crux' }, 'pm')
+        await rpc('create_iteration', { name: 'Crux' }, 'pm')
       )
       const mapped = await rpc(
         'map_iteration_to_outcome',
@@ -97,7 +97,7 @@ test.describe('#1754 — an agent reading via the CLI and the owner viewing the 
         )
       )
       const iteration = await numberFromMessage(
-        await rpc('create_iteration', { theme_name: 'Crux' }, 'pm')
+        await rpc('create_iteration', { name: 'Crux' }, 'pm')
       )
       const mapped = await rpc(
         'map_iteration_to_outcome',

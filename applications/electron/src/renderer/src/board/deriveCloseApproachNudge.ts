@@ -2,7 +2,7 @@ import { findCurrentIteration } from './currentIteration'
 import { deriveNowView } from './deriveNowView'
 import { firstUnmetLabel, readinessOf, unmetCount } from './iterationReadiness'
 import { isIterationStory, positionInIterationOrder } from './iterationMembers'
-import { themeNameFromTitle } from './labelSchema'
+import { iterationNameFromTitle } from './labelSchema'
 import { columnFor, type BoardStory, type ColumnState } from './types'
 
 export interface CloseApproachNudge {
@@ -54,7 +54,7 @@ export const deriveCloseApproachNudge = (stories: BoardStory[]): CloseApproachNu
 
   return {
     nextIterationNumber: next.number,
-    nextIterationName: themeNameFromTitle(next.title),
+    nextIterationName: iterationNameFromTitle(next.title),
     activeGapLabel: firstUnmetLabel(readiness) ?? 'not ready'
   }
 }

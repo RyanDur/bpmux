@@ -31,8 +31,8 @@ test.describe('#1510 board-header iteration-context', () => {
       const board = new BoardPage(win)
       const roadmap = new RoadmapPage(win)
 
-      const memberNumber = await createStory(rpc, '[Feature] Member of AlphaTheme')
-      await setupCurrentIterationViaRpc(rpc, memberNumber, 'AlphaTheme')
+      const memberNumber = await createStory(rpc, '[Feature] Member of Alpha')
+      await setupCurrentIterationViaRpc(rpc, memberNumber, 'Alpha')
 
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))
       await win.reload()
@@ -47,7 +47,7 @@ test.describe('#1510 board-header iteration-context', () => {
       const glyph = header.getByRole('status')
 
       await expect(iteration).toBeVisible()
-      await expect(iteration).toHaveText('AlphaTheme')
+      await expect(iteration).toHaveText('Alpha')
       await expect(title).toHaveText('Board')
       await expect(glyph).toBeVisible()
 

@@ -14,11 +14,11 @@ test.describe('#1564 — live-walk harness slice 1/2: boot + seed + drive create
         () => (window as unknown as { bpmux?: { authToken?: string } }).bpmux?.authToken ?? ''
       )
 
-      const themeName = `SandboxWalk-${Date.now()}`
+      const name = `SandboxWalk-${Date.now()}`
       const create = await fetch(`http://127.0.0.1:${backendPort}/api/test/create_iteration`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ theme_name: themeName, agent: 'pm:test' })
+        body: JSON.stringify({ name, agent: 'pm:test' })
       })
       expect(create.ok, 'create_iteration must return 200; got ' + create.status).toBe(true)
       const body = await create.json()
@@ -29,7 +29,7 @@ test.describe('#1564 — live-walk harness slice 1/2: boot + seed + drive create
       const board = new BoardPage(win)
       await board.openTab('Plan')
       await expect(board.tab('Plan')).toBeChecked({ timeout: 5_000 })
-      await expect(win.getByText(`Iteration ${themeName}`).first()).toBeVisible({
+      await expect(win.getByText(`Iteration ${name}`).first()).toBeVisible({
         timeout: 15_000
       })
 

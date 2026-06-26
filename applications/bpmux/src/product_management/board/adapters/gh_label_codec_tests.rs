@@ -152,7 +152,7 @@ fn decode_iteration_order_rejects_non_order_labels() {
 }
 
 #[test]
-fn is_iteration_position_label_accepts_theme_dot_digits() {
+fn is_iteration_position_label_accepts_name_dot_digits() {
     assert!(GhLabelCodec.is_iteration_position_label("iteration-Octans.3"));
 }
 

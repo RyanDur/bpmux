@@ -3,11 +3,11 @@ use crate::product_management::story::Story;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IterationLabelParts {
-    pub theme_name: String,
+    pub name: String,
     pub position: u32,
 }
 
-pub fn theme_name_from_title(title: &str) -> String {
+pub fn iteration_name_from_title(title: &str) -> String {
     let raw = title.strip_prefix("Iteration ").unwrap_or(title).trim();
     raw.split_whitespace().collect::<Vec<_>>().join("-")
 }

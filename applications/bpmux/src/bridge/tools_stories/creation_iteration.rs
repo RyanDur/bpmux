@@ -17,10 +17,10 @@ pub(crate) async fn handle_create_iteration(
                 .to_string(),
         );
     }
-    let theme_name = require_nonempty_string(
+    let name = require_nonempty_string(
         args,
-        "theme_name",
-        "theme_name is required: short name for the iteration (e.g., 'Aquila', 'Pegasus'). Surfaces as the GH issue title 'Iteration {theme_name}'.",
+        "name",
+        "name is required: short name for the iteration (e.g., 'Aquila', 'Pegasus'). Surfaces as the GH issue title 'Iteration {name}'.",
     )?;
     let r = refresh
         .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
@@ -30,17 +30,16 @@ pub(crate) async fn handle_create_iteration(
             &s.title,
         ) == crate::product_management::story::StoryType::Iteration
             && !s.is_closed
-            && s.title
-                .eq_ignore_ascii_case(&format!("Iteration {theme_name}"))
+            && s.title.eq_ignore_ascii_case(&format!("Iteration {name}"))
     });
     if let Some(existing) = existing_open_iteration {
         return Err(format!(
-            "iteration named '{theme_name}' already open as #{n}; close it first or pick a different name (#1281 sister-discipline: duplicate-collision rejected at create-time)",
+            "iteration named '{name}' already open as #{n}; close it first or pick a different name (#1281 sister-discipline: duplicate-collision rejected at create-time)",
             n = existing.number
         ));
     }
-    let title = format!("Iteration {theme_name}");
-    let body = compose_iteration_body(theme_name);
+    let title = format!("Iteration {name}");
+    let body = compose_iteration_body(name);
     let number = r
         .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
         .await

@@ -1,8 +1,8 @@
 export const ITERATION_PREFIX = 'iteration-'
 export const ITERATION_ORDER_PREFIX = 'iteration-order.'
 export const PARENT_ITERATION_PREFIX = 'parent-iteration-#'
-export const UNSCHEDULED_THEME_NAME = 'Unscheduled'
-export const UNSCHEDULED_LABEL_PREFIX = `${ITERATION_PREFIX}${UNSCHEDULED_THEME_NAME}.`
+export const UNSCHEDULED_ITERATION_NAME = 'Unscheduled'
+export const UNSCHEDULED_LABEL_PREFIX = `${ITERATION_PREFIX}${UNSCHEDULED_ITERATION_NAME}.`
 
 const ITERATION_LABEL_RE = /^iteration-(.+)\.(\d+)$/
 const PARENT_ITERATION_LABEL_RE = /^parent-iteration-#(\d+)\.(\d+)$/
@@ -17,8 +17,8 @@ export interface ParentIterationLabelParts {
   position: number
 }
 
-export const iterationLabel = (themeName: string, position: number): string =>
-  `${ITERATION_PREFIX}${themeName}.${position}`
+export const iterationLabel = (name: string, position: number): string =>
+  `${ITERATION_PREFIX}${name}.${position}`
 
 export const parentIterationLabel = (iterationNumber: number, position: number): string =>
   `${PARENT_ITERATION_PREFIX}${iterationNumber}.${position}`
@@ -59,7 +59,7 @@ export const isIterationPositionLabel = (label: string): boolean => {
   return ITERATION_LABEL_RE.test(label)
 }
 
-export const themeNameFromTitle = (title: string): string => {
+export const iterationNameFromTitle = (title: string): string => {
   const match = title.match(/^Iteration (.+)$/)
   const raw = match !== null ? match[1].trim() : title.trim()
   return raw.replace(/\s+/g, '-')

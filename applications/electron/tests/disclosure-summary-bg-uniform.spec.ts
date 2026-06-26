@@ -69,8 +69,8 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
         epicNumber
       )
 
-      const memberNumber = await createStory(rpc, '[Feature] Member of AlphaTheme')
-      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'AlphaTheme')
+      const memberNumber = await createStory(rpc, '[Feature] Member of Alpha')
+      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'Alpha')
       await addStoryToIterationViaRpc(rpc, memberNumber, iterNumber, 1)
 
       await createStory(rpc, '[Feature] Unscheduled loose story A')

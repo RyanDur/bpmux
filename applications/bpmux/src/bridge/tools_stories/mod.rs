@@ -43,7 +43,7 @@ pub(crate) use helpers::{
     KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
 pub(crate) use iteration_reorg::{
-    handle_edit_iteration_theme, handle_move_iteration_member, handle_remove_iteration_member,
+    handle_move_iteration_member, handle_remove_iteration_member, handle_rename_iteration,
 };
 pub(crate) use metadata::{handle_comment_on_story, handle_edit_story, handle_label_story};
 pub(crate) use metadata_epic::{handle_set_parent_epic, handle_unset_parent_epic};

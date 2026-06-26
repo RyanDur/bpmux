@@ -49,7 +49,7 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
     }
 
     #[tokio::test]
-    async fn icebox_reorder_with_existing_iteration_label_keeps_theme_and_repositions() {
+    async fn icebox_reorder_with_existing_iteration_label_keeps_name_and_repositions() {
         let orch = build_orchestrator(vec![
             seed_story(2001, vec!["iteration-Pegasus.100".into()]),
             seed_story(2002, vec!["iteration-Pegasus.200".into()]),

@@ -357,14 +357,14 @@ impl crate::product_management::board::label_codec::LabelCodec for StubLabelCode
         label: &str,
     ) -> Option<crate::product_management::iteration::label::IterationLabelParts> {
         let rest = label.strip_prefix("iter|")?;
-        let (theme, pos_str) = rest.rsplit_once(':')?;
+        let (name, pos_str) = rest.rsplit_once(':')?;
         let position = pos_str.parse().ok()?;
-        if theme.is_empty() {
+        if name.is_empty() {
             return None;
         }
         Some(
             crate::product_management::iteration::label::IterationLabelParts {
-                theme_name: theme.to_string(),
+                name: name.to_string(),
                 position,
             },
         )
@@ -378,12 +378,12 @@ impl crate::product_management::board::label_codec::LabelCodec for StubLabelCode
     fn encode_ready_order(&self, position: u32) -> String {
         format!("rdy:{position}")
     }
-    fn encode_iteration(&self, theme_name: &str, position: u32) -> String {
-        format!("iter|{theme_name}:{position}")
+    fn encode_iteration(&self, name: &str, position: u32) -> String {
+        format!("iter|{name}:{position}")
     }
     fn iteration_label_class(&self, label: &str) -> Option<String> {
         let parts = self.decode_iteration(label)?;
-        Some(format!("iter|{}:", parts.theme_name))
+        Some(format!("iter|{}:", parts.name))
     }
 }
 

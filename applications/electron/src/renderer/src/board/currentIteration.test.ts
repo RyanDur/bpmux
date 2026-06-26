@@ -119,7 +119,7 @@ describe('#1453 isMemberOfIteration', () => {
     expect(isMemberOfIteration(member, iter)).toBe(true)
   })
 
-  test('legacy iteration-{Theme}.{N} label alone no longer matches (identity-only attribution)', () => {
+  test('legacy iteration-{Name}.{N} label alone no longer matches (identity-only attribution)', () => {
     const iter = iterationStory({ number: 1491, title: 'Iteration Caelum' })
     const member = story({
       number: 9601,

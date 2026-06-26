@@ -70,7 +70,7 @@ async fn move_into_icebox_preserves_iteration_membership_when_story_already_in_n
         s.raw_labels
             .iter()
             .any(|l| l.starts_with("iteration-Pegasus.")),
-        "story keeps Pegasus theme membership after move-to-icebox at position 1: {:?}",
+        "story keeps Pegasus name membership after move-to-icebox at position 1: {:?}",
         s.raw_labels
     );
 }

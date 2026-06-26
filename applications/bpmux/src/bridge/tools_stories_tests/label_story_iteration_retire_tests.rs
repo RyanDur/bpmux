@@ -65,7 +65,7 @@ async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
 }
 
 #[tokio::test]
-async fn label_story_rejects_iteration_label_for_different_themes_1402() {
+async fn label_story_rejects_iteration_label_for_different_names_1402() {
     let (_store, orch) = build_orchestrator().await;
     for label in [
         "iteration-Pegasus.100",

@@ -78,9 +78,7 @@ async fn dispatch(
         "move_iteration_member" => {
             bridge::dispatch_move_iteration_member(args, agent, refresh_ref).await
         }
-        "edit_iteration_theme" => {
-            bridge::dispatch_edit_iteration_theme(args, agent, refresh_ref).await
-        }
+        "rename_iteration" => bridge::dispatch_rename_iteration(args, agent, refresh_ref).await,
         "unmap_outcome_iteration" => {
             bridge::dispatch_unmap_outcome_iteration(args, agent, refresh_ref).await
         }

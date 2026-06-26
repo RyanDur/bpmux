@@ -13,7 +13,7 @@ import { useBoardReorder } from './useBoardReorder'
 import { usePendingReadyOrder } from './usePendingReadyOrder'
 import { findCurrentIteration } from './currentIteration'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
-import { themeNameFromTitle } from './labelSchema'
+import { iterationNameFromTitle } from './labelSchema'
 import { GROUP_ORDER, type BoardStory, type ColumnState } from './types'
 import './Board.css'
 
@@ -60,7 +60,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
 
   const currentIteration = findCurrentIteration(stories)
   const currentIterationName =
-    currentIteration !== null ? themeNameFromTitle(currentIteration.title) : null
+    currentIteration !== null ? iterationNameFromTitle(currentIteration.title) : null
   const closeApproachNudge = useMemo(() => deriveCloseApproachNudge(stories), [stories])
 
   const {

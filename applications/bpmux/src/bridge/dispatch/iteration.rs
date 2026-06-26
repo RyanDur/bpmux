@@ -161,12 +161,12 @@ pub(crate) async fn dispatch_move_iteration_member(
     tools_stories::handle_move_iteration_member(&args, agent_name, refresh).await
 }
 
-pub(crate) async fn dispatch_edit_iteration_theme(
+pub(crate) async fn dispatch_rename_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    tools_stories::handle_edit_iteration_theme(&args, agent_name, refresh).await
+    tools_stories::handle_rename_iteration(&args, agent_name, refresh).await
 }
 
 pub(crate) async fn dispatch_unmap_outcome_iteration(

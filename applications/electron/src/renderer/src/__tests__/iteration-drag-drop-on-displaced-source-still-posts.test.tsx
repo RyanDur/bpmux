@@ -21,7 +21,7 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
     await seedStories(apiBase, authToken, [
       {
         number: 9501,
-        title: 'Iteration DisplacedDropTheme',
+        title: 'Iteration DisplacedDrop',
         story_type: 'iteration',
         initial_state: 'icebox'
       },

@@ -3,10 +3,10 @@ use super::retired_filter::*;
 use crate::product_management::story::{Story, StoryState};
 use chrono::Utc;
 
-fn iter_story(number: u64, theme: &str, state: StoryState) -> Story {
+fn iter_story(number: u64, name: &str, state: StoryState) -> Story {
     let mut s = Story::new_minimal(
         number,
-        format!("Iteration {theme}"),
+        format!("Iteration {name}"),
         state,
         Utc::now(),
         "test".to_string(),

@@ -4,8 +4,8 @@ use crate::cli::actions::{EpicAction, IterationAction, OutcomeAction};
 use crate::cli::write_iteration::{
     run_epic_children, run_epic_set_parent, run_epic_unset_parent, run_iteration_add,
     run_iteration_close, run_iteration_close_review, run_iteration_create, run_iteration_designate,
-    run_iteration_dev_ok, run_iteration_edit_theme, run_iteration_move_member,
-    run_iteration_remove_member,
+    run_iteration_dev_ok, run_iteration_move_member, run_iteration_remove_member,
+    run_iteration_rename,
 };
 use crate::cli::write_outcome::{
     run_outcome_add, run_outcome_create, run_outcome_edit, run_outcome_reorder,
@@ -41,9 +41,9 @@ pub(crate) fn dispatch_planning(command: &PlanningCommands) -> anyhow::Result<()
     match command {
         PlanningCommands::Iteration { action } => match action {
             IterationAction::Create {
-                theme,
+                name,
                 position_after,
-            } => run_iteration_create(theme, *position_after),
+            } => run_iteration_create(name, *position_after),
             IterationAction::Designate { number } => run_iteration_designate(*number),
             IterationAction::Add {
                 iteration,
@@ -63,7 +63,7 @@ pub(crate) fn dispatch_planning(command: &PlanningCommands) -> anyhow::Result<()
                 story,
                 to,
             } => run_iteration_move_member(*iteration, *story, *to),
-            IterationAction::Edit { number, theme } => run_iteration_edit_theme(*number, theme),
+            IterationAction::Rename { number, name } => run_iteration_rename(*number, name),
         },
         PlanningCommands::Outcome { action } => match action {
             OutcomeAction::Create {

@@ -21,7 +21,7 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
     await seedStories(apiBase, authToken, [
       {
         number: 7701,
-        title: 'Iteration OptimisticVisualTheme',
+        title: 'Iteration OptimisticVisual',
         story_type: 'iteration',
         initial_state: 'icebox'
       },

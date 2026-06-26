@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GripIcon } from './GripIcon'
 import StoryTypeGlyph from './StoryTypeGlyph'
-import { themeNameFromTitle } from './labelSchema'
+import { iterationNameFromTitle } from './labelSchema'
 import { ITERATION_GRIP_TEST_ID, boardIterationTestId } from './testIds'
 import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
 import type { SortableRowContext } from './SortableList'
@@ -35,7 +35,7 @@ const IterationRow = ({
 }: Props): React.JSX.Element => {
   const [dragRejected, setDragRejected] = useState(false)
   const key = String(iteration.number)
-  const themeName = themeNameFromTitle(iteration.title)
+  const iterationName = iterationNameFromTitle(iteration.title)
   const members = getMembersFor(iteration.number)
   const defaultOpen = iteration.gh_state !== 'closed'
   const open = collapse.isOpen(key, defaultOpen)
@@ -60,7 +60,7 @@ const IterationRow = ({
           data-test={boardIterationTestId(iteration.number)}
           aria-label={`Iteration #${iteration.number} ${iteration.title}`}
           data-iteration-kind="named"
-          data-iteration-name={themeName}
+          data-iteration-name={iterationName}
           data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
           data-current-iteration={isCurrent ? 'true' : undefined}
           data-dragging={drag?.dragging ? 'true' : undefined}

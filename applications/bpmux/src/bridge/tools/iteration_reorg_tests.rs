@@ -2,7 +2,7 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::{
-    handle_edit_iteration_theme, handle_move_iteration_member, handle_remove_iteration_member,
+    handle_move_iteration_member, handle_remove_iteration_member, handle_rename_iteration,
 };
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -13,10 +13,10 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn iteration(number: u64, theme: &str) -> Story {
+fn iteration(number: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
         number,
-        format!("Iteration {theme}"),
+        format!("Iteration {name}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
@@ -193,19 +193,19 @@ async fn move_member_reorders_within_the_iteration_1762() {
 }
 
 #[tokio::test]
-async fn edit_theme_updates_the_iteration_title_1762() {
+async fn rename_updates_the_iteration_title_1762() {
     let refresh = build_refresh(vec![iteration(1700, "Circinus")]).await;
-    let args = json!({ "iteration_number": 1700, "theme": "Vela" })
+    let args = json!({ "iteration_number": 1700, "name": "Vela" })
         .as_object()
         .cloned()
         .unwrap();
-    handle_edit_iteration_theme(&args, "pm:claude-code", Some(&refresh))
+    handle_rename_iteration(&args, "pm:claude-code", Some(&refresh))
         .await
-        .expect("pm edits the theme");
+        .expect("pm renames the iteration");
     assert_eq!(
         refresh.story(1700).expect("present").title,
         "Iteration Vela",
-        "the theme edit updates the iteration title (surfaced in board/roadmap)"
+        "the rename updates the iteration title (surfaced in board/roadmap)"
     );
 }
 
@@ -253,13 +253,13 @@ async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
     );
     feature.raw_labels.push("feature".to_string());
     let refresh = build_refresh(vec![feature]).await;
-    let args = json!({ "iteration_number": 700, "theme": "X" })
+    let args = json!({ "iteration_number": 700, "name": "X" })
         .as_object()
         .cloned()
         .unwrap();
-    let err = handle_edit_iteration_theme(&args, "pm:claude-code", Some(&refresh))
+    let err = handle_rename_iteration(&args, "pm:claude-code", Some(&refresh))
         .await
-        .expect_err("a non-iteration is not theme-editable");
+        .expect_err("a non-iteration is not name-editable");
     assert!(
         err.contains("not an Iteration"),
         "the error teaches the boundary: {err}"

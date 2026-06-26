@@ -29,9 +29,9 @@ pub(crate) fn reorder_icebox_story_via_labels(
     let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
     let current_iteration = story.raw_labels.iter().find_map(|l| {
         crate::product_management::iteration::label::parse_iteration_label(&codec, l)
-            .map(|p| (p.theme_name, l.clone()))
+            .map(|p| (p.name, l.clone()))
     });
-    let theme_name = current_iteration
+    let name = current_iteration
         .as_ref()
         .map(|(t, _)| t.clone())
         .unwrap_or_else(|| "Unscheduled".to_string());
@@ -42,7 +42,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
         .filter_map(|s| {
             s.raw_labels.iter().find_map(|l| {
                 crate::product_management::iteration::label::parse_iteration_label(&codec, l)
-                    .filter(|p| p.theme_name == theme_name)
+                    .filter(|p| p.name == name)
                     .map(|p| p.position)
             })
         })
@@ -52,7 +52,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
         insert_index,
         &other_positions,
     );
-    let new_label = codec.encode_iteration(&theme_name, new_position);
+    let new_label = codec.encode_iteration(&name, new_position);
     if let Some((_, current_label)) = &current_iteration
         && current_label.as_str() == new_label.as_str()
     {

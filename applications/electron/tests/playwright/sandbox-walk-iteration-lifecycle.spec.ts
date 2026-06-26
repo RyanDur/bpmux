@@ -66,33 +66,33 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         () => (window as unknown as { bpmux?: { authToken?: string } }).bpmux?.authToken ?? ''
       )
       const stamp = Date.now()
-      const themeA = `LifecycleWalkA-${stamp}`
-      const themeB = `LifecycleWalkB-${stamp}`
-      const themeC = `LifecycleWalkC-${stamp}`
+      const nameA = `LifecycleWalkA-${stamp}`
+      const nameB = `LifecycleWalkB-${stamp}`
+      const nameC = `LifecycleWalkC-${stamp}`
 
       const createA = await postTest(backendPort, token, 'create_iteration', {
-        theme_name: themeA,
+        name: nameA,
         agent: 'pm:test'
       })
       expect(createA.ok, JSON.stringify(createA.json)).toBe(true)
       const numberA = parseCreatedIterationNumber(createA.json.message)
 
       const createB = await postTest(backendPort, token, 'create_iteration', {
-        theme_name: themeB,
+        name: nameB,
         agent: 'pm:test'
       })
       expect(createB.ok, JSON.stringify(createB.json)).toBe(true)
       parseCreatedIterationNumber(createB.json.message)
 
       const createC = await postTest(backendPort, token, 'create_iteration', {
-        theme_name: themeC,
+        name: nameC,
         agent: 'pm:test'
       })
       expect(createC.ok, JSON.stringify(createC.json)).toBe(true)
       parseCreatedIterationNumber(createC.json.message)
 
       await switchToTab(win, 'Plan')
-      await expect(win.getByText(`Iteration ${themeA}`).first()).toBeVisible({
+      await expect(win.getByText(`Iteration ${nameA}`).first()).toBeVisible({
         timeout: 15_000
       })
       await capture(win, 'lifecycle-01-created')
@@ -106,7 +106,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       await switchToTab(win, 'Now')
       const headerIteration = new BoardPage(win).headerIteration()
       await expect(headerIteration).toBeVisible({ timeout: 15_000 })
-      await expect(headerIteration).toContainText(themeA, {
+      await expect(headerIteration).toContainText(nameA, {
         timeout: 15_000
       })
       await capture(win, 'lifecycle-02-designated')
@@ -157,7 +157,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         .toBe(true)
       await capture(win, 'lifecycle-03-reordered')
 
-      const renameTitle = `Iteration ${themeA}-RENAMED`
+      const renameTitle = `Iteration ${nameA}-RENAMED`
       const rename = await postTest(backendPort, token, 'edit_story', {
         number: numberA,
         title: renameTitle,
@@ -166,7 +166,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       expect(rename.ok, JSON.stringify(rename.json)).toBe(true)
       await switchToTab(win, 'Now')
       await expect(headerIteration).toBeVisible({ timeout: 30_000 })
-      await expect(headerIteration).toContainText(`${themeA}-RENAMED`, {
+      await expect(headerIteration).toContainText(`${nameA}-RENAMED`, {
         timeout: 15_000
       })
       await capture(win, 'lifecycle-04-renamed')

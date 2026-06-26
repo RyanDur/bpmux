@@ -4,9 +4,9 @@ pub fn create_iteration_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "theme_name": {
+            "name": {
                 "type": "string",
-                "description": "REQUIRED: short identifier for the iteration (e.g., 'Aquila', 'Pegasus', 'Cassiopeia'). Surfaces as the GH issue title 'Iteration {theme_name}' and is the duplicate-rejection key — an OPEN iteration with the same name is rejected with a named-collision error at create-time (sister-discipline to #1281)."
+                "description": "REQUIRED: short identifier for the iteration (e.g., 'Aquila', 'Pegasus', 'Cassiopeia'). Surfaces as the GH issue title 'Iteration {name}' and is the duplicate-rejection key — an OPEN iteration with the same name is rejected with a named-collision error at create-time (sister-discipline to #1281)."
             },
             "position_after": {
                 "type": "integer",
@@ -14,7 +14,7 @@ pub fn create_iteration_tool(description: &'static str) -> Tool {
                 "minimum": 1
             }
         },
-        "required": ["theme_name"]
+        "required": ["name"]
     });
     Tool::new(
         "create_iteration",

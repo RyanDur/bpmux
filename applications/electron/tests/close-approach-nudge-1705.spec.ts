@@ -65,8 +65,8 @@ const createMember = async (rpc: RpcFn, label: string): Promise<number> => {
   return numberFromMessage(resp)
 }
 
-const createIteration = async (rpc: RpcFn, theme: string): Promise<number> => {
-  const resp = await rpc('create_iteration', { theme_name: theme }, 'pm')
+const createIteration = async (rpc: RpcFn, name: string): Promise<number> => {
+  const resp = await rpc('create_iteration', { name }, 'pm')
   return numberFromMessage(resp)
 }
 
@@ -97,7 +97,7 @@ const deliverMember = async (rpc: RpcFn, number: number): Promise<void> => {
 
 interface NudgeTopology {
   nextNumber: number
-  nextTheme: string
+  nextName: string
 }
 
 const seedCloseApproach = async (
@@ -111,11 +111,11 @@ const seedCloseApproach = async (
   }
   const nextMember = await createMember(rpc, 'next member')
 
-  const currentTheme = 'Lupus'
-  const nextTheme = 'Fornax'
-  const currentIter = await createIteration(rpc, currentTheme)
+  const currentName = 'Lupus'
+  const nextName = 'Fornax'
+  const currentIter = await createIteration(rpc, currentName)
   const currentOrder = await waitForStableIterationOrder(result, currentIter)
-  const nextIter = await createIteration(rpc, nextTheme)
+  const nextIter = await createIteration(rpc, nextName)
   const nextOrder = await waitForStableIterationOrder(result, nextIter)
   expect(nextOrder, 'the next iteration sorts after the current one').toBeGreaterThan(currentOrder)
 
@@ -158,7 +158,7 @@ const seedCloseApproach = async (
     expect(devOkResp.status).toBe(200)
   }
 
-  return { nextNumber: nextIter, nextTheme }
+  return { nextNumber: nextIter, nextName }
 }
 
 type MotionTrace = { minOpacity: number | null; maxAnims: number; samples: number }
@@ -200,14 +200,14 @@ test.describe('#1705 close-approach readiness nudge', () => {
     try {
       const board = new BoardPage(win)
       await expect(board.region()).toBeVisible()
-      const { nextTheme } = await seedCloseApproach(result, false)
+      const { nextName } = await seedCloseApproach(result, false)
       await win.reload()
       await expect(board.region()).toBeVisible()
 
       const trace = traceFromFirstAppearance(win)
       const strip = board.closeApproachNudge()
       await expect(strip).toBeVisible()
-      await expect(strip).toContainText(nextTheme)
+      await expect(strip).toContainText(nextName)
       await expect(strip).toContainText('designer-review')
       await expect(board.roadmapAttn()).toBeVisible()
       await expect(board.tabBar()).toBeVisible()

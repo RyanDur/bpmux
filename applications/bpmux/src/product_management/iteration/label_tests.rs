@@ -16,18 +16,21 @@ fn seed(number: u64, raw_labels: Vec<String>) -> Story {
 }
 
 #[test]
-fn theme_name_strips_iteration_prefix() {
-    assert_eq!(theme_name_from_title("Iteration Pegasus"), "Pegasus");
+fn name_strips_iteration_prefix() {
+    assert_eq!(iteration_name_from_title("Iteration Pegasus"), "Pegasus");
 }
 
 #[test]
-fn theme_name_hyphenates_internal_whitespace() {
-    assert_eq!(theme_name_from_title("Iteration Big Dipper"), "Big-Dipper");
+fn name_hyphenates_internal_whitespace() {
+    assert_eq!(
+        iteration_name_from_title("Iteration Big Dipper"),
+        "Big-Dipper"
+    );
 }
 
 #[test]
-fn theme_name_returns_trimmed_title_when_prefix_absent() {
-    assert_eq!(theme_name_from_title("  Pegasus  "), "Pegasus");
+fn name_returns_trimmed_title_when_prefix_absent() {
+    assert_eq!(iteration_name_from_title("  Pegasus  "), "Pegasus");
 }
 
 #[test]
@@ -35,18 +38,18 @@ fn parse_label_simple_position() {
     assert_eq!(
         parse_iteration_label(&GhLabelCodec, "iteration-Pegasus.100"),
         Some(IterationLabelParts {
-            theme_name: "Pegasus".to_string(),
+            name: "Pegasus".to_string(),
             position: 100
         })
     );
 }
 
 #[test]
-fn parse_label_hyphenated_theme() {
+fn parse_label_hyphenated_name() {
     assert_eq!(
         parse_iteration_label(&GhLabelCodec, "iteration-Big-Dipper.200"),
         Some(IterationLabelParts {
-            theme_name: "Big-Dipper".to_string(),
+            name: "Big-Dipper".to_string(),
             position: 200
         })
     );
@@ -133,14 +136,14 @@ fn members_of_iteration_attributes_by_canonical_identity_1553() {
 }
 
 #[test]
-fn members_of_iteration_no_longer_attributes_legacy_theme_label_1553() {
+fn members_of_iteration_no_longer_attributes_legacy_name_label_1553() {
     let stories = vec![
         seed(2001, vec!["iteration-Telescopium.100".to_string()]),
         seed(2002, vec!["iteration-Telescopium.200".to_string()]),
     ];
     assert!(
         members_of_iteration(&stories, 1397).is_empty(),
-        "legacy theme-name labels are retired; attribution is identity-only"
+        "legacy name labels are retired; attribution is identity-only"
     );
 }
 

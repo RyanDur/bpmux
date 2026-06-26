@@ -24,18 +24,18 @@ mod canonical_via_gh_1300 {
         );
         let state_label = format!("{state:?}").to_lowercase();
         s.raw_labels = match iteration {
-            Some((theme, position)) => {
-                vec![state_label, format!("iteration-{theme}.{position}")]
+            Some((name, position)) => {
+                vec![state_label, format!("iteration-{name}.{position}")]
             }
             None => vec![state_label],
         };
         s
     }
 
-    fn seed_iteration_issue(number: u64, theme: &str) -> Story {
+    fn seed_iteration_issue(number: u64, name: &str) -> Story {
         let mut s = Story::new_minimal(
             number,
-            format!("Iteration {theme}"),
+            format!("Iteration {name}"),
             StoryState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),

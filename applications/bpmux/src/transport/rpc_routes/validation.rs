@@ -38,7 +38,7 @@ pub(super) fn known_tools() -> &'static [&'static str] {
         "retire_outcome",
         "remove_iteration_member",
         "move_iteration_member",
-        "edit_iteration_theme",
+        "rename_iteration",
         "unmap_outcome_iteration",
         "reorder_outcome_iteration",
         "reorder_story",

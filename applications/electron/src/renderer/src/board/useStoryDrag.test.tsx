@@ -95,7 +95,7 @@ describe('#1358 useStoryDrag lifecycle', () => {
   test('encoder + decoder round-trip a JSON payload type', () => {
     interface Payload {
       storyNumber: number
-      themeName: string
+      name: string
     }
     const { result } = renderHook(() =>
       useStoryDrag<Payload>({
@@ -111,7 +111,7 @@ describe('#1358 useStoryDrag lifecycle', () => {
       })
     )
     const event = fakeDragEvent()
-    const payload: Payload = { storyNumber: 9, themeName: 'Andromeda' }
+    const payload: Payload = { storyNumber: 9, name: 'Andromeda' }
     act(() => result.current.startDrag(event, payload.storyNumber, payload))
     expect(result.current.decode(event)).toEqual(payload)
   })

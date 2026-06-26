@@ -267,7 +267,7 @@ async fn bpmux_iteration_create_blocks_a_non_pm_via_its_custom_pm_lane_guard() {
     let out = run_verb(
         &bpmux,
         "dev",
-        &["iteration", "create", "--theme", "Telescopium"],
+        &["iteration", "create", "--name", "Telescopium"],
     )
     .await;
     assert!(
@@ -288,7 +288,7 @@ async fn bpmux_iteration_create_owner_bypasses_its_custom_pm_lane_guard() {
     let out = run_verb(
         &bpmux,
         "owner",
-        &["iteration", "create", "--theme", "Telescopium"],
+        &["iteration", "create", "--name", "Telescopium"],
     )
     .await;
     assert!(
@@ -305,7 +305,7 @@ async fn bpmux_iteration_create_succeeds_for_pm_off_mcp() {
     let out = run_verb(
         &bpmux,
         "pm",
-        &["iteration", "create", "--theme", "Telescopium"],
+        &["iteration", "create", "--name", "Telescopium"],
     )
     .await;
     assert!(

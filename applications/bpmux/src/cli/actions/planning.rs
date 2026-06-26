@@ -23,10 +23,10 @@ pub(crate) enum EpicAction {
 
 #[derive(Subcommand)]
 pub(crate) enum IterationAction {
-    #[command(about = "Create an iteration with a theme")]
+    #[command(about = "Create an iteration with a name")]
     Create {
-        #[arg(long, help = "Iteration theme name")]
-        theme: String,
+        #[arg(long, help = "Iteration name")]
+        name: String,
         #[arg(long, help = "Insert after this iteration number (optional)")]
         position_after: Option<u64>,
     },
@@ -83,12 +83,12 @@ pub(crate) enum IterationAction {
         #[arg(long, help = "New 1-indexed position within the iteration")]
         to: u32,
     },
-    #[command(about = "Edit an iteration's theme (its title). PM-only; owner bypasses.")]
-    Edit {
+    #[command(about = "Rename an iteration (its title). PM-only; owner bypasses.")]
+    Rename {
         #[arg(help = "Iteration entity issue number")]
         number: u64,
-        #[arg(long, help = "New theme name")]
-        theme: String,
+        #[arg(long, help = "New iteration name")]
+        name: String,
     },
 }
 

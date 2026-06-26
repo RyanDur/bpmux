@@ -96,9 +96,9 @@ const seedOutcomeRoadmap = async (result: MockGhLaunchResult): Promise<void> => 
     )
   )
 
-  const crux = await numberFromMessage(await rpc('create_iteration', { theme_name: 'Crux' }, 'pm'))
+  const crux = await numberFromMessage(await rpc('create_iteration', { name: 'Crux' }, 'pm'))
   await waitForIterationSettled(result, crux, (s) => s.iteration_order !== null)
-  const lyra = await numberFromMessage(await rpc('create_iteration', { theme_name: 'Lyra' }, 'pm'))
+  const lyra = await numberFromMessage(await rpc('create_iteration', { name: 'Lyra' }, 'pm'))
   await waitForIterationSettled(result, lyra, (s) => s.iteration_order !== null)
 
   const mapCrux = await rpc(

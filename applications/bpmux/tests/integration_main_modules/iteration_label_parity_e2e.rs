@@ -2,9 +2,9 @@
 
 use bpmux::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use bpmux::product_management::board::label_codec::LabelCodec;
-use bpmux::product_management::iteration::label::theme_name_from_title;
+use bpmux::product_management::iteration::label::iteration_name_from_title;
 
-fn renderer_theme_name_from_title(title: &str) -> String {
+fn renderer_iteration_name_from_title(title: &str) -> String {
     let raw = match title.strip_prefix("Iteration ") {
         Some(rest) if !rest.is_empty() => rest.trim(),
         _ => title.trim(),
@@ -24,7 +24,7 @@ fn renderer_parse_iteration_label(label: &str) -> Option<(String, u32)> {
 }
 
 #[test]
-fn theme_name_from_title_agrees_with_renderer_mirror() {
+fn iteration_name_from_title_agrees_with_renderer_mirror() {
     let titles = [
         "Iteration Octans",
         "Iteration Microscopium",
@@ -35,10 +35,10 @@ fn theme_name_from_title_agrees_with_renderer_mirror() {
     ];
     for title in titles {
         assert_eq!(
-            theme_name_from_title(title),
-            renderer_theme_name_from_title(title),
-            "cross-surface drift: title={title:?} — Rust theme_name_from_title disagrees with the \
-             renderer labelSchema.ts themeNameFromTitle mirror; update both sides together"
+            iteration_name_from_title(title),
+            renderer_iteration_name_from_title(title),
+            "cross-surface drift: title={title:?} — Rust iteration_name_from_title disagrees with the \
+             renderer labelSchema.ts iterationNameFromTitle mirror; update both sides together"
         );
     }
 }
@@ -58,9 +58,7 @@ fn decode_iteration_agrees_with_renderer_parse_mirror() {
         "parent-epic-#1234",
     ];
     for label in labels {
-        let rust = codec
-            .decode_iteration(label)
-            .map(|p| (p.theme_name, p.position));
+        let rust = codec.decode_iteration(label).map(|p| (p.name, p.position));
         let renderer = renderer_parse_iteration_label(label);
         assert_eq!(
             rust, renderer,

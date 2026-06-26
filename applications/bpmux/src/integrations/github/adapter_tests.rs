@@ -14,11 +14,11 @@ use crate::product_management::board::sync::{SyncError, classify_close_error};
 use crate::product_management::story::{Gate, StoryState, StoryType, Tag};
 
 #[test]
-fn is_iteration_position_label_matches_iteration_theme_dot_number() {
+fn is_iteration_position_label_matches_iteration_name_dot_number() {
     assert!(is_iteration_position_label("iteration-Cassiopeia.100"));
     assert!(is_iteration_position_label("iteration-Aquila-B.50"));
     assert!(is_iteration_position_label(
-        "iteration-My-Long-Theme-Name.999"
+        "iteration-My-Long-Name-Name.999"
     ));
 }
 

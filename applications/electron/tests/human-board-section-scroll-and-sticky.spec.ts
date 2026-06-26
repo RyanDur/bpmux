@@ -6,7 +6,7 @@ import { launchWithMockGhAndSeededIteration } from './helpers/iteration-fixture'
 test.describe('#467 board panel — bounded scroll + sticky headers + native <details>', () => {
   test('section toggling uses native <details>/<summary> primitives', async () => {
     const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
-      themeName: 'ScrollStickyDetails'
+      name: 'ScrollStickyDetails'
     })
     try {
       const consoleErrors: string[] = []
@@ -35,7 +35,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
 
   test('default browser disclosure-triangle is suppressed', async () => {
     const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
-      themeName: 'ScrollStickyDisclosure'
+      name: 'ScrollStickyDisclosure'
     })
     try {
       const summary = new BoardPage(win).columnToggle('Ready')
@@ -49,7 +49,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
 
   test('multi-expand: opening one section does not auto-collapse others', async () => {
     const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
-      themeName: 'ScrollStickyMultiExpand'
+      name: 'ScrollStickyMultiExpand'
     })
     try {
       const ready = new BoardPage(win).columnToggle('Ready')
@@ -93,7 +93,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
 
   test('section headers are sticky-positioned with opaque background', async () => {
     const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
-      themeName: 'ScrollStickySticky'
+      name: 'ScrollStickySticky'
     })
     try {
       const summary = new BoardPage(win).columnToggle('Ready')
@@ -114,7 +114,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
 
   test('chevron rotates between collapsed and expanded via [open] selector', async () => {
     const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
-      themeName: 'ScrollStickyChevron'
+      name: 'ScrollStickyChevron'
     })
     try {
       const summary = new BoardPage(win).columnToggle('Ready')
@@ -133,7 +133,7 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
 
   test('no console errors or hydration warnings on expand/collapse cycle', async () => {
     const { app, win, mockGh } = await launchWithMockGhAndSeededIteration({
-      themeName: 'ScrollStickyNoErrors'
+      name: 'ScrollStickyNoErrors'
     })
     try {
       const consoleErrors: string[] = []

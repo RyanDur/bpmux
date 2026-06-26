@@ -128,7 +128,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.panelHasStory('done', 9101)).toBe(false)
   })
 
-  test('Scenario regression: legacy iteration-{Theme}.{N} label still derives current-iter Epic', () => {
+  test('Scenario regression: legacy iteration-{Name}.{N} label still derives current-iter Epic', () => {
     const iter = iterationStory({ number: 1500, title: 'Iteration Sextans' })
     const epicIn = epicStory({ number: 8001, title: 'Epic Legacy' })
     const legacyMember = featureStory({

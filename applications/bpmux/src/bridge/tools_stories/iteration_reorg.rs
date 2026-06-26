@@ -115,23 +115,23 @@ pub(crate) async fn handle_move_iteration_member(
     ))
 }
 
-pub(crate) async fn handle_edit_iteration_theme(
+pub(crate) async fn handle_rename_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "edit an iteration theme")?;
+    require_purpose(agent_name, &["pm"], "edit an iteration name")?;
     let iteration_number = args
         .get("iteration_number")
         .and_then(serde_json::Value::as_u64)
         .ok_or("missing 'iteration_number' argument")?;
-    let theme = args
-        .get("theme")
+    let name = args
+        .get("name")
         .and_then(serde_json::Value::as_str)
         .filter(|t| !t.trim().is_empty())
-        .ok_or("iteration edit needs --theme <T>")?;
+        .ok_or("iteration rename needs --name <N>")?;
 
-    let r = refresh.ok_or("edit_iteration_theme requires refresh (RefreshDriver)")?;
+    let r = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
     let story_type =
         crate::product_management::board::adapters::github::story_type_from_labels_or_title(
@@ -144,10 +144,8 @@ pub(crate) async fn handle_edit_iteration_theme(
             story_type
         ));
     }
-    r.update_title(iteration_number, format!("Iteration {theme}"))
+    r.update_title(iteration_number, format!("Iteration {name}"))
         .await
-        .map_err(|e| format!("#{iteration_number} theme update failed: {e}"))?;
-    Ok(format!(
-        "iteration #{iteration_number} theme updated to {theme}"
-    ))
+        .map_err(|e| format!("#{iteration_number} name update failed: {e}"))?;
+    Ok(format!("iteration #{iteration_number} renamed to {name}"))
 }

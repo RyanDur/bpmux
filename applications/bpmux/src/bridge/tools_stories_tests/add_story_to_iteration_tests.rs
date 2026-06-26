@@ -22,10 +22,10 @@ async fn build_orchestrator(stories: Vec<Story>) -> (Arc<BoardStore>, Arc<dyn Re
     (store, orch)
 }
 
-fn iteration_seed(number: u64, theme: &str) -> Story {
+fn iteration_seed(number: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
         number,
-        format!("Iteration {theme}"),
+        format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),

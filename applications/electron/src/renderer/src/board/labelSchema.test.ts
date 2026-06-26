@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest'
 import {
   ITERATION_ORDER_PREFIX,
   ITERATION_PREFIX,
+  UNSCHEDULED_ITERATION_NAME,
   UNSCHEDULED_LABEL_PREFIX,
-  UNSCHEDULED_THEME_NAME,
   iterationLabel,
+  iterationNameFromTitle,
   isIterationPositionLabel,
   parseIterationLabel,
   parseIterationOrderPosition,
   parseUnscheduledPosition,
-  themeNameFromTitle,
   unscheduledLabel
 } from './labelSchema'
 
@@ -46,7 +46,7 @@ describe('#1365 labelSchema — single-source-of-truth constants + parsers', () 
     expect(unscheduledLabel(100)).toBe('iteration-Unscheduled.100')
   })
 
-  it('isIterationPositionLabel matches Theme.N pattern', () => {
+  it('isIterationPositionLabel matches Name.N pattern', () => {
     expect(isIterationPositionLabel('iteration-Andromeda.100')).toBe(true)
     expect(isIterationPositionLabel('iteration-Big-Dipper.50')).toBe(true)
   })
@@ -61,16 +61,16 @@ describe('#1365 labelSchema — single-source-of-truth constants + parsers', () 
     expect(isIterationPositionLabel('iteration')).toBe(false)
   })
 
-  it('themeNameFromTitle strips iteration prefix + hyphenates whitespace', () => {
-    expect(themeNameFromTitle('Iteration Andromeda')).toBe('Andromeda')
-    expect(themeNameFromTitle('Iteration Big Dipper')).toBe('Big-Dipper')
-    expect(themeNameFromTitle('  raw  ')).toBe('raw')
+  it('iterationNameFromTitle strips iteration prefix + hyphenates whitespace', () => {
+    expect(iterationNameFromTitle('Iteration Andromeda')).toBe('Andromeda')
+    expect(iterationNameFromTitle('Iteration Big Dipper')).toBe('Big-Dipper')
+    expect(iterationNameFromTitle('  raw  ')).toBe('raw')
   })
 
   it('exports the canonical prefix constants', () => {
     expect(ITERATION_PREFIX).toBe('iteration-')
     expect(ITERATION_ORDER_PREFIX).toBe('iteration-order.')
-    expect(UNSCHEDULED_THEME_NAME).toBe('Unscheduled')
+    expect(UNSCHEDULED_ITERATION_NAME).toBe('Unscheduled')
     expect(UNSCHEDULED_LABEL_PREFIX).toBe('iteration-Unscheduled.')
   })
 })

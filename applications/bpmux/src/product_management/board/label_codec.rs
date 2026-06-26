@@ -17,7 +17,7 @@ pub trait LabelCodec {
 
     fn is_iteration_label_loose(&self, label: &str) -> bool;
 
-    fn encode_iteration(&self, theme_name: &str, position: u32) -> String;
+    fn encode_iteration(&self, name: &str, position: u32) -> String;
 
     fn iteration_label_class(&self, label: &str) -> Option<String>;
 

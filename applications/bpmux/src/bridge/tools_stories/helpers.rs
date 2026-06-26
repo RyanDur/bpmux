@@ -139,17 +139,17 @@ pub(crate) fn require_purpose_any(
     require_role(agent_name, &allowed, operation)
 }
 
-pub(crate) fn compose_iteration_body(theme_name: &str) -> String {
+pub(crate) fn compose_iteration_body(name: &str) -> String {
     let today = chrono::Utc::now().format("%Y-%m-%d");
     format!(
-        "## Iteration {theme_name}\n\
+        "## Iteration {name}\n\
          \n\
          **Created**: {today}\n\
          **Status**: Open\n\
          \n\
          ## Member stories\n\
          \n\
-         <!-- Members carry `iteration-{theme_name}.{{position}}` labels;\n\
+         <!-- Members carry `iteration-{name}.{{position}}` labels;\n\
               ordering is by position ascending. -->\n\
          \n\
          _(no members yet)_\n\

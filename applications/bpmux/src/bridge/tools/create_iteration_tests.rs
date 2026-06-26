@@ -15,10 +15,10 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn seed_iteration_story(number: u64, theme: &str, is_closed: bool) -> Story {
+fn seed_iteration_story(number: u64, name: &str, is_closed: bool) -> Story {
     let mut s = Story::new_minimal(
         number,
-        format!("Iteration {theme}"),
+        format!("Iteration {name}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),
         "pm".to_string(),
@@ -42,13 +42,13 @@ async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
     build_refresh_with_stories(vec![]).await
 }
 
-fn args(theme: &str) -> Map<String, Value> {
-    let map = json!({ "theme_name": theme });
+fn args(name: &str) -> Map<String, Value> {
+    let map = json!({ "name": name });
     map.as_object().cloned().unwrap_or_default()
 }
 
 #[tokio::test]
-async fn create_iteration_creates_issue_with_iteration_type_and_themed_title() {
+async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
     let refresh = build_empty_refresh().await;
     let result = handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
@@ -59,7 +59,7 @@ async fn create_iteration_creates_issue_with_iteration_type_and_themed_title() {
     );
     assert!(
         result.contains("Iteration Aquila"),
-        "title includes theme: {result}"
+        "title includes name: {result}"
     );
     let stories = refresh.all_stories();
     let iteration = stories
@@ -74,14 +74,14 @@ async fn create_iteration_creates_issue_with_iteration_type_and_themed_title() {
 }
 
 #[tokio::test]
-async fn create_iteration_rejects_duplicate_open_theme_name() {
+async fn create_iteration_rejects_duplicate_open_name() {
     let refresh = build_refresh_with_stories(vec![seed_iteration_story(42, "Aquila", false)]).await;
     let err = handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect_err("duplicate Aquila rejected");
     assert!(
         err.contains("'Aquila'"),
-        "error names the conflicting theme: {err}"
+        "error names the conflicting name: {err}"
     );
     assert!(
         err.contains("#42"),
@@ -94,7 +94,7 @@ async fn create_iteration_accepts_same_name_after_previous_closed() {
     let refresh = build_refresh_with_stories(vec![seed_iteration_story(42, "Aquila", true)]).await;
     let result = handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
-        .expect("re-using a closed theme_name succeeds");
+        .expect("re-using a closed name succeeds");
     assert!(
         result.contains("iteration created:"),
         "new iteration created after previous Aquila closed: {result}"
@@ -221,14 +221,14 @@ async fn create_iteration_rejects_non_pm_role() {
 }
 
 #[tokio::test]
-async fn create_iteration_requires_theme_name_arg() {
+async fn create_iteration_requires_name_arg() {
     let refresh = build_empty_refresh().await;
     let empty: Map<String, Value> = Map::new();
     let err = handle_create_iteration(&empty, "pm:claude-code", Some(&refresh))
         .await
-        .expect_err("missing theme_name rejected");
+        .expect_err("missing name rejected");
     assert!(
-        err.contains("theme_name is required"),
+        err.contains("name is required"),
         "error names the required field: {err}"
     );
 }

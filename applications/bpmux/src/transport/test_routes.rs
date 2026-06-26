@@ -119,7 +119,7 @@ pub async fn post_test_create_story(
 
 #[derive(Debug, Deserialize)]
 pub struct CreateIterationReq {
-    pub theme_name: String,
+    pub name: String,
     pub agent: Option<String>,
 }
 
@@ -130,7 +130,7 @@ pub async fn post_test_create_iteration(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
         let mut args = serde_json::Map::new();
-        put_str(&mut args, "theme_name", req.theme_name);
+        put_str(&mut args, "name", req.name);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
         bridge::dispatch_create_iteration(args, &agent, Some(&refresh)).await
     })
