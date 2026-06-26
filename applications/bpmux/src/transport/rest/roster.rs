@@ -17,8 +17,7 @@ pub async fn get_roster(
     Extension(store): Extension<Arc<crate::store::Store>>,
 ) -> impl IntoResponse {
     let roster: Vec<RosterEntry> = store
-        .roster_store()
-        .members()
+        .roster_members()
         .into_iter()
         .map(|member| RosterEntry {
             identity: member.identity,

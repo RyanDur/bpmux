@@ -37,8 +37,7 @@ impl Store {
             url: Some(crate::ci::github_actions_url()),
         });
         let roster = self
-            .roster_store
-            .members()
+            .roster_members()
             .into_iter()
             .map(|m| RosterMemberWire {
                 routing_id: m.routing_id,

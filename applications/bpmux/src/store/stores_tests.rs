@@ -139,7 +139,7 @@ async fn roster_member_upserted_fires_listener() {
     }))
     .await;
 
-    let members = orch.roster_store().members();
+    let members = orch.roster_members();
     assert_eq!(members.len(), 1);
     assert_eq!(members[0].role, RosterRole::Owner);
     assert_eq!(members[0].presence, Presence::Online);
@@ -169,7 +169,7 @@ async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_pla
     }))
     .await;
 
-    let members = orch.roster_store().members();
+    let members = orch.roster_members();
     assert_eq!(
         members.len(),
         1,
@@ -196,7 +196,7 @@ async fn roster_two_agents_sharing_a_display_are_two_rows_keyed_by_routing_id() 
         .await;
     }
 
-    let members = orch.roster_store().members();
+    let members = orch.roster_members();
     assert_eq!(
         members.len(),
         2,
@@ -223,7 +223,7 @@ async fn roster_presence_change_targets_the_row_by_routing_id_not_a_shared_displ
     }))
     .await;
 
-    let members = orch.roster_store().members();
+    let members = orch.roster_members();
     let by_id = |id: &str| {
         members
             .iter()
@@ -357,7 +357,7 @@ async fn ws_dispatch_roster_join_populates_store_with_identity() {
 
     crate::transport::ws::dispatch_roster_join(&orch, "sess-dev", "dev:claude-code").await;
 
-    let members = orch.roster_store().members();
+    let members = orch.roster_members();
     assert_eq!(members.len(), 1);
     assert_eq!(members[0].routing_id, "sess-dev");
     assert_eq!(members[0].name, "dev");
@@ -379,7 +379,7 @@ async fn ws_dispatch_roster_leave_removes_member() {
         .await;
     crate::transport::ws::dispatch_roster_leave(&orch, "sess-designer").await;
 
-    let members = orch.roster_store().members();
+    let members = orch.roster_members();
     assert!(members.is_empty(), "leave removes member from store");
 
     let received = rec.received.lock().unwrap();
@@ -402,7 +402,7 @@ async fn ws_dispatch_roster_join_role_mapping_covers_known_short_names() {
     for (identity, expected_name, expected_role) in cases {
         let orch = fresh_orch();
         crate::transport::ws::dispatch_roster_join(&orch, "sess-x", identity).await;
-        let members = orch.roster_store().members();
+        let members = orch.roster_members();
         assert_eq!(members.len(), 1, "identity {identity}: 1 member");
         assert_eq!(members[0].name, expected_name);
         assert_eq!(members[0].role, expected_role);
@@ -433,7 +433,7 @@ async fn roster_remove_fires_listener_when_member_existed() {
     }))
     .await;
 
-    assert!(orch.roster_store().members().is_empty());
+    assert!(orch.roster_members().is_empty());
     let received = rec.received.lock().unwrap();
     assert_eq!(
         received.len(),
@@ -462,7 +462,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
     }))
     .await;
 
-    let members = orch.roster_store().members();
+    let members = orch.roster_members();
     assert_eq!(members.len(), 1);
     assert_eq!(
         members[0].presence,

@@ -76,7 +76,7 @@ impl OwnerParkBroadcaster {
 
     async fn dispatch_changes(&self, delivering: Option<&str>) {
         let stories = self.board_store.all_stories();
-        let roster = self.store.roster_store().members();
+        let roster = self.store.roster_members();
         let changes = owner_park_presence(&stories, &roster, delivering);
         for (routing_id, presence) in changes {
             self.store

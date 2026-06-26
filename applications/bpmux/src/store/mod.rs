@@ -16,6 +16,7 @@ pub mod roster;
 pub mod sync;
 
 mod action;
+mod app;
 mod dispatch;
 mod owner_park;
 mod snapshot;
@@ -41,7 +42,7 @@ pub use reactions::{
 };
 pub use roster::{
     Presence, RosterAction, RosterBroadcastListener, RosterMember, RosterRole,
-    RosterSessionBroadcaster, RosterStore,
+    RosterSessionBroadcaster,
 };
 pub use sync::SyncAction;
 
@@ -80,12 +81,11 @@ pub struct Store {
     rate_limit_observer: crate::github::RateLimitObserver,
     ci_store: Arc<CiStore>,
     reactions_store: Arc<ReactionsStore>,
-    roster_store: Arc<RosterStore>,
+    app_store: kernel::Store<app::AppState, app::AppAction>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
     mutation_tokens: AsyncMutex<HashMap<MutationId, CancellationToken>>,
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
     reactions_listeners: Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>,
-    roster_listeners: Mutex<Vec<Arc<dyn RosterBroadcastListener>>>,
 }
 
 impl Store {
@@ -110,12 +110,15 @@ impl Store {
             rate_limit_observer,
             ci_store: Arc::new(CiStore::new()),
             reactions_store: Arc::new(ReactionsStore::new()),
-            roster_store: Arc::new(RosterStore::new()),
+            app_store: kernel::Store::new(
+                app::AppState::default(),
+                Box::new(app::app_reduce),
+                Vec::new(),
+            ),
             tokens: AsyncMutex::new(HashMap::new()),
             mutation_tokens: AsyncMutex::new(HashMap::new()),
             listeners: Mutex::new(Vec::new()),
             reactions_listeners: Mutex::new(Vec::new()),
-            roster_listeners: Mutex::new(Vec::new()),
         }
     }
 
@@ -123,8 +126,11 @@ impl Store {
         Arc::clone(&self.reactions_store)
     }
 
-    pub fn roster_store(&self) -> Arc<RosterStore> {
-        Arc::clone(&self.roster_store)
+    pub fn roster_members(&self) -> Vec<RosterMember> {
+        let mut members = Vec::new();
+        self.app_store
+            .read(&mut |state| members = roster::members(&state.roster));
+        members
     }
 
     pub fn add_reactions_listener(&self, listener: Arc<dyn ReactionsBroadcastListener>) {
@@ -136,11 +142,10 @@ impl Store {
     }
 
     pub fn add_roster_listener(&self, listener: Arc<dyn RosterBroadcastListener>) {
-        let mut l = self
-            .roster_listeners
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        l.push(listener);
+        self.app_store
+            .subscribe(Box::new(move |state: &app::AppState| {
+                listener.on_changed(&roster::members(&state.roster));
+            }));
     }
 
     pub fn with_refresh(

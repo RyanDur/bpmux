@@ -12,7 +12,7 @@ impl Store {
             StoreAction::Ci(a) => self.dispatch_ci(a).await,
             StoreAction::Sync(a) => self.dispatch_sync(a).await,
             StoreAction::Reactions(a) => self.middleware_reactions(a),
-            StoreAction::Roster(a) => self.middleware_roster(a),
+            StoreAction::Roster(a) => self.app_store.dispatch(super::app::AppAction::Roster(a)),
         }
     }
 

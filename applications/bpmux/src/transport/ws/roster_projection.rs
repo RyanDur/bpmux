@@ -46,21 +46,21 @@ async fn an_agent_pushes_busy_idle_help_setting_its_own_roster_presence() {
 
     dispatch_roster_presence(&orch, "sess-dev", Presence::Busy).await;
     assert_eq!(
-        orch.roster_store().members()[0].presence,
+        orch.roster_members()[0].presence,
         Presence::Busy,
         "an agent pushing busy sets its OWN roster presence — the agent-driven colour-source #1739 adds (the dot reads roster Presence)"
     );
 
     dispatch_roster_presence(&orch, "sess-dev", Presence::Help).await;
     assert_eq!(
-        orch.roster_store().members()[0].presence,
+        orch.roster_members()[0].presence,
         Presence::Help,
         "help is reachable BY THE AGENT — previously unsettable (owner-park set only Blocked); pushing help closes the Help-never-set gap"
     );
 
     dispatch_roster_presence(&orch, "sess-dev", Presence::Idle).await;
     assert_eq!(
-        orch.roster_store().members()[0].presence,
+        orch.roster_members()[0].presence,
         Presence::Idle,
         "idle (the Stop-hook's definitive turn-end) is pushable, winning over any prior state"
     );

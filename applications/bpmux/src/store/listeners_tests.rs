@@ -244,8 +244,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
         .on_board_event(&state_transitioned(900, "dev", StoryState::Delivered))
         .await;
     assert_eq!(
-        orch.roster_store()
-            .members()
+        orch.roster_members()
             .iter()
             .find(|m| m.name == "dev")
             .expect("dev")
@@ -260,8 +259,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
         .await;
 
     let dev_presence = orch
-        .roster_store()
-        .members()
+        .roster_members()
         .iter()
         .find(|m| m.name == "dev")
         .expect("dev")
