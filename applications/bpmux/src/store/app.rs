@@ -1,15 +1,16 @@
 use std::sync::{Arc, Mutex};
 
-use crate::store::kernel::{Changed, Middleware, StoreApi};
+use crate::store::kernel::{Listener, ListenerFuture, Reaction};
 use crate::store::reactions::{self, ReactionsAction, ReactionsBroadcastListener, ReactionsState};
-use crate::store::roster::{self, RosterAction, RosterState};
+use crate::store::roster::{self, RosterAction, RosterBroadcastListener, RosterState};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct AppState {
-    pub roster: RosterState,
-    pub reactions: ReactionsState,
+    pub roster: Arc<RosterState>,
+    pub reactions: Arc<ReactionsState>,
 }
 
+#[derive(Clone)]
 pub enum AppAction {
     Roster(RosterAction),
     Reactions(ReactionsAction),
@@ -27,14 +28,56 @@ impl From<ReactionsAction> for AppAction {
     }
 }
 
-pub fn app_reduce(state: &mut AppState, action: &AppAction) -> Changed {
+pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
     match action {
-        AppAction::Roster(action) => roster::reduce(&mut state.roster, action),
-        AppAction::Reactions(action) => reactions::reduce(&mut state.reactions, action),
+        AppAction::Roster(action) => match roster::reduce(&state.roster, action) {
+            Some(roster) => AppState {
+                roster: Arc::new(roster),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
+        AppAction::Reactions(action) => match reactions::reduce(&state.reactions, action) {
+            Some(reactions) => AppState {
+                reactions: Arc::new(reactions),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
     }
 }
 
+pub type RosterListeners = Arc<Mutex<Vec<Arc<dyn RosterBroadcastListener>>>>;
 pub type ReactionsListeners = Arc<Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>>;
+
+pub struct RosterBroadcast {
+    listeners: RosterListeners,
+}
+
+impl RosterBroadcast {
+    pub fn new(listeners: RosterListeners) -> Self {
+        Self { listeners }
+    }
+}
+
+impl Listener<AppState, AppAction> for RosterBroadcast {
+    fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
+        if Arc::ptr_eq(&reaction.previous.roster, &reaction.current.roster) {
+            return Box::pin(async {});
+        }
+        let members = roster::members(&reaction.current.roster);
+        let listeners = self
+            .listeners
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        Box::pin(async move {
+            for listener in listeners {
+                listener.on_changed(&members);
+            }
+        })
+    }
+}
 
 pub struct ReactionsBroadcast {
     listeners: ReactionsListeners,
@@ -46,34 +89,24 @@ impl ReactionsBroadcast {
     }
 }
 
-impl Middleware<AppState, AppAction> for ReactionsBroadcast {
-    fn handle(
-        &self,
-        api: &dyn StoreApi<AppState, AppAction>,
-        next: &dyn Fn(AppAction),
-        action: AppAction,
-    ) {
-        let channel = match &action {
-            AppAction::Reactions(ReactionsAction::ReactionToggled { channel, .. }) => {
-                Some(channel.clone())
-            }
-            _ => None,
+impl Listener<AppState, AppAction> for ReactionsBroadcast {
+    fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
+        let AppAction::Reactions(ReactionsAction::ReactionToggled { channel, .. }) =
+            &reaction.action
+        else {
+            return Box::pin(async {});
         };
-        next(action);
-        let Some(channel) = channel else {
-            return;
-        };
-        let mut aggregated = Vec::new();
-        api.read(&mut |state: &AppState| {
-            aggregated = reactions::aggregated_for_channel(&state.reactions, &channel);
-        });
+        let channel = channel.clone();
+        let aggregated = reactions::aggregated_for_channel(&reaction.current.reactions, &channel);
         let listeners = self
             .listeners
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .clone();
-        for listener in listeners {
-            listener.on_changed(&channel, &aggregated);
-        }
+        Box::pin(async move {
+            for listener in listeners {
+                listener.on_changed(&channel, &aggregated);
+            }
+        })
     }
 }

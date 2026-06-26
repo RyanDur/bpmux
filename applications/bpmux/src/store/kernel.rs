@@ -1,108 +1,122 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Changed {
-    Yes,
-    No,
+use tokio::task::JoinHandle;
+
+pub type ListenerFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
+pub type Dispatch<A> = Arc<dyn Fn(A) + Send + Sync>;
+
+pub struct Reaction<S, A> {
+    pub action: A,
+    pub previous: Arc<S>,
+    pub current: Arc<S>,
+    pub dispatch: Dispatch<A>,
 }
 
-pub trait StoreApi<S, A> {
-    fn dispatch(&self, action: A);
-    fn read(&self, reader: &mut dyn FnMut(&S));
+pub trait Listener<S, A>: Send + Sync {
+    fn on_action(&self, reaction: Reaction<S, A>) -> ListenerFuture;
 }
 
-pub trait Middleware<S, A>: Send + Sync {
-    fn handle(&self, api: &dyn StoreApi<S, A>, next: &dyn Fn(A), action: A);
-}
-
-type RootReducer<S, A> = Box<dyn Fn(&mut S, &A) -> Changed + Send + Sync>;
-type Subscriber<S> = Box<dyn Fn(&S) + Send + Sync>;
+type RootReducer<S, A> = Box<dyn Fn(&S, &A) -> S + Send + Sync>;
 
 pub struct Store<S, A> {
-    state: Mutex<S>,
+    state: Mutex<Arc<S>>,
     reducer: RootReducer<S, A>,
-    middleware: Vec<Arc<dyn Middleware<S, A>>>,
-    subscribers: Mutex<Vec<Subscriber<S>>>,
+    listeners: Mutex<Vec<Arc<dyn Listener<S, A>>>>,
+    in_flight: Mutex<Vec<JoinHandle<()>>>,
 }
 
-impl<S, A> Store<S, A> {
-    pub fn new(
-        initial: S,
-        reducer: RootReducer<S, A>,
-        middleware: Vec<Arc<dyn Middleware<S, A>>>,
-    ) -> Self {
-        Self {
-            state: Mutex::new(initial),
+impl<S, A> Store<S, A>
+where
+    S: Send + Sync + 'static,
+    A: Clone + Send + 'static,
+{
+    pub fn new(initial: S, reducer: RootReducer<S, A>) -> Arc<Self> {
+        Arc::new(Self {
+            state: Mutex::new(Arc::new(initial)),
             reducer,
-            middleware,
-            subscribers: Mutex::new(Vec::new()),
-        }
+            listeners: Mutex::new(Vec::new()),
+            in_flight: Mutex::new(Vec::new()),
+        })
     }
 
-    pub fn subscribe(&self, subscriber: Subscriber<S>) {
-        self.subscribers
+    pub fn add_listener(&self, listener: Arc<dyn Listener<S, A>>) {
+        self.listeners
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .push(subscriber);
-    }
-
-    pub fn dispatch(&self, action: A) {
-        self.dispatch_from(0, action);
+            .push(listener);
     }
 
     pub fn read(&self, reader: &mut dyn FnMut(&S)) {
-        let state = self
-            .state
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        reader(&state);
+        let snapshot = Arc::clone(
+            &self
+                .state
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()),
+        );
+        reader(snapshot.as_ref());
     }
 
-    fn dispatch_from(&self, index: usize, action: A) {
-        match self.middleware.get(index) {
-            Some(link) => {
-                let next = |forwarded: A| self.dispatch_from(index + 1, forwarded);
-                link.handle(self, &next, action);
-            }
-            None => self.reduce_and_notify(action),
-        }
-    }
-
-    fn reduce_and_notify(&self, action: A) {
-        let changed = {
-            let mut state = self
+    pub fn dispatch(self: &Arc<Self>, action: A) {
+        let (previous, current) = {
+            let mut guard = self
                 .state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            (self.reducer)(&mut state, &action)
+            let previous = Arc::clone(&guard);
+            let current = Arc::new((self.reducer)(previous.as_ref(), &action));
+            *guard = Arc::clone(&current);
+            (previous, current)
         };
-        if changed == Changed::No {
-            return;
-        }
-        let state = self
-            .state
+
+        let dispatch = self.dispatcher();
+        let listeners = self
+            .listeners
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+
+        let mut in_flight = self
+            .in_flight
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let subscribers = self
-            .subscribers
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        for subscriber in subscribers.iter() {
-            subscriber(&state);
+        in_flight.retain(|handle| !handle.is_finished());
+        for listener in listeners {
+            let reaction = Reaction {
+                action: action.clone(),
+                previous: Arc::clone(&previous),
+                current: Arc::clone(&current),
+                dispatch: Arc::clone(&dispatch),
+            };
+            in_flight.push(tokio::spawn(listener.on_action(reaction)));
         }
     }
-}
 
-impl<S, A> StoreApi<S, A> for Store<S, A> {
-    fn dispatch(&self, action: A) {
-        self.dispatch_from(0, action);
+    fn dispatcher(self: &Arc<Self>) -> Dispatch<A> {
+        let weak = Arc::downgrade(self);
+        Arc::new(move |action: A| {
+            if let Some(store) = weak.upgrade() {
+                store.dispatch(action);
+            }
+        })
     }
 
-    fn read(&self, reader: &mut dyn FnMut(&S)) {
-        let state = self
-            .state
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        reader(&state);
+    pub async fn await_listeners(&self) {
+        loop {
+            let batch: Vec<JoinHandle<()>> = {
+                let mut in_flight = self
+                    .in_flight
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                std::mem::take(&mut *in_flight)
+            };
+            if batch.is_empty() {
+                break;
+            }
+            for handle in batch {
+                let _ = handle.await;
+            }
+        }
     }
 }

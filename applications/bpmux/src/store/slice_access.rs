@@ -1,6 +1,5 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use super::app;
 use super::{
     AggregatedReaction, ReactionsBroadcastListener, RosterBroadcastListener, RosterMember, Store,
     reactions, roster,
@@ -37,16 +36,9 @@ impl Store {
     }
 
     pub fn add_roster_listener(&self, listener: Arc<dyn RosterBroadcastListener>) {
-        let last = Arc::new(Mutex::new(self.roster_members()));
-        self.app_store
-            .subscribe(Box::new(move |state: &app::AppState| {
-                let members = roster::members(&state.roster);
-                let mut last = last.lock().unwrap_or_else(|e| e.into_inner());
-                if *last == members {
-                    return;
-                }
-                *last = members.clone();
-                listener.on_changed(&members);
-            }));
+        self.roster_listeners
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(listener);
     }
 }

@@ -2,8 +2,6 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 
-use crate::store::kernel::Changed;
-
 mod listeners;
 
 pub use listeners::ReactionsSessionBroadcaster;
@@ -35,7 +33,7 @@ pub struct ReactionsState {
     by_channel: BTreeMap<String, EmojiBuckets>,
 }
 
-pub fn reduce(state: &mut ReactionsState, action: &ReactionsAction) -> Changed {
+pub fn reduce(state: &ReactionsState, action: &ReactionsAction) -> Option<ReactionsState> {
     match action {
         ReactionsAction::ReactionToggled {
             channel,
@@ -44,7 +42,8 @@ pub fn reduce(state: &mut ReactionsState, action: &ReactionsAction) -> Changed {
             user,
             ts_iso,
         } => {
-            let buckets = state.by_channel.entry(channel.clone()).or_default();
+            let mut by_channel = state.by_channel.clone();
+            let buckets = by_channel.entry(channel.clone()).or_default();
             let key = (message_key.clone(), emoji.clone());
             let reactors = buckets.entry(key.clone()).or_default();
             let existing = reactors.iter().position(|(u, _)| u == user);
@@ -57,9 +56,9 @@ pub fn reduce(state: &mut ReactionsState, action: &ReactionsAction) -> Changed {
                 reactors.push((user.clone(), ts_iso.clone()));
             }
             if buckets.is_empty() {
-                state.by_channel.remove(channel);
+                by_channel.remove(channel);
             }
-            Changed::Yes
+            Some(ReactionsState { by_channel })
         }
     }
 }

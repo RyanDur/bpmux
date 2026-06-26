@@ -16,6 +16,7 @@ impl Store {
             }
             StoreAction::Roster(a) => self.app_store.dispatch(super::app::AppAction::Roster(a)),
         }
+        self.app_store.await_listeners().await;
     }
 
     pub async fn is_running(&self, kind: PollKind) -> bool {

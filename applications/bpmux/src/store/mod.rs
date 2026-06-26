@@ -80,10 +80,11 @@ pub struct Store {
     parent_ct: CancellationToken,
     rate_limit_observer: crate::github::RateLimitObserver,
     ci_store: Arc<CiStore>,
-    app_store: kernel::Store<app::AppState, app::AppAction>,
+    app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
     mutation_tokens: AsyncMutex<HashMap<MutationId, CancellationToken>>,
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
+    roster_listeners: app::RosterListeners,
     reactions_listeners: app::ReactionsListeners,
 }
 
@@ -98,15 +99,15 @@ impl Store {
             .as_ref()
             .map(|t| t.rate_limit_observer())
             .unwrap_or_default();
+        let roster_listeners: app::RosterListeners = Arc::new(Mutex::new(Vec::new()));
         let reactions_listeners: app::ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
-        let app_store = kernel::Store::new(
-            app::AppState::default(),
-            Box::new(app::app_reduce),
-            vec![
-                Arc::new(app::ReactionsBroadcast::new(reactions_listeners.clone()))
-                    as Arc<dyn kernel::Middleware<app::AppState, app::AppAction>>,
-            ],
-        );
+        let app_store = kernel::Store::new(app::AppState::default(), Box::new(app::app_reduce));
+        app_store.add_listener(Arc::new(app::RosterBroadcast::new(
+            roster_listeners.clone(),
+        )));
+        app_store.add_listener(Arc::new(app::ReactionsBroadcast::new(
+            reactions_listeners.clone(),
+        )));
         Self {
             session,
             tracker,
@@ -121,8 +122,13 @@ impl Store {
             tokens: AsyncMutex::new(HashMap::new()),
             mutation_tokens: AsyncMutex::new(HashMap::new()),
             listeners: Mutex::new(Vec::new()),
+            roster_listeners,
             reactions_listeners,
         }
+    }
+
+    pub async fn await_listeners(&self) {
+        self.app_store.await_listeners().await;
     }
 
     pub fn with_refresh(

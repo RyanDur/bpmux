@@ -1,7 +1,5 @@
 use serde::Serialize;
 
-use crate::store::kernel::Changed;
-
 mod listeners;
 
 pub use listeners::RosterSessionBroadcaster;
@@ -57,7 +55,7 @@ pub struct RosterState {
     pub members: Vec<RosterMember>,
 }
 
-pub fn reduce(state: &mut RosterState, action: &RosterAction) -> Changed {
+pub fn reduce(state: &RosterState, action: &RosterAction) -> Option<RosterState> {
     match action {
         RosterAction::RosterMemberUpserted {
             routing_id,
@@ -66,60 +64,72 @@ pub fn reduce(state: &mut RosterState, action: &RosterAction) -> Changed {
             role,
             presence,
         } => {
-            if let Some(idx) = state
-                .members
-                .iter()
-                .position(|m| &m.routing_id == routing_id)
-            {
-                let m = &mut state.members[idx];
-                if m.name == *name
-                    && m.identity == *identity
-                    && m.role == *role
-                    && m.presence == *presence
-                {
-                    return Changed::No;
+            let upserted = RosterMember {
+                routing_id: routing_id.clone(),
+                name: name.clone(),
+                identity: identity.clone(),
+                role: *role,
+                presence: *presence,
+            };
+            match state.members.iter().find(|m| &m.routing_id == routing_id) {
+                Some(existing) if existing == &upserted => None,
+                Some(_) => Some(RosterState {
+                    members: state
+                        .members
+                        .iter()
+                        .map(|m| {
+                            if &m.routing_id == routing_id {
+                                upserted.clone()
+                            } else {
+                                m.clone()
+                            }
+                        })
+                        .collect(),
+                }),
+                None => {
+                    let mut members = state.members.clone();
+                    members.push(upserted);
+                    Some(RosterState { members })
                 }
-                m.name = name.clone();
-                m.identity = identity.clone();
-                m.role = *role;
-                m.presence = *presence;
-                Changed::Yes
-            } else {
-                state.members.push(RosterMember {
-                    routing_id: routing_id.clone(),
-                    name: name.clone(),
-                    identity: identity.clone(),
-                    role: *role,
-                    presence: *presence,
-                });
-                Changed::Yes
             }
         }
         RosterAction::RosterMemberRemoved { routing_id } => {
-            let before = state.members.len();
-            state.members.retain(|m| &m.routing_id != routing_id);
-            if state.members.len() == before {
-                Changed::No
-            } else {
-                Changed::Yes
+            if !state.members.iter().any(|m| &m.routing_id == routing_id) {
+                return None;
             }
+            Some(RosterState {
+                members: state
+                    .members
+                    .iter()
+                    .filter(|m| &m.routing_id != routing_id)
+                    .cloned()
+                    .collect(),
+            })
         }
         RosterAction::RosterPresenceChanged {
             routing_id,
             presence,
         } => {
-            let Some(m) = state
-                .members
-                .iter_mut()
-                .find(|m| &m.routing_id == routing_id)
-            else {
-                return Changed::No;
-            };
-            if m.presence == *presence {
-                return Changed::No;
+            let existing = state.members.iter().find(|m| &m.routing_id == routing_id)?;
+            if existing.presence == *presence {
+                return None;
             }
-            m.presence = *presence;
-            Changed::Yes
+            Some(RosterState {
+                members: state
+                    .members
+                    .iter()
+                    .map(|m| {
+                        if &m.routing_id == routing_id {
+                            RosterMember {
+                                presence: *presence,
+                                ..m.clone()
+                            }
+                        } else {
+                            m.clone()
+                        }
+                    })
+                    .collect(),
+            })
         }
     }
 }
