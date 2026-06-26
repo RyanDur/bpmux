@@ -41,7 +41,6 @@ pub mod product_management;
 #[cfg(test)]
 mod reaction_aggregation;
 pub mod reactions;
-pub mod reload;
 pub mod room;
 pub mod routing;
 pub mod server;
