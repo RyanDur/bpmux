@@ -241,7 +241,7 @@ async fn spawn_action_drainer_routes_channel_actions_into_dispatch() {
 
     for _ in 0..50 {
         tokio::time::sleep(Duration::from_millis(20)).await;
-        let aggregated = orch.reactions_store().aggregated_for_channel("broadcast");
+        let aggregated = orch.reactions_aggregated_for_channel("broadcast");
         if !aggregated.is_empty() {
             return;
         }

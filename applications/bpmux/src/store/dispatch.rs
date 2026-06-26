@@ -11,7 +11,9 @@ impl Store {
         match action {
             StoreAction::Ci(a) => self.dispatch_ci(a).await,
             StoreAction::Sync(a) => self.dispatch_sync(a).await,
-            StoreAction::Reactions(a) => self.middleware_reactions(a),
+            StoreAction::Reactions(a) => {
+                self.app_store.dispatch(super::app::AppAction::Reactions(a))
+            }
             StoreAction::Roster(a) => self.app_store.dispatch(super::app::AppAction::Roster(a)),
         }
     }

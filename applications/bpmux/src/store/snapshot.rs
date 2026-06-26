@@ -7,13 +7,11 @@ impl Store {
             StateSnapshotPayload,
         };
         let reactions = self
-            .reactions_store
-            .channel_keys()
+            .reactions_channel_keys()
             .into_iter()
             .map(|channel| {
                 let aggregated = self
-                    .reactions_store
-                    .aggregated_for_channel(&channel)
+                    .reactions_aggregated_for_channel(&channel)
                     .into_iter()
                     .map(|a| ReactionAggregateWire {
                         message_key: a.message_key,

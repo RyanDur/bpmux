@@ -19,6 +19,7 @@ mod action;
 mod app;
 mod dispatch;
 mod owner_park;
+mod slice_access;
 mod snapshot;
 
 #[cfg(test)]
@@ -38,7 +39,6 @@ pub use ci::{
 pub use owner_park::{OwnerParkBroadcaster, owner_park_presence};
 pub use reactions::{
     AggregatedReaction, ReactionsAction, ReactionsBroadcastListener, ReactionsSessionBroadcaster,
-    ReactionsStore,
 };
 pub use roster::{
     Presence, RosterAction, RosterBroadcastListener, RosterMember, RosterRole,
@@ -80,12 +80,11 @@ pub struct Store {
     parent_ct: CancellationToken,
     rate_limit_observer: crate::github::RateLimitObserver,
     ci_store: Arc<CiStore>,
-    reactions_store: Arc<ReactionsStore>,
     app_store: kernel::Store<app::AppState, app::AppAction>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
     mutation_tokens: AsyncMutex<HashMap<MutationId, CancellationToken>>,
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
-    reactions_listeners: Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>,
+    reactions_listeners: app::ReactionsListeners,
 }
 
 impl Store {
@@ -99,6 +98,15 @@ impl Store {
             .as_ref()
             .map(|t| t.rate_limit_observer())
             .unwrap_or_default();
+        let reactions_listeners: app::ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
+        let app_store = kernel::Store::new(
+            app::AppState::default(),
+            Box::new(app::app_reduce),
+            vec![
+                Arc::new(app::ReactionsBroadcast::new(reactions_listeners.clone()))
+                    as Arc<dyn kernel::Middleware<app::AppState, app::AppAction>>,
+            ],
+        );
         Self {
             session,
             tracker,
@@ -109,43 +117,12 @@ impl Store {
             parent_ct,
             rate_limit_observer,
             ci_store: Arc::new(CiStore::new()),
-            reactions_store: Arc::new(ReactionsStore::new()),
-            app_store: kernel::Store::new(
-                app::AppState::default(),
-                Box::new(app::app_reduce),
-                Vec::new(),
-            ),
+            app_store,
             tokens: AsyncMutex::new(HashMap::new()),
             mutation_tokens: AsyncMutex::new(HashMap::new()),
             listeners: Mutex::new(Vec::new()),
-            reactions_listeners: Mutex::new(Vec::new()),
+            reactions_listeners,
         }
-    }
-
-    pub fn reactions_store(&self) -> Arc<ReactionsStore> {
-        Arc::clone(&self.reactions_store)
-    }
-
-    pub fn roster_members(&self) -> Vec<RosterMember> {
-        let mut members = Vec::new();
-        self.app_store
-            .read(&mut |state| members = roster::members(&state.roster));
-        members
-    }
-
-    pub fn add_reactions_listener(&self, listener: Arc<dyn ReactionsBroadcastListener>) {
-        let mut l = self
-            .reactions_listeners
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        l.push(listener);
-    }
-
-    pub fn add_roster_listener(&self, listener: Arc<dyn RosterBroadcastListener>) {
-        self.app_store
-            .subscribe(Box::new(move |state: &app::AppState| {
-                listener.on_changed(&roster::members(&state.roster));
-            }));
     }
 
     pub fn with_refresh(

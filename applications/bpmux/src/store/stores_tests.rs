@@ -55,6 +55,27 @@ impl RosterBroadcastListener for RecRoster {
 }
 
 #[tokio::test]
+async fn a_reactions_change_does_not_broadcast_roster() {
+    let orch = fresh_orch();
+    let roster_rec = Arc::new(RecRoster::default());
+    orch.add_roster_listener(roster_rec.clone());
+
+    orch.dispatch(StoreAction::Reactions(ReactionsAction::ReactionToggled {
+        channel: "broadcast".to_string(),
+        message_key: "k1".to_string(),
+        emoji: "👍".to_string(),
+        user: "owner".to_string(),
+        ts_iso: "t0".to_string(),
+    }))
+    .await;
+
+    assert!(
+        roster_rec.received.lock().unwrap().is_empty(),
+        "a reactions change must not fire the roster broadcaster — slices are isolated"
+    );
+}
+
+#[tokio::test]
 async fn reactions_action_drives_reducer_and_fires_listener() {
     let orch = fresh_orch();
     let rec = Arc::new(RecReactions::default());
@@ -69,7 +90,7 @@ async fn reactions_action_drives_reducer_and_fires_listener() {
     }))
     .await;
 
-    let agg = orch.reactions_store().aggregated_for_channel("broadcast");
+    let agg = orch.reactions_aggregated_for_channel("broadcast");
     assert_eq!(agg.len(), 1);
     assert_eq!(agg[0].count, 1);
     assert_eq!(agg[0].users, vec!["owner".to_string()]);
@@ -96,7 +117,7 @@ async fn reactions_toggle_off_clears_and_fires_listener() {
     orch.dispatch(toggle.clone()).await;
     orch.dispatch(toggle).await;
 
-    let agg = orch.reactions_store().aggregated_for_channel("broadcast");
+    let agg = orch.reactions_aggregated_for_channel("broadcast");
     assert!(agg.is_empty(), "second toggle removes the reaction");
 
     let received = rec.received.lock().unwrap();
@@ -119,7 +140,7 @@ async fn reactions_aggregates_count_per_emoji_not_raw_events() {
     orch.dispatch(toggle_user("dev")).await;
     orch.dispatch(toggle_user("designer")).await;
 
-    let agg = orch.reactions_store().aggregated_for_channel("broadcast");
+    let agg = orch.reactions_aggregated_for_channel("broadcast");
     assert_eq!(agg.len(), 1, "single emoji bucket aggregates 3 users");
     assert_eq!(agg[0].count, 3);
 }
@@ -332,7 +353,7 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
         user: "_unused".to_string(),
     };
 
-    let agg = orch.reactions_store().aggregated_for_channel("broadcast");
+    let agg = orch.reactions_aggregated_for_channel("broadcast");
     assert_eq!(
         agg.len(),
         1,
