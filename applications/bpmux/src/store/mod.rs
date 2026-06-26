@@ -10,6 +10,7 @@ use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 
 pub mod ci;
+pub mod kernel;
 pub mod reactions;
 pub mod roster;
 pub mod sync;
@@ -21,6 +22,8 @@ mod snapshot;
 
 #[cfg(test)]
 mod ci_tests;
+#[cfg(test)]
+mod kernel_tests;
 #[cfg(test)]
 mod listeners_tests;
 #[cfg(test)]
