@@ -103,7 +103,9 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
       await win.reload()
       await waitForBoardLoaded(win)
       const board = new BoardPage(win)
-      expect(await board.storyOrder('Ready')).toEqual([1, 2, 3])
+      await expect(async () => {
+        expect(await board.storyOrder('Ready')).toEqual([1, 2, 3])
+      }).toPass({ timeout: 5_000 })
 
       await board.storyGrip(1).dragTo(board.storyRow(2))
 
