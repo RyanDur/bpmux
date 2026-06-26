@@ -123,11 +123,11 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         let adapter = Arc::clone(&self.adapter);
         let store = Arc::clone(&self.store);
         Box::pin(async move {
-            let story = adapter.update_body(number, &body).await?;
-            store.apply(&BoardEvent::StoryRefreshed {
+            adapter.update_body(number, &body).await?;
+            store.apply(&BoardEvent::BodyUpdated {
                 meta: cache_fill_meta(),
                 number,
-                story: Box::new(story),
+                body,
             });
             Ok(())
         })
@@ -137,11 +137,11 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         let adapter = Arc::clone(&self.adapter);
         let store = Arc::clone(&self.store);
         Box::pin(async move {
-            let story = adapter.update_title(number, &title).await?;
-            store.apply(&BoardEvent::StoryRefreshed {
+            adapter.update_title(number, &title).await?;
+            store.apply(&BoardEvent::TitleUpdated {
                 meta: cache_fill_meta(),
                 number,
-                story: Box::new(story),
+                title,
             });
             Ok(())
         })

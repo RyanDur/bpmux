@@ -41,6 +41,19 @@ pub(super) fn apply_body_fetched(w: &mut Stories, number: u64, body: &str, etag:
     }
 }
 
+pub(super) fn apply_title_updated(w: &mut Stories, number: u64, title: &str) {
+    if let Some(story) = w.get_mut(&number) {
+        story.title = title.to_string();
+    }
+}
+
+pub(super) fn apply_body_updated(w: &mut Stories, number: u64, body: &str) {
+    if let Some(story) = w.get_mut(&number) {
+        story.body = Some(body.to_string());
+        story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
+    }
+}
+
 pub(super) fn apply_story_closed(w: &mut Stories, number: u64) {
     if let Some(story) = w.get_mut(&number) {
         story.is_closed = true;

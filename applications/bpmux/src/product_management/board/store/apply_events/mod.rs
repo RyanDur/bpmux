@@ -13,8 +13,8 @@ use comments::{
 };
 use labels::{apply_labels_refreshed, apply_raw_labels};
 use lifecycle::{
-    apply_body_fetched, apply_state_transitioned, apply_story_closed, apply_story_created,
-    apply_story_refreshed, apply_story_reopened,
+    apply_body_fetched, apply_body_updated, apply_state_transitioned, apply_story_closed,
+    apply_story_created, apply_story_refreshed, apply_story_reopened, apply_title_updated,
 };
 
 pub(super) type Stories = HashMap<u64, Story>;
@@ -70,6 +70,8 @@ pub(super) fn apply_event(
             }
         }
         BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, number, story),
+        BoardEvent::TitleUpdated { title, .. } => apply_title_updated(w, number, title),
+        BoardEvent::BodyUpdated { body, .. } => apply_body_updated(w, number, body),
         BoardEvent::LabelsRefreshed { fields, .. } => apply_labels_refreshed(w, number, fields),
         BoardEvent::ConflictDetected { .. } | BoardEvent::ConflictResolved { .. } => {}
     }

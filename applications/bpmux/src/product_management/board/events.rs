@@ -127,6 +127,16 @@ pub enum BoardEvent {
         number: u64,
         fields: LabelDerivedFields,
     },
+    TitleUpdated {
+        meta: EventMeta,
+        number: u64,
+        title: String,
+    },
+    BodyUpdated {
+        meta: EventMeta,
+        number: u64,
+        body: String,
+    },
     ConflictDetected {
         meta: EventMeta,
         number: u64,
@@ -163,6 +173,8 @@ impl BoardEvent {
             | BoardEvent::CurrentIterationCleared { meta, .. }
             | BoardEvent::StoryRefreshed { meta, .. }
             | BoardEvent::LabelsRefreshed { meta, .. }
+            | BoardEvent::TitleUpdated { meta, .. }
+            | BoardEvent::BodyUpdated { meta, .. }
             | BoardEvent::ConflictDetected { meta, .. }
             | BoardEvent::ConflictResolved { meta, .. } => meta,
         }
@@ -191,6 +203,8 @@ impl BoardEvent {
             | BoardEvent::CurrentIterationCleared { number, .. }
             | BoardEvent::StoryRefreshed { number, .. }
             | BoardEvent::LabelsRefreshed { number, .. }
+            | BoardEvent::TitleUpdated { number, .. }
+            | BoardEvent::BodyUpdated { number, .. }
             | BoardEvent::ConflictDetected { number, .. }
             | BoardEvent::ConflictResolved { number, .. } => *number,
         }

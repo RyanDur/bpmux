@@ -210,6 +210,39 @@ async fn edit_theme_updates_the_iteration_title_1762() {
 }
 
 #[tokio::test]
+async fn renaming_a_current_iteration_preserves_its_current_designation() {
+    use crate::bridge::tools_stories::{handle_designate_current_iteration, handle_edit_story};
+    use crate::product_management::board::adapters::github::is_current_from_labels;
+
+    let refresh = build_refresh(vec![iteration(1700, "Vela")]).await;
+
+    let designate = json!({ "iteration_number": 1700 })
+        .as_object()
+        .cloned()
+        .unwrap();
+    handle_designate_current_iteration(&designate, "pm:claude-code", Some(&refresh))
+        .await
+        .expect("pm designates the iteration current");
+    assert!(
+        is_current_from_labels(&refresh.story(1700).expect("present").raw_labels),
+        "sanity: the iteration is current right after designation"
+    );
+
+    let rename = json!({ "number": 1700, "title": "Iteration Vela-RENAMED" })
+        .as_object()
+        .cloned()
+        .unwrap();
+    handle_edit_story(&rename, "pm:claude-code", Some(&refresh))
+        .await
+        .expect("pm renames the iteration");
+
+    assert!(
+        is_current_from_labels(&refresh.story(1700).expect("present").raw_labels),
+        "renaming a current iteration must NOT clear its current designation"
+    );
+}
+
+#[tokio::test]
 async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
     let mut feature = Story::new_minimal(
         700,

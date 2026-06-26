@@ -38,6 +38,8 @@ pub fn classify_conflict(
         | BoardEvent::GateCommentsFetched { .. }
         | BoardEvent::StoryRefreshed { .. }
         | BoardEvent::LabelsRefreshed { .. }
+        | BoardEvent::TitleUpdated { .. }
+        | BoardEvent::BodyUpdated { .. }
         | BoardEvent::ConflictDetected { .. }
         | BoardEvent::ConflictResolved { .. } => None,
     }

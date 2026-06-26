@@ -71,6 +71,8 @@ pub(super) async fn apply_push_event(
         | BoardEvent::GateCommentsFetched { .. }
         | BoardEvent::StoryRefreshed { .. }
         | BoardEvent::LabelsRefreshed { .. }
+        | BoardEvent::TitleUpdated { .. }
+        | BoardEvent::BodyUpdated { .. }
         | BoardEvent::ConflictDetected { .. }
         | BoardEvent::ConflictResolved { .. } => Ok(None),
     }
