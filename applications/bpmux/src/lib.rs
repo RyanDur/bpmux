@@ -8,11 +8,11 @@ pub mod awareness;
 mod awareness_tests;
 pub mod bookmark;
 #[cfg(test)]
-mod bookmark_round_trip;
+mod bookmark_tests;
 pub mod bridge;
 pub mod briefing;
 #[cfg(test)]
-mod briefing_persistence;
+mod briefing_tests;
 pub mod ci;
 #[cfg(test)]
 mod ci_tests;
@@ -35,9 +35,9 @@ pub mod message;
 #[cfg(test)]
 mod message_tests;
 pub mod product_management;
-#[cfg(test)]
-mod reaction_aggregation;
 pub mod reactions;
+#[cfg(test)]
+mod reactions_tests;
 pub mod room;
 pub mod routing;
 pub mod server;
