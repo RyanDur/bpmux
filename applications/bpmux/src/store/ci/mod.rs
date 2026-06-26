@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::bridge::tracker::ConditionalRunEntry;
-use crate::ci::{CiEvent, CiState};
+use crate::ci::CiEvent;
 use crate::github::RateLimitObserver;
 
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -18,7 +18,7 @@ pub trait CiPollFetch: Send + Sync + 'static {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CiSnapshot {
-    pub state: CiState,
+    pub state: crate::ci::CiState,
     pub run_id: Option<u64>,
     pub head_sha: Option<String>,
     pub display_title: Option<String>,
@@ -42,11 +42,36 @@ pub trait CiBroadcastListener: Send + Sync {
     fn on_changed(&self, snap: &CiSnapshot);
 }
 
+#[derive(Default, Clone)]
+pub struct CiState {
+    last_seen: Option<(Option<u64>, &'static str)>,
+    snapshot: Option<CiSnapshot>,
+}
+
+pub fn reduce(state: &CiState, action: &CiAction) -> Option<CiState> {
+    match action {
+        CiAction::Updated(snap) => {
+            let key = (snap.run_id, snap.conclusion);
+            if state.last_seen == Some(key) {
+                return None;
+            }
+            Some(CiState {
+                last_seen: Some(key),
+                snapshot: Some(snap.clone()),
+            })
+        }
+        CiAction::StartPolling | CiAction::StopPolling => None,
+    }
+}
+
+pub fn snapshot(state: &CiState) -> Option<CiSnapshot> {
+    state.snapshot.clone()
+}
+
 mod action;
 mod listeners;
-mod middleware;
-mod reducer;
+mod poll;
 
 pub use action::CiAction;
 pub use listeners::{CiSessionBroadcaster, CiStateStoreWriter};
-pub use reducer::{CiReduceOutcome, CiStore};
+pub use poll::CiPoll;

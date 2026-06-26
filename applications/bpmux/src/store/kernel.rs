@@ -48,17 +48,18 @@ where
             .push(listener);
     }
 
-    pub fn read(&self, reader: &mut dyn FnMut(&S)) {
+    pub fn select<T>(&self, selector: impl FnOnce(&S) -> T) -> T {
         let snapshot = Arc::clone(
             &self
                 .state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner()),
         );
-        reader(snapshot.as_ref());
+        selector(snapshot.as_ref())
     }
 
-    pub fn dispatch(self: &Arc<Self>, action: A) {
+    pub fn dispatch(self: &Arc<Self>, action: impl Into<A>) {
+        let action = action.into();
         let (previous, current) = {
             let mut guard = self
                 .state

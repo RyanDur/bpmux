@@ -3,7 +3,11 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::store::{CiAction, CiPollFetch, CiSnapshot, Store, StoreAction};
+use crate::github::RateLimitObserver;
+use crate::message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
+use crate::session::Session;
+use crate::store::kernel::Dispatch;
+use crate::store::{CiAction, CiPollFetch, CiSnapshot};
 use crate::transport::ci_state_store::CiStateStore;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -28,15 +32,20 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
     }
 }
 
-pub fn spawn(
-    store: Arc<Store>,
+pub fn spawn<A>(
+    dispatch: Dispatch<A>,
     tracker: Arc<dyn CiPollFetch>,
     ci_state_store: CiStateStore,
+    session: Arc<Session>,
+    observer: RateLimitObserver,
     ct: CancellationToken,
-) {
-    let observer = store.rate_limit_observer().clone();
+) where
+    A: 'static,
+    CiAction: Into<A>,
+{
     tokio::spawn(async move {
         let mut last_etag: Option<String> = None;
+        let mut last_snapshot: Option<CiSnapshot> = None;
         let mut interval = tokio::time::interval(POLL_INTERVAL);
         let base_backoff = Duration::from_secs(60);
         let max_backoff = MAX_BACKOFF;
@@ -55,7 +64,7 @@ pub fn spawn(
                 Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
-                    store.broadcast_ci_poll(poll_time(&ci_state_store));
+                    broadcast_ci_poll(&session, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     continue;
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entries, etag }) => {
@@ -66,11 +75,11 @@ pub fn spawn(
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
-                    store.broadcast_ci_poll(poll_time(&ci_state_store));
+                    broadcast_ci_poll(&session, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     continue;
                 }
                 Err(e) => {
-                    store.broadcast_ci_poll(poll_time(&ci_state_store));
+                    broadcast_ci_poll(&session, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     if let Some(decision) = crate::github::classify_and_decide(
                         &e,
                         observer.snapshot(),
@@ -121,11 +130,36 @@ pub fn spawn(
                 conclusion: current,
                 workflows: classified.workflows.clone(),
             };
-            store
-                .dispatch(StoreAction::Ci(CiAction::Updated(snapshot)))
-                .await;
+            dispatch(CiAction::Updated(snapshot.clone()).into());
+            last_snapshot = Some(snapshot);
             ci_state_store.mark_poll_succeeded();
-            store.broadcast_ci_poll(poll_time(&ci_state_store));
+            broadcast_ci_poll(&session, last_snapshot.as_ref(), poll_time(&ci_state_store));
         }
     });
+}
+
+fn broadcast_ci_poll(
+    session: &Session,
+    snapshot: Option<&CiSnapshot>,
+    last_successful_poll_at: Option<String>,
+) {
+    let wire = CiSnapshotWire {
+        state: snapshot
+            .map(|s| s.state)
+            .unwrap_or(crate::ci::CiState::Unknown),
+        run_id: snapshot.and_then(|s| s.run_id),
+        head_sha: snapshot.and_then(|s| s.head_sha.clone()),
+        display_title: snapshot.and_then(|s| s.display_title.clone()),
+        last_successful_poll_at,
+        url: Some(crate::ci::github_actions_url()),
+    };
+    let msg = Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::StateDelta,
+        state_delta: Some(StateDeltaPayload::CiPoll { snapshot: wire }),
+        ..Message::default()
+    };
+    session.broadcast_ephemeral(&msg);
 }

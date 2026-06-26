@@ -30,9 +30,7 @@ fn counter_store() -> Arc<Store<Counter, Count>> {
 }
 
 fn value_of(store: &Store<Counter, Count>) -> i32 {
-    let mut value = 0;
-    store.read(&mut |state| value = state.value);
-    value
+    store.select(|state| state.value)
 }
 
 #[tokio::test]

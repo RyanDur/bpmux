@@ -33,8 +33,8 @@ mod stores_tests;
 
 pub use action::{PollKind, StoreAction};
 pub use ci::{
-    BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiReduceOutcome, CiSessionBroadcaster,
-    CiSnapshot, CiStateStoreWriter, CiStore,
+    BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSessionBroadcaster, CiSnapshot,
+    CiStateStoreWriter,
 };
 pub use owner_park::{OwnerParkBroadcaster, owner_park_presence};
 pub use reactions::{
@@ -72,18 +72,16 @@ pub(crate) fn broadcast_state_delta(
 
 pub struct Store {
     session: Arc<session::Session>,
-    tracker: Option<Arc<dyn CiPollFetch>>,
     refresh: Option<Arc<dyn RefreshDriver>>,
     ingest_interval: Duration,
     hydration_interval: Duration,
-    ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
     rate_limit_observer: crate::github::RateLimitObserver,
-    ci_store: Arc<CiStore>,
+    ci_poll: Arc<ci::CiPoll>,
     app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
     mutation_tokens: AsyncMutex<HashMap<MutationId, CancellationToken>>,
-    listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
+    ci_listeners: app::CiListeners,
     roster_listeners: app::RosterListeners,
     reactions_listeners: app::ReactionsListeners,
 }
@@ -101,6 +99,7 @@ impl Store {
             .unwrap_or_default();
         let roster_listeners: app::RosterListeners = Arc::new(Mutex::new(Vec::new()));
         let reactions_listeners: app::ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
+        let ci_listeners: app::CiListeners = Arc::new(Mutex::new(Vec::new()));
         let app_store = kernel::Store::new(app::AppState::default(), Box::new(app::app_reduce));
         app_store.add_listener(Arc::new(app::RosterBroadcast::new(
             roster_listeners.clone(),
@@ -108,20 +107,27 @@ impl Store {
         app_store.add_listener(Arc::new(app::ReactionsBroadcast::new(
             reactions_listeners.clone(),
         )));
+        app_store.add_listener(Arc::new(app::CiBroadcast::new(ci_listeners.clone())));
+        let ci_poll = Arc::new(ci::CiPoll::new(
+            tracker.clone(),
+            ci_state_store.clone(),
+            session.clone(),
+            parent_ct.clone(),
+            rate_limit_observer.clone(),
+        ));
+        app_store.add_listener(ci_poll.clone());
         Self {
             session,
-            tracker,
             refresh: None,
             ingest_interval: Duration::from_secs(60),
             hydration_interval: Duration::from_secs(15),
-            ci_state_store,
             parent_ct,
             rate_limit_observer,
-            ci_store: Arc::new(CiStore::new()),
+            ci_poll,
             app_store,
             tokens: AsyncMutex::new(HashMap::new()),
             mutation_tokens: AsyncMutex::new(HashMap::new()),
-            listeners: Mutex::new(Vec::new()),
+            ci_listeners,
             roster_listeners,
             reactions_listeners,
         }
@@ -143,21 +149,12 @@ impl Store {
         self
     }
 
-    pub fn ci_store(&self) -> Arc<CiStore> {
-        Arc::clone(&self.ci_store)
-    }
-
     pub fn rate_limit_observer(&self) -> &crate::github::RateLimitObserver {
         &self.rate_limit_observer
     }
 
     pub fn session(&self) -> Arc<session::Session> {
         Arc::clone(&self.session)
-    }
-
-    pub fn add_ci_listener(&self, listener: Arc<dyn CiBroadcastListener>) {
-        let mut listeners = self.listeners.lock().unwrap_or_else(|e| e.into_inner());
-        listeners.push(listener);
     }
 
     pub fn spawn_action_drainer(

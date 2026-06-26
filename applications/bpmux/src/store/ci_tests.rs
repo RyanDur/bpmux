@@ -135,9 +135,7 @@ async fn ci_updated_action_drives_reducer_and_fires_listener() {
     orch.dispatch(StoreAction::Ci(CiAction::Updated(snap(42, "success"))))
         .await;
 
-    let store = orch.ci_store();
-    assert_eq!(store.last_seen(), Some((Some(42), "success")));
-    assert_eq!(store.snapshot().expect("snapshot").run_id, Some(42));
+    assert_eq!(orch.ci_snapshot().expect("snapshot").run_id, Some(42));
     let received = recorder.received.lock().unwrap();
     assert_eq!(received.len(), 1, "listener fires on Changed outcome");
     assert_eq!(received[0].run_id, Some(42));

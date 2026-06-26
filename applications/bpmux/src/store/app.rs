@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use crate::store::ci::{self, CiAction, CiBroadcastListener, CiState};
 use crate::store::kernel::{Listener, ListenerFuture, Reaction};
 use crate::store::reactions::{self, ReactionsAction, ReactionsBroadcastListener, ReactionsState};
 use crate::store::roster::{self, RosterAction, RosterBroadcastListener, RosterState};
@@ -8,12 +9,14 @@ use crate::store::roster::{self, RosterAction, RosterBroadcastListener, RosterSt
 pub struct AppState {
     pub roster: Arc<RosterState>,
     pub reactions: Arc<ReactionsState>,
+    pub ci: Arc<CiState>,
 }
 
 #[derive(Clone)]
 pub enum AppAction {
     Roster(RosterAction),
     Reactions(ReactionsAction),
+    Ci(CiAction),
 }
 
 impl From<RosterAction> for AppAction {
@@ -25,6 +28,12 @@ impl From<RosterAction> for AppAction {
 impl From<ReactionsAction> for AppAction {
     fn from(action: ReactionsAction) -> Self {
         Self::Reactions(action)
+    }
+}
+
+impl From<CiAction> for AppAction {
+    fn from(action: CiAction) -> Self {
+        Self::Ci(action)
     }
 }
 
@@ -44,11 +53,19 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
+        AppAction::Ci(action) => match ci::reduce(&state.ci, action) {
+            Some(ci) => AppState {
+                ci: Arc::new(ci),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
     }
 }
 
 pub type RosterListeners = Arc<Mutex<Vec<Arc<dyn RosterBroadcastListener>>>>;
 pub type ReactionsListeners = Arc<Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>>;
+pub type CiListeners = Arc<Mutex<Vec<Arc<dyn CiBroadcastListener>>>>;
 
 pub struct RosterBroadcast {
     listeners: RosterListeners,
@@ -106,6 +123,37 @@ impl Listener<AppState, AppAction> for ReactionsBroadcast {
         Box::pin(async move {
             for listener in listeners {
                 listener.on_changed(&channel, &aggregated);
+            }
+        })
+    }
+}
+
+pub struct CiBroadcast {
+    listeners: CiListeners,
+}
+
+impl CiBroadcast {
+    pub fn new(listeners: CiListeners) -> Self {
+        Self { listeners }
+    }
+}
+
+impl Listener<AppState, AppAction> for CiBroadcast {
+    fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
+        if Arc::ptr_eq(&reaction.previous.ci, &reaction.current.ci) {
+            return Box::pin(async {});
+        }
+        let Some(snapshot) = ci::snapshot(&reaction.current.ci) else {
+            return Box::pin(async {});
+        };
+        let listeners = self
+            .listeners
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        Box::pin(async move {
+            for listener in listeners {
+                listener.on_changed(&snapshot);
             }
         })
     }

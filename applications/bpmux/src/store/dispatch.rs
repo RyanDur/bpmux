@@ -9,19 +9,22 @@ impl Store {
     pub async fn dispatch(self: &Arc<Self>, action: StoreAction) {
         validate_and_log(&action);
         match action {
-            StoreAction::Ci(a) => self.dispatch_ci(a).await,
+            StoreAction::Ci(a) => self.app_store.dispatch(a),
             StoreAction::Sync(a) => self.dispatch_sync(a).await,
-            StoreAction::Reactions(a) => {
-                self.app_store.dispatch(super::app::AppAction::Reactions(a))
-            }
-            StoreAction::Roster(a) => self.app_store.dispatch(super::app::AppAction::Roster(a)),
+            StoreAction::Reactions(a) => self.app_store.dispatch(a),
+            StoreAction::Roster(a) => self.app_store.dispatch(a),
         }
         self.app_store.await_listeners().await;
     }
 
     pub async fn is_running(&self, kind: PollKind) -> bool {
-        let tokens = self.tokens.lock().await;
-        tokens.contains_key(&kind)
+        match kind {
+            PollKind::Ci => self.ci_poll.is_running(),
+            PollKind::Ingest | PollKind::Hydration => {
+                let tokens = self.tokens.lock().await;
+                tokens.contains_key(&kind)
+            }
+        }
     }
 
     pub(crate) async fn spawn_lifecycle_proxy(
