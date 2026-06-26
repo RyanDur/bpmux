@@ -7,7 +7,7 @@ fn functions_dir() -> Result<PathBuf, String> {
     Ok(cwd.join(".bpmux").join("functions"))
 }
 
-pub(super) fn definition_path(name: &str) -> Result<PathBuf, String> {
+fn definition_path(name: &str) -> Result<PathBuf, String> {
     if name.is_empty() || name.contains('/') || name.contains('\\') || name.contains("..") {
         return Err(format!(
             "user_fn name '{name}' must be a single path segment (no '/', '\\\\', or '..')"

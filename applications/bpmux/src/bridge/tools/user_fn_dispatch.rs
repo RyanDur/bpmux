@@ -103,11 +103,19 @@ fn substitution_no_slots_passes_through() {
     assert_eq!(substitute_args(body, &args).unwrap(), body);
 }
 
-#[test]
-fn rejects_path_traversal_in_name() {
-    assert!(definition_path("../escape").is_err());
-    assert!(definition_path("nested/sub").is_err());
-    assert!(definition_path("").is_err());
+#[tokio::test]
+async fn rejects_path_traversal_in_name() {
+    let tmp = tempfile::tempdir().unwrap();
+    let _cwd = CwdGuard::enter(tmp.path());
+    for evil in ["../escape", "nested/sub", ""] {
+        let mut args = serde_json::Map::new();
+        args.insert("name".into(), serde_json::json!(evil));
+        let outcome = handle_user_fn(&args, "dev").await;
+        assert!(
+            outcome.is_err(),
+            "a name that is not a single path segment ('/', '..', or empty) is rejected before any file read — the workspace boundary cannot be escaped; name {evil:?} produced {outcome:?}"
+        );
+    }
 }
 
 #[tokio::test]

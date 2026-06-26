@@ -38,7 +38,7 @@ pub(in crate::bridge) async fn handle_read_messages(
     serde_json::to_string_pretty(&curated).map_err(|e| format!("format: {e}"))
 }
 
-pub(super) fn read_messages_request_path(limit: u64, agent_short: &str) -> String {
+fn read_messages_request_path(limit: u64, agent_short: &str) -> String {
     format!(
         "/api/messages?limit={limit}&as={}",
         urlencoding(agent_short)

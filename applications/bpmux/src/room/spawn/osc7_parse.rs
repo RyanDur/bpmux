@@ -2,11 +2,11 @@ const OSC7_PREFIX: &[u8] = b"\x1b]7;file://";
 const BEL: u8 = 0x07;
 const ESC: u8 = 0x1b;
 const BACKSLASH: u8 = b'\\';
-pub(super) const MAX_BUFFERED: usize = 8192;
+const MAX_BUFFERED: usize = 8192;
 
 #[derive(Default)]
 pub struct Osc7CwdParser {
-    pub(super) buf: Vec<u8>,
+    buf: Vec<u8>,
 }
 
 impl Osc7CwdParser {

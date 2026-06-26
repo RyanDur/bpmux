@@ -57,7 +57,7 @@ mod list_ready;
 mod outcome_mapping_tests;
 mod read_messages;
 #[cfg(test)]
-mod read_messages_filtering;
+mod read_messages_agent_scoping;
 mod remove_principle;
 #[cfg(test)]
 mod reprioritize_outcome_tests;

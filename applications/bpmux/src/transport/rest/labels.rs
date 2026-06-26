@@ -17,12 +17,12 @@ pub struct LabelMutationPayload {
     pub remove: Vec<String>,
 }
 
-pub(super) enum LabelOp {
+enum LabelOp {
     Add(String),
     Remove(String),
 }
 
-pub(super) fn reorder_label_ops(payload: &LabelMutationPayload) -> Vec<LabelOp> {
+fn reorder_label_ops(payload: &LabelMutationPayload) -> Vec<LabelOp> {
     payload
         .add
         .iter()

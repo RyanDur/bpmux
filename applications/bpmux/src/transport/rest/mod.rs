@@ -26,9 +26,9 @@ mod board_endpoint;
 #[cfg(test)]
 mod presence_endpoint;
 #[cfg(test)]
-mod reorder_label_ops;
-#[cfg(test)]
 mod shared_rest_helpers;
+#[cfg(test)]
+mod story_label_reorder;
 
 pub(crate) use board::ordered_board_stories;
 pub use board_acceptance::{AcceptPayload, RejectPayload, post_accept_story, post_reject_story};

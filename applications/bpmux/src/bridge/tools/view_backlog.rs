@@ -3,7 +3,7 @@ use crate::product_management::story::Story;
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
-pub(super) const SAMPLE_LIMIT: usize = 5;
+const SAMPLE_LIMIT: usize = 5;
 
 pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json::Value {
     let mut ready: Vec<String> = Vec::new();

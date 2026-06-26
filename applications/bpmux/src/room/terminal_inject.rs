@@ -1,7 +1,7 @@
-pub(super) const MARKER: &str = "⟦bpmux⟧";
-pub(super) const SEPARATOR: char = '▸';
-pub(super) const FRAMING_STYLE: &str = "\x1b[2;36m";
-pub(super) const STYLE_RESET: &str = "\x1b[0m";
+const MARKER: &str = "⟦bpmux⟧";
+const SEPARATOR: char = '▸';
+const FRAMING_STYLE: &str = "\x1b[2;36m";
+const STYLE_RESET: &str = "\x1b[0m";
 
 pub fn frame_team_message(sender: &str, scope: &str, body: &str) -> String {
     let sender = sanitize_field(sender);

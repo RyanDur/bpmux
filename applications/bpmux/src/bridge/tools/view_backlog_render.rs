@@ -75,13 +75,17 @@ fn closed_non_accepted_story_lands_in_retired_count() {
 
 #[test]
 fn samples_cap_at_sample_limit() {
-    let stories: Vec<Story> = (0..(SAMPLE_LIMIT as u64 + 3))
+    let stories: Vec<Story> = (0..8)
         .map(|i| story(200 + i, &format!("ready {i}"), StoryState::Ready))
         .collect();
     let summary = build_backlog_summary(&stories);
-    assert_eq!(summary["ready_count"], serde_json::json!(SAMPLE_LIMIT + 3));
+    assert_eq!(
+        summary["ready_count"], 8,
+        "every Ready story is counted; only the displayed samples are capped"
+    );
     assert_eq!(
         summary["ready_samples"].as_array().unwrap().len(),
-        SAMPLE_LIMIT
+        5,
+        "the sample list is capped at five so the summary stays scannable even as the Ready column grows"
     );
 }

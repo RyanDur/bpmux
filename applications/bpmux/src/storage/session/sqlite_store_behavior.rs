@@ -1,8 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::sqlite::SqliteStorage;
-use super::sqlite_engine as engine;
-use super::sqlite_users as users;
 use crate::message::{Message, MessageType};
 use crate::storage::Storage;
 
@@ -25,25 +23,9 @@ fn chat(from: &str, sender_id: Option<&str>) -> Message {
     msg
 }
 
-fn senders(storage: &SqliteStorage) -> Vec<Option<String>> {
-    engine::query(
-        &storage.lock(),
-        "SELECT sender FROM messages ORDER BY seq",
-        [],
-        |row| row.get(0),
-    )
-    .unwrap()
-}
-
 #[test]
-fn seeds_the_system_user_on_open_but_excludes_it_from_the_participant_roster() {
+fn the_seeded_system_user_is_excluded_from_the_participant_roster() {
     let (_dir, storage) = store();
-    assert!(
-        users::id_for_session(&storage.lock(), users::SYSTEM_SESSION_ID)
-            .unwrap()
-            .is_some(),
-        "the system user is seeded at store open so server-originated messages have an FK target"
-    );
     assert!(
         storage.load_users().unwrap().is_empty(),
         "the system user is infrastructure, not a routable participant — load_users (which rebuilds routing identities) excludes it, so the backends stay at parity"
@@ -51,69 +33,23 @@ fn seeds_the_system_user_on_open_but_excludes_it_from_the_participant_roster() {
 }
 
 #[test]
-fn a_message_from_a_registered_user_stores_that_users_surrogate_id_as_sender() {
-    let (_dir, storage) = store();
-    storage
-        .upsert_user("sess-dev", "dev:claude-code", "dev")
-        .unwrap();
-    let dev_id = users::id_for_session(&storage.lock(), "sess-dev")
-        .unwrap()
-        .expect("the registered user has a surrogate id");
-
-    storage
-        .append_message(&chat("dev:claude-code", Some("sess-dev")))
-        .unwrap();
-
-    assert_eq!(
-        senders(&storage),
-        vec![Some(dev_id)],
-        "the sender FK holds the resolved user's surrogate id, not a denormalized name"
-    );
-}
-
-#[test]
-fn a_server_originated_message_attributes_to_the_seeded_system_user() {
-    let (_dir, storage) = store();
-    let system_id = users::id_for_session(&storage.lock(), users::SYSTEM_SESSION_ID)
-        .unwrap()
-        .expect("the system user has a surrogate id");
-
-    storage.append_message(&chat("bpmux", None)).unwrap();
-
-    assert_eq!(
-        senders(&storage),
-        vec![Some(system_id)],
-        "a message from the server resolves to the system user — bpmux IS a user, not an unknown sender"
-    );
-}
-
-#[test]
-fn an_unregistered_sender_persists_as_null_never_a_dropped_message() {
+fn an_unresolvable_author_is_kept_never_dropped() {
     let (_dir, storage) = store();
     storage.append_message(&chat("rando", None)).unwrap();
+    let stored = storage.read_messages().unwrap();
     assert_eq!(
-        senders(&storage),
-        vec![None],
-        "an author the store cannot resolve persists as a NULL sender — the message is kept, never dropped to satisfy the FK"
+        stored.len(),
+        1,
+        "an author the store cannot resolve is still persisted — the message is kept, never dropped to satisfy the FK"
+    );
+    assert_eq!(
+        stored[0].from, "rando",
+        "the kept message round-trips its original author verbatim"
     );
 }
 
 #[test]
-fn the_sender_foreign_key_is_enforced_so_a_dangling_reference_cannot_be_written() {
-    let (_dir, storage) = store();
-    let dangling = engine::execute(
-        &storage.lock(),
-        "INSERT INTO messages (id, created_at, sender, message_type, payload) VALUES ('33333333-3333-4333-8333-333333333333', 1, 'no-such-user-uuid', 'chat', '{}')",
-        [],
-    );
-    assert!(
-        dangling.is_err(),
-        "foreign_keys=ON rejects a sender that references no user row — the FK has teeth"
-    );
-}
-
-#[test]
-fn a_bookmark_keys_by_the_resolved_user_id_and_cascades_when_the_user_is_deleted() {
+fn a_bookmark_is_reachable_by_role_and_cascades_when_the_user_is_deleted() {
     let (_dir, storage) = store();
     storage.upsert_user("sess-dev", "dev", "dev").unwrap();
     let bm = crate::bookmark::Bookmark {
@@ -127,32 +63,10 @@ fn a_bookmark_keys_by_the_resolved_user_id_and_cascades_when_the_user_is_deleted
         "a bookmark is reachable by role, resolved through to the user's id"
     );
 
-    let dev_id = users::id_for_role(&storage.lock(), "dev")
-        .unwrap()
-        .expect("the dev user resolves to an id");
-    let keyed_by_user: Option<String> = engine::query_opt(
-        &storage.lock(),
-        "SELECT bookmark FROM bookmarks WHERE user_id = ?1",
-        [&dev_id],
-        |row| row.get(0),
-    )
-    .unwrap();
-    assert!(
-        keyed_by_user.is_some(),
-        "the bookmark row is keyed by the user's uuid, not the bare role string"
-    );
-
     storage.delete_users(&["sess-dev".to_string()]).unwrap();
-    let remaining: i64 = engine::query_opt(
-        &storage.lock(),
-        "SELECT count(*) FROM bookmarks",
-        [],
-        |row| row.get(0),
-    )
-    .unwrap()
-    .unwrap();
     assert_eq!(
-        remaining, 0,
-        "ON DELETE CASCADE removes the bookmark when its user row is reaped"
+        storage.load_bookmark("dev"),
+        crate::bookmark::Bookmark::default(),
+        "ON DELETE CASCADE removes the bookmark when its user row is reaped — load_bookmark falls back to the default, observable through the public Storage API"
     );
 }

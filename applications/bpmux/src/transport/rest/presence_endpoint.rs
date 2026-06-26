@@ -1,40 +1,87 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::sync::Arc;
+
+use axum::Json;
+use axum::extract::Extension;
+use axum::http::{HeaderMap, HeaderValue, StatusCode};
+use axum::response::IntoResponse;
+
 use super::presence::*;
-use crate::store::Presence;
+use crate::routing::RoutingStore;
 
-#[test]
-fn presence_from_state_accepts_the_three_agent_pushable_states() {
-    assert_eq!(presence_from_state("busy"), Some(Presence::Busy));
-    assert_eq!(presence_from_state("idle"), Some(Presence::Idle));
-    assert_eq!(presence_from_state("help"), Some(Presence::Help));
+fn orchestrator() -> Arc<crate::store::Store> {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let (tx, _rx) = tokio::sync::broadcast::channel::<crate::message::Message>(64);
+    let session = Arc::new(crate::session::Session::new(
+        dir.path().to_path_buf(),
+        "local".to_string(),
+        tx,
+    ));
+    std::mem::forget(dir);
+    Arc::new(crate::store::Store::new(
+        session,
+        None,
+        crate::transport::ci_state_store::CiStateStore::new(),
+        tokio_util::sync::CancellationToken::new(),
+    ))
 }
 
-#[test]
-fn presence_from_state_is_case_and_whitespace_insensitive() {
+fn routing_with_dev_session() -> Arc<RoutingStore> {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
+    std::mem::forget(dir);
+    routing.register("sess-dev", "dev");
+    Arc::new(routing)
+}
+
+fn dev_headers() -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert("X-BPMUX-Agent", HeaderValue::from_static("dev"));
+    headers
+}
+
+async fn post_state(state: &str) -> StatusCode {
+    let response = post_presence(
+        dev_headers(),
+        Extension(routing_with_dev_session()),
+        Extension(orchestrator()),
+        Json(PresenceRequest {
+            state: state.to_string(),
+        }),
+    )
+    .await
+    .into_response();
+    response.status()
+}
+
+#[tokio::test]
+async fn the_endpoint_accepts_the_three_agent_pushable_states() {
+    for state in ["busy", "idle", "help"] {
+        assert_eq!(
+            post_state(state).await,
+            StatusCode::OK,
+            "an agent pushing '{state}' through POST /api/presence sets its OWN roster presence — busy/idle/help are the agent-driven colour-source the dot reads"
+        );
+    }
+}
+
+#[tokio::test]
+async fn the_endpoint_normalizes_case_and_whitespace() {
     assert_eq!(
-        presence_from_state("  HELP "),
-        Some(Presence::Help),
-        "the verb normalizes like agent_from_headers does for the role"
+        post_state("  HELP ").await,
+        StatusCode::OK,
+        "the verb normalizes like agent_from_headers does for the role — '  HELP ' is the same agent-pushable help"
     );
 }
 
-#[test]
-fn presence_from_state_rejects_states_an_agent_must_not_self_assign() {
-    assert_eq!(
-        presence_from_state("online"),
-        None,
-        "online is connection-derived (join sets it), not agent-pushable"
-    );
-    assert_eq!(
-        presence_from_state("offline"),
-        None,
-        "offline is connection-derived (disconnect), not agent-pushable"
-    );
-    assert_eq!(
-        presence_from_state("blocked"),
-        None,
-        "blocked is the owner-park's to set, not the agent's"
-    );
-    assert_eq!(presence_from_state("nonsense"), None);
+#[tokio::test]
+async fn the_endpoint_rejects_states_an_agent_must_not_self_assign() {
+    for forbidden in ["online", "offline", "blocked", "nonsense"] {
+        assert_eq!(
+            post_state(forbidden).await,
+            StatusCode::BAD_REQUEST,
+            "'{forbidden}' is NOT agent-pushable: online/offline are connection-derived (join/disconnect), blocked is the owner-park's to set, and nonsense is no presence at all — the endpoint rejects each with 400, never silently accepting"
+        );
+    }
 }

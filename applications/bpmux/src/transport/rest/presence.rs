@@ -14,7 +14,7 @@ pub struct PresenceRequest {
     pub state: String,
 }
 
-pub(super) fn presence_from_state(state: &str) -> Option<Presence> {
+fn presence_from_state(state: &str) -> Option<Presence> {
     match state.trim().to_ascii_lowercase().as_str() {
         "busy" => Some(Presence::Busy),
         "idle" => Some(Presence::Idle),

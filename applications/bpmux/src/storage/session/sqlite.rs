@@ -37,7 +37,7 @@ impl SqliteStorage {
         })
     }
 
-    pub(super) fn lock(&self) -> std::sync::MutexGuard<'_, Connection> {
+    fn lock(&self) -> std::sync::MutexGuard<'_, Connection> {
         self.conn.lock().unwrap_or_else(|e| e.into_inner())
     }
 

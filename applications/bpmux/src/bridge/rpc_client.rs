@@ -1,6 +1,6 @@
 use serde_json::{Map, Value};
 
-pub(super) const RPC_AGENT_HEADER: &str = "X-BPMUX-Agent";
+const RPC_AGENT_HEADER: &str = "X-BPMUX-Agent";
 
 fn load_auth_token() -> Result<String, String> {
     let path = crate::auth::default_auth_token_path()
@@ -8,7 +8,7 @@ fn load_auth_token() -> Result<String, String> {
     crate::auth::read(&path).map_err(|e| format!("read auth-token from {}: {e}", path.display()))
 }
 
-pub(super) async fn post_rpc(
+async fn post_rpc(
     port: u16,
     tool: &str,
     agent: &str,

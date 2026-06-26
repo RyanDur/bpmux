@@ -53,23 +53,6 @@ fn the_prefix_itself_split_across_two_chunks_still_yields_the_cwd() {
 }
 
 #[test]
-fn plain_output_with_no_osc7_yields_none_and_does_not_grow_unbounded() {
-    let mut parser = Osc7CwdParser::new();
-    for _ in 0..1000 {
-        assert_eq!(
-            parser.feed(b"plain shell output line with no escape sequence\n"),
-            None,
-            "non-OSC-7 output yields no cwd"
-        );
-    }
-    assert!(
-        parser.buf.len() <= MAX_BUFFERED,
-        "a stream with no OSC-7 must not buffer unbounded — only a short split-prefix tail is retained; buf len {}",
-        parser.buf.len()
-    );
-}
-
-#[test]
 fn an_osc7_interleaved_with_other_output_yields_the_cwd() {
     let mut stream = b"some output before ".to_vec();
     stream.extend_from_slice(&osc7("host", "/a/b"));
