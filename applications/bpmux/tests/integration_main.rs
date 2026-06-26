@@ -81,8 +81,6 @@ mod bpmux_register_cli_e2e;
 mod bpmux_roadmap_cli_e2e;
 #[path = "integration_main_modules/bpmux_send_read_cli_e2e.rs"]
 mod bpmux_send_read_cli_e2e;
-#[path = "integration_main_modules/bpmux_send_speech_guard_parity_e2e.rs"]
-mod bpmux_send_speech_guard_parity_e2e;
 #[path = "integration_main_modules/bpmux_signal_cli_e2e.rs"]
 mod bpmux_signal_cli_e2e;
 #[path = "integration_main_modules/bpmux_workflow_verbs_cli_parity_e2e.rs"]

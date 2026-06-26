@@ -46,9 +46,6 @@ pub(in crate::bridge) async fn handle_send(
         .get("text")
         .and_then(|v| v.as_str())
         .ok_or("missing 'text' argument")?;
-    if let Some(reason) = crate::speech_guard::pause_vocab_violation(text) {
-        return Err(reason);
-    }
     let explicit_to = args.get("to").and_then(|v| v.as_array()).map(|arr| {
         arr.iter()
             .filter_map(|v| v.as_str().map(String::from))

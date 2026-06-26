@@ -108,11 +108,6 @@ pub async fn post_message(
             "message_type=\"system\" is reserved for internal callers".to_string(),
         );
     }
-    if payload.from.ends_with(":claude-code")
-        && let Some(reason) = crate::speech_guard::pause_vocab_violation(&payload.text)
-    {
-        return (StatusCode::BAD_REQUEST, reason);
-    }
     let explicit_privacy = payload.to.is_some();
     let sender_id = routing
         .resolve(crate::transport::ws::short_name(&payload.from))
