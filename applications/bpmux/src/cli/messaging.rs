@@ -146,13 +146,16 @@ pub(crate) fn run_read(limit: usize, full: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn run_emit_precommit_passed(
-    sha: &str,
-    role_arg: &Option<String>,
-) -> anyhow::Result<()> {
-    let role = crate::resolve_role(role_arg);
-    let body = crate::precommit::build_precommit_activity_payload(&role, sha);
-    post_activity(&body);
+pub(crate) fn activity_payload(from: &str, text: &str) -> serde_json::Value {
+    serde_json::json!({
+        "from": from,
+        "text": text,
+        "message_type": "activity",
+    })
+}
+
+pub(crate) fn run_emit_activity(from: &str, text: &str) -> anyhow::Result<()> {
+    post_activity(&activity_payload(from, text));
     Ok(())
 }
 

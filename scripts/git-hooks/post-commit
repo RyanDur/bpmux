@@ -1,33 +1,40 @@
 #!/bin/bash
-# Post-commit hook (#424): broadcast a pre-commit-gates-passed activity
-# message to the bpmux session after each successful commit. Only fires
-# on gate-passed state because the commit wouldn't exist if pre-commit
-# had failed.
+# Post-commit hook (#424): broadcast a "pre-commit gates passed" activity
+# message after each successful commit. The commit only exists if pre-commit
+# passed, so its existence IS the gate-passed signal.
 #
-# Install: symlink or copy this file to .git/hooks/post-commit and make
-# it executable. Out of scope for this story is automated installation.
+# The message wording and sender attribution live HERE, in the script, not in
+# bpmux: the substrate exposes a generic `emit-activity --from <sender> --text
+# <text>` affordance and stays content-agnostic; this team's pre-commit
+# message is process, so it belongs in the process layer (goal #2 — process
+# out of the app).
 #
-# The POST is best-effort: a 500ms timeout, failures are swallowed. If
-# the bpmux server isn't running, teammates simply won't see the
-# broadcast for that commit.
+# Install: copy or symlink to .git/hooks/post-commit and make it executable.
+# Automated installation is out of scope.
+#
+# Best-effort: the binary uses a 500ms timeout and swallows failures. If the
+# bpmux server isn't running, teammates simply won't see the broadcast.
 set -euo pipefail
 
 SHA="$(git rev-parse HEAD 2>/dev/null || echo "")"
 [ -z "$SHA" ] && exit 0
 
-# Resolve the bpmux binary. Dev workflow iterates on debug builds; a
-# stale target/release (from an earlier release build) would shadow the
-# current subcommand surface. Try each in mtime-agnostic order but fall
-# through on failure so a stale binary doesn't swallow the signal.
-try_emit() {
+FROM="${BPMUX_ROLE:-dev}:pre-commit-hook"
+TEXT="pre-commit gates passed @ ${SHA:0:7} (cargo fmt + clippy)"
+
+# Resolve the bpmux binary. Dev workflow iterates on debug builds; a stale
+# target/release (from an earlier release build) would shadow the current
+# subcommand surface. Try each, falling through so a stale binary doesn't
+# swallow the signal.
+emit() {
     local bin="$1"
     [ -x "$bin" ] || return 1
-    "$bin" emit-precommit-passed --sha "$SHA" 2>/dev/null
+    "$bin" emit-activity --from "$FROM" --text "$TEXT" 2>/dev/null
 }
 
-try_emit "target/debug/bpmux" && exit 0
-try_emit "target/release/bpmux" && exit 0
+emit "target/debug/bpmux" && exit 0
+emit "target/release/bpmux" && exit 0
 if command -v bpmux &>/dev/null; then
-    bpmux emit-precommit-passed --sha "$SHA" 2>/dev/null || true
+    bpmux emit-activity --from "$FROM" --text "$TEXT" 2>/dev/null || true
 fi
 exit 0

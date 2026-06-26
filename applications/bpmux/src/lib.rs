@@ -34,9 +34,6 @@ pub mod memory;
 pub mod message;
 #[cfg(test)]
 mod message_tests;
-pub mod precommit;
-#[cfg(test)]
-mod precommit_tests;
 pub mod product_management;
 #[cfg(test)]
 mod reaction_aggregation;

@@ -9,7 +9,7 @@ mod workflow;
 use clap::Subcommand;
 
 use super::actions::RoomAction;
-use super::messaging::run_emit_precommit_passed;
+use super::messaging::run_emit_activity;
 use identity::{IdentityCommands, dispatch_identity};
 use messaging::{MessagingCommands, dispatch_messaging};
 use planning::{PlanningCommands, dispatch_planning};
@@ -60,16 +60,16 @@ pub(crate) enum Command {
         role: Option<String>,
     },
     #[command(
-        about = "Emit a pre-commit-gates-passed activity broadcast (#424). Invoked by the git post-commit hook with the SHA of the just-created commit. Fires only on gate-passed state because the commit wouldn't exist if pre-commit had failed."
+        about = "Emit an activity-class broadcast message attributed to an arbitrary sender. The generic substrate affordance scripts/hooks use to post automation signals into the bpmux stream (e.g. the git post-commit hook emits pre-commit-gates-passed). The substrate stays content-agnostic: the sender label and wording are the caller's concern."
     )]
-    EmitPrecommitPassed {
-        #[arg(long, help = "SHA of the commit whose pre-commit gates just passed.")]
-        sha: String,
+    EmitActivity {
         #[arg(
             long,
-            help = "Role to attribute the broadcast to. Defaults to BPMUX_ROLE env var; falls back to \"dev\"."
+            help = "Sender label to attribute the activity to (e.g. \"dev:pre-commit-hook\")."
         )]
-        role: Option<String>,
+        from: String,
+        #[arg(long, help = "The activity message text.")]
+        text: String,
     },
     Room {
         #[command(subcommand)]
@@ -97,7 +97,7 @@ pub(crate) enum Command {
 
 pub(crate) fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
     match command {
-        Command::EmitPrecommitPassed { sha, role } => Some(run_emit_precommit_passed(sha, role)),
+        Command::EmitActivity { from, text } => Some(run_emit_activity(from, text)),
         Command::MigrateStorage => Some(super::migrate::run_migrate_storage()),
         Command::Messaging(c) => Some(dispatch_messaging(c)),
         Command::Read(c) => Some(dispatch_read(c)),

@@ -8,6 +8,8 @@ mod help;
 mod http;
 mod lesson;
 mod messaging;
+#[cfg(test)]
+mod messaging_tests;
 mod migrate;
 #[cfg(test)]
 mod parity_audit;
