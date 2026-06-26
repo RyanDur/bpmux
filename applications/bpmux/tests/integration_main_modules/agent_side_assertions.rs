@@ -113,9 +113,10 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
         let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
         let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
 
-        // Wait for both bridges to finish their join announcements
-        // before the signal fires, so the capture windows are stable.
         tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let designer_sub = designer.subscribe("addressed_to_me").await;
+        let dev_sub = dev.subscribe("addressed_to_me").await;
 
         // deliver_story's API returns Err only on signal-send failure
         // (load-bearing). gh label edits are reported in the Ok
@@ -140,16 +141,16 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
             "deliver_story Ok status should report signals sent. got: {status_str}"
         );
 
-        designer
-            .capture
-            .wait_for("#199 (deliver-target) delivered", WAIT_PRESENCE_TIMEOUT)
-            .await;
-
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        let dev_seen = dev.capture.received().join("\n");
+        let designer_event = designer.wait_for_event(&designer_sub, WAIT_PRESENCE_TIMEOUT).await;
         assert!(
-            !dev_seen.contains("#199 (deliver-target) delivered"),
-            "dev should NOT receive the designer-addressed delivery signal. got:\n{dev_seen}"
+            designer_event.contains("#199 (deliver-target) delivered"),
+            "designer must receive the delivery signal on the live addressed_to_me push; got {designer_event}"
+        );
+
+        let dev_event = dev.wait_for_event(&dev_sub, Duration::from_millis(1500)).await;
+        assert!(
+            !dev_event.contains("#199 (deliver-target) delivered"),
+            "dev (the sender, not addressed) must NOT receive the designer-addressed delivery signal; got {dev_event}"
         );
 
         dev.close().await;
@@ -195,6 +196,9 @@ fn pass_desk_check_signal_routes_to_owner_not_dev() {
             .await
             .expect("designer submit_verdict");
 
+        let owner_sub = owner.subscribe("addressed_to_me").await;
+        let dev_sub = dev.subscribe("addressed_to_me").await;
+
         let status = designer
             .call_tool(
                 "pass_desk_check",
@@ -208,18 +212,20 @@ fn pass_desk_check_signal_routes_to_owner_not_dev() {
             "pass_desk_check Ok status should report signal sent. got: {status_str}"
         );
 
-        owner
-            .capture
-            .wait_for("ready for acceptance", WAIT_PRESENCE_TIMEOUT)
+        let owner_event = owner
+            .wait_for_event(&owner_sub, WAIT_PRESENCE_TIMEOUT)
             .await;
-
-        // Negative: dev does not see the pass signal. Wait a beat for
-        // any mis-routed broadcast, then snapshot.
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        let dev_seen = dev.capture.received().join("\n");
         assert!(
-            !dev_seen.contains("ready for acceptance"),
-            "dev should NOT receive the owner-addressed pass signal. got:\n{dev_seen}"
+            owner_event.contains("ready for acceptance"),
+            "owner must receive the pass signal on the live addressed_to_me push; got {owner_event}"
+        );
+
+        let dev_event = dev
+            .wait_for_event(&dev_sub, Duration::from_millis(1500))
+            .await;
+        assert!(
+            !dev_event.contains("ready for acceptance"),
+            "dev should NOT receive the owner-addressed pass signal; got {dev_event}"
         );
 
         designer.close().await;
@@ -255,6 +261,10 @@ fn fail_desk_check_signal_reaches_dev_and_the_owner_but_not_other_peers() {
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
+        let dev_sub = dev.subscribe("addressed_to_me").await;
+        let owner_sub = owner.subscribe("addressed_to_me").await;
+        let pm_sub = pm.subscribe("addressed_to_me").await;
+
         let status = designer
             .call_tool(
                 "fail_desk_check",
@@ -268,18 +278,21 @@ fn fail_desk_check_signal_reaches_dev_and_the_owner_but_not_other_peers() {
             "fail_desk_check Ok status should report signal sent. got: {status_str}"
         );
 
-        dev.capture
-            .wait_for("missing negative test", WAIT_PRESENCE_TIMEOUT)
-            .await;
-        owner.capture
-            .wait_for("missing negative test", WAIT_PRESENCE_TIMEOUT)
-            .await;
-
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        let pm_seen = pm.capture.received().join("\n");
+        let dev_event = dev.wait_for_event(&dev_sub, WAIT_PRESENCE_TIMEOUT).await;
         assert!(
-            !pm_seen.contains("missing negative test"),
-            "#1733: the owner is unfilterable — dev (addressed) AND owner (the omniscient owner) both receive the fail signal, but pm (a non-owner not in --to) must NOT — owner-omniscience does not loosen peer scoping. got:\n{pm_seen}"
+            dev_event.contains("missing negative test"),
+            "dev (addressed) must receive the fail signal; got {dev_event}"
+        );
+        let owner_event = owner.wait_for_event(&owner_sub, WAIT_PRESENCE_TIMEOUT).await;
+        assert!(
+            owner_event.contains("missing negative test"),
+            "owner (the omniscient owner) must receive the fail signal; got {owner_event}"
+        );
+
+        let pm_event = pm.wait_for_event(&pm_sub, Duration::from_millis(1500)).await;
+        assert!(
+            !pm_event.contains("missing negative test"),
+            "#1733: the owner is unfilterable — dev (addressed) AND owner (the omniscient owner) both receive the fail signal, but pm (a non-owner not in --to) must NOT — owner-omniscience does not loosen peer scoping. got:\n{pm_event}"
         );
 
         designer.close().await;
@@ -302,6 +315,8 @@ fn pass_desk_check_rejects_non_designer_callers() {
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
+        let owner_sub = owner.subscribe("addressed_to_me").await;
+
         let err = dev
             .call_tool(
                 "pass_desk_check",
@@ -314,11 +329,12 @@ fn pass_desk_check_rejects_non_designer_callers() {
             "rejection cites structured workflow-role-not-allowed kind; got {err}"
         );
 
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        let owner_seen = owner.capture.received().join("\n");
+        let owner_event = owner
+            .wait_for_event(&owner_sub, Duration::from_millis(1500))
+            .await;
         assert!(
-            !owner_seen.contains("ready for acceptance"),
-            "rejected pass call should not fire the owner signal. got:\n{owner_seen}"
+            !owner_event.contains("ready for acceptance"),
+            "rejected pass call should not fire the owner signal; got {owner_event}"
         );
 
         dev.close().await;
@@ -378,6 +394,8 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         .await
         .expect("pm label_story awaiting team");
 
+        let dev_sub = dev.subscribe("addressed_to_me").await;
+
         let result = pm
             .call_tool(
                 "accept_story",
@@ -390,14 +408,10 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
             result
         );
 
-        dev.capture
-            .wait_for("accepted by pm", WAIT_PRESENCE_TIMEOUT)
-            .await;
-
-        let dev_seen = dev.capture.received().join("\n");
+        let dev_event = dev.wait_for_event(&dev_sub, WAIT_PRESENCE_TIMEOUT).await;
         assert!(
-            dev_seen.contains("#213") && dev_seen.contains("accepted by pm"),
-            "signal should include story number and role. got:\n{dev_seen}"
+            dev_event.contains("#213") && dev_event.contains("accepted by pm"),
+            "signal should include story number and role. got:\n{dev_event}"
         );
 
         pm.close().await;

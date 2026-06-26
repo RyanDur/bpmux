@@ -1,5 +1,9 @@
 pub(crate) const CHAT_RELEVANCE_CLASSES: [&str; 3] = ["chat", "insight", "nudge"];
 
+pub fn message_type_reaches_llm_stream(message_type: Option<&str>) -> bool {
+    !matches!(message_type, Some("activity") | Some("system"))
+}
+
 pub(crate) fn chat_class_reaches_live_stream(
     message_class: &str,
     addressed_to_me: bool,

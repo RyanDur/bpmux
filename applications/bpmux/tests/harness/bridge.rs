@@ -1,17 +1,18 @@
-use std::future::Future;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use rmcp::model::CustomNotification;
-use rmcp::service::{NotificationContext, RunningService};
+use rmcp::service::RunningService;
 use rmcp::transport::child_process::{ConfigureCommandExt, TokioChildProcess};
 use rmcp::{ClientHandler, RoleClient, ServiceExt};
 
 use super::pty::TestBpmux;
 
+#[derive(Clone, Default)]
+struct NoopHandler;
+
+impl ClientHandler for NoopHandler {}
+
 pub struct TestBridge {
-    client: RunningService<RoleClient, NotificationCapture>,
-    pub capture: NotificationCapture,
+    client: RunningService<RoleClient, NoopHandler>,
 }
 
 enum TrackerMode {
@@ -80,13 +81,11 @@ impl TestBridge {
                 }
             }))
             .expect("spawn bridge from the spawn-produced config");
-        let capture = NotificationCapture::default();
-        let client = capture
-            .clone()
+        let client = NoopHandler
             .serve(process)
             .await
             .expect("MCP handshake with bridge from produced config");
-        let bridge = Self { client, capture };
+        let bridge = Self { client };
         bridge.wait_until_ws_ready(wait_name).await;
         bridge
     }
@@ -145,13 +144,11 @@ impl TestBridge {
             }
         }))
         .expect("spawn bridge");
-        let capture = NotificationCapture::default();
-        let client = capture
-            .clone()
+        let client = NoopHandler
             .serve(process)
             .await
             .expect("MCP handshake with bridge");
-        let bridge = Self { client, capture };
+        let bridge = Self { client };
         bridge.wait_until_ws_ready(name).await;
         bridge
     }
@@ -218,6 +215,31 @@ impl TestBridge {
         );
     }
 
+    pub async fn subscribe(&self, event_class: &str) -> String {
+        self.call_tool(
+            "subscribe",
+            serde_json::json!({ "event_class": event_class }),
+        )
+        .await
+        .expect("subscribe")["subscription_id"]
+            .as_str()
+            .expect("subscribe returns a subscription_id")
+            .to_string()
+    }
+
+    pub async fn wait_for_event(&self, subscription_id: &str, timeout: Duration) -> String {
+        self.call_tool(
+            "wait_for_event",
+            serde_json::json!({
+                "subscription_id": subscription_id,
+                "timeout_ms": timeout.as_millis() as u64
+            }),
+        )
+        .await
+        .expect("wait_for_event")
+        .to_string()
+    }
+
     pub async fn call_tool(
         &self,
         tool: &str,
@@ -254,106 +276,5 @@ impl TestBridge {
 
     pub async fn close(self) {
         let _ = tokio::time::timeout(Duration::from_secs(2), self.client.cancel()).await;
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct NotificationCapture {
-    received: Arc<Mutex<Vec<String>>>,
-}
-
-impl NotificationCapture {
-    pub async fn wait_for(&self, substring: &str, timeout: Duration) {
-        let result = tokio::time::timeout(timeout, async {
-            loop {
-                let seen = self.received.lock().expect("capture lock").clone();
-                if seen.iter().any(|s| s.contains(substring)) {
-                    return;
-                }
-                tokio::time::sleep(Duration::from_millis(100)).await;
-            }
-        })
-        .await;
-        assert!(
-            result.is_ok(),
-            "notification containing {substring:?} not received within {timeout:?}"
-        );
-    }
-
-    pub fn received(&self) -> Vec<String> {
-        self.received.lock().expect("capture lock").clone()
-    }
-
-    #[cfg(test)]
-    fn push_for_test(&self, content: &str) {
-        self.received
-            .lock()
-            .expect("capture lock")
-            .push(content.to_string());
-    }
-}
-
-impl ClientHandler for NotificationCapture {
-    fn on_custom_notification(
-        &self,
-        notification: CustomNotification,
-        _context: NotificationContext<RoleClient>,
-    ) -> impl Future<Output = ()> + Send + '_ {
-        let received = self.received.clone();
-        async move {
-            if notification.method == "notifications/claude/channel"
-                && let Some(params) = notification.params
-                && let Some(content) = params.get("content").and_then(|v| v.as_str())
-            {
-                received
-                    .lock()
-                    .expect("capture lock")
-                    .push(content.to_string());
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn wait_for_returns_when_content_already_present() {
-        let capture = NotificationCapture::default();
-        capture.push_for_test("dev: hello there");
-        capture
-            .wait_for("hello there", Duration::from_millis(100))
-            .await;
-    }
-
-    #[tokio::test]
-    async fn wait_for_returns_when_content_arrives() {
-        let capture = NotificationCapture::default();
-        let writer = capture.clone();
-        tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(50)).await;
-            writer.push_for_test("dev: arriving soon");
-        });
-        capture
-            .wait_for("arriving soon", Duration::from_secs(1))
-            .await;
-    }
-
-    #[tokio::test]
-    #[should_panic(expected = "notification containing")]
-    async fn wait_for_panics_on_timeout() {
-        let capture = NotificationCapture::default();
-        capture
-            .wait_for("never arrives", Duration::from_millis(100))
-            .await;
-    }
-
-    #[tokio::test]
-    async fn received_returns_pushed_contents_in_order() {
-        let capture = NotificationCapture::default();
-        capture.push_for_test("first");
-        capture.push_for_test("second");
-        assert_eq!(capture.received(), vec!["first", "second"]);
     }
 }

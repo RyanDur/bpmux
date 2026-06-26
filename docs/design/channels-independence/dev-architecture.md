@@ -28,8 +28,8 @@ bpmux already has a Redux-pattern store + dispatch: the **SubscriptionRegistry**
 **Already dispatched as subscribable events** (bridge, `connection.rs`): state-deltas — board/CI/sync/story-transition (connection.rs:116-171) — and `addressed_to_me` for directed messages (connection.rs:257-273).
 
 **Gaps for channels-independence:**
-1. **Broadcast chat is NOT dispatched as an event** — broadcasts flow only through the Channels push (connection.rs:242-256).
-2. **The Channels push** (`notifications/claude/channel`, connection.rs:242-256) is the live chat path — the thing to remove.
+1. ✅ **Broadcast chat dispatched as an event** — `broadcast_received` is dispatched alongside `addressed_to_me` (connection.rs), so broadcasts are subscribable via `wait_for_event` (slice 1, landed).
+2. ✅ **The Channels push** (`notifications/claude/channel`) — REMOVED (slice 3). Agent delivery is terminal-injection; the bridge's `event_subscription` dispatch (`broadcast_received` / `addressed_to_me`, gated by the same `chat_relevance` filter) is the surviving MCP observation surface.
 3. **The receive/delivery model** to the agent (see §4).
 
 ---
@@ -108,7 +108,7 @@ The owner's constraints (no-polling = push; mailbox = push-to-actor; off-Channel
 |---|-------|-----------|-------|
 | 1 | **Dispatch broadcast-chat as a `broadcast_received` event** | — | Common to A and B. Mirror the `addressed_to_me` dispatch (connection.rs:257). Makes broadcasts subscribable. **Build now — model-independent.** |
 | 2 | **Delivery = push-injection (Option A)**: store dispatch → role-filter → `write_to` PTY stdin + the misattribution guard | 1 | The keystone. Reshaped #1656. |
-| 3 | **Remove the Channels push** (delete connection.rs:242-256) | 1+2 | Only after 1+2 deliver reliably. Completes "channels-off." |
+| 3 | ✅ **Remove the Channels push** (DONE) — deleted the `notifications/claude/channel` push + the `claude/channel` experimental capability + the now-dead `notification_meta`/write-only bridge `peer` field. Bridge chat reaches agents via terminal-injection; `wait_for_event` observes the subscription dispatch. Every channel-observing E2E test migrated to `wait_for_event`/`read_messages`; the `NotificationCapture` harness retired. | 1+2 | Completed "channels-off" (code). Launch-flag `--dangerously-load-development-channels` in the README/`agent-terminal-launch.md` runbook is now a no-op for the channel capability — drop it after verifying the bridge still loads project-scoped without it (separate, needs a live relaunch). |
 | 4 | **MCP→CLI re-homing** | 3 | Separable, bigger arc. Every MCP tool → `bpmux <subcommand>` over the server; PreToolUse gates → Bash-hooks. Later iterations. |
 
 ---

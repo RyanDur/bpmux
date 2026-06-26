@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use rmcp::service::Peer;
-use rmcp::{ErrorData, RoleServer, ServiceExt};
+use rmcp::{ErrorData, ServiceExt};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
@@ -14,7 +13,6 @@ pub(crate) mod event_subscription;
 mod mcp_dispatch;
 pub(crate) mod mcp_handler;
 pub(crate) mod move_story;
-mod notification_meta;
 pub(crate) mod polling;
 mod rpc_client;
 pub(crate) mod tool_registry;
@@ -27,8 +25,7 @@ pub use tool_registry::{DISPATCHED_TOOL_NAMES, build_advertised_tools};
 
 pub(crate) use connection::run_ws_connection;
 
-pub use notification_meta::message_type_reaches_llm_stream;
-pub(crate) use notification_meta::{build_notification_meta, validate_meta};
+pub use chat_relevance::message_type_reaches_llm_stream;
 
 pub(crate) use polling::{
     drain_interval_from_env, hydration_interval_from_env, poll_interval_from_env, run_drain_loop,
@@ -73,7 +70,6 @@ type WsSink = futures::stream::SplitSink<
 pub struct BridgeServer {
     port: u16,
     name: Arc<Mutex<String>>,
-    peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
 }
@@ -95,7 +91,6 @@ impl BridgeServer {
         Self {
             port,
             name: Arc::new(Mutex::new(resolved)),
-            peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             subscriptions,
         }

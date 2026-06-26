@@ -1,23 +1,16 @@
 use std::sync::Arc;
 
 use futures::{SinkExt, StreamExt};
-use rmcp::RoleServer;
-use rmcp::model::{CustomNotification, ServerNotification};
-use rmcp::service::Peer;
 use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
-use super::{
-    WsSink, build_notification_meta, event_subscription, message_type_reaches_llm_stream,
-    validate_meta,
-};
+use super::{WsSink, event_subscription, message_type_reaches_llm_stream};
 use crate::transport::protocol::ServerMessage;
 
 pub(crate) async fn run_ws_connection(
     port: u16,
     name: Arc<Mutex<String>>,
-    peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
 ) {
@@ -172,32 +165,6 @@ pub(crate) async fn run_ws_connection(
                 continue;
             }
 
-            let meta = build_notification_meta(
-                &from,
-                &ts,
-                &channel,
-                addressee.as_deref(),
-                message_type.as_deref(),
-            );
-            if let Err(violation) = validate_meta(&meta) {
-                eprintln!("Bridge: CONTRACT VIOLATION on outbound notification: {violation}");
-                continue;
-            }
-            let notification = CustomNotification::new(
-                "notifications/claude/channel",
-                Some(json!({
-                    "content": format!("{from_short}: {text}"),
-                    "meta": meta
-                })),
-            );
-
-            if let Err(e) = peer
-                .send_notification(ServerNotification::CustomNotification(notification))
-                .await
-            {
-                eprintln!("Bridge: failed to send channel notification: {e}");
-                break;
-            }
             for class in chat_event_classes(&channel, addressee.as_deref()) {
                 let mut payload = json!({
                     "from": from_short,

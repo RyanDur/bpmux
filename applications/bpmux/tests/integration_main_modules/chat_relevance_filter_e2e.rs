@@ -18,6 +18,7 @@ fn relevance_set_filters_live_push_but_floor_and_escape_hatch_stay_open() {
             .call_tool("subscribe", serde_json::json!({ "event_class": "insight" }))
             .await
             .expect("an agent can declare a chat-relevance-set via subscribe");
+        let observe = receiver.subscribe("broadcast_received").await;
 
         sender
             .call_tool(
@@ -37,16 +38,16 @@ fn relevance_set_filters_live_push_but_floor_and_escape_hatch_stay_open() {
             .await
             .expect("sender broadcasts an in-set insight");
 
-        receiver
-            .capture
-            .wait_for("INSET-INSIGHT-BARRIER", Duration::from_secs(5))
-            .await;
-
-        let pushed = receiver.capture.received();
+        let pushed = receiver.wait_for_event(&observe, Duration::from_secs(5)).await;
         assert!(
-            !pushed.iter().any(|m| m.contains("SUPPRESSED-CHAT-MARKER")),
-            "relevance-set {{insight}} mutes broadcast-chat from the live push — the barrier insight \
-             arrived (FIFO after the chat), so a pushed chat would already be present; got {pushed:?}"
+            pushed.contains("INSET-INSIGHT-BARRIER"),
+            "the in-set insight reaches the live broadcast_received push; got {pushed}"
+        );
+        assert!(
+            !pushed.contains("SUPPRESSED-CHAT-MARKER"),
+            "relevance-set {{insight}} mutes broadcast-chat from the live push — the muted chat was \
+             sent FIRST, so if it pushed it would be the FIRST broadcast_received event; instead the \
+             barrier insight is; got {pushed}"
         );
 
         sender
@@ -59,10 +60,11 @@ fn relevance_set_filters_live_push_but_floor_and_escape_hatch_stay_open() {
             )
             .await
             .expect("sender directs a chat at the receiver");
-        receiver
-            .capture
-            .wait_for("FLOOR-ADDRESSED-CHAT", Duration::from_secs(5))
-            .await;
+        let floor = receiver.wait_for_event(&observe, Duration::from_secs(5)).await;
+        assert!(
+            floor.contains("FLOOR-ADDRESSED-CHAT"),
+            "an addressed chat is on the floor — it reaches the live push despite the mute; got {floor}"
+        );
 
         let log = receiver
             .call_tool("read_messages", serde_json::json!({ "limit": 50 }))

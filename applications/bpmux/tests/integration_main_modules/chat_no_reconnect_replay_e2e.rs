@@ -5,6 +5,7 @@ use crate::harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
+use std::time::Duration;
 
 async fn drain_pending_events(agent: &TestBridge, subscription_id: &str) {
     loop {
@@ -47,10 +48,7 @@ fn reconnect_replays_state_deltas_but_never_auto_replays_chat() {
             .as_str()
             .expect("subscribe returns a subscription_id")
             .to_string();
-        agent
-            .call_tool("subscribe", serde_json::json!({ "event_class": "chat" }))
-            .await
-            .expect("declare broadcast-chat in the relevance-set so it WOULD replay if a chat replay-surface existed");
+        let chat_sub = agent.subscribe("broadcast_received").await;
 
         drain_pending_events(&agent, &subscription_id).await;
 
@@ -90,10 +88,10 @@ fn reconnect_replays_state_deltas_but_never_auto_replays_chat() {
             "positive control: the structured state-delta missed during the down-window MUST auto-replay on reconnect, proving the replay machinery is live and the test is non-vacuous; got {replayed}"
         );
 
-        let pushed = agent.capture.received();
+        let chat_replay = agent.wait_for_event(&chat_sub, Duration::from_millis(1500)).await;
         assert!(
-            !pushed.iter().any(|m| m.contains("MISSED-CHAT-MARKER")),
-            "#1652 supersede-proof: chat has NO reconnect-replay surface — a chat broadcast during the down-window must NOT be auto-pushed on reconnect (the replay loop is state_delta-scoped). The state-delta already replayed above, so a chat-replay would already be present if the surface existed; got {pushed:?}"
+            !chat_replay.contains("MISSED-CHAT-MARKER"),
+            "#1652 supersede-proof: chat has NO reconnect-replay surface — a chat broadcast during the down-window must NOT be auto-pushed on reconnect (the replay loop is state_delta-scoped). The state-delta already replayed above, so a chat-replay would already be present if the surface existed; got {chat_replay}"
         );
 
         let log = agent

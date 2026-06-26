@@ -87,8 +87,6 @@ mod bpmux_send_speech_guard_parity_e2e;
 mod bpmux_signal_cli_e2e;
 #[path = "integration_main_modules/bpmux_workflow_verbs_cli_parity_e2e.rs"]
 mod bpmux_workflow_verbs_cli_parity_e2e;
-#[path = "integration_main_modules/bridge_collaboration.rs"]
-mod bridge_collaboration;
 #[path = "integration_main_modules/bridge_reconnect_e2e.rs"]
 mod bridge_reconnect_e2e;
 #[path = "integration_main_modules/briefing_e2e.rs"]
