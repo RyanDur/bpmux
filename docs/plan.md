@@ -361,6 +361,16 @@ HashMap<StoryKey, Arc<Story>>                          // Arc = cheap reduce-clo
   *unsaved* story → GitHub-save listener pushes (retry; durable **DB outbox**,
   entry deleted on confirm) → GitHub number → `StorySaved` re-dispatched at the top
   → reducer fills/re-files → re-broadcast. Effects-as-listeners end to end.
+- **Create-then-immediate-update, on the sync side (owner):** the **store is never
+  blocked** — edits apply to local state immediately, last-write-wins. The **listener
+  serializes create-before-update**: it does the initial create and **blocks the
+  update-side push until the create returns the id** (you can't PATCH an issue with no
+  number yet). While waiting, **incoming updates coalesce** — a newer update replaces
+  the pending, not-yet-sent one (LWW), so only the latest is held. Once the id arrives,
+  the coalesced update commences and the **normal update → outbox → drain** flow takes
+  over. This maps onto existing machinery: `issue_lock` / `race_window_barrier`
+  (block update until create responds), `coalesce` (replace pending update while
+  waiting), outbox (the normal flow). Applies PER TYPE.
 
 **Two field decisions (owner):** `acceptance_test_path` is **removed** from the
 substrate — it's *process*, lives in the body (the eager `parse_acceptance_test_path`
@@ -404,7 +414,36 @@ optimistically created; that design is not wasted, it lands on the *Story* slice
 with iteration/outcome/epic as siblings using the same pattern. This is a
 **substantial restructure** (today's single `Story`/`StoryType`/`apply_event`/one
 store → per-shape types + reducers + adapter dispatch) and gets its own modeling
-pass. Sequencing relative to id-on-create: TBD with owner.
+pass.
+
+**Structure + sequencing (owner, 2026-06-26):** each shape is its OWN slice — its
+own reducer, its own actions (`CreateStory`/`UpdateStory`, `CreateIteration`/
+`UpdateIteration`, `CreateOutcome`, `CreateEpic`, …), and its own save **listener**
+— and those listeners **share the `SourceAdapter`** (GitHub issue CRUD is common;
+shape-specific labels/body are the listener's concern, parsing is the codec's;
+specialize the adapter only where a shape needs different I/O). There is **no forced
+generic identity abstraction** — the per-slice structure IS the design (the apparent
+"type explosion" is just legible per-shape slices). This sets the sequencing:
+**Story-first, then siblings** — build the Story slice end-to-end (reducer +
+`CreateStory`/`UpdateStory` actions + save listener on the board's own store, on the
+shared adapter), then add Iteration/Outcome/Epic as sibling slices the same way (no
+big-bang split). id-on-create ships on the Story slice; the others follow
+incrementally. The per-shape save listeners relocate `store/sync/` into the board
+domain (answers the per-domain loose end).
+
+**Open risks to design (not blockers):**
+- **Pending-window keying.** `issue_lock` / `coalesce` key on the GitHub `u64`,
+  which an unsaved story doesn't have yet. Each shape's create listener must
+  serialize create-before-update and coalesce on the **`Pending(Uuid)`** during the
+  unsaved window, then hand to the number-keyed path once the id lands.
+- **Capability is renderer-gated.** id-on-create's user-visible payoff (the
+  optimistic story rendering before GitHub answers) needs a renderer touch; putting
+  it behind the whole frontend pass means no demoable value until then — the thin
+  renderer touch for *this* feature may ship with it instead.
+- Stale note: the `⚠️ VERIFY orchestrator.storage` line above is resolved —
+  `storage` IS the intended DB outbox, not story-persistence drift. And `Epic` may
+  be a cross-cutting *capability* grouping, not an executable create→save shape —
+  confirm when modeling shapes.
   - **Care-point (the "state-delta echo clobber" scar):** ingest/reconcile must
     MERGE, never blind-overwrite — a poll echoing GitHub must not stomp a newer
     local optimistic edit.
