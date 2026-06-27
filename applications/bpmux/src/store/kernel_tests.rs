@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use super::kernel::{Listener, ListenerFuture, Reaction, Store};
+use super::kernel::{Listener, ListenerFuture, Middleware, Reaction, Store};
 use super::test_support::eventually;
 use std::sync::{Arc, Mutex};
 
@@ -77,6 +77,32 @@ async fn a_listener_sees_the_action_and_the_previous_and_current_state() {
     .await;
 
     assert_eq!(*log.lock().unwrap(), vec![(0, 1), (1, 6)]);
+}
+
+struct DoubleAddWhileBelowTen;
+
+impl Middleware<Counter, Count> for DoubleAddWhileBelowTen {
+    fn transform(&self, state: &Counter, action: Count) -> Count {
+        match action {
+            Count::Add(amount) if state.value < 10 => Count::Add(amount * 2),
+            other => other,
+        }
+    }
+}
+
+#[tokio::test]
+async fn middleware_transforms_the_action_against_current_state_before_the_reducer() {
+    let store = counter_store();
+    store.add_middleware(Arc::new(DoubleAddWhileBelowTen));
+
+    store.dispatch(Count::Add(3));
+    assert_eq!(value_of(&store), 6);
+
+    store.dispatch(Count::Add(3));
+    assert_eq!(value_of(&store), 12);
+
+    store.dispatch(Count::Add(3));
+    assert_eq!(value_of(&store), 15);
 }
 
 struct ReinjectIncrementOnAdd;

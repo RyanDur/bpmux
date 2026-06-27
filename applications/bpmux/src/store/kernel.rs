@@ -16,10 +16,15 @@ pub trait Listener<S, A>: Send + Sync {
     fn on_action(&self, reaction: Reaction<S, A>) -> ListenerFuture;
 }
 
+pub trait Middleware<S, A>: Send + Sync {
+    fn transform(&self, state: &S, action: A) -> A;
+}
+
 type RootReducer<S, A> = Box<dyn Fn(&S, &A) -> S + Send + Sync>;
 
 pub struct Store<S, A> {
     state: Mutex<Arc<S>>,
+    middleware: Mutex<Vec<Arc<dyn Middleware<S, A>>>>,
     reducer: RootReducer<S, A>,
     listeners: Mutex<Vec<Arc<dyn Listener<S, A>>>>,
 }
@@ -32,9 +37,17 @@ where
     pub fn new(initial: S, reducer: RootReducer<S, A>) -> Arc<Self> {
         Arc::new(Self {
             state: Mutex::new(Arc::new(initial)),
+            middleware: Mutex::new(Vec::new()),
             reducer,
             listeners: Mutex::new(Vec::new()),
         })
+    }
+
+    pub fn add_middleware(&self, middleware: Arc<dyn Middleware<S, A>>) {
+        self.middleware
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .push(middleware);
     }
 
     pub fn add_listener(&self, listener: Arc<dyn Listener<S, A>>) {
@@ -56,15 +69,23 @@ where
 
     pub fn dispatch(self: &Arc<Self>, action: impl Into<A>) {
         let action = action.into();
-        let (previous, current) = {
+        let middleware = self
+            .middleware
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        let (action, previous, current) = {
             let mut guard = self
                 .state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             let previous = Arc::clone(&guard);
+            let action = middleware.iter().fold(action, |action, link| {
+                link.transform(previous.as_ref(), action)
+            });
             let current = Arc::new((self.reducer)(previous.as_ref(), &action));
             *guard = Arc::clone(&current);
-            (previous, current)
+            (action, previous, current)
         };
 
         let dispatch = self.dispatcher();
