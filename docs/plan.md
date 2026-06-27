@@ -709,297 +709,104 @@ it is the most irreversible (live-data migration) and most coupled (full-stack).
    BROADCAST_ALL shadows). Ride it on the typed contract + the cleaned frontend +
    the stable kernel — change the dangerous thing when everything it touches is settled.
 
-## Status / next
+## Status — where we are
 
-### Session 2026-06-27 (dev, autonomous) — e2e safety net + #14 begun
+Updated 2026-06-27. (Per-slice history + detailed design live in git + dev memory;
+this section stays the high-level position.)
 
-**e2e safety net DONE (pushed green).** Built the visual-layer net as CLI
-user-journeys (fire the real `bpmux` binary — the agent's control surface).
-Shared harness `applications/electron/tests/helpers/bpmux-cli.ts`; journeys for
-`rejected→Ready` + the `dev-accepted` badge. Audit confirmed every other
-reachable `columnFor`/`deriveBadge` branch is already pinned; `ready-for-accept`
-(no substrate producer) + the `pending` badge (deriveBadge default) are
-unreachable dead branches → the codec refactor deletes them, no e2e fabricated.
+**Done + on `origin/main` (CI-green):**
+- #1 hygiene; the agnostic Redux kernel (stream-A foundation); board-store folded
+  onto the kernel; the `is_closed`-leaves-domain + id-on-create-prep slices.
+- Story identity: P1 (StoryKey storage seam) + P2a (content read-accessors) +
+  `Story::id() -> StoryKey`.
+- e2e safety net — CLI user-journeys covering the board's visual states.
+- **#14 slice 1 — `StoryType` bifurcation** (`StoryKind {Feature,Bug,Chore}` +
+  `StoryType { Story(StoryKind), Epic, Iteration, Outcome }`) — `1b059fe3`.
 
-**#14 codec-decode-first STARTED — slice 1 landed (`b4e39050`).** Per the
-transition shape (§"Store structure" step 1), began moving label-decode from the
-~40 read-time `*_from_labels` selectors INTO ingest-time. First field = the
-routing key `story_type`: now a stored `StoryType` field on `Story`, decoded at
-ingest (adapter `decode_story_metadata` = label-or-title; reducer/`new_minimal` =
-title via the domain `story_type_from_title`), exposed via `Story::story_type()`.
-Additive + behavior-preserving (field mirrors the selector). **Invariant that
-makes reader-migration safe:** `s.story_type() == story_type_from_labels_or_title
-(&s.raw_labels, &s.title)` for every story — the type label is immutable
-post-creation (state/acceptor/blocked/position deltas never touch it; ingest
-re-decodes), so the stored field never diverges from raw_labels.
+**In progress — #14 sibling-type peel — PAUSED (architectural pivot; see Notes):**
+- The Outcome-carve store work is committed `f86c5731` but **UNPUSHED + HELD**. Its
+  domain half (`BoardItem`/`Outcome` types, per-shape reducer, per-domain decode) is
+  keepable; its wire/board half (`StoryView`/`ordered_board_stories` re-projection)
+  is **superseded** by the backend-domain/frontend-view pivot.
 
-**story_type field COMPLETE (origin @ d7fa42fe).** Stored on Story; all 36
-readers across transport+bridge+domain migrated to `Story::story_type()`; only
-the ingest setter (`decode_story_metadata`) still decodes. KEY CORRECTION mid-way
-(the e2e net caught it): story_type is **authoritative-at-source**, NOT
-label-derived — a story is created label-less (type in the `StoryCreated` event /
-`[Epic]` title; the type label only reaches GitHub for the next ingest), so
-re-decoding it from stored `raw_labels` on label change clobbered every epic +
-optimistic iteration/outcome to Feature. Correct model: set it at creation
-(event) + ingest (full labels+title), PRESERVE through label churn. The reverted
-codec-decode-on-label-change mechanism (LabelDerivedFields carrying the decoded
-field) WAS right — just for the wrong field.
+**Blocked on:** an owner planning pass for the #14 re-approach (per-domain adapters →
+domain collections → frontend-owns-view — see Sub-plans). Also gated on #14:
+`raw_labels` removal, P4 (the Story DU), the `is_closed`/`body_etag` lifts, the rest
+of the consumer migration. **No further #14 code until the re-approach is planned.**
 
-**ALL SIX Story-shape fields DONE (origin advancing per slice):** story_type
-(authoritative-at-source), then the label-derived acceptor, parent_epic,
-iteration_membership, tags/blocked, ready_order — each decoded at the codec
-(LabelDerivedFields → project_labels → reducer assign), exposed via a
-`Story::field()` accessor, all readers migrated, and the wire RE-ENCODES every
-Story-shape label from the decoded field (not from raw_labels). raw_labels is now
-**vestigial for the Story shape** — only the sibling-type labels (iteration/
-outcome/epic shape) and renderer-badge labels still pass through verbatim in
-view_model. Tests realistic: the field-completeness sentinel asserts each decoded
-field from its GitHub-JSON label; per-event store tests pin decode on the
-label-add event; list_epic_children_tests builds via decode_story_metadata.
+## Notes — decisions & directions
 
-**NEXT — step 2: peel the sibling types (Iteration/Outcome/Epic).** The
-substantial restructure (its own modeling pass — pace it). Surface map (Explore,
-2026-06-27): ~25 routing readers branch on `story_type == Iteration/Outcome/Epic`
-(mostly GUARDS in bridge/tools_stories: reject-if-not-shape); iteration-shape data
-= iteration_order/review_closers/dev_ok/is_current selectors + IterationReadiness
-(product_management/iteration/); outcome-shape = horizon/horizon_order/
-outcome_membership selectors + OutcomeReadiness (product_management/roadmap/);
-Epic is LIGHTEST — no forward data, just the type label + children pointing via
-parent_epic (Story field) + derive_epic_counts/state rollup. Store is one
-`HashMap<StoryKey, Story>`; single `decode_story_metadata`.
-DECOMPOSITION (each CI-green, lower-blast-radius first):
-1. Define `Iteration`/`Outcome`/`Epic` structs (shared identity/content + their
-   shape-specific decoded fields) + a `BoardItem` enum
-   (Story|Iteration|Outcome|Epic) — additive, with a decode-router (type label →
-   variant, decoding that shape's labels) + tests. Not yet wired into the store.
-2. Store value becomes `BoardItem` (one map — lower blast-radius than 4
-   collections); ingest routes by type; `all_stories()` returns the Story
-   variants (back-compat); add `iterations()/outcomes()/epics()` accessors;
-   per-variant reducer arms.
-3. Migrate consumers per shape to the typed accessors — OUTCOME FIRST (bounded:
-   roadmap + a few tools), then ITERATION (readiness/current/members + the
-   guards), Epic last (trivial). Each retires that shape's raw_labels selectors;
-   the sibling fields leave raw_labels exactly as the Story fields did.
-THEN P4/P5 identity-enum + id-on-create, Story-first.
+SETTLED architecture (extend, don't re-litigate without NEW evidence —
+[[feedback_existing_code_is_not_the_spec]]): agnostic Redux kernel; slices own their
+state; **one store per domain**; AI workflow (process/names/rules) = per-instance
+config; conversations are the durable core (go LAST); story persistence = Ports &
+Adapters + Transactional Outbox + CQRS projection; total identity from birth.
 
-#### CONVERGED DESIGN — the peel, via Designing-with-Types (owner + dev, 2026-06-27)
+Directions established 2026-06-27 (detail in the linked memories):
+- **Backend = domain, frontend = view.** The wire serves DOMAIN per-type collections,
+  not a board/presentation; **no "orchestrator"** (dissolved by the kernel-fold — its
+  jobs are reducers/middleware/listeners) and **no backend "board"** (the frontend
+  owns its view). [[feedback_backend_domain_frontend_view]]
+- **Per-domain ports + adapters** — each PM domain's adapter queries GitHub for its
+  issue-type by label and decodes to its type; the shared client is hidden, so each
+  reads as a separate integration. [[feedback_github_at_edge_hexagonal]]
+- **Designing-with-Types** — illegal states unrepresentable; DU/record/Option/
+  parse-don't-validate/lifecycle-as-DU. [[feedback_designing_with_types_north_star]]
+- **Code structure is the prompt.** [[feedback_code_structure_is_the_prompt_for_decisions]]
+- **Identity** = `id() -> StoryKey`; the raw `u64` is an edge concern. `is_closed`
+  (→ derived from state), `body_etag` (→ adapter cache), `raw_labels` (→ per-shape
+  codec) all LEAVE the domain.
+- **Membership** = one-to-many: FK on the child (the cardinality cap) + the container
+  owns the ordered list (the order); bidirectional, kept consistent at one transition.
+- SUPERSEDED: the earlier per-shape `BoardItem`-DU "CONVERGED DESIGN" + the
+  backend-board wire re-projection — replaced by the backend-domain/frontend-view
+  pivot (git history holds the detail).
 
-Owner chose (B) full per-shape types (NOT projection half-measures — they'd stay
-green but leave the discriminant-blob that forced this refactor; structure IS the
-deliverable, [[feedback_code_structure_is_the_prompt_for_decisions]]). Design lens
-= Wlaschin **Designing with Types** ([[feedback_designing_with_types_north_star]]):
-make illegal states unrepresentable; the type is the high-bandwidth prompt.
+## Sub-plans — in-flight & queued work
 
-- **`enum BoardItem { Story(Story) | Iteration(Iteration) | Outcome(Outcome) |
-  Epic(Epic) }`**; store = `HashMap<StoryKey, BoardItem>`. The DU kills the
-  cross-shape illegal states the `story_type` discriminant ALLOWED (an "iteration
-  with an acceptor", an "outcome in desk-check"). Generic events; `reduce()`
-  routes by the stored variant (per-variant arms). Accessors `stories()/
-  iterations()/outcomes()/epics()` replace `all_stories().filter(story_type==X)`
-  — a consumer's accessor now declares which domain it touches.
-- **Each shape = `Identity` (composition: id/title/body/filed_at/filed_by) ⊕ its
-  OWN lifecycle ⊕ ONLY its fields.** Born honest (illegal cross-shape field-combos
-  vanish for free — Iteration has no acceptor/parent_epic/tags/ready_order).
-  - **Lifecycle is per-type (no shared `state`):** Story keeps `StoryState`
-    (workflow). Iteration's lifecycle = its readiness gates (drafted →
-    review-closed → dev-ok → building → closed). Outcome has **NO state field** —
-    "achieved" is DERIVED from its building iterations (don't store the derivable).
-    Epic has no stored state — derived from children.
-- **Container owns ordered membership (the killer DwT move):** `Iteration { …,
-  members: Vec<StoryKey> }` where INDEX = story order; `Outcome { …, iterations:
-  Vec<IterationKey> }` = iteration order. The child carries **no position** (drop
-  `iteration_membership`'s position; the just-landed Story field RE-HOMES to the
-  iteration's Vec — step-1 got it off labels, the peel homes it to its owner).
-  Single source of truth = the container's Vec; derive any child→container
-  back-ref, never store a dual-state. This makes dup-position / gaps /
-  orphan-position UNREPRESENTABLE → **deletes the `IterationReadiness.
-  stories_ordered` gate** (it guarded exactly that illegal state; code disappears
-  = the model is right). Epic owns no order (children by number). `ready_order` is
-  the exception — a standalone ready story has no container, so its queue position
-  stays a story attribute (its own question).
-- **Adapter = parse-don't-validate:** GitHub still encodes per-child
-  (`parent-iteration-#N.P` on each child issue) — wire-per-child ≠ domain-per-child.
-  The codec/adapter RECONSTRUCTS each container's `Vec` from its children's labels
-  at INGEST; a reorder mutates the one Vec; DRAIN re-encodes the children's
-  position labels. The decoder is the one place a raw issue becomes a typed shape
-  that thereafter guarantees its invariants.
-- **File structure (first-class domains in the tree):** `product_management/
-  {story,iteration,outcome,epic}/` each = its type + lifecycle + ops; `board/
-  item.rs` (BoardItem) + `board/store/` (reduce routing) + `board/adapters/github/`
-  (issue→shape decoders); `roadmap/` becomes a pure VIEW-composer over
-  `outcomes()+iterations()` (stops being Outcome's home). `epic.rs` → `epic/`.
-- **Sequence:** structural slice (BoardItem + the 4 honest types + Identity +
-  store + ingest-routing + accessors + reducer arms) FIRST; then per-shape consumer
-  migration (Outcome → Iteration → Epic); then Story's INTERNAL state-DU tightening
-  (fold acceptor/observation/etc. INTO the Accepted/Delivered variants so
-  "acceptor on an icebox story" is unrepresentable) as its own focused pass. DwT
-  throughout. Owner wants architectural/algorithmic conversation as it proceeds.
+### #14 — roadmap shapes as distinct domain types (re-approach, post-pivot — TO PLAN)
 
-**Refinements settled in the design conversation (owner + dev, 2026-06-27) — these
-supersede where they touch the above:**
-- **Identity = the key, AND lives in the object.** The shared struct is
-  `Content { id: StoryKey, title, body, filed_at, filed_by }` (NOT "Identity"; not
-  `number: u64` — the number IS the id, raw u64 is the adapter's edge-unwrap). The
-  id is intrinsic + self-describing (a `BoardItem` tells you what it is on its own)
-  AND is the map key. Consistency (key ≡ `item.id`) is held by the store API:
-  `insert(item)` DERIVES the key from `item.id` (no `insert(arbitrary_key, item)`);
-  immutable kernel = no back-door. Re-key on save = ONE operation (Pending(uuid) →
-  Saved(number) updates the id field and re-files the map entry together). Don't
-  store id-less + don't worry about the dual-state — it's maintained at the one
-  insertion point (same discipline as single-parent below).
-- **Iteration lifecycle is a DU; container owns order; single-parent via immutable
-  assign.** `Iteration = Building { backlog: Vec<StoryKey> } | Completed { snapshot:
-  Vec<StoryKey> }`. `Building.backlog` = the live ordered members (index = order; a
-  finished story drops out). `Completed.snapshot` = the FROZEN shipped ordering
-  (auditable history, inert). Container-owns-order makes dup-position/gaps
-  unrepresentable AND deletes the `IterationReadiness.stories_ordered` gate. The
-  single-parent invariant (a story in ≤1 iteration) is NOT type-enforced by the Vec
-  (two Vecs could list a story) — it is maintained by the ONE pure `assign(state,
-  story, iteration)` transition (drop-from-any + add-to-target, atomic on the
-  immutable kernel) + completed-iterations being inert (the live competitor set is
-  ~one Building iteration). This is the accepted DwT form: forbid the illegal states
-  that matter, maintain the rest at a single construction point, keep objects
-  self-describing — NOT strip-everything-to-forbid-every-dual-state. (Outcome
-  symmetrically owns `iterations: Vec<IterationKey>`.)
-- **Known compromise — generic events × per-type lifecycle:** a generic event
-  carrying Story-specific payload (e.g. `StateTransitioned{StoryState}`) is
-  nonsensical for an Iteration/Outcome but is representable (firable at their key);
-  the reducer's per-variant arms absorb the mismatch (no arm = ignore). Accepted
-  eyes-open for less churn; per-shape events would be the fully-honest form.
-- **Open audit before claiming siblings are raw_labels-free:** confirm EVERY label
-  is either decoded into a shape field or genuinely droppable (watch
-  `is_renderer_badge_label` / `is_iteration_label_loose` verbatim-forwards).
+Target: the backend exposes the PM domains via **per-domain ports + adapters** (each
+a label-scoped GitHub query → its type), serving **per-type domain collections**; the
+frontend builds columns/bands/roadmap. No backend board; no late `story_type` filter.
 
-**FINAL membership model (deeper design convo 2026-06-27 — SUPERSEDES the
-container-only framing above):** the parent↔child relationships are **one-to-many,
-not many-to-many** (an iteration has many stories; a story has ≤1 iteration AND ≤1
-epic — "multiple parents" = multiple FK *fields*, one per parent type, each single).
-The model is **bidirectional**:
-- **FK on the child, one per parent type** (`Story.iteration: Option<IterationKey>`,
-  `Story.epic: Option<EpicKey>`, `Iteration.outcome: Option<OutcomeKey>`) — the
-  `Option` type-enforces single-parent-per-type, and gives O(1) "who's my parent".
-  The just-landed `iteration_membership: Option<(u64,u32)>` SPLITS: the `u64` →
-  the FK; the `u32` position → the container list. `parent_epic` → the `epic` FK.
-- **Container owns the ORDER** as an ordered id-list (`Iteration.Building.backlog:
-  Vec<StoryKey>`, `Epic.Active.stories`, `Outcome.Active.iterations`) — index = order,
-  independent per parent.
-- FK = membership (+ cap); list = order. Consistency (each list = a permutation of
-  its FK-members) maintained at the one `assign`/`reorder`/`remove` transition on the
-  immutable kernel; store resolution tolerant of a dangling id. Both invariants
-  type-enforced at once (single-parent on the FK `Option`, no-dup-order on the `Vec`
-  index). NOT many-to-many; no junction.
-- (Lesson banked: don't mechanically import relational-normalization
-  ("no repeating groups") into an immutable single-source domain — see
-  [[feedback_designing_with_types_north_star]]; and pin cardinality with the owner,
-  don't read it off the old `Option` shape.)
+Cut **shape-by-shape** (Outcome → Iteration → Epic); each shape = one honest vertical:
+`type + port + GitHub adapter + store collection + domain-collection wire + frontend
+reads it + retire that shape's late-filter`.
 
-**LANDED 2026-06-27 — `StoryType` bifurcation (first peel slice, the precursor):**
-`enum StoryKind { Feature, Bug, Chore }` + `enum StoryType { Story(StoryKind), Epic,
-Iteration, Outcome }` — "an iteration with a kind" is now unrepresentable. Custom
-`Serialize`/`Deserialize` on `StoryType` pins the FLAT capitalized string the OUTBOX
-(`~/.bpmux/board-outbox.json`) already persisted (parse-don't-validate; a behavioral
-test pins it so queued `StoryCreated` events from before the split still load).
-`StoryType::as_label()` is the single source for the lowercase wire/GitHub string
-(consolidated the codec + view_model + list_epic_children, which had been
-Debug-lowercasing — that brittle pattern is gone). `Story::kind() -> Option<StoryKind>`
-for KIND readers; SHAPE checks (`== StoryType::Iteration`) unchanged. 2391 backend
-tests green, clippy clean. The shape variants (Epic/Iteration/Outcome) become the
-`BoardItem` DU variants in the next (structural) slice; `StoryKind` stays on `Story`.
+- Open question to resolve first: do any derivations (iteration readiness, ready-order)
+  stay server-side (shared by the CLI / workflow signals), or are they pure view?
+- Reuse: `f86c5731`'s domain types (`Outcome`, the per-shape reducer) are a likely
+  starting point; its wire/board half is discarded.
+- Then: P4/P5 identity-enum + id-on-create (Story-first) once the shapes/codec settle.
+- Status: **PAUSED pending the owner planning pass.** Detail + the design history live
+  in dev memory ([[feedback_backend_domain_frontend_view]],
+  [[feedback_designing_with_types_north_star]]) + git.
 
-**DONE (uncommitted at time of writing) — Slice 1: Outcome carve-out (first shape
-peeled, shape-by-shape).** The store is now `HashMap<StoryKey, BoardItem>` with
-`enum BoardItem { Story(Story), Outcome(Outcome) }` (grows a variant per shape).
-`Outcome = Content { id, title, body, filed_at, filed_by } ⊕ OutcomeLifecycle
-{ Active { horizon, horizon_order } | Retired }` — born honest (sheds `raw_labels`;
-horizon read via `.horizon()`). Ingest routes outcome-issues → `Outcome::from_story`;
-the reducer routes by variant with **pure DwT transitions** (`retired()`,
-`with_horizon_labels()`, `with_body()`, `with_title()` — variant-replacing, never
-field-poking; story-only events no-op on outcomes via a `story_mut` helper). The
-middleware reconstructs an outcome's horizon labels (`encoded_labels()`) so the
-TagAdded/TagRemoved → label-delta machinery still drives horizon reprioritize.
-`store.outcomes()` / `RefreshDriver::outcomes()` added; the wire **re-projects**
-outcomes (`StoryView::from_outcome`, appended in `ordered_board_stories`) so the
-board JSON is byte-unchanged; the roadmap read-path (`derive_roadmap_view(&[Outcome],
-&[Story])`, `outcome_readiness(number)`) + the write-handlers (`ensure_outcome_in_
-canonical_store`) consume the typed `Outcome`. 2393 backend tests green, clippy clean.
-(A latent bug surfaced + fixed: `apply_title_updated`/`apply_body_updated` were
-story-only, silently dropping outcome edits — now variant-aware.) NEXT: Iteration
-slice (add `BoardItem::Iteration`, its lifecycle DU + readiness fields + the
-outcome↔iteration ordered membership), then Epic.
+### Story identity (P-series — interleaves with #14, gated on the per-domain decision)
 
-### Overnight session 2026-06-26 → 27 (dev, autonomous) — state of play
-
-**Landed + pushed green:** P1 (StoryKey storage seam — board store map keyed by
-`StoryKey`); P2a (content read-accessors `title/state/body/filed_at/filed_by/
-raw_labels/free_comments/gate_comments` + migrated `epic.rs`, `view_model.rs`,
-the store filter); the **identity foundation** (`Story::id() -> StoryKey`,
-`StoryKey` `Display` = `#42` / `(unsaved)`, `StoryKey::saved_number()` edge
-unwrap); plus the plan/design refinements below.
-
-**Design decided WITH you tonight (all recorded above):**
-- `id() -> StoryKey` is the identity accessor — the number BECOMES the id; the
-  raw `u64` GitHub issue-number is an EDGE concern (adapter / bridge / wire).
-- For a STORY, open/closed = terminal lifecycle state (`Accepted`/`Retired`),
-  DERIVED from `state`; the #1144 "second axis" is the **sync window**. So
-  `is_closed` leaves the domain (adapter maps GitHub open/closed ↔ terminal).
-- `body_etag` leaves the domain → the adapter's own etag cache.
-- `raw_labels` leaves the domain → a **per-shape codec**; labels are
-  shape-specific, each adapter decodes the ones its shape cares about; the type
-  label is the routing key.
-
-**Why I stopped where I did (didn't churn more code):** every remaining consumer
-migration is entangled with `raw_labels` (FROZEN → per-type codec), `is_closed`
-(→ adapter; behavior-risky to do blind, autonomous), or number-edge
-classification — all gated on the **per-type split (#14)**. Migrating them now
-would either rework against the split or risk a blind adapter change. P4 (the
-enum) is also blocked: `StoryContent`'s shape depends on the raw_labels/per-type
-decision. So I laid the safe identity foundation + captured the design rather
-than build rework-bound or risky code.
-
-**Recommended next (needs you): the per-type split modeling pass (#14)** — the
-dominant remaining work. Decide each shape's exact fields + codec, the adapter
-routing, store structure (per-type stores vs shared), and sequencing; then build
-**Story-first**. That single decision unblocks `raw_labels` removal, P4, the
-`is_closed`/`body_etag` lifts, and the rest of the consumer migration.
-
-- Last landed on `main` (CI-green): board fold + `view_model` + the test-hygiene
-  pass.
-- **The architecture is validated** in `store_spike/` (uncommitted): the agnostic
-  kernel, a domain-owned `roster` slice, the composition root, and the middleware
-  chain (`api.dispatch`-to-top vs `next`-down), all typed and tested. Decide:
-  keep the spike as the reference (commit under `store_spike/` or move to `docs/`)
-  or delete once this plan captures it.
-- **Stream A is the heart and is NOT blocked** by the substrate/process line.
-  B, C, D can proceed independently. Only E (extraction) waits on the owner
-  confirming the line.
-- Proposed first move once the owner okays direction: **stream A**, migrating
-  `roster` first (it's already modeled in the spike).
+P1 (StoryKey seam) + P2a (content accessors) + `id()` foundation DONE. Remaining:
+P2b+ (lift `is_closed`/`body_etag`/`raw_labels` to derivation/adapter), P3 (construction
+seam), P4 (`Story` Unsaved/Saved DU + `StoryContent`), P5 (id-on-create Pending→Saved),
+P6 (renderer optimistic story). All gated on #14's per-domain decision (the
+shapes/codec/store structure they depend on).
 
 ## How this directs the next instance (READ THIS FIRST, then move)
 
-You were cleared/restarted on purpose — long context degrades this kind of work.
-**This file is your context now.** The decisions in it were made with the owner
-across a long session, each with its rationale recorded above.
+**This file is your context.** Read **Status** (where we are), **Notes** (the settled
+architecture + the 2026-06-27 directions — extend, don't re-litigate without NEW
+evidence; [[feedback_existing_code_is_not_the_spec]]), and **Sub-plans** (the in-flight
+detail), then continue down "Recommended order".
 
-**These are SETTLED. Extend them; do NOT re-litigate them.** If you believe one is
-wrong, say so and raise it — but never re-open a settled call without NEW evidence
-([[feedback_dont_ask_iterate_experiment]], [[feedback_existing_code_is_not_the_spec]]).
-Settled (the WHY is above — don't re-derive it): agnostic Redux kernel; slices own
-their state; AI workflow (process/names/rules) = per-instance config; conversations
-are the durable core and go LAST; story persistence = Ports & Adapters + Transactional
-Outbox + CQRS projection (NOT "sync"/"store"/"board"); board = a VIEW over stories;
-horizon = a view; total identity from birth; and the ORDER below.
+**Current position:** #14 (roadmap shapes → distinct domain types) is **PAUSED**,
+pending an owner planning pass on the per-domain-adapter / domain-collection-wire /
+frontend-owns-view re-approach (see Sub-plans). Do **not** resume #14 code, and do
+**not** push `f86c5731`, until that re-approach is planned with the owner.
 
-**Start now, no ceremony:** the "Recommended order" list, top to bottom.
-- **#1 hygiene.** First concrete, lowest-risk action: remove the **dead channels**
-  (terminal-injection replaced them). Then re-home misplaced `src/` files. Then
-  quarantine `precommit`/`speech_guard`. Each = its own CI-green, **path-limited**
-  commit (shared tree — commit ONLY your paths;
-  [[feedback_shared_working_tree_path_limit_commits]]).
-- Then #2 kernel, #3 story slice + id-on-create, and so on.
+**Pause for the owner at:** the #14 re-approach planning; the frontend pass (its own
+design dialogue, like the backend got); any genuinely-new fork. Otherwise execute
+autonomously, CI-green + **path-limited** per slice (shared tree —
+[[feedback_shared_working_tree_path_limit_commits]], [[feedback_soft_wait_dual_gate_terminal]]).
 
-**Pause for the owner ONLY at:** #5 the frontend pass (explicitly UNMODELED — needs
-its own design dialogue, like the backend got), and any genuinely-new fork. Otherwise
-execute autonomously, CI-green per slice ([[feedback_soft_wait_dual_gate_terminal]]).
-
-Work the list. Don't re-plan it.
+(Reference: the kernel architecture is validated in `store_spike/`; keep design
+churn + per-slice history out of this doc — those live in dev memory + git.)
