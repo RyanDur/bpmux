@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use super::{BoardAction, BoardState};
 use crate::product_management::board::events::BoardEvent;
-use crate::product_management::story::{Story, StoryKey};
+use crate::product_management::board::item::BoardItem;
+use crate::product_management::outcome::Outcome;
+use crate::product_management::story::{Story, StoryKey, StoryType};
 
 mod comments;
 mod labels;
@@ -18,7 +20,21 @@ use lifecycle::{
     apply_story_created, apply_story_refreshed, apply_story_reopened, apply_title_updated,
 };
 
-pub(super) type Stories = HashMap<StoryKey, Story>;
+pub(super) type Stories = HashMap<StoryKey, BoardItem>;
+
+pub(super) fn item_from_story(story: &Story) -> BoardItem {
+    match story.story_type() {
+        StoryType::Outcome => BoardItem::Outcome(Outcome::from_story(story)),
+        StoryType::Story(_) | StoryType::Epic | StoryType::Iteration => {
+            BoardItem::Story(story.clone())
+        }
+    }
+}
+
+pub(super) fn story_mut(w: &mut Stories, number: u64) -> Option<&mut Story> {
+    w.get_mut(&StoryKey::Saved(number))
+        .and_then(BoardItem::as_story_mut)
+}
 
 pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
     let mut stories = state.stories.clone();
@@ -29,7 +45,7 @@ pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
         }
         BoardAction::Seeded(incoming) => {
             for story in incoming {
-                stories.insert(StoryKey::Saved(story.number), story.clone());
+                stories.insert(StoryKey::Saved(story.number), item_from_story(story));
             }
         }
         BoardAction::Removed(number) => {

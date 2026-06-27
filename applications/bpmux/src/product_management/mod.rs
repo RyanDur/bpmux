@@ -1,6 +1,7 @@
 pub mod board;
 pub mod epic;
 pub mod iteration;
+pub mod outcome;
 pub mod roadmap;
 pub mod story;
 

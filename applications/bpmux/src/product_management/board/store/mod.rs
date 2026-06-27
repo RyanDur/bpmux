@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use super::events::BoardEvent;
+use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{Story, StoryKey, StoryState};
 use crate::store::kernel::Store;
 
@@ -59,9 +60,12 @@ impl BoardStore {
     }
 
     pub fn remove(&self, number: u64) -> Option<Story> {
-        let removed = self
-            .store
-            .select(|state| state.stories.get(&StoryKey::Saved(number)).cloned());
+        let removed = self.store.select(|state| {
+            state
+                .stories
+                .get(&StoryKey::Saved(number))
+                .and_then(|item| item.as_story().cloned())
+        });
         self.store.dispatch(BoardAction::Removed(number));
         removed
     }
@@ -75,13 +79,32 @@ impl BoardStore {
     }
 
     pub fn story(&self, number: u64) -> Option<Story> {
-        self.store
-            .select(|state| state.stories.get(&StoryKey::Saved(number)).cloned())
+        self.store.select(|state| {
+            state
+                .stories
+                .get(&StoryKey::Saved(number))
+                .and_then(|item| item.as_story().cloned())
+        })
     }
 
     pub fn all_stories(&self) -> Vec<Story> {
-        self.store
-            .select(|state| state.stories.values().cloned().collect())
+        self.store.select(|state| {
+            state
+                .stories
+                .values()
+                .filter_map(|item| item.as_story().cloned())
+                .collect()
+        })
+    }
+
+    pub fn outcomes(&self) -> Vec<Outcome> {
+        self.store.select(|state| {
+            state
+                .stories
+                .values()
+                .filter_map(|item| item.as_outcome().cloned())
+                .collect()
+        })
     }
 
     pub fn stories_in_state(&self, wanted: StoryState) -> Vec<Story> {
@@ -89,6 +112,7 @@ impl BoardStore {
             state
                 .stories
                 .values()
+                .filter_map(|item| item.as_story())
                 .filter(|story| story.state() == wanted)
                 .cloned()
                 .collect()

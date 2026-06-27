@@ -59,11 +59,15 @@ fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
 
 fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
-    crate::product_management::roadmap::view::derive_roadmap_view(&refresh.all_stories(), workflow)
-        .into_iter()
-        .flat_map(|b| b.outcomes)
-        .map(|o| o.number)
-        .collect()
+    crate::product_management::roadmap::view::derive_roadmap_view(
+        &refresh.outcomes(),
+        &refresh.all_stories(),
+        workflow,
+    )
+    .into_iter()
+    .flat_map(|b| b.outcomes)
+    .map(|o| o.number)
+    .collect()
 }
 
 #[tokio::test]
@@ -92,9 +96,13 @@ async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1
     .await
     .expect("pm retires the abandoned outcome");
 
-    assert_eq!(
-        refresh.story(710).expect("present").state,
-        StoryState::Retired,
+    assert!(
+        refresh
+            .outcomes()
+            .iter()
+            .find(|o| o.id().saved_number() == Some(710))
+            .expect("present")
+            .is_retired(),
         "BOTH-HALVES half 1: the domain state mutated to Retired"
     );
     assert_eq!(
@@ -124,9 +132,13 @@ async fn retire_with_no_reason_is_rejected_1761() {
         err.contains("reason"),
         "the error explains the reason is the audit-trail: {err}"
     );
-    assert_eq!(
-        refresh.story(700).expect("present").state,
-        StoryState::Icebox,
+    assert!(
+        !refresh
+            .outcomes()
+            .iter()
+            .find(|o| o.id().saved_number() == Some(700))
+            .expect("present")
+            .is_retired(),
         "a reasonless retire mutates nothing"
     );
 }

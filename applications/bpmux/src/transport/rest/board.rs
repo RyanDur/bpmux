@@ -6,7 +6,7 @@ pub(crate) fn ordered_board_stories(
     let all = refresh.all_stories();
     let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
     let workflow = crate::workflow::current_workflow();
-    let stories: Vec<serde_json::Value> = all
+    let mut items: Vec<serde_json::Value> = all
         .iter()
         .map(|s| {
             let mut json =
@@ -26,18 +26,23 @@ pub(crate) fn ordered_board_stories(
                     map.insert("readiness".to_string(), value);
                 }
             }
-            if s.story_type() == crate::product_management::story::StoryType::Outcome
-                && let serde_json::Value::Object(map) = &mut json
-            {
-                let rolled = crate::product_management::iteration::readiness::outcome_readiness(
-                    s, &all, workflow,
-                );
-                if let Ok(value) = serde_json::to_value(rolled) {
-                    map.insert("outcome_readiness".to_string(), value);
-                }
-            }
             json
         })
         .collect();
-    crate::product_management::board::ready_order_label::sort_board_ready_by_membership(stories)
+    for outcome in refresh.outcomes() {
+        let mut json =
+            crate::product_management::board::adapters::json::outcome_to_board_json(&outcome);
+        if let serde_json::Value::Object(map) = &mut json {
+            let rolled = crate::product_management::iteration::readiness::outcome_readiness(
+                outcome.id().saved_number().unwrap_or(0),
+                &all,
+                workflow,
+            );
+            if let Ok(value) = serde_json::to_value(rolled) {
+                map.insert("outcome_readiness".to_string(), value);
+            }
+        }
+        items.push(json);
+    }
+    crate::product_management::board::ready_order_label::sort_board_ready_by_membership(items)
 }

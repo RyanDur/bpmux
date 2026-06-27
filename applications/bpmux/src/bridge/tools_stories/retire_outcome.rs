@@ -1,8 +1,7 @@
-use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId};
-use crate::product_management::story::StoryType;
 use std::sync::Arc;
 
 pub(crate) async fn handle_retire_outcome(
@@ -22,14 +21,7 @@ pub(crate) async fn handle_retire_outcome(
         .ok_or("outcome retire needs --reason <R> (retire is destructive; the reason is the audit-trail)")?;
 
     let r = refresh.ok_or("retire_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    let story_type = outcome.story_type();
-    if story_type != StoryType::Outcome {
-        return Err(format!(
-            "#{outcome_number} is not an Outcome (story_type={:?}); it may be a story, not an outcome — outcomes: bpmux roadmap",
-            story_type
-        ));
-    }
+    let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
 
     let meta = || EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
@@ -48,11 +40,7 @@ pub(crate) async fn handle_retire_outcome(
         reason: Some(format!("retired: {reason}")),
     })
     .map_err(|e| format!("#{outcome_number} retire enqueue failed: {e}"))?;
-    if !outcome
-        .raw_labels
-        .iter()
-        .any(|l| l.eq_ignore_ascii_case("retired"))
-    {
+    if !outcome.is_retired() {
         r.mutate_sync(BoardEvent::TagAdded {
             meta: meta(),
             number: outcome_number,
@@ -77,6 +65,6 @@ pub(crate) async fn handle_retire_outcome(
     };
     Ok(format!(
         "#{outcome_number} {} retired (reason: {reason}){mapping_note}; it no longer appears in bpmux roadmap",
-        outcome.title
+        outcome.content.title
     ))
 }

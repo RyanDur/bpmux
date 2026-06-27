@@ -1,6 +1,6 @@
-use super::Stories;
+use super::{Stories, story_mut};
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::story::{FreeComment, Gate, GateComment, StoryKey};
+use crate::product_management::story::{FreeComment, Gate, GateComment};
 
 pub(super) fn apply_gate_comment_appended(
     w: &mut Stories,
@@ -9,7 +9,7 @@ pub(super) fn apply_gate_comment_appended(
     gate: Gate,
     payload: Option<String>,
 ) {
-    if let Some(story) = w.get_mut(&StoryKey::Saved(number)) {
+    if let Some(story) = story_mut(w, number) {
         let entry = GateComment::from_event(gate, meta, payload);
         match &mut story.gate_comments {
             Some(list) => list.push(entry),
@@ -24,7 +24,7 @@ pub(super) fn apply_free_comment_appended(
     meta: &EventMeta,
     body: &str,
 ) {
-    if let Some(story) = w.get_mut(&StoryKey::Saved(number)) {
+    if let Some(story) = story_mut(w, number) {
         let entry = FreeComment::from_event(body.to_string(), meta);
         match &mut story.free_comments {
             Some(list) => list.push(entry),
@@ -34,13 +34,13 @@ pub(super) fn apply_free_comment_appended(
 }
 
 pub(super) fn apply_free_comments_fetched(w: &mut Stories, number: u64, comments: &[FreeComment]) {
-    if let Some(story) = w.get_mut(&StoryKey::Saved(number)) {
+    if let Some(story) = story_mut(w, number) {
         story.free_comments = Some(comments.to_vec());
     }
 }
 
 pub(super) fn apply_gate_comments_fetched(w: &mut Stories, number: u64, comments: &[GateComment]) {
-    if let Some(story) = w.get_mut(&StoryKey::Saved(number)) {
+    if let Some(story) = story_mut(w, number) {
         story.gate_comments = Some(comments.to_vec());
     }
 }

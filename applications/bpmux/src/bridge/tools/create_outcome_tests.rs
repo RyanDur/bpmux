@@ -3,7 +3,6 @@
 
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::story_type_from_labels_or_title;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -71,25 +70,22 @@ async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738()
     .await
     .expect("pm can create an outcome");
     assert!(result.contains("outcome created:"), "result: {result}");
-    let stories = refresh.all_stories();
-    let outcome: &Story = stories
+    let outcomes = refresh.outcomes();
+    let outcome = outcomes
         .iter()
-        .find(|s| s.title == "The team runs on its own infra")
-        .expect("outcome issue persisted");
-    assert_eq!(
-        story_type_from_labels_or_title(&outcome.raw_labels, &outcome.title),
-        StoryType::Outcome,
-        "the outcome is a first-class Outcome entity, NOT an Epic — no epic≡outcome conflation"
+        .find(|o| o.content.title == "The team runs on its own infra")
+        .expect(
+            "the outcome is a first-class Outcome entity, NOT an Epic — no epic≡outcome conflation",
+        );
+    assert!(
+        !refresh
+            .all_stories()
+            .iter()
+            .any(|s| s.title == "The team runs on its own infra"),
+        "an outcome must never be modelled as a story/epic — it lives in the outcome collection, never the board's story set"
     );
-    assert_ne!(
-        story_type_from_labels_or_title(&outcome.raw_labels, &outcome.title),
-        StoryType::Epic,
-        "an outcome must never be modelled as an epic"
-    );
     assert_eq!(
-        crate::product_management::board::adapters::github::horizon_from_labels(
-            &outcome.raw_labels
-        ),
+        outcome.horizon(),
         Some(Horizon::Next),
         "the outcome carries its horizon, derived from the recorded horizon label"
     );

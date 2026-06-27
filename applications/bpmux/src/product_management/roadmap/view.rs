@@ -1,10 +1,8 @@
 use serde::Serialize;
 
-use crate::product_management::board::adapters::github::{
-    horizon_from_labels, horizon_order_from_labels,
-};
 use crate::product_management::iteration::readiness::{building_iterations, outcome_readiness};
-use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
+use crate::product_management::outcome::Outcome;
+use crate::product_management::story::{Horizon, Story};
 use crate::workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -51,30 +49,30 @@ const BANDS: [(Horizon, &str); 3] = [
     (Horizon::Later, "Later"),
 ];
 
-pub fn derive_roadmap_view(stories: &[Story], workflow: &WorkflowConfig) -> Vec<RoadmapBand> {
+pub fn derive_roadmap_view(
+    outcomes: &[Outcome],
+    all_stories: &[Story],
+    workflow: &WorkflowConfig,
+) -> Vec<RoadmapBand> {
     BANDS
         .iter()
         .filter_map(|(horizon, label)| {
-            let mut members: Vec<&Story> = stories
+            let mut members: Vec<&Outcome> = outcomes
                 .iter()
-                .filter(|s| {
-                    s.story_type() == StoryType::Outcome
-                        && horizon_from_labels(&s.raw_labels) == Some(*horizon)
-                        && s.state != StoryState::Retired
-                })
+                .filter(|outcome| outcome.horizon() == Some(*horizon) && !outcome.is_retired())
                 .collect();
             if members.is_empty() {
                 return None;
             }
-            members.sort_by_key(|s| {
+            members.sort_by_key(|outcome| {
                 (
-                    horizon_order_from_labels(&s.raw_labels).unwrap_or(u32::MAX),
-                    s.number,
+                    outcome.horizon_order().unwrap_or(u32::MAX),
+                    outcome.id().saved_number().unwrap_or(u64::MAX),
                 )
             });
             let outcomes: Vec<RoadmapOutcome> = members
                 .iter()
-                .map(|outcome| roadmap_outcome(outcome, stories, workflow))
+                .map(|outcome| roadmap_outcome(outcome, all_stories, workflow))
                 .collect();
             Some(RoadmapBand {
                 horizon: *horizon,
@@ -85,9 +83,10 @@ pub fn derive_roadmap_view(stories: &[Story], workflow: &WorkflowConfig) -> Vec<
         .collect()
 }
 
-fn roadmap_outcome(outcome: &Story, all: &[Story], workflow: &WorkflowConfig) -> RoadmapOutcome {
-    let readiness = outcome_readiness(outcome, all, workflow);
-    let building = building_iterations(outcome.number, all);
+fn roadmap_outcome(outcome: &Outcome, all: &[Story], workflow: &WorkflowConfig) -> RoadmapOutcome {
+    let number = outcome.id().saved_number().unwrap_or(0);
+    let readiness = outcome_readiness(number, all, workflow);
+    let building = building_iterations(number, all);
     let done = !building.is_empty() && building.iter().all(|it| it.is_closed);
     let state = if done {
         OutcomeState::Done
@@ -99,8 +98,8 @@ fn roadmap_outcome(outcome: &Story, all: &[Story], workflow: &WorkflowConfig) ->
         OutcomeState::NeedsAttention
     };
     RoadmapOutcome {
-        number: outcome.number,
-        name: outcome.title.clone(),
+        number,
+        name: outcome.content.title.clone(),
         state,
         gap_count: readiness.gap_count,
     }

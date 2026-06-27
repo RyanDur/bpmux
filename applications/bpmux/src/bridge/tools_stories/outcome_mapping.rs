@@ -1,8 +1,10 @@
-use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use super::helpers::{
+    ensure_outcome_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
+};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId};
-use crate::product_management::story::{Story, StoryType};
+use crate::product_management::story::Story;
 use std::sync::Arc;
 
 fn meta_for(agent_name: &str) -> EventMeta {
@@ -18,14 +20,7 @@ async fn mapped_iteration(
     outcome_number: u64,
     iteration_number: u64,
 ) -> Result<Story, String> {
-    let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    let story_type = outcome.story_type();
-    if story_type != StoryType::Outcome {
-        return Err(format!(
-            "#{outcome_number} is not an Outcome (story_type={:?}); it may be a story, not an outcome — outcomes: bpmux roadmap",
-            story_type
-        ));
-    }
+    ensure_outcome_in_canonical_store(r, outcome_number).await?;
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
     if crate::product_management::board::adapters::github::outcome_membership_from_labels(
         &iteration.raw_labels,

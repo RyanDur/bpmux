@@ -1,11 +1,9 @@
-use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::{
-    horizon_from_labels, horizon_order_from_labels,
-};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
-use crate::product_management::story::{Horizon, Story, StoryType};
+use crate::product_management::outcome::Outcome;
+use crate::product_management::story::Horizon;
 use std::sync::Arc;
 
 pub(crate) async fn handle_reprioritize_outcome(
@@ -37,18 +35,11 @@ pub(crate) async fn handle_reprioritize_outcome(
         .transpose()?;
 
     let r = refresh.ok_or("reprioritize_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    let story_type = outcome.story_type();
-    if story_type != StoryType::Outcome {
-        return Err(format!(
-            "#{outcome_number} is not an Outcome (story_type={:?}); it may be a story, not an outcome — outcomes: bpmux roadmap",
-            story_type
-        ));
-    }
+    let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
 
     let target_band = match requested_band {
         Some(band) => band,
-        None => horizon_from_labels(&outcome.raw_labels).ok_or_else(|| {
+        None => outcome.horizon().ok_or_else(|| {
             format!("#{outcome_number} has no band yet; pass --to <now|next|later> to set one")
         })?,
     };
@@ -60,7 +51,7 @@ pub(crate) async fn handle_reprioritize_outcome(
         peer_id: PeerId::local(),
     };
 
-    let band_changed = horizon_from_labels(&outcome.raw_labels) != Some(target_band);
+    let band_changed = outcome.horizon() != Some(target_band);
     if band_changed {
         move_to_band(r, &codec, &meta, &outcome, target_band)?;
     }
@@ -73,13 +64,13 @@ pub(crate) async fn handle_reprioritize_outcome(
     if !band_changed && position.is_none() {
         return Ok(format!(
             "#{outcome_number} {} → {} (unchanged)",
-            outcome.title,
+            outcome.content.title,
             target_band.band_label()
         ));
     }
     Ok(format!(
         "#{outcome_number} {} → {}{position_note}",
-        outcome.title,
+        outcome.content.title,
         target_band.band_label()
     ))
 }
@@ -88,34 +79,35 @@ fn move_to_band(
     r: &Arc<dyn RefreshDriver>,
     codec: &GhLabelCodec,
     meta: &impl Fn() -> EventMeta,
-    outcome: &Story,
+    outcome: &Outcome,
     target_band: Horizon,
 ) -> Result<(), String> {
+    let number = outcome.id().saved_number().unwrap_or(0);
     let target_label = codec.encode_horizon(target_band);
-    for stale in outcome
-        .raw_labels
-        .iter()
-        .filter(|l| codec.decode_horizon(l).is_some() && **l != target_label)
-        .chain(
-            outcome
-                .raw_labels
-                .iter()
-                .filter(|l| codec.decode_horizon_order(l).is_some()),
-        )
-    {
+    let mut stale: Vec<String> = Vec::new();
+    if let Some(current) = outcome.horizon() {
+        let current_label = codec.encode_horizon(current);
+        if current_label != target_label {
+            stale.push(current_label);
+        }
+    }
+    if let Some(order) = outcome.horizon_order() {
+        stale.push(codec.encode_horizon_order(order));
+    }
+    for label in stale {
         r.mutate_sync(BoardEvent::TagRemoved {
             meta: meta(),
-            number: outcome.number,
-            label: stale.clone(),
+            number,
+            label,
         })
-        .map_err(|e| format!("#{} band-change label removal failed: {e}", outcome.number))?;
+        .map_err(|e| format!("#{number} band-change label removal failed: {e}"))?;
     }
     r.mutate_sync(BoardEvent::TagAdded {
         meta: meta(),
-        number: outcome.number,
+        number,
         label: target_label,
     })
-    .map_err(|e| format!("#{} horizon label enqueue failed: {e}", outcome.number))
+    .map_err(|e| format!("#{number} horizon label enqueue failed: {e}"))
 }
 
 fn reorder_within_band(
@@ -126,18 +118,16 @@ fn reorder_within_band(
     band: Horizon,
     requested_position: u32,
 ) -> Result<String, String> {
-    let members: Vec<Story> = r
-        .all_stories()
+    let members: Vec<Outcome> = r
+        .outcomes()
         .into_iter()
-        .filter(|s| {
-            s.story_type() == StoryType::Outcome && horizon_from_labels(&s.raw_labels) == Some(band)
-        })
+        .filter(|outcome| outcome.horizon() == Some(band) && !outcome.is_retired())
         .collect();
-    let mut ordered: Vec<&Story> = members.iter().collect();
-    ordered.sort_by_key(|s| {
+    let mut ordered: Vec<&Outcome> = members.iter().collect();
+    ordered.sort_by_key(|outcome| {
         (
-            horizon_order_from_labels(&s.raw_labels).unwrap_or(u32::MAX),
-            s.number,
+            outcome.horizon_order().unwrap_or(u32::MAX),
+            outcome.id().saved_number().unwrap_or(u64::MAX),
         )
     });
 
@@ -145,7 +135,7 @@ fn reorder_within_band(
     let clamped = requested_position.clamp(1, band_size.max(1));
     let mut sequence: Vec<u64> = ordered
         .iter()
-        .map(|s| s.number)
+        .filter_map(|outcome| outcome.id().saved_number())
         .filter(|n| *n != outcome_number)
         .collect();
     let insert_index = (clamped as usize - 1).min(sequence.len());
@@ -155,20 +145,16 @@ fn reorder_within_band(
         let new_position = (index + 1) as u32;
         let member = members
             .iter()
-            .find(|s| s.number == *number)
+            .find(|outcome| outcome.id().saved_number() == Some(*number))
             .ok_or_else(|| format!("#{number} vanished from band mid-reorder"))?;
-        if horizon_order_from_labels(&member.raw_labels) == Some(new_position) {
+        if member.horizon_order() == Some(new_position) {
             continue;
         }
-        for stale in member
-            .raw_labels
-            .iter()
-            .filter(|l| codec.decode_horizon_order(l).is_some())
-        {
+        if let Some(order) = member.horizon_order() {
             r.mutate_sync(BoardEvent::TagRemoved {
                 meta: meta(),
                 number: *number,
-                label: stale.clone(),
+                label: codec.encode_horizon_order(order),
             })
             .map_err(|e| format!("#{number} prior-position removal failed: {e}"))?;
         }

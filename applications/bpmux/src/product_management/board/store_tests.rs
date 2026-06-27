@@ -6,9 +6,9 @@ use super::events::{BoardEvent, EventMeta, LabelDerivedFields, event_wins};
 use super::peer::PeerId;
 use super::store::BoardStore;
 use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, horizon_from_labels, iteration_dev_ok_by_from_labels,
-    iteration_membership_from_labels, iteration_review_closers_from_labels,
-    parent_epic_from_labels, story_type_from_labels_or_title, tags_from_labels,
+    acceptor_from_labels, iteration_dev_ok_by_from_labels, iteration_membership_from_labels,
+    iteration_review_closers_from_labels, parent_epic_from_labels, story_type_from_labels_or_title,
+    tags_from_labels,
 };
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, Story, StoryKind, StoryState, StoryType, Tag,
@@ -622,7 +622,12 @@ fn tag_added_horizon_label_rederives_horizon_then_removal_clears_it_1738() {
         label: "horizon.next".to_string(),
     });
     assert_eq!(
-        horizon_from_labels(&store.story(1).unwrap().raw_labels),
+        store
+            .outcomes()
+            .iter()
+            .find(|o| o.id().saved_number() == Some(1))
+            .unwrap()
+            .horizon(),
         Some(crate::product_management::story::Horizon::Next),
         "the horizon label add re-derives the typed horizon"
     );
@@ -632,7 +637,13 @@ fn tag_added_horizon_label_rederives_horizon_then_removal_clears_it_1738() {
         label: "horizon.next".to_string(),
     });
     assert!(
-        horizon_from_labels(&store.story(1).unwrap().raw_labels).is_none(),
+        store
+            .outcomes()
+            .iter()
+            .find(|o| o.id().saved_number() == Some(1))
+            .unwrap()
+            .horizon()
+            .is_none(),
         "removing the horizon label clears it — derived, never stale"
     );
 }

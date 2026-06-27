@@ -1,4 +1,7 @@
-use super::helpers::{ensure_story_in_canonical_store, require_purpose, role_from_name};
+use super::helpers::{
+    ensure_outcome_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
+    role_from_name,
+};
 
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -92,14 +95,7 @@ pub(crate) async fn handle_map_iteration_to_outcome(
             story_type
         ));
     }
-    let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    let story_type = outcome.story_type();
-    if story_type != crate::product_management::story::StoryType::Outcome {
-        return Err(format!(
-            "story #{outcome_number} is not an Outcome (story_type={:?}); iterations map only to outcomes",
-            story_type
-        ));
-    }
+    ensure_outcome_in_canonical_store(r, outcome_number).await?;
     let meta = crate::product_management::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),

@@ -42,11 +42,15 @@ fn args_full(outcome: u64, to: Option<&str>, position: Option<u32>) -> Map<Strin
 
 fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
-    crate::product_management::roadmap::view::derive_roadmap_view(&refresh.all_stories(), workflow)
-        .into_iter()
-        .find(|b| b.horizon == horizon)
-        .map(|b| b.outcomes.iter().map(|o| o.number).collect())
-        .unwrap_or_default()
+    crate::product_management::roadmap::view::derive_roadmap_view(
+        &refresh.outcomes(),
+        &refresh.all_stories(),
+        workflow,
+    )
+    .into_iter()
+    .find(|b| b.horizon == horizon)
+    .map(|b| b.outcomes.iter().map(|o| o.number).collect())
+    .unwrap_or_default()
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
@@ -82,9 +86,12 @@ async fn pm_moves_an_outcome_to_a_new_band_and_the_horizon_rederives_1759() {
         "the confirmation states the new band as the roadmap reads it: {result}"
     );
     assert_eq!(
-        crate::product_management::board::adapters::github::horizon_from_labels(
-            &refresh.story(700).expect("outcome present").raw_labels
-        ),
+        refresh
+            .outcomes()
+            .iter()
+            .find(|o| o.id().saved_number() == Some(700))
+            .expect("outcome present")
+            .horizon(),
         Some(Horizon::Now),
         "the band-move re-derives the typed horizon from the swapped label (read<->write)"
     );
@@ -101,6 +108,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
     .await;
     let workflow = crate::workflow::current_workflow();
     let before = crate::product_management::roadmap::view::derive_roadmap_view(
+        &refresh.outcomes(),
         &refresh.all_stories(),
         workflow,
     );
@@ -116,6 +124,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
         .expect("pm reprioritizes the outcome");
 
     let after = crate::product_management::roadmap::view::derive_roadmap_view(
+        &refresh.outcomes(),
         &refresh.all_stories(),
         workflow,
     );
@@ -147,9 +156,12 @@ async fn reprioritize_outcome_is_pm_lane_non_pm_refused_1759() {
         .expect_err("dev cannot reprioritize the roadmap (pm-lane)");
     assert!(err.contains("pm"), "refusal names the pm-lane: {err}");
     assert_eq!(
-        crate::product_management::board::adapters::github::horizon_from_labels(
-            &refresh.story(700).expect("outcome present").raw_labels
-        ),
+        refresh
+            .outcomes()
+            .iter()
+            .find(|o| o.id().saved_number() == Some(700))
+            .expect("outcome present")
+            .horizon(),
         Some(Horizon::Next),
         "a refused write mutates nothing — the band is unchanged"
     );
@@ -190,9 +202,12 @@ async fn reprioritize_to_the_current_band_is_an_idempotent_noop_1759() {
         "the no-op still prints the current state, exit 0: {result}"
     );
     assert_eq!(
-        crate::product_management::board::adapters::github::horizon_from_labels(
-            &refresh.story(700).expect("outcome present").raw_labels
-        ),
+        refresh
+            .outcomes()
+            .iter()
+            .find(|o| o.id().saved_number() == Some(700))
+            .expect("outcome present")
+            .horizon(),
         Some(Horizon::Now),
         "the band is unchanged on an idempotent re-fire"
     );
@@ -295,9 +310,12 @@ async fn band_move_resets_a_stale_within_band_position_1759() {
     .await
     .expect("A moves to Later");
     assert_eq!(
-        crate::product_management::board::adapters::github::horizon_order_from_labels(
-            &refresh.story(700).expect("present").raw_labels
-        ),
+        refresh
+            .outcomes()
+            .iter()
+            .find(|o| o.id().saved_number() == Some(700))
+            .expect("present")
+            .horizon_order(),
         None,
         "moving bands clears the stale within-band position so it doesn't mis-sort in the new band"
     );

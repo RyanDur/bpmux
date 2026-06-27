@@ -51,11 +51,15 @@ fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Va
 
 fn roadmap_name(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Option<String> {
     let workflow = crate::workflow::current_workflow();
-    crate::product_management::roadmap::view::derive_roadmap_view(&refresh.all_stories(), workflow)
-        .into_iter()
-        .flat_map(|b| b.outcomes)
-        .find(|o| o.number == number)
-        .map(|o| o.name)
+    crate::product_management::roadmap::view::derive_roadmap_view(
+        &refresh.outcomes(),
+        &refresh.all_stories(),
+        workflow,
+    )
+    .into_iter()
+    .flat_map(|b| b.outcomes)
+    .find(|o| o.number == number)
+    .map(|o| o.name)
 }
 
 #[tokio::test]
@@ -97,10 +101,15 @@ async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read_176
     )
     .await
     .expect("pm edits the outcome why with a plain why-body — no ATP gate, since an outcome is not acceptance-test-bearing");
+    let outcomes = refresh.outcomes();
+    let outcome = outcomes
+        .iter()
+        .find(|o| o.id().saved_number() == Some(700))
+        .expect("present");
     assert_eq!(
-        refresh.story(700).expect("present").body.as_deref(),
+        outcome.content.body.as_deref(),
         Some("**Benefit:** agents plan from one substrate, no drift"),
-        "the why persists as the disclosure-detail (reflected via bpmux story, not the token-frugal roadmap view)"
+        "the why persists as the disclosure-detail (reflected via the outcome, not the token-frugal roadmap view)"
     );
 }
 

@@ -6,8 +6,9 @@ use crate::product_management::board::adapters::github::{
     outcome_membership_from_labels,
 };
 use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{
-    Story, Tag, most_recent_backward_transition, replay_transitions,
+    Story, StoryState, Tag, most_recent_backward_transition, replay_transitions,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -75,6 +76,38 @@ impl StoryView {
             created_at: story.filed_at().to_rfc3339(),
             body: story.body().unwrap_or_default().to_string(),
             rework_comment: rework_comment(story),
+        }
+    }
+
+    pub fn from_outcome(outcome: &Outcome) -> Self {
+        let retired = outcome.is_retired();
+        Self {
+            number: outcome.id().saved_number().unwrap_or(0),
+            title: outcome.content.title.clone(),
+            state: if retired {
+                StoryState::Retired.as_str()
+            } else {
+                StoryState::Icebox.as_str()
+            },
+            gh_state: if retired { "closed" } else { "open" },
+            labels: vec![
+                crate::product_management::story::StoryType::Outcome
+                    .as_label()
+                    .to_string(),
+            ],
+            parent_epic: None,
+            iteration_membership: None,
+            outcome_membership: None,
+            iteration_order: None,
+            iteration_review_closed_by: Vec::new(),
+            iteration_dev_ok_by: Vec::new(),
+            horizon: outcome.horizon().map(|h| h.as_str()),
+            is_current: false,
+            acceptor: None,
+            assignees: Vec::new(),
+            created_at: outcome.content.filed_at.to_rfc3339(),
+            body: outcome.content.body.clone().unwrap_or_default(),
+            rework_comment: None,
         }
     }
 }

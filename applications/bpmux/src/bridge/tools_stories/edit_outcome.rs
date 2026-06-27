@@ -1,6 +1,5 @@
-use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::story::StoryType;
 use std::sync::Arc;
 
 pub(crate) async fn handle_edit_outcome(
@@ -20,14 +19,7 @@ pub(crate) async fn handle_edit_outcome(
     }
 
     let r = refresh.ok_or("edit_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    let story_type = outcome.story_type();
-    if story_type != StoryType::Outcome {
-        return Err(format!(
-            "#{outcome_number} is not an Outcome (story_type={:?}); it may be a story, not an outcome — outcomes: bpmux roadmap",
-            story_type
-        ));
-    }
+    ensure_outcome_in_canonical_store(r, outcome_number).await?;
 
     let mut updated: Vec<&str> = Vec::new();
     if let Some(t) = title {

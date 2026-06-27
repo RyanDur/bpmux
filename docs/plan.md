@@ -906,6 +906,27 @@ for KIND readers; SHAPE checks (`== StoryType::Iteration`) unchanged. 2391 backe
 tests green, clippy clean. The shape variants (Epic/Iteration/Outcome) become the
 `BoardItem` DU variants in the next (structural) slice; `StoryKind` stays on `Story`.
 
+**DONE (uncommitted at time of writing) — Slice 1: Outcome carve-out (first shape
+peeled, shape-by-shape).** The store is now `HashMap<StoryKey, BoardItem>` with
+`enum BoardItem { Story(Story), Outcome(Outcome) }` (grows a variant per shape).
+`Outcome = Content { id, title, body, filed_at, filed_by } ⊕ OutcomeLifecycle
+{ Active { horizon, horizon_order } | Retired }` — born honest (sheds `raw_labels`;
+horizon read via `.horizon()`). Ingest routes outcome-issues → `Outcome::from_story`;
+the reducer routes by variant with **pure DwT transitions** (`retired()`,
+`with_horizon_labels()`, `with_body()`, `with_title()` — variant-replacing, never
+field-poking; story-only events no-op on outcomes via a `story_mut` helper). The
+middleware reconstructs an outcome's horizon labels (`encoded_labels()`) so the
+TagAdded/TagRemoved → label-delta machinery still drives horizon reprioritize.
+`store.outcomes()` / `RefreshDriver::outcomes()` added; the wire **re-projects**
+outcomes (`StoryView::from_outcome`, appended in `ordered_board_stories`) so the
+board JSON is byte-unchanged; the roadmap read-path (`derive_roadmap_view(&[Outcome],
+&[Story])`, `outcome_readiness(number)`) + the write-handlers (`ensure_outcome_in_
+canonical_store`) consume the typed `Outcome`. 2393 backend tests green, clippy clean.
+(A latent bug surfaced + fixed: `apply_title_updated`/`apply_body_updated` were
+story-only, silently dropping outcome edits — now variant-aware.) NEXT: Iteration
+slice (add `BoardItem::Iteration`, its lifecycle DU + readiness fields + the
+outcome↔iteration ordered membership), then Epic.
+
 ### Overnight session 2026-06-26 → 27 (dev, autonomous) — state of play
 
 **Landed + pushed green:** P1 (StoryKey storage seam — board store map keyed by

@@ -28,19 +28,17 @@ pub async fn get_roadmap(
         let _ = refresh.refresh_all().await;
     }
     let all = refresh.all_stories();
+    let outcomes = refresh.outcomes();
     let workflow = crate::workflow::current_workflow();
     let body = match query.outcome {
         Some(number) => {
             let drill = crate::product_management::roadmap::drill::derive_outcome_drill_in(
                 number, &all, workflow,
             );
-            let outcome_name = all
+            let outcome_name = outcomes
                 .iter()
-                .find(|s| {
-                    s.number == number
-                        && s.story_type() == crate::product_management::story::StoryType::Outcome
-                })
-                .map(|s| s.title.clone());
+                .find(|outcome| outcome.id().saved_number() == Some(number))
+                .map(|outcome| outcome.content.title.clone());
             serde_json::json!({
                 "drill": drill,
                 "outcome_number": number,
@@ -49,8 +47,9 @@ pub async fn get_roadmap(
             })
         }
         None => {
-            let bands =
-                crate::product_management::roadmap::view::derive_roadmap_view(&all, workflow);
+            let bands = crate::product_management::roadmap::view::derive_roadmap_view(
+                &outcomes, &all, workflow,
+            );
             let filter = crate::product_management::roadmap::filter::RoadmapQuery {
                 state: query
                     .state

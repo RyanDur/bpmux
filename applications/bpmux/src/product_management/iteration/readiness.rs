@@ -51,11 +51,11 @@ pub fn building_iterations(outcome_number: u64, all: &[Story]) -> Vec<&Story> {
 }
 
 pub fn outcome_readiness(
-    outcome: &Story,
+    outcome_number: u64,
     all: &[Story],
     workflow: &WorkflowConfig,
 ) -> OutcomeReadiness {
-    let building = building_iterations(outcome.number, all);
+    let building = building_iterations(outcome_number, all);
     let gap_count = building
         .iter()
         .map(|iteration| {

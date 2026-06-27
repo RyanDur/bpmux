@@ -2,9 +2,19 @@
 
 use super::view::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Horizon, Story, StoryState};
+use crate::product_management::outcome::Outcome;
+use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
+
+fn bands_of(stories: &[Story]) -> Vec<RoadmapBand> {
+    let outcomes: Vec<Outcome> = stories
+        .iter()
+        .filter(|s| s.story_type() == StoryType::Outcome)
+        .map(Outcome::from_story)
+        .collect();
+    derive_roadmap_view(&outcomes, stories, &bundled_default())
+}
 
 fn outcome(number: u64, title: &str, horizon: Horizon) -> Story {
     let mut s = Story::new_minimal(
@@ -43,7 +53,7 @@ fn outcomes_group_into_now_next_later_priority_bands() {
         outcome(11, "Now thing", Horizon::Now),
         outcome(12, "Next thing", Horizon::Next),
     ];
-    let bands = derive_roadmap_view(&stories, &bundled_default());
+    let bands = bands_of(&stories);
     let labels: Vec<&str> = bands.iter().map(|b| b.label.as_str()).collect();
     assert_eq!(
         labels,
@@ -57,7 +67,7 @@ fn a_retired_outcome_drops_from_the_roadmap_view_1761() {
     let live = outcome(11, "Live outcome", Horizon::Now);
     let mut retired = outcome(12, "Abandoned outcome", Horizon::Now);
     retired.state = StoryState::Retired;
-    let bands = derive_roadmap_view(&[live, retired], &bundled_default());
+    let bands = bands_of(&[live, retired]);
     let numbers: Vec<u64> = bands
         .iter()
         .flat_map(|b| &b.outcomes)
@@ -74,7 +84,7 @@ fn a_retired_outcome_drops_from_the_roadmap_view_1761() {
 fn a_band_with_only_retired_outcomes_is_omitted_1761() {
     let mut retired = outcome(12, "Abandoned", Horizon::Now);
     retired.state = StoryState::Retired;
-    let bands = derive_roadmap_view(&[retired], &bundled_default());
+    let bands = bands_of(&[retired]);
     assert!(
         bands.is_empty(),
         "a band whose only outcome is retired renders nothing — retire is done only when the view drops it"
@@ -84,7 +94,7 @@ fn a_band_with_only_retired_outcomes_is_omitted_1761() {
 #[test]
 fn a_horizon_band_with_no_outcomes_is_omitted() {
     let stories = vec![outcome(11, "Now thing", Horizon::Now)];
-    let bands = derive_roadmap_view(&stories, &bundled_default());
+    let bands = bands_of(&stories);
     assert_eq!(bands.len(), 1, "only the populated band renders");
     assert_eq!(bands[0].horizon, Horizon::Now);
 }
@@ -95,7 +105,7 @@ fn outcomes_within_a_band_sort_by_number() {
         outcome(13, "B", Horizon::Now),
         outcome(11, "A", Horizon::Now),
     ];
-    let bands = derive_roadmap_view(&stories, &bundled_default());
+    let bands = bands_of(&stories);
     let numbers: Vec<u64> = bands[0].outcomes.iter().map(|o| o.number).collect();
     assert_eq!(numbers, vec![11, 13]);
 }
@@ -107,7 +117,7 @@ fn an_explicit_within_band_position_overrides_number_order() {
     let mut second = outcome(11, "A", Horizon::Now);
     second.raw_labels.push(GhLabelCodec.encode_horizon_order(2));
     let unpositioned = outcome(12, "C", Horizon::Now);
-    let bands = derive_roadmap_view(&[second, unpositioned, first], &bundled_default());
+    let bands = bands_of(&[second, unpositioned, first]);
     let numbers: Vec<u64> = bands[0].outcomes.iter().map(|o| o.number).collect();
     assert_eq!(
         numbers,
@@ -129,7 +139,7 @@ fn a_non_outcome_story_is_never_a_roadmap_row_even_with_a_horizon() {
         .raw_labels
         .push(GhLabelCodec.encode_horizon(Horizon::Now));
     let stories = vec![outcome(11, "Now thing", Horizon::Now), feature];
-    let bands = derive_roadmap_view(&stories, &bundled_default());
+    let bands = bands_of(&stories);
     assert_eq!(bands[0].outcomes.len(), 1, "only the outcome is a row");
     assert_eq!(bands[0].outcomes[0].number, 11);
 }
@@ -137,7 +147,7 @@ fn a_non_outcome_story_is_never_a_roadmap_row_even_with_a_horizon() {
 #[test]
 fn an_outcome_with_no_iterations_reads_planned() {
     let stories = vec![outcome(11, "Now thing", Horizon::Now)];
-    let bands = derive_roadmap_view(&stories, &bundled_default());
+    let bands = bands_of(&stories);
     assert_eq!(bands[0].outcomes[0].state, OutcomeState::Planned);
 }
 
@@ -147,7 +157,7 @@ fn an_outcome_with_an_unready_iteration_reads_needs_attention_with_gap_count() {
         outcome(11, "Now thing", Horizon::Now),
         iteration_for(20, 11, 1),
     ];
-    let bands = derive_roadmap_view(&stories, &bundled_default());
+    let bands = bands_of(&stories);
     let o = &bands[0].outcomes[0];
     assert_eq!(o.state, OutcomeState::NeedsAttention);
     assert_eq!(
@@ -173,7 +183,7 @@ fn an_outcome_whose_iteration_meets_every_check_reads_ready() {
     member.raw_labels.push("parent-iteration-#20.1".to_string());
     member.iteration_membership = Some((20, 1));
     let stories = vec![outcome(11, "Now thing", Horizon::Now), it, member];
-    let bands = derive_roadmap_view(&stories, &bundled_default());
+    let bands = bands_of(&stories);
     let o = &bands[0].outcomes[0];
     assert_eq!(o.state, OutcomeState::Ready);
     assert_eq!(o.gap_count, 0);
@@ -184,7 +194,7 @@ fn an_outcome_whose_building_iterations_are_all_closed_reads_done() {
     let mut it = iteration_for(20, 11, 1);
     it.is_closed = true;
     let stories = vec![outcome(11, "Now thing", Horizon::Now), it];
-    let bands = derive_roadmap_view(&stories, &bundled_default());
+    let bands = bands_of(&stories);
     assert_eq!(
         bands[0].outcomes[0].state,
         OutcomeState::Done,
