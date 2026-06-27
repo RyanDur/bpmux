@@ -83,6 +83,22 @@ This also resolves the substrate/process tension below: the agnostic store is
 pure substrate; every domain owns its slice; an AI-process domain (the board)
 takes its slice WITH IT to the light layer — the store doesn't care where it lives.
 
+### Per-domain kernel stores — slices need NOT share one AppState (owner, 2026-06-26)
+
+The kernel is generic; "compose at the composition root" does not require a
+SINGLE `AppState`. A small slice family (roster/ci/reactions/sync) shares one
+`AppState` because they're co-located substrate. A **large bounded domain keeps
+its OWN `kernel::Store`**: the board now runs on a self-contained
+`Store<BoardState, BoardAction>` inside `product_management/board/` (state +
+action + pure reducer + the label codec as middleware + selectors), NOT folded
+into the app `AppState`. This keeps module boundaries clean — the composition
+root stays small and doesn't import the big board domain. So "board becomes a
+selector over the story slice" means a selector over the board's OWN store, and
+the earlier "fold every slice into one AppState" framing is superseded for large
+domains. Revisit unification only if a real cross-slice need appears. Landed
+per-domain at `a76fc36c` (`BoardStore` reimplemented on the kernel, public API
+preserved).
+
 ## Where we are now (honest)
 
 - ❌ **The `Store` is a god-object, not agnostic.** `src/store/mod.rs` hardcodes
