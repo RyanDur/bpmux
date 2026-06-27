@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use super::events::BoardEvent;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryKey, StoryState};
 use crate::store::kernel::Store;
 
 mod action;
@@ -61,7 +61,7 @@ impl BoardStore {
     pub fn remove(&self, number: u64) -> Option<Story> {
         let removed = self
             .store
-            .select(|state| state.stories.get(&number).cloned());
+            .select(|state| state.stories.get(&StoryKey::Saved(number)).cloned());
         self.store.dispatch(BoardAction::Removed(number));
         removed
     }
@@ -76,7 +76,7 @@ impl BoardStore {
 
     pub fn story(&self, number: u64) -> Option<Story> {
         self.store
-            .select(|state| state.stories.get(&number).cloned())
+            .select(|state| state.stories.get(&StoryKey::Saved(number)).cloned())
     }
 
     pub fn all_stories(&self) -> Vec<Story> {

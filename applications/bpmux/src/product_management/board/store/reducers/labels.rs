@@ -1,8 +1,9 @@
 use super::Stories;
 use crate::product_management::board::events::LabelDerivedFields;
+use crate::product_management::story::StoryKey;
 
 pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, raw_labels: &[String]) {
-    if let Some(story) = w.get_mut(&number) {
+    if let Some(story) = w.get_mut(&StoryKey::Saved(number)) {
         story.raw_labels = raw_labels.to_vec();
     }
 }
@@ -11,7 +12,7 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
     if fields.raw_labels.is_empty() {
         return;
     }
-    if let Some(existing) = w.get_mut(&number) {
+    if let Some(existing) = w.get_mut(&StoryKey::Saved(number)) {
         existing.raw_labels = fields.raw_labels.clone();
     }
 }
