@@ -148,6 +148,34 @@ fn tag_added_blocked_label_decodes_into_the_stored_tags_field() {
 }
 
 #[test]
+fn tag_added_ready_order_label_decodes_into_the_stored_ready_order_field() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 18,
+        title: "orderable".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    assert_eq!(
+        store.story(18).unwrap().ready_order(),
+        None,
+        "a freshly created story has no ready-order yet"
+    );
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 18,
+        label: "ready-order.3".to_string(),
+    });
+    assert_eq!(
+        store.story(18).unwrap().ready_order(),
+        Some(3),
+        "the codec decodes the ready-order label into the stored field on the label-add event"
+    );
+}
+
+#[test]
 fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transitioned() {
     let store = BoardStore::new();
     let story = Story::new_minimal(
@@ -172,6 +200,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
             parent_epic: Some(7),
             iteration_membership: Some((1655, 106)),
             tags: Vec::new(),
+            ready_order: None,
         },
     });
 

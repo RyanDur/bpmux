@@ -23,6 +23,7 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
             {"name": "iteration-dev-ok.dev"},
             {"name": "horizon.next"},
             {"name": "parent-outcome-#700.2"},
+            {"name": "ready-order.5"},
         ],
         "created_at": "2026-05-15T01:00:00+00:00",
         "user": {"login": "FIELD_COMPLETENESS_SENTINEL_FILER"},
@@ -50,6 +51,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         parent_epic,
         iteration_membership,
         tags,
+        ready_order,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
@@ -72,6 +74,11 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         *tags,
         vec![crate::product_management::story::Tag::Blocked],
         "tags must decode from the blocked label into the stored domain field at ingest"
+    );
+    assert_eq!(
+        *ready_order,
+        Some(5),
+        "ready_order must decode from the ready-order.N label into the stored domain field at ingest"
     );
     assert_eq!(
         filed_at.to_rfc3339(),

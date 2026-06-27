@@ -24,6 +24,8 @@ pub struct LabelDerivedFields {
     pub iteration_membership: Option<(u64, u32)>,
     #[serde(default)]
     pub tags: Vec<Tag>,
+    #[serde(default)]
+    pub ready_order: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

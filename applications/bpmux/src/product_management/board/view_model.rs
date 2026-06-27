@@ -105,11 +105,11 @@ fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     if let Some(epic) = story.parent_epic() {
         labels.push(codec.encode_parent_epic(epic));
     }
+    if let Some(position) = story.ready_order() {
+        labels.push(codec.encode_ready_order(position));
+    }
     for raw in story.raw_labels() {
         if codec.is_iteration_label_loose(raw) && !labels.iter().any(|l| l == raw) {
-            labels.push(raw.clone());
-        }
-        if codec.is_ready_order_label(raw) && !labels.iter().any(|l| l == raw) {
             labels.push(raw.clone());
         }
         if is_renderer_badge_label(raw) && !labels.iter().any(|l| l == raw) {

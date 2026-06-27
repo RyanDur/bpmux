@@ -24,6 +24,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         parent_epic: None,
         iteration_membership: None,
         tags: Vec::new(),
+        ready_order: None,
     };
     s.raw_labels
         .push(GhLabelCodec.encode_story_type(story_type));
@@ -397,11 +398,8 @@ impl crate::product_management::board::label_codec::LabelCodec for StubLabelCode
 fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
     let mut s = sample_story(StoryState::Ready, StoryType::Feature, false);
     s.parent_epic = Some(42);
-    s.raw_labels = vec![
-        "rdy:100".to_string(),
-        "iter|Pegasus:200".to_string(),
-        "noise-label".to_string(),
-    ];
+    s.ready_order = Some(100);
+    s.raw_labels = vec!["iter|Pegasus:200".to_string(), "noise-label".to_string()];
     let json = story_to_board_json(&StubLabelCodec, &s);
     let labels: Vec<&str> = json["labels"]
         .as_array()

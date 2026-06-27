@@ -29,6 +29,7 @@ pub(super) fn apply_story_created(
         parent_epic: None,
         iteration_membership: None,
         tags: Vec::new(),
+        ready_order: None,
     };
     w.insert(StoryKey::Saved(number), story);
 }

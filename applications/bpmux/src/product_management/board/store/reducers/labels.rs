@@ -8,6 +8,7 @@ pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, fields: &LabelDeriv
         story.parent_epic = fields.parent_epic;
         story.iteration_membership = fields.iteration_membership;
         story.tags = fields.tags.clone();
+        story.ready_order = fields.ready_order;
         story.raw_labels = fields.raw_labels.clone();
     }
 }
@@ -21,6 +22,7 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
         existing.parent_epic = fields.parent_epic;
         existing.iteration_membership = fields.iteration_membership;
         existing.tags = fields.tags.clone();
+        existing.ready_order = fields.ready_order;
         existing.raw_labels = fields.raw_labels.clone();
     }
 }
