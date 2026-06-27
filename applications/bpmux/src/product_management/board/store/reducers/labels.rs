@@ -1,9 +1,9 @@
 use super::Stories;
 use crate::product_management::board::events::LabelDerivedFields;
 
-pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, fields: &LabelDerivedFields) {
+pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, raw_labels: &[String]) {
     if let Some(story) = w.get_mut(&number) {
-        story.raw_labels = fields.raw_labels.clone();
+        story.raw_labels = raw_labels.to_vec();
     }
 }
 

@@ -1,13 +1,29 @@
 use super::reducers::Stories;
+use super::{BoardAction, BoardState};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::project_labels;
 use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};
 use crate::product_management::board::label_codec::LabelCodec;
+use crate::store::kernel::Middleware;
 
-pub(super) fn project_label_delta(
-    stories: &Stories,
-    event: &BoardEvent,
-) -> Option<LabelDerivedFields> {
+pub(super) struct BoardLabelMiddleware;
+
+impl Middleware<BoardState, BoardAction> for BoardLabelMiddleware {
+    fn transform(&self, state: &BoardState, action: BoardAction) -> BoardAction {
+        let BoardAction::Event(event) = &action else {
+            return action;
+        };
+        match project_label_delta(&state.stories, event) {
+            Some(fields) => BoardAction::RawLabelsAssigned {
+                number: event.story_number(),
+                raw_labels: fields.raw_labels,
+            },
+            None => action,
+        }
+    }
+}
+
+fn project_label_delta(stories: &Stories, event: &BoardEvent) -> Option<LabelDerivedFields> {
     let new_labels = match event {
         BoardEvent::TagAdded { number, label, .. } => {
             let mut labels = stories.get(number)?.raw_labels.clone();

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};
+use super::{BoardAction, BoardState};
+use crate::product_management::board::events::BoardEvent;
 use crate::product_management::story::Story;
 
 mod comments;
@@ -19,11 +20,27 @@ use lifecycle::{
 
 pub(super) type Stories = HashMap<u64, Story>;
 
-pub(super) fn apply_event(
-    w: &mut Stories,
-    event: &BoardEvent,
-    label_projection: Option<&LabelDerivedFields>,
-) {
+pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
+    let mut stories = state.stories.clone();
+    match action {
+        BoardAction::Event(event) => apply_event(&mut stories, event),
+        BoardAction::RawLabelsAssigned { number, raw_labels } => {
+            apply_raw_labels(&mut stories, *number, raw_labels)
+        }
+        BoardAction::Seeded(incoming) => {
+            for story in incoming {
+                stories.insert(story.number, story.clone());
+            }
+        }
+        BoardAction::Removed(number) => {
+            stories.remove(number);
+        }
+        BoardAction::Cleared => stories.clear(),
+    }
+    BoardState { stories }
+}
+
+fn apply_event(w: &mut Stories, event: &BoardEvent) {
     let number = event.story_number();
     match event {
         BoardEvent::StoryCreated {
@@ -64,11 +81,7 @@ pub(super) fn apply_event(
         | BoardEvent::OutcomeMembershipSet { .. }
         | BoardEvent::OutcomeMembershipCleared { .. }
         | BoardEvent::CurrentIterationDesignated { .. }
-        | BoardEvent::CurrentIterationCleared { .. } => {
-            if let Some(fields) = label_projection {
-                apply_raw_labels(w, number, fields);
-            }
-        }
+        | BoardEvent::CurrentIterationCleared { .. } => {}
         BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, number, story),
         BoardEvent::TitleUpdated { title, .. } => apply_title_updated(w, number, title),
         BoardEvent::BodyUpdated { body, .. } => apply_body_updated(w, number, body),

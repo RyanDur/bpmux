@@ -1,22 +1,26 @@
-use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::Arc;
 
 use tokio::sync::broadcast;
 
 use super::events::BoardEvent;
 use crate::product_management::story::{Story, StoryState};
+use crate::store::kernel::Store;
 
+mod action;
 mod apply;
 mod middleware;
 mod persist_error;
 mod reducers;
+mod state;
 
+pub use action::BoardAction;
 pub use persist_error::PersistError;
+pub use state::BoardState;
 
 const SUBSCRIBE_BUFFER: usize = 1_000;
 
 pub struct BoardStore {
-    stories: RwLock<HashMap<u64, Story>>,
+    store: Arc<Store<BoardState, BoardAction>>,
     event_tx: broadcast::Sender<BoardEvent>,
     #[cfg(test)]
     test_post_broadcast_hook: std::sync::Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
@@ -24,9 +28,11 @@ pub struct BoardStore {
 
 impl BoardStore {
     pub fn new() -> Self {
+        let store = Store::new(BoardState::default(), Box::new(reducers::reduce));
+        store.add_middleware(Arc::new(middleware::BoardLabelMiddleware));
         let (event_tx, _rx) = broadcast::channel(SUBSCRIBE_BUFFER);
         Self {
-            stories: RwLock::new(HashMap::new()),
+            store,
             event_tx,
             #[cfg(test)]
             test_post_broadcast_hook: std::sync::Mutex::new(None),
@@ -45,24 +51,19 @@ impl BoardStore {
     }
 
     pub fn seed_all(&self, stories: Vec<Story>) {
-        let mut w = self.stories.write().unwrap_or_else(|e| e.into_inner());
-        for story in stories {
-            w.insert(story.number, story);
-        }
+        self.store.dispatch(BoardAction::Seeded(stories));
     }
 
     pub fn clear(&self) {
-        self.stories
-            .write()
-            .unwrap_or_else(|e| e.into_inner())
-            .clear();
+        self.store.dispatch(BoardAction::Cleared);
     }
 
     pub fn remove(&self, number: u64) -> Option<Story> {
-        self.stories
-            .write()
-            .unwrap_or_else(|e| e.into_inner())
-            .remove(&number)
+        let removed = self
+            .store
+            .select(|state| state.stories.get(&number).cloned());
+        self.store.dispatch(BoardAction::Removed(number));
+        removed
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<BoardEvent> {
@@ -74,41 +75,32 @@ impl BoardStore {
     }
 
     pub fn story(&self, number: u64) -> Option<Story> {
-        self.stories
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(&number)
-            .cloned()
+        self.store
+            .select(|state| state.stories.get(&number).cloned())
     }
 
     pub fn all_stories(&self) -> Vec<Story> {
-        self.stories
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .values()
-            .cloned()
-            .collect()
+        self.store
+            .select(|state| state.stories.values().cloned().collect())
     }
 
-    pub fn stories_in_state(&self, state: StoryState) -> Vec<Story> {
-        self.stories
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .values()
-            .filter(|s| s.state == state)
-            .cloned()
-            .collect()
+    pub fn stories_in_state(&self, wanted: StoryState) -> Vec<Story> {
+        self.store.select(|state| {
+            state
+                .stories
+                .values()
+                .filter(|story| story.state == wanted)
+                .cloned()
+                .collect()
+        })
     }
 
     pub fn len(&self) -> usize {
-        self.stories.read().unwrap_or_else(|e| e.into_inner()).len()
+        self.store.select(|state| state.stories.len())
     }
 
     pub fn is_empty(&self) -> bool {
-        self.stories
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .is_empty()
+        self.store.select(|state| state.stories.is_empty())
     }
 }
 
