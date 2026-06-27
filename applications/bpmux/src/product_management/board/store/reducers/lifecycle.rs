@@ -22,6 +22,7 @@ pub(super) fn apply_story_created(
         is_closed: false,
         raw_labels: Vec::new(),
         body_etag: None,
+        story_type: crate::product_management::story::story_type_from_title(title),
     };
     w.insert(StoryKey::Saved(number), story);
 }

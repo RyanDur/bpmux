@@ -19,6 +19,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         is_closed,
         raw_labels: Vec::new(),
         body_etag: None,
+        story_type,
     };
     s.raw_labels
         .push(GhLabelCodec.encode_story_type(story_type));

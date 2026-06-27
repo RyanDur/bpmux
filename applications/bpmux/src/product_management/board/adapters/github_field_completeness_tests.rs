@@ -44,6 +44,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         is_closed,
         raw_labels,
         body_etag,
+        story_type,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
@@ -58,11 +59,9 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         "state must decode from labels"
     );
     assert_eq!(
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            raw_labels, title
-        ),
+        *story_type,
         crate::product_management::story::StoryType::Feature,
-        "story_type must decode from labels"
+        "story_type must decode from labels into the stored domain field at ingest"
     );
     assert_eq!(
         crate::product_management::board::adapters::github::tags_from_labels(raw_labels).len(),
@@ -131,6 +130,24 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     let _ = free_comments;
     let _ = gate_comments;
     let _ = body_etag;
+}
+
+#[test]
+fn decode_story_metadata_decodes_story_type_from_label_into_the_domain_field() {
+    let json = serde_json::json!({
+        "number": 700,
+        "title": "north-star without a type prefix in the title",
+        "state": "open",
+        "labels": [{"name": "outcome"}],
+        "created_at": "2026-05-15T01:00:00+00:00",
+        "user": {"login": "pm"},
+    });
+    let decoded = decode_story_metadata(&json).expect("decode");
+    assert_eq!(
+        decoded.story_type(),
+        crate::product_management::story::StoryType::Outcome,
+        "the codec decodes the type label into the stored story_type at ingest, not from the title"
+    );
 }
 
 #[test]

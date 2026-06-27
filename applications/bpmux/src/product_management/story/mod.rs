@@ -45,6 +45,8 @@ pub struct Story {
     pub raw_labels: Vec<String>,
     #[serde(default)]
     pub body_etag: Option<String>,
+    #[serde(default)]
+    pub story_type: StoryType,
 }
 
 impl Story {
@@ -59,6 +61,7 @@ impl Story {
             StoryState::Icebox => Vec::new(),
             other => vec![other.github_label().to_string()],
         };
+        let story_type = enums::story_type_from_title(&title);
         Self {
             number,
             title,
@@ -71,6 +74,7 @@ impl Story {
             is_closed: false,
             raw_labels,
             body_etag: None,
+            story_type,
         }
     }
 
@@ -84,6 +88,10 @@ impl Story {
 
     pub fn state(&self) -> StoryState {
         self.state
+    }
+
+    pub fn story_type(&self) -> StoryType {
+        self.story_type
     }
 
     pub fn body(&self) -> Option<&str> {
