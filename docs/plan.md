@@ -383,6 +383,28 @@ make-the-change-easy-first):** (1) drop `acceptance_test_path` from the substrat
 accessors (still all `Saved`); (6) the optimistic-create flow — create mints
 `Pending`, renders unsaved, save-listener transitions to `Saved`; (7) renderer
 (the deferred frontend touch — its own modeling).
+
+### Roadmap shapes are distinct domain TYPES, each its own slice (owner, 2026-06-26)
+
+`Story`, `Iteration`, `Outcome` (and `Epic`) are **NOT** one `Story` + `StoryType`
+enum — they are **distinct domain types, each with its own reducer/slice and its
+own lifecycle**. To GitHub they're identical issues; the **adapter parses an issue
+into the right shape** (by labels/title) and routes it to that shape's reducer (the
+stories reducer handles stories, the iterations reducer handles iterations, the
+outcomes reducer handles outcomes, …). This is the roadmap domain model above made
+concrete, and it's the proper home for the lifecycle question `is_closed` exposed:
+each type owns its own done-ness (a story's Accepted/Retired vs an iteration's
+*complete* vs an outcome's *achieved*), so there's no single `state` enum to
+overload.
+
+Consequences: (a) the **`is_closed` collapse is SUBSUMED** by this split — dropped
+as a standalone step; "done-ness" is just per-type lifecycle. (b) the **id-on-create
+identity model (`Pending → Saved`) applies PER TYPE** — each shape can be
+optimistically created; that design is not wasted, it lands on the *Story* slice
+with iteration/outcome/epic as siblings using the same pattern. This is a
+**substantial restructure** (today's single `Story`/`StoryType`/`apply_event`/one
+store → per-shape types + reducers + adapter dispatch) and gets its own modeling
+pass. Sequencing relative to id-on-create: TBD with owner.
   - **Care-point (the "state-delta echo clobber" scar):** ingest/reconcile must
     MERGE, never blind-overwrite — a poll echoing GitHub must not stomp a newer
     local optimistic edit.
