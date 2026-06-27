@@ -323,12 +323,66 @@ and CI's poll: one kernel, slices own their state, projections fan out via liste
     create shows its id after the GitHub save.** Blocked by IDENTITY: stories are
     keyed by their GitHub issue number (`Story.number: u64`; store is
     `HashMap<u64, Story>`), so a story can't exist before GitHub assigns it one —
-    nothing to render optimistically. FIX: give a story a **local identity minted
-    at creation (from birth)** and demote the GitHub number to a **synced attribute**
-    assigned later. Then create → local-id story renders id-less → sync drains →
-    GitHub number comes back keyed by the local id → number appears. Same
-    "total identity from birth" principle as the message-id work; the board fold
-    set it up, this finishes the story's identity.
+    nothing to render optimistically.
+
+### The story identity model (owner + dev, 2026-06-26 — SETTLED)
+
+A story is a **discriminated union** whose variant *is* its lifecycle, so the two
+illegal states (saved-without-a-number, unsaved-with-a-number) are unrepresentable:
+
+```rust
+enum StoryKey { Pending(Uuid), Saved(u64) }          // store key / stable handle
+struct StoryContent { title, body, state, filed_at, filed_by,
+                      free_comments, gate_comments, raw_labels }
+struct UnsavedStory { id: Uuid, content: StoryContent }
+struct SavedStory   { id: u64, body_etag: Option<String>, content: StoryContent }
+enum Story { Unsaved(UnsavedStory), Saved(SavedStory) }
+HashMap<StoryKey, Arc<Story>>                          // Arc = cheap reduce-clones, NOT identity
+```
+
+- **One identity, no separate `number`+`id`.** Every story has `.id`; the variant
+  says what kind — a local `Uuid` while pending, the **GitHub number `u64` once
+  saved** (the number IS the id). No `number` field anywhere.
+- **The key is the stable handle** — no `ptr_eq`/value-matching. Create mints a
+  `Uuid` (in the action, so the reducer stays pure) → reducer inserts `Unsaved`
+  under `Pending(uuid)`. The frontend reads `Pending` as "unsaved."
+- **Unsaved stories ARE mutable.** Edits target the key (LWW — natural reducer
+  order); the key never changes on edit. An edit to an unsaved story becomes its
+  **own queued mutation** that drains to GitHub only after the create assigns the
+  number — exactly what the existing `race_window` + outbox handle.
+- **Save = a type transition, by key.** The GitHub-save **listener** (on the
+  board's own per-domain store) creates the issue, then dispatches
+  `StorySaved { pending: Uuid, id: u64 }`. The reducer looks up `Pending(uuid)`,
+  takes the story shape *currently* there (so in-flight edits aren't clobbered),
+  transitions `Unsaved → Saved(id)`, and re-files it under `Saved(id)`; the
+  `Pending` key disappears. Then re-broadcast → frontend shows `#id`.
+- **The full create flow (owner's words):** dispatch `StoryCreated` (full payload)
+  → middleware → reducer adds it immediately → WS-broadcast listener emits the
+  *unsaved* story → GitHub-save listener pushes (retry; durable **DB outbox**,
+  entry deleted on confirm) → GitHub number → `StorySaved` re-dispatched at the top
+  → reducer fills/re-files → re-broadcast. Effects-as-listeners end to end.
+
+**Two field decisions (owner):** `acceptance_test_path` is **removed** from the
+substrate — it's *process*, lives in the body (the eager `parse_acceptance_test_path`
+leaves the substrate; the light layer parses if needed). `is_closed` is **collapsed
+into `state`** — GitHub open/closed becomes an *adapter mapping* (ingest: closed
+issue → terminal state; drain: terminal state → close issue), so the domain never
+reads a raw closed-flag (this FLIPS today's `empty+closed → Accepted` derivation:
+the adapter now *produces* the terminal state; the `state` enum must name every
+terminal/closed state — Accepted and however retired is modeled).
+
+This supersedes the earlier "local id + GitHub number as a synced attribute"
+(dual-field) wording. Same "total identity from birth" spirit as the message-id
+work, but the number *becomes* the id rather than sitting beside a local one.
+
+**Slice plan (CI-green each; `Story` is pervasive so the type reshape goes via
+make-the-change-easy-first):** (1) drop `acceptance_test_path` from the substrate;
+(2) collapse `is_closed` into `state` (adapter maps open/closed); (3) extract
+`StoryContent`; (4) introduce `StoryKey`, key the store by it (all `Saved` for now);
+(5) introduce the `Story` enum + `Unsaved`/`Saved`, migrate consumers behind
+accessors (still all `Saved`); (6) the optimistic-create flow — create mints
+`Pending`, renders unsaved, save-listener transitions to `Saved`; (7) renderer
+(the deferred frontend touch — its own modeling).
   - **Care-point (the "state-delta echo clobber" scar):** ingest/reconcile must
     MERGE, never blind-overwrite — a poll echoing GitHub must not stomp a newer
     local optimistic edit.
