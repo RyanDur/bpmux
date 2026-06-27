@@ -39,6 +39,7 @@ fn fully_ready(number: u64, outcome_number: u64, position: u32, member: u64) -> 
         "pm".to_string(),
     );
     m.raw_labels.push(format!("parent-iteration-#{number}.1"));
+    m.iteration_membership = Some((number, 1));
     (it, m)
 }
 

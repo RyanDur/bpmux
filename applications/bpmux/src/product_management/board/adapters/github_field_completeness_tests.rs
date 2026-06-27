@@ -16,6 +16,7 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
             {"name": "in progress"},
             {"name": "parent-epic-#100"},
             {"name": "iteration-#200"},
+            {"name": "parent-iteration-#300.5"},
             {"name": "blocked"},
             {"name": "awaiting owner"},
             {"name": "iteration-review-closed.designer"},
@@ -47,6 +48,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         story_type,
         acceptor,
         parent_epic,
+        iteration_membership,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
@@ -90,6 +92,11 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         *parent_epic,
         Some(100),
         "parent_epic must decode from the parent-epic label into the stored domain field at ingest"
+    );
+    assert_eq!(
+        *iteration_membership,
+        Some((300, 5)),
+        "iteration_membership must decode (iteration_number, position) from the parent-iteration label into the stored domain field at ingest"
     );
     assert!(
         !raw_labels.is_empty(),

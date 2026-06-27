@@ -37,6 +37,7 @@ fn member(number: u64, iteration_number: u64, position: u32, state: StoryState) 
     s.raw_labels.push("feature".to_string());
     s.raw_labels
         .push(format!("parent-iteration-#{iteration_number}.{position}"));
+    s.iteration_membership = Some((iteration_number, position));
     s
 }
 

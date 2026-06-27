@@ -21,11 +21,12 @@ fn membered_member(number: u64, label: &str) -> Story {
         "tester".to_string(),
     );
     story.raw_labels = vec![label.to_string()];
+    story.iteration_membership = iteration_membership_from_labels(&story.raw_labels);
     story
 }
 
 fn membership(store: &BoardStore, number: u64) -> Option<(u64, u32)> {
-    iteration_membership_from_labels(&store.story(number).unwrap().raw_labels)
+    store.story(number).unwrap().iteration_membership()
 }
 
 #[tokio::test]

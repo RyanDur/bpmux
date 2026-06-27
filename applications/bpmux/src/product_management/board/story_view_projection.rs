@@ -37,6 +37,7 @@ fn project_marks_a_closed_story_gh_state_closed() {
 fn project_translates_iteration_membership_into_a_typed_subview() {
     let mut s = story(10, "member", StoryState::Ready);
     s.raw_labels.push("parent-iteration-#200.150".to_string());
+    s.iteration_membership = Some((200, 150));
     let view = StoryView::project(&GhLabelCodec, &s);
     let m = view
         .iteration_membership

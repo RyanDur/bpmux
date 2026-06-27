@@ -51,6 +51,8 @@ pub struct Story {
     pub acceptor: Option<Acceptor>,
     #[serde(default)]
     pub parent_epic: Option<u64>,
+    #[serde(default)]
+    pub iteration_membership: Option<(u64, u32)>,
 }
 
 impl Story {
@@ -81,6 +83,7 @@ impl Story {
             story_type,
             acceptor: None,
             parent_epic: None,
+            iteration_membership: None,
         }
     }
 
@@ -106,6 +109,10 @@ impl Story {
 
     pub fn parent_epic(&self) -> Option<u64> {
         self.parent_epic
+    }
+
+    pub fn iteration_membership(&self) -> Option<(u64, u32)> {
+        self.iteration_membership
     }
 
     pub fn body(&self) -> Option<&str> {

@@ -45,6 +45,7 @@ fn member(number: u64, iteration_number: u64, position: u32) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec![format!("parent-iteration-#{iteration_number}.{position}")];
+    s.iteration_membership = Some((iteration_number, position));
     s
 }
 

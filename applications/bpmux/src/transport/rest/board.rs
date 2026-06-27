@@ -16,13 +16,7 @@ pub(crate) fn ordered_board_stories(
             {
                 let members: Vec<&crate::product_management::story::Story> = all
                     .iter()
-                    .filter(|m| {
-                        crate::product_management::board::adapters::github::iteration_membership_from_labels(
-                            &m.raw_labels,
-                        )
-                        .map(|(it, _)| it)
-                            == Some(s.number)
-                    })
+                    .filter(|m| m.iteration_membership().map(|(it, _)| it) == Some(s.number))
                     .collect();
                 let readiness =
                     crate::product_management::iteration::readiness::iteration_readiness(

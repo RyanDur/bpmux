@@ -123,6 +123,7 @@ fn seed_with_iteration_membership(number: u64, iteration_number: u64, position: 
     let mut s = seed(number, vec![]);
     s.raw_labels
         .push(format!("parent-iteration-#{iteration_number}.{position}"));
+    s.iteration_membership = Some((iteration_number, position));
     s
 }
 
@@ -165,6 +166,7 @@ fn members_of_iteration_returns_only_canonical_members_dropping_legacy_only_1553
 fn members_of_iteration_ignores_legacy_label_when_canonical_present_1553() {
     let mut s = seed(2001, vec!["iteration-Telescopium.999".to_string()]);
     s.raw_labels.push("parent-iteration-#1397.100".to_string());
+    s.iteration_membership = Some((1397, 100));
     let stories = vec![s];
     assert_eq!(members_of_iteration(&stories, 1397), vec![2001]);
 }

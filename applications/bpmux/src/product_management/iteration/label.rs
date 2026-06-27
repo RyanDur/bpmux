@@ -62,13 +62,9 @@ pub fn members_of_iteration(stories: &[Story], iteration_number: u64) -> Vec<u64
     let mut members: Vec<(u64, u32)> = stories
         .iter()
         .filter(|s| !s.is_closed)
-        .filter_map(|s| {
-            match crate::product_management::board::adapters::github::iteration_membership_from_labels(
-                &s.raw_labels,
-            ) {
-                Some((it, pos)) if it == iteration_number => Some((s.number, pos)),
-                _ => None,
-            }
+        .filter_map(|s| match s.iteration_membership() {
+            Some((it, pos)) if it == iteration_number => Some((s.number, pos)),
+            _ => None,
         })
         .collect();
     members.sort_by_key(|(_, pos)| *pos);

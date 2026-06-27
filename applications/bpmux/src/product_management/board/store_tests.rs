@@ -143,6 +143,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
             ],
             acceptor: Some(crate::product_management::story::Acceptor::Dev),
             parent_epic: Some(7),
+            iteration_membership: Some((1655, 106)),
         },
     });
 

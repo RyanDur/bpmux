@@ -19,6 +19,7 @@ fn story(num: u64, title: &str, state: StoryState) -> Story {
 fn in_iteration(mut s: Story, iteration: u64) -> Story {
     s.raw_labels
         .push(format!("parent-iteration-#{iteration}.1"));
+    s.iteration_membership = Some((iteration, 1));
     s
 }
 

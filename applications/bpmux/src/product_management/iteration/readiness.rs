@@ -61,13 +61,7 @@ pub fn outcome_readiness(
         .map(|iteration| {
             let members: Vec<&Story> = all
                 .iter()
-                .filter(|m| {
-                    crate::product_management::board::adapters::github::iteration_membership_from_labels(
-                        &m.raw_labels,
-                    )
-                    .map(|(it, _)| it)
-                        == Some(iteration.number)
-                })
+                .filter(|m| m.iteration_membership().map(|(it, _)| it) == Some(iteration.number))
                 .collect();
             iteration_readiness(iteration, &members, workflow).unmet_count()
         })
@@ -106,12 +100,7 @@ fn stories_ordered(members: &[&Story]) -> bool {
     }
     let positions: Vec<u32> = members
         .iter()
-        .filter_map(|s| {
-            crate::product_management::board::adapters::github::iteration_membership_from_labels(
-                &s.raw_labels,
-            )
-            .map(|(_, position)| position)
-        })
+        .filter_map(|s| s.iteration_membership().map(|(_, position)| position))
         .collect();
     if positions.len() != members.len() {
         return false;

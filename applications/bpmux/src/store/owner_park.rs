@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::product_management::board::adapters::github::iteration_membership_from_labels;
 use crate::product_management::board::{BoardEvent, BoardStore};
 use crate::product_management::iteration::label::current_iteration_number;
 use crate::product_management::story::{Acceptor, Story, StoryState};
@@ -11,7 +10,7 @@ fn ready_queue_is_empty(stories: &[Story]) -> bool {
     let current = current_iteration_number(stories);
     !stories.iter().any(|s| {
         s.state == StoryState::Ready
-            && match (current, iteration_membership_from_labels(&s.raw_labels)) {
+            && match (current, s.iteration_membership()) {
                 (Some(ci), Some((it, _))) => it == ci,
                 (None, _) => true,
                 _ => false,

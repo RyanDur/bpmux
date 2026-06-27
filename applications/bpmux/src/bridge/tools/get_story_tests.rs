@@ -456,6 +456,7 @@ fn make_member(number: u64, title: &str, iteration_number: u64, position: u32) -
         "ready".into(),
         format!("parent-iteration-#{iteration_number}.{position}"),
     ];
+    s.iteration_membership = Some((iteration_number, position));
     s
 }
 

@@ -20,6 +20,8 @@ pub struct LabelDerivedFields {
     pub acceptor: Option<Acceptor>,
     #[serde(default)]
     pub parent_epic: Option<u64>,
+    #[serde(default)]
+    pub iteration_membership: Option<(u64, u32)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

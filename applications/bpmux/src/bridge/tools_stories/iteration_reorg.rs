@@ -27,10 +27,9 @@ async fn member_of(
         ));
     }
     let story = ensure_story_in_canonical_store(r, story_number).await?;
-    if crate::product_management::board::adapters::github::iteration_membership_from_labels(
-        &story.raw_labels,
-    )
-    .is_none_or(|(it, _)| it != iteration_number)
+    if story
+        .iteration_membership()
+        .is_none_or(|(it, _)| it != iteration_number)
     {
         return Err(format!(
             "#{story_number} is not a member of iteration #{iteration_number}"

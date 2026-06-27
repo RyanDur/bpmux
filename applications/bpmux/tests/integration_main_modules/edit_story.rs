@@ -40,6 +40,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64) {
         story_type: bpmux::product_management::story::story_type_from_title("fixture story"),
         acceptor: None,
         parent_epic: None,
+        iteration_membership: None,
     };
     adapter.seed_stories(vec![story]);
     adapter.seed_body(number, "## What\n\noriginal body\n".to_string());

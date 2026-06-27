@@ -171,6 +171,7 @@ fn an_outcome_whose_iteration_meets_every_check_reads_ready() {
         "pm".to_string(),
     );
     member.raw_labels.push("parent-iteration-#20.1".to_string());
+    member.iteration_membership = Some((20, 1));
     let stories = vec![outcome(11, "Now thing", Horizon::Now), it, member];
     let bands = derive_roadmap_view(&stories, &bundled_default());
     let o = &bands[0].outcomes[0];

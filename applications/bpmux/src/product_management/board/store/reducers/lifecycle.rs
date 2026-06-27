@@ -27,6 +27,7 @@ pub(super) fn apply_story_created(
         story_type,
         acceptor: None,
         parent_epic: None,
+        iteration_membership: None,
     };
     w.insert(StoryKey::Saved(number), story);
 }
