@@ -500,6 +500,36 @@ big-bang split). id-on-create ships on the Story slice; the others follow
 incrementally. The per-shape save listeners relocate `store/sync/` into the board
 domain (answers the per-domain loose end).
 
+### Labels leave the domain — per-shape codec (owner, 2026-06-26)
+
+`Story.raw_labels` (verbatim GitHub labels, with ~13 `*_from_labels` selectors
+decoding it — the board fold) is a GitHub ENCODING leaking into the domain. It
+leaves: each per-type **codec** (the anti-corruption Mapper, per shape) decodes
+the labels its shape cares about into that type's domain fields on ingest, and
+encodes fields → labels on drain. The domain holds DECODED facts, not label
+strings.
+
+Labels are largely **shape-specific**, with only minor overlap (owner):
+- **Story:** `state` (icebox..retired), acceptor / `awaiting owner`, `blocked`,
+  ready-order, `parent-epic-#N` (its epic), `iteration-#N` (its membership).
+- **Iteration:** `parent-outcome-#N.P` (membership + position),
+  `iteration-review-closed.role`, `iteration-dev-ok.role`, `current-iteration`,
+  iteration-order.
+- **Outcome:** `horizon.now/next/later`, horizon-order.
+- **Epic:** essentially just the type label (capability grouping; children point
+  to it via `parent-epic`).
+- **Overlap is minor:** the **type label** (feature/bug/chore/epic/iteration/
+  outcome) is the only truly shared one — and it's the ROUTING key (the adapter
+  reads it to pick the shape's codec). Cross-ref labels (`parent-epic` on a story,
+  `parent-outcome` on an iteration) live on the CHILD, owned by the child's codec.
+
+`state` STAYS a domain field (already decoded-and-stored at ingest, NOT a
+raw_labels selector); the raw_labels SELECTORS (type, parent_epic, membership,
+horizon, acceptor, tags, …) LEAVE — they become each type's decoded fields via
+its codec. This is stream-D (GitHub to the edge) + the per-type split (#14): a
+substantial restructure, NOT a P2 accessor slice. `raw_labels` migration is
+FROZEN until then (don't cement a `raw_labels()` accessor across consumers).
+
 **Open risks to design (not blockers):**
 - **Pending-window keying.** `issue_lock` / `coalesce` key on the GitHub `u64`,
   which an unsaved story doesn't have yet. Each shape's create listener must
@@ -644,6 +674,41 @@ it is the most irreversible (live-data migration) and most coupled (full-stack).
    the stable kernel — change the dangerous thing when everything it touches is settled.
 
 ## Status / next
+
+### Overnight session 2026-06-26 → 27 (dev, autonomous) — state of play
+
+**Landed + pushed green:** P1 (StoryKey storage seam — board store map keyed by
+`StoryKey`); P2a (content read-accessors `title/state/body/filed_at/filed_by/
+raw_labels/free_comments/gate_comments` + migrated `epic.rs`, `view_model.rs`,
+the store filter); the **identity foundation** (`Story::id() -> StoryKey`,
+`StoryKey` `Display` = `#42` / `(unsaved)`, `StoryKey::saved_number()` edge
+unwrap); plus the plan/design refinements below.
+
+**Design decided WITH you tonight (all recorded above):**
+- `id() -> StoryKey` is the identity accessor — the number BECOMES the id; the
+  raw `u64` GitHub issue-number is an EDGE concern (adapter / bridge / wire).
+- For a STORY, open/closed = terminal lifecycle state (`Accepted`/`Retired`),
+  DERIVED from `state`; the #1144 "second axis" is the **sync window**. So
+  `is_closed` leaves the domain (adapter maps GitHub open/closed ↔ terminal).
+- `body_etag` leaves the domain → the adapter's own etag cache.
+- `raw_labels` leaves the domain → a **per-shape codec**; labels are
+  shape-specific, each adapter decodes the ones its shape cares about; the type
+  label is the routing key.
+
+**Why I stopped where I did (didn't churn more code):** every remaining consumer
+migration is entangled with `raw_labels` (FROZEN → per-type codec), `is_closed`
+(→ adapter; behavior-risky to do blind, autonomous), or number-edge
+classification — all gated on the **per-type split (#14)**. Migrating them now
+would either rework against the split or risk a blind adapter change. P4 (the
+enum) is also blocked: `StoryContent`'s shape depends on the raw_labels/per-type
+decision. So I laid the safe identity foundation + captured the design rather
+than build rework-bound or risky code.
+
+**Recommended next (needs you): the per-type split modeling pass (#14)** — the
+dominant remaining work. Decide each shape's exact fields + codec, the adapter
+routing, store structure (per-type stores vs shared), and sequencing; then build
+**Story-first**. That single decision unblocks `raw_labels` removal, P4, the
+`is_closed`/`body_etag` lifts, and the rest of the consumer migration.
 
 - Last landed on `main` (CI-green): board fold + `view_model` + the test-hygiene
   pass.
