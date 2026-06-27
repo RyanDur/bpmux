@@ -20,6 +20,7 @@ fn epic(number: u64) -> Story {
         raw_labels: vec!["Epic".to_string(), "icebox".to_string()],
         body_etag: None,
         story_type: StoryType::Epic,
+        acceptor: None,
     }
 }
 
@@ -41,6 +42,7 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         ],
         body_etag: None,
         story_type,
+        acceptor: None,
     }
 }
 

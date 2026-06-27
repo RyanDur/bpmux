@@ -47,6 +47,8 @@ pub struct Story {
     pub body_etag: Option<String>,
     #[serde(default)]
     pub story_type: StoryType,
+    #[serde(default)]
+    pub acceptor: Option<Acceptor>,
 }
 
 impl Story {
@@ -75,6 +77,7 @@ impl Story {
             raw_labels,
             body_etag: None,
             story_type,
+            acceptor: None,
         }
     }
 
@@ -92,6 +95,10 @@ impl Story {
 
     pub fn story_type(&self) -> StoryType {
         self.story_type
+    }
+
+    pub fn acceptor(&self) -> Option<Acceptor> {
+        self.acceptor
     }
 
     pub fn body(&self) -> Option<&str> {

@@ -20,6 +20,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         raw_labels: Vec::new(),
         body_etag: None,
         story_type,
+        acceptor: None,
     };
     s.raw_labels
         .push(GhLabelCodec.encode_story_type(story_type));
@@ -122,6 +123,7 @@ fn story_to_board_json_acceptor_null_when_none_1551() {
 fn story_to_board_json_acceptor_emits_class_string_1551() {
     let mut s = sample_story(StoryState::Delivered, StoryType::Feature, false);
     s.raw_labels.push("awaiting dev".to_string());
+    s.acceptor = Some(crate::product_management::story::Acceptor::Dev);
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(
         json["acceptor"].as_str(),

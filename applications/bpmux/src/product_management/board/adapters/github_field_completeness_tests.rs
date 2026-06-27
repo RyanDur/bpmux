@@ -45,6 +45,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         raw_labels,
         body_etag,
         story_type,
+        acceptor,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
@@ -94,9 +95,9 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         "raw_labels must roundtrip from JSON labels"
     );
     assert_eq!(
-        crate::product_management::board::adapters::github::acceptor_from_labels(raw_labels),
+        *acceptor,
         Some(crate::product_management::story::Acceptor::Owner),
-        "acceptor must decode from the 'awaiting owner' label"
+        "acceptor must decode from the 'awaiting owner' label into the stored domain field at ingest"
     );
     assert_eq!(
         crate::product_management::board::adapters::github::iteration_review_closers_from_labels(

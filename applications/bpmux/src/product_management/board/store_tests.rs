@@ -65,6 +65,34 @@ fn story_created_event_populates_store() {
 }
 
 #[test]
+fn tag_added_acceptor_label_decodes_into_the_stored_acceptor_field() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 8,
+        title: "needs an acceptor".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Delivered,
+        story_type: StoryType::Feature,
+    });
+    assert_eq!(
+        store.story(8).unwrap().acceptor(),
+        None,
+        "a freshly created story carries no acceptor label yet"
+    );
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 8,
+        label: "awaiting owner".to_string(),
+    });
+    assert_eq!(
+        store.story(8).unwrap().acceptor(),
+        Some(Acceptor::Owner),
+        "the codec decodes the acceptor label into the stored field on the label-add event"
+    );
+}
+
+#[test]
 fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transitioned() {
     let store = BoardStore::new();
     let story = Story::new_minimal(
@@ -85,6 +113,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                 "parent-iteration-#1655.106".to_string(),
                 "awaiting dev".to_string(),
             ],
+            acceptor: Some(crate::product_management::story::Acceptor::Dev),
         },
     });
 

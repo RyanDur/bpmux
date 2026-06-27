@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, iteration_membership_from_labels,
-};
+use crate::product_management::board::adapters::github::iteration_membership_from_labels;
 use crate::product_management::board::{BoardEvent, BoardStore};
 use crate::product_management::iteration::label::current_iteration_number;
 use crate::product_management::story::{Acceptor, Story, StoryState};
@@ -22,10 +20,9 @@ fn ready_queue_is_empty(stories: &[Story]) -> bool {
 }
 
 fn any_owner_parked_delivery(stories: &[Story]) -> bool {
-    stories.iter().any(|s| {
-        s.state == StoryState::Delivered
-            && acceptor_from_labels(&s.raw_labels) == Some(Acceptor::Owner)
-    })
+    stories
+        .iter()
+        .any(|s| s.state == StoryState::Delivered && s.acceptor() == Some(Acceptor::Owner))
 }
 
 pub fn owner_park_presence(

@@ -10,6 +10,7 @@ pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryT
 
 pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
     LabelDerivedFields {
+        acceptor: super::label_fields::acceptor_from_labels(labels),
         raw_labels: labels.to_vec(),
     }
 }
@@ -68,6 +69,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     let mut story = Story::new_minimal(number, title.clone(), state, filed_at, filed_by);
     story.is_closed = is_closed;
     story.story_type = story_type_from_labels_or_title(&labels, &title);
+    story.acceptor = super::label_fields::acceptor_from_labels(&labels);
     story.raw_labels = labels;
     if let Some(body) = v.get("body").and_then(|x| x.as_str()) {
         story.body = Some(body.to_string());

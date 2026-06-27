@@ -1,8 +1,8 @@
 use serde::Serialize;
 
 use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, horizon_from_labels, is_current_from_labels,
-    iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
+    horizon_from_labels, is_current_from_labels, iteration_dev_ok_by_from_labels,
+    iteration_membership_from_labels, iteration_order_from_labels,
     iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
     tags_from_labels,
 };
@@ -71,7 +71,7 @@ impl StoryView {
             iteration_dev_ok_by: iteration_dev_ok_by_from_labels(story.raw_labels()),
             horizon: horizon_from_labels(story.raw_labels()).map(|h| h.as_str()),
             is_current: is_current_from_labels(story.raw_labels()),
-            acceptor: acceptor_from_labels(story.raw_labels()).map(|a| a.as_str()),
+            acceptor: story.acceptor().map(|a| a.as_str()),
             assignees: Vec::new(),
             created_at: story.filed_at().to_rfc3339(),
             body: story.body().unwrap_or_default().to_string(),

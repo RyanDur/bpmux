@@ -25,6 +25,7 @@ pub(super) fn apply_story_created(
         raw_labels: Vec::new(),
         body_etag: None,
         story_type,
+        acceptor: None,
     };
     w.insert(StoryKey::Saved(number), story);
 }

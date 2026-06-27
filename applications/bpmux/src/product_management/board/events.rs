@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::peer::PeerId;
 use crate::product_management::story::{
-    FreeComment, Gate, GateComment, Story, StoryState, StoryType,
+    Acceptor, FreeComment, Gate, GateComment, Story, StoryState, StoryType,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,6 +16,8 @@ pub struct EventMeta {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct LabelDerivedFields {
     pub raw_labels: Vec<String>,
+    #[serde(default)]
+    pub acceptor: Option<Acceptor>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

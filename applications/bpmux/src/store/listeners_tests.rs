@@ -99,6 +99,7 @@ fn owner_parked_story(number: u64) -> crate::product_management::story::Story {
         "dev".to_string(),
     );
     story.raw_labels.push("awaiting owner".to_string());
+    story.acceptor = Some(crate::product_management::story::Acceptor::Owner);
     story
 }
 
