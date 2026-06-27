@@ -711,6 +711,38 @@ it is the most irreversible (live-data migration) and most coupled (full-stack).
 
 ## Status / next
 
+### Session 2026-06-27 (dev, autonomous) — e2e safety net + #14 begun
+
+**e2e safety net DONE (pushed green).** Built the visual-layer net as CLI
+user-journeys (fire the real `bpmux` binary — the agent's control surface).
+Shared harness `applications/electron/tests/helpers/bpmux-cli.ts`; journeys for
+`rejected→Ready` + the `dev-accepted` badge. Audit confirmed every other
+reachable `columnFor`/`deriveBadge` branch is already pinned; `ready-for-accept`
+(no substrate producer) + the `pending` badge (deriveBadge default) are
+unreachable dead branches → the codec refactor deletes them, no e2e fabricated.
+
+**#14 codec-decode-first STARTED — slice 1 landed (`b4e39050`).** Per the
+transition shape (§"Store structure" step 1), began moving label-decode from the
+~40 read-time `*_from_labels` selectors INTO ingest-time. First field = the
+routing key `story_type`: now a stored `StoryType` field on `Story`, decoded at
+ingest (adapter `decode_story_metadata` = label-or-title; reducer/`new_minimal` =
+title via the domain `story_type_from_title`), exposed via `Story::story_type()`.
+Additive + behavior-preserving (field mirrors the selector). **Invariant that
+makes reader-migration safe:** `s.story_type() == story_type_from_labels_or_title
+(&s.raw_labels, &s.title)` for every story — the type label is immutable
+post-creation (state/acceptor/blocked/position deltas never touch it; ingest
+re-decodes), so the stored field never diverges from raw_labels.
+
+**NEXT (the established pattern, repeat per Story-shape field):** migrate the ~40
+`story_type_from_labels_or_title` readers onto `.story_type()` per-layer
+(transport/rest, bridge/tools, bridge/tools_stories, roadmap, iteration), each
+CI-green; then retire the selector. Then the same decode-at-ingest +
+accessor + migrate-readers for the other STORY-shape fields (acceptor,
+parent_epic, iteration_membership, tags/blocked, ready-order). THEN step 2: peel
+Iteration/Outcome/Epic into their own types/collections (their shape fields —
+horizon, parent-outcome, review/dev-ok, current-iteration, iteration-order —
+leave with them). THEN P4/P5 identity-enum + id-on-create, Story-first.
+
 ### Overnight session 2026-06-26 → 27 (dev, autonomous) — state of play
 
 **Landed + pushed green:** P1 (StoryKey storage seam — board store map keyed by
