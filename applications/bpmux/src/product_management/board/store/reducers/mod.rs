@@ -24,8 +24,8 @@ pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
     let mut stories = state.stories.clone();
     match action {
         BoardAction::Event(event) => apply_event(&mut stories, event),
-        BoardAction::RawLabelsAssigned { number, raw_labels } => {
-            apply_raw_labels(&mut stories, *number, raw_labels)
+        BoardAction::RawLabelsAssigned { number, fields } => {
+            apply_raw_labels(&mut stories, *number, fields)
         }
         BoardAction::Seeded(incoming) => {
             for story in incoming {

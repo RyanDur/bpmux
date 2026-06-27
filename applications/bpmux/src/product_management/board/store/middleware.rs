@@ -17,7 +17,7 @@ impl Middleware<BoardState, BoardAction> for BoardLabelMiddleware {
         match project_label_delta(&state.stories, event) {
             Some(fields) => BoardAction::RawLabelsAssigned {
                 number: event.story_number(),
-                raw_labels: fields.raw_labels,
+                fields,
             },
             None => action,
         }

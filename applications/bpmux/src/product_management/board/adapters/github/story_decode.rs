@@ -10,6 +10,7 @@ pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryT
 
 pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
     LabelDerivedFields {
+        story_type: story_type_from_labels(labels).unwrap_or_default(),
         raw_labels: labels.to_vec(),
     }
 }
