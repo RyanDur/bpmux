@@ -394,6 +394,46 @@ accessors (still all `Saved`); (6) the optimistic-create flow — create mints
 `Pending`, renders unsaved, save-listener transitions to `Saved`; (7) renderer
 (the deferred frontend touch — its own modeling).
 
+#### Implementation decomposition + blast-radius (dev, 2026-06-26)
+
+Firsthand audit of the LIVE tree before reshaping `Story` (it is pervasive —
+[[feedback_existing_code_is_not_the_spec]], [[feedback_whole_substrate_consumer_grep_not_component_scoped]]):
+- **No `story_type` field** — shape is DERIVED at read via
+  `story_type_from_labels_or_title(raw_labels, title)` (~40 sites). So the
+  per-shape split is adapter-routing + per-shape reducers, NOT removing a field.
+- **Two maps keyed by `.number`** (`HashMap<u64, Story>`): the board store
+  (`board/store/state.rs`) and the in-memory adapter (`board/adapters/in_memory/`).
+  ~150 `.number` reads, ~96 test construction sites, ~3 prod construction sites
+  (reducer `StoryCreated`, github `story_decode`, in-memory seed).
+- **`is_closed` is a deliberate SECOND axis (#1144), not a shadow of `state`.**
+  `get_story` reports `workflow_state` and `is_closed` SEPARATELY; tests pin a
+  story can be Accepted-but-open or closed-but-not-Accepted (the 2026-05-02
+  false-success class). This CONFIRMS collapse-is-subsumed: `is_closed` is a
+  GitHub-sync axis (kin to `body_etag`) → it belongs on `SavedStory`, never on an
+  Unsaved story; done-ness stays per-type lifecycle.
+
+Turning `Story` into the enum naively breaks `.field` at ~400 sites in one commit
+— violates bounded-slice. So **accessor-seam-first** (Beck make-the-change-easy),
+each slice CI-green + path-limited:
+- **P1 — storage-key seam:** introduce `StoryKey`; migrate both maps to
+  `HashMap<StoryKey, Story>`; public APIs stay number-based (wrap `number → Saved`).
+  Story struct unchanged. Bounded to board/store + in_memory.
+- **P2 — read-accessor seam (by layer):** add `Story` field accessors; migrate
+  consumer reads layer-by-layer (bridge / transport / product_management /
+  roadmap / iteration), one CI-green slice each.
+- **P3 — construction seam:** `Story::saved(...)`/builder; migrate the ~96
+  construction sites (may bundle per-layer with P2).
+- **P4 — the enum:** `Story` → `enum { Unsaved(UnsavedStory), Saved(SavedStory) }`
+  + `StoryContent`; accessors/constructors absorb it; consumers untouched; map
+  already speaks `StoryKey`.
+- **P5 — id-on-create flow:** `CreateStory` mints `Pending(Uuid)`; events carry
+  `StoryKey`; save-listener dispatches `StorySaved{pending,id}` → `Unsaved→Saved`.
+  Pending-window keying per open-risk #1.
+- **P6 — renderer touch** (the deferred frontend; ships with the capability).
+
+P4's enum is the SETTLED design above; P1–P3 only bound the churn to reach it.
+Siblings (Iteration/Outcome/Epic) then replicate on the same seam.
+
 ### Roadmap shapes are distinct domain TYPES, each its own slice (owner, 2026-06-26)
 
 `Story`, `Iteration`, `Outcome` (and `Epic`) are **NOT** one `Story` + `StoryType`
