@@ -1,0 +1,107 @@
+import { test, expect } from '@playwright/test'
+import { launchWithMockGh } from './helpers/launch'
+import { makeBpmuxCli } from './helpers/bpmux-cli'
+import { BoardPage } from './pages/boardPage'
+
+test.describe('agent CLI journey — observation-class — reject returns a delivered story to Ready', () => {
+  test('the team drives create through reject entirely via the bpmux CLI and the human sees the story back in Ready', async () => {
+    test.setTimeout(90_000)
+    const { app, win, mockGh, backendPort, authToken } = await launchWithMockGh()
+    const cli = makeBpmuxCli(backendPort, authToken)
+    try {
+      const consoleErrors: string[] = []
+      const pageErrors: Error[] = []
+      win.on('console', (m) => {
+        if (m.type() === 'error') consoleErrors.push(m.text())
+      })
+      win.on('pageerror', (e) => pageErrors.push(e))
+
+      const board = new BoardPage(win)
+      await expect(board.region()).toBeVisible()
+
+      consoleErrors.length = 0
+      pageErrors.length = 0
+
+      const storyNumber = cli.numberFrom(
+        await cli.run('pm', [
+          'create',
+          '--title',
+          '[Feature] agent-cli-rejected',
+          '--user-job',
+          'As the team, when a reviewer rejects a delivered story, the human watching the board needs it back in READY so the team re-picks it up.',
+          '--observation-falsifier',
+          'reject if the board does not show the story back in READY after reject'
+        ])
+      )
+      expect(storyNumber).toBeGreaterThan(0)
+
+      const iterationNumber = cli.numberFrom(
+        await cli.run('pm', ['iteration', 'create', '--name', 'RejectJourney'])
+      )
+      expect(iterationNumber).toBeGreaterThan(0)
+      await cli.run('pm', ['iteration', 'designate', String(iterationNumber)])
+      await cli.run('pm', [
+        'iteration',
+        'add',
+        '--iteration',
+        String(iterationNumber),
+        '--story',
+        String(storyNumber),
+        '--position',
+        '1'
+      ])
+
+      await cli.run('dev', [
+        'start',
+        String(storyNumber),
+        '--paraphrase',
+        'Picking up to verify the reject-returns-to-ready transition through the CLI.',
+        '--falsifier',
+        'reject if reject does not move the story back to READY visible to the human'
+      ])
+      await cli.run('dev', [
+        'deliver',
+        String(storyNumber),
+        '--observation',
+        'Drove deliver via the bpmux CLI; passing desk-check next to reach DELIVERED before reject.'
+      ])
+      await cli.run('designer', [
+        'verdict',
+        String(storyNumber),
+        '--verdict',
+        'verified',
+        '--grounding',
+        'cli-journey: designer verdict grounding the desk-check pass'
+      ])
+      await cli.run('designer', ['pass', String(storyNumber), '--acceptor', 'owner'])
+      await cli.run('pm', [
+        'reject',
+        String(storyNumber),
+        '--reason',
+        'sent back: the falsifier scenario was not actually exercised end-to-end'
+      ])
+
+      await win.reload()
+      await expect(board.region()).toBeVisible()
+
+      await expect(
+        board.group('Ready').getByRole('button', { name: /agent-cli-rejected/ })
+      ).toBeVisible()
+
+      for (const otherColumn of ['In Progress', 'Desk Check', 'Acceptance']) {
+        await expect(
+          board.group(otherColumn).getByRole('button', {
+            name: new RegExp(`Open story #${storyNumber}\\b`)
+          })
+        ).toHaveCount(0)
+      }
+
+      expect(consoleErrors).toEqual([])
+      expect(pageErrors).toEqual([])
+    } finally {
+      cli.cleanup()
+      await app.close()
+      await mockGh.close()
+    }
+  })
+})
