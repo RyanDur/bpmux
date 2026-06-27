@@ -23,6 +23,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         acceptor: None,
         parent_epic: None,
         iteration_membership: None,
+        tags: Vec::new(),
     };
     s.raw_labels
         .push(GhLabelCodec.encode_story_type(story_type));
@@ -291,7 +292,7 @@ fn story_to_board_json_labels_include_story_type() {
 #[test]
 fn story_to_board_json_labels_include_blocked_tag() {
     let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    s.raw_labels.push("blocked".to_string());
+    s.tags = vec![crate::product_management::story::Tag::Blocked];
     let json = story_to_board_json(&GhLabelCodec, &s);
     let labels = json["labels"].as_array().expect("labels array");
     assert!(labels.iter().any(|l| l.as_str() == Some("blocked")));

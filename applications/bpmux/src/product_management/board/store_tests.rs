@@ -121,6 +121,33 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
 }
 
 #[test]
+fn tag_added_blocked_label_decodes_into_the_stored_tags_field() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 15,
+        title: "blockable".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Delivered,
+        story_type: StoryType::Feature,
+    });
+    assert!(
+        store.story(15).unwrap().tags().is_empty(),
+        "a freshly created story carries no tags yet"
+    );
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 15,
+        label: "blocked".to_string(),
+    });
+    assert_eq!(
+        store.story(15).unwrap().tags(),
+        [Tag::Blocked],
+        "the codec decodes the blocked label into the stored tags field on the label-add event"
+    );
+}
+
+#[test]
 fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transitioned() {
     let store = BoardStore::new();
     let story = Story::new_minimal(
@@ -144,6 +171,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
             acceptor: Some(crate::product_management::story::Acceptor::Dev),
             parent_epic: Some(7),
             iteration_membership: Some((1655, 106)),
+            tags: Vec::new(),
         },
     });
 

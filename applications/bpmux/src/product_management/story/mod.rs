@@ -53,6 +53,8 @@ pub struct Story {
     pub parent_epic: Option<u64>,
     #[serde(default)]
     pub iteration_membership: Option<(u64, u32)>,
+    #[serde(default)]
+    pub tags: Vec<Tag>,
 }
 
 impl Story {
@@ -84,6 +86,7 @@ impl Story {
             acceptor: None,
             parent_epic: None,
             iteration_membership: None,
+            tags: Vec::new(),
         }
     }
 
@@ -113,6 +116,10 @@ impl Story {
 
     pub fn iteration_membership(&self) -> Option<(u64, u32)> {
         self.iteration_membership
+    }
+
+    pub fn tags(&self) -> &[Tag] {
+        &self.tags
     }
 
     pub fn body(&self) -> Option<&str> {

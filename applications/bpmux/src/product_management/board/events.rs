@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::peer::PeerId;
 use crate::product_management::story::{
-    Acceptor, FreeComment, Gate, GateComment, Story, StoryState, StoryType,
+    Acceptor, FreeComment, Gate, GateComment, Story, StoryState, StoryType, Tag,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,6 +22,8 @@ pub struct LabelDerivedFields {
     pub parent_epic: Option<u64>,
     #[serde(default)]
     pub iteration_membership: Option<(u64, u32)>,
+    #[serde(default)]
+    pub tags: Vec<Tag>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

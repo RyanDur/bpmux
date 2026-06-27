@@ -49,6 +49,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         acceptor,
         parent_epic,
         iteration_membership,
+        tags,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
@@ -68,9 +69,9 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         "story_type must decode from labels into the stored domain field at ingest"
     );
     assert_eq!(
-        crate::product_management::board::adapters::github::tags_from_labels(raw_labels).len(),
-        1,
-        "tags must decode from labels (blocked)"
+        *tags,
+        vec![crate::product_management::story::Tag::Blocked],
+        "tags must decode from the blocked label into the stored domain field at ingest"
     );
     assert_eq!(
         filed_at.to_rfc3339(),
