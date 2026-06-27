@@ -85,7 +85,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                 "parent-iteration-#1655.106".to_string(),
                 "awaiting dev".to_string(),
             ],
-            story_type: crate::product_management::story::StoryType::Feature,
         },
     });
 

@@ -16,8 +16,6 @@ pub struct EventMeta {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct LabelDerivedFields {
     pub raw_labels: Vec<String>,
-    #[serde(default)]
-    pub story_type: StoryType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

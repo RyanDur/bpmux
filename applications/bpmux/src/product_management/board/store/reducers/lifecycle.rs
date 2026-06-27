@@ -1,7 +1,8 @@
 use super::Stories;
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::story::{Story, StoryKey, StoryState};
+use crate::product_management::story::{Story, StoryKey, StoryState, StoryType};
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn apply_story_created(
     w: &mut Stories,
     number: u64,
@@ -9,6 +10,7 @@ pub(super) fn apply_story_created(
     title: &str,
     body: &str,
     initial_state: StoryState,
+    story_type: StoryType,
 ) {
     let story = Story {
         number,
@@ -22,7 +24,7 @@ pub(super) fn apply_story_created(
         is_closed: false,
         raw_labels: Vec::new(),
         body_etag: None,
-        story_type: crate::product_management::story::story_type_from_title(title),
+        story_type,
     };
     w.insert(StoryKey::Saved(number), story);
 }
