@@ -405,12 +405,24 @@ Firsthand audit of the LIVE tree before reshaping `Story` (it is pervasive —
   (`board/store/state.rs`) and the in-memory adapter (`board/adapters/in_memory/`).
   ~150 `.number` reads, ~96 test construction sites, ~3 prod construction sites
   (reducer `StoryCreated`, github `story_decode`, in-memory seed).
-- **`is_closed` is a deliberate SECOND axis (#1144), not a shadow of `state`.**
-  `get_story` reports `workflow_state` and `is_closed` SEPARATELY; tests pin a
-  story can be Accepted-but-open or closed-but-not-Accepted (the 2026-05-02
-  false-success class). This CONFIRMS collapse-is-subsumed: `is_closed` is a
-  GitHub-sync axis (kin to `body_etag`) → it belongs on `SavedStory`, never on an
-  Unsaved story; done-ness stays per-type lifecycle.
+- **For a STORY, open/closed = terminal lifecycle state (owner, 2026-06-26).**
+  A story's issue is closed exactly when the story is **Accepted** or **Retired**;
+  open = in flight (Icebox→Acceptance). So `closed ⟺ state ∈ {Accepted, Retired}`
+  — DERIVED from `state`, NOT a stored axis. The #1144 appearance of a second
+  axis (`get_story` showing `is_closed` apart from `workflow_state`; the
+  Accepted-but-open "2026-05-02 false-success class") is the **sync window** —
+  accepted locally, the GitHub issue-close still pending in the outbox — i.e.
+  sync STATUS at the edge, not a property of the story. (My earlier "deliberate
+  second axis" read was WRONG; the divergence is the sync window.) So `is_closed`
+  LEAVES the domain: the adapter owns the GitHub open/closed mapping (ingest a
+  closed issue → terminal state — Retired if the retired label is present else
+  Accepted; drain a terminal state → close the issue). `body_etag` leaves too —
+  an HTTP conditional-fetch detail that becomes the adapter's own etag cache
+  (keyed by issue number); `fetch_body_conditional` drops its etag param,
+  `BodyFetched` drops its etag field, the store stops couriering it. Net:
+  `SavedStory` carries only `{id, content}`. (Epic/iteration/outcome get their
+  own done-ness in their own types — that's why one shared `is_closed` strained
+  and felt like a separate axis.)
 
 Turning `Story` into the enum naively breaks `.field` at ~400 sites in one commit
 — violates bounded-slice. So **accessor-seam-first** (Beck make-the-change-easy),
@@ -420,7 +432,24 @@ each slice CI-green + path-limited:
   Story struct unchanged. Bounded to board/store + in_memory.
 - **P2 — read-accessor seam (by layer):** add `Story` field accessors; migrate
   consumer reads layer-by-layer (bridge / transport / product_management /
-  roadmap / iteration), one CI-green slice each.
+  roadmap / iteration), one CI-green slice each. **Identity accessor is
+  `id() -> StoryKey`, NOT `number()`** (owner, 2026-06-26): the number BECOMES
+  the id (no `number` field at P4), so the domain speaks `StoryKey`. The raw
+  `u64` GitHub issue number is an **edge/adapter concern** — only the GitHub
+  adapter, the agent-interface/bridge (user types "42"), and the wire/renderer
+  (`view_model`) unwrap `StoryKey::Saved(n)` at their boundary. `StoryKey`
+  carries its own `Display` ("#42" / draft marker) so display/sort sites use the
+  id directly and Pending is handled at the type, not at ~150 call sites.
+  (Number isn't ordering — backlog/label position is; the `.number` sorts are
+  incidental tiebreakers.)
+- **P2b — `is_closed` leaves the domain:** derive open/closed from `state`
+  (terminal = Accepted/Retired); the adapter owns the GitHub open/closed mapping;
+  migrate the ~70 consumers (`column_for`, roadmap/iteration filters, acceptance
+  + reopen logic, `get_story` output — rewrite the #1144 `get_story` tests to the
+  single-lifecycle model). Behavior-touching → TDD per consumer.
+- **P2c — `body_etag` leaves the domain:** adapter etag cache (number→etag);
+  `fetch_body_conditional` drops its etag param; `BodyFetched` drops its etag
+  field; the store stops couriering it.
 - **P3 — construction seam:** `Story::saved(...)`/builder; migrate the ~96
   construction sites (may bundle per-layer with P2).
 - **P4 — the enum:** `Story` → `enum { Unsaved(UnsavedStory), Saved(SavedStory) }`
