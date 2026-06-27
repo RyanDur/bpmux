@@ -44,3 +44,35 @@ fn distinct_pending_handles_address_distinct_stories() {
         "each optimistic create mints its own pending handle"
     );
 }
+
+#[test]
+fn saved_key_displays_as_hash_number_and_unwraps_to_its_number() {
+    let key = StoryKey::Saved(42);
+
+    assert_eq!(
+        key.to_string(),
+        "#42",
+        "a saved story shows its GitHub number"
+    );
+    assert_eq!(
+        key.saved_number(),
+        Some(42),
+        "the edge unwraps a saved key to its raw GitHub number"
+    );
+}
+
+#[test]
+fn pending_key_displays_as_unsaved_and_has_no_saved_number() {
+    let key = StoryKey::Pending(Uuid::new_v4());
+
+    assert_eq!(
+        key.to_string(),
+        "(unsaved)",
+        "a pending story has no number to show"
+    );
+    assert_eq!(
+        key.saved_number(),
+        None,
+        "a pending key carries no GitHub number for the edge to use"
+    );
+}

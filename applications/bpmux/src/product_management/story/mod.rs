@@ -74,6 +74,10 @@ impl Story {
         }
     }
 
+    pub fn id(&self) -> StoryKey {
+        StoryKey::Saved(self.number)
+    }
+
     pub fn title(&self) -> &str {
         &self.title
     }
