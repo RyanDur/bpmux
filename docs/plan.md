@@ -500,6 +500,42 @@ big-bang split). id-on-create ships on the Story slice; the others follow
 incrementally. The per-shape save listeners relocate `store/sync/` into the board
 domain (answers the per-domain loose end).
 
+### Store structure — ONE store per domain (owner, 2026-06-27)
+
+RESOLVES the open store-structure crux: **a single reducer, middleware chain, and
+listener-set PER DOMAIN** — NOT per-type stores. The board/planning domain stays
+the ONE `kernel::Store<BoardState, BoardAction>` it became in P1/slice-3a. The
+shapes are **distinct types in that domain's state** (`Story`/`Iteration`/
+`Outcome`/`Epic` — separate structs, own decoded fields, held as per-shape typed
+collections in `BoardState`). This reconciles the earlier "each shape = its own
+reducer/listener" wording: that means per-shape **arms within the single
+`reduce()`** (`CreateStory`→story logic, `CreateIteration`→iteration logic, like
+today's `apply_event` routing), the single **middleware = the codec** (reads the
+type label, decodes into the right shape), and the single **listener-set** handling
+save/sync for all shapes (sharing the `SourceAdapter`, routing by type). Simpler
+than per-type stores — nothing new to compose. Build **Story-first**: make `Story`
+the dedicated story type, then peel `Iteration`/`Outcome`/`Epic` into their own
+types within the same store.
+
+**The remaining hard part = the incremental transition (behavior-critical).**
+Today ONE `Story` struct backs every shape (discriminated by
+`story_type_from_labels_or_title`), and consumers say `Story` everywhere; the
+board/roadmap must stay correct through every slice. Likely shape of the
+transition (to design carefully, TDD, gates as the safety net):
+1. **Codec-decode first:** build the single codec-middleware that decodes a
+   GitHub issue's labels → DECODED fields (move the ~13 `*_from_labels` selectors
+   INTO the decode; `state` from labels incl. closed→terminal; drop `raw_labels`/
+   `is_closed`/`body_etag` from the domain). This cleans the *Story* shape and is
+   where raw_labels/is_closed/body_etag actually leave — it unblocks P2-consumer-
+   migration + P4.
+2. **Peel sibling types:** introduce `Iteration`/`Outcome`/`Epic` structs, route
+   ingest by type label to each shape's decode, store in per-shape collections in
+   `BoardState`, add per-shape reducer arms, and re-point iteration/outcome/epic
+   consumers (roadmap, iteration modules, those bridge tools) to the new types.
+3. **Then** the identity/enum/id-on-create (P4/P5) land per shape, Story-first.
+Open: exact per-shape field sets; whether a shared identity/lifecycle trait helps.
+This is the next modeling step — pace it; it's the load-bearing board logic.
+
 ### Labels leave the domain — per-shape codec (owner, 2026-06-26)
 
 `Story.raw_labels` (verbatim GitHub labels, with ~13 `*_from_labels` selectors
