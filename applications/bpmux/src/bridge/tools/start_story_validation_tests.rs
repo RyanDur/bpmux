@@ -7,7 +7,7 @@ mod gate_retire_1348 {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -57,7 +57,7 @@ mod gate_retire_1348 {
             9101,
             "[Feature] gherkin-only body",
             StoryState::Ready,
-            StoryType::Feature,
+            StoryType::Story(StoryKind::Feature),
             body,
         )
         .await;
@@ -83,7 +83,7 @@ mod gate_retire_1348 {
             9102,
             "[Feature] gherkin-only deliver",
             StoryState::InProgress,
-            StoryType::Feature,
+            StoryType::Story(StoryKind::Feature),
             body,
         )
         .await;
@@ -111,7 +111,7 @@ mod gate_retire_1348 {
             9103,
             "[Bug] gherkin-only body",
             StoryState::Ready,
-            StoryType::Bug,
+            StoryType::Story(StoryKind::Bug),
             body,
         )
         .await;
@@ -133,7 +133,7 @@ mod gate_retire_1348 {
             9104,
             "[Feature] backward-compat ATP path",
             StoryState::Ready,
-            StoryType::Feature,
+            StoryType::Story(StoryKind::Feature),
             &body,
         )
         .await;
@@ -159,7 +159,7 @@ mod gate_retire_1348 {
             9105,
             "[Feature] backward-compat ATP deliver",
             StoryState::InProgress,
-            StoryType::Feature,
+            StoryType::Story(StoryKind::Feature),
             &body,
         )
         .await;

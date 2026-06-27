@@ -150,12 +150,13 @@ pub fn gate_class_from_labels_and_story_type(
             _ => {}
         }
     }
+    use crate::product_management::story::{StoryKind, StoryType};
     match story_type {
-        crate::product_management::story::StoryType::Feature
-        | crate::product_management::story::StoryType::Epic
-        | crate::product_management::story::StoryType::Iteration
-        | crate::product_management::story::StoryType::Outcome => GateClass::OwnerWalk,
-        crate::product_management::story::StoryType::Bug => GateClass::TeamVerifiable,
-        crate::product_management::story::StoryType::Chore => GateClass::DevVerifiable,
+        StoryType::Story(StoryKind::Feature)
+        | StoryType::Epic
+        | StoryType::Iteration
+        | StoryType::Outcome => GateClass::OwnerWalk,
+        StoryType::Story(StoryKind::Bug) => GateClass::TeamVerifiable,
+        StoryType::Story(StoryKind::Chore) => GateClass::DevVerifiable,
     }
 }

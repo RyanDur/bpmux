@@ -2,7 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::StoryType;
+use crate::product_management::story::{StoryKind, StoryType};
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -431,7 +431,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -483,7 +483,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
             &story.raw_labels,
             &story.title
         ),
-        StoryType::Bug,
+        StoryType::Story(StoryKind::Bug),
         "story_type derived from title prefix [Bug]"
     );
 
@@ -499,7 +499,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
         BoardEvent::StoryCreated {
             number: 51,
             initial_state: StoryState::Icebox,
-            story_type: StoryType::Bug,
+            story_type: StoryType::Story(StoryKind::Bug),
             ..
         }
     ));
@@ -745,34 +745,41 @@ mod classify_for_pass_desk_check_tests {
 
     #[tokio::test]
     async fn refreshed_path_returns_feature_via_typed_story_type() {
-        let orch = orchestrator_with_seed(vec![make_story(910, StoryType::Feature)]).await;
+        let orch =
+            orchestrator_with_seed(vec![make_story(910, StoryType::Story(StoryKind::Feature))])
+                .await;
         assert_eq!(
             classify_for_pass_desk_check(910, Some(&orch)),
-            StoryType::Feature
+            StoryType::Story(StoryKind::Feature)
         );
     }
 
     #[tokio::test]
     async fn refreshed_path_returns_bug_via_typed_story_type() {
-        let orch = orchestrator_with_seed(vec![make_story(911, StoryType::Bug)]).await;
+        let orch =
+            orchestrator_with_seed(vec![make_story(911, StoryType::Story(StoryKind::Bug))]).await;
         assert_eq!(
             classify_for_pass_desk_check(911, Some(&orch)),
-            StoryType::Bug
+            StoryType::Story(StoryKind::Bug)
         );
     }
 
     #[tokio::test]
     async fn refreshed_path_returns_chore_via_typed_story_type() {
-        let orch = orchestrator_with_seed(vec![make_story(912, StoryType::Chore)]).await;
+        let orch =
+            orchestrator_with_seed(vec![make_story(912, StoryType::Story(StoryKind::Chore))]).await;
         assert_eq!(
             classify_for_pass_desk_check(912, Some(&orch)),
-            StoryType::Chore
+            StoryType::Story(StoryKind::Chore)
         );
     }
 
     #[tokio::test]
     async fn defaults_to_feature_when_refresh_absent() {
-        assert_eq!(classify_for_pass_desk_check(913, None), StoryType::Feature);
+        assert_eq!(
+            classify_for_pass_desk_check(913, None),
+            StoryType::Story(StoryKind::Feature)
+        );
     }
 
     #[tokio::test]
@@ -780,7 +787,7 @@ mod classify_for_pass_desk_check_tests {
         let orch = orchestrator_with_seed(vec![]).await;
         assert_eq!(
             classify_for_pass_desk_check(914, Some(&orch)),
-            StoryType::Feature
+            StoryType::Story(StoryKind::Feature)
         );
     }
 }

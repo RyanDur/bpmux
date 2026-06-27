@@ -58,11 +58,8 @@ fn is_acceptable_acceptance_test_path(candidate: &str) -> bool {
 }
 
 fn user_facing_story_type(t: crate::product_management::story::StoryType) -> bool {
-    matches!(
-        t,
-        crate::product_management::story::StoryType::Feature
-            | crate::product_management::story::StoryType::Bug
-    )
+    use crate::product_management::story::StoryKind;
+    matches!(t.kind(), Some(StoryKind::Feature | StoryKind::Bug))
 }
 
 fn check_path_exists(path: &str) -> Result<(), String> {

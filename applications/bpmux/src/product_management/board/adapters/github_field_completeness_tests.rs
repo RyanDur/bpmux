@@ -67,7 +67,9 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     );
     assert_eq!(
         *story_type,
-        crate::product_management::story::StoryType::Feature,
+        crate::product_management::story::StoryType::Story(
+            crate::product_management::story::StoryKind::Feature
+        ),
         "story_type must decode from labels into the stored domain field at ingest"
     );
     assert_eq!(

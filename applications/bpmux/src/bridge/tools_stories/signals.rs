@@ -74,7 +74,7 @@ pub(crate) fn classify_for_pass_desk_check(
     refresh
         .and_then(|r| r.story(number))
         .map(|s| s.story_type())
-        .unwrap_or(crate::product_management::story::StoryType::Feature)
+        .unwrap_or_default()
 }
 
 pub(crate) fn addressee_for_pass_desk_check(
@@ -93,13 +93,13 @@ pub(crate) fn addressee_for_pass_desk_check(
         return owner();
     }
 
+    use crate::product_management::story::{StoryKind, StoryType};
     match story_type {
-        crate::product_management::story::StoryType::Feature
-        | crate::product_management::story::StoryType::Epic
-        | crate::product_management::story::StoryType::Iteration
-        | crate::product_management::story::StoryType::Outcome => owner(),
-        crate::product_management::story::StoryType::Bug
-        | crate::product_management::story::StoryType::Chore => team(),
+        StoryType::Story(StoryKind::Feature)
+        | StoryType::Epic
+        | StoryType::Iteration
+        | StoryType::Outcome => owner(),
+        StoryType::Story(StoryKind::Bug) | StoryType::Story(StoryKind::Chore) => team(),
     }
 }
 

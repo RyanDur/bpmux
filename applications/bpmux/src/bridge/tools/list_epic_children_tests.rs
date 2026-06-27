@@ -4,7 +4,7 @@ use super::list_epic_children::handle_list_epic_children;
 use crate::product_management::board::BoardStore;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::decode_story_metadata;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -64,7 +64,12 @@ async fn returns_zero_children_for_empty_epic() {
 async fn returns_single_child_with_parent_epic_match() {
     let store = store_with(vec![
         epic(100),
-        child(101, 100, StoryType::Feature, StoryState::Ready),
+        child(
+            101,
+            100,
+            StoryType::Story(StoryKind::Feature),
+            StoryState::Ready,
+        ),
     ]);
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
@@ -80,9 +85,24 @@ async fn returns_single_child_with_parent_epic_match() {
 async fn returns_multiple_children_sorted_by_number() {
     let store = store_with(vec![
         epic(100),
-        child(105, 100, StoryType::Feature, StoryState::Ready),
-        child(102, 100, StoryType::Bug, StoryState::Icebox),
-        child(108, 100, StoryType::Chore, StoryState::Accepted),
+        child(
+            105,
+            100,
+            StoryType::Story(StoryKind::Feature),
+            StoryState::Ready,
+        ),
+        child(
+            102,
+            100,
+            StoryType::Story(StoryKind::Bug),
+            StoryState::Icebox,
+        ),
+        child(
+            108,
+            100,
+            StoryType::Story(StoryKind::Chore),
+            StoryState::Accepted,
+        ),
     ]);
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
@@ -98,8 +118,18 @@ async fn excludes_stories_with_different_parent() {
     let store = store_with(vec![
         epic(100),
         epic(200),
-        child(101, 100, StoryType::Feature, StoryState::Ready),
-        child(201, 200, StoryType::Feature, StoryState::Ready),
+        child(
+            101,
+            100,
+            StoryType::Story(StoryKind::Feature),
+            StoryState::Ready,
+        ),
+        child(
+            201,
+            200,
+            StoryType::Story(StoryKind::Feature),
+            StoryState::Ready,
+        ),
     ]);
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
@@ -112,7 +142,12 @@ async fn excludes_stories_with_different_parent() {
 async fn excludes_stories_without_parent_epic() {
     let store = store_with(vec![
         epic(100),
-        child(101, 100, StoryType::Feature, StoryState::Ready),
+        child(
+            101,
+            100,
+            StoryType::Story(StoryKind::Feature),
+            StoryState::Ready,
+        ),
         child_without_parent(202),
     ]);
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
@@ -151,7 +186,12 @@ async fn rejects_missing_epic_number_arg() {
 async fn handles_large_epic_with_ten_children() {
     let mut stories = vec![epic(100)];
     for n in 1..=10 {
-        stories.push(child(100 + n, 100, StoryType::Feature, StoryState::Icebox));
+        stories.push(child(
+            100 + n,
+            100,
+            StoryType::Story(StoryKind::Feature),
+            StoryState::Icebox,
+        ));
     }
     let store = store_with(stories);
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
@@ -161,7 +201,12 @@ async fn handles_large_epic_with_ten_children() {
 
 #[tokio::test]
 async fn surfaces_is_closed_state() {
-    let mut accepted = child(101, 100, StoryType::Feature, StoryState::Accepted);
+    let mut accepted = child(
+        101,
+        100,
+        StoryType::Story(StoryKind::Feature),
+        StoryState::Accepted,
+    );
     accepted.is_closed = true;
     let store = store_with(vec![epic(100), accepted]);
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();

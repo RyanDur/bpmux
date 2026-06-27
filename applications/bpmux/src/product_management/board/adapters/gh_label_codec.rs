@@ -162,11 +162,11 @@ impl GhLabelCodec {
         &self,
         label: &str,
     ) -> Option<crate::product_management::story::StoryType> {
-        use crate::product_management::story::StoryType;
+        use crate::product_management::story::{StoryKind, StoryType};
         match label.to_ascii_lowercase().as_str() {
-            "feature" => Some(StoryType::Feature),
-            "bug" => Some(StoryType::Bug),
-            "chore" => Some(StoryType::Chore),
+            "feature" => Some(StoryType::Story(StoryKind::Feature)),
+            "bug" => Some(StoryType::Story(StoryKind::Bug)),
+            "chore" => Some(StoryType::Story(StoryKind::Chore)),
             "epic" => Some(StoryType::Epic),
             "iteration" => Some(StoryType::Iteration),
             "outcome" => Some(StoryType::Outcome),
@@ -178,16 +178,7 @@ impl GhLabelCodec {
         &self,
         story_type: crate::product_management::story::StoryType,
     ) -> String {
-        use crate::product_management::story::StoryType;
-        match story_type {
-            StoryType::Feature => "feature",
-            StoryType::Bug => "bug",
-            StoryType::Chore => "chore",
-            StoryType::Epic => "epic",
-            StoryType::Iteration => "iteration",
-            StoryType::Outcome => "outcome",
-        }
-        .to_string()
+        story_type.as_label().to_string()
     }
 }
 

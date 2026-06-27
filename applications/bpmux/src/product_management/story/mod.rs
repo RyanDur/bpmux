@@ -1,9 +1,11 @@
 pub mod enums;
 pub mod key;
+pub mod story_type;
 pub mod transition;
 
-pub use enums::{Acceptor, Gate, Horizon, StoryState, StoryType, Tag, story_type_from_title};
+pub use enums::{Acceptor, Gate, Horizon, StoryState, Tag};
 pub use key::StoryKey;
+pub use story_type::{StoryKind, StoryType, story_type_from_title};
 pub use transition::{
     StateTransition, is_backward, most_recent_backward_transition, replay_transitions,
 };
@@ -12,6 +14,8 @@ pub use transition::{
 mod enums_tests;
 #[cfg(test)]
 mod key_tests;
+#[cfg(test)]
+mod story_type_tests;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -71,7 +75,7 @@ impl Story {
             StoryState::Icebox => Vec::new(),
             other => vec![other.github_label().to_string()],
         };
-        let story_type = enums::story_type_from_title(&title);
+        let story_type = story_type::story_type_from_title(&title);
         Self {
             number,
             title,
@@ -107,6 +111,10 @@ impl Story {
 
     pub fn story_type(&self) -> StoryType {
         self.story_type
+    }
+
+    pub fn kind(&self) -> Option<StoryKind> {
+        self.story_type.kind()
     }
 
     pub fn acceptor(&self) -> Option<Acceptor> {

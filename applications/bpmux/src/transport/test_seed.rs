@@ -156,12 +156,15 @@ pub async fn post_seed_stories(
             "accepted" => crate::product_management::story::StoryState::Accepted,
             _ => crate::product_management::story::StoryState::Icebox,
         };
-        let story_type = match s.story_type.as_str() {
-            "iteration" => crate::product_management::story::StoryType::Iteration,
-            "epic" => crate::product_management::story::StoryType::Epic,
-            "bug" => crate::product_management::story::StoryType::Bug,
-            "chore" => crate::product_management::story::StoryType::Chore,
-            _ => crate::product_management::story::StoryType::Feature,
+        let story_type = {
+            use crate::product_management::story::{StoryKind, StoryType};
+            match s.story_type.as_str() {
+                "iteration" => StoryType::Iteration,
+                "epic" => StoryType::Epic,
+                "bug" => StoryType::Story(StoryKind::Bug),
+                "chore" => StoryType::Story(StoryKind::Chore),
+                _ => StoryType::Story(StoryKind::Feature),
+            }
         };
         let meta = crate::product_management::board::events::EventMeta {
             actor: "test-seed".to_string(),

@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
 
 #[tokio::test]
 async fn ingest_once_populates_store_from_adapter() {
@@ -53,7 +53,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
             title: "test".to_string(),
             body: "b".to_string(),
             initial_state: StoryState::Ready,
-            story_type: StoryType::Feature,
+            story_type: StoryType::Story(StoryKind::Feature),
         })
         .unwrap();
     assert_eq!(store.len(), 1);

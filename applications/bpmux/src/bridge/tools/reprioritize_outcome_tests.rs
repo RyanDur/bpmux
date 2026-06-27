@@ -6,7 +6,7 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
+use crate::product_management::story::{Horizon, Story, StoryKind, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -160,7 +160,7 @@ async fn reprioritize_aimed_at_a_non_outcome_teaches_the_boundary_1759() {
     let refresh = build_refresh(vec![seed(
         700,
         "A plain story",
-        StoryType::Feature,
+        StoryType::Story(StoryKind::Feature),
         &["enhancement"],
     )])
     .await;

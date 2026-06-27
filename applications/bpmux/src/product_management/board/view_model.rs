@@ -7,7 +7,7 @@ use crate::product_management::board::adapters::github::{
 };
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::{
-    Story, StoryType, Tag, most_recent_backward_transition, replay_transitions,
+    Story, Tag, most_recent_backward_transition, replay_transitions,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -86,17 +86,7 @@ fn is_renderer_badge_label(raw: &str) -> bool {
 
 fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     let mut labels: Vec<String> = Vec::new();
-    labels.push(
-        match story.story_type() {
-            StoryType::Feature => "feature",
-            StoryType::Bug => "bug",
-            StoryType::Chore => "chore",
-            StoryType::Epic => "epic",
-            StoryType::Iteration => "iteration",
-            StoryType::Outcome => "outcome",
-        }
-        .to_string(),
-    );
+    labels.push(story.story_type().as_label().to_string());
     for tag in story.tags() {
         match tag {
             Tag::Blocked => labels.push("blocked".to_string()),

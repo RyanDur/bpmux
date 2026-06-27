@@ -54,40 +54,6 @@ impl StoryState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
-pub enum StoryType {
-    #[default]
-    Feature,
-    Bug,
-    Chore,
-    Epic,
-    Iteration,
-    Outcome,
-}
-
-pub fn story_type_from_title(title: &str) -> StoryType {
-    let lower = title.to_lowercase();
-    if lower.starts_with("[epic") {
-        return StoryType::Epic;
-    }
-    if lower.starts_with("[iteration") {
-        return StoryType::Iteration;
-    }
-    if lower.starts_with("[outcome") {
-        return StoryType::Outcome;
-    }
-    if lower.starts_with("[bug") || lower.starts_with("bug:") {
-        return StoryType::Bug;
-    }
-    if lower.starts_with("[chore")
-        || lower.starts_with("[honest-plumbing")
-        || lower.starts_with("[half-slice")
-    {
-        return StoryType::Chore;
-    }
-    StoryType::Feature
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Acceptor {

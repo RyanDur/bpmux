@@ -2,7 +2,7 @@
 
 use super::json::story_to_board_json;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
 
 fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> Story {
     let mut s = Story {
@@ -33,7 +33,11 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
 
 #[test]
 fn story_to_board_json_emits_renderer_wire_format_field_list() {
-    let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     let json = story_to_board_json(&GhLabelCodec, &s);
 
     let obj = json.as_object().expect("object");
@@ -68,7 +72,11 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
 
 #[test]
 fn story_to_board_json_iteration_membership_null_when_none_1492() {
-    let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(
         json["iteration_membership"].is_null(),
@@ -79,7 +87,11 @@ fn story_to_board_json_iteration_membership_null_when_none_1492() {
 
 #[test]
 fn story_to_board_json_iteration_membership_object_when_set_1492() {
-    let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.raw_labels.push("parent-iteration-#1464.100".to_string());
     s.iteration_membership = Some((1464, 100));
     let json = story_to_board_json(&GhLabelCodec, &s);
@@ -92,7 +104,11 @@ fn story_to_board_json_iteration_membership_object_when_set_1492() {
 
 #[test]
 fn story_to_board_json_iteration_order_null_when_none_1735() {
-    let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(
         json["iteration_order"].is_null(),
@@ -103,7 +119,11 @@ fn story_to_board_json_iteration_order_null_when_none_1735() {
 
 #[test]
 fn story_to_board_json_iteration_order_number_when_set_1735() {
-    let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.raw_labels = vec![GhLabelCodec.encode_iteration_order(200)];
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(
@@ -115,7 +135,11 @@ fn story_to_board_json_iteration_order_number_when_set_1735() {
 
 #[test]
 fn story_to_board_json_acceptor_null_when_none_1551() {
-    let s = sample_story(StoryState::Delivered, StoryType::Feature, false);
+    let s = sample_story(
+        StoryState::Delivered,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(
         json["acceptor"].is_null(),
@@ -126,7 +150,11 @@ fn story_to_board_json_acceptor_null_when_none_1551() {
 
 #[test]
 fn story_to_board_json_acceptor_emits_class_string_1551() {
-    let mut s = sample_story(StoryState::Delivered, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::Delivered,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.raw_labels.push("awaiting dev".to_string());
     s.acceptor = Some(crate::product_management::story::Acceptor::Dev);
     let json = story_to_board_json(&GhLabelCodec, &s);
@@ -139,7 +167,11 @@ fn story_to_board_json_acceptor_emits_class_string_1551() {
 
 #[test]
 fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
-    let s = sample_story(StoryState::Ready, StoryType::Feature, false);
+    let s = sample_story(
+        StoryState::Ready,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(json["rework_comment"].is_null());
 }
@@ -147,7 +179,11 @@ fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
 #[test]
 fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
     use crate::product_management::story::{Gate, GateComment};
-    let mut s = sample_story(StoryState::Ready, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::Ready,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.gate_comments = Some(vec![
         GateComment {
             gate: Gate::Pickup,
@@ -185,7 +221,11 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
 #[test]
 fn story_to_board_json_rework_comment_clears_after_forward_edge() {
     use crate::product_management::story::{Gate, GateComment};
-    let mut s = sample_story(StoryState::InProgress, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::InProgress,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.gate_comments = Some(vec![
         GateComment {
             gate: Gate::Pickup,
@@ -235,7 +275,7 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
         (StoryState::Delivered, "delivered"),
         (StoryState::Accepted, "accepted"),
     ] {
-        let s = sample_story(*state, StoryType::Feature, false);
+        let s = sample_story(*state, StoryType::Story(StoryKind::Feature), false);
         assert_eq!(
             json_str(&story_to_board_json(&GhLabelCodec, &s), "state"),
             *expected,
@@ -246,7 +286,11 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
 
 #[test]
 fn story_to_board_json_is_closed_emits_gh_state_closed_independent_of_state() {
-    let s = sample_story(StoryState::Icebox, StoryType::Feature, true);
+    let s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        true,
+    );
     assert_eq!(
         json_str(&story_to_board_json(&GhLabelCodec, &s), "state"),
         "icebox",
@@ -260,12 +304,20 @@ fn story_to_board_json_is_closed_emits_gh_state_closed_independent_of_state() {
 
 #[test]
 fn story_to_board_json_gh_state_lowercase_open_or_closed() {
-    let open = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let open = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     assert_eq!(
         json_str(&story_to_board_json(&GhLabelCodec, &open), "gh_state"),
         "open"
     );
-    let closed = sample_story(StoryState::Accepted, StoryType::Feature, true);
+    let closed = sample_story(
+        StoryState::Accepted,
+        StoryType::Story(StoryKind::Feature),
+        true,
+    );
     assert_eq!(
         json_str(&story_to_board_json(&GhLabelCodec, &closed), "gh_state"),
         "closed"
@@ -275,9 +327,9 @@ fn story_to_board_json_gh_state_lowercase_open_or_closed() {
 #[test]
 fn story_to_board_json_labels_include_story_type() {
     for (story_type, expected_label) in &[
-        (StoryType::Feature, "feature"),
-        (StoryType::Bug, "bug"),
-        (StoryType::Chore, "chore"),
+        (StoryType::Story(StoryKind::Feature), "feature"),
+        (StoryType::Story(StoryKind::Bug), "bug"),
+        (StoryType::Story(StoryKind::Chore), "chore"),
         (StoryType::Epic, "epic"),
     ] {
         let s = sample_story(StoryState::Icebox, *story_type, false);
@@ -292,7 +344,11 @@ fn story_to_board_json_labels_include_story_type() {
 
 #[test]
 fn story_to_board_json_labels_include_blocked_tag() {
-    let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.tags = vec![crate::product_management::story::Tag::Blocked];
     let json = story_to_board_json(&GhLabelCodec, &s);
     let labels = json["labels"].as_array().expect("labels array");
@@ -301,7 +357,11 @@ fn story_to_board_json_labels_include_blocked_tag() {
 
 #[test]
 fn story_to_board_json_parent_epic_emits_field_and_label() {
-    let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.parent_epic = Some(7);
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(json["parent_epic"].as_u64(), Some(7));
@@ -314,7 +374,11 @@ fn story_to_board_json_parent_epic_emits_field_and_label() {
 
 #[test]
 fn story_to_board_json_no_parent_epic_emits_null() {
-    let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(
         json["parent_epic"].is_null(),
@@ -325,7 +389,11 @@ fn story_to_board_json_no_parent_epic_emits_null() {
 
 #[test]
 fn story_to_board_json_body_unwraps_to_empty_string_when_none() {
-    let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.body = None;
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(json["body"].as_str(), Some(""));
@@ -333,7 +401,11 @@ fn story_to_board_json_body_unwraps_to_empty_string_when_none() {
 
 #[test]
 fn story_to_board_json_assignees_empty_array() {
-    let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     let json = story_to_board_json(&GhLabelCodec, &s);
     let assignees = json["assignees"].as_array().expect("assignees array");
     assert!(assignees.is_empty());
@@ -341,7 +413,11 @@ fn story_to_board_json_assignees_empty_array() {
 
 #[test]
 fn story_to_board_json_created_at_is_rfc3339() {
-    let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let s = sample_story(
+        StoryState::Icebox,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     let json = story_to_board_json(&GhLabelCodec, &s);
     let created = json["created_at"].as_str().expect("created_at string");
     chrono::DateTime::parse_from_rfc3339(created).expect("created_at parses as RFC3339");
@@ -396,7 +472,11 @@ impl crate::product_management::board::label_codec::LabelCodec for StubLabelCode
 
 #[test]
 fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
-    let mut s = sample_story(StoryState::Ready, StoryType::Feature, false);
+    let mut s = sample_story(
+        StoryState::Ready,
+        StoryType::Story(StoryKind::Feature),
+        false,
+    );
     s.parent_epic = Some(42);
     s.ready_order = Some(100);
     s.raw_labels = vec!["iter|Pegasus:200".to_string(), "noise-label".to_string()];

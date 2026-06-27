@@ -33,7 +33,7 @@ pub(crate) async fn handle_create_story(
         acceptance_test_path,
         author_body,
     );
-    if story_type != crate::product_management::story::StoryType::Chore {
+    if story_type.kind() != Some(crate::product_management::story::StoryKind::Chore) {
         crate::bridge::atp_substantive_gate::verify_atp_pre_filing(
             &composed_body,
             acceptance_test_path,
@@ -87,7 +87,7 @@ fn validate_actor_role_can_create(
     {
         return Ok(());
     }
-    let is_chore = story_type == crate::product_management::story::StoryType::Chore;
+    let is_chore = story_type.kind() == Some(crate::product_management::story::StoryKind::Chore);
     if actor_role != pm && !(actor_role == dev && is_chore) {
         return Err(
             "create_story is pm-lane (dev may author [Chore]-class stories per chore-ownership \
