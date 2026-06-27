@@ -25,7 +25,7 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
         total_count: children.len(),
     };
     for child in children {
-        match child.state {
+        match child.state() {
             StoryState::Accepted => counts.accepted_count += 1,
             StoryState::Retired => counts.retired_count += 1,
             StoryState::Icebox => counts.icebox_count += 1,
@@ -40,12 +40,12 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
 }
 
 pub fn derive_epic_state(_epic_explicit_state: StoryState, children: &[&Story]) -> StoryState {
-    if children.is_empty() || children.iter().all(|c| c.state == StoryState::Icebox) {
+    if children.is_empty() || children.iter().all(|c| c.state() == StoryState::Icebox) {
         return StoryState::Icebox;
     }
     let any_active = children.iter().any(|c| {
         matches!(
-            c.state,
+            c.state(),
             StoryState::InProgress
                 | StoryState::DeskCheck
                 | StoryState::Delivered
@@ -57,15 +57,18 @@ pub fn derive_epic_state(_epic_explicit_state: StoryState, children: &[&Story]) 
     }
     let non_retired: Vec<&&Story> = children
         .iter()
-        .filter(|c| c.state != StoryState::Retired)
+        .filter(|c| c.state() != StoryState::Retired)
         .collect();
     if non_retired.is_empty() {
         return StoryState::Retired;
     }
-    if non_retired.iter().all(|c| c.state == StoryState::Accepted) {
+    if non_retired
+        .iter()
+        .all(|c| c.state() == StoryState::Accepted)
+    {
         return StoryState::Accepted;
     }
-    if children.iter().any(|c| c.state == StoryState::Ready) {
+    if children.iter().any(|c| c.state() == StoryState::Ready) {
         return StoryState::Ready;
     }
     StoryState::Icebox

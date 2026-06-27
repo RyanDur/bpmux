@@ -73,4 +73,36 @@ impl Story {
             body_etag: None,
         }
     }
+
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn state(&self) -> StoryState {
+        self.state
+    }
+
+    pub fn body(&self) -> Option<&str> {
+        self.body.as_deref()
+    }
+
+    pub fn filed_at(&self) -> DateTime<Utc> {
+        self.filed_at
+    }
+
+    pub fn filed_by(&self) -> &str {
+        &self.filed_by
+    }
+
+    pub fn raw_labels(&self) -> &[String] {
+        &self.raw_labels
+    }
+
+    pub fn free_comments(&self) -> Option<&[FreeComment]> {
+        self.free_comments.as_deref()
+    }
+
+    pub fn gate_comments(&self) -> Option<&[GateComment]> {
+        self.gate_comments.as_deref()
+    }
 }

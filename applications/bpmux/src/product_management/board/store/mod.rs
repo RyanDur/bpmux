@@ -89,7 +89,7 @@ impl BoardStore {
             state
                 .stories
                 .values()
-                .filter(|story| story.state == wanted)
+                .filter(|story| story.state() == wanted)
                 .cloned()
                 .collect()
         })
