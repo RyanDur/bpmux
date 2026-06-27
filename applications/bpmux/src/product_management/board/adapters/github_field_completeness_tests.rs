@@ -46,6 +46,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         body_etag,
         story_type,
         acceptor,
+        parent_epic,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
@@ -86,9 +87,9 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     );
     assert!(!*is_closed, "is_closed must decode from gh_state");
     assert_eq!(
-        crate::product_management::board::adapters::github::parent_epic_from_labels(raw_labels),
+        *parent_epic,
         Some(100),
-        "parent_epic must decode from labels"
+        "parent_epic must decode from the parent-epic label into the stored domain field at ingest"
     );
     assert!(
         !raw_labels.is_empty(),

@@ -345,6 +345,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     let mut child_a =
         Story::new_minimal(701, "child a".into(), StoryState::Accepted, ts, "pm".into());
     child_a.raw_labels.push("parent-epic-#700".to_string());
+    child_a.parent_epic = Some(700);
     child_a.is_closed = true;
     let mut child_b = Story::new_minimal(
         702,
@@ -354,6 +355,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "pm".into(),
     );
     child_b.raw_labels.push("parent-epic-#700".to_string());
+    child_b.parent_epic = Some(700);
     let mut child_c = Story::new_minimal(
         703,
         "child c".into(),
@@ -362,6 +364,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "pm".into(),
     );
     child_c.raw_labels.push("parent-epic-#700".to_string());
+    child_c.parent_epic = Some(700);
     adapter.seed_stories(vec![epic, child_a, child_b, child_c]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -506,8 +509,10 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     epic.story_type = StoryType::Epic;
     let mut a = Story::new_minimal(721, "a".into(), StoryState::Delivered, ts, "pm".into());
     a.raw_labels.push("parent-epic-#720".to_string());
+    a.parent_epic = Some(720);
     let mut b = Story::new_minimal(722, "b".into(), StoryState::Delivered, ts, "pm".into());
     b.raw_labels.push("parent-epic-#720".to_string());
+    b.parent_epic = Some(720);
     adapter.seed_stories(vec![epic, a, b]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -547,6 +552,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     epic.story_type = StoryType::Epic;
     let mut a = Story::new_minimal(731, "a".into(), StoryState::InProgress, ts, "pm".into());
     a.raw_labels.push("parent-epic-#730".to_string());
+    a.parent_epic = Some(730);
     adapter.seed_stories(vec![epic, a]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),

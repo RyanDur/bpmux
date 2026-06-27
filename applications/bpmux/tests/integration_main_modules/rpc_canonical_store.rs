@@ -54,6 +54,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
         body_etag: None,
         story_type: bpmux::product_management::story::story_type_from_title(title),
         acceptor: None,
+        parent_epic: None,
     };
     adapter.seed_stories(vec![story]);
 }

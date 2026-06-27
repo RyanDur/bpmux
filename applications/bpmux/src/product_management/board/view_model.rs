@@ -3,8 +3,7 @@ use serde::Serialize;
 use crate::product_management::board::adapters::github::{
     horizon_from_labels, is_current_from_labels, iteration_dev_ok_by_from_labels,
     iteration_membership_from_labels, iteration_order_from_labels,
-    iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
-    tags_from_labels,
+    iteration_review_closers_from_labels, outcome_membership_from_labels, tags_from_labels,
 };
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::{
@@ -53,7 +52,7 @@ impl StoryView {
             state: story.state().as_str(),
             gh_state: if story.is_closed { "closed" } else { "open" },
             labels: wire_labels(codec, story),
-            parent_epic: parent_epic_from_labels(story.raw_labels()),
+            parent_epic: story.parent_epic(),
             iteration_membership: iteration_membership_from_labels(story.raw_labels()).map(
                 |(iteration_number, position)| IterationMembershipView {
                     iteration_number,
@@ -103,7 +102,7 @@ fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
             Tag::Blocked => labels.push("blocked".to_string()),
         }
     }
-    if let Some(epic) = parent_epic_from_labels(story.raw_labels()) {
+    if let Some(epic) = story.parent_epic() {
         labels.push(codec.encode_parent_epic(epic));
     }
     for raw in story.raw_labels() {

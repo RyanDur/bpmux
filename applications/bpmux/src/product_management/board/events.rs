@@ -18,6 +18,8 @@ pub struct LabelDerivedFields {
     pub raw_labels: Vec<String>,
     #[serde(default)]
     pub acceptor: Option<Acceptor>,
+    #[serde(default)]
+    pub parent_epic: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

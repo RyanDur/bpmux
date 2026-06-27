@@ -1,49 +1,42 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::list_epic_children::handle_list_epic_children;
 use crate::product_management::board::BoardStore;
+use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::product_management::board::adapters::github::decode_story_metadata;
 use crate::product_management::story::{Story, StoryState, StoryType};
-use chrono::Utc;
+use serde_json::json;
 use std::sync::Arc;
 
+fn decoded(number: u64, title: &str, labels: &[&str]) -> Story {
+    let label_json: Vec<serde_json::Value> = labels.iter().map(|n| json!({ "name": n })).collect();
+    decode_story_metadata(&json!({
+        "number": number,
+        "title": title,
+        "gh_state": "open",
+        "labels": label_json,
+        "created_at": "2026-05-15T01:00:00+00:00",
+        "user": { "login": "pm" },
+    }))
+    .expect("issue JSON must decode")
+}
+
 fn epic(number: u64) -> Story {
-    Story {
-        number,
-        title: format!("Epic #{number}"),
-        state: StoryState::Icebox,
-        filed_at: Utc::now(),
-        filed_by: "pm".to_string(),
-        body: None,
-        free_comments: None,
-        gate_comments: None,
-        is_closed: false,
-        raw_labels: vec!["Epic".to_string(), "icebox".to_string()],
-        body_etag: None,
-        story_type: StoryType::Epic,
-        acceptor: None,
-    }
+    decoded(number, &format!("Epic #{number}"), &["epic", "icebox"])
 }
 
 fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> Story {
-    Story {
-        number,
-        title: format!("child #{number}"),
-        state,
-        filed_at: Utc::now(),
-        filed_by: "pm".to_string(),
-        body: None,
-        free_comments: None,
-        gate_comments: None,
-        is_closed: false,
-        raw_labels: vec![
-            format!("parent-epic-#{parent}"),
-            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-                .encode_story_type(story_type),
-        ],
-        body_etag: None,
-        story_type,
-        acceptor: None,
+    let parent_label = format!("parent-epic-#{parent}");
+    let type_label = GhLabelCodec.encode_story_type(story_type);
+    let mut labels = vec![parent_label.as_str(), type_label.as_str()];
+    if state != StoryState::Icebox {
+        labels.push(state.github_label());
     }
+    decoded(number, &format!("child #{number}"), &labels)
+}
+
+fn child_without_parent(number: u64) -> Story {
+    decoded(number, &format!("orphan #{number}"), &["feature"])
 }
 
 fn store_with(stories: Vec<Story>) -> Arc<BoardStore> {
@@ -120,10 +113,7 @@ async fn excludes_stories_without_parent_epic() {
     let store = store_with(vec![
         epic(100),
         child(101, 100, StoryType::Feature, StoryState::Ready),
-        Story {
-            raw_labels: vec![],
-            ..child(202, 999, StoryType::Feature, StoryState::Ready)
-        },
+        child_without_parent(202),
     ]);
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
@@ -132,9 +122,7 @@ async fn excludes_stories_without_parent_epic() {
 
 #[tokio::test]
 async fn rejects_non_epic_story_type() {
-    let mut not_epic = epic(100);
-    not_epic.raw_labels = vec!["feature".to_string(), "icebox".to_string()];
-    not_epic.story_type = StoryType::Feature;
+    let not_epic = decoded(100, "feature #100", &["feature", "icebox"]);
     let store = store_with(vec![not_epic]);
     let err = handle_list_epic_children(&args(100), &store)
         .await

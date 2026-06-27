@@ -93,6 +93,34 @@ fn tag_added_acceptor_label_decodes_into_the_stored_acceptor_field() {
 }
 
 #[test]
+fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 12,
+        title: "child story".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Icebox,
+        story_type: StoryType::Feature,
+    });
+    assert_eq!(
+        store.story(12).unwrap().parent_epic(),
+        None,
+        "a freshly created story has no parent epic yet"
+    );
+    store.apply(&BoardEvent::ParentEpicSet {
+        meta: meta("pm", 2026, "local"),
+        number: 12,
+        epic_number: 300,
+    });
+    assert_eq!(
+        store.story(12).unwrap().parent_epic(),
+        Some(300),
+        "the codec decodes the parent-epic label into the stored field on the ParentEpicSet event"
+    );
+}
+
+#[test]
 fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transitioned() {
     let store = BoardStore::new();
     let story = Story::new_minimal(
@@ -114,6 +142,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                 "awaiting dev".to_string(),
             ],
             acceptor: Some(crate::product_management::story::Acceptor::Dev),
+            parent_epic: Some(7),
         },
     });
 

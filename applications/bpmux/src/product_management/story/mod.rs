@@ -49,6 +49,8 @@ pub struct Story {
     pub story_type: StoryType,
     #[serde(default)]
     pub acceptor: Option<Acceptor>,
+    #[serde(default)]
+    pub parent_epic: Option<u64>,
 }
 
 impl Story {
@@ -78,6 +80,7 @@ impl Story {
             body_etag: None,
             story_type,
             acceptor: None,
+            parent_epic: None,
         }
     }
 
@@ -99,6 +102,10 @@ impl Story {
 
     pub fn acceptor(&self) -> Option<Acceptor> {
         self.acceptor
+    }
+
+    pub fn parent_epic(&self) -> Option<u64> {
+        self.parent_epic
     }
 
     pub fn body(&self) -> Option<&str> {

@@ -21,6 +21,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         body_etag: None,
         story_type,
         acceptor: None,
+        parent_epic: None,
     };
     s.raw_labels
         .push(GhLabelCodec.encode_story_type(story_type));
@@ -297,7 +298,7 @@ fn story_to_board_json_labels_include_blocked_tag() {
 #[test]
 fn story_to_board_json_parent_epic_emits_field_and_label() {
     let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    s.raw_labels.push("parent-epic-#7".to_string());
+    s.parent_epic = Some(7);
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(json["parent_epic"].as_u64(), Some(7));
     let labels = json["labels"].as_array().expect("labels array");
@@ -392,8 +393,8 @@ impl crate::product_management::board::label_codec::LabelCodec for StubLabelCode
 #[test]
 fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
     let mut s = sample_story(StoryState::Ready, StoryType::Feature, false);
+    s.parent_epic = Some(42);
     s.raw_labels = vec![
-        "parent-epic-#42".to_string(),
         "rdy:100".to_string(),
         "iter|Pegasus:200".to_string(),
         "noise-label".to_string(),
