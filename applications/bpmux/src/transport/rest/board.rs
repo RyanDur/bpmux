@@ -11,7 +11,7 @@ pub(crate) fn ordered_board_stories(
         .map(|s| {
             let mut json =
                 crate::product_management::board::adapters::json::story_to_board_json(&codec, s);
-            if crate::product_management::board::adapters::github::story_type_from_labels_or_title(&s.raw_labels, &s.title) == crate::product_management::story::StoryType::Iteration
+            if s.story_type() == crate::product_management::story::StoryType::Iteration
                 && let serde_json::Value::Object(map) = &mut json
             {
                 let members: Vec<&crate::product_management::story::Story> = all
@@ -32,7 +32,7 @@ pub(crate) fn ordered_board_stories(
                     map.insert("readiness".to_string(), value);
                 }
             }
-            if crate::product_management::board::adapters::github::story_type_from_labels_or_title(&s.raw_labels, &s.title) == crate::product_management::story::StoryType::Outcome
+            if s.story_type() == crate::product_management::story::StoryType::Outcome
                 && let serde_json::Value::Object(map) = &mut json
             {
                 let rolled = crate::product_management::iteration::readiness::outcome_readiness(

@@ -32,6 +32,7 @@ fn iteration(number: u64) -> Story {
         "iteration-review-closed.designer".into(),
         "iteration-dev-ok.dev".into(),
     ];
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 
@@ -63,6 +64,7 @@ fn outcome(number: u64) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
+    s.story_type = crate::product_management::story::StoryType::Outcome;
     s
 }
 
