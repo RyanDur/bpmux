@@ -53,7 +53,7 @@ pub fn current_iteration_number(stories: &[Story]) -> Option<u64> {
                 && crate::product_management::board::adapters::github::is_current_from_labels(
                     &s.raw_labels,
                 )
-                && crate::product_management::board::adapters::github::story_type_from_labels_or_title(&s.raw_labels, &s.title) == crate::product_management::story::StoryType::Iteration
+                && s.story_type() == crate::product_management::story::StoryType::Iteration
         })
         .map(|s| s.number)
 }

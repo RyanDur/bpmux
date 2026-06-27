@@ -132,6 +132,7 @@ async fn excludes_stories_without_parent_epic() {
 async fn rejects_non_epic_story_type() {
     let mut not_epic = epic(100);
     not_epic.raw_labels = vec!["feature".to_string(), "icebox".to_string()];
+    not_epic.story_type = StoryType::Feature;
     let store = store_with(vec![not_epic]);
     let err = handle_list_epic_children(&args(100), &store)
         .await

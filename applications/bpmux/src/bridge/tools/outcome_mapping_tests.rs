@@ -22,6 +22,7 @@ fn outcome(number: u64) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
+    s.story_type = crate::product_management::story::StoryType::Outcome;
     s
 }
 
@@ -37,6 +38,7 @@ fn iteration_mapped(number: u64, outcome_number: u64, position: u32) -> Story {
     s.raw_labels
         .push(format!("parent-outcome-#{outcome_number}.{position}"));
     s.body = Some("## composed".into());
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

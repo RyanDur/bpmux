@@ -440,6 +440,7 @@ fn make_iteration(number: u64, name: &str, body: &str) -> Story {
     );
     s.raw_labels.push("iteration".to_string());
     s.body = Some(body.to_string());
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

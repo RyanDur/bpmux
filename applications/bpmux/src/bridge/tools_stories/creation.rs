@@ -111,11 +111,7 @@ fn validate_parent_epic(
             "epic #{epic_number} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
         )
     })?;
-    let story_type =
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &parent.raw_labels,
-            &parent.title,
-        );
+    let story_type = parent.story_type();
     if story_type != crate::product_management::story::StoryType::Epic {
         return Err(format!(
             "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",

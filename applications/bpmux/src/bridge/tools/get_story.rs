@@ -126,12 +126,7 @@ pub(in crate::bridge) async fn handle_get_story(
     {
         body_out = enrich_body(&body_out, &ctx);
     }
-    if crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-        &story.raw_labels,
-        &story.title,
-    ) == StoryType::Iteration
-        && body_cached.is_some()
-    {
+    if story.story_type() == StoryType::Iteration && body_cached.is_some() {
         let all_stories = b.all_stories();
         let member_numbers = members_of_iteration(&all_stories, story.number);
         let members: Vec<(u64, String)> = member_numbers

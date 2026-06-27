@@ -4,7 +4,7 @@ use crate::product_management::board::adapters::github::{
     acceptor_from_labels, horizon_from_labels, is_current_from_labels,
     iteration_dev_ok_by_from_labels, iteration_membership_from_labels, iteration_order_from_labels,
     iteration_review_closers_from_labels, outcome_membership_from_labels, parent_epic_from_labels,
-    story_type_from_labels_or_title, tags_from_labels,
+    tags_from_labels,
 };
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::{
@@ -88,7 +88,7 @@ fn is_renderer_badge_label(raw: &str) -> bool {
 fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     let mut labels: Vec<String> = Vec::new();
     labels.push(
-        match story_type_from_labels_or_title(story.raw_labels(), story.title()) {
+        match story.story_type() {
             StoryType::Feature => "feature",
             StoryType::Bug => "bug",
             StoryType::Chore => "chore",

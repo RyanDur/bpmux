@@ -73,12 +73,7 @@ pub(crate) fn classify_for_pass_desk_check(
 ) -> crate::product_management::story::StoryType {
     refresh
         .and_then(|r| r.story(number))
-        .map(|s| {
-            crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-                &s.raw_labels,
-                &s.title,
-            )
-        })
+        .map(|s| s.story_type())
         .unwrap_or(crate::product_management::story::StoryType::Feature)
 }
 

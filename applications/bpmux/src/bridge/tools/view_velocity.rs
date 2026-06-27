@@ -78,10 +78,7 @@ pub(in crate::bridge) fn is_feature_for_velocity(
 ) -> bool {
     refresh.and_then(|r| r.story(n)).is_some_and(|s| {
         matches!(
-            crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-                &s.raw_labels,
-                &s.title
-            ),
+            s.story_type(),
             crate::product_management::story::StoryType::Feature
         )
     })

@@ -25,6 +25,7 @@ fn seed_iteration_story(number: u64, name: &str, is_closed: bool) -> Story {
     );
     s.is_closed = is_closed;
     s.raw_labels = vec!["iteration".to_string()];
+    s.story_type = StoryType::Iteration;
     s
 }
 

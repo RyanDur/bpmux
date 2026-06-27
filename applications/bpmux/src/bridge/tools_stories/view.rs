@@ -111,12 +111,7 @@ pub(in crate::bridge) fn build_board_text(
     let bucket_section = |bucket: ColumnBucket| -> (usize, Vec<String>) {
         let mut entries: Vec<(u64, String)> = stories
             .iter()
-            .filter(|s| {
-                crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-                    &s.raw_labels,
-                    &s.title,
-                ) != crate::product_management::story::StoryType::Epic
-            })
+            .filter(|s| s.story_type() != crate::product_management::story::StoryType::Epic)
             .filter(|s| in_scope_iteration(s))
             .filter(|s| column_for(s.state, s.is_closed) == bucket)
             .map(format_entry)
@@ -133,12 +128,7 @@ pub(in crate::bridge) fn build_board_text(
     if scope.state.is_none() && scope.iteration.is_none() {
         let mut epics: Vec<&crate::product_management::story::Story> = stories
             .iter()
-            .filter(|s| {
-                crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-                    &s.raw_labels,
-                    &s.title,
-                ) == crate::product_management::story::StoryType::Epic
-            })
+            .filter(|s| s.story_type() == crate::product_management::story::StoryType::Epic)
             .collect();
         epics.sort_by_key(|s| s.number);
         if !epics.is_empty() {

@@ -19,11 +19,7 @@ async fn member_of(
     story_number: u64,
 ) -> Result<crate::product_management::story::Story, String> {
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type =
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &iteration.raw_labels,
-            &iteration.title,
-        );
+    let story_type = iteration.story_type();
     if story_type != StoryType::Iteration {
         return Err(format!(
             "#{iteration_number} is not an Iteration (story_type={:?}); only iterations carry members",
@@ -133,11 +129,7 @@ pub(crate) async fn handle_rename_iteration(
 
     let r = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
     let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type =
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &iteration.raw_labels,
-            &iteration.title,
-        );
+    let story_type = iteration.story_type();
     if story_type != StoryType::Iteration {
         return Err(format!(
             "#{iteration_number} is not an Iteration (story_type={:?})",

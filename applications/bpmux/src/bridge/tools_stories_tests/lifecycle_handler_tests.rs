@@ -739,6 +739,7 @@ mod classify_for_pass_desk_check_tests {
             crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
                 .encode_story_type(story_type),
         );
+        s.story_type = story_type;
         s
     }
 

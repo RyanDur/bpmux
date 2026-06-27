@@ -129,12 +129,7 @@ pub(crate) fn validate_acceptance_test_path_at_pickup(
     let Some(story) = refresh.story(number) else {
         return Ok(());
     };
-    if !user_facing_story_type(
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &story.raw_labels,
-            &story.title,
-        ),
-    ) {
+    if !user_facing_story_type(story.story_type()) {
         return Ok(());
     }
     let arg_path = args
@@ -156,12 +151,7 @@ pub(crate) fn validate_acceptance_test_path_at_deliver(
     let Some(story) = refresh.story(number) else {
         return Ok(());
     };
-    if !user_facing_story_type(
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &story.raw_labels,
-            &story.title,
-        ),
-    ) {
+    if !user_facing_story_type(story.story_type()) {
         return Ok(());
     }
     let parsed = story.body.as_deref().and_then(parse_acceptance_test_path);

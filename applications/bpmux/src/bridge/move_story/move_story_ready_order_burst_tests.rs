@@ -29,6 +29,7 @@ fn current_iteration_story(number: u64) -> Story {
     );
     s.raw_labels.push("iteration".to_string());
     s.raw_labels.push("current-iteration".to_string());
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

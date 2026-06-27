@@ -40,7 +40,7 @@ pub struct OutcomeReadiness {
 pub fn building_iterations(outcome_number: u64, all: &[Story]) -> Vec<&Story> {
     all.iter()
         .filter(|s| {
-            crate::product_management::board::adapters::github::story_type_from_labels_or_title(&s.raw_labels, &s.title) == crate::product_management::story::StoryType::Iteration
+            s.story_type() == crate::product_management::story::StoryType::Iteration
                 && crate::product_management::board::adapters::github::outcome_membership_from_labels(
                     &s.raw_labels,
                 )

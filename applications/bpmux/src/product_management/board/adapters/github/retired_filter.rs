@@ -15,13 +15,7 @@ pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64
     use crate::product_management::story::StoryType;
     stories
         .iter()
-        .filter(|s| {
-            crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-                &s.raw_labels,
-                &s.title,
-            ) == StoryType::Iteration
-                && s.state == StoryState::Retired
-        })
+        .filter(|s| s.story_type() == StoryType::Iteration && s.state == StoryState::Retired)
         .map(|s| s.number)
         .filter(|iteration_number| {
             !stories.iter().any(|s| {

@@ -33,6 +33,7 @@ fn make_story(number: u64, story_type: StoryType) -> Story {
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
             .encode_story_type(story_type),
     );
+    s.story_type = story_type;
     s
 }
 

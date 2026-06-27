@@ -25,10 +25,7 @@ pub(crate) async fn handle_create_iteration(
     let r = refresh
         .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
     let existing_open_iteration = r.all_stories().into_iter().find(|s| {
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &s.raw_labels,
-            &s.title,
-        ) == crate::product_management::story::StoryType::Iteration
+        s.story_type() == crate::product_management::story::StoryType::Iteration
             && !s.is_closed
             && s.title.eq_ignore_ascii_case(&format!("Iteration {name}"))
     });
@@ -68,10 +65,7 @@ pub(crate) async fn handle_create_iteration(
         .all_stories()
         .into_iter()
         .filter(|s| {
-            crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-                &s.raw_labels,
-                &s.title,
-            ) == crate::product_management::story::StoryType::Iteration
+            s.story_type() == crate::product_management::story::StoryType::Iteration
                 && !s.is_closed
                 && s.number != number
         })

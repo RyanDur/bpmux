@@ -16,6 +16,7 @@ fn outcome(number: u64, title: &str, horizon: Horizon) -> Story {
     );
     s.raw_labels.push("outcome".to_string());
     s.raw_labels.push(GhLabelCodec.encode_horizon(horizon));
+    s.story_type = crate::product_management::story::StoryType::Outcome;
     s
 }
 
@@ -31,6 +32,7 @@ fn iteration_for(number: u64, outcome_number: u64, position: u32) -> Story {
     s.raw_labels
         .push(format!("parent-outcome-#{outcome_number}.{position}"));
     s.body = Some("## composed".to_string());
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

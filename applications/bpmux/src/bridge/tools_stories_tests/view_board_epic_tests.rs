@@ -33,6 +33,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
+    epic.story_type = StoryType::Epic;
     adapter.seed_stories(vec![child, epic]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -241,6 +242,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
+    epic.story_type = StoryType::Epic;
     adapter.seed_stories(vec![epic]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -339,6 +341,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
+    epic.story_type = StoryType::Epic;
     let mut child_a =
         Story::new_minimal(701, "child a".into(), StoryState::Accepted, ts, "pm".into());
     child_a.raw_labels.push("parent-epic-#700".to_string());
@@ -443,6 +446,7 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
+    epic.story_type = StoryType::Epic;
     adapter.seed_stories(vec![epic]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -499,6 +503,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
+    epic.story_type = StoryType::Epic;
     let mut a = Story::new_minimal(721, "a".into(), StoryState::Delivered, ts, "pm".into());
     a.raw_labels.push("parent-epic-#720".to_string());
     let mut b = Story::new_minimal(722, "b".into(), StoryState::Delivered, ts, "pm".into());
@@ -539,6 +544,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
+    epic.story_type = StoryType::Epic;
     let mut a = Story::new_minimal(731, "a".into(), StoryState::InProgress, ts, "pm".into());
     a.raw_labels.push("parent-epic-#730".to_string());
     adapter.seed_stories(vec![epic, a]);

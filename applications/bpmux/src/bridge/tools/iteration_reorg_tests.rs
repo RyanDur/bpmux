@@ -22,6 +22,7 @@ fn iteration(number: u64, name: &str) -> Story {
         "pm".into(),
     );
     s.raw_labels.push("iteration".to_string());
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

@@ -12,6 +12,7 @@ fn iter_story(number: u64, name: &str, state: StoryState) -> Story {
         "test".to_string(),
     );
     s.raw_labels.push("iteration".to_string());
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

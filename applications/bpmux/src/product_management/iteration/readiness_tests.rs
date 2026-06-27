@@ -17,6 +17,7 @@ fn iteration(number: u64) -> Story {
     );
     s.raw_labels.push("iteration".to_string());
     s.body = Some("## Iteration overview\n\ncomposed".to_string());
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

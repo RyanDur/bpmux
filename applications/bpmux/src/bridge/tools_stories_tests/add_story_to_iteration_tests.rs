@@ -31,6 +31,7 @@ fn iteration_seed(number: u64, name: &str) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec!["iteration".into(), "ready".into()];
+    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

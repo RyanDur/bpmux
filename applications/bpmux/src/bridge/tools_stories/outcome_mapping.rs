@@ -19,11 +19,7 @@ async fn mapped_iteration(
     iteration_number: u64,
 ) -> Result<Story, String> {
     let outcome = ensure_story_in_canonical_store(r, outcome_number).await?;
-    let story_type =
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &outcome.raw_labels,
-            &outcome.title,
-        );
+    let story_type = outcome.story_type();
     if story_type != StoryType::Outcome {
         return Err(format!(
             "#{outcome_number} is not an Outcome (story_type={:?}); it may be a story, not an outcome — outcomes: bpmux roadmap",
