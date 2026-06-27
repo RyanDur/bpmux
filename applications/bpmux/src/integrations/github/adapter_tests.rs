@@ -217,11 +217,6 @@ fn decode_story_metadata_decodes_body_when_present() {
         ),
         "body present in JSON must propagate to decoded Story (closes edit_story body-cascade-drop bug discovered 2026-05-14 23:33 UTC)"
     );
-    assert_eq!(
-        story.acceptance_test_path.as_deref(),
-        Some("applications/bpmux/src/bridge/tools/create_iteration_tests.rs"),
-        "acceptance_test_path must be parsed from body when body decoded"
-    );
 }
 
 #[test]

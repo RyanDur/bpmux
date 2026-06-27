@@ -17,7 +17,6 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         free_comments: Some(Vec::new()),
         gate_comments: Some(Vec::new()),
         is_closed,
-        acceptance_test_path: None,
         raw_labels: Vec::new(),
         body_etag: None,
     };

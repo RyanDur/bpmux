@@ -67,7 +67,6 @@ impl SourceAdapter for InMemorySourceAdapter {
         }
         if let Some(body) = s.bodies.get(&number) {
             story.body = Some(body.clone());
-            story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
         }
         Ok(Some(story))
     }
@@ -172,7 +171,6 @@ impl SourceAdapter for InMemorySourceAdapter {
                 SyncError::Other(format!("update_body: story #{number} not seeded"))
             })?;
         story.body = Some(body.to_string());
-        story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
         s.stories.insert(number, story.clone());
         Ok(story)
     }

@@ -17,7 +17,6 @@ fn epic(number: u64) -> Story {
         free_comments: None,
         gate_comments: None,
         is_closed: false,
-        acceptance_test_path: None,
         raw_labels: vec!["Epic".to_string(), "icebox".to_string()],
         body_etag: None,
     }
@@ -34,7 +33,6 @@ fn child(number: u64, parent: u64, story_type: StoryType, state: StoryState) -> 
         free_comments: None,
         gate_comments: None,
         is_closed: false,
-        acceptance_test_path: None,
         raw_labels: vec![
             format!("parent-epic-#{parent}"),
             crate::product_management::board::adapters::gh_label_codec::GhLabelCodec

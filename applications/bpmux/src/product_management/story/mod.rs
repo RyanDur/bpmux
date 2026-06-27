@@ -38,7 +38,6 @@ pub struct Story {
     pub free_comments: Option<Vec<FreeComment>>,
     pub gate_comments: Option<Vec<GateComment>>,
     pub is_closed: bool,
-    pub acceptance_test_path: Option<String>,
     pub raw_labels: Vec<String>,
     #[serde(default)]
     pub body_etag: Option<String>,
@@ -66,7 +65,6 @@ impl Story {
             free_comments: None,
             gate_comments: None,
             is_closed: false,
-            acceptance_test_path: None,
             raw_labels,
             body_etag: None,
         }

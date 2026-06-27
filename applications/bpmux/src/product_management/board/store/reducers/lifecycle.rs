@@ -20,7 +20,6 @@ pub(super) fn apply_story_created(
         free_comments: Some(Vec::new()),
         gate_comments: Some(Vec::new()),
         is_closed: false,
-        acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
         raw_labels: Vec::new(),
         body_etag: None,
     };
@@ -36,7 +35,6 @@ pub(super) fn apply_state_transitioned(w: &mut Stories, number: u64, new_state: 
 pub(super) fn apply_body_fetched(w: &mut Stories, number: u64, body: &str, etag: &Option<String>) {
     if let Some(story) = w.get_mut(&number) {
         story.body = Some(body.to_string());
-        story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
         story.body_etag = etag.clone();
     }
 }
@@ -50,7 +48,6 @@ pub(super) fn apply_title_updated(w: &mut Stories, number: u64, title: &str) {
 pub(super) fn apply_body_updated(w: &mut Stories, number: u64, body: &str) {
     if let Some(story) = w.get_mut(&number) {
         story.body = Some(body.to_string());
-        story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
     }
 }
 
@@ -74,7 +71,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
         existing.is_closed = story.is_closed;
         if story.body.is_some() {
             existing.body = story.body.clone();
-            existing.acceptance_test_path = story.acceptance_test_path.clone();
             existing.body_etag = None;
         }
     } else {

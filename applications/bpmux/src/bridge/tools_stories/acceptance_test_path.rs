@@ -142,7 +142,8 @@ pub(crate) fn validate_acceptance_test_path_at_pickup(
         .and_then(|v| v.as_str())
         .map(str::trim)
         .filter(|s| !s.is_empty());
-    let Some(path) = arg_path.or(story.acceptance_test_path.as_deref()) else {
+    let parsed = story.body.as_deref().and_then(parse_acceptance_test_path);
+    let Some(path) = arg_path.or(parsed.as_deref()) else {
         return Ok(());
     };
     check_path_exists(path)
@@ -163,7 +164,8 @@ pub(crate) fn validate_acceptance_test_path_at_deliver(
     ) {
         return Ok(());
     }
-    let Some(path) = story.acceptance_test_path.as_deref() else {
+    let parsed = story.body.as_deref().and_then(parse_acceptance_test_path);
+    let Some(path) = parsed.as_deref() else {
         return Ok(());
     };
     check_path_exists(path)

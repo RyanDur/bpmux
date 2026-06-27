@@ -42,7 +42,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         free_comments,
         gate_comments,
         is_closed,
-        acceptance_test_path,
         raw_labels,
         body_etag,
     } = decoded;
@@ -90,11 +89,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         crate::product_management::board::adapters::github::parent_epic_from_labels(raw_labels),
         Some(100),
         "parent_epic must decode from labels"
-    );
-    assert_eq!(
-        acceptance_test_path.as_deref(),
-        Some("tests/field_completeness_sentinel.rs"),
-        "acceptance_test_path must decode from body"
     );
     assert!(
         !raw_labels.is_empty(),
@@ -151,10 +145,6 @@ fn decode_story_metadata_returns_none_when_body_present_but_atp_absent() {
         "body": "plain body without acceptance test path section\n",
     });
     let decoded = decode_story_metadata(&json).expect("decode");
-    assert_eq!(
-        decoded.acceptance_test_path, None,
-        "ATP must be None when body lacks the section"
-    );
     assert_eq!(
         decoded.body.as_deref(),
         Some("plain body without acceptance test path section\n"),

@@ -70,7 +70,6 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.raw_labels = labels;
     if let Some(body) = v.get("body").and_then(|x| x.as_str()) {
         story.body = Some(body.to_string());
-        story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
     }
     Some(story)
 }
