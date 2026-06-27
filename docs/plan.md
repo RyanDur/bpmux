@@ -733,12 +733,25 @@ makes reader-migration safe:** `s.story_type() == story_type_from_labels_or_titl
 post-creation (state/acceptor/blocked/position deltas never touch it; ingest
 re-decodes), so the stored field never diverges from raw_labels.
 
-**NEXT (the established pattern, repeat per Story-shape field):** migrate the ~40
-`story_type_from_labels_or_title` readers onto `.story_type()` per-layer
-(transport/rest, bridge/tools, bridge/tools_stories, roadmap, iteration), each
-CI-green; then retire the selector. Then the same decode-at-ingest +
-accessor + migrate-readers for the other STORY-shape fields (acceptor,
-parent_epic, iteration_membership, tags/blocked, ready-order). THEN step 2: peel
+**story_type field COMPLETE (origin @ d7fa42fe).** Stored on Story; all 36
+readers across transport+bridge+domain migrated to `Story::story_type()`; only
+the ingest setter (`decode_story_metadata`) still decodes. KEY CORRECTION mid-way
+(the e2e net caught it): story_type is **authoritative-at-source**, NOT
+label-derived — a story is created label-less (type in the `StoryCreated` event /
+`[Epic]` title; the type label only reaches GitHub for the next ingest), so
+re-decoding it from stored `raw_labels` on label change clobbered every epic +
+optimistic iteration/outcome to Feature. Correct model: set it at creation
+(event) + ingest (full labels+title), PRESERVE through label churn. The reverted
+codec-decode-on-label-change mechanism (LabelDerivedFields carrying the decoded
+field) WAS right — just for the wrong field.
+
+**NEXT:** the other STORY-shape fields — acceptor, parent_epic,
+iteration_membership, tags/blocked, ready-order — ARE label-derived (applied AS
+labels into `raw_labels`), so the codec-decode-on-label-change pattern is the
+right approach for them (re-introduce LabelDerivedFields-carries-decoded-field +
+middleware decode + reducer assign, per field, accessor-seam, migrate readers,
+retire selector). Classify each field first (label-derived vs
+authoritative-at-source) — see the codec lesson. THEN step 2: peel
 Iteration/Outcome/Epic into their own types/collections (their shape fields —
 horizon, parent-outcome, review/dev-ok, current-iteration, iteration-order —
 leave with them). THEN P4/P5 identity-enum + id-on-create, Story-first.
