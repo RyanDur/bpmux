@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::bridge;
 use crate::message::{Message, MessageType};
 use crate::product_management::board::RefreshDriver;
-use crate::server::TestRefreshHandle;
+use crate::server::OrchestratorHandle;
 use crate::session;
 
 fn fire_board_invalidate(session: &Arc<session::Session>) {
@@ -50,7 +50,7 @@ fn put_num(args: &mut serde_json::Map<String, serde_json::Value>, key: &str, val
 
 async fn run_test_route<F, Fut>(
     session: Arc<session::Session>,
-    refresh: TestRefreshHandle,
+    refresh: OrchestratorHandle,
     dispatch: F,
 ) -> (StatusCode, Json<serde_json::Value>)
 where
@@ -89,7 +89,7 @@ pub struct CreateStoryReq {
 
 pub async fn post_test_create_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<CreateStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -125,7 +125,7 @@ pub struct CreateIterationReq {
 
 pub async fn post_test_create_iteration(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<CreateIterationReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -145,7 +145,7 @@ pub struct DesignateCurrentIterationReq {
 
 pub async fn post_test_designate_current_iteration(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<DesignateCurrentIterationReq>,
 ) -> impl IntoResponse {
     let Some(refresh) = refresh else {
@@ -193,7 +193,7 @@ pub struct MoveStoryReq {
 
 pub async fn post_test_move_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<MoveStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -220,7 +220,7 @@ pub struct EditStoryReq {
 
 pub async fn post_test_edit_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<EditStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -247,7 +247,7 @@ pub struct CommentOnStoryReq {
 
 pub async fn post_test_comment_on_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<CommentOnStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -270,7 +270,7 @@ pub struct StartStoryReq {
 
 pub async fn post_test_start_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<StartStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
@@ -293,7 +293,7 @@ pub struct FailDeskCheckReq {
 
 pub async fn post_test_fail_desk_check(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<FailDeskCheckReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
@@ -314,7 +314,7 @@ pub struct AcceptStoryReq {
 
 pub async fn post_test_accept_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<AcceptStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
@@ -335,7 +335,7 @@ pub struct DeliverStoryReq {
 
 pub async fn post_test_deliver_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<DeliverStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
@@ -358,7 +358,7 @@ pub struct CloseStoryReq {
 
 pub async fn post_test_close_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<CloseStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -427,7 +427,7 @@ pub struct FireSyncStatusReq {
 
 pub async fn post_test_fire_sync_status(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<FireSyncStatusReq>,
 ) -> impl IntoResponse {
     let Some(refresh) = refresh else {
@@ -470,7 +470,7 @@ pub struct ViewVelocityReq {
 }
 
 pub async fn post_test_view_velocity(
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<ViewVelocityReq>,
 ) -> impl IntoResponse {
     let Some(refresh) = refresh else {

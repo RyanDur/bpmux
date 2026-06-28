@@ -71,9 +71,9 @@ pub async fn post_reset_messages(
 
 pub async fn post_reset_stories(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
 ) -> impl IntoResponse {
-    let Some(refresh) = test_refresh.as_ref() else {
+    let Some(refresh) = orchestrator.as_ref() else {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             "reset_stories: tracker not configured (test-refresh handle absent)".to_string(),
@@ -137,10 +137,10 @@ pub struct SeedStoriesBody {
 
 pub async fn post_seed_stories(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
     Json(body): Json<SeedStoriesBody>,
 ) -> impl IntoResponse {
-    let Some(refresh) = test_refresh.as_ref() else {
+    let Some(refresh) = orchestrator.as_ref() else {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             "seed_stories: tracker not configured (test-refresh handle absent)".to_string(),

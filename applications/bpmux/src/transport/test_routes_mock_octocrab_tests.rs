@@ -12,7 +12,7 @@ use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::integrations::github::GitHubSourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::server::TestRefreshHandle;
+use crate::server::OrchestratorHandle;
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 
 fn fresh_test_session() -> Arc<session::Session> {
@@ -40,7 +40,7 @@ async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn Re
         .await
         .expect("seed-empty ingest");
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-    let test_refresh: TestRefreshHandle = Some(orch.clone());
+    let orchestrator: OrchestratorHandle = Some(orch.clone());
     let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()
         .route(
@@ -49,7 +49,7 @@ async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn Re
         )
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_session())
-        .layer(axum::Extension(test_refresh))
+        .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker));
     (router, orch)
 }

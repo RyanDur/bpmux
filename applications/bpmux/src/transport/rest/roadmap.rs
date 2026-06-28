@@ -14,10 +14,10 @@ pub struct RoadmapQuery {
 }
 
 pub async fn get_roadmap(
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
     Query(query): Query<RoadmapQuery>,
 ) -> impl IntoResponse {
-    let Some(refresh) = test_refresh.as_ref() else {
+    let Some(refresh) = orchestrator.as_ref() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             json_headers(),

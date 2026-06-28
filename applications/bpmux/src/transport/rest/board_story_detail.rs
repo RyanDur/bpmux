@@ -37,11 +37,11 @@ pub async fn get_story_comments(
 
 pub async fn get_story_timeline(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
     let Some(tracker) = tracker else {
-        if test_refresh.is_some() {
+        if orchestrator.is_some() {
             return (StatusCode::OK, json_headers(), "[]".to_string());
         }
         return (
@@ -57,7 +57,7 @@ pub async fn get_story_timeline(
             serde_json::to_string(&events).unwrap_or_else(|_| "[]".to_string()),
         ),
         Err(e) => {
-            if test_refresh.is_some() {
+            if orchestrator.is_some() {
                 return (StatusCode::OK, json_headers(), "[]".to_string());
             }
             (

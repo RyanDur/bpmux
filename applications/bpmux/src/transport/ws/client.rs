@@ -22,7 +22,7 @@ pub(crate) struct ClientCtx<'a> {
     pub pty_registry: &'a crate::room::LivePtyRegistry,
     pub pty_tx: &'a tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
     pub tracker: &'a crate::transport::rest::TrackerHandle,
-    pub test_refresh: &'a crate::server::TestRefreshHandle,
+    pub orchestrator: &'a crate::server::OrchestratorHandle,
     pub reply_tx: &'a tokio::sync::mpsc::UnboundedSender<ServerMessage>,
 }
 

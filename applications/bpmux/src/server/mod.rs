@@ -6,7 +6,7 @@ use crate::product_management::board::RefreshDriver;
 use crate::session;
 use crate::transport;
 
-pub type TestRefreshHandle = Option<Arc<dyn RefreshDriver>>;
+pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
 
 fn startup_routing_id(routing: &crate::routing::RoutingStore, identity: &str) -> String {
     routing
@@ -32,7 +32,7 @@ pub async fn run_server(
     let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
     let race_window_barrier = race_window_barrier_from_env();
 
-    let test_refresh: TestRefreshHandle = if test_mode_enabled() {
+    let orchestrator: OrchestratorHandle = if test_mode_enabled() {
         eprintln!(
             "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
         );
@@ -57,7 +57,7 @@ pub async fn run_server(
         None
     };
 
-    if let Some(refresh) = test_refresh.as_ref().cloned() {
+    if let Some(refresh) = orchestrator.as_ref().cloned() {
         tokio::spawn(crate::bridge::run_drain_loop(
             refresh.clone(),
             session.clone(),
@@ -86,7 +86,7 @@ pub async fn run_server(
         ci_state_store.clone(),
         ct.clone(),
     );
-    if let Some(refresh) = test_refresh.as_ref().cloned() {
+    if let Some(refresh) = orchestrator.as_ref().cloned() {
         store_inner = store_inner.with_refresh(
             refresh,
             crate::bridge::poll_interval_from_env(),
@@ -97,11 +97,11 @@ pub async fn run_server(
     store.spawn_action_drainer(action_rx);
     wire_store_listeners(&store, &session, &ci_state_store);
     wire_startup_roster(&store, &session, &pty_registry, &routing_store).await;
-    if let Some(refresh) = test_refresh.as_ref().cloned() {
+    if let Some(refresh) = orchestrator.as_ref().cloned() {
         spawn_board_broadcast_loop(refresh.clone(), session.clone(), ct.clone());
         spawn_owner_park_loop(refresh, store.clone(), ct.clone());
     }
-    start_polling(&store, test_refresh.is_some()).await;
+    start_polling(&store, orchestrator.is_some()).await;
 
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
@@ -114,7 +114,7 @@ pub async fn run_server(
         ci_state_store,
         ci_log_store,
         electron_capture_lock,
-        test_refresh,
+        orchestrator,
         store,
         pty_registry,
         routing_store,

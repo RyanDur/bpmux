@@ -10,7 +10,7 @@ use tower::ServiceExt;
 use crate::bridge;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::server::TestRefreshHandle;
+use crate::server::OrchestratorHandle;
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 
 fn fresh_test_session() -> Arc<session::Session> {
@@ -32,7 +32,7 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>, Arc<Bo
         .await
         .expect("seed-empty ingest");
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-    let test_refresh: TestRefreshHandle = Some(orch.clone());
+    let orchestrator: OrchestratorHandle = Some(orch.clone());
     let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()
         .route(
@@ -53,13 +53,13 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>, Arc<Bo
         )
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_session())
-        .layer(axum::Extension(test_refresh))
+        .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker));
     (router, orch, store)
 }
 
 fn fixture_test_mode_off() -> axum::Router {
-    let none_refresh: TestRefreshHandle = None;
+    let none_refresh: OrchestratorHandle = None;
     axum::Router::new()
         .route(
             "/api/test/create_story",
@@ -232,12 +232,12 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
     )]);
     let orch_concrete = SyncOrchestrator::new(store.clone(), adapter);
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-    let test_refresh: TestRefreshHandle = Some(orch.clone());
+    let orchestrator: OrchestratorHandle = Some(orch.clone());
     let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_session())
-        .layer(axum::Extension(test_refresh))
+        .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker));
 
     assert!(
@@ -588,7 +588,7 @@ async fn view_velocity_response_correctness_empty_corpus_returns_metrics_shape()
 
 #[tokio::test]
 async fn view_velocity_response_correctness_returns_503_when_test_mode_disabled() {
-    let none_refresh: TestRefreshHandle = None;
+    let none_refresh: OrchestratorHandle = None;
     let router = axum::Router::new()
         .route(
             "/api/test/view_velocity",

@@ -23,7 +23,7 @@ pub struct CloseIterationRequest {
 pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
     body: Option<axum::Json<CloseIterationRequest>>,
 ) -> impl IntoResponse {
     let iter_n = match body.and_then(|b| b.0.iteration_number) {
@@ -36,20 +36,20 @@ pub async fn post_close_iteration(
             );
         }
     };
-    post_close_iteration_canonical(session, tracker, test_refresh, iter_n).await
+    post_close_iteration_canonical(session, tracker, orchestrator, iter_n).await
 }
 
 async fn post_close_iteration_canonical(
     session: Arc<session::Session>,
     tracker: TrackerHandle,
-    test_refresh: crate::server::TestRefreshHandle,
+    orchestrator: crate::server::OrchestratorHandle,
     iteration_number: u64,
 ) -> (
     StatusCode,
     [(axum::http::HeaderName, &'static str); 1],
     String,
 ) {
-    let Some(refresh) = test_refresh.as_ref() else {
+    let Some(refresh) = orchestrator.as_ref() else {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             json_headers(),

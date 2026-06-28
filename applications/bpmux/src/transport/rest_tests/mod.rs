@@ -174,7 +174,7 @@ pub(super) fn tracker_for(server: &MockServer) -> crate::integrations::github::G
 
 pub(super) fn board_router(session: Arc<session::Session>, tracker: TrackerHandle) -> axum::Router {
     use axum::routing::{get, post};
-    let none_refresh: crate::server::TestRefreshHandle = None;
+    let none_refresh: crate::server::OrchestratorHandle = None;
     axum::Router::new()
         .route("/api/board", get(crate::transport::rest::get_board))
         .route(

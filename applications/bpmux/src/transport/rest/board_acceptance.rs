@@ -20,7 +20,7 @@ pub struct AcceptPayload {
 
 pub async fn post_accept_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<AcceptPayload>,
 ) -> impl IntoResponse {
@@ -45,7 +45,7 @@ pub async fn post_accept_story(
             return (StatusCode::BAD_REQUEST, json_headers(), err_body(&e));
         }
     };
-    let Some(refresh) = test_refresh.as_ref().cloned() else {
+    let Some(refresh) = orchestrator.as_ref().cloned() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             json_headers(),
@@ -84,7 +84,7 @@ pub struct RejectPayload {
 
 pub async fn post_reject_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<RejectPayload>,
 ) -> impl IntoResponse {
@@ -96,7 +96,7 @@ pub async fn post_reject_story(
             err_body("note must not be empty"),
         );
     }
-    let Some(refresh) = test_refresh.as_ref().cloned() else {
+    let Some(refresh) = orchestrator.as_ref().cloned() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             json_headers(),

@@ -8,7 +8,7 @@ use serde_json::Value;
 
 use crate::bridge;
 use crate::product_management::board::RefreshDriver;
-use crate::server::TestRefreshHandle;
+use crate::server::OrchestratorHandle;
 use crate::session;
 
 mod state_delta;
@@ -115,7 +115,7 @@ async fn dispatch(
 
 pub async fn post_rpc_tool(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     headers: HeaderMap,
     Path(tool): Path<String>,
     Json(body): Json<Value>,

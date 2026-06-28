@@ -34,11 +34,11 @@ fn reorder_label_ops(payload: &LabelMutationPayload) -> Vec<LabelOp> {
 
 pub async fn post_story_labels(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<LabelMutationPayload>,
 ) -> impl IntoResponse {
-    let Some(refresh) = test_refresh.as_ref().cloned() else {
+    let Some(refresh) = orchestrator.as_ref().cloned() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             json_headers(),

@@ -120,7 +120,7 @@ pub(super) async fn handle_set_outcome_horizon(
     );
     args.insert("to".to_string(), serde_json::json!(horizon));
     if let Err(e) =
-        crate::bridge::dispatch_reprioritize_outcome(args, identity, ctx.test_refresh.as_ref())
+        crate::bridge::dispatch_reprioritize_outcome(args, identity, ctx.orchestrator.as_ref())
             .await
     {
         send_json(
@@ -153,7 +153,7 @@ pub(super) async fn handle_reorder_outcome_iteration(
     );
     args.insert("position".to_string(), serde_json::json!(position));
     if let Err(e) =
-        crate::bridge::dispatch_reorder_outcome_iteration(args, identity, ctx.test_refresh.as_ref())
+        crate::bridge::dispatch_reorder_outcome_iteration(args, identity, ctx.orchestrator.as_ref())
             .await
     {
         send_json(
@@ -181,7 +181,7 @@ pub(super) async fn handle_reorder_iteration(
     );
     args.insert("position".to_string(), serde_json::json!(position));
     if let Err(e) =
-        crate::bridge::dispatch_reorder_iteration(args, identity, ctx.test_refresh.as_ref()).await
+        crate::bridge::dispatch_reorder_iteration(args, identity, ctx.orchestrator.as_ref()).await
     {
         send_json(
             tx,
@@ -208,7 +208,7 @@ pub(super) async fn handle_reprioritize_outcome(
     );
     args.insert("position".to_string(), serde_json::json!(position));
     if let Err(e) =
-        crate::bridge::dispatch_reprioritize_outcome(args, identity, ctx.test_refresh.as_ref())
+        crate::bridge::dispatch_reprioritize_outcome(args, identity, ctx.orchestrator.as_ref())
             .await
     {
         send_json(

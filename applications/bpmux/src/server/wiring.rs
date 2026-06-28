@@ -9,7 +9,7 @@ use crate::transport::auth::AuthState;
 use crate::transport::ci_log_store::CiLogStore;
 use crate::transport::ci_state_store::CiStateStore;
 
-use super::TestRefreshHandle;
+use super::OrchestratorHandle;
 
 pub(super) struct RouterDeps {
     pub auth_state: AuthState,
@@ -19,7 +19,7 @@ pub(super) struct RouterDeps {
     pub ci_state_store: CiStateStore,
     pub ci_log_store: CiLogStore,
     pub electron_capture_lock: Arc<tokio::sync::Mutex<()>>,
-    pub test_refresh: TestRefreshHandle,
+    pub orchestrator: OrchestratorHandle,
     pub store: Arc<Store>,
     pub pty_registry: Arc<LivePtyRegistry>,
     pub routing_store: Arc<RoutingStore>,
@@ -36,14 +36,14 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         ci_state_store,
         ci_log_store,
         electron_capture_lock,
-        test_refresh,
+        orchestrator,
         store,
         pty_registry,
         routing_store,
         commitment_store,
         port,
     } = deps;
-    let has_refresh = test_refresh.is_some();
+    let has_refresh = orchestrator.is_some();
     let gated_routes = super::gated_routes(auth_state, unfurl_cache);
     let test_seed_routes = super::test_seed_routes();
     let test_routes = super::test_routes(has_refresh);
@@ -96,7 +96,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(ci_state_store))
         .layer(axum::Extension(ci_log_store))
         .layer(axum::Extension(electron_capture_lock))
-        .layer(axum::Extension(test_refresh))
+        .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(store))
         .layer(axum::Extension(pty_registry))
         .layer(axum::Extension(routing_store))

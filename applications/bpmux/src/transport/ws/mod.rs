@@ -39,7 +39,7 @@ struct WsDeps {
     pty_registry: Arc<crate::room::LivePtyRegistry>,
     routing: Arc<crate::routing::RoutingStore>,
     tracker: crate::transport::rest::TrackerHandle,
-    test_refresh: crate::server::TestRefreshHandle,
+    orchestrator: crate::server::OrchestratorHandle,
 }
 
 pub async fn ws_handler(
@@ -49,7 +49,7 @@ pub async fn ws_handler(
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
     axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
     axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
 ) -> Response {
     let deps = WsDeps {
         session,
@@ -57,7 +57,7 @@ pub async fn ws_handler(
         pty_registry,
         routing,
         tracker,
-        test_refresh,
+        orchestrator,
     };
     ws.on_upgrade(move |socket| handle_ws(socket, deps))
 }
@@ -80,7 +80,7 @@ async fn run_ws_session(
         pty_registry,
         routing,
         tracker,
-        test_refresh,
+        orchestrator,
     } = deps;
     let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
     let routing_session_id = routing.resolve(short_name(&identity)).into_iter().next();
@@ -101,7 +101,7 @@ async fn run_ws_session(
     .await?;
     let snapshot_msg = build_state_snapshot_message(&store);
     send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
-    if let Some(refresh) = test_refresh.as_ref() {
+    if let Some(refresh) = orchestrator.as_ref() {
         let outcomes = serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
         send_json(
             &mut tx,
@@ -215,7 +215,7 @@ async fn run_ws_session(
                                 pty_registry: &pty_registry,
                                 pty_tx: &pty_tx,
                                 tracker: &tracker,
-                                test_refresh: &test_refresh,
+                                orchestrator: &orchestrator,
                                 reply_tx: &reply_tx,
                             };
                             if let Some(new_identity) = handle_client_message(&text, &identity, &client_ctx, &mut tx, &mut pty_readers).await? {

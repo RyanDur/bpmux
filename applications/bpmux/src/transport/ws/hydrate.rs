@@ -77,11 +77,11 @@ pub(super) async fn handle_history_hydrate(
 pub(super) async fn handle_board_hydrate(
     ctx: &ClientCtx<'_>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let test_refresh = ctx.test_refresh.clone();
+    let orchestrator = ctx.orchestrator.clone();
     let tracker = ctx.tracker.clone();
     let reply_tx = ctx.reply_tx.clone();
     tokio::spawn(async move {
-        let stories: Option<Vec<serde_json::Value>> = if let Some(refresh) = test_refresh.as_ref() {
+        let stories: Option<Vec<serde_json::Value>> = if let Some(refresh) = orchestrator.as_ref() {
             if refresh.all_stories().is_empty() {
                 let _ = refresh.refresh_all().await;
             }
@@ -98,7 +98,7 @@ pub(super) async fn handle_board_hydrate(
                 crate::transport::rest::board_snapshot_message(serde_json::Value::Array(stories));
             let _ = reply_tx.send(ServerMessage::from(msg));
         }
-        if let Some(refresh) = test_refresh.as_ref() {
+        if let Some(refresh) = orchestrator.as_ref() {
             let outcomes =
                 serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
             let _ = reply_tx.send(ServerMessage::from(

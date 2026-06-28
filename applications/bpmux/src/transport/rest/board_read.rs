@@ -6,9 +6,9 @@ use super::shared::{TrackerHandle, err_body, json_headers};
 
 pub async fn get_board(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
-    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
 ) -> impl IntoResponse {
-    if let Some(refresh) = test_refresh.as_ref() {
+    if let Some(refresh) = orchestrator.as_ref() {
         if refresh.all_stories().is_empty() {
             match refresh.refresh_all().await {
                 Ok(()) => {
