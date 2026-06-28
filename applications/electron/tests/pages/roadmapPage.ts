@@ -64,6 +64,22 @@ export class RoadmapPage {
       .click()
   }
 
+  async focusOutcome(title: string): Promise<void> {
+    await this.outcome(title).click()
+  }
+
+  drillIterationNames(): Locator {
+    return this.win.locator('.roadmap-drill-iteration-name')
+  }
+
+  iterationGrip(iterationNumber: number): Locator {
+    return this.win.getByRole('button', { name: `Drag to reorder #${iterationNumber}` })
+  }
+
+  async dragIteration(fromIteration: number, ontoIteration: number): Promise<void> {
+    await this.iterationGrip(fromIteration).dragTo(this.iterationGrip(ontoIteration))
+  }
+
   headerIteration(): Locator {
     return this.win.locator('.board-iteration-name')
   }

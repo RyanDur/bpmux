@@ -50,6 +50,7 @@ export const SessionActionType = {
   OlderHistoryRequested: 'session/olderHistoryRequested',
   BoardHydrateRequested: 'session/boardHydrateRequested',
   OutcomeHorizonChangeRequested: 'session/outcomeHorizonChangeRequested',
+  OutcomeIterationReorderRequested: 'session/outcomeIterationReorderRequested',
   PtySubscribeRequested: 'session/ptySubscribeRequested',
   PtyInputRequested: 'session/ptyInputRequested',
   PtyResizeRequested: 'session/ptyResizeRequested',
@@ -111,6 +112,12 @@ export type SessionAction =
       type: typeof SessionActionType.OutcomeHorizonChangeRequested
       outcomeNumber: number
       horizon: 'now' | 'next' | 'later'
+    }
+  | {
+      type: typeof SessionActionType.OutcomeIterationReorderRequested
+      outcomeNumber: number
+      iterationNumber: number
+      position: number
     }
   | { type: typeof SessionActionType.PtySubscribeRequested; terminalId: string }
   | { type: typeof SessionActionType.PtyInputRequested; terminalId: string; keystroke: string }
@@ -251,6 +258,17 @@ export const outcomeHorizonChangeRequested = (
   type: SessionActionType.OutcomeHorizonChangeRequested,
   outcomeNumber,
   horizon
+})
+
+export const outcomeIterationReorderRequested = (
+  outcomeNumber: number,
+  iterationNumber: number,
+  position: number
+): SessionAction => ({
+  type: SessionActionType.OutcomeIterationReorderRequested,
+  outcomeNumber,
+  iterationNumber,
+  position
 })
 
 export const ptySubscribeRequested = (terminalId: string): SessionAction => ({

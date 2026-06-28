@@ -142,8 +142,15 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         crate::product_management::board::adapters::github::outcome_membership_from_labels(
             &refresh.story(710).expect("present").raw_labels
         ),
-        Some((700, 3)),
-        "the iteration reads its new priority-order within the outcome"
+        Some((700, 2)),
+        "moving 710 to the end clamps to the band size and lands it last — densely renumbered to 2, not the sparse 3"
+    );
+    assert_eq!(
+        crate::product_management::board::adapters::github::outcome_membership_from_labels(
+            &refresh.story(720).expect("present").raw_labels
+        ),
+        Some((700, 1)),
+        "the sibling shifts up to fill the gap — the whole outcome renumbers 1..N server-side (insert-and-shift, like a band)"
     );
     assert_eq!(
         drill_iteration_numbers(&refresh, 700),

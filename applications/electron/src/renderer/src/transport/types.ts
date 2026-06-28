@@ -245,6 +245,13 @@ export interface ClientSetOutcomeHorizon {
   horizon: 'now' | 'next' | 'later'
 }
 
+export interface ClientReorderOutcomeIteration {
+  type: 'reorder_outcome_iteration'
+  outcome_number: number
+  iteration_number: number
+  position: number
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -259,6 +266,7 @@ export type ClientMessage =
   | ClientHistoryPage
   | ClientBoardHydrate
   | ClientSetOutcomeHorizon
+  | ClientReorderOutcomeIteration
 
 export interface ChatMessage {
   id: string

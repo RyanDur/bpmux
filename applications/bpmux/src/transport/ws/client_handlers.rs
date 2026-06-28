@@ -133,3 +133,36 @@ pub(super) async fn handle_set_outcome_horizon(
     }
     Ok(())
 }
+
+pub(super) async fn handle_reorder_outcome_iteration(
+    ctx: &ClientCtx<'_>,
+    tx: &mut SplitSink<WebSocket, WsMessage>,
+    identity: &str,
+    outcome_number: u64,
+    iteration_number: u64,
+    position: u32,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "outcome_number".to_string(),
+        serde_json::json!(outcome_number),
+    );
+    args.insert(
+        "iteration_number".to_string(),
+        serde_json::json!(iteration_number),
+    );
+    args.insert("position".to_string(), serde_json::json!(position));
+    if let Err(e) =
+        crate::bridge::dispatch_reorder_outcome_iteration(args, identity, ctx.test_refresh.as_ref())
+            .await
+    {
+        send_json(
+            tx,
+            &ServerMessage::Error {
+                reason: format!("reorder outcome iteration failed: {e}"),
+            },
+        )
+        .await?;
+    }
+    Ok(())
+}

@@ -85,14 +85,68 @@ pub(crate) async fn handle_reorder_outcome_iteration(
     let r = refresh.ok_or("reorder_outcome_iteration requires refresh (RefreshDriver)")?;
     mapped_iteration(r, outcome_number, iteration_number).await?;
 
-    r.mutate_sync(BoardEvent::OutcomeMembershipSet {
-        meta: meta_for(agent_name),
-        number: iteration_number,
+    let band_size = reorder_iterations_within_outcome(
+        r,
+        agent_name,
         outcome_number,
+        iteration_number,
         position,
-    })
-    .map_err(|e| format!("#{iteration_number} outcome-reorder enqueue failed: {e}"))?;
+    )?;
     Ok(format!(
-        "iteration #{iteration_number} reordered to priority {position} in outcome #{outcome_number}"
+        "iteration #{iteration_number} reordered to priority {position} of {band_size} in outcome #{outcome_number}"
     ))
+}
+
+fn outcome_position_of(iteration: &Story) -> Option<u32> {
+    crate::product_management::board::adapters::github::outcome_membership_from_labels(
+        &iteration.raw_labels,
+    )
+    .map(|(_, position)| position)
+}
+
+fn reorder_iterations_within_outcome(
+    r: &Arc<dyn RefreshDriver>,
+    agent_name: &str,
+    outcome_number: u64,
+    iteration_number: u64,
+    requested_position: u32,
+) -> Result<u32, String> {
+    let all = r.all_stories();
+    let mut building =
+        crate::product_management::iteration::readiness::building_iterations(outcome_number, &all);
+    building.sort_by_key(|iteration| {
+        (
+            outcome_position_of(iteration).unwrap_or(u32::MAX),
+            iteration.number,
+        )
+    });
+
+    let band_size = building.len() as u32;
+    let clamped = requested_position.clamp(1, band_size.max(1));
+    let mut sequence: Vec<u64> = building
+        .iter()
+        .map(|iteration| iteration.number)
+        .filter(|number| *number != iteration_number)
+        .collect();
+    let insert_index = (clamped as usize - 1).min(sequence.len());
+    sequence.insert(insert_index, iteration_number);
+
+    for (index, number) in sequence.iter().enumerate() {
+        let new_position = (index + 1) as u32;
+        let current = building
+            .iter()
+            .find(|iteration| iteration.number == *number)
+            .and_then(|iteration| outcome_position_of(iteration));
+        if current == Some(new_position) {
+            continue;
+        }
+        r.mutate_sync(BoardEvent::OutcomeMembershipSet {
+            meta: meta_for(agent_name),
+            number: *number,
+            outcome_number,
+            position: new_position,
+        })
+        .map_err(|e| format!("#{number} outcome-reorder enqueue failed: {e}"))?;
+    }
+    Ok(band_size)
 }

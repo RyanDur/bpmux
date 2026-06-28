@@ -96,7 +96,6 @@ const RoadmapOutcomeCard = ({
         className="roadmap-outcome-bands"
         role="group"
         aria-label={`Move ${outcome.name} to a horizon`}
-        data-test={`roadmap-outcome-bands-${outcome.number}`}
       >
         {HORIZONS.map(({ horizon: target, label }) => (
           <button

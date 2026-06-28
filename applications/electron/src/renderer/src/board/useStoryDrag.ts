@@ -3,7 +3,8 @@ import { useCallback, useState } from 'react'
 export const DRAG_MIMETYPE_REGISTRY = {
   STORY_ROW: 'application/x-bpmux-story',
   ITERATION_MEMBER: 'application/x-bpmux-iteration-member',
-  ITERATION_ITSELF: 'application/x-bpmux-iteration-itself'
+  ITERATION_ITSELF: 'application/x-bpmux-iteration-itself',
+  OUTCOME_ITERATION: 'application/x-bpmux-outcome-iteration'
 } as const
 
 export type DragMimeType = (typeof DRAG_MIMETYPE_REGISTRY)[keyof typeof DRAG_MIMETYPE_REGISTRY]

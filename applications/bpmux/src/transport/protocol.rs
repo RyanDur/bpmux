@@ -66,6 +66,12 @@ pub enum ClientMessage {
         outcome_number: u64,
         horizon: String,
     },
+    #[serde(rename = "reorder_outcome_iteration")]
+    ReorderOutcomeIteration {
+        outcome_number: u64,
+        iteration_number: u64,
+        position: u32,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

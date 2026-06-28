@@ -174,6 +174,14 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           horizon: action.horizon
         })
         return
+      case SessionActionType.OutcomeIterationReorderRequested:
+        send({
+          type: 'reorder_outcome_iteration',
+          outcome_number: action.outcomeNumber,
+          iteration_number: action.iterationNumber,
+          position: action.position
+        })
+        return
       case SessionActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return
