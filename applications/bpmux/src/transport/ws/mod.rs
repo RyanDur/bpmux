@@ -16,6 +16,7 @@ mod client_handlers;
 mod delivery;
 mod hydrate;
 mod peer_lag;
+mod roadmap_write_handlers;
 mod roster;
 mod session_io;
 mod snapshot;
