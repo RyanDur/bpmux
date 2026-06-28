@@ -75,3 +75,22 @@ pub(crate) fn broadcast_outcomes(
     let outcomes = serde_json::Value::Array(super::board::board_outcomes(refresh));
     session.broadcast_ephemeral(&outcomes_message(outcomes));
 }
+
+pub(crate) fn iterations_message(iterations: serde_json::Value) -> crate::message::Message {
+    crate::message::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: crate::message::MessageType::StateDelta,
+        state_delta: Some(crate::message::StateDeltaPayload::Iterations { iterations }),
+        ..crate::message::Message::default()
+    }
+}
+
+pub(crate) fn broadcast_iterations(
+    session: &session::Session,
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) {
+    let iterations = serde_json::Value::Array(super::board::board_iterations(refresh));
+    session.broadcast_ephemeral(&iterations_message(iterations));
+}

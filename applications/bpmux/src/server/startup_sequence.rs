@@ -69,7 +69,7 @@ pub(super) fn spawn_owner_park_loop(
     });
 }
 
-pub(super) fn spawn_outcomes_broadcast_loop(
+pub(super) fn spawn_board_broadcast_loop(
     refresh: Arc<dyn RefreshDriver>,
     session: Arc<session::Session>,
     ct: CancellationToken,
@@ -82,6 +82,7 @@ pub(super) fn spawn_outcomes_broadcast_loop(
                 received = events.recv() => match received {
                     Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
                         crate::transport::rest::shared::broadcast_outcomes(&session, &refresh);
+                        crate::transport::rest::shared::broadcast_iterations(&session, &refresh);
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
                 }

@@ -36,6 +36,8 @@ pub enum StateDeltaPayload {
     BoardSnapshot { stories: serde_json::Value },
     #[serde(rename = "outcomes")]
     Outcomes { outcomes: serde_json::Value },
+    #[serde(rename = "iterations")]
+    Iterations { iterations: serde_json::Value },
 }
 
 impl StateDeltaPayload {

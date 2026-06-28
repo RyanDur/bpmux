@@ -33,6 +33,33 @@ pub(crate) fn ordered_board_stories(
     crate::product_management::board::ready_order_label::sort_board_ready_by_membership(items)
 }
 
+pub(crate) fn board_iterations(
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) -> Vec<serde_json::Value> {
+    use crate::product_management::iteration::readiness::iteration_readiness;
+    let all = refresh.all_stories();
+    let workflow = crate::workflow::current_workflow();
+    refresh
+        .iterations()
+        .iter()
+        .map(|iteration| {
+            let number = iteration.id().saved_number().unwrap_or(0);
+            let members: Vec<&crate::product_management::story::Story> = all
+                .iter()
+                .filter(|m| m.iteration_membership().map(|(it, _)| it) == Some(number))
+                .collect();
+            serde_json::json!({
+                "number": number,
+                "title": iteration.content.title,
+                "iteration_order": iteration.iteration_order,
+                "is_current": iteration.is_current,
+                "complete": iteration.complete,
+                "readiness": iteration_readiness(iteration, &members, workflow),
+            })
+        })
+        .collect()
+}
+
 pub(crate) fn board_outcomes(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) -> Vec<serde_json::Value> {

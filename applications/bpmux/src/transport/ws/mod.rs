@@ -108,6 +108,13 @@ async fn run_ws_session(
             &ServerMessage::from(crate::transport::rest::outcomes_message(outcomes)),
         )
         .await?;
+        let iterations =
+            serde_json::Value::Array(crate::transport::rest::board_iterations(refresh));
+        send_json(
+            &mut tx,
+            &ServerMessage::from(crate::transport::rest::iterations_message(iterations)),
+        )
+        .await?;
     }
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;

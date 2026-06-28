@@ -9,6 +9,7 @@ import {
   type SyncStatusWire
 } from './types'
 import type { RoadmapOutcomeData } from '../board/selectRoadmap'
+import type { BoardIterationData } from '../board/selectIterations'
 
 const ciState = D.literalUnion('unknown', 'green', 'red', 'running', 'quota_exhausted')
 
@@ -85,6 +86,17 @@ const roadmapIteration = D.object({
   }
 })
 
+const boardIteration: D.Decoder<BoardIterationData> = D.object({
+  required: {
+    number: D.number,
+    title: D.string,
+    iteration_order: D.nullable(D.number),
+    is_current: D.boolean,
+    complete: D.boolean,
+    readiness: iterationReadinessWire
+  }
+})
+
 const roadmapOutcome: D.Decoder<RoadmapOutcomeData> = D.object({
   required: {
     number: D.number,
@@ -134,5 +146,8 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
   }),
   D.object({ required: { domain: D.literal('board_invalidated'), reason: D.string } }),
   D.object({ required: { domain: D.literal('board_snapshot'), stories: D.array(D.unknown) } }),
-  D.object({ required: { domain: D.literal('outcomes'), outcomes: D.array(roadmapOutcome) } })
+  D.object({ required: { domain: D.literal('outcomes'), outcomes: D.array(roadmapOutcome) } }),
+  D.object({
+    required: { domain: D.literal('iterations'), iterations: D.array(boardIteration) }
+  })
 )
