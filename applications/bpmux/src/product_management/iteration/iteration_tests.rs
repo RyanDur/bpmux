@@ -1,10 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::Iteration;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::product_management::board::adapters::github::decode_iteration;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, Relationships,
+};
 use crate::product_management::story::{Story, StoryKey, StoryState};
 
-fn iteration_story(labels: Vec<String>, closed: bool) -> Story {
+fn iteration_story(labels: Vec<String>, body: Option<String>, closed: bool) -> Story {
     let mut story = Story::new_minimal(
         710,
         "Iteration Crux".to_string(),
@@ -13,28 +16,33 @@ fn iteration_story(labels: Vec<String>, closed: bool) -> Story {
         "pm".to_string(),
     );
     story.raw_labels = labels;
+    story.body = body;
     story.is_closed = closed;
     story
 }
 
 #[test]
-fn from_story_decodes_every_iteration_label_into_a_field() {
+fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
     let codec = GhLabelCodec;
-    let iteration = Iteration::from_story(&iteration_story(
+    let body = IterationRelationships {
+        outcome: Some(900),
+        stories: vec![101, 102],
+    }
+    .write_into_body("## Iteration Crux\n");
+    let iteration = decode_iteration(&iteration_story(
         vec![
-            codec.encode_parent_outcome(900, 2),
-            codec.encode_iteration_order(5),
             codec.encode_iteration_review_closed("designer"),
             codec.encode_iteration_dev_ok("dev"),
             codec.encode_current_iteration(),
         ],
+        Some(body),
         false,
     ));
     assert_eq!(iteration.id(), StoryKey::Saved(710));
     assert_eq!(iteration.content.title, "Iteration Crux");
-    assert_eq!(iteration.outcome_membership, Some((900, 2)));
+    assert_eq!(iteration.outcome, Some(900));
     assert_eq!(iteration.builds_outcome(), Some(900));
-    assert_eq!(iteration.iteration_order, Some(5));
+    assert_eq!(iteration.stories, vec![101, 102]);
     assert_eq!(iteration.review_closers, vec!["designer".to_string()]);
     assert_eq!(iteration.dev_ok_by, vec!["dev".to_string()]);
     assert!(iteration.is_current);
@@ -42,11 +50,11 @@ fn from_story_decodes_every_iteration_label_into_a_field() {
 }
 
 #[test]
-fn from_story_leaves_unlabelled_facts_empty_and_reads_closed_as_complete() {
-    let iteration = Iteration::from_story(&iteration_story(vec![], true));
-    assert_eq!(iteration.outcome_membership, None);
+fn decode_leaves_an_unannotated_iteration_empty_and_reads_closed_as_complete() {
+    let iteration = decode_iteration(&iteration_story(vec![], None, true));
+    assert_eq!(iteration.outcome, None);
     assert_eq!(iteration.builds_outcome(), None);
-    assert_eq!(iteration.iteration_order, None);
+    assert!(iteration.stories.is_empty());
     assert!(iteration.review_closers.is_empty());
     assert!(iteration.dev_ok_by.is_empty());
     assert!(!iteration.is_current);

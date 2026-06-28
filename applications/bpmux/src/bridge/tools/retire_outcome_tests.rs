@@ -4,6 +4,9 @@
 use crate::bridge::tools_stories::handle_retire_outcome;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, OutcomeRelationships, Relationships,
+};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
@@ -35,7 +38,30 @@ fn iteration_in_outcome(number: u64, outcome: u64) -> Story {
         StoryType::Iteration,
         &[],
     );
-    s.raw_labels.push(format!("parent-outcome-#{outcome}.1"));
+    s.body = Some(
+        IterationRelationships {
+            outcome: Some(outcome),
+            stories: vec![],
+        }
+        .write_into_body("## composed"),
+    );
+    s
+}
+
+fn outcome_with(number: u64, iterations: Vec<u64>) -> Story {
+    let mut s = seed(
+        number,
+        "Outcome",
+        StoryType::Outcome,
+        &["outcome", "horizon.now"],
+    );
+    s.body = Some(
+        OutcomeRelationships {
+            roadmap: None,
+            iterations,
+        }
+        .write_into_body("## Outcome\n"),
+    );
     s
 }
 
@@ -140,12 +166,7 @@ async fn retire_with_no_reason_is_rejected_1761() {
 #[tokio::test]
 async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
     let refresh = build_refresh(vec![
-        seed(
-            700,
-            "Outcome",
-            StoryType::Outcome,
-            &["outcome", "horizon.now"],
-        ),
+        outcome_with(700, vec![710, 720]),
         iteration_in_outcome(710, 700),
         iteration_in_outcome(720, 700),
     ])

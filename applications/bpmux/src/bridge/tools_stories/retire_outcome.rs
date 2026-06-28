@@ -49,16 +49,7 @@ pub(crate) async fn handle_retire_outcome(
         .map_err(|e| format!("#{outcome_number} retire-tag enqueue failed: {e}"))?;
     }
 
-    let orphaned = r
-        .all_stories()
-        .iter()
-        .filter(|s| {
-            crate::product_management::board::adapters::github::outcome_membership_from_labels(
-                &s.raw_labels,
-            )
-            .is_some_and(|(owner, _)| owner == outcome_number)
-        })
-        .count();
+    let orphaned = outcome.iterations.len();
     let mapping_note = match orphaned {
         0 => String::new(),
         n => format!(" — {n} iteration(s) now unmapped (re-home: outcome add ...)"),

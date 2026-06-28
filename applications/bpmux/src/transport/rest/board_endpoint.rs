@@ -3,6 +3,9 @@
 use super::board::{board_outcomes, ordered_board_stories};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, OutcomeRelationships, Relationships,
+};
 use crate::product_management::board::{BoardStore, SyncOrchestrator};
 use crate::product_management::story::{Story, StoryState};
 use chrono::{TimeZone, Utc};
@@ -56,7 +59,7 @@ fn find(stories: &[serde_json::Value], number: u64) -> &serde_json::Value {
         .expect("story present in snapshot")
 }
 
-fn outcome(number: u64) -> Story {
+fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
         number,
         "An outcome".to_string(),
@@ -66,21 +69,33 @@ fn outcome(number: u64) -> Story {
     );
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
     s.story_type = crate::product_management::story::StoryType::Outcome;
+    s.body = Some(
+        OutcomeRelationships {
+            roadmap: None,
+            iterations,
+        }
+        .write_into_body("## Outcome\n"),
+    );
     s
 }
 
-fn building_iteration(number: u64, outcome_number: u64, position: u32) -> Story {
+fn building_iteration(number: u64, outcome_number: u64) -> Story {
     let mut s = iteration(number);
-    s.raw_labels
-        .push(format!("parent-outcome-#{outcome_number}.{position}"));
+    s.body = Some(
+        IterationRelationships {
+            outcome: Some(outcome_number),
+            stories: vec![],
+        }
+        .write_into_body(s.body.as_deref().unwrap_or_default()),
+    );
     s
 }
 
 #[tokio::test]
 async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738() {
     let orch = orchestrator(vec![
-        outcome(3000),
-        building_iteration(3010, 3000, 1),
+        outcome(3000, vec![3010]),
+        building_iteration(3010, 3000),
         member(3011, 3010, 100),
     ])
     .await;
@@ -113,7 +128,7 @@ async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738
 
 #[tokio::test]
 async fn outcomes_never_ride_in_the_board_story_collection_1738() {
-    let orch = orchestrator(vec![outcome(3000)]).await;
+    let orch = orchestrator(vec![outcome(3000, vec![])]).await;
     let stories = ordered_board_stories(&orch);
     assert!(
         !stories.iter().any(|s| s["number"].as_u64() == Some(3000)),

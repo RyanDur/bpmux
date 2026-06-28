@@ -4,6 +4,9 @@
 use super::board::{board_iterations, board_roadmap};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, OutcomeRelationships, Relationships,
+};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{Story, StoryState, StoryType};
@@ -79,19 +82,27 @@ async fn board_roadmap_serves_flat_priority_cards_carrying_the_enriched_state() 
 #[tokio::test]
 async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() {
     let mut iteration = seed(810, "Iteration", StoryType::Iteration, &[]);
-    iteration
-        .raw_labels
-        .push("parent-outcome-#700.2".to_string());
-    let refresh = build_refresh(vec![
-        seed(
-            700,
-            "Outcome",
-            StoryType::Outcome,
-            &["outcome", "horizon.now"],
-        ),
-        iteration,
-    ])
-    .await;
+    iteration.body = Some(
+        IterationRelationships {
+            outcome: Some(700),
+            stories: vec![],
+        }
+        .write_into_body("## composed"),
+    );
+    let mut outcome = seed(
+        700,
+        "Outcome",
+        StoryType::Outcome,
+        &["outcome", "horizon.now"],
+    );
+    outcome.body = Some(
+        OutcomeRelationships {
+            roadmap: None,
+            iterations: vec![810],
+        }
+        .write_into_body("## Outcome\n"),
+    );
+    let refresh = build_refresh(vec![outcome, iteration]).await;
 
     let iterations = board_iterations(&refresh);
     let mapped = iterations
@@ -104,7 +115,7 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
         "the iteration carries which outcome it builds — the client joins drill-in iterations by this key"
     );
     assert_eq!(
-        mapped["outcome_position"], 2,
-        "and its position within that outcome, so the drill orders without a second round-trip"
+        mapped["outcome_position"], 1,
+        "and its 1-based position within that outcome's ordered list, so the drill orders without a second round-trip"
     );
 }

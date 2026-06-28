@@ -2,6 +2,9 @@ use super::helpers::{
     ensure_outcome_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
     role_from_name,
 };
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, OutcomeRelationships, Relationships,
+};
 
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -95,21 +98,34 @@ pub(crate) async fn handle_map_iteration_to_outcome(
             story_type
         ));
     }
-    ensure_outcome_in_canonical_store(r, outcome_number).await?;
-    let meta = crate::product_management::board::events::EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
-    };
-    r.mutate_sync(
-        crate::product_management::board::BoardEvent::OutcomeMembershipSet {
-            meta,
-            number: iteration_number,
-            outcome_number,
-            position,
-        },
-    )
-    .map_err(|e| format!("#{iteration_number} outcome-membership enqueue failed: {e}"))?;
+    let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
+
+    let mut parent = outcome
+        .content
+        .body
+        .as_deref()
+        .and_then(OutcomeRelationships::read_from_body)
+        .unwrap_or_default();
+    parent
+        .iterations
+        .retain(|number| *number != iteration_number);
+    let insert_index = (position.max(1) as usize - 1).min(parent.iterations.len());
+    parent.iterations.insert(insert_index, iteration_number);
+    let outcome_body = parent.write_into_body(outcome.content.body.as_deref().unwrap_or_default());
+    r.update_body(outcome_number, outcome_body)
+        .await
+        .map_err(|e| format!("#{outcome_number} iteration-map body update failed: {e}"))?;
+
+    let mut child = iteration
+        .body()
+        .and_then(IterationRelationships::read_from_body)
+        .unwrap_or_default();
+    child.outcome = Some(outcome_number);
+    let iteration_body = child.write_into_body(iteration.body().unwrap_or_default());
+    r.update_body(iteration_number, iteration_body)
+        .await
+        .map_err(|e| format!("#{iteration_number} outcome-FK-set body update failed: {e}"))?;
+
     Ok(format!(
         "iteration #{iteration_number} maps to outcome #{outcome_number} at position {position}"
     ))

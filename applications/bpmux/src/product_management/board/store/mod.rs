@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use super::events::BoardEvent;
+use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{Story, StoryKey, StoryState, StoryType};
@@ -115,7 +116,7 @@ impl BoardStore {
                 .values()
                 .filter_map(|item| item.as_story())
                 .filter(|story| story.story_type() == StoryType::Iteration)
-                .map(Iteration::from_story)
+                .map(decode_iteration)
                 .collect()
         })
     }
@@ -127,7 +128,7 @@ impl BoardStore {
                 .get(&StoryKey::Saved(number))
                 .and_then(|item| item.as_story())
                 .filter(|story| story.story_type() == StoryType::Iteration)
-                .map(Iteration::from_story)
+                .map(decode_iteration)
         })
     }
 

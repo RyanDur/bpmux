@@ -2,6 +2,9 @@ use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::{
     horizon_from_labels, horizon_order_from_labels,
 };
+use crate::product_management::board::adapters::relationships::{
+    OutcomeRelationships, Relationships,
+};
 use crate::product_management::board::item::Content;
 use crate::product_management::story::{Horizon, Story, StoryKey, StoryState};
 
@@ -21,6 +24,7 @@ pub enum OutcomeLifecycle {
 pub struct Outcome {
     pub content: Content,
     pub lifecycle: OutcomeLifecycle,
+    pub iterations: Vec<u64>,
 }
 
 impl Outcome {
@@ -40,11 +44,27 @@ impl Outcome {
                 horizon_order: horizon_order_from_labels(story.raw_labels()),
             }
         };
-        Outcome { content, lifecycle }
+        let iterations = story
+            .body()
+            .and_then(OutcomeRelationships::read_from_body)
+            .unwrap_or_default()
+            .iterations;
+        Outcome {
+            content,
+            lifecycle,
+            iterations,
+        }
     }
 
     pub fn id(&self) -> StoryKey {
         self.content.id
+    }
+
+    pub fn position_of(&self, iteration_number: u64) -> Option<u32> {
+        self.iterations
+            .iter()
+            .position(|n| *n == iteration_number)
+            .map(|index| index as u32)
     }
 
     pub fn horizon(&self) -> Option<Horizon> {
@@ -69,6 +89,7 @@ impl Outcome {
         Outcome {
             content: self.content.clone(),
             lifecycle: OutcomeLifecycle::Retired,
+            iterations: self.iterations.clone(),
         }
     }
 
@@ -83,6 +104,7 @@ impl Outcome {
         Outcome {
             content: self.content.clone(),
             lifecycle,
+            iterations: self.iterations.clone(),
         }
     }
 
@@ -93,6 +115,9 @@ impl Outcome {
                 ..self.content.clone()
             },
             lifecycle: self.lifecycle.clone(),
+            iterations: OutcomeRelationships::read_from_body(body)
+                .unwrap_or_default()
+                .iterations,
         }
     }
 
@@ -103,6 +128,7 @@ impl Outcome {
                 ..self.content.clone()
             },
             lifecycle: self.lifecycle.clone(),
+            iterations: self.iterations.clone(),
         }
     }
 

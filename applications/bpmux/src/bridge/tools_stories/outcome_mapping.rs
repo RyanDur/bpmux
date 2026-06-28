@@ -1,30 +1,26 @@
-use super::event_meta::meta_for;
 use super::helpers::{
     ensure_outcome_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
-use crate::product_management::board::BoardEvent;
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::iteration::Iteration;
-use crate::product_management::story::Story;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, OutcomeRelationships, Relationships,
+};
+use crate::product_management::outcome::Outcome;
 use std::sync::Arc;
 
-async fn mapped_iteration(
+async fn verify_iteration_mapped(
     r: &Arc<dyn RefreshDriver>,
     outcome_number: u64,
     iteration_number: u64,
-) -> Result<Story, String> {
-    ensure_outcome_in_canonical_store(r, outcome_number).await?;
-    let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    if crate::product_management::board::adapters::github::outcome_membership_from_labels(
-        &iteration.raw_labels,
-    )
-    .is_none_or(|(owner, _)| owner != outcome_number)
-    {
+) -> Result<Outcome, String> {
+    let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
+    ensure_story_in_canonical_store(r, iteration_number).await?;
+    if !outcome.iterations.contains(&iteration_number) {
         return Err(format!(
             "iteration #{iteration_number} is not mapped to outcome #{outcome_number}"
         ));
     }
-    Ok(iteration)
+    Ok(outcome)
 }
 
 pub(crate) async fn handle_unmap_outcome_iteration(
@@ -43,13 +39,33 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .ok_or("missing 'iteration_number' argument")?;
 
     let r = refresh.ok_or("unmap_outcome_iteration requires refresh (RefreshDriver)")?;
-    mapped_iteration(r, outcome_number, iteration_number).await?;
+    let outcome = verify_iteration_mapped(r, outcome_number, iteration_number).await?;
 
-    r.mutate_sync(BoardEvent::OutcomeMembershipCleared {
-        meta: meta_for(agent_name),
-        number: iteration_number,
-    })
-    .map_err(|e| format!("#{iteration_number} outcome-unmap enqueue failed: {e}"))?;
+    let mut parent = outcome
+        .content
+        .body
+        .as_deref()
+        .and_then(OutcomeRelationships::read_from_body)
+        .unwrap_or_default();
+    parent
+        .iterations
+        .retain(|number| *number != iteration_number);
+    let outcome_body = parent.write_into_body(outcome.content.body.as_deref().unwrap_or_default());
+    r.update_body(outcome_number, outcome_body)
+        .await
+        .map_err(|e| format!("#{outcome_number} iteration-unmap body update failed: {e}"))?;
+
+    let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
+    let mut child = iteration
+        .body()
+        .and_then(IterationRelationships::read_from_body)
+        .unwrap_or_default();
+    child.outcome = None;
+    let iteration_body = child.write_into_body(iteration.body().unwrap_or_default());
+    r.update_body(iteration_number, iteration_body)
+        .await
+        .map_err(|e| format!("#{iteration_number} outcome-FK-clear body update failed: {e}"))?;
+
     Ok(format!(
         "iteration #{iteration_number} unmapped from outcome #{outcome_number}; the iteration itself is untouched"
     ))
@@ -76,67 +92,43 @@ pub(crate) async fn handle_reorder_outcome_iteration(
         as u32;
 
     let r = refresh.ok_or("reorder_outcome_iteration requires refresh (RefreshDriver)")?;
-    mapped_iteration(r, outcome_number, iteration_number).await?;
+    let outcome = verify_iteration_mapped(r, outcome_number, iteration_number).await?;
 
     let band_size = reorder_iterations_within_outcome(
         r,
-        agent_name,
         outcome_number,
+        outcome.content.body.as_deref(),
         iteration_number,
         position,
-    )?;
+    )
+    .await?;
     Ok(format!(
         "iteration #{iteration_number} reordered to priority {position} of {band_size} in outcome #{outcome_number}"
     ))
 }
 
-fn outcome_position_of(iteration: &Iteration) -> Option<u32> {
-    iteration.outcome_membership.map(|(_, position)| position)
-}
-
-fn reorder_iterations_within_outcome(
+async fn reorder_iterations_within_outcome(
     r: &Arc<dyn RefreshDriver>,
-    agent_name: &str,
     outcome_number: u64,
+    outcome_body: Option<&str>,
     iteration_number: u64,
     requested_position: u32,
 ) -> Result<u32, String> {
-    let all = r.all_stories();
-    let mut building =
-        crate::product_management::iteration::readiness::building_iterations(outcome_number, &all);
-    building.sort_by_key(|iteration| {
-        (
-            outcome_position_of(iteration).unwrap_or(u32::MAX),
-            iteration.id().saved_number().unwrap_or(u64::MAX),
-        )
-    });
+    let mut parent = outcome_body
+        .and_then(OutcomeRelationships::read_from_body)
+        .unwrap_or_default();
 
-    let band_size = building.len() as u32;
+    let band_size = parent.iterations.len() as u32;
+    parent
+        .iterations
+        .retain(|number| *number != iteration_number);
     let clamped = requested_position.clamp(1, band_size.max(1));
-    let mut sequence: Vec<u64> = building
-        .iter()
-        .filter_map(|iteration| iteration.id().saved_number())
-        .filter(|number| *number != iteration_number)
-        .collect();
-    let insert_index = (clamped as usize - 1).min(sequence.len());
-    sequence.insert(insert_index, iteration_number);
+    let insert_index = (clamped as usize - 1).min(parent.iterations.len());
+    parent.iterations.insert(insert_index, iteration_number);
 
-    for (index, number) in sequence.iter().enumerate() {
-        let new_position = (index + 1) as u32;
-        let current = building
-            .iter()
-            .find(|iteration| iteration.id().saved_number() == Some(*number))
-            .and_then(outcome_position_of);
-        if current == Some(new_position) {
-            continue;
-        }
-        r.mutate_sync(BoardEvent::OutcomeMembershipSet {
-            meta: meta_for(agent_name),
-            number: *number,
-            outcome_number,
-            position: new_position,
-        })
-        .map_err(|e| format!("#{number} outcome-reorder enqueue failed: {e}"))?;
-    }
+    let body = parent.write_into_body(outcome_body.unwrap_or_default());
+    r.update_body(outcome_number, body)
+        .await
+        .map_err(|e| format!("#{outcome_number} outcome-reorder body update failed: {e}"))?;
     Ok(band_size)
 }

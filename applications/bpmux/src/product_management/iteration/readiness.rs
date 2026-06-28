@@ -1,6 +1,8 @@
 use serde::Serialize;
 
+use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::iteration::Iteration;
+use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{Story, StoryType};
 use crate::workflow::config::WorkflowConfig;
 
@@ -35,20 +37,22 @@ pub struct OutcomeReadiness {
     pub all_ready: bool,
 }
 
-pub fn building_iterations(outcome_number: u64, all: &[Story]) -> Vec<Iteration> {
-    all.iter()
+pub fn building_iterations(outcome: &Outcome, all: &[Story]) -> Vec<Iteration> {
+    outcome
+        .iterations
+        .iter()
+        .filter_map(|number| all.iter().find(|story| story.number == *number))
         .filter(|story| story.story_type() == StoryType::Iteration)
-        .map(Iteration::from_story)
-        .filter(|iteration| iteration.builds_outcome() == Some(outcome_number))
+        .map(decode_iteration)
         .collect()
 }
 
 pub fn outcome_readiness(
-    outcome_number: u64,
+    outcome: &Outcome,
     all: &[Story],
     workflow: &WorkflowConfig,
 ) -> OutcomeReadiness {
-    let building = building_iterations(outcome_number, all);
+    let building = building_iterations(outcome, all);
     let gap_count = building
         .iter()
         .map(|iteration| {

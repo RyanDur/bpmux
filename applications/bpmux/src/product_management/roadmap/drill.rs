@@ -4,6 +4,7 @@ use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::readiness::{
     IterationReadiness, building_iterations, iteration_readiness,
 };
+use crate::product_management::outcome::Outcome;
 use crate::product_management::story::Story;
 use crate::workflow::config::WorkflowConfig;
 
@@ -109,17 +110,11 @@ fn readiness_of(
 }
 
 pub fn derive_outcome_drill_in(
-    outcome_number: u64,
+    outcome: &Outcome,
     stories: &[Story],
     workflow: &WorkflowConfig,
 ) -> OutcomeDrillIn {
-    let mut building = building_iterations(outcome_number, stories);
-    building.sort_by_key(|it| {
-        (
-            it.outcome_membership.map(|(_, p)| p).unwrap_or(0),
-            it.id().saved_number().unwrap_or(0),
-        )
-    });
+    let building = building_iterations(outcome, stories);
 
     let next_index = building.iter().position(|it| {
         !it.complete && {

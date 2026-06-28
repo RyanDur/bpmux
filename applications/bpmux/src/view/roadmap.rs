@@ -87,7 +87,7 @@ fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> 
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
             let number = outcome.id().saved_number().unwrap_or(0);
-            let building = building_iterations(number, &all);
+            let building = building_iterations(outcome, &all);
             let done = !building.is_empty() && building.iter().all(|iteration| iteration.complete);
             RoadmapOutcomeInput {
                 number,
@@ -96,7 +96,7 @@ fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> 
                 horizon: outcome.horizon(),
                 horizon_order: outcome.horizon_order(),
                 done,
-                readiness: Some(outcome_readiness(number, &all, workflow)),
+                readiness: Some(outcome_readiness(outcome, &all, workflow)),
             }
         })
         .collect()

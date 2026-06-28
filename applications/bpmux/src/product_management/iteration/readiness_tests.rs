@@ -2,14 +2,18 @@
 
 use super::readiness::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::board::adapters::github::decode_iteration;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, OutcomeRelationships, Relationships,
+};
+use crate::product_management::outcome::Outcome;
+use crate::product_management::story::{Story, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use crate::workflow::config::WorkflowConfig;
 use chrono::Utc;
 
 fn readiness(it: &Story, members: &[&Story], workflow: &WorkflowConfig) -> IterationReadiness {
-    iteration_readiness(&Iteration::from_story(it), members, workflow)
+    iteration_readiness(&decode_iteration(it), members, workflow)
 }
 
 fn iteration(number: u64) -> Story {
@@ -260,17 +264,42 @@ fn owner_close_does_not_spoof_review_closed() {
     );
 }
 
-fn building_iteration(number: u64, outcome_number: u64, position: u32) -> Story {
+fn building_iteration(number: u64, outcome_number: u64) -> Story {
     let mut s = iteration(number);
-    s.raw_labels
-        .push(format!("parent-outcome-#{outcome_number}.{position}"));
+    s.body = Some(
+        IterationRelationships {
+            outcome: Some(outcome_number),
+            stories: vec![],
+        }
+        .write_into_body(s.body.as_deref().unwrap_or_default()),
+    );
     s
+}
+
+fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
+    let mut s = Story::new_minimal(
+        number,
+        format!("Outcome #{number}"),
+        StoryState::Icebox,
+        Utc::now(),
+        "pm".to_string(),
+    );
+    s.raw_labels = vec!["outcome".to_string()];
+    s.body = Some(
+        OutcomeRelationships {
+            roadmap: None,
+            iterations,
+        }
+        .write_into_body("## Outcome\n"),
+    );
+    s.story_type = StoryType::Outcome;
+    Outcome::from_story(&s)
 }
 
 #[test]
 fn outcome_readiness_rolls_up_gaps_from_building_iterations() {
-    let outcome = iteration(700);
-    let mut ready_it = building_iteration(710, 700, 1);
+    let outcome = outcome_with(700, vec![710, 720]);
+    let mut ready_it = building_iteration(710, 700);
     ready_it
         .raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
@@ -278,16 +307,10 @@ fn outcome_readiness_rolls_up_gaps_from_building_iterations() {
         .raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     let ready_member = member(7101, 710, 100);
-    let gappy_it = building_iteration(720, 700, 2);
+    let gappy_it = building_iteration(720, 700);
     let gappy_member = member(7201, 720, 100);
-    let all = vec![
-        outcome.clone(),
-        ready_it,
-        ready_member,
-        gappy_it,
-        gappy_member,
-    ];
-    let rolled = outcome_readiness(outcome.number, &all, &bundled_default());
+    let all = vec![ready_it, ready_member, gappy_it, gappy_member];
+    let rolled = outcome_readiness(&outcome, &all, &bundled_default());
     assert_eq!(
         rolled.iteration_count, 2,
         "two iterations build this outcome"
@@ -304,15 +327,15 @@ fn outcome_readiness_rolls_up_gaps_from_building_iterations() {
 
 #[test]
 fn outcome_readiness_all_ready_when_every_building_iteration_is_met() {
-    let outcome = iteration(700);
-    let mut it = building_iteration(710, 700, 1);
+    let outcome = outcome_with(700, vec![710]);
+    let mut it = building_iteration(710, 700);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     let m = member(7101, 710, 100);
-    let all = vec![outcome.clone(), it, m];
-    let rolled = outcome_readiness(outcome.number, &all, &bundled_default());
+    let all = vec![it, m];
+    let rolled = outcome_readiness(&outcome, &all, &bundled_default());
     assert_eq!(rolled.gap_count, 0);
     assert!(
         rolled.all_ready,
@@ -322,12 +345,8 @@ fn outcome_readiness_all_ready_when_every_building_iteration_is_met() {
 
 #[test]
 fn outcome_readiness_not_ready_with_no_building_iterations() {
-    let outcome = iteration(700);
-    let rolled = outcome_readiness(
-        outcome.number,
-        std::slice::from_ref(&outcome),
-        &bundled_default(),
-    );
+    let outcome = outcome_with(700, vec![]);
+    let rolled = outcome_readiness(&outcome, &[], &bundled_default());
     assert_eq!(rolled.iteration_count, 0);
     assert!(
         !rolled.all_ready,

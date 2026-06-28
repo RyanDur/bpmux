@@ -4,8 +4,8 @@ use super::super::tools_stories::*;
 use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
+use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::readiness::iteration_readiness;
 use crate::product_management::story::{Story, StoryState};
 use crate::workflow::bundled_default::bundled_default;
@@ -71,7 +71,7 @@ async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
         "the dev-OK is recorded as a board-event re-derived into the approver-set"
     );
     assert!(
-        iteration_readiness(&Iteration::from_story(&story), &[], &bundled_default()).dev_ok,
+        iteration_readiness(&decode_iteration(&story), &[], &bundled_default()).dev_ok,
         "dev OKing the iteration at IPM FLIPS the derived dev-OK readiness-check"
     );
 }
@@ -81,7 +81,7 @@ async fn no_dev_ok_on_record_means_not_ready_1736() {
     let (store, _orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let story = store.story(1552).unwrap();
     assert!(
-        !iteration_readiness(&Iteration::from_story(&story), &[], &bundled_default()).dev_ok,
+        !iteration_readiness(&decode_iteration(&story), &[], &bundled_default()).dev_ok,
         "no dev-OK on record → the check is unmet (no false-positive)"
     );
 }
