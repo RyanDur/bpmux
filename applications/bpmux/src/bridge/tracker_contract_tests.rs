@@ -669,3 +669,158 @@ async fn get_story_conditional_returns_not_found_on_404() {
         "404 → NotFound: {result:?}"
     );
 }
+
+const SUB_ISSUES_VERSION: &str = "2026-03-10";
+
+#[tokio::test]
+async fn add_sub_issue_resolves_child_number_then_posts_resolved_id() {
+    let server = MockServer::start();
+    let resolve = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/7");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!({"id": 5001, "number": 7}).to_string());
+    });
+    let link = server.mock(|when, then| {
+        when.method(Method::POST)
+            .path("/repos/acme/bpmux/issues/42/sub_issues")
+            .header("X-GitHub-Api-Version", SUB_ISSUES_VERSION)
+            .body_includes("\"sub_issue_id\":5001");
+        then.status(201)
+            .header("content-type", "application/json")
+            .body(json!({"id": 42, "number": 42}).to_string());
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker.add_sub_issue(42, 7).await;
+    resolve.assert();
+    link.assert();
+    assert!(result.is_ok(), "add_sub_issue should succeed: {result:?}");
+}
+
+#[tokio::test]
+async fn remove_sub_issue_deletes_singular_endpoint_with_resolved_id() {
+    let server = MockServer::start();
+    let resolve = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/7");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!({"id": 5001, "number": 7}).to_string());
+    });
+    let unlink = server.mock(|when, then| {
+        when.method(Method::DELETE)
+            .path("/repos/acme/bpmux/issues/42/sub_issue")
+            .header("X-GitHub-Api-Version", SUB_ISSUES_VERSION)
+            .body_includes("\"sub_issue_id\":5001");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!({"id": 42, "number": 42}).to_string());
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker.remove_sub_issue(42, 7).await;
+    resolve.assert();
+    unlink.assert();
+    assert!(
+        result.is_ok(),
+        "remove_sub_issue should succeed: {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn list_sub_issues_returns_child_numbers_in_parent_order() {
+    let server = MockServer::start();
+    let listing = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/42/sub_issues")
+            .header("X-GitHub-Api-Version", SUB_ISSUES_VERSION);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                json!([
+                    {"id": 5001, "number": 7},
+                    {"id": 5002, "number": 3}
+                ])
+                .to_string(),
+            );
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker.list_sub_issues(42).await;
+    listing.assert();
+    assert_eq!(
+        result,
+        Ok(vec![7, 3]),
+        "child NUMBERS must surface in the parent's order"
+    );
+}
+
+#[tokio::test]
+async fn reprioritize_sub_issue_with_after_resolves_both_numbers_to_ids() {
+    let server = MockServer::start();
+    let resolve_child = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/9");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!({"id": 9009, "number": 9}).to_string());
+    });
+    let resolve_after = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/4");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!({"id": 4004, "number": 4}).to_string());
+    });
+    let reorder = server.mock(|when, then| {
+        when.method(Method::PATCH)
+            .path("/repos/acme/bpmux/issues/42/sub_issues/priority")
+            .header("X-GitHub-Api-Version", SUB_ISSUES_VERSION)
+            .body_includes("\"sub_issue_id\":9009")
+            .body_includes("\"after_id\":4004");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!([]).to_string());
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker.reprioritize_sub_issue(42, 9, Some(4)).await;
+    resolve_child.assert();
+    resolve_after.assert();
+    reorder.assert();
+    assert!(result.is_ok(), "reprioritize should succeed: {result:?}");
+}
+
+#[tokio::test]
+async fn reprioritize_sub_issue_to_front_uses_before_id_of_current_first() {
+    let server = MockServer::start();
+    let resolve_child = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/9");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!({"id": 9009, "number": 9}).to_string());
+    });
+    let listing = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/42/sub_issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                json!([
+                    {"id": 1001, "number": 5},
+                    {"id": 9009, "number": 9}
+                ])
+                .to_string(),
+            );
+    });
+    let reorder = server.mock(|when, then| {
+        when.method(Method::PATCH)
+            .path("/repos/acme/bpmux/issues/42/sub_issues/priority")
+            .header("X-GitHub-Api-Version", SUB_ISSUES_VERSION)
+            .body_includes("\"sub_issue_id\":9009")
+            .body_includes("\"before_id\":1001");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!([]).to_string());
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker.reprioritize_sub_issue(42, 9, None).await;
+    resolve_child.assert();
+    listing.assert();
+    reorder.assert();
+    assert!(result.is_ok(), "front placement should succeed: {result:?}");
+}

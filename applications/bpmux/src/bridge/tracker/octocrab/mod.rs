@@ -5,6 +5,7 @@ mod fetch;
 mod json_shape;
 mod rest_helpers;
 mod selection;
+mod sub_issues;
 mod trait_impl;
 
 #[cfg(test)]
@@ -91,6 +92,21 @@ impl OctocrabStoryTracker {
 
     fn classify(err: octocrab::Error) -> String {
         crate::github::classify_error(&err).user_message()
+    }
+
+    async fn set_issue_state(
+        &self,
+        number: u64,
+        state: octocrab::models::IssueState,
+    ) -> Result<serde_json::Value, String> {
+        self.client
+            .issues(&self.owner, &self.repo)
+            .update(number)
+            .state(state)
+            .send()
+            .await
+            .map(|issue| json_shape::issue_to_board_json(&issue))
+            .map_err(Self::classify)
     }
 
     async fn get_with_capture<R: serde::de::DeserializeOwned>(

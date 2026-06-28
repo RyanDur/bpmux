@@ -6,25 +6,13 @@ use super::log_labels_fetch_failure;
 
 impl StoryTracker for OctocrabStoryTracker {
     async fn close_story(&self, number: u64) -> Result<serde_json::Value, String> {
-        self.client
-            .issues(&self.owner, &self.repo)
-            .update(number)
-            .state(octocrab::models::IssueState::Closed)
-            .send()
+        self.set_issue_state(number, octocrab::models::IssueState::Closed)
             .await
-            .map(|issue| issue_to_board_json(&issue))
-            .map_err(Self::classify)
     }
 
     async fn reopen_story(&self, number: u64) -> Result<serde_json::Value, String> {
-        self.client
-            .issues(&self.owner, &self.repo)
-            .update(number)
-            .state(octocrab::models::IssueState::Open)
-            .send()
+        self.set_issue_state(number, octocrab::models::IssueState::Open)
             .await
-            .map(|issue| issue_to_board_json(&issue))
-            .map_err(Self::classify)
     }
 
     async fn add_label(&self, number: u64, label: &str) -> Result<Vec<String>, String> {
@@ -187,5 +175,26 @@ impl StoryTracker for OctocrabStoryTracker {
             latest.annotation_message = self.fetch_first_failure_annotation(run_id).await;
         }
         Ok(Some(latest))
+    }
+
+    async fn list_sub_issues(&self, parent: u64) -> Result<Vec<u64>, String> {
+        self.sub_issue_numbers(parent).await
+    }
+
+    async fn add_sub_issue(&self, parent: u64, child: u64) -> Result<(), String> {
+        self.link_sub_issue(parent, child).await
+    }
+
+    async fn remove_sub_issue(&self, parent: u64, child: u64) -> Result<(), String> {
+        self.unlink_sub_issue(parent, child).await
+    }
+
+    async fn reprioritize_sub_issue(
+        &self,
+        parent: u64,
+        child: u64,
+        after: Option<u64>,
+    ) -> Result<(), String> {
+        self.reorder_sub_issue(parent, child, after).await
     }
 }

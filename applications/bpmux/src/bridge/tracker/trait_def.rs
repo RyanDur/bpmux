@@ -85,6 +85,30 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
     fn list_latest_run_on_main(
         &self,
     ) -> impl std::future::Future<Output = Result<Option<WorkflowRunEntry>, String>> + Send;
+    #[allow(dead_code)]
+    fn list_sub_issues(
+        &self,
+        parent: u64,
+    ) -> impl std::future::Future<Output = Result<Vec<u64>, String>> + Send;
+    #[allow(dead_code)]
+    fn add_sub_issue(
+        &self,
+        parent: u64,
+        child: u64,
+    ) -> impl std::future::Future<Output = Result<(), String>> + Send;
+    #[allow(dead_code)]
+    fn remove_sub_issue(
+        &self,
+        parent: u64,
+        child: u64,
+    ) -> impl std::future::Future<Output = Result<(), String>> + Send;
+    #[allow(dead_code)]
+    fn reprioritize_sub_issue(
+        &self,
+        parent: u64,
+        child: u64,
+        after: Option<u64>,
+    ) -> impl std::future::Future<Output = Result<(), String>> + Send;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
