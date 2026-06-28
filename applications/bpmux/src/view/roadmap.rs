@@ -1,6 +1,11 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::iteration::readiness::OutcomeReadiness;
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::iteration::readiness::{
+    OutcomeReadiness, building_iterations, outcome_readiness,
+};
 use crate::product_management::story::Horizon;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -16,11 +21,12 @@ pub struct OutcomeWhy {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum RoadmapReadinessState {
+#[serde(rename_all = "kebab-case")]
+pub enum OutcomeState {
+    Done,
     Ready,
-    Gap,
-    None,
+    NeedsAttention,
+    Planned,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -39,6 +45,7 @@ pub struct RoadmapOutcomeInput {
     pub body: String,
     pub horizon: Option<Horizon>,
     pub horizon_order: Option<u32>,
+    pub done: bool,
     pub readiness: Option<OutcomeReadiness>,
 }
 
@@ -48,9 +55,37 @@ pub struct RoadmapOutcomeCard {
     pub name: String,
     pub why: OutcomeWhy,
     pub horizon: Horizon,
-    pub readiness_state: RoadmapReadinessState,
+    pub state: OutcomeState,
     pub gap_count: u32,
     pub tone: OutcomeCardTone,
+}
+
+pub fn roadmap_cards(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeCard> {
+    derive_roadmap(&roadmap_inputs(refresh))
+}
+
+fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> {
+    let all = refresh.all_stories();
+    let workflow = crate::workflow::current_workflow();
+    refresh
+        .outcomes()
+        .iter()
+        .filter(|outcome| !outcome.is_retired())
+        .map(|outcome| {
+            let number = outcome.id().saved_number().unwrap_or(0);
+            let building = building_iterations(number, &all);
+            let done = !building.is_empty() && building.iter().all(|iteration| iteration.complete);
+            RoadmapOutcomeInput {
+                number,
+                title: outcome.content.title.clone(),
+                body: outcome.content.body.clone().unwrap_or_default(),
+                horizon: outcome.horizon(),
+                horizon_order: outcome.horizon_order(),
+                done,
+                readiness: Some(outcome_readiness(number, &all, workflow)),
+            }
+        })
+        .collect()
 }
 
 pub fn derive_roadmap(outcomes: &[RoadmapOutcomeInput]) -> Vec<RoadmapOutcomeCard> {
@@ -75,32 +110,35 @@ fn horizon_rank(horizon: Horizon) -> u8 {
 
 fn to_card(outcome: &RoadmapOutcomeInput) -> RoadmapOutcomeCard {
     let horizon = outcome.horizon.unwrap_or(Horizon::Later);
-    let readiness_state = readiness_state_of(outcome.readiness);
+    let state = state_of(outcome.done, outcome.readiness);
     RoadmapOutcomeCard {
         number: outcome.number,
         name: outcome.title.clone(),
         why: parse_outcome_why(&outcome.body),
         horizon,
-        readiness_state,
+        state,
         gap_count: outcome.readiness.map(|r| r.gap_count).unwrap_or(0),
-        tone: tone_of(horizon, readiness_state),
+        tone: tone_of(horizon, state),
     }
 }
 
-fn readiness_state_of(readiness: Option<OutcomeReadiness>) -> RoadmapReadinessState {
+fn state_of(done: bool, readiness: Option<OutcomeReadiness>) -> OutcomeState {
+    if done {
+        return OutcomeState::Done;
+    }
     match readiness {
-        None => RoadmapReadinessState::None,
-        Some(r) if r.iteration_count == 0 => RoadmapReadinessState::None,
-        Some(r) if r.all_ready => RoadmapReadinessState::Ready,
-        Some(_) => RoadmapReadinessState::Gap,
+        Some(r) if r.iteration_count == 0 => OutcomeState::Planned,
+        Some(r) if r.all_ready => OutcomeState::Ready,
+        Some(_) => OutcomeState::NeedsAttention,
+        None => OutcomeState::Planned,
     }
 }
 
-fn tone_of(horizon: Horizon, state: RoadmapReadinessState) -> OutcomeCardTone {
+fn tone_of(horizon: Horizon, state: OutcomeState) -> OutcomeCardTone {
     match state {
-        RoadmapReadinessState::Gap => OutcomeCardTone::Gap,
-        RoadmapReadinessState::Ready => OutcomeCardTone::Ready,
-        RoadmapReadinessState::None => {
+        OutcomeState::NeedsAttention => OutcomeCardTone::Gap,
+        OutcomeState::Done | OutcomeState::Ready => OutcomeCardTone::Ready,
+        OutcomeState::Planned => {
             if horizon == Horizon::Now {
                 OutcomeCardTone::Now
             } else {
@@ -156,12 +194,13 @@ pub fn render_roadmap(cards: &[RoadmapOutcomeCard]) -> String {
 }
 
 fn state_text(card: &RoadmapOutcomeCard) -> String {
-    match card.readiness_state {
-        RoadmapReadinessState::Ready => "ready".to_string(),
-        RoadmapReadinessState::Gap => {
+    match card.state {
+        OutcomeState::Done => "done".to_string(),
+        OutcomeState::Ready => "ready".to_string(),
+        OutcomeState::NeedsAttention => {
             let count = card.gap_count;
             format!("{count} gap{}", if count == 1 { "" } else { "s" })
         }
-        RoadmapReadinessState::None => "planned".to_string(),
+        OutcomeState::Planned => "planned".to_string(),
     }
 }

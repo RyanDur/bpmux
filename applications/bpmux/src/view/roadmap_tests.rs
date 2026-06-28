@@ -11,6 +11,7 @@ fn outcome(number: u64, title: &str, horizon: Option<Horizon>) -> RoadmapOutcome
         body: String::new(),
         horizon,
         horizon_order: None,
+        done: false,
         readiness: None,
     }
 }
@@ -28,8 +29,13 @@ fn readiness(iteration_count: u32, gap_count: u32, all_ready: bool) -> OutcomeRe
     }
 }
 
-fn card_for(readiness: Option<OutcomeReadiness>, horizon: Horizon) -> RoadmapOutcomeCard {
+fn card_for(
+    done: bool,
+    readiness: Option<OutcomeReadiness>,
+    horizon: Horizon,
+) -> RoadmapOutcomeCard {
     let mut o = outcome(1, "An outcome", Some(horizon));
+    o.done = done;
     o.readiness = readiness;
     derive_roadmap(&[o]).into_iter().next().unwrap()
 }
@@ -73,48 +79,70 @@ fn an_absent_horizon_is_treated_as_later() {
 }
 
 #[test]
-fn readiness_state_all_ready_reads_ready() {
-    let card = card_for(Some(readiness(1, 0, true)), Horizon::Now);
-    assert_eq!(card.readiness_state, RoadmapReadinessState::Ready);
+fn state_all_building_iterations_complete_reads_done() {
+    let card = card_for(true, Some(readiness(2, 0, true)), Horizon::Now);
+    assert_eq!(card.state, OutcomeState::Done);
 }
 
 #[test]
-fn readiness_state_with_gaps_reads_gap_carrying_the_count() {
-    let card = card_for(Some(readiness(2, 1, false)), Horizon::Now);
-    assert_eq!(card.readiness_state, RoadmapReadinessState::Gap);
+fn state_all_ready_reads_ready() {
+    let card = card_for(false, Some(readiness(1, 0, true)), Horizon::Now);
+    assert_eq!(card.state, OutcomeState::Ready);
+}
+
+#[test]
+fn state_with_gaps_reads_needs_attention_carrying_the_count() {
+    let card = card_for(false, Some(readiness(2, 1, false)), Horizon::Now);
+    assert_eq!(card.state, OutcomeState::NeedsAttention);
     assert_eq!(card.gap_count, 1);
 }
 
 #[test]
-fn readiness_state_building_but_not_all_ready_reads_gap() {
-    let card = card_for(Some(readiness(1, 0, false)), Horizon::Now);
-    assert_eq!(card.readiness_state, RoadmapReadinessState::Gap);
+fn state_building_but_not_all_ready_reads_needs_attention() {
+    let card = card_for(false, Some(readiness(1, 0, false)), Horizon::Now);
+    assert_eq!(card.state, OutcomeState::NeedsAttention);
 }
 
 #[test]
-fn readiness_state_no_building_iterations_or_absent_reads_none() {
+fn state_no_building_iterations_or_absent_reads_planned() {
     assert_eq!(
-        card_for(Some(readiness(0, 0, false)), Horizon::Now).readiness_state,
-        RoadmapReadinessState::None
+        card_for(false, Some(readiness(0, 0, false)), Horizon::Now).state,
+        OutcomeState::Planned
     );
     assert_eq!(
-        card_for(None, Horizon::Now).readiness_state,
-        RoadmapReadinessState::None
+        card_for(false, None, Horizon::Now).state,
+        OutcomeState::Planned
     );
 }
 
 #[test]
-fn tone_is_gap_over_ready_over_horizon_fallback() {
+fn done_takes_precedence_over_the_readiness_rollup() {
+    let card = card_for(true, Some(readiness(2, 3, false)), Horizon::Now);
+    assert_eq!(card.state, OutcomeState::Done);
+}
+
+#[test]
+fn tone_maps_attention_to_gap_done_and_ready_to_ready_planned_to_horizon() {
     assert_eq!(
-        card_for(Some(readiness(2, 1, false)), Horizon::Now).tone,
+        card_for(false, Some(readiness(2, 1, false)), Horizon::Now).tone,
         OutcomeCardTone::Gap
     );
     assert_eq!(
-        card_for(Some(readiness(1, 0, true)), Horizon::Now).tone,
+        card_for(false, Some(readiness(1, 0, true)), Horizon::Now).tone,
         OutcomeCardTone::Ready
     );
-    assert_eq!(card_for(None, Horizon::Now).tone, OutcomeCardTone::Now);
-    assert_eq!(card_for(None, Horizon::Later).tone, OutcomeCardTone::Future);
+    assert_eq!(
+        card_for(true, Some(readiness(1, 0, true)), Horizon::Now).tone,
+        OutcomeCardTone::Ready
+    );
+    assert_eq!(
+        card_for(false, None, Horizon::Now).tone,
+        OutcomeCardTone::Now
+    );
+    assert_eq!(
+        card_for(false, None, Horizon::Later).tone,
+        OutcomeCardTone::Future
+    );
 }
 
 #[test]
