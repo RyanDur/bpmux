@@ -9,7 +9,6 @@ import {
   iterationNameFromTitle,
   isIterationPositionLabel,
   parseIterationLabel,
-  parseIterationOrderPosition,
   parseUnscheduledPosition,
   unscheduledLabel
 } from './labelSchema'
@@ -29,12 +28,6 @@ describe('#1365 labelSchema — single-source-of-truth constants + parsers', () 
   it('rejects malformed iteration labels', () => {
     expect(parseIterationLabel('iteration-NoPosition')).toBeNull()
     expect(parseIterationLabel('not-a-label')).toBeNull()
-  })
-
-  it('parses iteration-order positions', () => {
-    expect(parseIterationOrderPosition('iteration-order.100')).toBe(100)
-    expect(parseIterationOrderPosition('iteration-Andromeda.100')).toBeNull()
-    expect(parseIterationOrderPosition('iteration-order.foo')).toBeNull()
   })
 
   it('parses unscheduled position from iteration-Unscheduled prefix', () => {

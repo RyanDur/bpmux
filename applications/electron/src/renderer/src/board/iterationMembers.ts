@@ -1,4 +1,4 @@
-import { parseIterationOrderPosition, parseUnscheduledPosition } from './labelSchema'
+import { parseUnscheduledPosition } from './labelSchema'
 import { postStoryLabels } from '../api/labelsClient'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
@@ -16,12 +16,6 @@ export interface PendingMemberPosition {
   iterationNumber: number
   position: number
 }
-
-export const positionInIterationOrder = (story: BoardStory): number | null =>
-  story.iteration_order ?? null
-
-export const iterationOrderLabelsOf = (story: BoardStory): string[] =>
-  story.labels.filter((label) => parseIterationOrderPosition(label) !== null)
 
 export const isIterationStory = (story: BoardStory): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'

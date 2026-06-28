@@ -1,4 +1,4 @@
-import { iterationOrderLabel, parentIterationLabel } from './labelSchema'
+import { parentIterationLabel } from './labelSchema'
 
 export const DEFAULT_FIRST_POSITION = 100
 export const DEFAULT_STEP = 100
@@ -58,30 +58,6 @@ const resolveReorderPosition = (
   return position
 }
 
-export interface OrderDropMutationInput {
-  draggedOldPosition: number
-  targetMemberPositions: number[]
-  targetMemberIndex: number
-  targetMembersIncludeDragged: boolean
-}
-
-export const computeIterationOrderMutation = (
-  input: OrderDropMutationInput
-): DropMutation | null => {
-  const position = resolveReorderPosition(
-    true,
-    input.draggedOldPosition,
-    input.targetMemberPositions,
-    input.targetMemberIndex,
-    input.targetMembersIncludeDragged
-  )
-  if (position === null) return null
-  return {
-    add: [iterationOrderLabel(position)],
-    remove: [iterationOrderLabel(input.draggedOldPosition)]
-  }
-}
-
 export interface MemberDropMutationInput {
   draggedIterationNumber: number
   draggedOldPosition: number
@@ -89,31 +65,6 @@ export interface MemberDropMutationInput {
   targetMemberPositions: number[]
   targetMemberIndex: number
   targetMembersIncludeDragged: boolean
-}
-
-export interface IterationOrderSlot {
-  number: number
-  currentPosition: number | null
-}
-
-export interface IterationOrderAssignment extends DropMutation {
-  iterationNumber: number
-}
-
-export const computeEstablishOrderMutations = (
-  sequence: IterationOrderSlot[]
-): IterationOrderAssignment[] => {
-  const out: IterationOrderAssignment[] = []
-  sequence.forEach((slot, index) => {
-    const targetPosition = (index + 1) * DEFAULT_STEP
-    if (slot.currentPosition === targetPosition) return
-    out.push({
-      iterationNumber: slot.number,
-      add: [iterationOrderLabel(targetPosition)],
-      remove: slot.currentPosition === null ? [] : [iterationOrderLabel(slot.currentPosition)]
-    })
-  })
-  return out
 }
 
 export const computeMemberDropMutation = (input: MemberDropMutationInput): DropMutation | null => {

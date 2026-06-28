@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  computeEstablishOrderMutations,
   computeInsertPosition,
-  computeIterationOrderMutation,
   computeMemberDropMutation,
   computeMemberRespace,
   DEFAULT_FIRST_POSITION,
@@ -168,31 +166,6 @@ describe('computeMemberDropMutation — canonical identity add/remove label-pair
   })
 })
 
-describe('computeIterationOrderMutation — iteration-order.N reorder label-pair', () => {
-  it('reorder produces an iteration-order add/remove pair', () => {
-    const result = computeIterationOrderMutation({
-      draggedOldPosition: 300,
-      targetMemberPositions: [100, 200, 300],
-      targetMemberIndex: 0,
-      targetMembersIncludeDragged: true
-    })
-    expect(result).toEqual({
-      add: ['iteration-order.50'],
-      remove: ['iteration-order.300']
-    })
-  })
-
-  it('drop on own position returns null (no-op)', () => {
-    const result = computeIterationOrderMutation({
-      draggedOldPosition: 200,
-      targetMemberPositions: [100, 200, 300],
-      targetMemberIndex: 1,
-      targetMembersIncludeDragged: true
-    })
-    expect(result).toBeNull()
-  })
-})
-
 describe('insertPositionWouldCascade + computeMemberRespace — dense-position cascade cure (#1524)', () => {
   it('insertPositionWouldCascade is TRUE for dense gaps (collision risk), FALSE for spaced positions', () => {
     expect(insertPositionWouldCascade(3, [1, 2, 3], 1)).toBe(true)
@@ -225,37 +198,5 @@ describe('insertPositionWouldCascade + computeMemberRespace — dense-position c
         remove: ['parent-iteration-#9000.2']
       }
     ])
-  })
-})
-
-describe('computeEstablishOrderMutations — self-heal a fully/partially unordered iteration set', () => {
-  it('assigns clean spaced positions to a set with no order labels at all', () => {
-    const result = computeEstablishOrderMutations([
-      { number: 9701, currentPosition: null },
-      { number: 9702, currentPosition: null }
-    ])
-    expect(result).toEqual([
-      { iterationNumber: 9701, add: ['iteration-order.100'], remove: [] },
-      { iterationNumber: 9702, add: ['iteration-order.200'], remove: [] }
-    ])
-  })
-
-  it('emits a mutation only for an iteration whose position actually changes, removing its stale label', () => {
-    const result = computeEstablishOrderMutations([
-      { number: 9701, currentPosition: 300 },
-      { number: 9702, currentPosition: null }
-    ])
-    expect(result).toEqual([
-      { iterationNumber: 9701, add: ['iteration-order.100'], remove: ['iteration-order.300'] },
-      { iterationNumber: 9702, add: ['iteration-order.200'], remove: [] }
-    ])
-  })
-
-  it('emits nothing when the set is already cleanly spaced in the target order', () => {
-    const result = computeEstablishOrderMutations([
-      { number: 9701, currentPosition: 100 },
-      { number: 9702, currentPosition: 200 }
-    ])
-    expect(result).toEqual([])
   })
 })

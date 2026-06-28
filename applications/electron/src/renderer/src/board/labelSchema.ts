@@ -29,9 +29,6 @@ export const parseParentIterationLabel = (label: string): ParentIterationLabelPa
   return { iterationNumber: parseInt(match[1], 10), position: parseInt(match[2], 10) }
 }
 
-export const iterationOrderLabel = (position: number): string =>
-  `${ITERATION_ORDER_PREFIX}${position}`
-
 export const unscheduledLabel = (position: number): string =>
   `${UNSCHEDULED_LABEL_PREFIX}${position}`
 
@@ -39,12 +36,6 @@ export const parseIterationLabel = (label: string): IterationLabelParts | null =
   const match = label.match(ITERATION_LABEL_RE)
   if (match === null) return null
   return { name: match[1], position: parseInt(match[2], 10) }
-}
-
-export const parseIterationOrderPosition = (label: string): number | null => {
-  if (!label.startsWith(ITERATION_ORDER_PREFIX)) return null
-  const n = parseInt(label.slice(ITERATION_ORDER_PREFIX.length), 10)
-  return Number.isNaN(n) ? null : n
 }
 
 export const parseUnscheduledPosition = (label: string): number | null => {
