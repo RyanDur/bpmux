@@ -62,6 +62,9 @@ pub trait RefreshDriver: Send + Sync {
     fn iterations(&self) -> Vec<Iteration> {
         self.store().iterations()
     }
+    fn iteration(&self, number: u64) -> Option<Iteration> {
+        self.store().iteration(number)
+    }
     fn store(&self) -> Arc<BoardStore>;
     fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 

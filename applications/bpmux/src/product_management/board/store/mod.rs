@@ -120,6 +120,17 @@ impl BoardStore {
         })
     }
 
+    pub fn iteration(&self, number: u64) -> Option<Iteration> {
+        self.store.select(|state| {
+            state
+                .stories
+                .get(&StoryKey::Saved(number))
+                .and_then(|item| item.as_story())
+                .filter(|story| story.story_type() == StoryType::Iteration)
+                .map(Iteration::from_story)
+        })
+    }
+
     pub fn stories_in_state(&self, wanted: StoryState) -> Vec<Story> {
         self.store.select(|state| {
             state

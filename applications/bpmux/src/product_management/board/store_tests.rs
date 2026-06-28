@@ -542,6 +542,40 @@ fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
 }
 
 #[test]
+fn iteration_accessor_returns_the_typed_iteration_for_an_iteration_issue() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1400,
+        title: "Iteration Vela".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Iteration,
+    });
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 42,
+        title: "A regular story".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Story(StoryKind::Feature),
+    });
+    assert_eq!(
+        store.iteration(1400).map(|it| it.id().saved_number()),
+        Some(Some(1400)),
+        "iteration(n) returns the typed Iteration for an iteration issue"
+    );
+    assert!(
+        store.iteration(42).is_none(),
+        "iteration(n) returns None for a non-iteration issue"
+    );
+    assert!(
+        store.iteration(9999).is_none(),
+        "iteration(n) returns None for an absent issue"
+    );
+}
+
+#[test]
 fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
