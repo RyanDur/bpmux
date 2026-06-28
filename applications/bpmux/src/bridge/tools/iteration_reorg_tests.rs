@@ -3,8 +3,11 @@
 
 use crate::bridge::tools_stories::{
     handle_move_iteration_member, handle_remove_iteration_member, handle_rename_iteration,
+    handle_reorder_iteration,
 };
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::product_management::board::adapters::github::iteration_order_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -23,6 +26,13 @@ fn iteration(number: u64, name: &str) -> Story {
     );
     s.raw_labels.push("iteration".to_string());
     s.story_type = crate::product_management::story::StoryType::Iteration;
+    s
+}
+
+fn iteration_at(number: u64, name: &str, order: u32) -> Story {
+    let mut s = iteration(number, name);
+    s.raw_labels
+        .push(GhLabelCodec.encode_iteration_order(order));
     s
 }
 
@@ -192,6 +202,48 @@ async fn move_member_reorders_within_the_iteration_1762() {
         Some((1700, 3)),
         "the member reads its new position within the iteration"
     );
+}
+
+#[tokio::test]
+async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
+    let refresh = build_refresh(vec![
+        iteration_at(1700, "Circinus", 100),
+        iteration_at(1710, "Dorado", 200),
+        iteration_at(1720, "Eridanus", 300),
+    ])
+    .await;
+    let args = json!({ "iteration_number": 1720, "position": 1 })
+        .as_object()
+        .cloned()
+        .unwrap();
+    handle_reorder_iteration(&args, "pm:claude-code", Some(&refresh))
+        .await
+        .expect("pm reorders the iteration to the front");
+    let order_of = |n: u64| {
+        iteration_order_from_labels(&refresh.story(n).expect("present").raw_labels)
+            .expect("ordered")
+    };
+    assert_eq!(
+        (order_of(1720), order_of(1700), order_of(1710)),
+        (1, 2, 3),
+        "dragging Eridanus to the front renumbers the planning sequence 1..N by insert-shift"
+    );
+}
+
+#[tokio::test]
+async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
+    let refresh = build_refresh(vec![iteration_at(1700, "Circinus", 100)]).await;
+    let err = handle_reorder_iteration(
+        &json!({ "iteration_number": 1700, "position": 1 })
+            .as_object()
+            .cloned()
+            .unwrap(),
+        "dev:claude-code",
+        Some(&refresh),
+    )
+    .await
+    .expect_err("dev cannot reorder iterations (pm-lane)");
+    assert!(err.contains("pm"), "the refusal names the pm-lane: {err}");
 }
 
 #[tokio::test]

@@ -46,12 +46,12 @@ pub(crate) use dispatch::{
     dispatch_list_epic_children, dispatch_list_ready, dispatch_map_iteration_to_outcome,
     dispatch_move_iteration_member, dispatch_move_story, dispatch_pass_desk_check,
     dispatch_reject_story, dispatch_remove_iteration_member, dispatch_rename_iteration,
-    dispatch_reorder_outcome_iteration, dispatch_reorder_story, dispatch_reprioritize_outcome,
-    dispatch_retire_outcome, dispatch_set_parent_epic, dispatch_start_story,
-    dispatch_submit_verdict, dispatch_unmap_outcome_iteration, dispatch_unset_parent_epic,
-    dispatch_view_backlog, dispatch_view_board, dispatch_view_comments, dispatch_view_commit_diff,
-    dispatch_view_story_commits, dispatch_view_story_timeline, dispatch_view_velocity,
-    dispatch_view_verdicts,
+    dispatch_reorder_iteration, dispatch_reorder_outcome_iteration, dispatch_reorder_story,
+    dispatch_reprioritize_outcome, dispatch_retire_outcome, dispatch_set_parent_epic,
+    dispatch_start_story, dispatch_submit_verdict, dispatch_unmap_outcome_iteration,
+    dispatch_unset_parent_epic, dispatch_view_backlog, dispatch_view_board, dispatch_view_comments,
+    dispatch_view_commit_diff, dispatch_view_story_commits, dispatch_view_story_timeline,
+    dispatch_view_velocity, dispatch_view_verdicts,
 };
 
 #[cfg(test)]

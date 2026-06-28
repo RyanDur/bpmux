@@ -189,6 +189,13 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           position: action.position
         })
         return
+      case SessionActionType.IterationReorderRequested:
+        send({
+          type: 'reorder_iteration',
+          iteration_number: action.iterationNumber,
+          position: action.position
+        })
+        return
       case SessionActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return

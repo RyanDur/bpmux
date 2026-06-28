@@ -8,8 +8,9 @@ pub(crate) use iteration::{
     dispatch_create_iteration, dispatch_create_outcome, dispatch_designate_current_iteration,
     dispatch_dev_ok_iteration, dispatch_edit_outcome, dispatch_map_iteration_to_outcome,
     dispatch_move_iteration_member, dispatch_remove_iteration_member, dispatch_rename_iteration,
-    dispatch_reorder_outcome_iteration, dispatch_reprioritize_outcome, dispatch_retire_outcome,
-    dispatch_set_parent_epic, dispatch_unmap_outcome_iteration, dispatch_unset_parent_epic,
+    dispatch_reorder_iteration, dispatch_reorder_outcome_iteration, dispatch_reprioritize_outcome,
+    dispatch_retire_outcome, dispatch_set_parent_epic, dispatch_unmap_outcome_iteration,
+    dispatch_unset_parent_epic,
 };
 pub(crate) use story::{
     dispatch_close_story, dispatch_comment_on_story, dispatch_create_story, dispatch_edit_story,

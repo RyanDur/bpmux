@@ -44,6 +44,7 @@ pub(crate) use helpers::{
 };
 pub(crate) use iteration_reorg::{
     handle_move_iteration_member, handle_remove_iteration_member, handle_rename_iteration,
+    handle_reorder_iteration,
 };
 pub(crate) use metadata::{handle_comment_on_story, handle_edit_story, handle_label_story};
 pub(crate) use metadata_epic::{handle_set_parent_epic, handle_unset_parent_epic};

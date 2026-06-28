@@ -4,7 +4,7 @@ use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::stream::SplitSink;
 
 use super::client_handlers::{
-    handle_pty_input, handle_pty_subscribe, handle_reaction_toggle,
+    handle_pty_input, handle_pty_subscribe, handle_reaction_toggle, handle_reorder_iteration,
     handle_reorder_outcome_iteration, handle_reprioritize_outcome, handle_send,
     handle_set_outcome_horizon,
 };
@@ -156,6 +156,12 @@ pub(crate) async fn handle_client_message(
             position,
         }) => {
             handle_reprioritize_outcome(ctx, tx, identity, outcome_number, position).await?;
+        }
+        Ok(ClientMessage::ReorderIteration {
+            iteration_number,
+            position,
+        }) => {
+            handle_reorder_iteration(ctx, tx, identity, iteration_number, position).await?;
         }
         Err(e) => {
             send_json(
