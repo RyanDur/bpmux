@@ -4,7 +4,8 @@ export const DRAG_MIMETYPE_REGISTRY = {
   STORY_ROW: 'application/x-bpmux-story',
   ITERATION_MEMBER: 'application/x-bpmux-iteration-member',
   ITERATION_ITSELF: 'application/x-bpmux-iteration-itself',
-  OUTCOME_ITERATION: 'application/x-bpmux-outcome-iteration'
+  OUTCOME_ITERATION: 'application/x-bpmux-outcome-iteration',
+  OUTCOME_REPRIORITIZE: 'application/x-bpmux-outcome-reprioritize'
 } as const
 
 export type DragMimeType = (typeof DRAG_MIMETYPE_REGISTRY)[keyof typeof DRAG_MIMETYPE_REGISTRY]

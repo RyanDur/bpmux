@@ -11,6 +11,7 @@ const nowOutcome: RoadmapOutcomeData = {
   title: 'Now',
   body: '',
   horizon: 'now',
+  horizon_order: null,
   outcome_readiness: null,
   iterations: []
 }

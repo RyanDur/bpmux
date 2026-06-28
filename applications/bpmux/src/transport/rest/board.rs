@@ -74,6 +74,7 @@ pub(crate) fn board_outcomes(
                 "title": outcome.content.title,
                 "body": outcome.content.body.clone().unwrap_or_default(),
                 "horizon": outcome.horizon().map(|horizon| horizon.as_str()),
+                "horizon_order": outcome.horizon_order(),
                 "outcome_readiness": outcome_readiness(number, &all, workflow),
                 "iterations": iterations,
             })

@@ -36,6 +36,13 @@ export const OUTCOME_ITERATION_DRAG: SortableDragConfig<number> = {
   payloadKey: (iterationNumber) => iterationNumber
 }
 
+export const OUTCOME_REPRIORITIZE_DRAG: SortableDragConfig<number> = {
+  mimeType: DRAG_MIMETYPE_REGISTRY.OUTCOME_REPRIORITIZE,
+  encode: String,
+  decode: decodeStoryNumber,
+  payloadKey: (outcomeNumber) => outcomeNumber
+}
+
 const decodeIterationPayload = (raw: string): IterationDragPayload | null => {
   try {
     return JSON.parse(raw) as IterationDragPayload

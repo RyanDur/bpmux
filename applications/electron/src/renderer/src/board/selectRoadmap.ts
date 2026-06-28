@@ -43,6 +43,7 @@ export interface RoadmapOutcomeData {
   title: string
   body: string
   horizon: Horizon | null
+  horizon_order: number | null
   outcome_readiness: OutcomeReadiness | null
   iterations: RoadmapIteration[]
 }
@@ -109,9 +110,10 @@ export interface RoadmapState {
 export const selectRoadmap = (state: RoadmapState): Roadmap => {
   const bands: RoadmapBand[] = []
   for (const { horizon, label } of HORIZON_BANDS) {
+    const orderOf = (o: RoadmapOutcomeData): number => o.horizon_order ?? Number.MAX_SAFE_INTEGER
     const inBand = state.outcomes
       .filter((o) => (o.horizon ?? 'later') === horizon)
-      .sort((a, b) => a.number - b.number)
+      .sort((a, b) => orderOf(a) - orderOf(b) || a.number - b.number)
       .map(toRoadmapOutcome)
     if (inBand.length > 0) bands.push({ horizon, label, outcomes: inBand })
   }

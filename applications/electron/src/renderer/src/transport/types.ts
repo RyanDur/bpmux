@@ -252,6 +252,12 @@ export interface ClientReorderOutcomeIteration {
   position: number
 }
 
+export interface ClientReprioritizeOutcome {
+  type: 'reprioritize_outcome'
+  outcome_number: number
+  position: number
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -267,6 +273,7 @@ export type ClientMessage =
   | ClientBoardHydrate
   | ClientSetOutcomeHorizon
   | ClientReorderOutcomeIteration
+  | ClientReprioritizeOutcome
 
 export interface ChatMessage {
   id: string

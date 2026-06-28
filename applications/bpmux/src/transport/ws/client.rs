@@ -5,7 +5,8 @@ use futures::stream::SplitSink;
 
 use super::client_handlers::{
     handle_pty_input, handle_pty_subscribe, handle_reaction_toggle,
-    handle_reorder_outcome_iteration, handle_send, handle_set_outcome_horizon,
+    handle_reorder_outcome_iteration, handle_reprioritize_outcome, handle_send,
+    handle_set_outcome_horizon,
 };
 use super::hydrate::{
     handle_board_hydrate, handle_comments_hydrate, handle_history_hydrate, handle_history_page,
@@ -149,6 +150,12 @@ pub(crate) async fn handle_client_message(
                 position,
             )
             .await?;
+        }
+        Ok(ClientMessage::ReprioritizeOutcome {
+            outcome_number,
+            position,
+        }) => {
+            handle_reprioritize_outcome(ctx, tx, identity, outcome_number, position).await?;
         }
         Err(e) => {
             send_json(

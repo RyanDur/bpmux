@@ -72,12 +72,20 @@ export class RoadmapPage {
     return this.win.locator('.roadmap-drill-iteration-name')
   }
 
-  iterationGrip(iterationNumber: number): Locator {
-    return this.win.getByRole('button', { name: `Drag to reorder #${iterationNumber}` })
+  grip(number: number): Locator {
+    return this.win.getByRole('button', { name: `Drag to reorder #${number}` })
   }
 
   async dragIteration(fromIteration: number, ontoIteration: number): Promise<void> {
-    await this.iterationGrip(fromIteration).dragTo(this.iterationGrip(ontoIteration))
+    await this.grip(fromIteration).dragTo(this.grip(ontoIteration))
+  }
+
+  async dragOutcome(fromOutcome: number, ontoOutcome: number): Promise<void> {
+    await this.grip(fromOutcome).dragTo(this.grip(ontoOutcome))
+  }
+
+  bandOutcomeNames(label: 'Now' | 'Next' | 'Later'): Locator {
+    return this.band(label).locator('.roadmap-outcome-name')
   }
 
   headerIteration(): Locator {

@@ -13,6 +13,7 @@ const outcome = (overrides: Partial<RoadmapOutcomeData>): RoadmapOutcomeData => 
   title: 'An outcome',
   body: '',
   horizon: 'now',
+  horizon_order: null,
   outcome_readiness: null,
   iterations: [],
   ...overrides
@@ -63,6 +64,22 @@ describe('selectRoadmap — outcomes grouped by horizon', () => {
 
   it('treats an absent horizon as Later', () => {
     expect(bandsOf(outcome({ horizon: null }))[0].horizon).toBe('later')
+  })
+
+  it('orders outcomes within a band by horizon_order, then number', () => {
+    const [band] = bandsOf(
+      outcome({ number: 10, title: 'second', horizon: 'now', horizon_order: 2 }),
+      outcome({ number: 20, title: 'first', horizon: 'now', horizon_order: 1 })
+    )
+    expect(band.outcomes.map((o) => o.name)).toEqual(['first', 'second'])
+  })
+
+  it('sinks an outcome with no horizon_order below ordered peers, ties broken by number', () => {
+    const [band] = bandsOf(
+      outcome({ number: 5, title: 'unordered', horizon: 'now', horizon_order: null }),
+      outcome({ number: 9, title: 'ordered', horizon: 'now', horizon_order: 1 })
+    )
+    expect(band.outcomes.map((o) => o.name)).toEqual(['ordered', 'unordered'])
   })
 })
 

@@ -2,10 +2,17 @@ import { Fragment, useState } from 'react'
 import { useRoadmap } from './useRoadmap'
 import { deriveOutcomeDrillIn } from './deriveOutcomeDrillIn'
 import OutcomeDrillBody from './OutcomeDrillBody'
+import { SortableList } from './SortableList'
+import { DragGrip } from './DragGrip'
+import type { GripDragProps } from './useDragReorder'
+import { OUTCOME_REPRIORITIZE_DRAG } from './sortableDragConfigs'
 import type { OutcomeWhy, RoadmapOutcome } from './selectRoadmap'
 import type { Horizon } from './types'
 import { useDispatch } from '../transport/useDispatch'
-import { outcomeHorizonChangeRequested } from '../transport/session/actions'
+import {
+  outcomeHorizonChangeRequested,
+  outcomeReprioritizeRequested
+} from '../transport/session/actions'
 import './Roadmap.css'
 
 const META_FIELDS: ReadonlyArray<{ key: keyof OutcomeWhy; label: string }> = [
@@ -38,12 +45,14 @@ const RoadmapOutcomeCard = ({
   outcome,
   horizon,
   focused,
-  onToggle
+  onToggle,
+  gripDragProps
 }: {
   outcome: RoadmapOutcome
   horizon: Horizon
   focused: boolean
   onToggle: (outcomeNumber: number) => void
+  gripDragProps: GripDragProps
 }): React.JSX.Element => {
   const dispatch = useDispatch()
   const readiness = readinessText(outcome)
@@ -56,6 +65,7 @@ const RoadmapOutcomeCard = ({
       data-focused={focused || undefined}
     >
       <header className="roadmap-outcome-head">
+        <DragGrip storyNumber={outcome.number} gripDragProps={gripDragProps} />
         <h4 className="roadmap-outcome-name">
           <button
             type="button"
@@ -122,6 +132,7 @@ const RoadmapOutcomeCard = ({
 
 const Roadmap = (): React.JSX.Element => {
   const { bands } = useRoadmap()
+  const dispatch = useDispatch()
   const [focusedNumber, setFocusedNumber] = useState<number | null>(null)
   const toggle = (outcomeNumber: number): void =>
     setFocusedNumber((current) => (current === outcomeNumber ? null : outcomeNumber))
@@ -143,18 +154,30 @@ const Roadmap = (): React.JSX.Element => {
             data-horizon={band.horizon}
           >
             <h3 className="roadmap-band-label">{band.label}</h3>
-            <ul className="roadmap-band-outcomes">
-              {band.outcomes.map((outcome) => (
-                <li key={outcome.number}>
+            <SortableList
+              items={band.outcomes}
+              keyOf={(outcome) => outcome.number}
+              rowKey={(outcome) => outcome.number}
+              config={OUTCOME_REPRIORITIZE_DRAG}
+              buildPayload={(outcome) => outcome.number}
+              onReorder={(draggedNumber, targetKey) => {
+                const position = band.outcomes.findIndex((o) => o.number === targetKey) + 1
+                if (position === 0) return
+                dispatch(outcomeReprioritizeRequested(draggedNumber, position))
+              }}
+              ulClassName="roadmap-band-outcomes"
+              renderRow={(outcome, { rowDragProps, gripDragProps }) => (
+                <li {...rowDragProps}>
                   <RoadmapOutcomeCard
                     outcome={outcome}
                     horizon={band.horizon}
                     focused={focusedNumber === outcome.number}
                     onToggle={toggle}
+                    gripDragProps={gripDragProps}
                   />
                 </li>
-              ))}
-            </ul>
+              )}
+            />
           </section>
         ))
       )}

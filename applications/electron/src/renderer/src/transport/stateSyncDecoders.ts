@@ -91,6 +91,7 @@ const roadmapOutcome: D.Decoder<RoadmapOutcomeData> = D.object({
     title: D.string,
     body: D.string,
     horizon: D.nullable(D.literalUnion('now', 'next', 'later')),
+    horizon_order: D.nullable(D.number),
     outcome_readiness: D.nullable(outcomeReadinessWire),
     iterations: D.array(roadmapIteration)
   }

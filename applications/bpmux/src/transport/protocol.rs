@@ -72,6 +72,8 @@ pub enum ClientMessage {
         iteration_number: u64,
         position: u32,
     },
+    #[serde(rename = "reprioritize_outcome")]
+    ReprioritizeOutcome { outcome_number: u64, position: u32 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

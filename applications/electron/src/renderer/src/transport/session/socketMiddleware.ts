@@ -182,6 +182,13 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           position: action.position
         })
         return
+      case SessionActionType.OutcomeReprioritizeRequested:
+        send({
+          type: 'reprioritize_outcome',
+          outcome_number: action.outcomeNumber,
+          position: action.position
+        })
+        return
       case SessionActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return

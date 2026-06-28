@@ -8,6 +8,7 @@ export const outcome = (overrides: Partial<RoadmapOutcomeData>): RoadmapOutcomeD
   title: 'An outcome',
   body: '',
   horizon: 'now',
+  horizon_order: null,
   outcome_readiness: null,
   iterations: [],
   ...overrides
