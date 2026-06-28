@@ -3,8 +3,9 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use super::events::BoardEvent;
+use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryKey, StoryState};
+use crate::product_management::story::{Story, StoryKey, StoryState, StoryType};
 use crate::store::kernel::Store;
 
 mod action;
@@ -103,6 +104,18 @@ impl BoardStore {
                 .stories
                 .values()
                 .filter_map(|item| item.as_outcome().cloned())
+                .collect()
+        })
+    }
+
+    pub fn iterations(&self) -> Vec<Iteration> {
+        self.store.select(|state| {
+            state
+                .stories
+                .values()
+                .filter_map(|item| item.as_story())
+                .filter(|story| story.story_type() == StoryType::Iteration)
+                .map(Iteration::from_story)
                 .collect()
         })
     }

@@ -18,9 +18,10 @@ pub(crate) fn ordered_board_stories(
                     .iter()
                     .filter(|m| m.iteration_membership().map(|(it, _)| it) == Some(s.number))
                     .collect();
+                let iteration = crate::product_management::iteration::Iteration::from_story(s);
                 let readiness =
                     crate::product_management::iteration::readiness::iteration_readiness(
-                        s, &members, workflow,
+                        &iteration, &members, workflow,
                     );
                 if let Ok(value) = serde_json::to_value(readiness) {
                     map.insert("readiness".to_string(), value);
@@ -49,21 +50,20 @@ pub(crate) fn board_outcomes(
             let iterations: Vec<serde_json::Value> = building_iterations(number, &all)
                 .iter()
                 .map(|iteration| {
+                    let iteration_number = iteration.id().saved_number().unwrap_or(0);
                     let members: Vec<&crate::product_management::story::Story> = all
                         .iter()
                         .filter(|m| {
-                            m.iteration_membership().map(|(it, _)| it) == Some(iteration.number)
+                            m.iteration_membership().map(|(it, _)| it) == Some(iteration_number)
                         })
                         .collect();
-                    let position =
-                        crate::product_management::board::adapters::github::outcome_membership_from_labels(
-                            &iteration.raw_labels,
-                        )
+                    let position = iteration
+                        .outcome_membership
                         .map(|(_, position)| position)
                         .unwrap_or(0);
                     serde_json::json!({
-                        "number": iteration.number,
-                        "name": iteration.title,
+                        "number": iteration_number,
+                        "name": iteration.content.title,
                         "position": position,
                         "readiness": iteration_readiness(iteration, &members, workflow),
                     })

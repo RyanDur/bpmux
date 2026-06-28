@@ -1,9 +1,7 @@
 use serde::Serialize;
 
-use crate::product_management::board::adapters::github::{
-    iteration_dev_ok_by_from_labels, iteration_review_closers_from_labels,
-};
-use crate::product_management::story::Story;
+use crate::product_management::iteration::Iteration;
+use crate::product_management::story::{Story, StoryType};
 use crate::workflow::config::WorkflowConfig;
 
 pub const ITERATION_REVIEWER_PURPOSE: &str = "iteration-reviewer";
@@ -37,16 +35,11 @@ pub struct OutcomeReadiness {
     pub all_ready: bool,
 }
 
-pub fn building_iterations(outcome_number: u64, all: &[Story]) -> Vec<&Story> {
+pub fn building_iterations(outcome_number: u64, all: &[Story]) -> Vec<Iteration> {
     all.iter()
-        .filter(|s| {
-            s.story_type() == crate::product_management::story::StoryType::Iteration
-                && crate::product_management::board::adapters::github::outcome_membership_from_labels(
-                    &s.raw_labels,
-                )
-                .map(|(o, _)| o)
-                    == Some(outcome_number)
-        })
+        .filter(|story| story.story_type() == StoryType::Iteration)
+        .map(Iteration::from_story)
+        .filter(|iteration| iteration.builds_outcome() == Some(outcome_number))
         .collect()
 }
 
@@ -61,7 +54,9 @@ pub fn outcome_readiness(
         .map(|iteration| {
             let members: Vec<&Story> = all
                 .iter()
-                .filter(|m| m.iteration_membership().map(|(it, _)| it) == Some(iteration.number))
+                .filter(|m| {
+                    m.iteration_membership().map(|(it, _)| it) == iteration.id().saved_number()
+                })
                 .collect();
             iteration_readiness(iteration, &members, workflow).unmet_count()
         })
@@ -75,7 +70,7 @@ pub fn outcome_readiness(
 }
 
 pub fn iteration_readiness(
-    iteration: &Story,
+    iteration: &Iteration,
     members: &[&Story],
     workflow: &WorkflowConfig,
 ) -> IterationReadiness {
@@ -87,8 +82,9 @@ pub fn iteration_readiness(
     }
 }
 
-fn drafted(iteration: &Story) -> bool {
+fn drafted(iteration: &Iteration) -> bool {
     iteration
+        .content
         .body
         .as_deref()
         .is_some_and(|b| !b.trim().is_empty())
@@ -111,16 +107,18 @@ fn stories_ordered(members: &[&Story]) -> bool {
     distinct.len() == positions.len()
 }
 
-fn review_closed(iteration: &Story, workflow: &WorkflowConfig) -> bool {
+fn review_closed(iteration: &Iteration, workflow: &WorkflowConfig) -> bool {
     let reviewers = workflow.role_ids_for_purpose(ITERATION_REVIEWER_PURPOSE);
-    iteration_review_closers_from_labels(&iteration.raw_labels)
+    iteration
+        .review_closers
         .iter()
         .any(|closer| reviewers.iter().any(|r| r == closer))
 }
 
-fn dev_ok(iteration: &Story, workflow: &WorkflowConfig) -> bool {
+fn dev_ok(iteration: &Iteration, workflow: &WorkflowConfig) -> bool {
     let builders = workflow.role_ids_for_purpose(ITERATION_BUILDER_PURPOSE);
-    iteration_dev_ok_by_from_labels(&iteration.raw_labels)
+    iteration
+        .dev_ok_by
         .iter()
         .any(|approver| builders.iter().any(|r| r == approver))
 }

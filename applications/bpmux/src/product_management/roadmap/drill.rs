@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::readiness::{
     IterationReadiness, building_iterations, iteration_readiness,
 };
@@ -95,10 +96,14 @@ fn first_unmet_label(r: &IterationReadiness) -> Option<String> {
         .map(|(_, label)| (*label).to_string())
 }
 
-fn readiness_of(iteration: &Story, all: &[Story], workflow: &WorkflowConfig) -> IterationReadiness {
+fn readiness_of(
+    iteration: &Iteration,
+    all: &[Story],
+    workflow: &WorkflowConfig,
+) -> IterationReadiness {
     let members: Vec<&Story> = all
         .iter()
-        .filter(|m| m.iteration_membership().map(|(it, _)| it) == Some(iteration.number))
+        .filter(|m| m.iteration_membership().map(|(it, _)| it) == iteration.id().saved_number())
         .collect();
     iteration_readiness(iteration, &members, workflow)
 }
@@ -111,17 +116,13 @@ pub fn derive_outcome_drill_in(
     let mut building = building_iterations(outcome_number, stories);
     building.sort_by_key(|it| {
         (
-            crate::product_management::board::adapters::github::outcome_membership_from_labels(
-                &it.raw_labels,
-            )
-            .map(|(_, p)| p)
-            .unwrap_or(0),
-            it.number,
+            it.outcome_membership.map(|(_, p)| p).unwrap_or(0),
+            it.id().saved_number().unwrap_or(0),
         )
     });
 
     let next_index = building.iter().position(|it| {
-        !it.is_closed && {
+        !it.complete && {
             let r = readiness_of(it, stories, workflow);
             !nothing_done(&r) && r.unmet_count() > 0
         }
@@ -133,7 +134,7 @@ pub fn derive_outcome_drill_in(
         .map(|(index, it)| {
             let r = readiness_of(it, stories, workflow);
             let gap_count = r.unmet_count();
-            let state = if it.is_closed {
+            let state = if it.complete {
                 DrillIterationState::Done
             } else if nothing_done(&r) {
                 DrillIterationState::NotStarted
@@ -149,8 +150,8 @@ pub fn derive_outcome_drill_in(
                 _ => checks_of(&r),
             };
             DrillIteration {
-                number: it.number,
-                name: it.title.clone(),
+                number: it.id().saved_number().unwrap_or(0),
+                name: it.content.title.clone(),
                 order: index as u32 + 1,
                 state,
                 gap_count,
@@ -160,13 +161,13 @@ pub fn derive_outcome_drill_in(
         .collect();
 
     let convene = next_index.map(|ni| {
-        let next = building[ni];
+        let next = &building[ni];
         let next_r = readiness_of(next, stories, workflow);
         ConveneBanner {
-            next_iteration_name: next.title.clone(),
+            next_iteration_name: next.content.title.clone(),
             next_gap_count: next_r.unmet_count(),
             active_gap_label: first_unmet_label(&next_r),
-            then_iteration_name: building.get(ni + 1).map(|it| it.title.clone()),
+            then_iteration_name: building.get(ni + 1).map(|it| it.content.title.clone()),
         }
     });
 

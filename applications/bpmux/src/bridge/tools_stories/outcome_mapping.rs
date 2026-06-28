@@ -4,6 +4,7 @@ use super::helpers::{
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId};
+use crate::product_management::iteration::Iteration;
 use crate::product_management::story::Story;
 use std::sync::Arc;
 
@@ -97,11 +98,8 @@ pub(crate) async fn handle_reorder_outcome_iteration(
     ))
 }
 
-fn outcome_position_of(iteration: &Story) -> Option<u32> {
-    crate::product_management::board::adapters::github::outcome_membership_from_labels(
-        &iteration.raw_labels,
-    )
-    .map(|(_, position)| position)
+fn outcome_position_of(iteration: &Iteration) -> Option<u32> {
+    iteration.outcome_membership.map(|(_, position)| position)
 }
 
 fn reorder_iterations_within_outcome(
@@ -117,7 +115,7 @@ fn reorder_iterations_within_outcome(
     building.sort_by_key(|iteration| {
         (
             outcome_position_of(iteration).unwrap_or(u32::MAX),
-            iteration.number,
+            iteration.id().saved_number().unwrap_or(u64::MAX),
         )
     });
 
@@ -125,7 +123,7 @@ fn reorder_iterations_within_outcome(
     let clamped = requested_position.clamp(1, band_size.max(1));
     let mut sequence: Vec<u64> = building
         .iter()
-        .map(|iteration| iteration.number)
+        .filter_map(|iteration| iteration.id().saved_number())
         .filter(|number| *number != iteration_number)
         .collect();
     let insert_index = (clamped as usize - 1).min(sequence.len());
@@ -135,8 +133,8 @@ fn reorder_iterations_within_outcome(
         let new_position = (index + 1) as u32;
         let current = building
             .iter()
-            .find(|iteration| iteration.number == *number)
-            .and_then(|iteration| outcome_position_of(iteration));
+            .find(|iteration| iteration.id().saved_number() == Some(*number))
+            .and_then(outcome_position_of);
         if current == Some(new_position) {
             continue;
         }

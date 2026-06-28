@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SyncError};
+use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{FreeComment, GateComment, Story};
 
@@ -57,6 +58,9 @@ pub trait RefreshDriver: Send + Sync {
     fn all_stories(&self) -> Vec<Story>;
     fn outcomes(&self) -> Vec<Outcome> {
         self.store().outcomes()
+    }
+    fn iterations(&self) -> Vec<Iteration> {
+        self.store().iterations()
     }
     fn store(&self) -> Arc<BoardStore>;
     fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;

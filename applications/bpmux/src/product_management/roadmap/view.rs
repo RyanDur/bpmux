@@ -87,7 +87,7 @@ fn roadmap_outcome(outcome: &Outcome, all: &[Story], workflow: &WorkflowConfig) 
     let number = outcome.id().saved_number().unwrap_or(0);
     let readiness = outcome_readiness(number, all, workflow);
     let building = building_iterations(number, all);
-    let done = !building.is_empty() && building.iter().all(|it| it.is_closed);
+    let done = !building.is_empty() && building.iter().all(|it| it.complete);
     let state = if done {
         OutcomeState::Done
     } else if readiness.iteration_count == 0 {
