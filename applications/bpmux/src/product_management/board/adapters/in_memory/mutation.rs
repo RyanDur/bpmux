@@ -151,30 +151,6 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                     .retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
             }
         }
-        BoardEvent::OutcomeMembershipSet {
-            number,
-            outcome_number,
-            position,
-            ..
-        } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(number) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_parent_outcome(l).is_none());
-                story
-                    .raw_labels
-                    .push(GhLabelCodec.encode_parent_outcome(*outcome_number, *position));
-            }
-        }
-        BoardEvent::OutcomeMembershipCleared { number, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(number) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_parent_outcome(l).is_none());
-            }
-        }
         _ => {}
     }
 }

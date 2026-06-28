@@ -94,8 +94,6 @@ fn apply_event(w: &mut Stories, event: &BoardEvent) {
         | BoardEvent::ParentEpicUnset { .. }
         | BoardEvent::IterationMembershipSet { .. }
         | BoardEvent::IterationMembershipCleared { .. }
-        | BoardEvent::OutcomeMembershipSet { .. }
-        | BoardEvent::OutcomeMembershipCleared { .. }
         | BoardEvent::CurrentIterationDesignated { .. }
         | BoardEvent::CurrentIterationCleared { .. } => {}
         BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, number, story),

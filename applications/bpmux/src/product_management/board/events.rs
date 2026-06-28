@@ -109,16 +109,6 @@ pub enum BoardEvent {
         meta: EventMeta,
         number: u64,
     },
-    OutcomeMembershipSet {
-        meta: EventMeta,
-        number: u64,
-        outcome_number: u64,
-        position: u32,
-    },
-    OutcomeMembershipCleared {
-        meta: EventMeta,
-        number: u64,
-    },
     CurrentIterationDesignated {
         meta: EventMeta,
         number: u64,
@@ -177,8 +167,6 @@ impl BoardEvent {
             | BoardEvent::ParentEpicUnset { meta, .. }
             | BoardEvent::IterationMembershipSet { meta, .. }
             | BoardEvent::IterationMembershipCleared { meta, .. }
-            | BoardEvent::OutcomeMembershipSet { meta, .. }
-            | BoardEvent::OutcomeMembershipCleared { meta, .. }
             | BoardEvent::CurrentIterationDesignated { meta, .. }
             | BoardEvent::CurrentIterationCleared { meta, .. }
             | BoardEvent::StoryRefreshed { meta, .. }
@@ -207,8 +195,6 @@ impl BoardEvent {
             | BoardEvent::ParentEpicUnset { number, .. }
             | BoardEvent::IterationMembershipSet { number, .. }
             | BoardEvent::IterationMembershipCleared { number, .. }
-            | BoardEvent::OutcomeMembershipSet { number, .. }
-            | BoardEvent::OutcomeMembershipCleared { number, .. }
             | BoardEvent::CurrentIterationDesignated { number, .. }
             | BoardEvent::CurrentIterationCleared { number, .. }
             | BoardEvent::StoryRefreshed { number, .. }

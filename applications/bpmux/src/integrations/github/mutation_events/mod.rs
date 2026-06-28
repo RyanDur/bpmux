@@ -10,8 +10,7 @@ pub(in crate::integrations::github) use comments::{
 };
 pub(in crate::integrations::github) use grouping::{
     push_current_iteration_cleared, push_current_iteration_designated,
-    push_iteration_membership_cleared, push_iteration_membership_set,
-    push_outcome_membership_cleared, push_outcome_membership_set, push_parent_epic_set,
+    push_iteration_membership_cleared, push_iteration_membership_set, push_parent_epic_set,
     push_parent_epic_unset,
 };
 pub(in crate::integrations::github) use labels::{push_tag_added, push_tag_removed};

@@ -75,43 +75,6 @@ pub(in crate::integrations::github) async fn push_iteration_membership_cleared(
     Ok(last_response.map(|labels| labels_refreshed(number, labels)))
 }
 
-pub(in crate::integrations::github) async fn push_outcome_membership_cleared(
-    inner: &OctocrabStoryTracker,
-    number: u64,
-) -> Result<Option<BoardEvent>, SyncError> {
-    let current = inner.get_story_labels(number).await;
-    let mut last_response: Option<Vec<String>> = None;
-    for l in current.iter().filter(|l| l.starts_with("parent-outcome-#")) {
-        let labels = inner
-            .remove_label(number, l)
-            .await
-            .map_err(SyncError::Other)?;
-        last_response = Some(labels);
-    }
-    Ok(last_response.map(|labels| labels_refreshed(number, labels)))
-}
-
-pub(in crate::integrations::github) async fn push_outcome_membership_set(
-    inner: &OctocrabStoryTracker,
-    number: u64,
-    outcome_number: u64,
-    position: u32,
-) -> Result<Option<BoardEvent>, SyncError> {
-    let current = inner.get_story_labels(number).await;
-    for l in current.iter().filter(|l| l.starts_with("parent-outcome-#")) {
-        inner
-            .remove_label(number, l)
-            .await
-            .map_err(SyncError::Other)?;
-    }
-    let label = format!("parent-outcome-#{outcome_number}.{position}");
-    let labels = inner
-        .add_label(number, &label)
-        .await
-        .map_err(SyncError::Other)?;
-    Ok(Some(labels_refreshed(number, labels)))
-}
-
 pub(in crate::integrations::github) async fn push_current_iteration_designated(
     inner: &OctocrabStoryTracker,
     number: u64,
