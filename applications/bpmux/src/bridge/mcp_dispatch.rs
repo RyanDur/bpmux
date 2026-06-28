@@ -136,7 +136,7 @@ pub(super) async fn dispatch_tool_call(
         }
         "get_usage" => tools::handle_get_usage(&args).await,
         "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
-        "view_roadmap" => tools::handle_view_roadmap(&ws_tx).await,
+        "view_roadmap" => tools::handle_view_roadmap(&ws_tx, port).await,
         other => Err(format!("unknown tool: {other}")),
     };
     Ok(match result {

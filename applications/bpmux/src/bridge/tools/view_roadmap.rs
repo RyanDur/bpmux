@@ -6,6 +6,7 @@ pub(in crate::bridge) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__"
 
 pub(in crate::bridge) async fn handle_view_roadmap(
     ws_tx: &Mutex<Option<WsSink>>,
+    port: u16,
 ) -> Result<String, String> {
     let msg = crate::transport::protocol::ClientMessage::Send {
         text: VIEW_ROADMAP_MARKER.to_string(),
@@ -17,8 +18,21 @@ pub(in crate::bridge) async fn handle_view_roadmap(
     ws_send(ws_tx, json)
         .await
         .map_err(|e| format!("view_roadmap send failed: {e}"))?;
-    match crate::product_management::roadmap::fetch_roadmap() {
+    match fetch_roadmap_view(port).await {
         Ok(text) => Ok(text),
         Err(e) => Ok(format!("roadmap view opened, but content unavailable: {e}")),
     }
+}
+
+async fn fetch_roadmap_view(port: u16) -> Result<String, String> {
+    let url = crate::transport::local_url::api_url(port, "/api/roadmap");
+    let body = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("failed to fetch: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("failed to read response: {e}"))?;
+    let value: serde_json::Value =
+        serde_json::from_str(&body).map_err(|e| format!("unparseable roadmap response: {e}"))?;
+    Ok(crate::view::roadmap_render::render_overview_layer(&value))
 }

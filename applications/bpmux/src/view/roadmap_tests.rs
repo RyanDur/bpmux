@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::roadmap::*;
-use super::roadmap_render::render_roadmap;
+use super::roadmap_render::{render_overview_layer, render_roadmap};
 use crate::product_management::iteration::readiness::OutcomeReadiness;
 use crate::product_management::story::Horizon;
 
@@ -229,4 +229,48 @@ fn render_shows_the_gap_count_with_the_needs_attention_state() {
 #[test]
 fn render_handles_no_outcomes() {
     assert_eq!(render_roadmap(&[]), "ROADMAP\n  (no outcomes yet)\n");
+}
+
+#[test]
+fn overview_layer_renders_served_cards_via_the_shared_renderer() {
+    let out = render_overview_layer(&serde_json::json!({
+        "outcomes": [
+            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"},
+            {"number": 13, "name": "B", "why": {}, "horizon": "now", "state": "needs-attention", "gap_count": 2, "tone": "gap"},
+            {"number": 40, "name": "D", "why": {}, "horizon": "later", "state": "done", "gap_count": 0, "tone": "ready"}
+        ],
+        "total": 3,
+        "shown": 3
+    }));
+    assert!(out.starts_with("ROADMAP\n"));
+    assert!(out.contains("Now") && out.contains("#12  A  ready"));
+    assert!(out.contains("#13  B  2 needs-attention"));
+    assert!(out.contains("#40  D  done"));
+}
+
+#[test]
+fn overview_layer_labels_the_elided_count_when_a_limit_dropped_rows() {
+    let out = render_overview_layer(&serde_json::json!({
+        "outcomes": [
+            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
+        ],
+        "total": 12,
+        "shown": 1
+    }));
+    assert!(
+        out.contains("showing 1 of 12"),
+        "a limited view labels what it elided; got {out:?}"
+    );
+}
+
+#[test]
+fn overview_layer_omits_the_elision_label_when_nothing_was_dropped() {
+    let out = render_overview_layer(&serde_json::json!({
+        "outcomes": [
+            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
+        ],
+        "total": 1,
+        "shown": 1
+    }));
+    assert!(!out.contains("showing"), "no elision label; got {out:?}");
 }

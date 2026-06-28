@@ -1,6 +1,18 @@
 use super::roadmap::{OutcomeState, RoadmapOutcomeCard};
 use crate::product_management::story::Horizon;
 
+pub fn render_overview_layer(value: &serde_json::Value) -> String {
+    let outcomes: Vec<RoadmapOutcomeCard> =
+        serde_json::from_value(value["outcomes"].clone()).unwrap_or_default();
+    let mut out = render_roadmap(&outcomes);
+    let total = value["total"].as_u64().unwrap_or(0);
+    let shown = value["shown"].as_u64().unwrap_or(total);
+    if total > shown {
+        out.push_str(&format!("showing {shown} of {total}\n"));
+    }
+    out
+}
+
 pub fn render_roadmap(cards: &[RoadmapOutcomeCard]) -> String {
     let mut out = String::from("ROADMAP\n");
     if cards.is_empty() {

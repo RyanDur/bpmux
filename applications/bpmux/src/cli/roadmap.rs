@@ -31,7 +31,7 @@ pub(crate) fn run_roadmap(
     let out = if outcome.is_some() {
         render_drill(&value)
     } else {
-        render_overview_layer(&value)
+        crate::view::roadmap_render::render_overview_layer(&value)
     };
     print!("{out}");
     Ok(())
@@ -59,18 +59,6 @@ fn validate_order(order: Option<&str>) -> anyhow::Result<()> {
         );
     }
     Ok(())
-}
-
-pub(super) fn render_overview_layer(value: &serde_json::Value) -> String {
-    let outcomes: Vec<crate::view::roadmap::RoadmapOutcomeCard> =
-        serde_json::from_value(value["outcomes"].clone()).unwrap_or_default();
-    let mut out = crate::view::roadmap_render::render_roadmap(&outcomes);
-    let total = value["total"].as_u64().unwrap_or(0);
-    let shown = value["shown"].as_u64().unwrap_or(total);
-    if total > shown {
-        out.push_str(&format!("showing {shown} of {total}\n"));
-    }
-    out
 }
 
 pub(super) fn render_drill(value: &serde_json::Value) -> String {

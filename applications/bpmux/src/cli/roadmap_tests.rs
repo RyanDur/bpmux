@@ -1,68 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::roadmap::{render_drill, render_overview_layer};
+use super::roadmap::render_drill;
 use serde_json::json;
-
-#[test]
-fn overview_layer_renders_served_cards_via_the_shared_renderer() {
-    let out = render_overview_layer(&json!({
-        "outcomes": [
-            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"},
-            {"number": 13, "name": "B", "why": {}, "horizon": "now", "state": "needs-attention", "gap_count": 2, "tone": "gap"},
-            {"number": 40, "name": "D", "why": {}, "horizon": "later", "state": "done", "gap_count": 0, "tone": "ready"}
-        ],
-        "total": 3,
-        "shown": 3
-    }));
-    assert!(
-        out.starts_with("ROADMAP\n"),
-        "header is the substrate-view, not markdown"
-    );
-    assert!(out.contains("Now") && out.contains("#12  A  ready"));
-    assert!(
-        out.contains("#13  B  2 needs-attention"),
-        "gap-count rendered"
-    );
-    assert!(out.contains("#40  D  done"));
-}
-
-#[test]
-fn overview_layer_empty_is_the_substrate_views_own_marker() {
-    assert_eq!(
-        render_overview_layer(&json!({ "outcomes": [], "total": 0, "shown": 0 })),
-        "ROADMAP\n  (no outcomes yet)\n"
-    );
-}
-
-#[test]
-fn overview_layer_labels_the_elided_count_when_a_limit_dropped_rows() {
-    let out = render_overview_layer(&json!({
-        "outcomes": [
-            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
-        ],
-        "total": 12,
-        "shown": 1
-    }));
-    assert!(
-        out.contains("showing 1 of 12"),
-        "a limited view labels what it elided — never silently truncates; got {out:?}"
-    );
-}
-
-#[test]
-fn overview_layer_omits_the_elision_label_when_nothing_was_dropped() {
-    let out = render_overview_layer(&json!({
-        "outcomes": [
-            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
-        ],
-        "total": 1,
-        "shown": 1
-    }));
-    assert!(
-        !out.contains("showing"),
-        "no elision label when every row is shown; got {out:?}"
-    );
-}
 
 #[test]
 fn drill_renders_header_convene_iterations_and_checks() {
