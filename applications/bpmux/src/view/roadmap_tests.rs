@@ -209,19 +209,21 @@ fn render_labels_each_band_once_and_shows_per_outcome_state() {
         "the second Now outcome omits the repeated band label: {:?}",
         lines[2]
     );
-    assert!(lines[2].contains("#10") && lines[2].ends_with("2 gaps"));
+    assert!(lines[2].contains("#10") && lines[2].ends_with("2 needs-attention"));
     assert!(lines[3].trim_start().starts_with("Next"));
-    assert!(lines[3].contains("#7") && lines[3].ends_with("planned"));
+    assert!(lines[3].contains("#7") && lines[3].ends_with("planned · iterations TBD"));
 }
 
 #[test]
-fn render_singularizes_a_one_gap_outcome() {
+fn render_shows_the_gap_count_with_the_needs_attention_state() {
     let mut one_gap = outcome(5, "Almost", Some(Horizon::Now));
     one_gap.readiness = Some(readiness(1, 1, false));
     let line = render_roadmap(&derive_roadmap(&[one_gap]));
     let outcome_line = line.lines().nth(1).unwrap();
-    assert!(outcome_line.ends_with("1 gap"), "got: {outcome_line:?}");
-    assert!(!outcome_line.ends_with("gaps"));
+    assert!(
+        outcome_line.ends_with("1 needs-attention"),
+        "got: {outcome_line:?}"
+    );
 }
 
 #[test]

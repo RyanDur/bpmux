@@ -29,6 +29,20 @@ pub enum OutcomeState {
     Planned,
 }
 
+impl OutcomeState {
+    pub const CLI_VALUES: &'static str = "done | ready | needs-attention | planned";
+
+    pub fn from_cli(value: &str) -> Option<Self> {
+        match value {
+            "done" => Some(Self::Done),
+            "ready" => Some(Self::Ready),
+            "needs-attention" => Some(Self::NeedsAttention),
+            "planned" => Some(Self::Planned),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OutcomeCardTone {
@@ -100,7 +114,7 @@ pub fn derive_roadmap(outcomes: &[RoadmapOutcomeInput]) -> Vec<RoadmapOutcomeCar
     ordered.into_iter().map(to_card).collect()
 }
 
-fn horizon_rank(horizon: Horizon) -> u8 {
+pub(crate) fn horizon_rank(horizon: Horizon) -> u8 {
     match horizon {
         Horizon::Now => 0,
         Horizon::Next => 1,
