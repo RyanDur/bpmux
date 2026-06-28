@@ -1,11 +1,11 @@
 use super::Stories;
 use crate::product_management::board::events::LabelDerivedFields;
-use crate::product_management::board::item::BoardItem;
+use crate::product_management::board::item::ProductItem;
 use crate::product_management::story::StoryKey;
 
 pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, fields: &LabelDerivedFields) {
     match w.get_mut(&StoryKey::Saved(number)) {
-        Some(BoardItem::Story(story)) => {
+        Some(ProductItem::Story(story)) => {
             story.acceptor = fields.acceptor;
             story.parent_epic = fields.parent_epic;
             story.iteration_membership = fields.iteration_membership;
@@ -13,7 +13,7 @@ pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, fields: &LabelDeriv
             story.ready_order = fields.ready_order;
             story.raw_labels = fields.raw_labels.clone();
         }
-        Some(BoardItem::Outcome(outcome)) => {
+        Some(ProductItem::Outcome(outcome)) => {
             *outcome = outcome.with_horizon_labels(&fields.raw_labels);
         }
         None => {}
@@ -25,7 +25,7 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
         return;
     }
     match w.get_mut(&StoryKey::Saved(number)) {
-        Some(BoardItem::Story(existing)) => {
+        Some(ProductItem::Story(existing)) => {
             existing.acceptor = fields.acceptor;
             existing.parent_epic = fields.parent_epic;
             existing.iteration_membership = fields.iteration_membership;
@@ -33,7 +33,7 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
             existing.ready_order = fields.ready_order;
             existing.raw_labels = fields.raw_labels.clone();
         }
-        Some(BoardItem::Outcome(outcome)) => {
+        Some(ProductItem::Outcome(outcome)) => {
             *outcome = outcome.with_horizon_labels(&fields.raw_labels);
         }
         None => {}

@@ -13,51 +13,51 @@ pub struct Content {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BoardItem {
+pub enum ProductItem {
     Story(Story),
     Outcome(Outcome),
 }
 
-impl BoardItem {
+impl ProductItem {
     pub fn id(&self) -> StoryKey {
         match self {
-            BoardItem::Story(story) => story.id(),
-            BoardItem::Outcome(outcome) => outcome.id(),
+            ProductItem::Story(story) => story.id(),
+            ProductItem::Outcome(outcome) => outcome.id(),
         }
     }
 
     pub fn as_story(&self) -> Option<&Story> {
         match self {
-            BoardItem::Story(story) => Some(story),
-            BoardItem::Outcome(_) => None,
+            ProductItem::Story(story) => Some(story),
+            ProductItem::Outcome(_) => None,
         }
     }
 
     pub fn as_story_mut(&mut self) -> Option<&mut Story> {
         match self {
-            BoardItem::Story(story) => Some(story),
-            BoardItem::Outcome(_) => None,
+            ProductItem::Story(story) => Some(story),
+            ProductItem::Outcome(_) => None,
         }
     }
 
     pub fn as_outcome(&self) -> Option<&Outcome> {
         match self {
-            BoardItem::Outcome(outcome) => Some(outcome),
-            BoardItem::Story(_) => None,
+            ProductItem::Outcome(outcome) => Some(outcome),
+            ProductItem::Story(_) => None,
         }
     }
 
     pub fn as_outcome_mut(&mut self) -> Option<&mut Outcome> {
         match self {
-            BoardItem::Outcome(outcome) => Some(outcome),
-            BoardItem::Story(_) => None,
+            ProductItem::Outcome(outcome) => Some(outcome),
+            ProductItem::Story(_) => None,
         }
     }
 
     pub fn current_labels(&self) -> Vec<String> {
         match self {
-            BoardItem::Story(story) => story.raw_labels().to_vec(),
-            BoardItem::Outcome(outcome) => outcome.encoded_labels(),
+            ProductItem::Story(story) => story.raw_labels().to_vec(),
+            ProductItem::Outcome(outcome) => outcome.encoded_labels(),
         }
     }
 }
