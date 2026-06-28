@@ -1,17 +1,16 @@
 import { describe, expect, test } from 'vitest'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
+import type { BoardIterationData } from './selectIterations'
 import type { BoardStory, IterationReadiness, StoryState } from './types'
 
 let seq = 1
-const iteration = (over: Partial<BoardStory>): BoardStory => ({
+const iteration = (over: Partial<BoardIterationData>): BoardIterationData => ({
   number: seq++,
   title: 'Iteration X',
-  state: 'in-progress',
-  labels: ['iteration'],
-  assignees: [],
-  created_at: '2026-06-16T00:00:00Z',
-  body: '',
-  gh_state: 'open',
+  iteration_order: null,
+  is_current: false,
+  complete: false,
+  readiness: { drafted: false, stories_ordered: false, review_closed: false, dev_ok: false },
   ...over
 })
 
@@ -28,6 +27,7 @@ const member = (
   assignees: [],
   created_at: '2026-06-16T00:00:00Z',
   body: '',
+  gh_state: 'open',
   iteration_membership: { iteration_number: iterationNumber, position },
   ...over
 })
@@ -66,7 +66,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 2,
       readiness: NOT_READY
     })
-    const nudge = deriveCloseApproachNudge([current, next, ...drainingMembers(100)])
+    const nudge = deriveCloseApproachNudge([current, next], drainingMembers(100))
     expect(nudge).not.toBeNull()
     expect(nudge?.nextIterationNumber).toBe(200)
     expect(nudge?.nextIterationName).toBe('Fornax')
@@ -92,7 +92,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       member(100, 3, 'accepted'),
       member(100, 4, 'in-progress')
     ]
-    expect(deriveCloseApproachNudge([current, next, ...members])).not.toBeNull()
+    expect(deriveCloseApproachNudge([current, next], members)).not.toBeNull()
   })
 
   test('NULL: no current iteration (the #1684 no-iteration board state)', () => {
@@ -102,7 +102,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 2,
       readiness: NOT_READY
     })
-    expect(deriveCloseApproachNudge([planned])).toBeNull()
+    expect(deriveCloseApproachNudge([planned], [])).toBeNull()
   })
 
   test('NULL: current not draining (<75% accepted)', () => {
@@ -124,7 +124,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       member(100, 3, 'in-progress'),
       member(100, 4, 'ready')
     ]
-    expect(deriveCloseApproachNudge([current, next, ...members])).toBeNull()
+    expect(deriveCloseApproachNudge([current, next], members)).toBeNull()
   })
 
   test('NULL: no next iteration exists (current is the last in order)', () => {
@@ -134,7 +134,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       is_current: true,
       iteration_order: 1
     })
-    expect(deriveCloseApproachNudge([current, ...drainingMembers(100)])).toBeNull()
+    expect(deriveCloseApproachNudge([current], drainingMembers(100))).toBeNull()
   })
 
   test('NULL: next iteration is ready (no alarm)', () => {
@@ -150,7 +150,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 2,
       readiness: READY
     })
-    expect(deriveCloseApproachNudge([current, next, ...drainingMembers(100)])).toBeNull()
+    expect(deriveCloseApproachNudge([current, next], drainingMembers(100))).toBeNull()
   })
 
   test('NULL: far-horizon — the NEXT (+1) is ready even though a +2 is not-ready (gates on +1, not any-future)', () => {
@@ -172,9 +172,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 3,
       readiness: NOT_READY
     })
-    expect(
-      deriveCloseApproachNudge([current, next, farHorizon, ...drainingMembers(100)])
-    ).toBeNull()
+    expect(deriveCloseApproachNudge([current, next, farHorizon], drainingMembers(100))).toBeNull()
   })
 
   test('retired members are excluded from the drain denominator', () => {
@@ -197,7 +195,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       member(100, 4, 'in-progress'),
       member(100, 5, 'icebox', { gh_state: 'closed' })
     ]
-    const nudge = deriveCloseApproachNudge([current, next, ...members])
+    const nudge = deriveCloseApproachNudge([current, next], members)
     expect(
       nudge,
       'retired (closed, not accepted) excluded → 3/4 accepted = 0.75, fires'

@@ -45,7 +45,7 @@ export const useBoardData = (
   const iterationContainerStories = useMemo(
     () =>
       nonEpicStories.filter((s) => {
-        if (storyTypeFromLabels(s.labels) === 'iteration') return true
+        if (storyTypeFromLabels(s.labels) === 'iteration') return false
         if (s.state === 'icebox') return true
         if (isIterationMember(s)) return true
         return false

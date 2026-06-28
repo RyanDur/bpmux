@@ -9,6 +9,7 @@ import { storyNavigateLabel } from './storyNavigateLabel'
 import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
 import { type DragPayload, postLabelMutation } from './iterationMembers'
 import { ITERATION_MEMBER_DRAG } from './sortableDragConfigs'
+import type { BoardIterationData } from './selectIterations'
 import type { IterationMember } from './useIterationMembers'
 
 const activeStateLabel = (story: BoardStory): string | null => {
@@ -23,7 +24,7 @@ const activeStateLabel = (story: BoardStory): string | null => {
 }
 
 interface Props {
-  iteration: BoardStory
+  iteration: BoardIterationData
   members: IterationMember[]
   setPending: (storyNumber: number, iterationNumber: number, position: number) => void
   onOpen: (n: number) => void
@@ -48,7 +49,7 @@ const MemberList = ({
         iterationNumber: iteration.number,
         oldPosition: m.position
       })}
-      disabled={iteration.gh_state === 'closed'}
+      disabled={iteration.complete}
       onReorder={(payload, targetKey) => {
         const originalIdx = members.findIndex((m) => m.story.number === targetKey)
         if (originalIdx === -1) return
@@ -84,7 +85,7 @@ const MemberList = ({
             onClick={() => onOpen(story.number)}
             onKeyDown={(event) => {
               if (!event.ctrlKey || !event.shiftKey) return
-              if (iteration.gh_state === 'closed') return
+              if (iteration.complete) return
               const direction =
                 event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : null
               if (direction === null) return
@@ -123,7 +124,7 @@ const MemberList = ({
               )
             }}
           />
-          {iteration.gh_state !== 'closed' ? (
+          {!iteration.complete ? (
             <DragGrip storyNumber={story.number} gripDragProps={gripDragProps} />
           ) : null}
           <small className="board-story-number">#{story.number}</small>

@@ -98,6 +98,18 @@ pub(super) async fn handle_board_hydrate(
                 crate::transport::rest::board_snapshot_message(serde_json::Value::Array(stories));
             let _ = reply_tx.send(ServerMessage::from(msg));
         }
+        if let Some(refresh) = test_refresh.as_ref() {
+            let outcomes =
+                serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
+            let _ = reply_tx.send(ServerMessage::from(
+                crate::transport::rest::outcomes_message(outcomes),
+            ));
+            let iterations =
+                serde_json::Value::Array(crate::transport::rest::board_iterations(refresh));
+            let _ = reply_tx.send(ServerMessage::from(
+                crate::transport::rest::iterations_message(iterations),
+            ));
+        }
     });
     Ok(())
 }

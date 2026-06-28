@@ -1,18 +1,21 @@
-import { isIterationStory, positionInParentIteration } from './iterationMembers'
+import { positionInParentIteration } from './iterationMembers'
+import type { BoardIterationData } from './selectIterations'
 import type { BoardStory } from './types'
 
-export const findCurrentIteration = (stories: BoardStory[]): BoardStory | null => {
-  return (
-    stories.find((s) => isIterationStory(s) && s.gh_state !== 'closed' && s.is_current === true) ??
-    null
-  )
+export const findCurrentIteration = (
+  iterations: BoardIterationData[]
+): BoardIterationData | null => {
+  return iterations.find((it) => !it.complete && it.is_current) ?? null
 }
 
-export const isMemberOfIteration = (story: BoardStory, iteration: BoardStory): boolean => {
+export const isMemberOfIteration = (story: BoardStory, iteration: BoardIterationData): boolean => {
   return positionInParentIteration(story, iteration.number) !== null
 }
 
-export const epicNumbersInIteration = (stories: BoardStory[], iteration: BoardStory): number[] => {
+export const epicNumbersInIteration = (
+  stories: BoardStory[],
+  iteration: BoardIterationData
+): number[] => {
   const epicSet = new Set<number>()
   for (const s of stories) {
     if (!isMemberOfIteration(s, iteration)) continue

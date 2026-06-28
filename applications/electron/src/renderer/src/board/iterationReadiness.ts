@@ -1,4 +1,5 @@
-import type { BoardStory, IterationReadiness } from './types'
+import type { BoardIterationData } from './selectIterations'
+import type { IterationReadiness } from './types'
 
 export const CHECK_ORDER: ReadonlyArray<{ key: keyof IterationReadiness; label: string }> = [
   { key: 'drafted', label: 'drafted' },
@@ -14,7 +15,7 @@ export const NOTHING_DONE: IterationReadiness = {
   dev_ok: false
 }
 
-export const readinessOf = (iteration: BoardStory): IterationReadiness =>
+export const readinessOf = (iteration: BoardIterationData): IterationReadiness =>
   iteration.readiness ?? NOTHING_DONE
 
 export const unmetCount = (readiness: IterationReadiness): number =>

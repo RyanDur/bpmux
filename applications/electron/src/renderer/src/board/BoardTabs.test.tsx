@@ -3,9 +3,14 @@ import { cleanup, render } from '@testing-library/react'
 import BoardTabs from './BoardTabs'
 import { iterationLabel } from './labelSchema'
 import { boardTabs } from './BoardTabs.page'
-import { buildProps, epicStory, featureStory, iterationStory } from './BoardTabs.fixtures'
+import { buildProps, epicStory, featureStory } from './BoardTabs.fixtures'
+import { boardIteration, seedIterations } from './Iteration.fixtures'
+import { resetSessionForTest } from '../transport/session/store'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  resetSessionForTest()
+})
 beforeEach(() => {
   window.localStorage.clear()
 })
@@ -26,7 +31,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
   })
 
   test('#1549: NOW sections show the current iteration members per state, not the global ready column', () => {
-    const carina = iterationStory({ number: 1552, title: 'Iteration Carina', is_current: true })
+    seedIterations([boardIteration({ number: 1552, title: 'Iteration Carina', is_current: true })])
     const m1 = featureStory({
       number: 9001,
       state: 'ready',
@@ -38,31 +43,31 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
       iteration_membership: { iteration_number: 1552, position: 200 }
     })
     const nonMember = featureStory({ number: 9999, state: 'ready' })
-    render(<BoardTabs {...buildProps([carina, m1, m2, nonMember])} />)
+    render(<BoardTabs {...buildProps([m1, m2, nonMember])} />)
     expect(boardTabs.panelHasStory('now', 9001)).toBe(true)
     expect(boardTabs.panelHasStory('now', 9002)).toBe(true)
     expect(boardTabs.panelHasStory('now', 9999)).toBe(false)
   })
 
   test('#1684: NOW shows the roadmap-view (what is coming) when none is current — not a dead board', () => {
-    const open = iterationStory({ number: 1, title: 'A', gh_state: 'open' })
-    render(<BoardTabs {...buildProps([open])} />)
+    seedIterations([boardIteration({ number: 1, title: 'Iteration A' })])
+    render(<BoardTabs {...buildProps([])} />)
     expect(boardTabs.nowHasRoadmap()).toBe(true)
   })
 
   test('#1510: Now tab renders the current iteration member directly (no dedicated anchor-box)', () => {
-    const iter = iterationStory({ number: 1500, title: 'Iteration Sextans', is_current: true })
+    seedIterations([boardIteration({ number: 1500, title: 'Iteration Sextans', is_current: true })])
     const inFlightChild = featureStory({
       number: 9101,
       state: 'in-progress',
       iteration_membership: { iteration_number: 1500, position: 100 }
     })
-    render(<BoardTabs {...buildProps([iter, inFlightChild])} />)
+    render(<BoardTabs {...buildProps([inFlightChild])} />)
     expect(boardTabs.panelHasStory('now', 9101)).toBe(true)
   })
 
   test('Scenario 3 cont.: Now tab Epic-card shows only Epics belonging to current iteration', () => {
-    const iter = iterationStory({ number: 1500, title: 'Iteration Sextans' })
+    seedIterations([boardIteration({ number: 1500, title: 'Iteration Sextans', is_current: true })])
     const epicIn = epicStory({ number: 8001, title: 'Epic In' })
     const epicOut = epicStory({ number: 8002, title: 'Epic Out' })
     const memberOfIter = featureStory({
@@ -75,15 +80,15 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
       parent_epic: 8002,
       iteration_membership: { iteration_number: 9999, position: 100 }
     })
-    render(<BoardTabs {...buildProps([iter, epicIn, epicOut, memberOfIter, memberOfOther])} />)
+    render(<BoardTabs {...buildProps([epicIn, epicOut, memberOfIter, memberOfOther])} />)
     expect(boardTabs.epicTitleCount('Epic In')).toBeGreaterThan(0)
     expect(boardTabs.epicTitleCount('Epic Out')).toBe(1)
   })
 
   test('Scenario 4: Plan tab renders active Epics, the Iteration component, and the icebox section', async () => {
-    const iter = iterationStory({ number: 1500, title: 'Iteration Sextans' })
+    seedIterations([boardIteration({ number: 1500, title: 'Iteration Sextans' })])
     const epic = epicStory({ number: 8001, title: 'Epic Foo' })
-    render(<BoardTabs {...buildProps([iter, epic])} />)
+    render(<BoardTabs {...buildProps([epic])} />)
     await boardTabs.selectTab('plan')
     expect(boardTabs.panelHasGroup('plan', 'Icebox')).toBe(true)
     expect(boardTabs.panelHasIteration('plan', 'Iteration Sextans')).toBe(true)
@@ -116,27 +121,27 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
   })
 
   test('Scenario 10: a current-iteration member appears in Now, not in Done', async () => {
-    const carina = iterationStory({ number: 1552, title: 'Iteration Carina', is_current: true })
+    seedIterations([boardIteration({ number: 1552, title: 'Iteration Carina', is_current: true })])
     const member = featureStory({
       number: 9101,
       state: 'ready',
       iteration_membership: { iteration_number: 1552, position: 100 }
     })
-    render(<BoardTabs {...buildProps([carina, member])} />)
+    render(<BoardTabs {...buildProps([member])} />)
     expect(boardTabs.panelHasStory('now', 9101)).toBe(true)
     await boardTabs.selectTab('done')
     expect(boardTabs.panelHasStory('done', 9101)).toBe(false)
   })
 
   test('Scenario regression: legacy iteration-{Name}.{N} label still derives current-iter Epic', () => {
-    const iter = iterationStory({ number: 1500, title: 'Iteration Sextans' })
+    seedIterations([boardIteration({ number: 1500, title: 'Iteration Sextans' })])
     const epicIn = epicStory({ number: 8001, title: 'Epic Legacy' })
     const legacyMember = featureStory({
       number: 9101,
       parent_epic: 8001,
       labels: ['feature', iterationLabel('Sextans', 100)]
     })
-    render(<BoardTabs {...buildProps([iter, epicIn, legacyMember])} />)
+    render(<BoardTabs {...buildProps([epicIn, legacyMember])} />)
     expect(boardTabs.epicTitleCount('Epic Legacy')).toBeGreaterThan(0)
   })
 })

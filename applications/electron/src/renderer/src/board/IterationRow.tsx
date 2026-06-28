@@ -7,18 +7,18 @@ import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
 import type { SortableRowContext } from './SortableList'
 import type { useIterationCollapse } from './useIterationCollapse'
 import type { IterationMember } from './useIterationMembers'
-import type { BoardStory } from './types'
+import type { BoardIterationData } from './selectIterations'
 import MemberList from './MemberList'
 
 interface Props {
-  iteration: BoardStory
+  iteration: BoardIterationData
   collapse: ReturnType<typeof useIterationCollapse>
   currentIterationNumber: number | null
   getMembersFor: (iterationNumber: number) => IterationMember[]
   setPending: (storyNumber: number, iterationNumber: number, position: number) => void
   onOpen: (n: number) => void
   onReorderAnnounce?: (text: string) => void
-  onReorderByKeyboard: (iteration: BoardStory, direction: 'up' | 'down') => void
+  onReorderByKeyboard: (iteration: BoardIterationData, direction: 'up' | 'down') => void
   drag?: SortableRowContext
 }
 
@@ -37,7 +37,7 @@ const IterationRow = ({
   const key = String(iteration.number)
   const iterationName = iterationNameFromTitle(iteration.title)
   const members = getMembersFor(iteration.number)
-  const defaultOpen = iteration.gh_state !== 'closed'
+  const defaultOpen = !iteration.complete
   const open = collapse.isOpen(key, defaultOpen)
   const isCurrent = iteration.number === currentIterationNumber
   const draggable = drag !== undefined
@@ -61,7 +61,7 @@ const IterationRow = ({
           aria-label={`Iteration #${iteration.number} ${iteration.title}`}
           data-iteration-kind="named"
           data-iteration-name={iterationName}
-          data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
+          data-closed={iteration.complete ? 'true' : undefined}
           data-current-iteration={isCurrent ? 'true' : undefined}
           data-dragging={drag?.dragging ? 'true' : undefined}
           data-drag-rejected={dragRejected ? 'true' : undefined}
@@ -79,9 +79,7 @@ const IterationRow = ({
             <StoryTypeGlyph type="iteration" />
             <small className="board-story-number">#{iteration.number}</small>
             <b className="board-iteration-title">{iteration.title}</b>
-            {iteration.gh_state === 'closed' && (
-              <small className="board-iteration-closed-badge">(closed)</small>
-            )}
+            {iteration.complete && <small className="board-iteration-closed-badge">(closed)</small>}
             <small className="board-iteration-count">({members.length})</small>
           </summary>
           <section className="board-iteration-body">

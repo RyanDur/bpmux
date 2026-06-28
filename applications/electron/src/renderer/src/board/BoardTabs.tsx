@@ -8,6 +8,7 @@ import { useTabStorage } from '../lib/useTabStorage'
 import { RENDERER_IDENTITY } from '../transport/session'
 import { epicNumbersInIteration } from './currentIteration'
 import { deriveNowView } from './deriveNowView'
+import type { BoardIterationData } from './selectIterations'
 import {
   GROUP_ORDER,
   isActiveEpic,
@@ -35,6 +36,7 @@ const iceboxGroup = (): GroupSpec | undefined => GROUP_ORDER.find((g) => g.state
 
 interface BoardTabsProps {
   stories: BoardStory[]
+  iterations: BoardIterationData[]
   epics: BoardStory[]
   epicTitleByNumber: Map<number, string>
   iterationContainerStories: BoardStory[]
@@ -52,6 +54,7 @@ interface BoardTabsProps {
 
 const BoardTabs = ({
   stories,
+  iterations,
   epics,
   epicTitleByNumber,
   iterationContainerStories,
@@ -73,7 +76,7 @@ const BoardTabs = ({
     'now'
   )
 
-  const nowView = useMemo(() => deriveNowView(stories), [stories])
+  const nowView = useMemo(() => deriveNowView(iterations, stories), [iterations, stories])
   const currentIteration = nowView.kind === 'current' ? nowView.iteration : null
   const currentIterationEpicNumbers = useMemo(() => {
     if (currentIteration === null) return []

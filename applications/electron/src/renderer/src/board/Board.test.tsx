@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import Board from './Board'
 import type { BoardResponse, BoardStory } from './types'
+import { boardIteration, seedIterations } from './Iteration.fixtures'
 import { dispatchSession, resetSessionForTest } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
 
@@ -25,18 +26,21 @@ const story = (over: Partial<BoardStory>): BoardStory => ({
   ...over
 })
 
-const ITERATION_ACTIVE: BoardResponse = {
+const seedCurrentIteration = (): void =>
+  seedIterations([boardIteration({ number: 100, title: 'Crux', is_current: true })])
+
+const seedNoCurrentIteration = (): void => seedIterations([])
+
+const MEMBERS: BoardResponse = {
   fetched_at: '2026-06-16T00:00:00Z',
   stories: [
     story({
-      number: 100,
-      title: 'Crux',
-      state: 'in-progress',
-      labels: ['iteration'],
-      gh_state: 'open',
-      is_current: true
-    }),
-    story({ number: 101, title: 'a ready member', state: 'ready', labels: ['Feature'] })
+      number: 101,
+      title: 'a ready member',
+      state: 'ready',
+      labels: ['Feature'],
+      iteration_membership: { iteration_number: 100, position: 100 }
+    })
   ]
 }
 
@@ -83,26 +87,29 @@ describe('#1684 no active iteration → the board panel defaults to the #1704 ro
   })
 
   test('an active iteration shows the board (the in-iteration state), NOT the roadmap fallback', () => {
-    renderBoard(ITERATION_ACTIVE)
+    seedCurrentIteration()
+    renderBoard(MEMBERS)
     const panel = boardPanel()
     expect(panel.querySelector('[data-test="board-list"]')).toBeTruthy()
     expect(panel.querySelector('[data-test="roadmap"]')).toBeNull()
   })
 
-  test('LIVE on iteration-CLOSE: a pushed snapshot with no current iteration switches the board to the roadmap with no reload (#1720 freshness)', async () => {
-    renderBoard(ITERATION_ACTIVE)
+  test('LIVE on iteration-CLOSE: dropping the current iteration switches the board to the roadmap with no reload (#1720 freshness)', async () => {
+    seedCurrentIteration()
+    renderBoard(MEMBERS)
     expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeNull()
 
-    act(() => pushSnapshot(NO_ITERATION))
+    act(() => seedNoCurrentIteration())
 
     await waitFor(() => expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeTruthy())
   })
 
-  test('LIVE on iteration-OPEN: a pushed snapshot with a current iteration switches the roadmap fallback back to the board with no reload', async () => {
+  test('LIVE on iteration-OPEN: designating a current iteration switches the roadmap fallback back to the board with no reload', async () => {
+    seedNoCurrentIteration()
     renderBoard(NO_ITERATION)
     expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeTruthy()
 
-    act(() => pushSnapshot(ITERATION_ACTIVE))
+    act(() => seedCurrentIteration())
 
     await waitFor(() => expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeNull())
   })

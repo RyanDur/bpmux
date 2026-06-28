@@ -13,6 +13,7 @@ import { useBoardReorder } from './useBoardReorder'
 import { usePendingReadyOrder } from './usePendingReadyOrder'
 import { findCurrentIteration } from './currentIteration'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
+import { useIterations } from './useIterations'
 import { iterationNameFromTitle } from './labelSchema'
 import { GROUP_ORDER, type BoardStory, type ColumnState } from './types'
 import './Board.css'
@@ -57,11 +58,15 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
     usePendingReadyOrder(data)
   const { stories, epics, epicTitleByNumber, iterationContainerStories, grouped, navOrder } =
     useBoardData(data, effectiveReadyPosition)
+  const iterations = useIterations()
 
-  const currentIteration = findCurrentIteration(stories)
+  const currentIteration = findCurrentIteration(iterations)
   const currentIterationName =
     currentIteration !== null ? iterationNameFromTitle(currentIteration.title) : null
-  const closeApproachNudge = useMemo(() => deriveCloseApproachNudge(stories), [stories])
+  const closeApproachNudge = useMemo(
+    () => deriveCloseApproachNudge(iterations, stories),
+    [iterations, stories]
+  )
 
   const {
     asideRef,
@@ -164,6 +169,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
             <section className="board-body" data-test="board-list">
               <BoardTabs
                 stories={stories}
+                iterations={iterations}
                 epics={epics}
                 epicTitleByNumber={epicTitleByNumber}
                 iterationContainerStories={iterationContainerStories}

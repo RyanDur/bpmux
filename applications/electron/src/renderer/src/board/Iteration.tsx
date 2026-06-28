@@ -3,9 +3,11 @@ import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStor
 import { RENDERER_IDENTITY } from '../transport/session'
 import { findCurrentIteration } from './currentIteration'
 import type { BoardStory } from './types'
+import type { BoardIterationData } from './selectIterations'
 import { type IterationDragPayload } from './iterationMembers'
 import { SortableList } from './SortableList'
 import { ITERATION_ITSELF_DRAG } from './sortableDragConfigs'
+import { useIterations } from './useIterations'
 import { useIterationMembers } from './useIterationMembers'
 import { useIterationReorder } from './useIterationReorder'
 import IterationRow from './IterationRow'
@@ -29,20 +31,19 @@ const ITERATION_SECTION_DEFAULTS: Record<IterationSectionId, boolean> = {
 
 const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
-  const { sortedIterations, sortedLoose, getMembersFor, setPending, setPendingIterationOrder } =
-    useIterationMembers(stories)
+  const iterations = useIterations()
+  const { sortedLoose, getMembersFor, setPending } = useIterationMembers(stories)
   const sectionStorage = useCollapsibleSectionsStorage<IterationSectionId>(
     ITERATION_SECTIONS_STORAGE_PREFIX,
     RENDERER_IDENTITY,
     ITERATION_SECTION_DEFAULTS
   )
 
-  const activePlannedIterations = sortedIterations.filter((it) => it.gh_state !== 'closed')
-  const closedIterations = sortedIterations.filter((it) => it.gh_state === 'closed')
+  const activePlannedIterations = iterations.filter((it) => !it.complete)
+  const closedIterations = iterations.filter((it) => it.complete)
 
   const { reorderIterationByDrag, reorderIterationByKeyboard } = useIterationReorder(
     activePlannedIterations,
-    setPendingIterationOrder,
     onReorderAnnounce
   )
 
@@ -51,8 +52,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     if (sectionOpen[id] === next) return
     sectionStorage.setState({ ...sectionOpen, [id]: next })
   }
-  if (sortedIterations.length === 0 && sortedLoose.length === 0) return null
-  const currentIterationNumber = findCurrentIteration(stories)?.number ?? null
+  if (iterations.length === 0 && sortedLoose.length === 0) return null
+  const currentIterationNumber = findCurrentIteration(iterations)?.number ?? null
 
   const activePlannedCount = activePlannedIterations.length
   return (
@@ -77,7 +78,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             ({activePlannedCount})
           </small>
         </summary>
-        <SortableList<IterationDragPayload, BoardStory>
+        <SortableList<IterationDragPayload, BoardIterationData>
           items={activePlannedIterations}
           keyOf={(it) => it.number}
           rowKey={(it) => it.number}

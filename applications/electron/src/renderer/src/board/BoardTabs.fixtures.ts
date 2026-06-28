@@ -1,5 +1,7 @@
 import type BoardTabs from './BoardTabs'
 import { groupStories, type BoardStory, type ColumnState } from './types'
+import { selectIterations } from './selectIterations'
+import { getSessionSnapshot } from '../transport/session/store'
 
 export const iterationStory = (overrides: Partial<BoardStory>): BoardStory => ({
   number: 9000,
@@ -47,6 +49,7 @@ export const buildProps = (stories: BoardStory[]): Parameters<typeof BoardTabs>[
   const grouped = groupStories(flat)
   return {
     stories,
+    iterations: selectIterations(getSessionSnapshot()),
     epics,
     epicTitleByNumber,
     iterationContainerStories,

@@ -1,8 +1,8 @@
 import { findCurrentIteration } from './currentIteration'
 import { deriveNowView } from './deriveNowView'
 import { firstUnmetLabel, readinessOf, unmetCount } from './iterationReadiness'
-import { isIterationStory, positionInIterationOrder } from './iterationMembers'
 import { iterationNameFromTitle } from './labelSchema'
+import type { BoardIterationData } from './selectIterations'
 import { columnFor, type BoardStory, type ColumnState } from './types'
 
 export interface CloseApproachNudge {
@@ -15,15 +15,18 @@ const CLOSE_APPROACH_WORK_DONE_RATIO = 0.75
 
 const WORK_DONE_COLUMNS: ReadonlyArray<ColumnState> = ['delivered', 'accepted']
 
-const nextIterationAfter = (current: BoardStory, stories: BoardStory[]): BoardStory | null => {
-  const currentOrder = positionInIterationOrder(current)
+const nextIterationAfter = (
+  current: BoardIterationData,
+  iterations: BoardIterationData[]
+): BoardIterationData | null => {
+  const currentOrder = current.iteration_order
   if (currentOrder === null) return null
-  const successors = stories
-    .filter(isIterationStory)
-    .filter((it) => it.gh_state !== 'closed')
-    .map((it) => ({ it, order: positionInIterationOrder(it) }))
+  const successors = iterations
+    .filter((it) => !it.complete)
+    .map((it) => ({ it, order: it.iteration_order }))
     .filter(
-      (c): c is { it: BoardStory; order: number } => c.order !== null && c.order > currentOrder
+      (c): c is { it: BoardIterationData; order: number } =>
+        c.order !== null && c.order > currentOrder
     )
     .sort((a, b) => a.order - b.order)
   return successors[0]?.it ?? null
@@ -32,8 +35,12 @@ const nextIterationAfter = (current: BoardStory, stories: BoardStory[]): BoardSt
 const columnOf = (story: BoardStory): ColumnState =>
   columnFor(story.state, story.gh_state === 'closed')
 
-const isDraining = (current: BoardStory, stories: BoardStory[]): boolean => {
-  const view = deriveNowView(stories)
+const isDraining = (
+  current: BoardIterationData,
+  iterations: BoardIterationData[],
+  stories: BoardStory[]
+): boolean => {
+  const view = deriveNowView(iterations, stories)
   if (view.kind !== 'current' || view.iteration.number !== current.number) return false
   const active = view.members.filter((row) => columnOf(row.story) !== 'retired')
   if (active.length === 0) return false
@@ -41,12 +48,15 @@ const isDraining = (current: BoardStory, stories: BoardStory[]): boolean => {
   return workDone / active.length >= CLOSE_APPROACH_WORK_DONE_RATIO
 }
 
-export const deriveCloseApproachNudge = (stories: BoardStory[]): CloseApproachNudge | null => {
-  const current = findCurrentIteration(stories)
+export const deriveCloseApproachNudge = (
+  iterations: BoardIterationData[],
+  stories: BoardStory[]
+): CloseApproachNudge | null => {
+  const current = findCurrentIteration(iterations)
   if (current === null) return null
-  if (!isDraining(current, stories)) return null
+  if (!isDraining(current, iterations, stories)) return null
 
-  const next = nextIterationAfter(current, stories)
+  const next = nextIterationAfter(current, iterations)
   if (next === null) return null
 
   const readiness = readinessOf(next)
