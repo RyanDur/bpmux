@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use crate::product_management::board::{BoardEvent, BoardStore};
+use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::label::current_iteration_number;
 use crate::product_management::story::{Acceptor, Story, StoryState};
 use crate::store::{Presence, RosterAction};
 use crate::store::{RosterMember, Store, StoreAction};
 
-fn ready_queue_is_empty(stories: &[Story]) -> bool {
-    let current = current_iteration_number(stories);
+fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
+    let current = current_iteration_number(iterations);
     !stories.iter().any(|s| {
         s.state == StoryState::Ready
             && match (current, s.iteration_membership()) {
@@ -26,10 +27,11 @@ fn any_owner_parked_delivery(stories: &[Story]) -> bool {
 
 pub fn owner_park_presence(
     stories: &[Story],
+    iterations: &[Iteration],
     roster: &[RosterMember],
     delivering_role: Option<&str>,
 ) -> Vec<(String, Presence)> {
-    let parked = any_owner_parked_delivery(stories) && ready_queue_is_empty(stories);
+    let parked = any_owner_parked_delivery(stories) && ready_queue_is_empty(stories, iterations);
     let mut changes = Vec::new();
     for member in roster {
         let should_block = parked
@@ -72,8 +74,9 @@ impl OwnerParkBroadcaster {
 
     async fn dispatch_changes(&self, delivering: Option<&str>) {
         let stories = self.board_store.all_stories();
+        let iterations = self.board_store.iterations();
         let roster = self.store.roster_members();
-        let changes = owner_park_presence(&stories, &roster, delivering);
+        let changes = owner_park_presence(&stories, &iterations, &roster, delivering);
         for (routing_id, presence) in changes {
             self.store
                 .dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {

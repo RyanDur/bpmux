@@ -154,7 +154,7 @@ pub(in crate::bridge) async fn handle_move_story(
     }
     if target_is_ready
         && let Some(pos) = position
-        && let Some(iteration_number) = current_iteration_number(&r.all_stories())
+        && let Some(iteration_number) = current_iteration_number(&r.iterations())
     {
         r.mutate_sync(BoardEvent::IterationMembershipSet {
             meta: meta.clone(),

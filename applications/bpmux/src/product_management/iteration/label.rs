@@ -45,17 +45,11 @@ pub fn compute_insert_position(insert_index: usize, existing_positions: &[u32]) 
     left
 }
 
-pub fn current_iteration_number(stories: &[Story]) -> Option<u64> {
-    stories
+pub fn current_iteration_number(iterations: &[super::Iteration]) -> Option<u64> {
+    iterations
         .iter()
-        .find(|s| {
-            !s.is_closed
-                && crate::product_management::board::adapters::github::is_current_from_labels(
-                    &s.raw_labels,
-                )
-                && s.story_type() == crate::product_management::story::StoryType::Iteration
-        })
-        .map(|s| s.number)
+        .find(|iteration| !iteration.complete && iteration.is_current)
+        .and_then(|iteration| iteration.id().saved_number())
 }
 
 pub fn members_of_iteration(stories: &[Story], iteration_number: u64) -> Vec<u64> {
