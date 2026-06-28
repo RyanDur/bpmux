@@ -3,12 +3,15 @@ mod acceptance_test_path;
 mod acceptor_axis;
 #[cfg(test)]
 mod acceptor_axis_classification;
+mod authorization;
 mod closure;
 mod creation;
 mod creation_iteration;
 mod creation_outcome;
 mod edit_outcome;
+mod event_meta;
 pub(crate) mod helpers;
+mod iteration_members;
 mod iteration_reorg;
 mod metadata;
 mod metadata_epic;
@@ -32,20 +35,20 @@ pub(crate) use acceptance::{
 pub use acceptance_test_path::parse_acceptance_test_path;
 #[cfg(test)]
 pub(crate) use acceptance_test_path::{find_repo_root, resolve_acceptance_test_path};
+#[cfg(test)]
+pub(crate) use authorization::require_role;
 pub(crate) use closure::{handle_close_iteration, handle_close_story};
 pub(crate) use creation::handle_create_story;
 pub(crate) use creation_iteration::handle_create_iteration;
 pub(crate) use creation_outcome::handle_create_outcome;
 pub(crate) use edit_outcome::handle_edit_outcome;
 #[cfg(test)]
-pub(crate) use helpers::{ALL_STATE_LABELS, require_role, stale_workflow_labels};
+pub(crate) use helpers::{ALL_STATE_LABELS, stale_workflow_labels};
 pub(crate) use helpers::{
     KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
-pub(crate) use iteration_reorg::{
-    handle_move_iteration_member, handle_remove_iteration_member, handle_rename_iteration,
-    handle_reorder_iteration,
-};
+pub(crate) use iteration_members::{handle_move_iteration_member, handle_remove_iteration_member};
+pub(crate) use iteration_reorg::{handle_rename_iteration, handle_reorder_iteration};
 pub(crate) use metadata::{handle_comment_on_story, handle_edit_story, handle_label_story};
 pub(crate) use metadata_epic::{handle_set_parent_epic, handle_unset_parent_epic};
 pub(crate) use metadata_iteration::{

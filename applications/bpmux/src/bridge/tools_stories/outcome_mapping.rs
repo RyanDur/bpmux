@@ -1,20 +1,12 @@
+use super::event_meta::meta_for;
 use super::helpers::{
     ensure_outcome_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
+use crate::product_management::board::BoardEvent;
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{BoardEvent, PeerId};
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::Story;
 use std::sync::Arc;
-
-fn meta_for(agent_name: &str) -> EventMeta {
-    EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-        peer_id: PeerId::local(),
-    }
-}
 
 async fn mapped_iteration(
     r: &Arc<dyn RefreshDriver>,
