@@ -41,16 +41,11 @@ fn args_full(outcome: u64, to: Option<&str>, position: Option<u32>) -> Map<Strin
 }
 
 fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
-    let workflow = crate::workflow::current_workflow();
-    crate::product_management::roadmap::view::derive_roadmap_view(
-        &refresh.outcomes(),
-        &refresh.all_stories(),
-        workflow,
-    )
-    .into_iter()
-    .find(|b| b.horizon == horizon)
-    .map(|b| b.outcomes.iter().map(|o| o.number).collect())
-    .unwrap_or_default()
+    crate::view::roadmap::roadmap_cards(refresh)
+        .into_iter()
+        .filter(|c| c.horizon == horizon)
+        .map(|c| c.number)
+        .collect()
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
@@ -106,16 +101,11 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
         &["outcome", "horizon.later"],
     )])
     .await;
-    let workflow = crate::workflow::current_workflow();
-    let before = crate::product_management::roadmap::view::derive_roadmap_view(
-        &refresh.outcomes(),
-        &refresh.all_stories(),
-        workflow,
-    );
+    let before = crate::view::roadmap::roadmap_cards(&refresh);
     assert!(
         before
             .iter()
-            .any(|b| b.horizon == Horizon::Later && b.outcomes.iter().any(|o| o.number == 700)),
+            .any(|c| c.horizon == Horizon::Later && c.number == 700),
         "the outcome reads in the Later band before the move"
     );
 
@@ -123,21 +113,17 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
         .await
         .expect("pm reprioritizes the outcome");
 
-    let after = crate::product_management::roadmap::view::derive_roadmap_view(
-        &refresh.outcomes(),
-        &refresh.all_stories(),
-        workflow,
-    );
+    let after = crate::view::roadmap::roadmap_cards(&refresh);
     assert!(
         after
             .iter()
-            .any(|b| b.horizon == Horizon::Now && b.outcomes.iter().any(|o| o.number == 700)),
+            .any(|c| c.horizon == Horizon::Now && c.number == 700),
         "the SAME derive /api/roadmap serves now places the outcome in Now — read<->write loop closed over the real substrate"
     );
     assert!(
         !after
             .iter()
-            .any(|b| b.horizon == Horizon::Later && b.outcomes.iter().any(|o| o.number == 700)),
+            .any(|c| c.horizon == Horizon::Later && c.number == 700),
         "the outcome no longer reads in Later — the band genuinely moved, not duplicated"
     );
 }

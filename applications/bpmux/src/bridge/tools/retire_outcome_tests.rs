@@ -58,16 +58,10 @@ fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
 }
 
 fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
-    let workflow = crate::workflow::current_workflow();
-    crate::product_management::roadmap::view::derive_roadmap_view(
-        &refresh.outcomes(),
-        &refresh.all_stories(),
-        workflow,
-    )
-    .into_iter()
-    .flat_map(|b| b.outcomes)
-    .map(|o| o.number)
-    .collect()
+    crate::view::roadmap::roadmap_cards(refresh)
+        .into_iter()
+        .map(|c| c.number)
+        .collect()
 }
 
 #[tokio::test]
