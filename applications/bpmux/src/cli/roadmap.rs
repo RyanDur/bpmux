@@ -31,7 +31,7 @@ pub(crate) fn run_roadmap(
     let out = if outcome.is_some() {
         render_drill(&value)
     } else {
-        render_overview(&value)
+        render_overview_layer(&value)
     };
     print!("{out}");
     Ok(())
@@ -39,11 +39,11 @@ pub(crate) fn run_roadmap(
 
 fn validate_state(state: Option<&str>) -> anyhow::Result<()> {
     if let Some(value) = state
-        && crate::product_management::roadmap::view::OutcomeState::from_cli(value).is_none()
+        && crate::view::roadmap::OutcomeState::from_cli(value).is_none()
     {
         anyhow::bail!(
             "invalid --state '{value}': must be {}",
-            crate::product_management::roadmap::view::OutcomeState::CLI_VALUES
+            crate::view::roadmap::OutcomeState::CLI_VALUES
         );
     }
     Ok(())
@@ -51,55 +51,26 @@ fn validate_state(state: Option<&str>) -> anyhow::Result<()> {
 
 fn validate_order(order: Option<&str>) -> anyhow::Result<()> {
     if let Some(value) = order
-        && crate::product_management::roadmap::filter::RoadmapOrder::from_cli(value).is_none()
+        && crate::view::roadmap_filter::RoadmapOrder::from_cli(value).is_none()
     {
         anyhow::bail!(
             "invalid --order '{value}': must be {}",
-            crate::product_management::roadmap::filter::RoadmapOrder::CLI_VALUES
+            crate::view::roadmap_filter::RoadmapOrder::CLI_VALUES
         );
     }
     Ok(())
 }
 
-pub(super) fn render_overview(value: &serde_json::Value) -> String {
-    let mut out = String::from("ROADMAP\n");
-    let bands = value["bands"].as_array().cloned().unwrap_or_default();
-    if bands.is_empty() {
-        out.push_str("  (no outcomes yet)\n");
-        return out;
-    }
-    for band in &bands {
-        let label = band["label"].as_str().unwrap_or("");
-        let outcomes = band["outcomes"].as_array().cloned().unwrap_or_default();
-        for (i, outcome) in outcomes.iter().enumerate() {
-            let band_col = if i == 0 { label } else { "" };
-            let number = outcome["number"].as_u64().unwrap_or(0);
-            let name = outcome["name"].as_str().unwrap_or("");
-            let state = overview_state_text(outcome);
-            out.push_str(&format!("{band_col:<6} #{number}  {name}  {state}\n"));
-        }
-    }
+pub(super) fn render_overview_layer(value: &serde_json::Value) -> String {
+    let outcomes: Vec<crate::view::roadmap::RoadmapOutcomeCard> =
+        serde_json::from_value(value["outcomes"].clone()).unwrap_or_default();
+    let mut out = crate::view::roadmap_render::render_roadmap(&outcomes);
     let total = value["total"].as_u64().unwrap_or(0);
     let shown = value["shown"].as_u64().unwrap_or(total);
     if total > shown {
         out.push_str(&format!("showing {shown} of {total}\n"));
     }
     out
-}
-
-fn overview_state_text(outcome: &serde_json::Value) -> String {
-    match outcome["state"].as_str().unwrap_or("") {
-        "planned" => "planned · iterations TBD".to_string(),
-        "ready" => "ready".to_string(),
-        "done" => "done".to_string(),
-        "needs-attention" => {
-            format!(
-                "{} needs-attention",
-                outcome["gap_count"].as_u64().unwrap_or(0)
-            )
-        }
-        other => other.to_string(),
-    }
 }
 
 pub(super) fn render_drill(value: &serde_json::Value) -> String {

@@ -1,23 +1,18 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::roadmap::{render_drill, render_overview};
+use super::roadmap::{render_drill, render_overview_layer};
 use serde_json::json;
 
 #[test]
-fn overview_renders_each_state_in_its_band() {
-    let out = render_overview(&json!({
-        "bands": [
-            {"label": "Now", "outcomes": [
-                {"number": 12, "name": "A", "state": "ready", "gap_count": 0},
-                {"number": 13, "name": "B", "state": "needs-attention", "gap_count": 2}
-            ]},
-            {"label": "Next", "outcomes": [
-                {"number": 34, "name": "C", "state": "planned", "gap_count": 0}
-            ]},
-            {"label": "Later", "outcomes": [
-                {"number": 40, "name": "D", "state": "done", "gap_count": 0}
-            ]}
-        ]
+fn overview_layer_renders_served_cards_via_the_shared_renderer() {
+    let out = render_overview_layer(&json!({
+        "outcomes": [
+            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"},
+            {"number": 13, "name": "B", "why": {}, "horizon": "now", "state": "needs-attention", "gap_count": 2, "tone": "gap"},
+            {"number": 40, "name": "D", "why": {}, "horizon": "later", "state": "done", "gap_count": 0, "tone": "ready"}
+        ],
+        "total": 3,
+        "shown": 3
     }));
     assert!(
         out.starts_with("ROADMAP\n"),
@@ -28,25 +23,22 @@ fn overview_renders_each_state_in_its_band() {
         out.contains("#13  B  2 needs-attention"),
         "gap-count rendered"
     );
-    assert!(out.contains("#34  C  planned · iterations TBD"));
     assert!(out.contains("#40  D  done"));
 }
 
 #[test]
-fn overview_empty_is_the_substrate_views_own_marker_never_markdown() {
+fn overview_layer_empty_is_the_substrate_views_own_marker() {
     assert_eq!(
-        render_overview(&json!({ "bands": [] })),
+        render_overview_layer(&json!({ "outcomes": [], "total": 0, "shown": 0 })),
         "ROADMAP\n  (no outcomes yet)\n"
     );
 }
 
 #[test]
-fn overview_labels_the_elided_count_when_a_limit_dropped_rows() {
-    let out = render_overview(&json!({
-        "bands": [
-            { "label": "Now", "outcomes": [
-                { "number": 12, "name": "A", "state": "ready", "gap_count": 0 }
-            ]}
+fn overview_layer_labels_the_elided_count_when_a_limit_dropped_rows() {
+    let out = render_overview_layer(&json!({
+        "outcomes": [
+            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
         ],
         "total": 12,
         "shown": 1
@@ -58,12 +50,10 @@ fn overview_labels_the_elided_count_when_a_limit_dropped_rows() {
 }
 
 #[test]
-fn overview_omits_the_elision_label_when_nothing_was_dropped() {
-    let out = render_overview(&json!({
-        "bands": [
-            { "label": "Now", "outcomes": [
-                { "number": 12, "name": "A", "state": "ready", "gap_count": 0 }
-            ]}
+fn overview_layer_omits_the_elision_label_when_nothing_was_dropped() {
+    let out = render_overview_layer(&json!({
+        "outcomes": [
+            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
         ],
         "total": 1,
         "shown": 1
