@@ -64,6 +64,51 @@ describe('stateDeltaDecoder', () => {
     }
   })
 
+  test('decodes a roadmap delta of served flat cards carrying the enriched state', () => {
+    const result = stateDeltaDecoder.validate({
+      domain: 'roadmap',
+      roadmap: [
+        {
+          number: 700,
+          name: 'Now thing',
+          why: { benefit: 'agents and humans share one view' },
+          horizon: 'now',
+          state: 'needs-attention',
+          gap_count: 2,
+          tone: 'gap'
+        }
+      ]
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok' && result.data.domain === 'roadmap') {
+      expect(result.data.roadmap[0].state).toBe('needs-attention')
+      expect(result.data.roadmap[0].gap_count).toBe(2)
+      expect(result.data.roadmap[0].why.benefit).toBe('agents and humans share one view')
+    }
+  })
+
+  test('tolerates a card whose why omits the absent fields (backend skips serializing None)', () => {
+    const result = stateDeltaDecoder.validate({
+      domain: 'roadmap',
+      roadmap: [
+        {
+          number: 700,
+          name: 'Lean why',
+          why: {},
+          horizon: 'later',
+          state: 'planned',
+          gap_count: 0,
+          tone: 'future'
+        }
+      ]
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok' && result.data.domain === 'roadmap') {
+      expect(result.data.roadmap[0].why.benefit).toBeUndefined()
+      expect(result.data.roadmap[0].state).toBe('planned')
+    }
+  })
+
   test('rejects an unknown domain (story_transition is not GUI-consumed)', () => {
     expect(stateDeltaDecoder.validate({ domain: 'story_transition', transition: {} }).type).toBe(
       'error'

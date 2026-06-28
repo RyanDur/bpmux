@@ -54,9 +54,20 @@ pub(crate) fn board_iterations(
                 "iteration_order": iteration.iteration_order,
                 "is_current": iteration.is_current,
                 "complete": iteration.complete,
+                "builds_outcome": iteration.builds_outcome(),
+                "outcome_position": iteration.outcome_membership.map(|(_, position)| position),
                 "readiness": iteration_readiness(iteration, &members, workflow),
             })
         })
+        .collect()
+}
+
+pub(crate) fn board_roadmap(
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) -> Vec<serde_json::Value> {
+    crate::view::roadmap::roadmap_cards(refresh)
+        .iter()
+        .filter_map(|card| serde_json::to_value(card).ok())
         .collect()
 }
 

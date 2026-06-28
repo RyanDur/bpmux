@@ -116,6 +116,12 @@ async fn run_ws_session(
             &ServerMessage::from(crate::transport::rest::iterations_message(iterations)),
         )
         .await?;
+        let roadmap = serde_json::Value::Array(crate::transport::rest::board_roadmap(refresh));
+        send_json(
+            &mut tx,
+            &ServerMessage::from(crate::transport::rest::roadmap_message(roadmap)),
+        )
+        .await?;
     }
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;

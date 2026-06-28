@@ -1,5 +1,5 @@
 import type { MessageType } from './messageType'
-import type { RoadmapOutcomeData } from '../board/selectRoadmap'
+import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
 
 export interface ServerWelcome {
@@ -85,6 +85,7 @@ export type StateDeltaPayload =
   | { domain: 'board_snapshot'; stories: unknown[] }
   | { domain: 'outcomes'; outcomes: RoadmapOutcomeData[] }
   | { domain: 'iterations'; iterations: BoardIterationData[] }
+  | { domain: 'roadmap'; roadmap: RoadmapCard[] }
 
 export interface ReactionsChannelSnapshot {
   channel: string

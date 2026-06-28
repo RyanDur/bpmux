@@ -38,6 +38,8 @@ pub enum StateDeltaPayload {
     Outcomes { outcomes: serde_json::Value },
     #[serde(rename = "iterations")]
     Iterations { iterations: serde_json::Value },
+    #[serde(rename = "roadmap")]
+    Roadmap { roadmap: serde_json::Value },
 }
 
 impl StateDeltaPayload {

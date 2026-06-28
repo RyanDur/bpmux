@@ -9,6 +9,8 @@ export interface RoadmapIteration {
 
 export type RoadmapReadinessState = 'ready' | 'gap' | 'none'
 
+export type OutcomeState = 'done' | 'ready' | 'needs-attention' | 'planned'
+
 export type OutcomeCardTone = 'now' | 'ready' | 'gap' | 'future'
 
 export interface OutcomeWhy {
@@ -46,6 +48,16 @@ export interface RoadmapOutcomeData {
   horizon_order: number | null
   outcome_readiness: OutcomeReadiness | null
   iterations: RoadmapIteration[]
+}
+
+export interface RoadmapCard {
+  number: number
+  name: string
+  why: OutcomeWhy
+  horizon: Horizon
+  state: OutcomeState
+  gap_count: number
+  tone: OutcomeCardTone
 }
 
 const HORIZON_BANDS: { horizon: Horizon; label: string }[] = [

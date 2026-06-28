@@ -109,6 +109,10 @@ pub(super) async fn handle_board_hydrate(
             let _ = reply_tx.send(ServerMessage::from(
                 crate::transport::rest::iterations_message(iterations),
             ));
+            let roadmap = serde_json::Value::Array(crate::transport::rest::board_roadmap(refresh));
+            let _ = reply_tx.send(ServerMessage::from(
+                crate::transport::rest::roadmap_message(roadmap),
+            ));
         }
     });
     Ok(())

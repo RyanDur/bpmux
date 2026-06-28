@@ -94,3 +94,22 @@ pub(crate) fn broadcast_iterations(
     let iterations = serde_json::Value::Array(super::board::board_iterations(refresh));
     session.broadcast_ephemeral(&iterations_message(iterations));
 }
+
+pub(crate) fn roadmap_message(roadmap: serde_json::Value) -> crate::message::Message {
+    crate::message::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: crate::message::MessageType::StateDelta,
+        state_delta: Some(crate::message::StateDeltaPayload::Roadmap { roadmap }),
+        ..crate::message::Message::default()
+    }
+}
+
+pub(crate) fn broadcast_roadmap(
+    session: &session::Session,
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) {
+    let roadmap = serde_json::Value::Array(super::board::board_roadmap(refresh));
+    session.broadcast_ephemeral(&roadmap_message(roadmap));
+}

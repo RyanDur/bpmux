@@ -8,7 +8,7 @@ import {
   type StateSnapshotPayload,
   type SyncStatusWire
 } from './types'
-import type { RoadmapOutcomeData } from '../board/selectRoadmap'
+import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
 
 const ciState = D.literalUnion('unknown', 'green', 'red', 'running', 'quota_exhausted')
@@ -109,6 +109,27 @@ const roadmapOutcome: D.Decoder<RoadmapOutcomeData> = D.object({
   }
 })
 
+const outcomeWhy = D.object({
+  optional: {
+    benefit: D.string,
+    metric: D.string,
+    confidence: D.string,
+    value: D.string
+  }
+})
+
+const roadmapCard: D.Decoder<RoadmapCard> = D.object({
+  required: {
+    number: D.number,
+    name: D.string,
+    why: outcomeWhy,
+    horizon: D.literalUnion('now', 'next', 'later'),
+    state: D.literalUnion('done', 'ready', 'needs-attention', 'planned'),
+    gap_count: D.number,
+    tone: D.literalUnion('now', 'ready', 'gap', 'future')
+  }
+})
+
 export const stateSnapshotDecoder: D.Decoder<StateSnapshotPayload> = D.object({
   required: {
     reactions: D.array(reactionsChannelSnapshot),
@@ -149,5 +170,6 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
   D.object({ required: { domain: D.literal('outcomes'), outcomes: D.array(roadmapOutcome) } }),
   D.object({
     required: { domain: D.literal('iterations'), iterations: D.array(boardIteration) }
-  })
+  }),
+  D.object({ required: { domain: D.literal('roadmap'), roadmap: D.array(roadmapCard) } })
 )

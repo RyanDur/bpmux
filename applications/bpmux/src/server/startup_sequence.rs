@@ -83,6 +83,7 @@ pub(super) fn spawn_board_broadcast_loop(
                     Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
                         crate::transport::rest::shared::broadcast_outcomes(&session, &refresh);
                         crate::transport::rest::shared::broadcast_iterations(&session, &refresh);
+                        crate::transport::rest::shared::broadcast_roadmap(&session, &refresh);
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
                 }
