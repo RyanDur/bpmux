@@ -1,34 +1,24 @@
-import type { BoardStory, IterationReadiness } from './types'
+import type { RoadmapIteration, RoadmapOutcomeData } from './selectRoadmap'
+import type { IterationReadiness } from './types'
+import { dispatchSession } from '../transport/session/store'
+import { mirrorDeltaReceived } from '../transport/session/actions'
 
-export const outcome = (overrides: Partial<BoardStory>): BoardStory => ({
+export const outcome = (overrides: Partial<RoadmapOutcomeData>): RoadmapOutcomeData => ({
   number: 1,
   title: 'An outcome',
-  state: 'icebox',
-  labels: ['outcome'],
-  assignees: [],
-  created_at: '2026-06-15T00:00:00Z',
   body: '',
   horizon: 'now',
+  outcome_readiness: null,
+  iterations: [],
   ...overrides
 })
 
 export const buildingIteration = (
   number: number,
-  title: string,
+  name: string,
   position: number,
-  readiness: IterationReadiness,
-  outcomeNumber = 1
-): BoardStory => ({
-  number,
-  title,
-  state: 'in-progress',
-  labels: ['iteration'],
-  assignees: [],
-  created_at: '2026-06-15T00:00:00Z',
-  body: 'goal',
-  outcome_membership: { outcome_number: outcomeNumber, position },
-  readiness
-})
+  readiness: IterationReadiness
+): RoadmapIteration => ({ number, name, position, readiness })
 
 export const checks = (
   drafted: boolean,
@@ -36,3 +26,6 @@ export const checks = (
   review_closed: boolean,
   dev_ok: boolean
 ): IterationReadiness => ({ drafted, stories_ordered, review_closed, dev_ok })
+
+export const seedOutcomes = (outcomes: RoadmapOutcomeData[]): void =>
+  dispatchSession(mirrorDeltaReceived({ domain: 'outcomes', outcomes }, '2026-06-27T00:00:00Z'))

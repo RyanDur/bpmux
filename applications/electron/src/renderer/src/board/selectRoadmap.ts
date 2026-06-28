@@ -1,5 +1,11 @@
-import type { BoardStory, Horizon, OutcomeReadiness } from './types'
-import { storyTypeFromLabels } from './types'
+import type { Horizon, IterationReadiness, OutcomeReadiness } from './types'
+
+export interface RoadmapIteration {
+  number: number
+  name: string
+  position: number
+  readiness: IterationReadiness
+}
 
 export type RoadmapReadinessState = 'ready' | 'gap' | 'none'
 
@@ -19,12 +25,26 @@ export interface RoadmapOutcome {
   readinessState: RoadmapReadinessState
   gapCount: number
   tone: OutcomeCardTone
+  iterations: RoadmapIteration[]
 }
 
 export interface RoadmapBand {
   horizon: Horizon
   label: string
   outcomes: RoadmapOutcome[]
+}
+
+export interface Roadmap {
+  bands: RoadmapBand[]
+}
+
+export interface RoadmapOutcomeData {
+  number: number
+  title: string
+  body: string
+  horizon: Horizon | null
+  outcome_readiness: OutcomeReadiness | null
+  iterations: RoadmapIteration[]
 }
 
 const HORIZON_BANDS: { horizon: Horizon; label: string }[] = [
@@ -68,28 +88,32 @@ const toneOf = (horizon: Horizon, state: RoadmapReadinessState): OutcomeCardTone
   return horizon === 'now' ? 'now' : 'future'
 }
 
-const toRoadmapOutcome = (story: BoardStory): RoadmapOutcome => {
-  const horizon = story.horizon ?? 'later'
-  const readinessState = readinessStateOf(story.outcome_readiness)
+const toRoadmapOutcome = (outcome: RoadmapOutcomeData): RoadmapOutcome => {
+  const horizon = outcome.horizon ?? 'later'
+  const readinessState = readinessStateOf(outcome.outcome_readiness)
   return {
-    number: story.number,
-    name: story.title,
-    why: parseOutcomeWhy(story.body),
+    number: outcome.number,
+    name: outcome.title,
+    why: parseOutcomeWhy(outcome.body),
     readinessState,
-    gapCount: story.outcome_readiness?.gap_count ?? 0,
-    tone: toneOf(horizon, readinessState)
+    gapCount: outcome.outcome_readiness?.gap_count ?? 0,
+    tone: toneOf(horizon, readinessState),
+    iterations: outcome.iterations
   }
 }
 
-export const deriveRoadmapView = (stories: BoardStory[]): RoadmapBand[] => {
-  const outcomes = stories.filter((s) => storyTypeFromLabels(s.labels) === 'outcome')
+export interface RoadmapState {
+  outcomes: RoadmapOutcomeData[]
+}
+
+export const selectRoadmap = (state: RoadmapState): Roadmap => {
   const bands: RoadmapBand[] = []
   for (const { horizon, label } of HORIZON_BANDS) {
-    const inBand = outcomes
-      .filter((s) => s.horizon === horizon)
+    const inBand = state.outcomes
+      .filter((o) => (o.horizon ?? 'later') === horizon)
       .sort((a, b) => a.number - b.number)
       .map(toRoadmapOutcome)
     if (inBand.length > 0) bands.push({ horizon, label, outcomes: inBand })
   }
-  return bands
+  return { bands }
 }

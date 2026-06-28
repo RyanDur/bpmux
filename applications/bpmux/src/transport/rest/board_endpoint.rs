@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::board::ordered_board_stories;
+use super::board::{board_outcomes, ordered_board_stories};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, SyncOrchestrator};
@@ -77,15 +77,16 @@ fn building_iteration(number: u64, outcome_number: u64, position: u32) -> Story 
 }
 
 #[tokio::test]
-async fn outcome_snapshot_carries_rolled_up_readiness_1738() {
+async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738() {
     let orch = orchestrator(vec![
         outcome(3000),
         building_iteration(3010, 3000, 1),
         member(3011, 3010, 100),
     ])
     .await;
-    let stories = ordered_board_stories(&orch);
-    let rolled = &find(&stories, 3000)["outcome_readiness"];
+    let outcomes = board_outcomes(&orch);
+    let outcome = find(&outcomes, 3000);
+    let rolled = &outcome["outcome_readiness"];
     assert_eq!(
         rolled["iteration_count"].as_u64(),
         Some(1),
@@ -96,6 +97,27 @@ async fn outcome_snapshot_carries_rolled_up_readiness_1738() {
         rolled["all_ready"].as_bool(),
         Some(true),
         "the building iteration is fully ready → the outcome's readiness rolls up to ready, exposed for #1704/#1737"
+    );
+    let building = outcome["iterations"]
+        .as_array()
+        .expect("the outcome carries its building iterations");
+    assert_eq!(building.len(), 1, "the one building iteration is present");
+    assert_eq!(building[0]["number"].as_u64(), Some(3010));
+    assert_eq!(building[0]["position"].as_u64(), Some(1));
+    assert_eq!(
+        building[0]["readiness"]["review_closed"].as_bool(),
+        Some(true),
+        "each building iteration carries its own readiness for the drill-in (#1737)"
+    );
+}
+
+#[tokio::test]
+async fn outcomes_never_ride_in_the_board_story_collection_1738() {
+    let orch = orchestrator(vec![outcome(3000)]).await;
+    let stories = ordered_board_stories(&orch);
+    assert!(
+        !stories.iter().any(|s| s["number"].as_u64() == Some(3000)),
+        "an outcome is not a story — it never appears in the board story collection"
     );
 }
 

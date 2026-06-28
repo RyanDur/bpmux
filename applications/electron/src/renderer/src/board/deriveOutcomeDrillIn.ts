@@ -1,12 +1,6 @@
-import type { BoardStory, IterationReadiness } from './types'
-import { storyTypeFromLabels } from './types'
-import {
-  CHECK_ORDER,
-  firstUnmetLabel,
-  nothingDone,
-  readinessOf,
-  unmetCount
-} from './iterationReadiness'
+import type { IterationReadiness } from './types'
+import type { RoadmapIteration } from './selectRoadmap'
+import { CHECK_ORDER, firstUnmetLabel, nothingDone, unmetCount } from './iterationReadiness'
 
 export type ConveneCheckState = 'met' | 'gap' | 'pending'
 
@@ -51,25 +45,15 @@ const checksOf = (readiness: IterationReadiness): ConveneCheck[] => {
   })
 }
 
-export const deriveOutcomeDrillIn = (
-  outcomeNumber: number,
-  stories: BoardStory[]
-): OutcomeDrillIn => {
-  const building = stories
-    .filter(
-      (story) =>
-        storyTypeFromLabels(story.labels) === 'iteration' &&
-        story.outcome_membership?.outcome_number === outcomeNumber
-    )
-    .sort((a, b) => (a.outcome_membership?.position ?? 0) - (b.outcome_membership?.position ?? 0))
+export const deriveOutcomeDrillIn = (outcomeIterations: RoadmapIteration[]): OutcomeDrillIn => {
+  const building = [...outcomeIterations].sort((a, b) => a.position - b.position)
 
-  const nextIndex = building.findIndex((iteration) => {
-    const readiness = readinessOf(iteration)
-    return !nothingDone(readiness) && unmetCount(readiness) > 0
-  })
+  const nextIndex = building.findIndex(
+    (iteration) => !nothingDone(iteration.readiness) && unmetCount(iteration.readiness) > 0
+  )
 
   const iterations: DrillIteration[] = building.map((iteration, index) => {
-    const readiness = readinessOf(iteration)
+    const readiness = iteration.readiness
     const gapCount = unmetCount(readiness)
     const state: DrillIterationState = nothingDone(readiness)
       ? 'not-started'
@@ -80,7 +64,7 @@ export const deriveOutcomeDrillIn = (
           : 'gap'
     return {
       number: iteration.number,
-      name: iteration.title,
+      name: iteration.name,
       order: index + 1,
       state,
       gapCount,
@@ -93,15 +77,14 @@ export const deriveOutcomeDrillIn = (
   }
 
   const next = building[nextIndex]
-  const nextReadiness = readinessOf(next)
   const then = building[nextIndex + 1]
   return {
     iterations,
     convene: {
-      nextIterationName: next.title,
-      nextGapCount: unmetCount(nextReadiness),
-      activeGapLabel: firstUnmetLabel(nextReadiness),
-      thenIterationName: then?.title ?? null
+      nextIterationName: next.name,
+      nextGapCount: unmetCount(next.readiness),
+      activeGapLabel: firstUnmetLabel(next.readiness),
+      thenIterationName: then?.name ?? null
     }
   }
 }

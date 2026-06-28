@@ -181,7 +181,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
             </section>
           )
         }
-        roadmap={<Roadmap stories={stories} />}
+        roadmap={<Roadmap />}
       />
     </aside>
   )

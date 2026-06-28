@@ -1,17 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { deriveRoadmapView, parseOutcomeWhy, type RoadmapOutcome } from './deriveRoadmapView'
-import type { BoardStory, Horizon, OutcomeReadiness } from './types'
+import {
+  selectRoadmap,
+  parseOutcomeWhy,
+  type RoadmapBand,
+  type RoadmapOutcome,
+  type RoadmapOutcomeData
+} from './selectRoadmap'
+import type { Horizon, OutcomeReadiness } from './types'
 
-const outcome = (overrides: Partial<BoardStory>): BoardStory => ({
+const outcome = (overrides: Partial<RoadmapOutcomeData>): RoadmapOutcomeData => ({
   number: 1,
   title: 'An outcome',
-  state: 'icebox',
-  labels: ['outcome'],
-  assignees: [],
-  created_at: '2026-06-15T00:00:00Z',
   body: '',
+  horizon: 'now',
+  outcome_readiness: null,
+  iterations: [],
   ...overrides
 })
+
+const bandsOf = (...outcomes: RoadmapOutcomeData[]): RoadmapBand[] =>
+  selectRoadmap({ outcomes }).bands
 
 const readiness = (over: Partial<OutcomeReadiness>): OutcomeReadiness => ({
   iteration_count: 0,
@@ -20,56 +28,52 @@ const readiness = (over: Partial<OutcomeReadiness>): OutcomeReadiness => ({
   ...over
 })
 
-describe('#1704 deriveRoadmapView — outcomes grouped by horizon', () => {
+describe('selectRoadmap — outcomes grouped by horizon', () => {
   it('groups outcomes into Now/Next/Later bands in that fixed order', () => {
-    const view = deriveRoadmapView([
+    const bands = bandsOf(
       outcome({ number: 3, title: 'Later thing', horizon: 'later' }),
       outcome({ number: 1, title: 'Now thing', horizon: 'now' }),
       outcome({ number: 2, title: 'Next thing', horizon: 'next' })
-    ])
-    expect(view.map((b) => b.horizon)).toEqual<Horizon[]>(['now', 'next', 'later'])
-    expect(view.map((b) => b.label)).toEqual(['Now', 'Next', 'Later'])
-    expect(view[0].outcomes[0].name).toBe('Now thing')
+    )
+    expect(bands.map((b) => b.horizon)).toEqual<Horizon[]>(['now', 'next', 'later'])
+    expect(bands.map((b) => b.label)).toEqual(['Now', 'Next', 'Later'])
+    expect(bands[0].outcomes[0].name).toBe('Now thing')
   })
 
   it('omits a horizon band that has no outcomes (compact-curated, not empty headers)', () => {
-    const view = deriveRoadmapView([outcome({ number: 1, horizon: 'now' })])
-    expect(view.map((b) => b.horizon)).toEqual<Horizon[]>(['now'])
+    expect(bandsOf(outcome({ number: 1, horizon: 'now' })).map((b) => b.horizon)).toEqual<
+      Horizon[]
+    >(['now'])
   })
 
   it('orders outcomes within a band deterministically by issue-number', () => {
-    const view = deriveRoadmapView([
+    const bands = bandsOf(
       outcome({ number: 9, title: 'nine', horizon: 'now' }),
       outcome({ number: 4, title: 'four', horizon: 'now' })
-    ])
-    expect(view[0].outcomes.map((o) => o.number)).toEqual([4, 9])
-  })
-
-  it('surfaces ONLY outcome-typed stories — not features, epics, or iterations', () => {
-    const view = deriveRoadmapView([
-      outcome({ number: 1, title: 'real outcome', horizon: 'now' }),
-      { ...outcome({ number: 2, horizon: 'now' }), labels: ['feature'] },
-      { ...outcome({ number: 3, horizon: 'now' }), labels: ['epic'] },
-      { ...outcome({ number: 4, horizon: 'now' }), labels: ['iteration'] }
-    ])
-    expect(view[0].outcomes.map((o) => o.name)).toEqual(['real outcome'])
+    )
+    expect(bands[0].outcomes.map((o) => o.number)).toEqual([4, 9])
   })
 
   it('renders the plain outcome name — never substrate-jargon', () => {
-    const view = deriveRoadmapView([
+    const bands = bandsOf(
       outcome({ number: 42, title: 'The team runs on its own infra', horizon: 'now' })
-    ])
-    expect(view[0].outcomes[0].name).toBe('The team runs on its own infra')
+    )
+    expect(bands[0].outcomes[0].name).toBe('The team runs on its own infra')
+  })
+
+  it('treats an absent horizon as Later', () => {
+    expect(bandsOf(outcome({ horizon: null }))[0].horizon).toBe('later')
   })
 })
 
-describe('#1704 readiness — live-derived from outcome_readiness, rolled up', () => {
+describe('selectRoadmap readiness — live-derived from outcome_readiness, rolled up', () => {
   const stateFor = (r: OutcomeReadiness | null, horizon: Horizon = 'now'): RoadmapOutcome =>
-    deriveRoadmapView([outcome({ horizon, outcome_readiness: r })])[0].outcomes[0]
+    bandsOf(outcome({ horizon, outcome_readiness: r }))[0].outcomes[0]
 
   it('all_ready → ready', () => {
-    const o = stateFor(readiness({ iteration_count: 1, all_ready: true }))
-    expect(o.readinessState).toBe('ready')
+    expect(stateFor(readiness({ iteration_count: 1, all_ready: true })).readinessState).toBe(
+      'ready'
+    )
   })
 
   it('gap_count > 0 → gap, carrying the count', () => {
@@ -95,7 +99,7 @@ describe('#1704 readiness — live-derived from outcome_readiness, rolled up', (
   })
 })
 
-describe('#1704 parseOutcomeWhy — labelled-line body convention', () => {
+describe('parseOutcomeWhy — labelled-line body convention', () => {
   it('extracts benefit, success-metric, confidence, value from labelled lines', () => {
     const why = parseOutcomeWhy(
       '## Title\n\n**Benefit:** any agent plugs in\n**Success-metric:** 0 Claude-only paths\n**Confidence:** High\n**Value:** high\n'
@@ -128,11 +132,11 @@ describe('#1704 parseOutcomeWhy — labelled-line body convention', () => {
   })
 
   it('attaches the parsed why to each outcome in the view', () => {
-    const view = deriveRoadmapView([
+    const bands = bandsOf(
       outcome({ horizon: 'now', body: '**Benefit:** plugs in\n**Confidence:** High' })
-    ])
-    expect(view[0].outcomes[0].why.benefit).toBe('plugs in')
-    expect(view[0].outcomes[0].why.confidence).toBe('High')
-    expect('value' in view[0].outcomes[0].why).toBe(false)
+    )
+    expect(bands[0].outcomes[0].why.benefit).toBe('plugs in')
+    expect(bands[0].outcomes[0].why.confidence).toBe('High')
+    expect('value' in bands[0].outcomes[0].why).toBe(false)
   })
 })

@@ -98,6 +98,7 @@ pub async fn run_server(
     wire_store_listeners(&store, &session, &ci_state_store);
     wire_startup_roster(&store, &session, &pty_registry, &routing_store).await;
     if let Some(refresh) = test_refresh.as_ref().cloned() {
+        spawn_outcomes_broadcast_loop(refresh.clone(), session.clone(), ct.clone());
         spawn_owner_park_loop(refresh, store.clone(), ct.clone());
     }
     start_polling(&store, test_refresh.is_some()).await;

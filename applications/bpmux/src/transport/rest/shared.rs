@@ -56,3 +56,22 @@ pub(crate) fn broadcast_board_snapshot(
     let delta = board_snapshot_message(stories);
     session.broadcast_ephemeral(&delta);
 }
+
+pub(crate) fn outcomes_message(outcomes: serde_json::Value) -> crate::message::Message {
+    crate::message::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: crate::message::MessageType::StateDelta,
+        state_delta: Some(crate::message::StateDeltaPayload::Outcomes { outcomes }),
+        ..crate::message::Message::default()
+    }
+}
+
+pub(crate) fn broadcast_outcomes(
+    session: &session::Session,
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) {
+    let outcomes = serde_json::Value::Array(super::board::board_outcomes(refresh));
+    session.broadcast_ephemeral(&outcomes_message(outcomes));
+}

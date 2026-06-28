@@ -101,6 +101,14 @@ async fn run_ws_session(
     .await?;
     let snapshot_msg = build_state_snapshot_message(&store);
     send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
+    if let Some(refresh) = test_refresh.as_ref() {
+        let outcomes = serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
+        send_json(
+            &mut tx,
+            &ServerMessage::from(crate::transport::rest::outcomes_message(outcomes)),
+        )
+        .await?;
+    }
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;
     const REPLAY_SCAN_WINDOW: usize = 500;

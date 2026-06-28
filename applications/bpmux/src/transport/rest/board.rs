@@ -6,7 +6,7 @@ pub(crate) fn ordered_board_stories(
     let all = refresh.all_stories();
     let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
     let workflow = crate::workflow::current_workflow();
-    let mut items: Vec<serde_json::Value> = all
+    let items: Vec<serde_json::Value> = all
         .iter()
         .map(|s| {
             let mut json =
@@ -29,20 +29,54 @@ pub(crate) fn ordered_board_stories(
             json
         })
         .collect();
-    for outcome in refresh.outcomes() {
-        let mut json =
-            crate::product_management::board::adapters::json::outcome_to_board_json(&outcome);
-        if let serde_json::Value::Object(map) = &mut json {
-            let rolled = crate::product_management::iteration::readiness::outcome_readiness(
-                outcome.id().saved_number().unwrap_or(0),
-                &all,
-                workflow,
-            );
-            if let Ok(value) = serde_json::to_value(rolled) {
-                map.insert("outcome_readiness".to_string(), value);
-            }
-        }
-        items.push(json);
-    }
     crate::product_management::board::ready_order_label::sort_board_ready_by_membership(items)
+}
+
+pub(crate) fn board_outcomes(
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) -> Vec<serde_json::Value> {
+    use crate::product_management::iteration::readiness::{
+        building_iterations, iteration_readiness, outcome_readiness,
+    };
+    let all = refresh.all_stories();
+    let workflow = crate::workflow::current_workflow();
+    refresh
+        .outcomes()
+        .iter()
+        .filter(|outcome| !outcome.is_retired())
+        .map(|outcome| {
+            let number = outcome.id().saved_number().unwrap_or(0);
+            let iterations: Vec<serde_json::Value> = building_iterations(number, &all)
+                .iter()
+                .map(|iteration| {
+                    let members: Vec<&crate::product_management::story::Story> = all
+                        .iter()
+                        .filter(|m| {
+                            m.iteration_membership().map(|(it, _)| it) == Some(iteration.number)
+                        })
+                        .collect();
+                    let position =
+                        crate::product_management::board::adapters::github::outcome_membership_from_labels(
+                            &iteration.raw_labels,
+                        )
+                        .map(|(_, position)| position)
+                        .unwrap_or(0);
+                    serde_json::json!({
+                        "number": iteration.number,
+                        "name": iteration.title,
+                        "position": position,
+                        "readiness": iteration_readiness(iteration, &members, workflow),
+                    })
+                })
+                .collect();
+            serde_json::json!({
+                "number": number,
+                "title": outcome.content.title,
+                "body": outcome.content.body.clone().unwrap_or_default(),
+                "horizon": outcome.horizon().map(|horizon| horizon.as_str()),
+                "outcome_readiness": outcome_readiness(number, &all, workflow),
+                "iterations": iterations,
+            })
+        })
+        .collect()
 }

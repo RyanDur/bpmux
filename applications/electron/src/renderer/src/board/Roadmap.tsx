@@ -1,13 +1,9 @@
-import { Fragment, useMemo, useState } from 'react'
-import { deriveRoadmapView, type OutcomeWhy, type RoadmapOutcome } from './deriveRoadmapView'
+import { Fragment, useState } from 'react'
+import { useRoadmap } from './useRoadmap'
 import { deriveOutcomeDrillIn } from './deriveOutcomeDrillIn'
 import OutcomeDrillBody from './OutcomeDrillBody'
-import type { BoardStory } from './types'
+import type { OutcomeWhy, RoadmapOutcome } from './selectRoadmap'
 import './Roadmap.css'
-
-interface RoadmapProps {
-  stories: BoardStory[]
-}
 
 const META_FIELDS: ReadonlyArray<{ key: keyof OutcomeWhy; label: string }> = [
   { key: 'metric', label: 'Metric' },
@@ -31,12 +27,10 @@ const fieldText = (value: string | undefined): string =>
 
 const RoadmapOutcomeCard = ({
   outcome,
-  stories,
   focused,
   onToggle
 }: {
   outcome: RoadmapOutcome
-  stories: BoardStory[]
   focused: boolean
   onToggle: (outcomeNumber: number) => void
 }): React.JSX.Element => {
@@ -89,15 +83,15 @@ const RoadmapOutcomeCard = ({
       {focused && (
         <OutcomeDrillBody
           outcomeNumber={outcome.number}
-          drill={deriveOutcomeDrillIn(outcome.number, stories)}
+          drill={deriveOutcomeDrillIn(outcome.iterations)}
         />
       )}
     </article>
   )
 }
 
-const Roadmap = ({ stories }: RoadmapProps): React.JSX.Element => {
-  const bands = useMemo(() => deriveRoadmapView(stories), [stories])
+const Roadmap = (): React.JSX.Element => {
+  const { bands } = useRoadmap()
   const [focusedNumber, setFocusedNumber] = useState<number | null>(null)
   const toggle = (outcomeNumber: number): void =>
     setFocusedNumber((current) => (current === outcomeNumber ? null : outcomeNumber))
@@ -124,7 +118,6 @@ const Roadmap = ({ stories }: RoadmapProps): React.JSX.Element => {
                 <li key={outcome.number}>
                   <RoadmapOutcomeCard
                     outcome={outcome}
-                    stories={stories}
                     focused={focusedNumber === outcome.number}
                     onToggle={toggle}
                   />

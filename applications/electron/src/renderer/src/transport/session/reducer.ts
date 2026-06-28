@@ -3,6 +3,7 @@ import { asMessageType } from '../messageType'
 import { SessionActionType, type SessionAction, type HistoryMessage } from './actions'
 import type { ChatMessage, CommentWire, ConnectionStatus, TimelineEventWire } from '../types'
 import type { BoardResponse, BoardStory } from '../../board/types'
+import type { RoadmapOutcomeData } from '../../board/selectRoadmap'
 import type { MirrorState } from '../state-delta'
 
 export interface SessionSnapshot {
@@ -13,6 +14,7 @@ export interface SessionSnapshot {
   boardSnapshot: BoardResponse | null
   boardInvalidateTick: number
   reconnectTick: number
+  outcomes: RoadmapOutcomeData[]
   commentsByStory: ReadonlyMap<number, CommentWire[]>
   timelineByStory: ReadonlyMap<number, TimelineEventWire[]>
 }
@@ -28,6 +30,7 @@ export const emptySnapshot = (url: string | undefined): SessionSnapshot => ({
   boardSnapshot: null,
   boardInvalidateTick: 0,
   reconnectTick: 0,
+  outcomes: [],
   commentsByStory: new Map(),
   timelineByStory: new Map()
 })
@@ -103,6 +106,9 @@ export const sessionReducer = (state: SessionSnapshot, action: SessionAction): S
       }
       if (action.delta.domain === 'board_invalidated') {
         next.boardInvalidateTick = state.boardInvalidateTick + 1
+      }
+      if (action.delta.domain === 'outcomes') {
+        next.outcomes = action.delta.outcomes
       }
       return next
     }

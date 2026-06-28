@@ -8,6 +8,7 @@ import {
   type StateSnapshotPayload,
   type SyncStatusWire
 } from './types'
+import type { RoadmapOutcomeData } from '../board/selectRoadmap'
 
 const ciState = D.literalUnion('unknown', 'green', 'red', 'running', 'quota_exhausted')
 
@@ -62,6 +63,39 @@ const reactionsChannelSnapshot: D.Decoder<ReactionsChannelSnapshot> = D.object({
   required: { channel: D.string, aggregated: D.array(reactionAggregate) }
 })
 
+const outcomeReadinessWire = D.object({
+  required: { iteration_count: D.number, gap_count: D.number, all_ready: D.boolean }
+})
+
+const iterationReadinessWire = D.object({
+  required: {
+    drafted: D.boolean,
+    stories_ordered: D.boolean,
+    review_closed: D.boolean,
+    dev_ok: D.boolean
+  }
+})
+
+const roadmapIteration = D.object({
+  required: {
+    number: D.number,
+    name: D.string,
+    position: D.number,
+    readiness: iterationReadinessWire
+  }
+})
+
+const roadmapOutcome: D.Decoder<RoadmapOutcomeData> = D.object({
+  required: {
+    number: D.number,
+    title: D.string,
+    body: D.string,
+    horizon: D.nullable(D.literalUnion('now', 'next', 'later')),
+    outcome_readiness: D.nullable(outcomeReadinessWire),
+    iterations: D.array(roadmapIteration)
+  }
+})
+
 export const stateSnapshotDecoder: D.Decoder<StateSnapshotPayload> = D.object({
   required: {
     reactions: D.array(reactionsChannelSnapshot),
@@ -98,5 +132,6 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
     }
   }),
   D.object({ required: { domain: D.literal('board_invalidated'), reason: D.string } }),
-  D.object({ required: { domain: D.literal('board_snapshot'), stories: D.array(D.unknown) } })
+  D.object({ required: { domain: D.literal('board_snapshot'), stories: D.array(D.unknown) } }),
+  D.object({ required: { domain: D.literal('outcomes'), outcomes: D.array(roadmapOutcome) } })
 )

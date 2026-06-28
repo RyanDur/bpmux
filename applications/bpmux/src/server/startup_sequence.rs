@@ -69,6 +69,27 @@ pub(super) fn spawn_owner_park_loop(
     });
 }
 
+pub(super) fn spawn_outcomes_broadcast_loop(
+    refresh: Arc<dyn RefreshDriver>,
+    session: Arc<session::Session>,
+    ct: CancellationToken,
+) {
+    let mut events = refresh.store().subscribe();
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = ct.cancelled() => return,
+                received = events.recv() => match received {
+                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                        crate::transport::rest::shared::broadcast_outcomes(&session, &refresh);
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                }
+            }
+        }
+    });
+}
+
 pub(super) async fn start_polling(store: &Arc<Store>, has_refresh: bool) {
     store
         .dispatch(crate::store::StoreAction::Ci(

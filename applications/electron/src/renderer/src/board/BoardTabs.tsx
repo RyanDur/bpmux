@@ -133,7 +133,7 @@ const BoardTabs = ({
     if (currentIteration === null) {
       return (
         <section className="board-tabpanel-content" data-test="board-tabpanel-now-content">
-          <Roadmap stories={stories} />
+          <Roadmap />
         </section>
       )
     }
