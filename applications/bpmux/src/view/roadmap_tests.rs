@@ -160,3 +160,42 @@ fn the_parsed_why_is_attached_to_each_card() {
     assert_eq!(cards[0].why.confidence.as_deref(), Some("High"));
     assert!(cards[0].why.value.is_none());
 }
+
+#[test]
+fn render_labels_each_band_once_and_shows_per_outcome_state() {
+    let mut now_ready = with_order(outcome(42, "Own infra", Some(Horizon::Now)), Some(1));
+    now_ready.readiness = Some(readiness(1, 0, true));
+    let mut now_gap = with_order(outcome(10, "Another now", Some(Horizon::Now)), Some(2));
+    now_gap.readiness = Some(readiness(2, 2, false));
+    let next_planned = outcome(7, "A next thing", Some(Horizon::Next));
+
+    let text = render_roadmap(&derive_roadmap(&[now_ready, now_gap, next_planned]));
+    let lines: Vec<&str> = text.lines().collect();
+
+    assert_eq!(lines[0], "ROADMAP");
+    assert!(lines[1].trim_start().starts_with("Now"));
+    assert!(lines[1].contains("#42") && lines[1].ends_with("ready"));
+    assert!(
+        !lines[2].trim_start().starts_with("Now"),
+        "the second Now outcome omits the repeated band label: {:?}",
+        lines[2]
+    );
+    assert!(lines[2].contains("#10") && lines[2].ends_with("2 gaps"));
+    assert!(lines[3].trim_start().starts_with("Next"));
+    assert!(lines[3].contains("#7") && lines[3].ends_with("planned"));
+}
+
+#[test]
+fn render_singularizes_a_one_gap_outcome() {
+    let mut one_gap = outcome(5, "Almost", Some(Horizon::Now));
+    one_gap.readiness = Some(readiness(1, 1, false));
+    let line = render_roadmap(&derive_roadmap(&[one_gap]));
+    let outcome_line = line.lines().nth(1).unwrap();
+    assert!(outcome_line.ends_with("1 gap"), "got: {outcome_line:?}");
+    assert!(!outcome_line.ends_with("gaps"));
+}
+
+#[test]
+fn render_handles_no_outcomes() {
+    assert_eq!(render_roadmap(&[]), "ROADMAP\n  (no outcomes yet)\n");
+}

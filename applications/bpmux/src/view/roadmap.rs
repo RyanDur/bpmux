@@ -1,9 +1,9 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::product_management::iteration::readiness::OutcomeReadiness;
 use crate::product_management::story::Horizon;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct OutcomeWhy {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub benefit: Option<String>,
@@ -15,7 +15,7 @@ pub struct OutcomeWhy {
     pub value: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RoadmapReadinessState {
     Ready,
@@ -23,7 +23,7 @@ pub enum RoadmapReadinessState {
     None,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OutcomeCardTone {
     Now,
@@ -42,7 +42,7 @@ pub struct RoadmapOutcomeInput {
     pub readiness: Option<OutcomeReadiness>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RoadmapOutcomeCard {
     pub number: u64,
     pub name: String,
@@ -129,4 +129,39 @@ pub fn parse_outcome_why(body: &str) -> OutcomeWhy {
         }
     }
     why
+}
+
+pub fn render_roadmap(cards: &[RoadmapOutcomeCard]) -> String {
+    let mut out = String::from("ROADMAP\n");
+    if cards.is_empty() {
+        out.push_str("  (no outcomes yet)\n");
+        return out;
+    }
+    let mut current_horizon: Option<Horizon> = None;
+    for card in cards {
+        let band = if current_horizon == Some(card.horizon) {
+            ""
+        } else {
+            current_horizon = Some(card.horizon);
+            card.horizon.band_label()
+        };
+        out.push_str(&format!(
+            "{band:<6} #{}  {}  {}\n",
+            card.number,
+            card.name,
+            state_text(card)
+        ));
+    }
+    out
+}
+
+fn state_text(card: &RoadmapOutcomeCard) -> String {
+    match card.readiness_state {
+        RoadmapReadinessState::Ready => "ready".to_string(),
+        RoadmapReadinessState::Gap => {
+            let count = card.gap_count;
+            format!("{count} gap{}", if count == 1 { "" } else { "s" })
+        }
+        RoadmapReadinessState::None => "planned".to_string(),
+    }
 }
