@@ -54,6 +54,7 @@ pub mod store;
 mod team_roster_tests;
 pub mod telemetry;
 pub mod transport;
+pub mod view;
 pub mod workflow;
 
 pub use cli::bootstrap::run;
