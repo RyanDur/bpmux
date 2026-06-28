@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::roadmap::*;
+use super::roadmap_render::render_roadmap;
 use crate::product_management::iteration::readiness::OutcomeReadiness;
 use crate::product_management::story::Horizon;
 
