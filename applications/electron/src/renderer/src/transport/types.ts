@@ -239,6 +239,12 @@ export interface ClientBoardHydrate {
   type: 'board_hydrate'
 }
 
+export interface ClientSetOutcomeHorizon {
+  type: 'set_outcome_horizon'
+  outcome_number: number
+  horizon: 'now' | 'next' | 'later'
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -252,6 +258,7 @@ export type ClientMessage =
   | ClientHistoryHydrate
   | ClientHistoryPage
   | ClientBoardHydrate
+  | ClientSetOutcomeHorizon
 
 export interface ChatMessage {
   id: string

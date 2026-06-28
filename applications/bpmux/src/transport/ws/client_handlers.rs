@@ -105,3 +105,31 @@ pub(super) async fn handle_reaction_toggle(
     }
     Ok(())
 }
+
+pub(super) async fn handle_set_outcome_horizon(
+    ctx: &ClientCtx<'_>,
+    tx: &mut SplitSink<WebSocket, WsMessage>,
+    identity: &str,
+    outcome_number: u64,
+    horizon: String,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "outcome_number".to_string(),
+        serde_json::json!(outcome_number),
+    );
+    args.insert("to".to_string(), serde_json::json!(horizon));
+    if let Err(e) =
+        crate::bridge::dispatch_reprioritize_outcome(args, identity, ctx.test_refresh.as_ref())
+            .await
+    {
+        send_json(
+            tx,
+            &ServerMessage::Error {
+                reason: format!("set outcome horizon failed: {e}"),
+            },
+        )
+        .await?;
+    }
+    Ok(())
+}

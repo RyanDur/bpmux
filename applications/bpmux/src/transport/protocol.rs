@@ -61,6 +61,11 @@ pub enum ClientMessage {
     },
     #[serde(rename = "board_hydrate")]
     BoardHydrate,
+    #[serde(rename = "set_outcome_horizon")]
+    SetOutcomeHorizon {
+        outcome_number: u64,
+        horizon: String,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

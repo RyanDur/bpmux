@@ -49,6 +49,7 @@ export const SessionActionType = {
   HistoryHydrateRequested: 'session/historyHydrateRequested',
   OlderHistoryRequested: 'session/olderHistoryRequested',
   BoardHydrateRequested: 'session/boardHydrateRequested',
+  OutcomeHorizonChangeRequested: 'session/outcomeHorizonChangeRequested',
   PtySubscribeRequested: 'session/ptySubscribeRequested',
   PtyInputRequested: 'session/ptyInputRequested',
   PtyResizeRequested: 'session/ptyResizeRequested',
@@ -106,6 +107,11 @@ export type SessionAction =
       limit: number
     }
   | { type: typeof SessionActionType.BoardHydrateRequested }
+  | {
+      type: typeof SessionActionType.OutcomeHorizonChangeRequested
+      outcomeNumber: number
+      horizon: 'now' | 'next' | 'later'
+    }
   | { type: typeof SessionActionType.PtySubscribeRequested; terminalId: string }
   | { type: typeof SessionActionType.PtyInputRequested; terminalId: string; keystroke: string }
   | {
@@ -236,6 +242,15 @@ export const olderHistoryRequested = (
 
 export const boardHydrateRequested = (): SessionAction => ({
   type: SessionActionType.BoardHydrateRequested
+})
+
+export const outcomeHorizonChangeRequested = (
+  outcomeNumber: number,
+  horizon: 'now' | 'next' | 'later'
+): SessionAction => ({
+  type: SessionActionType.OutcomeHorizonChangeRequested,
+  outcomeNumber,
+  horizon
 })
 
 export const ptySubscribeRequested = (terminalId: string): SessionAction => ({

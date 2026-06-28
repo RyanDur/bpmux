@@ -167,6 +167,13 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
       case SessionActionType.BoardHydrateRequested:
         send({ type: 'board_hydrate' })
         return
+      case SessionActionType.OutcomeHorizonChangeRequested:
+        send({
+          type: 'set_outcome_horizon',
+          outcome_number: action.outcomeNumber,
+          horizon: action.horizon
+        })
+        return
       case SessionActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return

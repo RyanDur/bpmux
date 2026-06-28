@@ -47,6 +47,23 @@ export class RoadmapPage {
     return this.win.getByRole('article', { name: 'Now' }).locator('.roadmap')
   }
 
+  band(label: 'Now' | 'Next' | 'Later'): Locator {
+    return this.win.locator('.roadmap-band', {
+      has: this.win.getByRole('heading', { level: 3, name: label })
+    })
+  }
+
+  outcomeInBand(label: 'Now' | 'Next' | 'Later', title: string): Locator {
+    return this.band(label).getByRole('button', { name: title })
+  }
+
+  async moveToBand(title: string, label: 'Now' | 'Next' | 'Later'): Promise<void> {
+    await this.win
+      .getByRole('group', { name: `Move ${title} to a horizon` })
+      .getByRole('button', { name: label })
+      .click()
+  }
+
   headerIteration(): Locator {
     return this.win.locator('.board-iteration-name')
   }

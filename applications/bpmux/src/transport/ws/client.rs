@@ -5,6 +5,7 @@ use futures::stream::SplitSink;
 
 use super::client_handlers::{
     handle_pty_input, handle_pty_subscribe, handle_reaction_toggle, handle_send,
+    handle_set_outcome_horizon,
 };
 use super::hydrate::{
     handle_board_hydrate, handle_comments_hydrate, handle_history_hydrate, handle_history_page,
@@ -127,6 +128,12 @@ pub(crate) async fn handle_client_message(
         }
         Ok(ClientMessage::BoardHydrate) => {
             handle_board_hydrate(ctx).await?;
+        }
+        Ok(ClientMessage::SetOutcomeHorizon {
+            outcome_number,
+            horizon,
+        }) => {
+            handle_set_outcome_horizon(ctx, tx, identity, outcome_number, horizon).await?;
         }
         Err(e) => {
             send_json(
