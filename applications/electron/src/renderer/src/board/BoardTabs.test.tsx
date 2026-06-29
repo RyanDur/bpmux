@@ -31,7 +31,14 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
   })
 
   test('#1549: NOW sections show the current iteration members per state, not the global ready column', () => {
-    seedIterations([boardIteration({ number: 1552, title: 'Iteration Carina', is_current: true })])
+    seedIterations([
+      boardIteration({
+        number: 1552,
+        title: 'Iteration Carina',
+        is_current: true,
+        stories: [9001, 9002]
+      })
+    ])
     const m1 = featureStory({
       number: 9001,
       state: 'ready',
@@ -56,7 +63,14 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
   })
 
   test('#1510: Now tab renders the current iteration member directly (no dedicated anchor-box)', () => {
-    seedIterations([boardIteration({ number: 1500, title: 'Iteration Sextans', is_current: true })])
+    seedIterations([
+      boardIteration({
+        number: 1500,
+        title: 'Iteration Sextans',
+        is_current: true,
+        stories: [9101]
+      })
+    ])
     const inFlightChild = featureStory({
       number: 9101,
       state: 'in-progress',
@@ -67,7 +81,14 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
   })
 
   test('Scenario 3 cont.: Now tab Epic-card shows only Epics belonging to current iteration', () => {
-    seedIterations([boardIteration({ number: 1500, title: 'Iteration Sextans', is_current: true })])
+    seedIterations([
+      boardIteration({
+        number: 1500,
+        title: 'Iteration Sextans',
+        is_current: true,
+        stories: [9101]
+      })
+    ])
     const epicIn = epicStory({ number: 8001, title: 'Epic In' })
     const epicOut = epicStory({ number: 8002, title: 'Epic Out' })
     const memberOfIter = featureStory({
@@ -121,7 +142,9 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
   })
 
   test('Scenario 10: a current-iteration member appears in Now, not in Done', async () => {
-    seedIterations([boardIteration({ number: 1552, title: 'Iteration Carina', is_current: true })])
+    seedIterations([
+      boardIteration({ number: 1552, title: 'Iteration Carina', is_current: true, stories: [9101] })
+    ])
     const member = featureStory({
       number: 9101,
       state: 'ready',

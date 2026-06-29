@@ -1,28 +1,46 @@
-use super::event_meta::meta_for;
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
-use crate::product_management::board::BoardEvent;
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::story::StoryState;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, Relationships,
+};
+use crate::product_management::iteration::Iteration;
+use crate::product_management::story::{Story, StoryState};
 use std::sync::Arc;
 
 async fn member_of(
     r: &Arc<dyn RefreshDriver>,
     iteration_number: u64,
     story_number: u64,
-) -> Result<crate::product_management::story::Story, String> {
-    ensure_iteration_in_canonical_store(r, iteration_number).await?;
+) -> Result<(Iteration, Story), String> {
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
     let story = ensure_story_in_canonical_store(r, story_number).await?;
-    if story
-        .iteration_membership()
-        .is_none_or(|(it, _)| it != iteration_number)
-    {
+    if !iteration.stories.contains(&story_number) {
         return Err(format!(
             "#{story_number} is not a member of iteration #{iteration_number}"
         ));
     }
-    Ok(story)
+    Ok((iteration, story))
+}
+
+async fn rewrite_members(
+    r: &Arc<dyn RefreshDriver>,
+    iteration: &Iteration,
+    stories: Vec<u64>,
+) -> Result<(), String> {
+    let number = iteration.id().saved_number().unwrap_or_default();
+    let mut rel = iteration
+        .content
+        .body
+        .as_deref()
+        .and_then(IterationRelationships::read_from_body)
+        .unwrap_or_default();
+    rel.stories = stories;
+    let body = rel.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
+    r.update_body(number, body)
+        .await
+        .map_err(|e| format!("#{number} iteration-member body update failed: {e}"))
 }
 
 pub(crate) async fn handle_remove_iteration_member(
@@ -46,13 +64,11 @@ pub(crate) async fn handle_remove_iteration_member(
         .ok_or("remove-member needs --reason <R> (destructive scope-cut; the reason is the audit-trail)")?;
 
     let r = refresh.ok_or("remove_iteration_member requires refresh (RefreshDriver)")?;
-    let story = member_of(r, iteration_number, story_number).await?;
+    let (iteration, story) = member_of(r, iteration_number, story_number).await?;
 
-    r.mutate_sync(BoardEvent::IterationMembershipCleared {
-        meta: meta_for(agent_name),
-        number: story_number,
-    })
-    .map_err(|e| format!("#{story_number} membership-clear enqueue failed: {e}"))?;
+    let mut stories = iteration.stories.clone();
+    stories.retain(|n| *n != story_number);
+    rewrite_members(r, &iteration, stories).await?;
 
     let state_flag = match story.state {
         StoryState::Icebox | StoryState::Ready => String::new(),
@@ -83,15 +99,14 @@ pub(crate) async fn handle_move_iteration_member(
             .ok_or("move-member needs --to <P> (the new 1-indexed position)")? as u32;
 
     let r = refresh.ok_or("move_iteration_member requires refresh (RefreshDriver)")?;
-    member_of(r, iteration_number, story_number).await?;
+    let (iteration, _) = member_of(r, iteration_number, story_number).await?;
 
-    r.mutate_sync(BoardEvent::IterationMembershipSet {
-        meta: meta_for(agent_name),
-        number: story_number,
-        iteration_number,
-        position,
-    })
-    .map_err(|e| format!("#{story_number} reorder enqueue failed: {e}"))?;
+    let mut stories = iteration.stories.clone();
+    stories.retain(|n| *n != story_number);
+    let insert_index = (position.max(1) as usize - 1).min(stories.len());
+    stories.insert(insert_index, story_number);
+    rewrite_members(r, &iteration, stories).await?;
+
     Ok(format!(
         "#{story_number} moved to position {position} in iteration #{iteration_number}"
     ))

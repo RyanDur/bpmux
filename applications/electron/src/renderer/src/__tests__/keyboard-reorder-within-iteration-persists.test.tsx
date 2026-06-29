@@ -15,7 +15,7 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
     rendered = null
   })
 
-  it('Ctrl+Shift+ArrowDown on Lacerta member at position 100 mutates its label to position 250 (between existing 200 and 300)', async () => {
+  it('Ctrl+Shift+ArrowDown on Lacerta member at position 1 moves it one slot down (new persisted order [bravo, alpha, charlie])', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
@@ -25,28 +25,26 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
         number: 7801,
         title: 'Iteration Lacerta',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7811,7812,7813]} -->'
       },
       {
         number: 7811,
         title: 'lacerta-alpha',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7801.100']
+        initial_state: 'icebox'
       },
       {
         number: 7812,
         title: 'lacerta-bravo',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7801.200']
+        initial_state: 'icebox'
       },
       {
         number: 7813,
         title: 'lacerta-charlie',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7801.300']
+        initial_state: 'icebox'
       }
     ])
 
@@ -60,23 +58,20 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
 
     await waitFor(
       async () => {
-        const boardRes = await fetch(`${apiBase}/api/board`, {
+        const iterRes = await fetch(`${apiBase}/api/iterations`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
-        const boardBody = (await boardRes.json()) as {
-          stories: {
-            number: number
-            iteration_membership: { iteration_number: number; position: number } | null
-          }[]
+        const iterBody = (await iterRes.json()) as {
+          iterations: { number: number; stories: number[] }[]
         }
-        const alpha = boardBody.stories.find((s) => s.number === 7811)
-        expect(alpha?.iteration_membership).toEqual({ iteration_number: 7801, position: 250 })
+        const lacerta = iterBody.iterations.find((i) => i.number === 7801)
+        expect(lacerta?.stories).toEqual([7812, 7811, 7813])
       },
       { timeout: 10_000, interval: 200 }
     )
   }, 30_000)
 
-  it('Ctrl+Shift+ArrowUp on Centaurus member at position 300 mutates its label to position 150 (between existing 100 and 200)', async () => {
+  it('Ctrl+Shift+ArrowUp on Centaurus member at last position moves it one slot up (new persisted order [alpha, charlie, bravo])', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
@@ -86,28 +81,26 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
         number: 7701,
         title: 'Iteration Centaurus',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7711,7712,7713]} -->'
       },
       {
         number: 7711,
         title: 'centaurus-alpha',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7701.100']
+        initial_state: 'icebox'
       },
       {
         number: 7712,
         title: 'centaurus-bravo',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7701.200']
+        initial_state: 'icebox'
       },
       {
         number: 7713,
         title: 'centaurus-charlie',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7701.300']
+        initial_state: 'icebox'
       }
     ])
 
@@ -124,17 +117,14 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
 
     await waitFor(
       async () => {
-        const boardRes = await fetch(`${apiBase}/api/board`, {
+        const iterRes = await fetch(`${apiBase}/api/iterations`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
-        const boardBody = (await boardRes.json()) as {
-          stories: {
-            number: number
-            iteration_membership: { iteration_number: number; position: number } | null
-          }[]
+        const iterBody = (await iterRes.json()) as {
+          iterations: { number: number; stories: number[] }[]
         }
-        const charlie = boardBody.stories.find((s) => s.number === 7713)
-        expect(charlie?.iteration_membership).toEqual({ iteration_number: 7701, position: 150 })
+        const centaurus = iterBody.iterations.find((i) => i.number === 7701)
+        expect(centaurus?.stories).toEqual([7711, 7713, 7712])
       },
       { timeout: 10_000, interval: 200 }
     )

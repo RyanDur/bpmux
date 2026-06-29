@@ -8,6 +8,9 @@ use crate::bridge::tools_stories::{
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, Relationships,
+};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{Story, StoryState};
@@ -35,7 +38,19 @@ fn iteration_at(number: u64, name: &str, order: u32) -> Story {
     s
 }
 
-fn member(number: u64, iteration_number: u64, position: u32, state: StoryState) -> Story {
+fn iteration_with_members(number: u64, name: &str, members: Vec<u64>) -> Story {
+    let mut s = iteration(number, name);
+    s.body = Some(
+        IterationRelationships {
+            outcome: None,
+            stories: members,
+        }
+        .write_into_body("## composed"),
+    );
+    s
+}
+
+fn member_story(number: u64, state: StoryState) -> Story {
     let mut s = Story::new_minimal(
         number,
         format!("[Feature] member-{number}"),
@@ -44,9 +59,6 @@ fn member(number: u64, iteration_number: u64, position: u32, state: StoryState) 
         "pm".into(),
     );
     s.raw_labels.push("feature".to_string());
-    s.raw_labels
-        .push(format!("parent-iteration-#{iteration_number}.{position}"));
-    s.iteration_membership = Some((iteration_number, position));
     s
 }
 
@@ -72,8 +84,8 @@ fn remove_args(iteration: u64, story: u64, reason: Option<&str>) -> Map<String, 
 #[tokio::test]
 async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() {
     let refresh = build_refresh(vec![
-        iteration(1700, "Circinus"),
-        member(710, 1700, 1, StoryState::Ready),
+        iteration_with_members(1700, "Circinus", vec![710]),
+        member_story(710, StoryState::Ready),
     ])
     .await;
     let result = handle_remove_iteration_member(
@@ -83,11 +95,8 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
     )
     .await
     .expect("pm removes the member");
-    assert_eq!(
-        crate::product_management::board::adapters::github::iteration_membership_from_labels(
-            &refresh.story(710).expect("present").raw_labels
-        ),
-        None,
+    assert!(
+        refresh.iteration(1700).expect("present").stories.is_empty(),
         "the membership is cleared (the only intentional vanish-path) — board no longer renders it under the iteration"
     );
     assert!(
@@ -99,8 +108,8 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
 #[tokio::test]
 async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_1762() {
     let refresh = build_refresh(vec![
-        iteration(1700, "Circinus"),
-        member(710, 1700, 1, StoryState::InProgress),
+        iteration_with_members(1700, "Circinus", vec![710]),
+        member_story(710, StoryState::InProgress),
     ])
     .await;
     let result = handle_remove_iteration_member(
@@ -119,8 +128,8 @@ async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_176
 #[tokio::test]
 async fn remove_member_with_no_reason_is_rejected_1762() {
     let refresh = build_refresh(vec![
-        iteration(1700, "Circinus"),
-        member(710, 1700, 1, StoryState::Ready),
+        iteration_with_members(1700, "Circinus", vec![710]),
+        member_story(710, StoryState::Ready),
     ])
     .await;
     let err = handle_remove_iteration_member(
@@ -135,10 +144,11 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
         "the error names the required reason: {err}"
     );
     assert!(
-        crate::product_management::board::adapters::github::iteration_membership_from_labels(
-            &refresh.story(710).expect("present").raw_labels
-        )
-        .is_some(),
+        refresh
+            .iteration(1700)
+            .expect("present")
+            .stories
+            .contains(&710),
         "a reasonless remove mutates nothing"
     );
 }
@@ -146,8 +156,8 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
 #[tokio::test]
 async fn remove_member_is_pm_lane_non_pm_refused_1762() {
     let refresh = build_refresh(vec![
-        iteration(1700, "Circinus"),
-        member(710, 1700, 1, StoryState::Ready),
+        iteration_with_members(1700, "Circinus", vec![710]),
+        member_story(710, StoryState::Ready),
     ])
     .await;
     let err = handle_remove_iteration_member(
@@ -164,7 +174,7 @@ async fn remove_member_is_pm_lane_non_pm_refused_1762() {
 async fn remove_member_rejects_a_non_member_1762() {
     let refresh = build_refresh(vec![
         iteration(1700, "Circinus"),
-        member(710, 9999, 1, StoryState::Ready),
+        member_story(710, StoryState::Ready),
     ])
     .await;
     let err = handle_remove_iteration_member(
@@ -183,11 +193,12 @@ async fn remove_member_rejects_a_non_member_1762() {
 #[tokio::test]
 async fn move_member_reorders_within_the_iteration_1762() {
     let refresh = build_refresh(vec![
-        iteration(1700, "Circinus"),
-        member(710, 1700, 1, StoryState::Ready),
+        iteration_with_members(1700, "Circinus", vec![710, 720]),
+        member_story(710, StoryState::Ready),
+        member_story(720, StoryState::Ready),
     ])
     .await;
-    let args = json!({ "iteration_number": 1700, "story_number": 710, "position": 3 })
+    let args = json!({ "iteration_number": 1700, "story_number": 720, "position": 1 })
         .as_object()
         .cloned()
         .unwrap();
@@ -195,11 +206,9 @@ async fn move_member_reorders_within_the_iteration_1762() {
         .await
         .expect("pm reorders the member");
     assert_eq!(
-        crate::product_management::board::adapters::github::iteration_membership_from_labels(
-            &refresh.story(710).expect("present").raw_labels
-        ),
-        Some((1700, 3)),
-        "the member reads its new position within the iteration"
+        refresh.iteration(1700).expect("present").stories,
+        vec![720, 710],
+        "the member moves to the requested 1-indexed position within the iteration"
     );
 }
 

@@ -79,7 +79,6 @@ pub fn roadmap_cards(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeCard
 }
 
 fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> {
-    let all = refresh.all_stories();
     let all_iterations = refresh.iterations();
     let workflow = crate::workflow::current_workflow();
     refresh
@@ -97,7 +96,7 @@ fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> 
                 horizon: outcome.horizon(),
                 horizon_order: outcome.horizon_order(),
                 done,
-                readiness: Some(outcome_readiness(outcome, &all_iterations, &all, workflow)),
+                readiness: Some(outcome_readiness(outcome, &all_iterations, workflow)),
             }
         })
         .collect()

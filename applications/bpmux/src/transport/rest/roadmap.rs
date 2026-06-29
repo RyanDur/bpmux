@@ -29,7 +29,6 @@ pub async fn get_roadmap(
     }
     let body = match query.outcome {
         Some(number) => {
-            let all = refresh.all_stories();
             let all_iterations = refresh.iterations();
             let outcome = refresh
                 .outcomes()
@@ -41,7 +40,6 @@ pub async fn get_roadmap(
                     crate::product_management::roadmap::drill::derive_outcome_drill_in(
                         outcome,
                         &all_iterations,
-                        &all,
                         crate::workflow::current_workflow(),
                     )
                 })

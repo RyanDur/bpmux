@@ -25,28 +25,26 @@ describe('#1339 step 2h-2 — keyboard-reorder announces container-context for s
         number: 7901,
         title: 'Iteration Phoenix',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7911,7912,7913]} -->'
       },
       {
         number: 7911,
         title: 'phoenix-alpha',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7901.100']
+        initial_state: 'icebox'
       },
       {
         number: 7912,
         title: 'phoenix-bravo',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7901.200']
+        initial_state: 'icebox'
       },
       {
         number: 7913,
         title: 'phoenix-charlie',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7901.300']
+        initial_state: 'icebox'
       }
     ])
 

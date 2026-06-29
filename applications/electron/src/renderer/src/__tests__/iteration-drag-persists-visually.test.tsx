@@ -23,28 +23,26 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
         number: 7701,
         title: 'Iteration OptimisticVisual',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7711,7712,7713]} -->'
       },
       {
         number: 7711,
         title: 'opt-alpha',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7701.100']
+        initial_state: 'icebox'
       },
       {
         number: 7712,
         title: 'opt-bravo',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7701.200']
+        initial_state: 'icebox'
       },
       {
         number: 7713,
         title: 'opt-charlie',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7701.300']
+        initial_state: 'icebox'
       }
     ])
 

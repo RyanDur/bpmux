@@ -96,11 +96,26 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
         }
         BoardEvent::StoryCreated {
             number,
+            title,
+            body,
             initial_state,
-            ..
+            story_type,
+            meta,
         } => {
-            if let Some(story) = s.stories.get_mut(number) {
-                story.state = *initial_state;
+            let story = s.stories.entry(*number).or_insert_with(|| {
+                crate::product_management::story::Story::new_minimal(
+                    *number,
+                    title.clone(),
+                    *initial_state,
+                    meta.ts,
+                    meta.actor.clone(),
+                )
+            });
+            story.state = *initial_state;
+            story.title = title.clone();
+            story.story_type = *story_type;
+            if !body.is_empty() {
+                story.body = Some(body.clone());
             }
         }
         BoardEvent::ParentEpicSet {

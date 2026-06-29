@@ -32,7 +32,7 @@ const ITERATION_SECTION_DEFAULTS: Record<IterationSectionId, boolean> = {
 const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
   const iterations = useIterations()
-  const { sortedLoose, getMembersFor, setPending } = useIterationMembers(stories)
+  const { sortedLoose, getMembersFor, setPending } = useIterationMembers(stories, iterations)
   const sectionStorage = useCollapsibleSectionsStorage<IterationSectionId>(
     ITERATION_SECTIONS_STORAGE_PREFIX,
     RENDERER_IDENTITY,

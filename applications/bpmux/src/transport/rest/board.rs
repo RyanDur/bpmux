@@ -16,7 +16,6 @@ pub(crate) fn board_iterations(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     use crate::product_management::iteration::readiness::iteration_readiness;
-    let all = refresh.all_stories();
     let outcomes = refresh.outcomes();
     let workflow = crate::workflow::current_workflow();
     refresh
@@ -24,10 +23,6 @@ pub(crate) fn board_iterations(
         .iter()
         .map(|iteration| {
             let number = iteration.id().saved_number().unwrap_or(0);
-            let members: Vec<&crate::product_management::story::Story> = all
-                .iter()
-                .filter(|m| m.iteration_membership().map(|(it, _)| it) == Some(number))
-                .collect();
             let position = iteration.builds_outcome().and_then(|outcome_number| {
                 outcomes
                     .iter()
@@ -43,7 +38,8 @@ pub(crate) fn board_iterations(
                 "complete": iteration.complete,
                 "builds_outcome": iteration.builds_outcome(),
                 "outcome_position": position,
-                "readiness": iteration_readiness(iteration, &members, workflow),
+                "stories": iteration.stories,
+                "readiness": iteration_readiness(iteration, workflow),
             })
         })
         .collect()
@@ -64,7 +60,6 @@ pub(crate) fn board_outcomes(
     use crate::product_management::iteration::readiness::{
         building_iterations, iteration_readiness, outcome_readiness,
     };
-    let all = refresh.all_stories();
     let all_iterations = refresh.iterations();
     let workflow = crate::workflow::current_workflow();
     refresh
@@ -77,18 +72,11 @@ pub(crate) fn board_outcomes(
                 .iter()
                 .enumerate()
                 .map(|(index, iteration)| {
-                    let iteration_number = iteration.id().saved_number().unwrap_or(0);
-                    let members: Vec<&crate::product_management::story::Story> = all
-                        .iter()
-                        .filter(|m| {
-                            m.iteration_membership().map(|(it, _)| it) == Some(iteration_number)
-                        })
-                        .collect();
                     serde_json::json!({
-                        "number": iteration_number,
+                        "number": iteration.id().saved_number().unwrap_or(0),
                         "name": iteration.content.title,
                         "position": index as u32 + 1,
-                        "readiness": iteration_readiness(iteration, &members, workflow),
+                        "readiness": iteration_readiness(iteration, workflow),
                     })
                 })
                 .collect();
@@ -98,7 +86,7 @@ pub(crate) fn board_outcomes(
                 "body": outcome.content.body.clone().unwrap_or_default(),
                 "horizon": outcome.horizon().map(|horizon| horizon.as_str()),
                 "horizon_order": outcome.horizon_order(),
-                "outcome_readiness": outcome_readiness(outcome, &all_iterations, &all, workflow),
+                "outcome_readiness": outcome_readiness(outcome, &all_iterations, workflow),
                 "iterations": iterations,
             })
         })

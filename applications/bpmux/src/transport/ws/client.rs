@@ -11,8 +11,8 @@ use super::hydrate::{
     handle_timeline_hydrate,
 };
 use super::roadmap_write_handlers::{
-    handle_reorder_iteration, handle_reorder_outcome_iteration, handle_reprioritize_outcome,
-    handle_set_outcome_horizon,
+    handle_add_story_to_iteration, handle_reorder_iteration, handle_reorder_outcome_iteration,
+    handle_reprioritize_outcome, handle_set_outcome_horizon,
 };
 use super::{MAX_MESSAGE_SIZE, message_size_ok, send_json};
 use crate::session;
@@ -164,6 +164,21 @@ pub(crate) async fn handle_client_message(
             position,
         }) => {
             handle_reorder_iteration(ctx, tx, identity, iteration_number, position).await?;
+        }
+        Ok(ClientMessage::AddStoryToIteration {
+            iteration_number,
+            story_number,
+            position,
+        }) => {
+            handle_add_story_to_iteration(
+                ctx,
+                tx,
+                identity,
+                iteration_number,
+                story_number,
+                position,
+            )
+            .await?;
         }
         Err(e) => {
             send_json(

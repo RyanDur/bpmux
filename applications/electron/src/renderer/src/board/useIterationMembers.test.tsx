@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useIterationMembers } from './useIterationMembers'
+import { boardIteration } from './Iteration.fixtures'
 import type { BoardStory } from './types'
 
 const makeStory = (overrides: Partial<BoardStory> & { number: number }): BoardStory => ({
@@ -13,20 +14,25 @@ const makeStory = (overrides: Partial<BoardStory> & { number: number }): BoardSt
   ...overrides
 })
 
-describe('#1553 useIterationMembers attributes by iteration identity, not name', () => {
-  test('a new iteration does not inherit a retired same-named iteration members', () => {
-    const legacyOnly = makeStory({ number: 2001, labels: ['iteration-Carina.100'] })
-    const { result } = renderHook(() => useIterationMembers([legacyOnly]))
+describe('useIterationMembers attributes by the iterations ordered stories (parent-holds-order)', () => {
+  test('a story absent from the iterations stories list is not a member', () => {
+    const outsider = makeStory({ number: 2001 })
+    const { result } = renderHook(() =>
+      useIterationMembers([outsider], [boardIteration({ number: 2000, stories: [] })])
+    )
     expect(result.current.getMembersFor(2000)).toEqual([])
   })
 
-  test('attributes a member by canonical identity across a rename', () => {
-    const bound = makeStory({
-      number: 2001,
-      iteration_membership: { iteration_number: 2000, position: 1 }
-    })
-    const { result } = renderHook(() => useIterationMembers([bound]))
+  test('attributes members from the iterations stories, in that order', () => {
+    const first = makeStory({ number: 2001 })
+    const second = makeStory({ number: 2002 })
+    const { result } = renderHook(() =>
+      useIterationMembers(
+        [second, first],
+        [boardIteration({ number: 2000, stories: [2001, 2002] })]
+      )
+    )
     const members = result.current.getMembersFor(2000)
-    expect(members.map((m) => m.story.number)).toEqual([2001])
+    expect(members.map((m) => m.story.number)).toEqual([2001, 2002])
   })
 })

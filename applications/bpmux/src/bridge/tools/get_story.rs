@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::product_management::board::{BoardStore, RefreshDriver};
-use crate::product_management::iteration::label::members_of_iteration;
 use crate::product_management::iteration::section::{
     derive_iteration_member_section, substitute_member_stories_section,
 };
@@ -76,11 +75,14 @@ async fn render_iteration_detail(
     let body_hydrated = body.is_some();
     let mut body_out = body.unwrap_or_else(|| NOT_HYDRATED_PLACEHOLDER.to_string());
     if body_hydrated {
-        let all_stories = b.all_stories();
-        let member_numbers = members_of_iteration(&all_stories, number);
-        let members: Vec<(u64, String)> = member_numbers
+        let members: Vec<(u64, String)> = iteration
+            .stories
             .iter()
-            .filter_map(|n| b.story(*n).map(|s| (*n, s.title.clone())))
+            .filter_map(|n| {
+                b.story(*n)
+                    .filter(|s| !s.is_closed)
+                    .map(|s| (*n, s.title.clone()))
+            })
             .collect();
         let members_refs: Vec<(u64, &str)> =
             members.iter().map(|(n, t)| (*n, t.as_str())).collect();

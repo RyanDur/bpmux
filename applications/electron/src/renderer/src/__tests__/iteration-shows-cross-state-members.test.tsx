@@ -23,14 +23,14 @@ describe('#1297 — iteration container shows members regardless of workflow sta
         title: 'Iteration Cassiopeia',
         story_type: 'iteration',
         initial_state: 'icebox',
-        labels: ['iteration-order.100']
+        labels: ['iteration-order.100'],
+        body: '<!-- bpmux-relationships: {"stories":[9301]} -->'
       },
       {
         number: 9301,
         title: 'cassiopeia-member-delivered',
         story_type: 'feature',
-        initial_state: 'delivered',
-        labels: ['parent-iteration-#9300.100']
+        initial_state: 'delivered'
       }
     ])
 

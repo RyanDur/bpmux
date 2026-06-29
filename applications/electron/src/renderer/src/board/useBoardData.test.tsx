@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardData } from './useBoardData'
+import type { BoardIterationData } from './selectIterations'
 import type { BoardResponse, BoardStory } from './types'
 
 const story = (overrides: Partial<BoardStory>): BoardStory => ({
@@ -19,33 +20,37 @@ const board = (stories: BoardStory[]): BoardResponse => ({
   fetched_at: '2026-05-24T00:00:00Z'
 })
 
-const containerNumbers = (data: BoardResponse): number[] => {
-  const { result } = renderHook(() => useBoardData(data))
+const iteration = (number: number, stories: number[]): BoardIterationData => ({
+  number,
+  title: `Iteration ${number}`,
+  iteration_order: null,
+  is_current: false,
+  complete: false,
+  readiness: { drafted: false, stories_ordered: false, review_closed: false, dev_ok: false },
+  stories
+})
+
+const containerNumbers = (data: BoardResponse, iterations: BoardIterationData[] = []): number[] => {
+  const { result } = renderHook(() => useBoardData(data, iterations))
   return result.current.iterationContainerStories.map((s) => s.number)
 }
 
 describe('#1547 facet 1 — iterationContainerStories gates on membership, not workflow-state', () => {
   test('a canonical member promoted to ready stays in the iteration container (empty-Crux fix)', () => {
-    const member = story({
-      number: 1547,
-      state: 'ready',
-      labels: ['ready', 'bug'],
-      iteration_membership: { iteration_number: 1543, position: 1 }
-    })
-    expect(containerNumbers(board([member]))).toContain(1547)
+    const member = story({ number: 1547, state: 'ready', labels: ['ready', 'bug'] })
+    expect(containerNumbers(board([member]), [iteration(1543, [1547])])).toContain(1547)
   })
 
   test('a canonical member is included in every active workflow-state', () => {
     const states = ['ready', 'in-progress', 'desk-check', 'delivered'] as const
     const members = states.map((state, i) =>
-      story({
-        number: 2000 + i,
-        state,
-        labels: [state, 'feature'],
-        iteration_membership: { iteration_number: 1543, position: i + 1 }
-      })
+      story({ number: 2000 + i, state, labels: [state, 'feature'] })
     )
-    const got = containerNumbers(board(members))
+    const iter = iteration(
+      1543,
+      members.map((m) => m.number)
+    )
+    const got = containerNumbers(board(members), [iter])
     for (const m of members) expect(got).toContain(m.number)
   })
 

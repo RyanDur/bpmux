@@ -196,6 +196,14 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           position: action.position
         })
         return
+      case SessionActionType.AddStoryToIterationRequested:
+        send({
+          type: 'add_story_to_iteration',
+          iteration_number: action.iterationNumber,
+          story_number: action.storyNumber,
+          position: action.position
+        })
+        return
       case SessionActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return

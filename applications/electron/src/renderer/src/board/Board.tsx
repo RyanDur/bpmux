@@ -56,9 +56,9 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
 
   const { setPendingReadyOrder, clearPendingReadyOrder, effectiveReadyPosition } =
     usePendingReadyOrder(data)
-  const { stories, epics, epicTitleByNumber, iterationContainerStories, grouped, navOrder } =
-    useBoardData(data, effectiveReadyPosition)
   const iterations = useIterations()
+  const { stories, epics, epicTitleByNumber, iterationContainerStories, grouped, navOrder } =
+    useBoardData(data, iterations, effectiveReadyPosition)
 
   const currentIteration = findCurrentIteration(iterations)
   const currentIterationName =

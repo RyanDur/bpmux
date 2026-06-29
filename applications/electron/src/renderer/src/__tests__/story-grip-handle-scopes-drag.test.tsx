@@ -24,14 +24,14 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
         number: 8801,
         title: 'Iteration GripTest',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[8811]} -->'
       },
       {
         number: 8811,
         title: 'draggable member',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#8801.100']
+        initial_state: 'icebox'
       }
     ])
 
@@ -74,14 +74,14 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
         title: 'Iteration ClosedGripTest',
         story_type: 'iteration',
         initial_state: 'icebox',
-        is_closed: true
+        is_closed: true,
+        body: '<!-- bpmux-relationships: {"stories":[8812]} -->'
       },
       {
         number: 8812,
         title: 'member of closed iteration',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#8802.100']
+        initial_state: 'icebox'
       }
     ])
 

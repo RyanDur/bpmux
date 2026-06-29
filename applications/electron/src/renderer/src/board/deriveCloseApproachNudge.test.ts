@@ -11,6 +11,7 @@ const iteration = (over: Partial<BoardIterationData>): BoardIterationData => ({
   is_current: false,
   complete: false,
   readiness: { drafted: false, stories_ordered: false, review_closed: false, dev_ok: false },
+  stories: [],
   ...over
 })
 
@@ -54,11 +55,13 @@ const drainingMembers = (iterationNumber: number): BoardStory[] => [
 
 describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not ready at close-approach', () => {
   test('FIRES: current draining (>=75% work-done, delivered pre-batch-accept) + next exists + next not-ready', () => {
+    const members = drainingMembers(100)
     const current = iteration({
       number: 100,
       title: 'Iteration Lupus',
       is_current: true,
-      iteration_order: 1
+      iteration_order: 1,
+      stories: members.map((m) => m.number)
     })
     const next = iteration({
       number: 200,
@@ -66,7 +69,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 2,
       readiness: NOT_READY
     })
-    const nudge = deriveCloseApproachNudge([current, next], drainingMembers(100))
+    const nudge = deriveCloseApproachNudge([current, next], members)
     expect(nudge).not.toBeNull()
     expect(nudge?.nextIterationNumber).toBe(200)
     expect(nudge?.nextIterationName).toBe('Fornax')
@@ -74,11 +77,18 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
   })
 
   test('FIRES post-batch too: accepted members count as work-done (signal stable across the batch-accept)', () => {
+    const members = [
+      member(100, 1, 'accepted'),
+      member(100, 2, 'accepted'),
+      member(100, 3, 'accepted'),
+      member(100, 4, 'in-progress')
+    ]
     const current = iteration({
       number: 100,
       title: 'Iteration Lupus',
       is_current: true,
-      iteration_order: 1
+      iteration_order: 1,
+      stories: members.map((m) => m.number)
     })
     const next = iteration({
       number: 200,
@@ -86,12 +96,6 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 2,
       readiness: NOT_READY
     })
-    const members = [
-      member(100, 1, 'accepted'),
-      member(100, 2, 'accepted'),
-      member(100, 3, 'accepted'),
-      member(100, 4, 'in-progress')
-    ]
     expect(deriveCloseApproachNudge([current, next], members)).not.toBeNull()
   })
 
@@ -106,11 +110,18 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
   })
 
   test('NULL: current not draining (<75% accepted)', () => {
+    const members = [
+      member(100, 1, 'accepted'),
+      member(100, 2, 'in-progress'),
+      member(100, 3, 'in-progress'),
+      member(100, 4, 'ready')
+    ]
     const current = iteration({
       number: 100,
       title: 'Iteration Lupus',
       is_current: true,
-      iteration_order: 1
+      iteration_order: 1,
+      stories: members.map((m) => m.number)
     })
     const next = iteration({
       number: 200,
@@ -118,31 +129,29 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 2,
       readiness: NOT_READY
     })
-    const members = [
-      member(100, 1, 'accepted'),
-      member(100, 2, 'in-progress'),
-      member(100, 3, 'in-progress'),
-      member(100, 4, 'ready')
-    ]
     expect(deriveCloseApproachNudge([current, next], members)).toBeNull()
   })
 
   test('NULL: no next iteration exists (current is the last in order)', () => {
+    const members = drainingMembers(100)
     const current = iteration({
       number: 100,
       title: 'Iteration Lupus',
       is_current: true,
-      iteration_order: 1
+      iteration_order: 1,
+      stories: members.map((m) => m.number)
     })
-    expect(deriveCloseApproachNudge([current], drainingMembers(100))).toBeNull()
+    expect(deriveCloseApproachNudge([current], members)).toBeNull()
   })
 
   test('NULL: next iteration is ready (no alarm)', () => {
+    const members = drainingMembers(100)
     const current = iteration({
       number: 100,
       title: 'Iteration Lupus',
       is_current: true,
-      iteration_order: 1
+      iteration_order: 1,
+      stories: members.map((m) => m.number)
     })
     const next = iteration({
       number: 200,
@@ -150,15 +159,17 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 2,
       readiness: READY
     })
-    expect(deriveCloseApproachNudge([current, next], drainingMembers(100))).toBeNull()
+    expect(deriveCloseApproachNudge([current, next], members)).toBeNull()
   })
 
   test('NULL: far-horizon — the NEXT (+1) is ready even though a +2 is not-ready (gates on +1, not any-future)', () => {
+    const members = drainingMembers(100)
     const current = iteration({
       number: 100,
       title: 'Iteration Lupus',
       is_current: true,
-      iteration_order: 1
+      iteration_order: 1,
+      stories: members.map((m) => m.number)
     })
     const next = iteration({
       number: 200,
@@ -172,22 +183,10 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       iteration_order: 3,
       readiness: NOT_READY
     })
-    expect(deriveCloseApproachNudge([current, next, farHorizon], drainingMembers(100))).toBeNull()
+    expect(deriveCloseApproachNudge([current, next, farHorizon], members)).toBeNull()
   })
 
   test('retired members are excluded from the drain denominator', () => {
-    const current = iteration({
-      number: 100,
-      title: 'Iteration Lupus',
-      is_current: true,
-      iteration_order: 1
-    })
-    const next = iteration({
-      number: 200,
-      title: 'Iteration Fornax',
-      iteration_order: 2,
-      readiness: NOT_READY
-    })
     const members = [
       member(100, 1, 'accepted'),
       member(100, 2, 'accepted'),
@@ -195,6 +194,19 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       member(100, 4, 'in-progress'),
       member(100, 5, 'icebox', { gh_state: 'closed' })
     ]
+    const current = iteration({
+      number: 100,
+      title: 'Iteration Lupus',
+      is_current: true,
+      iteration_order: 1,
+      stories: members.map((m) => m.number)
+    })
+    const next = iteration({
+      number: 200,
+      title: 'Iteration Fornax',
+      iteration_order: 2,
+      readiness: NOT_READY
+    })
     const nudge = deriveCloseApproachNudge([current, next], members)
     expect(
       nudge,

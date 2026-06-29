@@ -3,12 +3,12 @@ import { ReworkGlyph } from './ReworkGlyph'
 import { SortableList } from './SortableList'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
-import { computeMemberDropMutation } from './iterationPosition'
-import { parseParentIterationLabel } from './labelSchema'
 import { storyNavigateLabel } from './storyNavigateLabel'
 import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
-import { type DragPayload, postLabelMutation } from './iterationMembers'
+import { type DragPayload } from './iterationMembers'
 import { ITERATION_MEMBER_DRAG } from './sortableDragConfigs'
+import { useDispatch } from '../transport/useDispatch'
+import { addStoryToIterationRequested } from '../transport/session/actions'
 import type { BoardIterationData } from './selectIterations'
 import type { IterationMember } from './useIterationMembers'
 
@@ -38,6 +38,7 @@ const MemberList = ({
   onOpen,
   onReorderAnnounce
 }: Props): React.JSX.Element => {
+  const dispatch = useDispatch()
   return (
     <SortableList<DragPayload, IterationMember>
       items={members}
@@ -53,24 +54,12 @@ const MemberList = ({
       onReorder={(payload, targetKey) => {
         const originalIdx = members.findIndex((m) => m.story.number === targetKey)
         if (originalIdx === -1) return
-        const mutation = computeMemberDropMutation({
-          draggedIterationNumber: payload.iterationNumber,
-          draggedOldPosition: payload.oldPosition,
-          targetIterationNumber: iteration.number,
-          targetMemberPositions: members.map((m) => m.position),
-          targetMemberIndex: originalIdx,
-          targetMembersIncludeDragged: payload.iterationNumber === iteration.number
-        })
-        if (!mutation) return
-        postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
-        const addedLabel = mutation.add[0]
-        const parsed = addedLabel ? parseParentIterationLabel(addedLabel) : null
-        if (parsed) {
-          setPending(payload.storyNumber, parsed.iterationNumber, parsed.position)
-        }
+        const position = originalIdx + 1
+        dispatch(addStoryToIterationRequested(iteration.number, payload.storyNumber, position))
+        setPending(payload.storyNumber, iteration.number, position)
       }}
       ulClassName="board-iteration-body"
-      renderRow={({ story, position }, { rowDragProps, gripDragProps, dragging }) => (
+      renderRow={({ story }, { rowDragProps, gripDragProps, dragging }) => (
         <li
           className="board-iteration-member"
           data-test={`board-story-${story.number}`}
@@ -103,24 +92,11 @@ const MemberList = ({
                 return
               }
               const targetMemberIndex = direction === 'up' ? originalIdx - 1 : originalIdx + 1
-              const mutation = computeMemberDropMutation({
-                draggedIterationNumber: iteration.number,
-                draggedOldPosition: position,
-                targetIterationNumber: iteration.number,
-                targetMemberPositions: members.map((m) => m.position),
-                targetMemberIndex,
-                targetMembersIncludeDragged: true
-              })
-              if (!mutation) return
-              postLabelMutation(story.number, mutation.add, mutation.remove)
-              const addedLabel = mutation.add[0]
-              const parsedKey = addedLabel ? parseParentIterationLabel(addedLabel) : null
-              if (parsedKey) {
-                setPending(story.number, parsedKey.iterationNumber, parsedKey.position)
-              }
-              const newIdx = direction === 'up' ? originalIdx - 1 : originalIdx + 1
+              const newPosition = targetMemberIndex + 1
+              dispatch(addStoryToIterationRequested(iteration.number, story.number, newPosition))
+              setPending(story.number, iteration.number, newPosition)
               onReorderAnnounce?.(
-                `Moved ${story.title} to position ${newIdx + 1} of ${members.length} in ${iteration.title}`
+                `Moved ${story.title} to position ${newPosition} of ${members.length} in ${iteration.title}`
               )
             }}
           />

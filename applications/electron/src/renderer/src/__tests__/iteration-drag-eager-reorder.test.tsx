@@ -22,28 +22,26 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
         number: 7901,
         title: 'Iteration Orion',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7911,7912,7913]} -->'
       },
       {
         number: 7911,
         title: 'orion-alpha',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7901.100']
+        initial_state: 'icebox'
       },
       {
         number: 7912,
         title: 'orion-bravo',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7901.200']
+        initial_state: 'icebox'
       },
       {
         number: 7913,
         title: 'orion-charlie',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7901.300']
+        initial_state: 'icebox'
       }
     ])
 

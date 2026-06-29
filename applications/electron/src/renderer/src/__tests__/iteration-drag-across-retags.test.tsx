@@ -23,27 +23,27 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
         number: 7701,
         title: 'Iteration Vela',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7711]} -->'
       },
       {
         number: 7702,
         title: 'Iteration Cygnus',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7721]} -->'
       },
       {
         number: 7711,
         title: 'vela-member-one',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7701.100']
+        initial_state: 'icebox'
       },
       {
         number: 7721,
         title: 'cygnus-member-one',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7702.100']
+        initial_state: 'icebox'
       }
     ])
 
@@ -65,17 +65,16 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
 
     await waitFor(
       async () => {
-        const boardRes = await fetch(`${apiBase}/api/board`, {
+        const iterRes = await fetch(`${apiBase}/api/iterations`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
-        const boardBody = (await boardRes.json()) as {
-          stories: {
-            number: number
-            iteration_membership: { iteration_number: number; position: number } | null
-          }[]
+        const iterBody = (await iterRes.json()) as {
+          iterations: { number: number; stories: number[] }[]
         }
-        const moved = boardBody.stories.find((s) => s.number === 7711)
-        expect(moved?.iteration_membership).toEqual({ iteration_number: 7702, position: 50 })
+        const cygnus = iterBody.iterations.find((i) => i.number === 7702)
+        const vela = iterBody.iterations.find((i) => i.number === 7701)
+        expect(cygnus?.stories).toEqual([7711, 7721])
+        expect(vela?.stories).toEqual([])
       },
       { timeout: 10_000, interval: 200 }
     )

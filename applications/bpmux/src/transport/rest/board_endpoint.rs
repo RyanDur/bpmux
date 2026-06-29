@@ -79,12 +79,24 @@ fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     s
 }
 
-fn building_iteration(number: u64, outcome_number: u64) -> Story {
+fn iteration_with_stories(number: u64, stories: Vec<u64>) -> Story {
+    let mut s = iteration(number);
+    s.body = Some(
+        IterationRelationships {
+            outcome: None,
+            stories,
+        }
+        .write_into_body(s.body.as_deref().unwrap_or_default()),
+    );
+    s
+}
+
+fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> Story {
     let mut s = iteration(number);
     s.body = Some(
         IterationRelationships {
             outcome: Some(outcome_number),
-            stories: vec![],
+            stories,
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
     );
@@ -95,8 +107,7 @@ fn building_iteration(number: u64, outcome_number: u64) -> Story {
 async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738() {
     let orch = orchestrator(vec![
         outcome(3000, vec![3010]),
-        building_iteration(3010, 3000),
-        member(3011, 3010, 100),
+        building_iteration(3010, 3000, vec![3011]),
     ])
     .await;
     let outcomes = board_outcomes(&orch);
@@ -138,7 +149,7 @@ async fn outcomes_never_ride_in_the_board_story_collection_1738() {
 
 #[tokio::test]
 async fn iteration_readiness_rides_the_iterations_wire_1703() {
-    let orch = orchestrator(vec![iteration(2000), member(2001, 2000, 100)]).await;
+    let orch = orchestrator(vec![iteration_with_stories(2000, vec![2001])]).await;
     let iterations = board_iterations(&orch);
     let readiness = &find(&iterations, 2000)["readiness"];
     assert_eq!(

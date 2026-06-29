@@ -93,7 +93,8 @@ const boardIteration: D.Decoder<BoardIterationData> = D.object({
     iteration_order: D.nullable(D.number),
     is_current: D.boolean,
     complete: D.boolean,
-    readiness: iterationReadinessWire
+    readiness: iterationReadinessWire,
+    stories: D.array(D.number)
   }
 })
 

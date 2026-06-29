@@ -69,7 +69,7 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
         "the close is recorded as a board-event re-derived into the closer-set"
     );
     assert!(
-        iteration_readiness(&iteration, &[], &bundled_default()).review_closed,
+        iteration_readiness(&iteration, &bundled_default()).review_closed,
         "closing the designer pre-pickup-review FLIPS the derived review-readiness-check"
     );
 }
@@ -79,7 +79,7 @@ async fn no_close_on_record_means_review_not_ready_1703() {
     let (store, _orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let iteration = store.iteration(1552).unwrap();
     assert!(
-        !iteration_readiness(&iteration, &[], &bundled_default()).review_closed,
+        !iteration_readiness(&iteration, &bundled_default()).review_closed,
         "no review-close on record → the check is unmet (no false-positive)"
     );
 }

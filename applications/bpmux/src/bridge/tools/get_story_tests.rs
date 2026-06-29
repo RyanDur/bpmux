@@ -444,6 +444,21 @@ fn make_iteration(number: u64, name: &str, body: &str) -> Story {
     s
 }
 
+fn make_iteration_with_members(number: u64, name: &str, body: &str, members: Vec<u64>) -> Story {
+    use crate::product_management::board::adapters::relationships::{
+        IterationRelationships, Relationships,
+    };
+    let mut s = make_iteration(number, name, body);
+    s.body = Some(
+        IterationRelationships {
+            outcome: None,
+            stories: members,
+        }
+        .write_into_body(body),
+    );
+    s
+}
+
 fn make_member(number: u64, title: &str, iteration_number: u64, position: u32) -> Story {
     let mut s = Story::new_minimal(
         number,
@@ -478,7 +493,12 @@ bpmux iteration substrate.\n";
 
 #[tokio::test]
 async fn get_story_auto_derives_iteration_members_into_body_1462() {
-    let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
+    let iteration = make_iteration_with_members(
+        1397,
+        "Telescopium",
+        ITERATION_BODY_TEMPLATE,
+        vec![1309, 1265, 1463],
+    );
     let members = vec![
         make_member(1309, "ci_get_job_status MCP tool", 1397, 100),
         make_member(1265, "reorder_story PM-only gate", 1397, 200),
@@ -556,7 +576,12 @@ async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
 
 #[tokio::test]
 async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
-    let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
+    let iteration = make_iteration_with_members(
+        1397,
+        "Telescopium",
+        ITERATION_BODY_TEMPLATE,
+        vec![1309, 1265],
+    );
     let mut closed_member = make_member(1309, "Already shipped", 1397, 100);
     closed_member.is_closed = true;
     let open_member = make_member(1265, "Still open", 1397, 200);

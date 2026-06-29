@@ -2,7 +2,6 @@ use serde::Serialize;
 
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::Story;
 use crate::workflow::config::WorkflowConfig;
 
 pub const ITERATION_REVIEWER_PURPOSE: &str = "iteration-reviewer";
@@ -52,21 +51,12 @@ pub fn building_iterations(outcome: &Outcome, iterations: &[Iteration]) -> Vec<I
 pub fn outcome_readiness(
     outcome: &Outcome,
     iterations: &[Iteration],
-    members: &[Story],
     workflow: &WorkflowConfig,
 ) -> OutcomeReadiness {
     let building = building_iterations(outcome, iterations);
     let gap_count = building
         .iter()
-        .map(|iteration| {
-            let iteration_members: Vec<&Story> = members
-                .iter()
-                .filter(|m| {
-                    m.iteration_membership().map(|(it, _)| it) == iteration.id().saved_number()
-                })
-                .collect();
-            iteration_readiness(iteration, &iteration_members, workflow).unmet_count()
-        })
+        .map(|iteration| iteration_readiness(iteration, workflow).unmet_count())
         .sum();
     let iteration_count = building.len() as u32;
     OutcomeReadiness {
@@ -76,14 +66,10 @@ pub fn outcome_readiness(
     }
 }
 
-pub fn iteration_readiness(
-    iteration: &Iteration,
-    members: &[&Story],
-    workflow: &WorkflowConfig,
-) -> IterationReadiness {
+pub fn iteration_readiness(iteration: &Iteration, workflow: &WorkflowConfig) -> IterationReadiness {
     IterationReadiness {
         drafted: drafted(iteration),
-        stories_ordered: stories_ordered(members),
+        stories_ordered: stories_ordered(iteration),
         review_closed: review_closed(iteration, workflow),
         dev_ok: dev_ok(iteration, workflow),
     }
@@ -97,21 +83,8 @@ fn drafted(iteration: &Iteration) -> bool {
         .is_some_and(|b| !b.trim().is_empty())
 }
 
-fn stories_ordered(members: &[&Story]) -> bool {
-    if members.is_empty() {
-        return false;
-    }
-    let positions: Vec<u32> = members
-        .iter()
-        .filter_map(|s| s.iteration_membership().map(|(_, position)| position))
-        .collect();
-    if positions.len() != members.len() {
-        return false;
-    }
-    let mut distinct = positions.clone();
-    distinct.sort_unstable();
-    distinct.dedup();
-    distinct.len() == positions.len()
+fn stories_ordered(iteration: &Iteration) -> bool {
+    !iteration.stories.is_empty()
 }
 
 fn review_closed(iteration: &Iteration, workflow: &WorkflowConfig) -> bool {

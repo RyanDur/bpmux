@@ -93,6 +93,36 @@ pub(super) async fn handle_reorder_iteration(
     Ok(())
 }
 
+pub(super) async fn handle_add_story_to_iteration(
+    ctx: &ClientCtx<'_>,
+    tx: &mut SplitSink<WebSocket, WsMessage>,
+    identity: &str,
+    iteration_number: u64,
+    story_number: u64,
+    position: u32,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "iteration_number".to_string(),
+        serde_json::json!(iteration_number),
+    );
+    args.insert("story_number".to_string(), serde_json::json!(story_number));
+    args.insert("position".to_string(), serde_json::json!(position));
+    if let Err(e) =
+        crate::bridge::dispatch_add_story_to_iteration(args, identity, ctx.orchestrator.as_ref())
+            .await
+    {
+        send_json(
+            tx,
+            &ServerMessage::Error {
+                reason: format!("add story to iteration failed: {e}"),
+            },
+        )
+        .await?;
+    }
+    Ok(())
+}
+
 pub(super) async fn handle_reprioritize_outcome(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,

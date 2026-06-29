@@ -5,7 +5,6 @@ use crate::product_management::iteration::readiness::{
     IterationReadiness, building_iterations, iteration_readiness,
 };
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::Story;
 use crate::workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -97,29 +96,16 @@ fn first_unmet_label(r: &IterationReadiness) -> Option<String> {
         .map(|(_, label)| (*label).to_string())
 }
 
-fn readiness_of(
-    iteration: &Iteration,
-    all: &[Story],
-    workflow: &WorkflowConfig,
-) -> IterationReadiness {
-    let members: Vec<&Story> = all
-        .iter()
-        .filter(|m| m.iteration_membership().map(|(it, _)| it) == iteration.id().saved_number())
-        .collect();
-    iteration_readiness(iteration, &members, workflow)
-}
-
 pub fn derive_outcome_drill_in(
     outcome: &Outcome,
     iterations: &[Iteration],
-    stories: &[Story],
     workflow: &WorkflowConfig,
 ) -> OutcomeDrillIn {
     let building = building_iterations(outcome, iterations);
 
     let next_index = building.iter().position(|it| {
         !it.complete && {
-            let r = readiness_of(it, stories, workflow);
+            let r = iteration_readiness(it, workflow);
             !nothing_done(&r) && r.unmet_count() > 0
         }
     });
@@ -128,7 +114,7 @@ pub fn derive_outcome_drill_in(
         .iter()
         .enumerate()
         .map(|(index, it)| {
-            let r = readiness_of(it, stories, workflow);
+            let r = iteration_readiness(it, workflow);
             let gap_count = r.unmet_count();
             let state = if it.complete {
                 DrillIterationState::Done
@@ -158,7 +144,7 @@ pub fn derive_outcome_drill_in(
 
     let convene = next_index.map(|ni| {
         let next = &building[ni];
-        let next_r = readiness_of(next, stories, workflow);
+        let next_r = iteration_readiness(next, workflow);
         ConveneBanner {
             next_iteration_name: next.content.title.clone(),
             next_gap_count: next_r.unmet_count(),

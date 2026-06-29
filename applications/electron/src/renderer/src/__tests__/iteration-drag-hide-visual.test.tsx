@@ -22,14 +22,14 @@ describe('#1339 step 2d — dragged member carries data-dragging during drag ges
         number: 7801,
         title: 'Iteration Lyra',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7811]} -->'
       },
       {
         number: 7811,
         title: 'lyra-member',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7801.100']
+        initial_state: 'icebox'
       }
     ])
 

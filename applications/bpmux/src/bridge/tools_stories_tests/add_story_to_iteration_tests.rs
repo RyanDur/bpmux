@@ -1,11 +1,13 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use crate::product_management::board::BoardEvent;
 use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::adapters::relationships::{
+    IterationRelationships, Relationships,
+};
 use crate::product_management::story::{Story, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -73,8 +75,11 @@ async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
         result.is_ok(),
         "PM add_story_to_iteration must succeed: {result:?}"
     );
-    let drained = orch.drain_pending().await.unwrap();
-    assert_eq!(drained, 1, "single canonical-relation enqueue");
+    assert_eq!(
+        orch.iteration(1397).expect("iteration present").stories,
+        vec![1500],
+        "the member is recorded in the iteration's ordered stories (parent-holds-order)"
+    );
 }
 
 #[tokio::test]
@@ -195,7 +200,7 @@ async fn missing_position_rejected_1399() {
 }
 
 #[tokio::test]
-async fn enqueues_iteration_membership_set_event_with_correct_args_1399() {
+async fn add_records_the_member_in_the_iterations_ordered_stories_1399() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let iteration = iteration_seed(1397, "Telescopium");
@@ -209,30 +214,10 @@ async fn enqueues_iteration_membership_set_event_with_correct_args_1399() {
     handle_add_story_to_iteration(&args(1397, 1500, 250), "pm:claude-code", Some(&orch))
         .await
         .unwrap();
-    let drained = orch.drain_pending().await.unwrap();
-    assert_eq!(drained, 1);
-    let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 1);
-    assert!(
-        matches!(
-            &pushed[0],
-            BoardEvent::IterationMembershipSet {
-                number: 1500,
-                iteration_number: 1397,
-                position: 250,
-                ..
-            }
-        ),
-        "pushed event must carry the right (number, iteration_number, position) triple; got {:?}",
-        pushed[0]
-    );
-    let updated = store.story(1500).expect("member story present");
     assert_eq!(
-        crate::product_management::board::adapters::github::iteration_membership_from_labels(
-            &updated.raw_labels
-        ),
-        Some((1397, 250)),
-        "membership label populated post-mutation"
+        store.iteration(1397).expect("iteration present").stories,
+        vec![1500],
+        "the member is recorded in the iteration's ordered stories (the parent holds the order)"
     );
 }
 
@@ -240,10 +225,16 @@ async fn enqueues_iteration_membership_set_event_with_correct_args_1399() {
 async fn replace_semantic_overwrites_existing_membership_1399() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let it1 = iteration_seed(1397, "Telescopium");
+    let mut it1 = iteration_seed(1397, "Telescopium");
+    it1.body = Some(
+        IterationRelationships {
+            outcome: None,
+            stories: vec![1500],
+        }
+        .write_into_body("## composed"),
+    );
     let it2 = iteration_seed(1396, "Sextans");
-    let mut member = member_seed(1500, "moving target");
-    member.raw_labels = vec!["ready".into(), "parent-iteration-#1397.100".into()];
+    let member = member_seed(1500, "moving target");
     adapter.seed_stories(vec![it1, it2, member]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -253,12 +244,17 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
     handle_add_story_to_iteration(&args(1396, 1500, 300), "pm:claude-code", Some(&orch))
         .await
         .unwrap();
-    let updated = store.story(1500).expect("member present after move");
     assert_eq!(
-        crate::product_management::board::adapters::github::iteration_membership_from_labels(
-            &updated.raw_labels
-        ),
-        Some((1396, 300)),
-        "single-iteration-membership invariant: prior (1397, 100) replaced by (1396, 300)"
+        store.iteration(1396).expect("target iteration").stories,
+        vec![1500],
+        "the member is recorded in the new iteration"
+    );
+    assert!(
+        store
+            .iteration(1397)
+            .expect("prior iteration")
+            .stories
+            .is_empty(),
+        "single-iteration-membership invariant: the story is cleared from the prior iteration"
     );
 }

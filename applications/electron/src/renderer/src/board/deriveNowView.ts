@@ -1,5 +1,9 @@
 import { findCurrentIteration } from './currentIteration'
-import { isIterationStory, positionInParentIteration } from './iterationMembers'
+import {
+  buildMembershipIndex,
+  isIterationStory,
+  positionInParentIteration
+} from './iterationMembers'
 import type { BoardIterationData } from './selectIterations'
 import type { BoardStory, IterationMembership } from './types'
 
@@ -15,10 +19,11 @@ export type NowView =
 export const deriveNowView = (iterations: BoardIterationData[], stories: BoardStory[]): NowView => {
   const iteration = findCurrentIteration(iterations)
   if (iteration === null) return { kind: 'empty' }
+  const index = buildMembershipIndex(iterations)
   const members: NowRow[] = []
   for (const story of stories) {
     if (isIterationStory(story)) continue
-    const position = positionInParentIteration(story, iteration.number)
+    const position = positionInParentIteration(index, story.number, iteration.number)
     if (position === null) continue
     members.push({ story, membership: { iteration_number: iteration.number, position } })
   }

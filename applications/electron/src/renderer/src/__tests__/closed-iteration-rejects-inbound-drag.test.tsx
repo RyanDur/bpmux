@@ -22,21 +22,22 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
         number: 8501,
         title: 'Iteration Carina',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[8511]} -->'
       },
       {
         number: 8502,
         title: 'Iteration Eridanus',
         story_type: 'iteration',
         initial_state: 'icebox',
-        is_closed: true
+        is_closed: true,
+        body: '<!-- bpmux-relationships: {"stories":[]} -->'
       },
       {
         number: 8511,
         title: 'carina-member',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#8501.100']
+        initial_state: 'icebox'
       }
     ])
 
@@ -59,16 +60,15 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
 
     drag.drop(eridanus)
 
-    const boardRes = await fetch(`${apiBase}/api/board`, {
+    const iterRes = await fetch(`${apiBase}/api/iterations`, {
       headers: { Authorization: `Bearer ${authToken}` }
     })
-    const boardBody = (await boardRes.json()) as {
-      stories: {
-        number: number
-        iteration_membership: { iteration_number: number; position: number } | null
-      }[]
+    const iterBody = (await iterRes.json()) as {
+      iterations: { number: number; stories: number[] }[]
     }
-    const member = boardBody.stories.find((s) => s.number === 8511)
-    expect(member?.iteration_membership).toEqual({ iteration_number: 8501, position: 100 })
+    const carinaIteration = iterBody.iterations.find((i) => i.number === 8501)
+    const eridanusIteration = iterBody.iterations.find((i) => i.number === 8502)
+    expect(carinaIteration?.stories).toEqual([8511])
+    expect(eridanusIteration?.stories).toEqual([])
   }, 25_000)
 })

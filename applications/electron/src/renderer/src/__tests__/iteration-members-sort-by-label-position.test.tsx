@@ -4,7 +4,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard } from '../board/iterationBoard.page'
 
-describe('#1339 — iteration members sort by iteration-{Name}.{position} label', () => {
+describe('#1339 — iteration members render in the parent iteration stories order', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {
@@ -12,7 +12,7 @@ describe('#1339 — iteration members sort by iteration-{Name}.{position} label'
     rendered = null
   })
 
-  it('member stories appear in label-position order inside the iteration container body', async () => {
+  it('member stories appear in the iteration body-JSON stories order inside the container body', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
@@ -22,28 +22,26 @@ describe('#1339 — iteration members sort by iteration-{Name}.{position} label'
         number: 7401,
         title: 'Iteration Aquila',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7412,7411,7413]} -->'
       },
       {
         number: 7411,
         title: 'story alpha',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7401.200']
+        initial_state: 'icebox'
       },
       {
         number: 7412,
         title: 'story bravo',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7401.100']
+        initial_state: 'icebox'
       },
       {
         number: 7413,
         title: 'story charlie',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7401.300']
+        initial_state: 'icebox'
       }
     ])
 

@@ -69,7 +69,7 @@ async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
         "the dev-OK is recorded as a board-event re-derived into the approver-set"
     );
     assert!(
-        iteration_readiness(&iteration, &[], &bundled_default()).dev_ok,
+        iteration_readiness(&iteration, &bundled_default()).dev_ok,
         "dev OKing the iteration at IPM FLIPS the derived dev-OK readiness-check"
     );
 }
@@ -79,7 +79,7 @@ async fn no_dev_ok_on_record_means_not_ready_1736() {
     let (store, _orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let iteration = store.iteration(1552).unwrap();
     assert!(
-        !iteration_readiness(&iteration, &[], &bundled_default()).dev_ok,
+        !iteration_readiness(&iteration, &bundled_default()).dev_ok,
         "no dev-OK on record → the check is unmet (no false-positive)"
     );
 }

@@ -53,6 +53,7 @@ export const SessionActionType = {
   OutcomeIterationReorderRequested: 'session/outcomeIterationReorderRequested',
   OutcomeReprioritizeRequested: 'session/outcomeReprioritizeRequested',
   IterationReorderRequested: 'session/iterationReorderRequested',
+  AddStoryToIterationRequested: 'session/addStoryToIterationRequested',
   PtySubscribeRequested: 'session/ptySubscribeRequested',
   PtyInputRequested: 'session/ptyInputRequested',
   PtyResizeRequested: 'session/ptyResizeRequested',
@@ -129,6 +130,12 @@ export type SessionAction =
   | {
       type: typeof SessionActionType.IterationReorderRequested
       iterationNumber: number
+      position: number
+    }
+  | {
+      type: typeof SessionActionType.AddStoryToIterationRequested
+      iterationNumber: number
+      storyNumber: number
       position: number
     }
   | { type: typeof SessionActionType.PtySubscribeRequested; terminalId: string }
@@ -298,6 +305,17 @@ export const iterationReorderRequested = (
 ): SessionAction => ({
   type: SessionActionType.IterationReorderRequested,
   iterationNumber,
+  position
+})
+
+export const addStoryToIterationRequested = (
+  iterationNumber: number,
+  storyNumber: number,
+  position: number
+): SessionAction => ({
+  type: SessionActionType.AddStoryToIterationRequested,
+  iterationNumber,
+  storyNumber,
   position
 })
 

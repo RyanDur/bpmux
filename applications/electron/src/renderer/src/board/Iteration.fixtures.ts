@@ -9,6 +9,7 @@ export const boardIteration = (overrides: Partial<BoardIterationData>): BoardIte
   is_current: false,
   complete: false,
   readiness: { drafted: false, stories_ordered: false, review_closed: false, dev_ok: false },
+  stories: [],
   ...overrides
 })
 

@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { BoardStory } from './types'
+import type { BoardIterationData } from './selectIterations'
 import {
   type PendingMemberPosition,
+  buildMembershipIndex,
   isIterationStory,
   isLooseStory,
   positionInParentIteration,
@@ -28,50 +30,64 @@ const compareLoose = (a: BoardStory, b: BoardStory): number => {
   return a.number - b.number
 }
 
-export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersResult => {
+export const useIterationMembers = (
+  stories: BoardStory[],
+  iterations: BoardIterationData[]
+): UseIterationMembersResult => {
   const [pendingMemberPosition, setPendingMemberPosition] = useState<
     Record<number, PendingMemberPosition>
   >({})
+
+  const index = useMemo(() => buildMembershipIndex(iterations), [iterations])
+  const storiesByNumber = useMemo(() => {
+    const map = new Map<number, BoardStory>()
+    for (const s of stories) map.set(s.number, s)
+    return map
+  }, [stories])
+  const iterationsByNumber = useMemo(() => {
+    const map = new Map<number, BoardIterationData>()
+    for (const it of iterations) map.set(it.number, it)
+    return map
+  }, [iterations])
 
   const effectivePending = useMemo<Record<number, PendingMemberPosition>>(() => {
     const out: Record<number, PendingMemberPosition> = {}
     for (const [numStr, pending] of Object.entries(pendingMemberPosition)) {
       const num = Number(numStr)
-      const story = stories.find((s) => s.number === num)
-      const actualPosition = story
-        ? positionInParentIteration(story, pending.iterationNumber)
-        : null
+      const actualPosition = positionInParentIteration(index, num, pending.iterationNumber)
       if (actualPosition === pending.position) continue
       out[num] = pending
     }
     return out
-  }, [stories, pendingMemberPosition])
+  }, [index, pendingMemberPosition])
 
-  const sortedLoose = useMemo(() => [...stories.filter(isLooseStory)].sort(compareLoose), [stories])
+  const sortedLoose = useMemo(
+    () => [...stories.filter((s) => isLooseStory(s, index))].sort(compareLoose),
+    [stories, index]
+  )
 
   const getMembersFor = useCallback(
-    (iterationNumber: number): IterationMember[] =>
-      stories
-        .map((s) => {
-          if (isIterationStory(s)) return null
-          const pending = effectivePending[s.number]
-          const labelPosition = positionInParentIteration(s, iterationNumber)
-          const pendingPosition =
-            pending !== undefined && pending.iterationNumber === iterationNumber
-              ? pending.position
-              : null
-          if (pendingPosition !== null) {
-            return { story: s, position: pendingPosition }
-          }
-          if (labelPosition === null) return null
-          if (pending !== undefined && pending.iterationNumber !== iterationNumber) {
-            return null
-          }
-          return { story: s, position: labelPosition }
-        })
-        .filter((m): m is IterationMember => m !== null)
-        .sort((a, b) => a.position - b.position),
-    [stories, effectivePending]
+    (iterationNumber: number): IterationMember[] => {
+      const iteration = iterationsByNumber.get(iterationNumber)
+      if (!iteration) return []
+      let order = iteration.stories.filter((n) => {
+        const s = storiesByNumber.get(n)
+        if (!s || isIterationStory(s)) return false
+        const pending = effectivePending[n]
+        return !(pending && pending.iterationNumber !== iterationNumber)
+      })
+      for (const [numStr, pending] of Object.entries(effectivePending)) {
+        if (pending.iterationNumber !== iterationNumber) continue
+        const num = Number(numStr)
+        const s = storiesByNumber.get(num)
+        if (!s || isIterationStory(s)) continue
+        order = order.filter((x) => x !== num)
+        const idx = Math.min(Math.max(pending.position - 1, 0), order.length)
+        order.splice(idx, 0, num)
+      }
+      return order.map((n, i) => ({ story: storiesByNumber.get(n) as BoardStory, position: i + 1 }))
+    },
+    [iterationsByNumber, storiesByNumber, effectivePending]
   )
 
   const setPending = useCallback(

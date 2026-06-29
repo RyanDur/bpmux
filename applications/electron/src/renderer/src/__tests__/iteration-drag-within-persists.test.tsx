@@ -23,28 +23,26 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
         number: 7601,
         title: 'Iteration Pegasus',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7611,7612,7613]} -->'
       },
       {
         number: 7611,
         title: 'alpha',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7601.100']
+        initial_state: 'icebox'
       },
       {
         number: 7612,
         title: 'bravo',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7601.200']
+        initial_state: 'icebox'
       },
       {
         number: 7613,
         title: 'charlie',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#7601.300']
+        initial_state: 'icebox'
       }
     ])
 
@@ -66,17 +64,14 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
 
     await waitFor(
       async () => {
-        const boardRes = await fetch(`${apiBase}/api/board`, {
+        const iterRes = await fetch(`${apiBase}/api/iterations`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
-        const boardBody = (await boardRes.json()) as {
-          stories: {
-            number: number
-            iteration_membership: { iteration_number: number; position: number } | null
-          }[]
+        const iterBody = (await iterRes.json()) as {
+          iterations: { number: number; stories: number[] }[]
         }
-        const charlie = boardBody.stories.find((s) => s.number === 7613)
-        expect(charlie?.iteration_membership).toEqual({ iteration_number: 7601, position: 50 })
+        const pegasus = iterBody.iterations.find((i) => i.number === 7601)
+        expect(pegasus?.stories).toEqual([7613, 7611, 7612])
       },
       { timeout: 10_000, interval: 200 }
     )

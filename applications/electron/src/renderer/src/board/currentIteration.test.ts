@@ -15,6 +15,7 @@ const iteration = (overrides: Partial<BoardIterationData>): BoardIterationData =
   is_current: false,
   complete: false,
   readiness: { drafted: false, stories_ordered: false, review_closed: false, dev_ok: false },
+  stories: [],
   ...overrides
 })
 
@@ -63,12 +64,9 @@ describe('#1540 findCurrentIteration — explicit designation, never auto-picks'
 })
 
 describe('#1453 isMemberOfIteration', () => {
-  test('canonical iteration_membership matches', () => {
-    const iter = iteration({ number: 1464, title: 'Iteration Reticulum' })
-    const member = story({
-      number: 9501,
-      iteration_membership: { iteration_number: 1464, position: 100 }
-    })
+  test('a story listed in the iterations stories matches', () => {
+    const iter = iteration({ number: 1464, title: 'Iteration Reticulum', stories: [9501] })
+    const member = story({ number: 9501 })
     expect(isMemberOfIteration(member, iter)).toBe(true)
   })
 
@@ -99,46 +97,27 @@ describe('#1453 isMemberOfIteration', () => {
 
 describe('#1453 epicNumbersInIteration', () => {
   test('returns distinct sorted parent_epic numbers of iteration members', () => {
-    const iter = iteration({ number: 1464, title: 'Iteration Reticulum' })
-    const s1 = story({
-      number: 9501,
-      parent_epic: 200,
-      iteration_membership: { iteration_number: 1464, position: 100 }
+    const iter = iteration({
+      number: 1464,
+      title: 'Iteration Reticulum',
+      stories: [9501, 9502, 9503]
     })
-    const s2 = story({
-      number: 9502,
-      parent_epic: 100,
-      iteration_membership: { iteration_number: 1464, position: 200 }
-    })
-    const s3 = story({
-      number: 9503,
-      parent_epic: 200,
-      iteration_membership: { iteration_number: 1464, position: 300 }
-    })
+    const s1 = story({ number: 9501, parent_epic: 200 })
+    const s2 = story({ number: 9502, parent_epic: 100 })
+    const s3 = story({ number: 9503, parent_epic: 200 })
     expect(epicNumbersInIteration([s1, s2, s3], iter)).toEqual([100, 200])
   })
 
   test('ignores stories not in iteration', () => {
-    const iter = iteration({ number: 1464, title: 'Iteration Reticulum' })
-    const inIter = story({
-      number: 9501,
-      parent_epic: 200,
-      iteration_membership: { iteration_number: 1464, position: 100 }
-    })
-    const otherIter = story({
-      number: 9601,
-      parent_epic: 300,
-      iteration_membership: { iteration_number: 1491, position: 100 }
-    })
+    const iter = iteration({ number: 1464, title: 'Iteration Reticulum', stories: [9501] })
+    const inIter = story({ number: 9501, parent_epic: 200 })
+    const otherIter = story({ number: 9601, parent_epic: 300 })
     expect(epicNumbersInIteration([inIter, otherIter], iter)).toEqual([200])
   })
 
   test('ignores stories without parent_epic', () => {
-    const iter = iteration({ number: 1464, title: 'Iteration Reticulum' })
-    const noEpic = story({
-      number: 9501,
-      iteration_membership: { iteration_number: 1464, position: 100 }
-    })
+    const iter = iteration({ number: 1464, title: 'Iteration Reticulum', stories: [9501] })
+    const noEpic = story({ number: 9501 })
     expect(epicNumbersInIteration([noEpic], iter)).toEqual([])
   })
 })

@@ -267,6 +267,13 @@ export interface ClientReorderIteration {
   position: number
 }
 
+export interface ClientAddStoryToIteration {
+  type: 'add_story_to_iteration'
+  iteration_number: number
+  story_number: number
+  position: number
+}
+
 export type ClientMessage =
   | ClientIdentify
   | ClientSend
@@ -284,6 +291,7 @@ export type ClientMessage =
   | ClientReorderOutcomeIteration
   | ClientReprioritizeOutcome
   | ClientReorderIteration
+  | ClientAddStoryToIteration
 
 export interface ChatMessage {
   id: string

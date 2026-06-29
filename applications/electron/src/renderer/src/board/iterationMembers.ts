@@ -1,6 +1,5 @@
 import { parseUnscheduledPosition } from './labelSchema'
-import { postStoryLabels } from '../api/labelsClient'
-import { storyTypeFromLabels, type BoardStory } from './types'
+import { storyTypeFromLabels, type BoardStory, type IterationMembership } from './types'
 
 export interface DragPayload {
   storyNumber: number
@@ -17,14 +16,29 @@ export interface PendingMemberPosition {
   position: number
 }
 
+export type MembershipIndex = Map<number, IterationMembership>
+
+export const buildMembershipIndex = (
+  iterations: { number: number; stories: number[] }[]
+): MembershipIndex => {
+  const index: MembershipIndex = new Map()
+  for (const iteration of iterations) {
+    iteration.stories.forEach((storyNumber, i) => {
+      index.set(storyNumber, { iteration_number: iteration.number, position: i + 1 })
+    })
+  }
+  return index
+}
+
 export const isIterationStory = (story: BoardStory): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'
 
 export const positionInParentIteration = (
-  story: BoardStory,
+  index: MembershipIndex,
+  storyNumber: number,
   iterationNumber: number
 ): number | null => {
-  const membership = story.iteration_membership
+  const membership = index.get(storyNumber)
   if (membership && membership.iteration_number === iterationNumber) {
     return membership.position
   }
@@ -39,10 +53,10 @@ export const positionInUnscheduled = (story: BoardStory): number | null => {
   return null
 }
 
-export const isLooseStory = (story: BoardStory): boolean => {
+export const isLooseStory = (story: BoardStory, index: MembershipIndex): boolean => {
   if (isIterationStory(story)) return false
   if (story.state !== 'icebox') return false
-  return story.iteration_membership === undefined || story.iteration_membership === null
+  return !index.has(story.number)
 }
 
 export const eagerReorder = <T>(
@@ -59,18 +73,4 @@ export const eagerReorder = <T>(
   const [moved] = next.splice(fromIdx, 1)
   next.splice(toIdx, 0, moved)
   return next
-}
-
-export const postLabelMutation = (
-  storyNumber: number,
-  addLabels: string[],
-  removeLabels: string[]
-): void => {
-  if (typeof window === 'undefined') return
-  const bridge = window.bpmux
-  if (!bridge?.apiBase) return
-  void postStoryLabels({ apiBase: bridge.apiBase, authToken: bridge.authToken }, storyNumber, {
-    add: addLabels,
-    remove: removeLabels
-  }).value
 }

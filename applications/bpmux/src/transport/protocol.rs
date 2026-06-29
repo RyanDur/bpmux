@@ -79,6 +79,12 @@ pub enum ClientMessage {
         iteration_number: u64,
         position: u32,
     },
+    #[serde(rename = "add_story_to_iteration")]
+    AddStoryToIteration {
+        iteration_number: u64,
+        story_number: u64,
+        position: u32,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -1,4 +1,3 @@
-import { positionInParentIteration } from './iterationMembers'
 import type { BoardIterationData } from './selectIterations'
 import type { BoardStory } from './types'
 
@@ -9,7 +8,7 @@ export const findCurrentIteration = (
 }
 
 export const isMemberOfIteration = (story: BoardStory, iteration: BoardIterationData): boolean => {
-  return positionInParentIteration(story, iteration.number) !== null
+  return iteration.stories.includes(story.number)
 }
 
 export const epicNumbersInIteration = (

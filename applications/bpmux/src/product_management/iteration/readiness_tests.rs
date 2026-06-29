@@ -12,8 +12,8 @@ use crate::workflow::bundled_default::bundled_default;
 use crate::workflow::config::WorkflowConfig;
 use chrono::Utc;
 
-fn readiness(it: &Story, members: &[&Story], workflow: &WorkflowConfig) -> IterationReadiness {
-    iteration_readiness(&decode_iteration(it), members, workflow)
+fn readiness(it: &Story, workflow: &WorkflowConfig) -> IterationReadiness {
+    iteration_readiness(&decode_iteration(it), workflow)
 }
 
 fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iteration::Iteration> {
@@ -38,17 +38,15 @@ fn iteration(number: u64) -> Story {
     s
 }
 
-fn member(number: u64, iteration_number: u64, position: u32) -> Story {
-    let mut s = Story::new_minimal(
-        number,
-        format!("member #{number}"),
-        StoryState::Ready,
-        Utc::now(),
-        "pm".to_string(),
+fn iteration_with_stories(number: u64, stories: Vec<u64>) -> Story {
+    let mut s = iteration(number);
+    s.body = Some(
+        IterationRelationships {
+            outcome: None,
+            stories,
+        }
+        .write_into_body(s.body.as_deref().unwrap_or_default()),
     );
-    s.raw_labels
-        .push(format!("parent-iteration-#{iteration_number}.{position}"));
-    s.iteration_membership = Some((iteration_number, position));
     s
 }
 
@@ -57,7 +55,7 @@ fn review_closed_true_when_a_configured_reviewer_closed() {
     let mut it = iteration(200);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
-    let r = readiness(&it, &[], &bundled_default());
+    let r = readiness(&it, &bundled_default());
     assert!(
         r.review_closed,
         "designer is the configured iteration-reviewer; their close derives review_closed"
@@ -69,7 +67,7 @@ fn review_closed_false_when_closer_is_not_a_configured_reviewer() {
     let mut it = iteration(200);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("pm"));
-    let r = readiness(&it, &[], &bundled_default());
+    let r = readiness(&it, &bundled_default());
     assert!(
         !r.review_closed,
         "pm is not a configured iteration-reviewer; their label must not flip the check"
@@ -79,7 +77,7 @@ fn review_closed_false_when_closer_is_not_a_configured_reviewer() {
 #[test]
 fn review_closed_false_when_nothing_on_record() {
     let it = iteration(200);
-    let r = readiness(&it, &[], &bundled_default());
+    let r = readiness(&it, &bundled_default());
     assert!(
         !r.review_closed,
         "no review-close on record → no false-positive"
@@ -87,52 +85,36 @@ fn review_closed_false_when_nothing_on_record() {
 }
 
 #[test]
-fn stories_ordered_true_when_members_carry_distinct_positions() {
-    let it = iteration(200);
-    let m1 = member(1, 200, 100);
-    let m2 = member(2, 200, 200);
-    let r = readiness(&it, &[&m1, &m2], &bundled_default());
-    assert!(r.stories_ordered);
-}
-
-#[test]
-fn stories_ordered_false_when_positions_collide() {
-    let it = iteration(200);
-    let m1 = member(1, 200, 100);
-    let m2 = member(2, 200, 100);
-    let r = readiness(&it, &[&m1, &m2], &bundled_default());
-    assert!(
-        !r.stories_ordered,
-        "duplicate positions are not a total order"
-    );
+fn stories_ordered_true_when_the_iteration_has_members() {
+    let it = iteration_with_stories(200, vec![1, 2]);
+    assert!(readiness(&it, &bundled_default()).stories_ordered);
 }
 
 #[test]
 fn stories_ordered_false_when_no_members() {
     let it = iteration(200);
-    let r = readiness(&it, &[], &bundled_default());
+    let r = readiness(&it, &bundled_default());
     assert!(!r.stories_ordered);
 }
 
 #[test]
 fn drafted_true_with_body_false_when_empty() {
     let mut it = iteration(200);
-    assert!(readiness(&it, &[], &bundled_default()).drafted);
+    assert!(readiness(&it, &bundled_default()).drafted);
     it.body = Some("   ".to_string());
-    assert!(!readiness(&it, &[], &bundled_default()).drafted);
+    assert!(!readiness(&it, &bundled_default()).drafted);
     it.body = None;
-    assert!(!readiness(&it, &[], &bundled_default()).drafted);
+    assert!(!readiness(&it, &bundled_default()).drafted);
 }
 
 #[test]
 fn all_met_requires_every_check() {
-    let mut it = iteration(200);
+    let mut it = iteration_with_stories(200, vec![1]);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
-    let m1 = member(1, 200, 100);
-    let r = readiness(&it, &[&m1], &bundled_default());
+    let r = readiness(&it, &bundled_default());
     assert!(
         r.all_met(),
         "body + ordered member + reviewer-close + dev-ok → all met"
@@ -141,11 +123,10 @@ fn all_met_requires_every_check() {
 
 #[test]
 fn all_met_false_when_dev_ok_missing() {
-    let mut it = iteration(200);
+    let mut it = iteration_with_stories(200, vec![1]);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
-    let m1 = member(1, 200, 100);
-    let r = readiness(&it, &[&m1], &bundled_default());
+    let r = readiness(&it, &bundled_default());
     assert!(
         !r.all_met(),
         "every check is required; a missing dev-OK keeps the iteration not-ready"
@@ -158,7 +139,7 @@ fn dev_ok_true_when_a_configured_builder_approved() {
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     assert!(
-        readiness(&it, &[], &bundled_default()).dev_ok,
+        readiness(&it, &bundled_default()).dev_ok,
         "dev is the configured iteration-builder; their dev-OK derives dev_ok"
     );
 }
@@ -169,7 +150,7 @@ fn dev_ok_false_when_approver_is_not_a_configured_builder() {
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("pm"));
     assert!(
-        !readiness(&it, &[], &bundled_default()).dev_ok,
+        !readiness(&it, &bundled_default()).dev_ok,
         "pm is not a configured iteration-builder; their label must not flip the check"
     );
 }
@@ -178,7 +159,7 @@ fn dev_ok_false_when_approver_is_not_a_configured_builder() {
 fn dev_ok_false_when_nothing_on_record() {
     let it = iteration(200);
     assert!(
-        !readiness(&it, &[], &bundled_default()).dev_ok,
+        !readiness(&it, &bundled_default()).dev_ok,
         "no dev-OK on record → no false-positive"
     );
 }
@@ -191,7 +172,7 @@ fn dev_ok_is_config_driven_not_hardcoded_dev() {
         .raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("release-eng"));
     assert!(
-        readiness(&approved, &[], &workflow).dev_ok,
+        readiness(&approved, &workflow).dev_ok,
         "the config-designated builder (release-eng, not dev) flips dev_ok"
     );
     let mut dev_approved = iteration(200);
@@ -199,7 +180,7 @@ fn dev_ok_is_config_driven_not_hardcoded_dev() {
         .raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     assert!(
-        !readiness(&dev_approved, &[], &workflow).dev_ok,
+        !readiness(&dev_approved, &workflow).dev_ok,
         "dev is not a builder in this config; their label must not flip the check — proves no hard-coded dev"
     );
 }
@@ -248,7 +229,7 @@ fn review_closed_is_config_driven_not_hardcoded_designer() {
         .raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("qa"));
     assert!(
-        readiness(&reviewed, &[], &workflow).review_closed,
+        readiness(&reviewed, &workflow).review_closed,
         "the config-designated reviewer (qa, not designer) flips review_closed"
     );
     let mut designer_closed = iteration(200);
@@ -256,7 +237,7 @@ fn review_closed_is_config_driven_not_hardcoded_designer() {
         .raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
     assert!(
-        !readiness(&designer_closed, &[], &workflow).review_closed,
+        !readiness(&designer_closed, &workflow).review_closed,
         "designer is not a reviewer in this config; their close must not flip the check — proves no hard-coded designer"
     );
 }
@@ -267,17 +248,17 @@ fn owner_close_does_not_spoof_review_closed() {
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("owner"));
     assert!(
-        !readiness(&it, &[], &bundled_default()).review_closed,
+        !readiness(&it, &bundled_default()).review_closed,
         "an owner-close is recorded but does not spoof review_closed — the derive validates the closer is a configured reviewer"
     );
 }
 
-fn building_iteration(number: u64, outcome_number: u64) -> Story {
+fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> Story {
     let mut s = iteration(number);
     s.body = Some(
         IterationRelationships {
             outcome: Some(outcome_number),
-            stories: vec![],
+            stories,
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
     );
@@ -307,18 +288,16 @@ fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
 #[test]
 fn outcome_readiness_rolls_up_gaps_from_building_iterations() {
     let outcome = outcome_with(700, vec![710, 720]);
-    let mut ready_it = building_iteration(710, 700);
+    let mut ready_it = building_iteration(710, 700, vec![7101]);
     ready_it
         .raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
     ready_it
         .raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
-    let ready_member = member(7101, 710, 100);
-    let gappy_it = building_iteration(720, 700);
-    let gappy_member = member(7201, 720, 100);
-    let all = vec![ready_it, ready_member, gappy_it, gappy_member];
-    let rolled = outcome_readiness(&outcome, &decode_iterations(&all), &all, &bundled_default());
+    let gappy_it = building_iteration(720, 700, vec![7201]);
+    let all = vec![ready_it, gappy_it];
+    let rolled = outcome_readiness(&outcome, &decode_iterations(&all), &bundled_default());
     assert_eq!(
         rolled.iteration_count, 2,
         "two iterations build this outcome"
@@ -336,14 +315,13 @@ fn outcome_readiness_rolls_up_gaps_from_building_iterations() {
 #[test]
 fn outcome_readiness_all_ready_when_every_building_iteration_is_met() {
     let outcome = outcome_with(700, vec![710]);
-    let mut it = building_iteration(710, 700);
+    let mut it = building_iteration(710, 700, vec![7101]);
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_review_closed("designer"));
     it.raw_labels
         .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
-    let m = member(7101, 710, 100);
-    let all = vec![it, m];
-    let rolled = outcome_readiness(&outcome, &decode_iterations(&all), &all, &bundled_default());
+    let all = vec![it];
+    let rolled = outcome_readiness(&outcome, &decode_iterations(&all), &bundled_default());
     assert_eq!(rolled.gap_count, 0);
     assert!(
         rolled.all_ready,
@@ -354,7 +332,7 @@ fn outcome_readiness_all_ready_when_every_building_iteration_is_met() {
 #[test]
 fn outcome_readiness_not_ready_with_no_building_iterations() {
     let outcome = outcome_with(700, vec![]);
-    let rolled = outcome_readiness(&outcome, &[], &[], &bundled_default());
+    let rolled = outcome_readiness(&outcome, &[], &bundled_default());
     assert_eq!(rolled.iteration_count, 0);
     assert!(
         !rolled.all_ready,

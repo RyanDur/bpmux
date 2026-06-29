@@ -34,7 +34,7 @@ describe('#1524 useBoardData — ready group ordered by the shared canonical (su
       fetched_at: '2026-05-10T00:00:00Z',
       stories: [iterationStory(), ready(701, 300), ready(702, 100), ready(703, 200)]
     }
-    const { result } = renderHook(() => useBoardData(data))
+    const { result } = renderHook(() => useBoardData(data, []))
     const readyNums = (result.current.grouped.get('ready') ?? []).map((s) => s.number)
     expect(readyNums).toEqual([702, 703, 701])
   })

@@ -23,28 +23,26 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
         number: 9501,
         title: 'Iteration DisplacedDrop',
         story_type: 'iteration',
-        initial_state: 'icebox'
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[9511,9512,9513]} -->'
       },
       {
         number: 9511,
         title: 'displaced-alpha',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#9501.100']
+        initial_state: 'icebox'
       },
       {
         number: 9512,
         title: 'displaced-bravo',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#9501.200']
+        initial_state: 'icebox'
       },
       {
         number: 9513,
         title: 'displaced-charlie',
         story_type: 'feature',
-        initial_state: 'icebox',
-        labels: ['parent-iteration-#9501.300']
+        initial_state: 'icebox'
       }
     ])
 
@@ -67,17 +65,14 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
 
     await waitFor(
       async () => {
-        const boardRes = await fetch(`${apiBase}/api/board`, {
+        const iterRes = await fetch(`${apiBase}/api/iterations`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
-        const boardBody = (await boardRes.json()) as {
-          stories: {
-            number: number
-            iteration_membership: { iteration_number: number; position: number } | null
-          }[]
+        const iterBody = (await iterRes.json()) as {
+          iterations: { number: number; stories: number[] }[]
         }
-        const moved = boardBody.stories.find((s) => s.number === 9513)
-        expect(moved?.iteration_membership).toEqual({ iteration_number: 9501, position: 50 })
+        const displacedDrop = iterBody.iterations.find((i) => i.number === 9501)
+        expect(displacedDrop?.stories).toEqual([9513, 9511, 9512])
       },
       { timeout: 10_000, interval: 200 }
     )

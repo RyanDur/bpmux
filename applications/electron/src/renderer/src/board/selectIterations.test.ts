@@ -8,6 +8,7 @@ const iteration = (over: Partial<BoardIterationData>): BoardIterationData => ({
   is_current: false,
   complete: false,
   readiness: { drafted: false, stories_ordered: false, review_closed: false, dev_ok: false },
+  stories: [],
   ...over
 })
 

@@ -29,7 +29,7 @@ describe('#1524 ready-queue optimistic reorder survives a stale re-fetch', () =>
     const { result, rerender } = renderHook(
       ({ data }: { data: BoardResponse }) => {
         const { setPendingReadyOrder, effectiveReadyPosition } = usePendingReadyOrder(data)
-        const boardData = useBoardData(data, effectiveReadyPosition)
+        const boardData = useBoardData(data, [], effectiveReadyPosition)
         return { setPendingReadyOrder, grouped: boardData.grouped }
       },
       { initialProps: { data: initial } }
@@ -52,7 +52,7 @@ describe('#1524 ready-queue optimistic reorder survives a stale re-fetch', () =>
     const { result, rerender } = renderHook(
       ({ data }: { data: BoardResponse }) => {
         const { setPendingReadyOrder, effectiveReadyPosition } = usePendingReadyOrder(data)
-        const boardData = useBoardData(data, effectiveReadyPosition)
+        const boardData = useBoardData(data, [], effectiveReadyPosition)
         return { setPendingReadyOrder, grouped: boardData.grouped }
       },
       { initialProps: { data: initial } }
@@ -74,7 +74,7 @@ describe('#1524 ready-queue optimistic reorder survives a stale re-fetch', () =>
       ({ data }: { data: BoardResponse }) => {
         const { setPendingReadyOrder, clearPendingReadyOrder, effectiveReadyPosition } =
           usePendingReadyOrder(data)
-        const boardData = useBoardData(data, effectiveReadyPosition)
+        const boardData = useBoardData(data, [], effectiveReadyPosition)
         return { setPendingReadyOrder, clearPendingReadyOrder, grouped: boardData.grouped }
       },
       { initialProps: { data: initial } }

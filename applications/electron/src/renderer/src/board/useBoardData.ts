@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { isIterationPositionLabel } from './labelSchema'
+import { buildMembershipIndex } from './iterationMembers'
+import type { BoardIterationData } from './selectIterations'
 import {
   GROUP_ORDER,
   groupStories,
@@ -9,11 +10,6 @@ import {
   type BoardStory,
   type ColumnState
 } from './types'
-
-const isIterationMember = (story: BoardStory): boolean => {
-  if (story.iteration_membership != null) return true
-  return story.labels.some((l) => isIterationPositionLabel(l))
-}
 
 export interface UseBoardDataResult {
   stories: BoardStory[]
@@ -27,9 +23,11 @@ export interface UseBoardDataResult {
 
 export const useBoardData = (
   data: BoardResponse | null,
+  iterations: BoardIterationData[],
   effectiveReadyPosition?: (story: BoardStory) => number | null
 ): UseBoardDataResult => {
   const stories = useMemo(() => data?.stories ?? [], [data])
+  const membershipIndex = useMemo(() => buildMembershipIndex(iterations), [iterations])
   const epics = useMemo(() => stories.filter(isActiveEpic), [stories])
   const epicTitleByNumber = useMemo(() => {
     const map = new Map<number, string>()
@@ -47,10 +45,10 @@ export const useBoardData = (
       nonEpicStories.filter((s) => {
         if (storyTypeFromLabels(s.labels) === 'iteration') return false
         if (s.state === 'icebox') return true
-        if (isIterationMember(s)) return true
+        if (membershipIndex.has(s.number)) return true
         return false
       }),
-    [nonEpicStories]
+    [nonEpicStories, membershipIndex]
   )
   const flatBoardStories = useMemo(
     () =>

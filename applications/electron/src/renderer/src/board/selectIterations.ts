@@ -7,6 +7,7 @@ export interface BoardIterationData {
   is_current: boolean
   complete: boolean
   readiness: IterationReadiness
+  stories: number[]
 }
 
 export interface IterationsState {
