@@ -30,20 +30,14 @@ pub(crate) async fn dispatch_close_iteration(
         .get("iteration_number")
         .and_then(|v| v.as_u64())
         .ok_or("close_iteration requires iteration_number (canonical Iteration issue#).")?;
-    let iteration = r.story(iteration_number).ok_or_else(|| {
-        format!("close_iteration: iteration_number #{iteration_number} not found")
+    let iteration = r.iteration(iteration_number).ok_or_else(|| {
+        if r.story(iteration_number).is_some() {
+            format!("close_iteration: #{iteration_number} is not an Iteration")
+        } else {
+            format!("close_iteration: iteration_number #{iteration_number} not found")
+        }
     })?;
-    let story_type = iteration.story_type();
-    if !matches!(
-        story_type,
-        crate::product_management::story::StoryType::Iteration
-    ) {
-        return Err(format!(
-            "close_iteration: #{iteration_number} is not an Iteration (story_type={:?})",
-            story_type
-        ));
-    }
-    if iteration.is_closed {
+    if iteration.complete {
         return Err(format!(
             "close_iteration: iteration #{iteration_number} is already closed"
         ));

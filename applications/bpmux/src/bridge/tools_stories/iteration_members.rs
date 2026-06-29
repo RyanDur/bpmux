@@ -1,8 +1,10 @@
 use super::event_meta::meta_for;
-use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use super::helpers::{
+    ensure_iteration_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
+};
 use crate::product_management::board::BoardEvent;
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::story::{StoryState, StoryType};
+use crate::product_management::story::StoryState;
 use std::sync::Arc;
 
 async fn member_of(
@@ -10,14 +12,7 @@ async fn member_of(
     iteration_number: u64,
     story_number: u64,
 ) -> Result<crate::product_management::story::Story, String> {
-    let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type = iteration.story_type();
-    if story_type != StoryType::Iteration {
-        return Err(format!(
-            "#{iteration_number} is not an Iteration (story_type={:?}); only iterations carry members",
-            story_type
-        ));
-    }
+    ensure_iteration_in_canonical_store(r, iteration_number).await?;
     let story = ensure_story_in_canonical_store(r, story_number).await?;
     if story
         .iteration_membership()

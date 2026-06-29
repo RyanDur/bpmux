@@ -1,10 +1,9 @@
 use super::event_meta::meta_for;
-use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use super::helpers::{ensure_iteration_in_canonical_store, require_purpose};
 use crate::product_management::board::BoardEvent;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::StoryType;
 use std::sync::Arc;
 
 pub(crate) async fn handle_reorder_iteration(
@@ -24,14 +23,7 @@ pub(crate) async fn handle_reorder_iteration(
         as u32;
 
     let r = refresh.ok_or("reorder_iteration requires refresh (RefreshDriver)")?;
-    let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type = iteration.story_type();
-    if story_type != StoryType::Iteration {
-        return Err(format!(
-            "#{iteration_number} is not an Iteration (story_type={:?})",
-            story_type
-        ));
-    }
+    ensure_iteration_in_canonical_store(r, iteration_number).await?;
 
     let band_size = renumber_iteration_order(r, agent_name, iteration_number, position)?;
     Ok(format!(
@@ -117,14 +109,7 @@ pub(crate) async fn handle_rename_iteration(
         .ok_or("iteration rename needs --name <N>")?;
 
     let r = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
-    let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type = iteration.story_type();
-    if story_type != StoryType::Iteration {
-        return Err(format!(
-            "#{iteration_number} is not an Iteration (story_type={:?})",
-            story_type
-        ));
-    }
+    ensure_iteration_in_canonical_store(r, iteration_number).await?;
     r.update_title(iteration_number, format!("Iteration {name}"))
         .await
         .map_err(|e| format!("#{iteration_number} name update failed: {e}"))?;

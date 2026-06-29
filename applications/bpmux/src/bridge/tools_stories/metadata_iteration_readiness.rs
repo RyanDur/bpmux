@@ -1,5 +1,5 @@
 use super::helpers::{
-    ensure_story_in_canonical_store, require_purpose, require_purpose_any, role_from_name,
+    ensure_iteration_in_canonical_store, require_purpose, require_purpose_any, role_from_name,
 };
 
 pub(crate) async fn handle_designate_current_iteration(
@@ -13,15 +13,8 @@ pub(crate) async fn handle_designate_current_iteration(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_number' argument")?;
     let r = refresh.ok_or("designate_current_iteration requires refresh (RefreshDriver)")?;
-    let target = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type = target.story_type();
-    if story_type != crate::product_management::story::StoryType::Iteration {
-        return Err(format!(
-            "story #{iteration_number} is not an Iteration (story_type={:?}); only Iteration stories can be designated current",
-            story_type
-        ));
-    }
-    if target.is_closed {
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
+    if iteration.complete {
         return Err(format!(
             "iteration #{iteration_number} is closed; a closed iteration cannot be the current iteration"
         ));
@@ -71,14 +64,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_number' argument")?;
     let r = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
-    let target = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type = target.story_type();
-    if story_type != crate::product_management::story::StoryType::Iteration {
-        return Err(format!(
-            "story #{iteration_number} is not an Iteration (story_type={:?}); only an Iteration's pre-pickup review can be closed",
-            story_type
-        ));
-    }
+    ensure_iteration_in_canonical_store(r, iteration_number).await?;
     let role = role_from_name(agent_name).to_string();
     let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .encode_iteration_review_closed(&role);
@@ -116,14 +102,7 @@ pub(crate) async fn handle_dev_ok_iteration(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_number' argument")?;
     let r = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
-    let target = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type = target.story_type();
-    if story_type != crate::product_management::story::StoryType::Iteration {
-        return Err(format!(
-            "story #{iteration_number} is not an Iteration (story_type={:?}); only an Iteration can be dev-OK'd",
-            story_type
-        ));
-    }
+    ensure_iteration_in_canonical_store(r, iteration_number).await?;
     let role = role_from_name(agent_name).to_string();
     let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .encode_iteration_dev_ok(&role);

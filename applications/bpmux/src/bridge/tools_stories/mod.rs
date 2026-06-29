@@ -4,6 +4,7 @@ mod acceptor_axis;
 #[cfg(test)]
 mod acceptor_axis_classification;
 mod authorization;
+mod canonical_store;
 mod closure;
 mod creation;
 mod creation_iteration;

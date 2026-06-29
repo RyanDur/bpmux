@@ -1,5 +1,5 @@
 use super::helpers::{
-    ensure_outcome_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
+    ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store, require_purpose,
 };
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::relationships::{
@@ -14,7 +14,7 @@ async fn verify_iteration_mapped(
     iteration_number: u64,
 ) -> Result<Outcome, String> {
     let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
-    ensure_story_in_canonical_store(r, iteration_number).await?;
+    ensure_iteration_in_canonical_store(r, iteration_number).await?;
     if !outcome.iterations.contains(&iteration_number) {
         return Err(format!(
             "iteration #{iteration_number} is not mapped to outcome #{outcome_number}"
@@ -55,13 +55,16 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .await
         .map_err(|e| format!("#{outcome_number} iteration-unmap body update failed: {e}"))?;
 
-    let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
     let mut child = iteration
-        .body()
+        .content
+        .body
+        .as_deref()
         .and_then(IterationRelationships::read_from_body)
         .unwrap_or_default();
     child.outcome = None;
-    let iteration_body = child.write_into_body(iteration.body().unwrap_or_default());
+    let iteration_body =
+        child.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
     r.update_body(iteration_number, iteration_body)
         .await
         .map_err(|e| format!("#{iteration_number} outcome-FK-clear body update failed: {e}"))?;

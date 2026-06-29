@@ -58,26 +58,18 @@ async fn post_close_iteration_canonical(
             ),
         );
     };
-    let iteration = match refresh.story(iteration_number) {
-        Some(s)
-            if matches!(
-                s.story_type(),
-                crate::product_management::story::StoryType::Iteration
-            ) =>
-        {
-            s
-        }
-        Some(s) => {
-            let story_type = s.story_type();
-            return (
-                StatusCode::BAD_REQUEST,
-                json_headers(),
-                err_body(&format!(
-                    "close_iteration: #{iteration_number} is not an Iteration (story_type={story_type:?})"
-                )),
-            );
-        }
+    let iteration = match refresh.iteration(iteration_number) {
+        Some(it) => it,
         None => {
+            if refresh.story(iteration_number).is_some() {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    json_headers(),
+                    err_body(&format!(
+                        "close_iteration: #{iteration_number} is not an Iteration"
+                    )),
+                );
+            }
             return (
                 StatusCode::NOT_FOUND,
                 json_headers(),
@@ -87,7 +79,7 @@ async fn post_close_iteration_canonical(
             );
         }
     };
-    if iteration.is_closed {
+    if iteration.complete {
         return (
             StatusCode::BAD_REQUEST,
             json_headers(),

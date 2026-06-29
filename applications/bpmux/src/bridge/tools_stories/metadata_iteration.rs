@@ -1,6 +1,6 @@
 use super::helpers::{
-    ensure_outcome_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
-    role_from_name,
+    ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store,
+    ensure_story_in_canonical_store, require_purpose, role_from_name,
 };
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
@@ -44,14 +44,7 @@ pub(crate) async fn handle_add_story_to_iteration(
     }
     let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, story_number).await?;
-    let parent = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type = parent.story_type();
-    if story_type != crate::product_management::story::StoryType::Iteration {
-        return Err(format!(
-            "story #{iteration_number} is not an Iteration (story_type={:?}); only Iteration stories can carry iteration-members",
-            story_type
-        ));
-    }
+    ensure_iteration_in_canonical_store(r, iteration_number).await?;
     let meta = crate::product_management::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
@@ -90,14 +83,7 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'position' argument")? as u32;
     let r = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
-    let iteration = ensure_story_in_canonical_store(r, iteration_number).await?;
-    let story_type = iteration.story_type();
-    if story_type != crate::product_management::story::StoryType::Iteration {
-        return Err(format!(
-            "story #{iteration_number} is not an Iteration (story_type={:?}); only iterations build outcomes",
-            story_type
-        ));
-    }
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
     let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
 
     let mut parent = outcome
@@ -117,11 +103,14 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .map_err(|e| format!("#{outcome_number} iteration-map body update failed: {e}"))?;
 
     let mut child = iteration
-        .body()
+        .content
+        .body
+        .as_deref()
         .and_then(IterationRelationships::read_from_body)
         .unwrap_or_default();
     child.outcome = Some(outcome_number);
-    let iteration_body = child.write_into_body(iteration.body().unwrap_or_default());
+    let iteration_body =
+        child.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
     r.update_body(iteration_number, iteration_body)
         .await
         .map_err(|e| format!("#{iteration_number} outcome-FK-set body update failed: {e}"))?;
