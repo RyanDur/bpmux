@@ -5,8 +5,6 @@
 
 use crate::bridge::tools_stories::handle_create_iteration;
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::iteration_order_from_labels;
-use crate::product_management::board::adapters::github::story_type_from_labels_or_title;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -72,11 +70,9 @@ async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
         "title includes name: {result}"
     );
     let number = iteration_number_by_title(&refresh, "Iteration Aquila");
-    let iteration = refresh.story(number).expect("iteration issue persisted");
-    assert_eq!(
-        story_type_from_labels_or_title(&iteration.raw_labels, &iteration.title),
-        StoryType::Iteration,
-        "story_type=Iteration"
+    assert!(
+        refresh.iteration(number).is_some(),
+        "the created issue is typed as an Iteration (present in the typed iteration collection)"
     );
 }
 
@@ -115,8 +111,8 @@ async fn create_iteration_body_reserves_member_stories_section() {
         .await
         .unwrap();
     let number = iteration_number_by_title(&refresh, "Iteration Pegasus");
-    let iteration = refresh.story(number).expect("Pegasus issue persisted");
-    let body = iteration.body.clone().unwrap_or_default();
+    let iteration = refresh.iteration(number).expect("Pegasus issue persisted");
+    let body = iteration.content.body.clone().unwrap_or_default();
     assert!(
         body.contains("## Member stories"),
         "body reserves member-stories section: {body}"
@@ -143,23 +139,16 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
         .await
         .expect("refetch from source succeeds");
     let refetched = refresh
-        .story(number)
-        .expect("iteration present after source refetch");
+        .store()
+        .backing_story(number)
+        .expect("the issue is present after a source refetch");
     assert!(
         refetched
             .raw_labels
             .iter()
             .any(|l| l.eq_ignore_ascii_case("iteration")),
-        "freshly-created iteration carries the 'iteration' label at the SOURCE atomically (not only in the synchronous local StoryCreated event), so a refetch before any TagAdded drain cannot type it as non-Iteration: {:?}",
+        "freshly-created iteration carries the 'iteration' label at the SOURCE atomically (not only in the synchronous local StoryCreated event), so a refetch before any TagAdded drain finds it at source: {:?}",
         refetched.raw_labels
-    );
-    assert_eq!(
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &refetched.raw_labels,
-            &refetched.title
-        ),
-        StoryType::Iteration,
-        "story_type re-derived from the source-of-truth labels stays Iteration (no async window where it reads as Feature)"
     );
 }
 
@@ -170,11 +159,11 @@ async fn create_iteration_assigns_order_at_birth_1735() {
         .await
         .expect("create_iteration succeeds");
     let number = iteration_number_by_title(&refresh, "Iteration Aquila");
-    let iteration = refresh.story(number).expect("iteration persisted");
+    let iteration = refresh.iteration(number).expect("iteration persisted");
     assert!(
-        iteration_order_from_labels(&iteration.raw_labels).is_some(),
+        iteration.iteration_order.is_some(),
         "a freshly-created iteration is born with a canonical order (no order-less iteration → no Fornax-last); got {:?}",
-        iteration_order_from_labels(&iteration.raw_labels)
+        iteration.iteration_order
     );
 }
 
@@ -187,17 +176,17 @@ async fn create_iteration_appends_order_after_existing_1735() {
         .await
         .expect("create succeeds");
     let pegasus = refresh
-        .story(iteration_number_by_title(&refresh, "Iteration Pegasus"))
+        .iteration(iteration_number_by_title(&refresh, "Iteration Pegasus"))
         .expect("Pegasus persisted");
     let aquila = refresh
-        .story(iteration_number_by_title(&refresh, "Iteration Aquila"))
+        .iteration(iteration_number_by_title(&refresh, "Iteration Aquila"))
         .expect("Aquila persisted");
     assert!(
-        iteration_order_from_labels(&pegasus.raw_labels).expect("Pegasus has order")
-            > iteration_order_from_labels(&aquila.raw_labels).expect("Aquila has order"),
+        pegasus.iteration_order.expect("Pegasus has order")
+            > aquila.iteration_order.expect("Aquila has order"),
         "new iteration appends AFTER existing in canonical order (Pegasus {:?} > Aquila {:?})",
-        iteration_order_from_labels(&pegasus.raw_labels),
-        iteration_order_from_labels(&aquila.raw_labels)
+        pegasus.iteration_order,
+        aquila.iteration_order
     );
 }
 

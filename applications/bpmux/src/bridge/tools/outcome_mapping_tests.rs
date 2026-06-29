@@ -138,21 +138,18 @@ async fn unmap_leaves_the_iteration_itself_untouched_1763() {
     handle_unmap_outcome_iteration(&args(700, 710), "pm:claude-code", Some(&refresh))
         .await
         .expect("pm unmaps");
-    let iteration = refresh.story(710).expect("present");
+    let iteration = refresh
+        .iteration(710)
+        .expect("the iteration itself still exists — unmap removes only the relation");
     assert_eq!(
-        iteration
-            .body()
-            .and_then(IterationRelationships::read_from_body)
-            .and_then(|relationships| relationships.outcome),
+        iteration.builds_outcome(),
         None,
         "only the relation is removed — the iteration's outcome back-reference is cleared"
     );
-    assert_eq!(
-        iteration.state,
-        StoryState::Ready,
+    assert!(
+        !iteration.complete,
         "the iteration ITSELF is untouched — not closed, not retired (the load-bearing falsifier)"
     );
-    assert!(!iteration.is_closed, "unmap does not close the iteration");
 }
 
 #[tokio::test]

@@ -62,16 +62,14 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
     handle_close_pre_pickup_review(&args(1552), "designer:claude-code", Some(&orch))
         .await
         .expect("a configured iteration-reviewer can close the pre-pickup review");
-    let story = store.story(1552).unwrap();
+    let iteration = store.iteration(1552).unwrap();
     assert_eq!(
-        crate::product_management::board::adapters::github::iteration_review_closers_from_labels(
-            &story.raw_labels
-        ),
+        iteration.review_closers,
         vec!["designer".to_string()],
         "the close is recorded as a board-event re-derived into the closer-set"
     );
     assert!(
-        iteration_readiness(&decode_iteration(&story), &[], &bundled_default()).review_closed,
+        iteration_readiness(&iteration, &[], &bundled_default()).review_closed,
         "closing the designer pre-pickup-review FLIPS the derived review-readiness-check"
     );
 }
@@ -79,9 +77,9 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
 #[tokio::test]
 async fn no_close_on_record_means_review_not_ready_1703() {
     let (store, _orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    let story = store.story(1552).unwrap();
+    let iteration = store.iteration(1552).unwrap();
     assert!(
-        !iteration_readiness(&decode_iteration(&story), &[], &bundled_default()).review_closed,
+        !iteration_readiness(&iteration, &[], &bundled_default()).review_closed,
         "no review-close on record → the check is unmet (no false-positive)"
     );
 }

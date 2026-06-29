@@ -4,9 +4,6 @@
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::adapters::relationships::{
-    IterationRelationships, Relationships,
-};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
@@ -135,12 +132,11 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
         vec![710],
         "the outcome holds its ordered iteration list (parent-holds-order)"
     );
-    let iteration = refresh.story(710).expect("iteration present");
     assert_eq!(
-        iteration
-            .body()
-            .and_then(IterationRelationships::read_from_body)
-            .and_then(|relationships| relationships.outcome),
+        refresh
+            .iteration(710)
+            .expect("iteration present")
+            .builds_outcome(),
         Some(700),
         "and the iteration carries the back-FK to the outcome it builds — the drill-mapping"
     );

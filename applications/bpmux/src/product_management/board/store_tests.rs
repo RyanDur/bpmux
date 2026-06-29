@@ -6,9 +6,8 @@ use super::events::{BoardEvent, EventMeta, LabelDerivedFields, event_wins};
 use super::peer::PeerId;
 use super::store::BoardStore;
 use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, iteration_dev_ok_by_from_labels, iteration_membership_from_labels,
-    iteration_review_closers_from_labels, parent_epic_from_labels, story_type_from_labels_or_title,
-    tags_from_labels,
+    acceptor_from_labels, iteration_membership_from_labels, parent_epic_from_labels,
+    story_type_from_labels_or_title, tags_from_labels,
 };
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, Story, StoryKind, StoryState, StoryType, Tag,
@@ -592,7 +591,7 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
         label: "iteration-review-closed.designer".to_string(),
     });
     assert_eq!(
-        iteration_review_closers_from_labels(&store.story(1).unwrap().raw_labels),
+        store.iteration(1).unwrap().review_closers,
         vec!["designer".to_string()],
         "the review-close label add re-derives the closer-set from the recorded act"
     );
@@ -602,7 +601,7 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
         label: "iteration-review-closed.designer".to_string(),
     });
     assert!(
-        iteration_review_closers_from_labels(&store.story(1).unwrap().raw_labels).is_empty(),
+        store.iteration(1).unwrap().review_closers.is_empty(),
         "removing the review-close label clears the closer — derived, never stale"
     );
 }
@@ -624,7 +623,7 @@ fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
         label: "iteration-dev-ok.dev".to_string(),
     });
     assert_eq!(
-        iteration_dev_ok_by_from_labels(&store.story(1).unwrap().raw_labels),
+        store.iteration(1).unwrap().dev_ok_by,
         vec!["dev".to_string()],
         "the dev-OK label add re-derives the approver-set from the recorded act"
     );
@@ -634,7 +633,7 @@ fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
         label: "iteration-dev-ok.dev".to_string(),
     });
     assert!(
-        iteration_dev_ok_by_from_labels(&store.story(1).unwrap().raw_labels).is_empty(),
+        store.iteration(1).unwrap().dev_ok_by.is_empty(),
         "removing the dev-OK label clears the approver — derived, never stale"
     );
 }

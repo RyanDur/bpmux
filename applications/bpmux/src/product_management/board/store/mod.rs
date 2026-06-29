@@ -85,6 +85,15 @@ impl BoardStore {
             state
                 .stories
                 .get(&StoryKey::Saved(number))
+                .and_then(|item| item.as_story().cloned())
+        })
+    }
+
+    pub fn backing_story(&self, number: u64) -> Option<Story> {
+        self.store.select(|state| {
+            state
+                .stories
+                .get(&StoryKey::Saved(number))
                 .and_then(|item| item.backing_story().cloned())
         })
     }

@@ -152,7 +152,9 @@ pub(crate) async fn handle_edit_story(
     }
     let r = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
-    if let Some(b) = body {
+    if let Some(b) = body
+        && r.iteration(number).is_none()
+    {
         let story = ensure_story_in_canonical_store(r, number).await?;
         if story.kind() != Some(crate::product_management::story::StoryKind::Chore) {
             crate::bridge::atp_substantive_gate::verify_atp_pre_filing(b, None)

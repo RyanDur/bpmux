@@ -60,9 +60,7 @@ async fn pm_designates_current_iteration_sets_is_current_1540() {
         .await
         .expect("designate should succeed");
     assert!(
-        crate::product_management::board::adapters::github::is_current_from_labels(
-            &store.story(1552).unwrap().raw_labels
-        ),
+        store.iteration(1552).unwrap().is_current,
         "the designated iteration carries is_current"
     );
 }
@@ -81,15 +79,11 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
         .await
         .expect("second designate");
     assert!(
-        !crate::product_management::board::adapters::github::is_current_from_labels(
-            &store.story(1398).unwrap().raw_labels
-        ),
+        !store.iteration(1398).unwrap().is_current,
         "prior current holder is cleared (board-singleton replace-semantic)"
     );
     assert!(
-        crate::product_management::board::adapters::github::is_current_from_labels(
-            &store.story(1552).unwrap().raw_labels
-        ),
+        store.iteration(1552).unwrap().is_current,
         "the newly-designated iteration is current"
     );
 }

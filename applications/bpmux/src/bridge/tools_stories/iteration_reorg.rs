@@ -70,15 +70,11 @@ fn renumber_iteration_order(
         if iteration.iteration_order == Some(new_position) {
             continue;
         }
-        let raw_labels = r.story(*number).map(|s| s.raw_labels).unwrap_or_default();
-        for stale in raw_labels
-            .iter()
-            .filter(|label| GhLabelCodec.decode_iteration_order(label).is_some())
-        {
+        if let Some(old_position) = iteration.iteration_order {
             r.mutate_sync(BoardEvent::TagRemoved {
                 meta: meta_for(agent_name),
                 number: *number,
-                label: stale.clone(),
+                label: GhLabelCodec.encode_iteration_order(old_position),
             })
             .map_err(|e| format!("#{number} iteration-order clear enqueue failed: {e}"))?;
         }

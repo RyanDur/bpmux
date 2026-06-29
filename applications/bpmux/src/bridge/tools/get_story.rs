@@ -6,7 +6,7 @@ use crate::product_management::iteration::section::{
     derive_iteration_member_section, substitute_member_stories_section,
 };
 use crate::product_management::story::{
-    Gate, GateComment, StoryState, StoryType, most_recent_backward_transition, replay_transitions,
+    Gate, GateComment, StoryState, most_recent_backward_transition, replay_transitions,
 };
 
 use super::rework_context::enrich_body;
@@ -60,6 +60,44 @@ fn latest_reject_json(gates: &[GateComment]) -> Option<serde_json::Value> {
 const NOT_HYDRATED_PLACEHOLDER: &str =
     "(body not yet hydrated; no refresh driver available to live-fetch.)";
 
+async fn render_iteration_detail(
+    b: &Arc<BoardStore>,
+    refresh: Option<&Arc<dyn RefreshDriver>>,
+    iteration: &crate::product_management::iteration::Iteration,
+) -> Result<String, String> {
+    let number = iteration.id().saved_number().unwrap_or_default();
+    let mut body = iteration.content.body.clone();
+    if body.is_none()
+        && let Some(r) = refresh
+        && r.fetch_body(number).await.is_ok()
+    {
+        body = b.iteration(number).and_then(|it| it.content.body);
+    }
+    let body_hydrated = body.is_some();
+    let mut body_out = body.unwrap_or_else(|| NOT_HYDRATED_PLACEHOLDER.to_string());
+    if body_hydrated {
+        let all_stories = b.all_stories();
+        let member_numbers = members_of_iteration(&all_stories, number);
+        let members: Vec<(u64, String)> = member_numbers
+            .iter()
+            .filter_map(|n| b.story(*n).map(|s| (*n, s.title.clone())))
+            .collect();
+        let members_refs: Vec<(u64, &str)> =
+            members.iter().map(|(n, t)| (*n, t.as_str())).collect();
+        let derived = derive_iteration_member_section(&members_refs);
+        body_out = substitute_member_stories_section(&body_out, &derived);
+    }
+    let out = serde_json::json!({
+        "number": number,
+        "title": iteration.content.title,
+        "body": body_out,
+        "is_closed": iteration.complete,
+        "is_current": iteration.is_current,
+        "body_hydrated": body_hydrated,
+    });
+    serde_json::to_string_pretty(&out).map_err(|e| format!("serialize iteration: {e}"))
+}
+
 pub(in crate::bridge) async fn handle_get_story(
     args: &serde_json::Map<String, serde_json::Value>,
     board: Option<&Arc<BoardStore>>,
@@ -70,6 +108,9 @@ pub(in crate::bridge) async fn handle_get_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let b = board.ok_or("get_story requires board (canonical-store)")?;
+    if let Some(iteration) = b.iteration(number) {
+        return render_iteration_detail(b, refresh, &iteration).await;
+    }
     let mut story = b
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in board"))?;
@@ -125,18 +166,6 @@ pub(in crate::bridge) async fn handle_get_story(
         && let Some(ctx) = rework_context_from_gates(gates)
     {
         body_out = enrich_body(&body_out, &ctx);
-    }
-    if story.story_type() == StoryType::Iteration && body_cached.is_some() {
-        let all_stories = b.all_stories();
-        let member_numbers = members_of_iteration(&all_stories, story.number);
-        let members: Vec<(u64, String)> = member_numbers
-            .iter()
-            .filter_map(|n| b.story(*n).map(|s| (*n, s.title.clone())))
-            .collect();
-        let members_refs: Vec<(u64, &str)> =
-            members.iter().map(|(n, t)| (*n, t.as_str())).collect();
-        let derived = derive_iteration_member_section(&members_refs);
-        body_out = substitute_member_stories_section(&body_out, &derived);
     }
     let labels: Vec<serde_json::Value> = story
         .raw_labels

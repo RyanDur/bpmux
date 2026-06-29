@@ -178,9 +178,8 @@ async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
         result.contains("2 iteration"),
         "the confirm states the orphaned-mapping count so the PM can re-home them: {result}"
     );
-    assert_eq!(
-        refresh.story(710).expect("present").state,
-        StoryState::Icebox,
+    assert!(
+        refresh.iteration(710).is_some_and(|it| !it.complete),
         "retire is soft-delete on the OUTCOME — its iterations are NOT closed (re-mappable)"
     );
 }

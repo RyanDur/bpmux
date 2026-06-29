@@ -7,7 +7,6 @@ use crate::bridge::tools_stories::{
 };
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::iteration_order_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -220,7 +219,10 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
         .await
         .expect("pm reorders the iteration to the front");
     let order_of = |n: u64| {
-        iteration_order_from_labels(&refresh.story(n).expect("present").raw_labels)
+        refresh
+            .iteration(n)
+            .expect("present")
+            .iteration_order
             .expect("ordered")
     };
     assert_eq!(
@@ -257,7 +259,7 @@ async fn rename_updates_the_iteration_title_1762() {
         .await
         .expect("pm renames the iteration");
     assert_eq!(
-        refresh.story(1700).expect("present").title,
+        refresh.iteration(1700).expect("present").content.title,
         "Iteration Vela",
         "the rename updates the iteration title (surfaced in board/roadmap)"
     );
@@ -266,7 +268,6 @@ async fn rename_updates_the_iteration_title_1762() {
 #[tokio::test]
 async fn renaming_a_current_iteration_preserves_its_current_designation() {
     use crate::bridge::tools_stories::{handle_designate_current_iteration, handle_edit_story};
-    use crate::product_management::board::adapters::github::is_current_from_labels;
 
     let refresh = build_refresh(vec![iteration(1700, "Vela")]).await;
 
@@ -278,7 +279,7 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
         .await
         .expect("pm designates the iteration current");
     assert!(
-        is_current_from_labels(&refresh.story(1700).expect("present").raw_labels),
+        refresh.iteration(1700).expect("present").is_current,
         "sanity: the iteration is current right after designation"
     );
 
@@ -291,7 +292,7 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
         .expect("pm renames the iteration");
 
     assert!(
-        is_current_from_labels(&refresh.story(1700).expect("present").raw_labels),
+        refresh.iteration(1700).expect("present").is_current,
         "renaming a current iteration must NOT clear its current designation"
     );
 }

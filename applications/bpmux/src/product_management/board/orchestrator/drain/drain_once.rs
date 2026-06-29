@@ -25,7 +25,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 break;
             };
             let event = queued.event.clone();
-            let current = self.store.story(event.story_number());
+            let current = self.store.backing_story(event.story_number());
             let prior_classification = queued.last_classification;
             let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
 
