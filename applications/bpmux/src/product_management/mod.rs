@@ -1,3 +1,44 @@
+macro_rules! entity_id {
+    ($name:ident) => {
+        #[derive(
+            Debug,
+            Clone,
+            Copy,
+            PartialEq,
+            Eq,
+            Hash,
+            PartialOrd,
+            Ord,
+            serde::Serialize,
+            serde::Deserialize,
+        )]
+        #[serde(transparent)]
+        pub struct $name(u64);
+
+        impl $name {
+            pub fn new(number: u64) -> Self {
+                Self(number)
+            }
+
+            pub fn value(self) -> u64 {
+                self.0
+            }
+        }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "#{}", self.0)
+            }
+        }
+
+        impl From<$name> for u64 {
+            fn from(id: $name) -> u64 {
+                id.0
+            }
+        }
+    };
+}
+
 pub mod board;
 pub mod epic;
 pub mod iteration;

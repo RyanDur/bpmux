@@ -8,6 +8,8 @@ use crate::product_management::board::adapters::relationships::{
 use crate::product_management::board::item::Content;
 use crate::product_management::story::{Horizon, Story, StoryKey, StoryState};
 
+entity_id!(OutcomeId);
+
 #[cfg(test)]
 mod outcome_tests;
 

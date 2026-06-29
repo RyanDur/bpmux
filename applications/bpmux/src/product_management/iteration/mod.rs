@@ -5,6 +5,8 @@ pub mod section;
 use crate::product_management::board::item::Content;
 use crate::product_management::story::StoryKey;
 
+entity_id!(IterationId);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Iteration {
     pub content: Content,

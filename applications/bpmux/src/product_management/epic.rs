@@ -1,6 +1,8 @@
 use crate::product_management::story::{Story, StoryState};
 use serde::{Deserialize, Serialize};
 
+entity_id!(EpicId);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct EpicCounts {
     pub accepted_count: usize,

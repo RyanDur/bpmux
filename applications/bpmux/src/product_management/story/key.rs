@@ -2,6 +2,8 @@ use std::fmt;
 
 use uuid::Uuid;
 
+entity_id!(StoryId);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StoryKey {
     Pending(Uuid),
