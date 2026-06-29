@@ -29,7 +29,6 @@ interface BoardStorySnapshot {
   number: number
   iteration_order: number | null
   readiness: { drafted: boolean } | null
-  outcome_membership: { outcome_number: number; position: number } | null
 }
 
 const boardStory = async (
@@ -45,6 +44,30 @@ const boardStory = async (
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+const waitForDrillOrder = async (
+  result: MockGhLaunchResult,
+  outcomeNumber: number,
+  expected: number[]
+): Promise<void> => {
+  const deadline = Date.now() + 20_000
+  let last: number[] = []
+  while (Date.now() < deadline) {
+    const resp = await fetch(
+      `http://127.0.0.1:${result.backendPort}/api/roadmap?outcome=${outcomeNumber}`,
+      { headers: { Authorization: `Bearer ${result.authToken}` } }
+    )
+    if (resp.status === 200) {
+      const body = (await resp.json()) as { drill?: { iterations?: { number: number }[] } }
+      last = (body.drill?.iterations ?? []).map((i) => i.number)
+      if (last.length === expected.length && last.every((n, i) => n === expected[i])) return
+    }
+    await sleep(300)
+  }
+  throw new Error(
+    `outcome #${outcomeNumber} drill did not reach order [${expected}] within 20s (last: [${last}])`
+  )
+}
 
 const waitForIterationSettled = async (
   result: MockGhLaunchResult,
@@ -124,16 +147,10 @@ const seedOutcomeRoadmap = async (result: MockGhLaunchResult): Promise<void> => 
   const blankLyra = await rpc('edit_story', { number: lyra, body: ' ' }, 'pm')
   expect(blankLyra.status).toBe(200)
 
-  await waitForIterationSettled(
-    result,
-    crux,
-    (s) => s.readiness?.drafted === true && s.outcome_membership?.outcome_number === outcome
-  )
-  await waitForIterationSettled(
-    result,
-    lyra,
-    (s) => s.readiness?.drafted === false && s.outcome_membership?.outcome_number === outcome
-  )
+  await waitForDrillOrder(result, outcome, [crux, lyra])
+
+  await waitForIterationSettled(result, crux, (s) => s.readiness?.drafted === true)
+  await waitForIterationSettled(result, lyra, (s) => s.readiness?.drafted === false)
 }
 
 test.describe('#1737 roadmap outcome drill-in — focus an outcome → its iterations, in order', () => {
