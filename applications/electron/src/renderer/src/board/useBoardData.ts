@@ -6,33 +6,32 @@ import {
   groupStories,
   isActiveEpic,
   storyTypeFromLabels,
-  type BoardResponse,
-  type BoardStory,
+  type Story,
   type ColumnState
 } from './types'
 
 export interface UseBoardDataResult {
-  stories: BoardStory[]
-  epics: BoardStory[]
+  stories: Story[]
+  epics: Story[]
   epicTitleByNumber: Map<number, string>
-  iterationContainerStories: BoardStory[]
-  flatBoardStories: BoardStory[]
-  grouped: Map<ColumnState, BoardStory[]>
+  iterationContainerStories: Story[]
+  flatBoardStories: Story[]
+  grouped: Map<ColumnState, Story[]>
   navOrder: number[]
 }
 
 export const useBoardData = (
-  data: BoardResponse | null,
+  data: Story[] | null,
   iterations: BoardIterationData[],
-  effectiveReadyPosition?: (story: BoardStory) => number | null
+  effectiveReadyPosition?: (story: Story) => number | null
 ): UseBoardDataResult => {
-  const stories = useMemo(() => data?.stories ?? [], [data])
+  const stories = useMemo(() => data ?? [], [data])
   const membershipIndex = useMemo(() => buildMembershipIndex(iterations), [iterations])
   const epics = useMemo(() => stories.filter(isActiveEpic), [stories])
   const epicTitleByNumber = useMemo(() => {
     const map = new Map<number, string>()
     for (const s of stories) {
-      if (storyTypeFromLabels(s.labels) === 'epic') map.set(s.number, s.title)
+      if (storyTypeFromLabels(s.labels) === 'epic') map.set(s.id, s.title)
     }
     return map
   }, [stories])
@@ -45,7 +44,7 @@ export const useBoardData = (
       nonEpicStories.filter((s) => {
         if (storyTypeFromLabels(s.labels) === 'iteration') return false
         if (s.state === 'icebox') return true
-        if (membershipIndex.has(s.number)) return true
+        if (membershipIndex.has(s.id)) return true
         return false
       }),
     [nonEpicStories, membershipIndex]
@@ -63,7 +62,7 @@ export const useBoardData = (
     const byColumn = groupStories(flatBoardStories)
     const ready = byColumn.get('ready')
     if (ready) {
-      const positionOf = (s: BoardStory): number | null =>
+      const positionOf = (s: Story): number | null =>
         effectiveReadyPosition
           ? effectiveReadyPosition(s)
           : (s.iteration_membership?.position ?? null)
@@ -73,7 +72,7 @@ export const useBoardData = (
         if (ap !== null && bp !== null) return ap - bp
         if (ap !== null) return -1
         if (bp !== null) return 1
-        return a.number - b.number
+        return a.id - b.id
       })
     }
     return byColumn
@@ -82,7 +81,7 @@ export const useBoardData = (
     const out: number[] = []
     for (const group of GROUP_ORDER) {
       const list = grouped.get(group.state) ?? []
-      for (const s of list) out.push(s.number)
+      for (const s of list) out.push(s.id)
     }
     return out
   }, [grouped])

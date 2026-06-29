@@ -37,9 +37,9 @@ pub(in crate::bridge) async fn handle_view_verdicts(
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let story_id = StoryId::new(
-        args.get("story_number")
+        args.get("story_id")
             .and_then(|v| v.as_u64())
-            .ok_or("missing 'story_number' argument")?,
+            .ok_or("missing 'story_id' argument")?,
     );
 
     let store = load(&session.dir);

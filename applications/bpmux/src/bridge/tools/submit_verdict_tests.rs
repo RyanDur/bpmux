@@ -20,7 +20,7 @@ fn make_args(
     substrate_grounding: &str,
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("story_number".into(), serde_json::json!(number));
+    m.insert("story_id".into(), serde_json::json!(number));
     m.insert("verdict".into(), serde_json::json!(verdict));
     m.insert(
         "substrate_grounding".into(),
@@ -115,7 +115,7 @@ async fn missing_substrate_grounding_is_refused() {
     let dir = TempDir::new().unwrap();
     let session = make_session(dir.path().to_path_buf());
     let mut args = serde_json::Map::new();
-    args.insert("story_number".into(), serde_json::json!(42));
+    args.insert("story_id".into(), serde_json::json!(42));
     args.insert("verdict".into(), serde_json::json!("verified"));
     let err = handle_submit_verdict(&args, "dev", &session)
         .await

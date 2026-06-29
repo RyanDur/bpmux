@@ -103,6 +103,12 @@ async fn run_ws_session(
     let snapshot_msg = build_state_snapshot_message(&store);
     send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
     if let Some(refresh) = orchestrator.as_ref() {
+        let stories = serde_json::Value::Array(crate::transport::rest::board_stories(refresh));
+        send_json(
+            &mut tx,
+            &ServerMessage::from(crate::transport::rest::stories_message(stories)),
+        )
+        .await?;
         let outcomes = serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
         send_json(
             &mut tx,

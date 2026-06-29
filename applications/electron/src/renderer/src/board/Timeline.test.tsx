@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Timeline from './Timeline'
-import type { BoardStory } from './types'
+import type { Story } from './types'
+import { asStoryId } from './types'
 
 const featureLabels = ['Feature']
 
-const story = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 700,
+const story = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(700),
   title: 'stub story',
   state: 'ready',
   labels: featureLabels,
@@ -49,8 +50,12 @@ describe('#1355 Timeline independence', () => {
   })
 
   test('renders unique data-test ids per story (sanity)', () => {
-    const a = renderToStaticMarkup(<Timeline story={story({ number: 100 })} {...baseProps} />)
-    const b = renderToStaticMarkup(<Timeline story={story({ number: 200 })} {...baseProps} />)
+    const a = renderToStaticMarkup(
+      <Timeline story={story({ id: asStoryId(100) })} {...baseProps} />
+    )
+    const b = renderToStaticMarkup(
+      <Timeline story={story({ id: asStoryId(200) })} {...baseProps} />
+    )
     expect(a).toContain('data-test="drill-in-timeline"')
     expect(b).toContain('data-test="drill-in-timeline"')
   })

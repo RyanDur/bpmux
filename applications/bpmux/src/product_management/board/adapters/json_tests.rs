@@ -43,7 +43,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
     let obj = json.as_object().expect("object");
     let keys: Vec<&String> = obj.keys().collect();
     for required in &[
-        "number",
+        "id",
         "title",
         "state",
         "gh_state",

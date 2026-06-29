@@ -3,7 +3,7 @@ import { deriveNowView } from './deriveNowView'
 import { firstUnmetLabel, readinessOf, unmetCount } from './iterationReadiness'
 import { iterationNameFromTitle } from './labelSchema'
 import type { BoardIterationData } from './selectIterations'
-import { columnFor, type BoardStory, type ColumnState } from './types'
+import { columnFor, type Story, type ColumnState } from './types'
 
 export interface CloseApproachNudge {
   nextIterationNumber: number
@@ -32,13 +32,12 @@ const nextIterationAfter = (
   return successors[0]?.it ?? null
 }
 
-const columnOf = (story: BoardStory): ColumnState =>
-  columnFor(story.state, story.gh_state === 'closed')
+const columnOf = (story: Story): ColumnState => columnFor(story.state, story.gh_state === 'closed')
 
 const isDraining = (
   current: BoardIterationData,
   iterations: BoardIterationData[],
-  stories: BoardStory[]
+  stories: Story[]
 ): boolean => {
   const view = deriveNowView(iterations, stories)
   if (view.kind !== 'current' || view.iteration.number !== current.number) return false
@@ -50,7 +49,7 @@ const isDraining = (
 
 export const deriveCloseApproachNudge = (
   iterations: BoardIterationData[],
-  stories: BoardStory[]
+  stories: Story[]
 ): CloseApproachNudge | null => {
   const current = findCurrentIteration(iterations)
   if (current === null) return null

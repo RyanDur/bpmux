@@ -1,4 +1,4 @@
-import { type BoardStory, type StoryState } from './types'
+import { type Story, type StoryState } from './types'
 
 export type EpicSort = 'progress' | 'created'
 
@@ -13,8 +13,8 @@ export interface StateBreakdown {
   icebox: number
 }
 
-export const breakdownFor = (epic: BoardStory, all: BoardStory[]): StateBreakdown => {
-  const children = all.filter((s) => s.parent_epic === epic.number)
+export const breakdownFor = (epic: Story, all: Story[]): StateBreakdown => {
+  const children = all.filter((s) => s.parent_epic === epic.id)
   const count = (state: StoryState): number => children.filter((s) => s.state === state).length
   return {
     total: children.length,
@@ -54,13 +54,13 @@ export const breakdownAriaLabel = (b: StateBreakdown): string => {
 export const isOpenByDefault = (derived: StoryState): boolean =>
   derived !== 'accepted' && derived !== 'icebox'
 
-const progressRatioFor = (epic: BoardStory, all: BoardStory[]): number => {
+const progressRatioFor = (epic: Story, all: Story[]): number => {
   const breakdown = breakdownFor(epic, all)
   const denom = progressDenominatorFor(breakdown)
   return denom === 0 ? 0 : breakdown.accepted / denom
 }
 
-export const sortEpics = (epics: BoardStory[], sort: EpicSort, all: BoardStory[]): BoardStory[] =>
+export const sortEpics = (epics: Story[], sort: EpicSort, all: Story[]): Story[] =>
   [...epics].sort((a, b) => {
     if (sort === 'created') return a.created_at.localeCompare(b.created_at)
     return progressRatioFor(b, all) - progressRatioFor(a, all)

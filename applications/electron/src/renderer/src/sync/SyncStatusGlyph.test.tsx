@@ -5,6 +5,7 @@ import { deriveState } from './syncState'
 import { dispatchSession, resetSessionForTest } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
 import type { SyncStatusWire } from '../transport/types'
+import { asStoryId } from '../board/types'
 
 const report: SyncStatusWire = {
   last_ingest_at: null,
@@ -76,7 +77,7 @@ describe('deriveState — full-state coverage (null report never false-greens)',
     expect(
       deriveState({
         ...report,
-        dropped_events: [{ story_number: 1, error: 'x', ts: '2026-04-22T16:00:00Z' }]
+        dropped_events: [{ story_id: asStoryId(1), error: 'x', ts: '2026-04-22T16:00:00Z' }]
       })
     ).toBe('drained-permanent-failure')
   })

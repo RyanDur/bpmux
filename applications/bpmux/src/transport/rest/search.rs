@@ -94,7 +94,7 @@ async fn search_stories_and_comments(
             title.to_string()
         };
         story_hits.push(serde_json::json!({
-            "number": s.get("number"),
+            "id": s.get("number"),
             "title": title,
             "snippet": snippet,
             "matched_in": if title_match { "title" } else { "body" },
@@ -118,7 +118,7 @@ async fn search_stories_and_comments(
                 continue;
             }
             comment_hits.push(serde_json::json!({
-                "story_number": story_number,
+                "story_id": story_number,
                 "comment_id": c.get("id"),
                 "author": c.get("author"),
                 "snippet": extract_snippet(body, &needle),

@@ -7,11 +7,12 @@ import {
   sortEpics,
   stripEpicPrefix
 } from './epicSummary'
-import type { BoardStory, StoryState } from './types'
+import type { Story, StoryState } from './types'
+import { asStoryId } from './types'
 
 let seq = 1
-const story = (over: Partial<BoardStory>): BoardStory => ({
-  number: seq++,
+const story = (over: Partial<Story>): Story => ({
+  id: asStoryId(seq++),
   title: 'an epic',
   state: 'ready',
   labels: [],
@@ -21,12 +22,12 @@ const story = (over: Partial<BoardStory>): BoardStory => ({
   ...over
 })
 
-const child = (epicNumber: number, state: StoryState): BoardStory =>
-  story({ parent_epic: epicNumber, state })
+const child = (epicNumber: number, state: StoryState): Story =>
+  story({ parent_epic: asStoryId(epicNumber), state })
 
 describe('epicSummary', () => {
   test('breakdownFor groups child states (delivered+ready-for-accept, in-progress+needs-fixes, ready+rejected) and scopes to the epic', () => {
-    const b = breakdownFor(story({ number: 100 }), [
+    const b = breakdownFor(story({ id: asStoryId(100) }), [
       child(100, 'accepted'),
       child(100, 'delivered'),
       child(100, 'ready-for-accept'),
@@ -50,7 +51,7 @@ describe('epicSummary', () => {
   })
 
   test('progressDenominatorFor excludes retired (scope-removed children)', () => {
-    const b = breakdownFor(story({ number: 100 }), [
+    const b = breakdownFor(story({ id: asStoryId(100) }), [
       child(100, 'accepted'),
       child(100, 'in-progress'),
       child(100, 'retired')
@@ -76,8 +77,8 @@ describe('epicSummary', () => {
   })
 
   test('sortEpics by progress orders the more-complete epic first', () => {
-    const a = story({ number: 1 })
-    const b = story({ number: 2 })
+    const a = story({ id: asStoryId(1) })
+    const b = story({ id: asStoryId(2) })
     const stories = [
       a,
       b,
@@ -86,6 +87,6 @@ describe('epicSummary', () => {
       child(2, 'accepted'),
       child(2, 'in-progress')
     ]
-    expect(sortEpics([b, a], 'progress', stories).map((epic) => epic.number)).toEqual([1, 2])
+    expect(sortEpics([b, a], 'progress', stories).map((epic) => epic.id)).toEqual([1, 2])
   })
 })

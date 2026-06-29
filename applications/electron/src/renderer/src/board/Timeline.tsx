@@ -6,7 +6,7 @@ import {
   type ClassifiedEvent,
   type TimelineGate
 } from '../hooks/useTimeline'
-import type { BoardStory } from './types'
+import type { Story } from './types'
 
 const GATE_LABEL: Record<TimelineGate, string> = {
   filed: 'Filed',
@@ -43,7 +43,7 @@ const truncate = (body: string, max = 120): string => {
 const renderTimelineList = (
   events: ClassifiedEvent[],
   showAll: boolean,
-  story: BoardStory
+  story: Story
 ): React.JSX.Element => {
   const visible = showAll
     ? events
@@ -91,7 +91,7 @@ const renderTimelineList = (
 }
 
 interface Props {
-  story: BoardStory
+  story: Story
   apiBase: string | undefined
   focusTimeline?: boolean
 }
@@ -100,7 +100,7 @@ const Timeline = ({ story, apiBase, focusTimeline }: Props): React.JSX.Element =
   const [showAll, setShowAll] = useState<boolean>(false)
   const timeline = useTimeline({
     apiBase,
-    storyNumber: story.number
+    storyId: story.id
   })
   const detailsRef = useRef<HTMLDetailsElement | null>(null)
 

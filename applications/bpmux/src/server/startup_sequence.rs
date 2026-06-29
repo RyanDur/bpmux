@@ -81,6 +81,7 @@ pub(super) fn spawn_board_broadcast_loop(
                 _ = ct.cancelled() => return,
                 received = events.recv() => match received {
                     Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                        crate::transport::rest::shared::broadcast_stories(&session, &refresh);
                         crate::transport::rest::shared::broadcast_outcomes(&session, &refresh);
                         crate::transport::rest::shared::broadcast_iterations(&session, &refresh);
                         crate::transport::rest::shared::broadcast_roadmap(&session, &refresh);

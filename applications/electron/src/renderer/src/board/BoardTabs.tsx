@@ -12,7 +12,8 @@ import type { BoardIterationData } from './selectIterations'
 import {
   GROUP_ORDER,
   isActiveEpic,
-  type BoardStory,
+  type Story,
+  type StoryId,
   type ColumnState,
   type GroupSpec
 } from './types'
@@ -35,12 +36,12 @@ const groupsFor = (states: ReadonlyArray<ColumnState>): GroupSpec[] =>
 const iceboxGroup = (): GroupSpec | undefined => GROUP_ORDER.find((g) => g.state === 'icebox')
 
 interface BoardTabsProps {
-  stories: BoardStory[]
+  stories: Story[]
   iterations: BoardIterationData[]
-  epics: BoardStory[]
+  epics: Story[]
   epicTitleByNumber: Map<number, string>
-  iterationContainerStories: BoardStory[]
-  grouped: Map<ColumnState, BoardStory[]>
+  iterationContainerStories: Story[]
+  grouped: Map<ColumnState, Story[]>
   loading: boolean
   effectiveSelected: number | null
   collapsed: Record<ColumnState, boolean>
@@ -85,10 +86,10 @@ const BoardTabs = ({
   const currentIterationEpics = useMemo(() => {
     if (currentIteration === null) return []
     const inIter = new Set(currentIterationEpicNumbers)
-    return stories.filter((s) => isActiveEpic(s) && inIter.has(s.number))
+    return stories.filter((s) => isActiveEpic(s) && inIter.has(s.id))
   }, [stories, currentIteration, currentIterationEpicNumbers])
-  const currentIterationMemberNumbers = useMemo<Set<number>>(
-    () => new Set(nowView.kind === 'current' ? nowView.members.map((m) => m.story.number) : []),
+  const currentIterationMemberNumbers = useMemo<Set<StoryId>>(
+    () => new Set(nowView.kind === 'current' ? nowView.members.map((m) => m.story.id) : []),
     [nowView]
   )
 
@@ -109,7 +110,7 @@ const BoardTabs = ({
   const renderGroup = (
     group: GroupSpec,
     children?: React.ReactNode,
-    storiesOverride?: BoardStory[]
+    storiesOverride?: Story[]
   ): React.JSX.Element => (
     <BoardGroup
       key={group.state}
@@ -147,9 +148,7 @@ const BoardTabs = ({
           renderGroup(
             group,
             undefined,
-            (grouped.get(group.state) ?? []).filter((s) =>
-              currentIterationMemberNumbers.has(s.number)
-            )
+            (grouped.get(group.state) ?? []).filter((s) => currentIterationMemberNumbers.has(s.id))
           )
         )}
       </section>

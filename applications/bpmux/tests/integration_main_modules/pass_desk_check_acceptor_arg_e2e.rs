@@ -27,7 +27,7 @@ fn pass_desk_check_missing_acceptor_returns_structured_409() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
                 }),
@@ -77,7 +77,7 @@ fn pass_desk_check_invalid_acceptor_returns_structured_409() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "cite cite cite cite cite cite",
                 }),
@@ -131,7 +131,7 @@ fn pass_desk_check_acceptor_team_applies_awaiting_team_label() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "src/bar.rs:10 + rg snippet for team-class atomic-label-application",
                 }),
@@ -193,7 +193,7 @@ fn pass_desk_check_acceptor_owner_applies_awaiting_owner_label() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "src/baz.rs:99 + rg snippet for owner-class atomic-label-application",
                 }),
@@ -255,7 +255,7 @@ fn pass_desk_check_acceptor_dev_applies_awaiting_dev_label() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "src/qux.rs:42 + rg snippet for dev-class atomic-label-application",
                 }),

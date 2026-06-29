@@ -19,10 +19,10 @@ pub(in crate::bridge) async fn handle_submit_verdict(
             "submit_verdict is restricted to {dev_id} or {designer_id}; agent '{agent_name}' is role '{role}'"
         ));
     }
-    let story_number = args
-        .get("story_number")
+    let story_id = args
+        .get("story_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'story_number' argument")?;
+        .ok_or("missing 'story_id' argument")?;
     let verdict_value = args
         .get("verdict")
         .and_then(|v| v.as_str())
@@ -40,7 +40,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
 
     let ts = chrono::Utc::now();
     let entry = Verdict {
-        story_id: StoryId::new(story_number),
+        story_id: StoryId::new(story_id),
         from_role: role.to_string(),
         verdict: verdict_value.clone(),
         substrate_grounding,
@@ -55,7 +55,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
     let pm_id = workflow.role_id_for_purpose("pm").unwrap_or("pm");
     let notification = Message {
         from: "bpmux".to_string(),
-        text: format!("verdict cast on #{story_number} from {role}: {verdict_value}"),
+        text: format!("verdict cast on #{story_id} from {role}: {verdict_value}"),
         ts,
         message_type: MessageType::System,
         addressee: Some(pm_id.to_string()),
@@ -63,7 +63,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
     };
     if let Err(e) = session.broadcast(&notification) {
         crate::diag::log_diag(&format!(
-            "submit_verdict: verdict-cast broadcast failed for #{story_number}: {e}"
+            "submit_verdict: verdict-cast broadcast failed for #{story_id}: {e}"
         ));
     }
 
@@ -72,6 +72,6 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         AddVerdictOutcome::Replaced => "replaced prior",
     };
     Ok(format!(
-        "verdict recorded on #{story_number} from {role} ({outcome_label})"
+        "verdict recorded on #{story_id} from {role} ({outcome_label})"
     ))
 }

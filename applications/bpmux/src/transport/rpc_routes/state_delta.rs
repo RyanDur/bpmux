@@ -39,11 +39,8 @@ pub(crate) fn fire_board_invalidate(session: &Arc<session::Session>) {
     }
 }
 
-pub(crate) fn fire_board_snapshot(
-    session: &Arc<session::Session>,
-    refresh: &Arc<dyn RefreshDriver>,
-) {
-    crate::transport::rest::shared::broadcast_board_snapshot(session, refresh);
+pub(crate) fn fire_stories(session: &Arc<session::Session>, refresh: &Arc<dyn RefreshDriver>) {
+    crate::transport::rest::shared::broadcast_stories(session, refresh);
 }
 
 fn effective_state_label(story: &Story) -> &'static str {

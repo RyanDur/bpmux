@@ -5,6 +5,7 @@ import {
   useTimelineEvents
 } from '../transport/session'
 import type { TimelineEventWire } from '../transport/types'
+import { asStoryId, type StoryId } from '../board/types'
 
 export type TimelineEvent = TimelineEventWire
 
@@ -29,7 +30,7 @@ export interface ClassifiedEvent {
 
 interface UseTimelineArgs {
   apiBase: string | undefined
-  storyNumber: number | null
+  storyId: StoryId | null
 }
 
 export interface UseTimelineResult {
@@ -86,32 +87,32 @@ const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
   return out
 }
 
-export const useTimeline = ({ apiBase, storyNumber }: UseTimelineArgs): UseTimelineResult => {
+export const useTimeline = ({ apiBase, storyId }: UseTimelineArgs): UseTimelineResult => {
   const boardInvalidateTick = useBoardInvalidateTick()
   const offline = apiBase === undefined
-  const rawEvents = useTimelineEvents(storyNumber ?? -1)
+  const rawEvents = useTimelineEvents(storyId ?? asStoryId(-1))
 
   const events = useMemo<ClassifiedEvent[] | null>(() => {
     if (offline) return []
-    if (storyNumber === null || rawEvents === null) return null
+    if (storyId === null || rawEvents === null) return null
     const classified: ClassifiedEvent[] = rawEvents.map((r) => ({
       raw: r,
       gate: classifyEvent(r)
     }))
     return markReworkCycles(classified)
-  }, [offline, storyNumber, rawEvents])
+  }, [offline, storyId, rawEvents])
 
   const loading = events === null
 
   const refetch = useCallback((): void => {
-    if (offline || storyNumber === null) return
-    requestTimelineHydrate(storyNumber)
-  }, [offline, storyNumber])
+    if (offline || storyId === null) return
+    requestTimelineHydrate(storyId)
+  }, [offline, storyId])
 
   useEffect(() => {
-    if (offline || storyNumber === null) return
-    requestTimelineHydrate(storyNumber)
-  }, [offline, storyNumber, boardInvalidateTick])
+    if (offline || storyId === null) return
+    requestTimelineHydrate(storyId)
+  }, [offline, storyId, boardInvalidateTick])
 
   return { events, loading, refetch }
 }

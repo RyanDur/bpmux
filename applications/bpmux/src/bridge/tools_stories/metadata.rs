@@ -16,7 +16,7 @@ pub(crate) fn retired_iteration_label_axis_error(label: &str) -> String {
         "successor": "add_story_to_iteration",
         "message": format!(
             "label_story refuses iteration-axis labels (#1402 retire). \
-             Use add_story_to_iteration(iteration_number, story_number, position) \
+             Use add_story_to_iteration(iteration_number, story_id, position) \
              — iteration-membership is canonical-relation substrate per #1399, \
              not magic-string-parse labels. Label '{label}' parses as iteration-{{Name}}.{{position}}."
         ),

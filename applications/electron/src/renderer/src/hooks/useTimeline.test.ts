@@ -10,10 +10,11 @@ import {
 import { startSession, getSessionSnapshot, resetSessionForTest } from '../transport/session'
 import { dispatchSession } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
+import { asStoryId } from '../board/types'
 
 const props = {
   apiBase: 'http://backend.invalid',
-  storyNumber: 700
+  storyId: asStoryId(700)
 }
 
 const bumpBoard = (): void =>
@@ -72,7 +73,7 @@ describe('#1456 useTimeline — re-hydrates over WS when the board changes (tick
       conn.send(
         JSON.stringify({
           type: 'timeline_hydrated',
-          story_number: 700,
+          story_id: 700,
           events: [
             { event: 'filed', actor: 'pm', ts: '2026-04-20T10:00:00Z' },
             { event: 'labeled', actor: 'dev', ts: '2026-04-21T10:00:00Z', label: 'delivered' }
@@ -94,7 +95,9 @@ describe('useTimeline — offline (mock) mode', () => {
   })
 
   test('renders empty (not loading) when offline (apiBase undefined)', () => {
-    const { result } = renderHook(() => useTimeline({ apiBase: undefined, storyNumber: 700 }))
+    const { result } = renderHook(() =>
+      useTimeline({ apiBase: undefined, storyId: asStoryId(700) })
+    )
     expect(result.current.events).toEqual([])
     expect(result.current.loading).toBe(false)
   })

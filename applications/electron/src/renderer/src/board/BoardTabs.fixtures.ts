@@ -1,10 +1,10 @@
 import type BoardTabs from './BoardTabs'
-import { groupStories, type BoardStory, type ColumnState } from './types'
+import { asStoryId, groupStories, type Story, type ColumnState } from './types'
 import { selectIterations } from './selectIterations'
 import { getSessionSnapshot } from '../transport/session/store'
 
-export const iterationStory = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 9000,
+export const iterationStory = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(9000),
   title: 'Iteration Sextans',
   state: 'icebox',
   gh_state: 'open',
@@ -15,8 +15,8 @@ export const iterationStory = (overrides: Partial<BoardStory>): BoardStory => ({
   ...overrides
 })
 
-export const epicStory = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 8000,
+export const epicStory = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(8000),
   title: 'Epic Foo',
   state: 'in-progress',
   gh_state: 'open',
@@ -27,8 +27,8 @@ export const epicStory = (overrides: Partial<BoardStory>): BoardStory => ({
   ...overrides
 })
 
-export const featureStory = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 9100,
+export const featureStory = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(9100),
   title: 'a feature',
   state: 'ready',
   gh_state: 'open',
@@ -39,9 +39,9 @@ export const featureStory = (overrides: Partial<BoardStory>): BoardStory => ({
   ...overrides
 })
 
-export const buildProps = (stories: BoardStory[]): Parameters<typeof BoardTabs>[0] => {
+export const buildProps = (stories: Story[]): Parameters<typeof BoardTabs>[0] => {
   const epics = stories.filter((s) => s.labels.includes('epic'))
-  const epicTitleByNumber = new Map(epics.map((e) => [e.number, e.title]))
+  const epicTitleByNumber = new Map(epics.map((e) => [e.id, e.title]))
   const iterationContainerStories = stories.filter(
     (s) => s.labels.includes('iteration') || s.state === 'icebox'
   )

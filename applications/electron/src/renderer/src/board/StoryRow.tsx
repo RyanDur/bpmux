@@ -5,10 +5,10 @@ import { deriveBadge } from './StoryBadge.utils'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { type GripDragProps, type RowDragProps } from './useDragReorder'
 import { storyNavigateLabel } from './storyNavigateLabel'
-import { storyTypeFromLabels, type BoardStory } from './types'
+import { storyTypeFromLabels, type Story } from './types'
 
 export interface StoryRowProps {
-  story: BoardStory
+  story: Story
   parentEpicTitle?: string
   selected: boolean
   draggable: boolean
@@ -55,7 +55,7 @@ const StoryRow = ({
     <li
       className={classes.join(' ')}
       aria-current={selected ? 'true' : undefined}
-      data-test={`board-story-${story.number}`}
+      data-test={`board-story-${story.id}`}
       data-story-type={type}
       data-closed={story.gh_state === 'closed' ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
@@ -65,9 +65,9 @@ const StoryRow = ({
         type="button"
         className="board-story-navigate"
         tabIndex={selected ? 0 : -1}
-        onClick={() => onOpen(story.number)}
-        onFocus={() => onSelect(story.number)}
-        onMouseEnter={() => onSelect(story.number)}
+        onClick={() => onOpen(story.id)}
+        onFocus={() => onSelect(story.id)}
+        onMouseEnter={() => onSelect(story.id)}
         onKeyDown={(event) => {
           if (event.ctrlKey && event.shiftKey && onKeyboardReorder !== undefined) {
             if (event.key === 'ArrowUp') {
@@ -86,9 +86,9 @@ const StoryRow = ({
         data-rework={story.rework_comment ? 'true' : undefined}
       />
       {draggable && gripDragProps !== undefined ? (
-        <DragGrip storyNumber={story.number} gripDragProps={gripDragProps} />
+        <DragGrip storyNumber={story.id} gripDragProps={gripDragProps} />
       ) : null}
-      <small className="board-story-number">#{story.number}</small>
+      <small className="board-story-number">#{story.id}</small>
       <StoryTypeGlyph type={type} />
       <StoryBadge story={story} onOpenTimeline={onOpenTimeline} onOpenBlocker={onOpen} />
       <b className="board-story-title" data-test="story-title">

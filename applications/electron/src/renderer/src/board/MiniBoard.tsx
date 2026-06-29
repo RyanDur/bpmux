@@ -1,8 +1,8 @@
-import { GROUP_ORDER, groupStories, type BoardStory } from './types'
+import { GROUP_ORDER, groupStories, type Story } from './types'
 
 interface Props {
   epicNumber: number
-  stories: BoardStory[]
+  stories: Story[]
 }
 
 const MiniBoard = ({ epicNumber, stories }: Props): React.JSX.Element => {
@@ -34,12 +34,12 @@ const MiniBoard = ({ epicNumber, stories }: Props): React.JSX.Element => {
               <ul className="board-epic-miniboard-children">
                 {colStories.map((story) => (
                   <li
-                    key={story.number}
+                    key={story.id}
                     className="board-epic-miniboard-child"
-                    data-test={`board-epic-${epicNumber}-miniboard-child-${story.number}`}
-                    aria-label={`#${story.number} ${story.title}, ${story.state}`}
+                    data-test={`board-epic-${epicNumber}-miniboard-child-${story.id}`}
+                    aria-label={`#${story.id} ${story.title}, ${story.state}`}
                   >
-                    <small className="board-epic-miniboard-child-number">#{story.number}</small>
+                    <small className="board-epic-miniboard-child-number">#{story.id}</small>
                     <b className="board-epic-miniboard-child-title">{story.title}</b>
                   </li>
                 ))}

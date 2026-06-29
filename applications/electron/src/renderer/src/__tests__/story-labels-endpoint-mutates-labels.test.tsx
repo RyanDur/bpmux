@@ -35,9 +35,9 @@ describe('#1339 — POST /api/stories/:n/labels mutates raw_labels atomically', 
       headers: { Authorization: `Bearer ${authToken}` }
     })
     const boardBody = (await boardRes.json()) as {
-      stories: { number: number; labels: string[] }[]
+      stories: { id: number; labels: string[] }[]
     }
-    const story = boardBody.stories.find((s) => s.number === 7501)
+    const story = boardBody.stories.find((s) => s.id === 7501)
     expect(story).toBeDefined()
     expect(story?.labels).toContain('iteration-Cassiopeia.50')
     expect(story?.labels).not.toContain('iteration-Cassiopeia.200')

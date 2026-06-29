@@ -139,7 +139,7 @@ const seedOutcomeRoadmap = async (result: MockGhLaunchResult): Promise<void> => 
 
   const addMember = await rpc(
     'add_story_to_iteration',
-    { story_number: cruxMember, iteration_number: crux, position: 1 },
+    { story_id: cruxMember, iteration_number: crux, position: 1 },
     'pm'
   )
   expect(addMember.status).toBe(200)

@@ -16,7 +16,7 @@ pub(crate) fn run_timeline(number: u64) -> anyhow::Result<()> {
 
 pub(crate) fn run_verdicts(story: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("story_number".to_string(), serde_json::json!(story));
+    args.insert("story_id".to_string(), serde_json::json!(story));
     super::write::dispatch_write("view_verdicts", args)
 }
 

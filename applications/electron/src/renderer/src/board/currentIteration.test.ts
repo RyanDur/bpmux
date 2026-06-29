@@ -6,7 +6,8 @@ import {
 } from './currentIteration'
 import { iterationLabel } from './labelSchema'
 import type { BoardIterationData } from './selectIterations'
-import type { BoardStory } from './types'
+import type { Story } from './types'
+import { asStoryId } from './types'
 
 const iteration = (overrides: Partial<BoardIterationData>): BoardIterationData => ({
   number: 9000,
@@ -19,8 +20,8 @@ const iteration = (overrides: Partial<BoardIterationData>): BoardIterationData =
   ...overrides
 })
 
-const story = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 9100,
+const story = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(9100),
   title: 'member',
   state: 'icebox',
   gh_state: 'open',
@@ -65,15 +66,19 @@ describe('#1540 findCurrentIteration — explicit designation, never auto-picks'
 
 describe('#1453 isMemberOfIteration', () => {
   test('a story listed in the iterations stories matches', () => {
-    const iter = iteration({ number: 1464, title: 'Iteration Reticulum', stories: [9501] })
-    const member = story({ number: 9501 })
+    const iter = iteration({
+      number: 1464,
+      title: 'Iteration Reticulum',
+      stories: [asStoryId(9501)]
+    })
+    const member = story({ id: asStoryId(9501) })
     expect(isMemberOfIteration(member, iter)).toBe(true)
   })
 
   test('legacy iteration-{Name}.{N} label alone no longer matches (identity-only attribution)', () => {
     const iter = iteration({ number: 1491, title: 'Iteration Caelum' })
     const member = story({
-      number: 9601,
+      id: asStoryId(9601),
       labels: ['feature', iterationLabel('Caelum', 100)]
     })
     expect(isMemberOfIteration(member, iter)).toBe(false)
@@ -82,7 +87,7 @@ describe('#1453 isMemberOfIteration', () => {
   test('different iteration does not match', () => {
     const iter = iteration({ number: 1464, title: 'Iteration Reticulum' })
     const memberOfOther = story({
-      number: 9701,
+      id: asStoryId(9701),
       iteration_membership: { iteration_number: 1491, position: 100 }
     })
     expect(isMemberOfIteration(memberOfOther, iter)).toBe(false)
@@ -90,7 +95,7 @@ describe('#1453 isMemberOfIteration', () => {
 
   test('story without any iteration label / membership returns false', () => {
     const iter = iteration({ number: 1464, title: 'Iteration Reticulum' })
-    const orphan = story({ number: 9801 })
+    const orphan = story({ id: asStoryId(9801) })
     expect(isMemberOfIteration(orphan, iter)).toBe(false)
   })
 })
@@ -100,24 +105,32 @@ describe('#1453 epicNumbersInIteration', () => {
     const iter = iteration({
       number: 1464,
       title: 'Iteration Reticulum',
-      stories: [9501, 9502, 9503]
+      stories: [asStoryId(9501), asStoryId(9502), asStoryId(9503)]
     })
-    const s1 = story({ number: 9501, parent_epic: 200 })
-    const s2 = story({ number: 9502, parent_epic: 100 })
-    const s3 = story({ number: 9503, parent_epic: 200 })
+    const s1 = story({ id: asStoryId(9501), parent_epic: asStoryId(200) })
+    const s2 = story({ id: asStoryId(9502), parent_epic: asStoryId(100) })
+    const s3 = story({ id: asStoryId(9503), parent_epic: asStoryId(200) })
     expect(epicNumbersInIteration([s1, s2, s3], iter)).toEqual([100, 200])
   })
 
   test('ignores stories not in iteration', () => {
-    const iter = iteration({ number: 1464, title: 'Iteration Reticulum', stories: [9501] })
-    const inIter = story({ number: 9501, parent_epic: 200 })
-    const otherIter = story({ number: 9601, parent_epic: 300 })
+    const iter = iteration({
+      number: 1464,
+      title: 'Iteration Reticulum',
+      stories: [asStoryId(9501)]
+    })
+    const inIter = story({ id: asStoryId(9501), parent_epic: asStoryId(200) })
+    const otherIter = story({ id: asStoryId(9601), parent_epic: asStoryId(300) })
     expect(epicNumbersInIteration([inIter, otherIter], iter)).toEqual([200])
   })
 
   test('ignores stories without parent_epic', () => {
-    const iter = iteration({ number: 1464, title: 'Iteration Reticulum', stories: [9501] })
-    const noEpic = story({ number: 9501 })
+    const iter = iteration({
+      number: 1464,
+      title: 'Iteration Reticulum',
+      stories: [asStoryId(9501)]
+    })
+    const noEpic = story({ id: asStoryId(9501) })
     expect(epicNumbersInIteration([noEpic], iter)).toEqual([])
   })
 })

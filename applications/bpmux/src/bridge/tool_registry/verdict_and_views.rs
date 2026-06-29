@@ -4,7 +4,7 @@ pub(super) fn verdict_and_view_tools() -> Vec<rmcp::model::Tool> {
             "Cast a substrate-grounded verdict on a story so accept_story's evidence-check reads structured data instead of regex-over-freetext chat messages (#1407 Option C). DEV + DESIGNER fire when team-verifiable evidence is required. `substrate_grounding` is a REQUIRED non-empty cite of the source-grounded reason the verdict was reached — CONTENT enforced structurally per META-CANON substrate-enforce > discipline.",
         ),
         crate::mcp::tools::view_verdicts_tool(
-            "Read verdict-records for a story (#1428 read-axis sister to #1407 submit_verdict + #1429 notify-pm-on-verdict-cast). Returns JSON array of {story_number, from_role, verdict, substrate_grounding, ts}. Pure-read; no side effects. Any role can call — verdict-records are team-canonical evidence. Use pre-accept-fire or mid-ceremony to observe team-converged-evidence-state via direct read instead of chat-broadcast-cite-of-tool-fire.",
+            "Read verdict-records for a story (#1428 read-axis sister to #1407 submit_verdict + #1429 notify-pm-on-verdict-cast). Returns JSON array of {story_id, from_role, verdict, substrate_grounding, ts}. Pure-read; no side effects. Any role can call — verdict-records are team-canonical evidence. Use pre-accept-fire or mid-ceremony to observe team-converged-evidence-state via direct read instead of chat-broadcast-cite-of-tool-fire.",
         ),
         crate::mcp::tools::fail_desk_check_tool(
             "Mark a delivered story as failed desk-check with a reason. Applies the 'needs fixes' label and signals dev with the reason. DESIGNER ONLY.",

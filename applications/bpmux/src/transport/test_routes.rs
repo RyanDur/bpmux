@@ -63,7 +63,7 @@ where
     match dispatch(refresh.clone(), session.clone()).await {
         Ok(message) => {
             fire_board_invalidate(&session);
-            crate::transport::rest::shared::broadcast_board_snapshot(&session, &refresh);
+            crate::transport::rest::shared::broadcast_stories(&session, &refresh);
             (
                 StatusCode::OK,
                 Json(serde_json::json!({ "message": message })),
@@ -169,7 +169,7 @@ pub async fn post_test_designate_current_iteration(
                 );
             }
             fire_board_invalidate(&session);
-            crate::transport::rest::shared::broadcast_board_snapshot(&session, &refresh);
+            crate::transport::rest::shared::broadcast_stories(&session, &refresh);
             (
                 StatusCode::OK,
                 Json(serde_json::json!({ "message": message })),

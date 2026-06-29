@@ -131,7 +131,7 @@ fn dev_accept_story_succeeds_on_awaiting_dev_chore_with_designer_evidence() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "test-harness: designer verdict = required-evidence for dev-verifiable accept"
                 }),
@@ -189,7 +189,7 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
         dev.call_tool(
             "submit_verdict",
             serde_json::json!({
-                "story_number": target_number,
+                "story_id": target_number,
                 "verdict": "verified",
                 "substrate_grounding": "test-harness: dev verdict (no designer pair)"
             }),
@@ -254,7 +254,7 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "test-harness: designer verdict (no dev pair)"
                 }),

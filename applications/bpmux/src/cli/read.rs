@@ -15,7 +15,7 @@ fn board_stories(board: &serde_json::Value) -> Vec<serde_json::Value> {
 }
 
 pub(super) fn story_line(index: usize, story: &serde_json::Value) -> String {
-    let number = story["number"].as_u64().unwrap_or(0);
+    let number = story["id"].as_u64().unwrap_or(0);
     let title = story["title"].as_str().unwrap_or("");
     match story["acceptor"].as_str() {
         Some(acceptor) => format!("  {index}  #{number}  {title}  awaiting {acceptor}"),
@@ -51,7 +51,7 @@ pub(crate) fn run_ready(json: bool, full: bool) -> anyhow::Result<()> {
 }
 
 pub(super) fn render_story(story: &serde_json::Value) -> String {
-    let number = story["number"].as_u64().unwrap_or(0);
+    let number = story["id"].as_u64().unwrap_or(0);
     let title = story["title"].as_str().unwrap_or("");
     let state = story["state"].as_str().unwrap_or("");
     let acceptor = story["acceptor"]
@@ -65,7 +65,7 @@ pub(crate) fn run_story(number: u64, json: bool, full: bool) -> anyhow::Result<(
     let board = fetch_board()?;
     let Some(story) = board_stories(&board)
         .into_iter()
-        .find(|s| s["number"].as_u64() == Some(number))
+        .find(|s| s["id"].as_u64() == Some(number))
     else {
         anyhow::bail!("story #{number} not found");
     };
@@ -84,7 +84,7 @@ pub(crate) fn run_story(number: u64, json: bool, full: bool) -> anyhow::Result<(
 pub(super) fn render_board(stories: &[serde_json::Value]) -> String {
     let mut out = format!("board ({}):\n", stories.len());
     for (i, story) in stories.iter().enumerate() {
-        let number = story["number"].as_u64().unwrap_or(0);
+        let number = story["id"].as_u64().unwrap_or(0);
         let title = story["title"].as_str().unwrap_or("");
         let state = story["state"].as_str().unwrap_or("");
         match story["acceptor"].as_str() {

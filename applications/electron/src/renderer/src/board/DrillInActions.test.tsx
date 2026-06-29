@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import DrillInActions, { type ActionMode } from './DrillInActions'
-import type { BoardStory } from './types'
+import type { Story } from './types'
+import { asStoryId } from './types'
 
-const story = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 800,
+const story = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(800),
   title: 'stub story',
   state: 'delivered',
   labels: ['Feature'],

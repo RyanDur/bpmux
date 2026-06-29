@@ -12,13 +12,13 @@ use std::sync::Arc;
 async fn member_of(
     r: &Arc<dyn RefreshDriver>,
     iteration_number: u64,
-    story_number: u64,
+    story_id: u64,
 ) -> Result<(Iteration, Story), String> {
     let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
-    let story = ensure_story_in_canonical_store(r, story_number).await?;
-    if !iteration.stories.contains(&StoryId::new(story_number)) {
+    let story = ensure_story_in_canonical_store(r, story_id).await?;
+    if !iteration.stories.contains(&StoryId::new(story_id)) {
         return Err(format!(
-            "#{story_number} is not a member of iteration #{iteration_number}"
+            "#{story_id} is not a member of iteration #{iteration_number}"
         ));
     }
     Ok((iteration, story))
@@ -57,10 +57,10 @@ pub(crate) async fn handle_remove_iteration_member(
         .get("iteration_number")
         .and_then(serde_json::Value::as_u64)
         .ok_or("missing 'iteration_number' argument")?;
-    let story_number = args
-        .get("story_number")
+    let story_id = args
+        .get("story_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'story_number' argument")?;
+        .ok_or("missing 'story_id' argument")?;
     let reason = args
         .get("reason")
         .and_then(serde_json::Value::as_str)
@@ -68,10 +68,10 @@ pub(crate) async fn handle_remove_iteration_member(
         .ok_or("remove-member needs --reason <R> (destructive scope-cut; the reason is the audit-trail)")?;
 
     let r = refresh.ok_or("remove_iteration_member requires refresh (RefreshDriver)")?;
-    let (iteration, story) = member_of(r, iteration_number, story_number).await?;
+    let (iteration, story) = member_of(r, iteration_number, story_id).await?;
 
     let mut stories = iteration.stories.clone();
-    stories.retain(|n| *n != StoryId::new(story_number));
+    stories.retain(|n| *n != StoryId::new(story_id));
     rewrite_members(r, &iteration, stories).await?;
 
     let state_flag = match story.state {
@@ -79,7 +79,7 @@ pub(crate) async fn handle_remove_iteration_member(
         other => format!(" (was: {})", other.as_str()),
     };
     Ok(format!(
-        "#{story_number} removed from iteration #{iteration_number} (reason: {reason}){state_flag}; the story is otherwise untouched"
+        "#{story_id} removed from iteration #{iteration_number} (reason: {reason}){state_flag}; the story is otherwise untouched"
     ))
 }
 
@@ -93,25 +93,25 @@ pub(crate) async fn handle_move_iteration_member(
         .get("iteration_number")
         .and_then(serde_json::Value::as_u64)
         .ok_or("missing 'iteration_number' argument")?;
-    let story_number = args
-        .get("story_number")
+    let story_id = args
+        .get("story_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'story_number' argument")?;
+        .ok_or("missing 'story_id' argument")?;
     let position =
         args.get("position")
             .and_then(serde_json::Value::as_u64)
             .ok_or("move-member needs --to <P> (the new 1-indexed position)")? as u32;
 
     let r = refresh.ok_or("move_iteration_member requires refresh (RefreshDriver)")?;
-    let (iteration, _) = member_of(r, iteration_number, story_number).await?;
+    let (iteration, _) = member_of(r, iteration_number, story_id).await?;
 
     let mut stories = iteration.stories.clone();
-    stories.retain(|n| *n != StoryId::new(story_number));
+    stories.retain(|n| *n != StoryId::new(story_id));
     let insert_index = (position.max(1) as usize - 1).min(stories.len());
-    stories.insert(insert_index, StoryId::new(story_number));
+    stories.insert(insert_index, StoryId::new(story_id));
     rewrite_members(r, &iteration, stories).await?;
 
     Ok(format!(
-        "#{story_number} moved to position {position} in iteration #{iteration_number}"
+        "#{story_id} moved to position {position} in iteration #{iteration_number}"
     ))
 }

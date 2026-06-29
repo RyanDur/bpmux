@@ -12,6 +12,12 @@ pub(crate) fn ordered_board_stories(
     crate::product_management::board::ready_order_label::sort_board_ready_by_membership(items)
 }
 
+pub(crate) fn board_stories(
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) -> Vec<serde_json::Value> {
+    ordered_board_stories(refresh)
+}
+
 pub(crate) fn board_iterations(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) -> Vec<serde_json::Value> {

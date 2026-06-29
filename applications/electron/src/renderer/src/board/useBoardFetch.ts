@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
-import { requestBoardHydrate, useBoardSnapshot, useSessionId } from '../transport/session'
+import { useCallback, useState } from 'react'
+import { useStories } from '../transport/session'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
-import type { BoardResponse } from './types'
+import type { Story } from './types'
 
 export interface UseBoardFetchOptions {
   apiBase: string | undefined
 }
 
 export interface UseBoardFetchResult {
-  data: BoardResponse | null
-  setData: React.Dispatch<React.SetStateAction<BoardResponse | null>>
+  data: Story[] | null
+  setData: React.Dispatch<React.SetStateAction<Story[] | null>>
   loading: boolean
   error: string | null
   setError: React.Dispatch<React.SetStateAction<string | null>>
@@ -17,30 +17,24 @@ export interface UseBoardFetchResult {
 }
 
 export const useBoardFetch = ({ apiBase }: UseBoardFetchOptions): UseBoardFetchResult => {
-  const boardSnapshot = useBoardSnapshot()
-  const sessionId = useSessionId()
-  const [data, setData] = useState<BoardResponse | null>(null)
+  const stories = useStories()
+  const [data, setData] = useState<Story[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const offline = apiBase === undefined
   const loading = !offline && data === null && error === null
 
   const refetch = useCallback((): void => {
-    if (offline) return
-    requestBoardHydrate()
-  }, [offline])
-
-  useEffect(() => {
-    if (offline || sessionId === null) return
-    requestBoardHydrate()
-  }, [offline, sessionId])
+    setData(stories)
+    setError(null)
+  }, [stories])
 
   useRefetchOnReconnect(refetch)
 
-  const [lastAppliedSnapshot, setLastAppliedSnapshot] = useState<BoardResponse | null>(null)
-  if (!offline && boardSnapshot !== null && boardSnapshot !== lastAppliedSnapshot) {
-    setLastAppliedSnapshot(boardSnapshot)
-    setData(boardSnapshot)
+  const [lastAppliedStories, setLastAppliedStories] = useState<Story[] | null>(null)
+  if (!offline && stories !== lastAppliedStories) {
+    setLastAppliedStories(stories)
+    setData(stories)
     setError(null)
   }
 

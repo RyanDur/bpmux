@@ -19,7 +19,7 @@ fn submit_args(
     substrate_grounding: &str,
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("story_number".into(), serde_json::json!(number));
+    m.insert("story_id".into(), serde_json::json!(number));
     m.insert("verdict".into(), serde_json::json!(verdict));
     m.insert(
         "substrate_grounding".into(),
@@ -30,7 +30,7 @@ fn submit_args(
 
 fn view_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("story_number".into(), serde_json::json!(number));
+    m.insert("story_id".into(), serde_json::json!(number));
     m
 }
 

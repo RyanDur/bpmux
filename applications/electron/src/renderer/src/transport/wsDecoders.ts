@@ -13,6 +13,9 @@ import {
   type ServerWelcome
 } from './types'
 import { stateDeltaDecoder, stateSnapshotDecoder } from './stateSyncDecoders'
+import { asStoryId } from '../board/types'
+
+const storyId = D.number.andThen(asStoryId)
 
 export const welcomeDecoder: D.Decoder<ServerWelcome> = D.object({
   required: { type: D.literal('welcome'), session_id: D.string }
@@ -41,7 +44,7 @@ export const ptyModeDecoder: D.Decoder<ServerPtyMode> = D.object({
 export const commentsHydratedDecoder: D.Decoder<ServerCommentsHydrated> = D.object({
   required: {
     type: D.literal('comments_hydrated'),
-    story_number: D.number,
+    story_id: storyId,
     comments: D.array(
       D.object({
         required: {
@@ -58,7 +61,7 @@ export const commentsHydratedDecoder: D.Decoder<ServerCommentsHydrated> = D.obje
 export const timelineHydratedDecoder: D.Decoder<ServerTimelineHydrated> = D.object({
   required: {
     type: D.literal('timeline_hydrated'),
-    story_number: D.number,
+    story_id: storyId,
     events: D.array(
       D.object({
         required: {

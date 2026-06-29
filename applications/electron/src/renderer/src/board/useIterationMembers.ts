@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import type { BoardStory } from './types'
+import { asStoryId, type Story } from './types'
 import type { BoardIterationData } from './selectIterations'
 import {
   type PendingMemberPosition,
@@ -11,27 +11,27 @@ import {
 } from './iterationMembers'
 
 export interface IterationMember {
-  story: BoardStory
+  story: Story
   position: number
 }
 
 export interface UseIterationMembersResult {
-  sortedLoose: BoardStory[]
+  sortedLoose: Story[]
   getMembersFor: (iterationNumber: number) => IterationMember[]
   setPending: (storyNumber: number, iterationNumber: number, position: number) => void
 }
 
-const compareLoose = (a: BoardStory, b: BoardStory): number => {
+const compareLoose = (a: Story, b: Story): number => {
   const ap = positionInUnscheduled(a)
   const bp = positionInUnscheduled(b)
   if (ap !== null && bp !== null) return ap - bp
   if (ap !== null) return -1
   if (bp !== null) return 1
-  return a.number - b.number
+  return a.id - b.id
 }
 
 export const useIterationMembers = (
-  stories: BoardStory[],
+  stories: Story[],
   iterations: BoardIterationData[]
 ): UseIterationMembersResult => {
   const [pendingMemberPosition, setPendingMemberPosition] = useState<
@@ -40,8 +40,8 @@ export const useIterationMembers = (
 
   const index = useMemo(() => buildMembershipIndex(iterations), [iterations])
   const storiesByNumber = useMemo(() => {
-    const map = new Map<number, BoardStory>()
-    for (const s of stories) map.set(s.number, s)
+    const map = new Map<number, Story>()
+    for (const s of stories) map.set(s.id, s)
     return map
   }, [stories])
   const iterationsByNumber = useMemo(() => {
@@ -78,14 +78,14 @@ export const useIterationMembers = (
       })
       for (const [numStr, pending] of Object.entries(effectivePending)) {
         if (pending.iterationNumber !== iterationNumber) continue
-        const num = Number(numStr)
+        const num = asStoryId(Number(numStr))
         const s = storiesByNumber.get(num)
         if (!s || isIterationStory(s)) continue
         order = order.filter((x) => x !== num)
         const idx = Math.min(Math.max(pending.position - 1, 0), order.length)
         order.splice(idx, 0, num)
       }
-      return order.map((n, i) => ({ story: storiesByNumber.get(n) as BoardStory, position: i + 1 }))
+      return order.map((n, i) => ({ story: storiesByNumber.get(n) as Story, position: i + 1 }))
     },
     [iterationsByNumber, storiesByNumber, effectivePending]
   )

@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
 import type { BoardIterationData } from './selectIterations'
-import type { BoardStory, IterationReadiness, StoryState } from './types'
+import type { Story, IterationReadiness, StoryState } from './types'
+import { asStoryId } from './types'
 
 let seq = 1
 const iteration = (over: Partial<BoardIterationData>): BoardIterationData => ({
@@ -19,9 +20,9 @@ const member = (
   iterationNumber: number,
   position: number,
   state: StoryState,
-  over: Partial<BoardStory> = {}
-): BoardStory => ({
-  number: seq++,
+  over: Partial<Story> = {}
+): Story => ({
+  id: asStoryId(seq++),
   title: 'a member',
   state,
   labels: ['Feature'],
@@ -46,7 +47,7 @@ const NOT_READY: IterationReadiness = {
   dev_ok: false
 }
 
-const drainingMembers = (iterationNumber: number): BoardStory[] => [
+const drainingMembers = (iterationNumber: number): Story[] => [
   member(iterationNumber, 1, 'delivered'),
   member(iterationNumber, 2, 'delivered'),
   member(iterationNumber, 3, 'delivered'),
@@ -61,7 +62,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
-      stories: members.map((m) => m.number)
+      stories: members.map((m) => m.id)
     })
     const next = iteration({
       number: 200,
@@ -88,7 +89,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
-      stories: members.map((m) => m.number)
+      stories: members.map((m) => m.id)
     })
     const next = iteration({
       number: 200,
@@ -121,7 +122,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
-      stories: members.map((m) => m.number)
+      stories: members.map((m) => m.id)
     })
     const next = iteration({
       number: 200,
@@ -139,7 +140,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
-      stories: members.map((m) => m.number)
+      stories: members.map((m) => m.id)
     })
     expect(deriveCloseApproachNudge([current], members)).toBeNull()
   })
@@ -151,7 +152,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
-      stories: members.map((m) => m.number)
+      stories: members.map((m) => m.id)
     })
     const next = iteration({
       number: 200,
@@ -169,7 +170,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
-      stories: members.map((m) => m.number)
+      stories: members.map((m) => m.id)
     })
     const next = iteration({
       number: 200,
@@ -199,7 +200,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
-      stories: members.map((m) => m.number)
+      stories: members.map((m) => m.id)
     })
     const next = iteration({
       number: 200,

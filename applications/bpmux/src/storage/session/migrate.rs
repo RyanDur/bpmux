@@ -46,11 +46,8 @@ struct LegacyRoutingIdentity {
     cursor_by_id: HashMap<String, String>,
 }
 
-fn is_ephemeral_board_snapshot(msg: &Message) -> bool {
-    matches!(
-        msg.state_delta,
-        Some(StateDeltaPayload::BoardSnapshot { .. })
-    )
+fn is_ephemeral_stories(msg: &Message) -> bool {
+    matches!(msg.state_delta, Some(StateDeltaPayload::Stories { .. }))
 }
 
 pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, MigrationError> {
@@ -68,7 +65,7 @@ pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, Migrati
     let mut migrated = 0;
     let mut filtered = 0;
     for msg in &messages {
-        if is_ephemeral_board_snapshot(msg) {
+        if is_ephemeral_stories(msg) {
             filtered += 1;
             continue;
         }

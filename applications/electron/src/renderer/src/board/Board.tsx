@@ -15,7 +15,7 @@ import { findCurrentIteration } from './currentIteration'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
 import { useIterations } from './useIterations'
 import { iterationNameFromTitle } from './labelSchema'
-import { GROUP_ORDER, type BoardStory, type ColumnState } from './types'
+import { GROUP_ORDER, type Story, type ColumnState } from './types'
 import './Board.css'
 
 type CollapseState = Record<ColumnState, boolean>
@@ -83,13 +83,10 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
   } = useBoardNavigation(stories, navOrder)
 
   const handleStoryMutated = useCallback(
-    (updated: BoardStory) => {
+    (updated: Story) => {
       setData((prev) => {
         if (!prev) return prev
-        return {
-          ...prev,
-          stories: prev.stories.map((s) => (s.number === updated.number ? updated : s))
-        }
+        return prev.map((s) => (s.id === updated.id ? updated : s))
       })
     },
     [setData]
@@ -160,7 +157,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
               apiBase={bridge?.apiBase}
               authToken={bridge?.authToken}
               visible={drilledStory !== null}
-              focusTimeline={focusTimelineFor === renderedDrill.number}
+              focusTimeline={focusTimelineFor === renderedDrill.id}
               onBack={handleBack}
               onStoryMutated={handleStoryMutated}
               onUnmountReady={handleDrillUnmountReady}

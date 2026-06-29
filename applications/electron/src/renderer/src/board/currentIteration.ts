@@ -1,5 +1,5 @@
 import type { BoardIterationData } from './selectIterations'
-import type { BoardStory } from './types'
+import type { Story } from './types'
 
 export const findCurrentIteration = (
   iterations: BoardIterationData[]
@@ -7,12 +7,12 @@ export const findCurrentIteration = (
   return iterations.find((it) => !it.complete && it.is_current) ?? null
 }
 
-export const isMemberOfIteration = (story: BoardStory, iteration: BoardIterationData): boolean => {
-  return iteration.stories.includes(story.number)
+export const isMemberOfIteration = (story: Story, iteration: BoardIterationData): boolean => {
+  return iteration.stories.includes(story.id)
 }
 
 export const epicNumbersInIteration = (
-  stories: BoardStory[],
+  stories: Story[],
   iteration: BoardIterationData
 ): number[] => {
   const epicSet = new Set<number>()

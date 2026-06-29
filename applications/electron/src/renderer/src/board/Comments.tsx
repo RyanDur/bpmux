@@ -10,6 +10,7 @@ import {
   RENDERER_IDENTITY
 } from '../transport/session'
 import type { CommentWire } from '../transport/types'
+import type { StoryId } from './types'
 
 const OPTIMISTIC_ID_BASE = -1_000_000_000
 
@@ -23,15 +24,15 @@ const mergeComments = (
 }
 
 interface Props {
-  storyNumber: number
+  storyId: StoryId
   apiBase: string | undefined
   authToken: string | undefined
   onError: (msg: string) => void
 }
 
-const Comments = ({ storyNumber, apiBase, authToken, onError }: Props): React.JSX.Element => {
+const Comments = ({ storyId, apiBase, authToken, onError }: Props): React.JSX.Element => {
   const boardInvalidateTick = useBoardInvalidateTick()
-  const hydratedComments = useComments(storyNumber)
+  const hydratedComments = useComments(storyId)
   const [optimistic, setOptimistic] = useState<CommentWire[]>([])
   const [commentDraft, setCommentDraft] = useState<string>('')
   const [commentBusy, setCommentBusy] = useState<boolean>(false)
@@ -53,8 +54,8 @@ const Comments = ({ storyNumber, apiBase, authToken, onError }: Props): React.JS
   useEffect(() => {
     if (offline) return
     captureScroll()
-    requestCommentsHydrate(storyNumber)
-  }, [storyNumber, offline, boardInvalidateTick, captureScroll])
+    requestCommentsHydrate(storyId)
+  }, [storyId, offline, boardInvalidateTick, captureScroll])
 
   useEffect(() => {
     if (!wasAtBottomRef.current) return
@@ -79,7 +80,7 @@ const Comments = ({ storyNumber, apiBase, authToken, onError }: Props): React.JS
       setCommentBusy(false)
       return
     }
-    await postStoryComment({ apiBase, authToken }, storyNumber, { body: trimmed }).onFailure(
+    await postStoryComment({ apiBase, authToken }, storyId, { body: trimmed }).onFailure(
       (error) => {
         setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
         setCommentDraft(trimmed)
@@ -87,7 +88,7 @@ const Comments = ({ storyNumber, apiBase, authToken, onError }: Props): React.JS
       }
     ).value
     setCommentBusy(false)
-  }, [apiBase, authToken, commentBusy, commentDraft, onError, storyNumber])
+  }, [apiBase, authToken, commentBusy, commentDraft, onError, storyId])
 
   const insertQuote = useCallback((id: string, author: string, text: string) => {
     const selected = text.trim()

@@ -2,7 +2,7 @@ import { describe, expect, test, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardReorder } from './useBoardReorder'
 import { parentIterationLabel, parseParentIterationLabel } from './labelSchema'
-import type { BoardResponse, BoardStory, IterationMembership } from './types'
+import { asStoryId, type Story, type IterationMembership } from './types'
 
 const { postStoryLabelsMock } = vi.hoisted(() => ({
   postStoryLabelsMock: vi.fn(
@@ -18,8 +18,8 @@ vi.mock('../api/labelsClient', () => ({
 
 const ITER = 9000
 
-const iterationStory = (): BoardStory => ({
-  number: ITER,
+const iterationStory = (): Story => ({
+  id: asStoryId(ITER),
   title: 'Iteration Current',
   state: 'icebox',
   gh_state: 'open',
@@ -30,9 +30,9 @@ const iterationStory = (): BoardStory => ({
   body: ''
 })
 
-const story = (number: number, position: number): BoardStory => ({
-  number,
-  title: `s${number}`,
+const story = (id: number, position: number): Story => ({
+  id: asStoryId(id),
+  title: `s${id}`,
   state: 'ready',
   labels: ['Feature', 'ready'],
   iteration_membership: { iteration_number: ITER, position },
@@ -42,13 +42,13 @@ const story = (number: number, position: number): BoardStory => ({
 })
 
 const reorderWith = (
-  stories: BoardStory[]
+  stories: Story[]
 ): {
   run: (moved: number, targetNumber: number) => void
   membershipOf: (n: number) => IterationMembership | null | undefined
 } => {
-  let current: BoardResponse | null = { stories, fetched_at: '2026-05-10T00:00:00Z' }
-  const setData = (updater: React.SetStateAction<BoardResponse | null>): void => {
+  let current: Story[] | null = stories
+  const setData = (updater: React.SetStateAction<Story[] | null>): void => {
     current = typeof updater === 'function' ? updater(current) : updater
   }
   const { result } = renderHook(() =>
@@ -65,7 +65,7 @@ const reorderWith = (
   )
   return {
     run: (moved, targetNumber) => result.current('ready', moved, targetNumber),
-    membershipOf: (n) => current?.stories.find((s) => s.number === n)?.iteration_membership
+    membershipOf: (n) => current?.find((s) => s.id === n)?.iteration_membership
   }
 }
 

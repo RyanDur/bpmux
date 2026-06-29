@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import { deriveNowView, type NowRow } from './deriveNowView'
 import type { BoardIterationData } from './selectIterations'
-import type { BoardStory } from './types'
+import type { Story } from './types'
+import { asStoryId } from './types'
 
 const iteration = (overrides: Partial<BoardIterationData>): BoardIterationData => ({
   number: 9000,
@@ -14,8 +15,8 @@ const iteration = (overrides: Partial<BoardIterationData>): BoardIterationData =
   ...overrides
 })
 
-const story = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 9100,
+const story = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(9100),
   title: 'member',
   state: 'ready',
   gh_state: 'open',
@@ -34,21 +35,21 @@ describe('#1578 deriveNowView — narrowed NOW render-input', () => {
   })
 
   test('current variant carries the designated iteration and its members', () => {
-    const iter = iteration({ number: 200, is_current: true, stories: [9001] })
-    const member = story({ number: 9001 })
+    const iter = iteration({ number: 200, is_current: true, stories: [asStoryId(9001)] })
+    const member = story({ id: asStoryId(9001) })
     const view = deriveNowView([iter], [member])
     expect(view.kind).toBe('current')
     if (view.kind !== 'current') throw new Error('expected current variant')
     expect(view.iteration.number).toBe(200)
-    expect(view.members.map((m) => m.story.number)).toEqual([9001])
+    expect(view.members.map((m) => m.story.id)).toEqual([9001])
     expect(view.members[0].membership).toEqual({ iteration_number: 200, position: 1 })
   })
 
   test('a story missing iteration_membership is excluded, never a silent member', () => {
     const iter = iteration({ number: 200, is_current: true })
-    const orphan = story({ number: 9002 })
+    const orphan = story({ id: asStoryId(9002) })
     const otherIter = story({
-      number: 9003,
+      id: asStoryId(9003),
       iteration_membership: { iteration_number: 999, position: 100 }
     })
     const view = deriveNowView([iter], [orphan, otherIter])
@@ -57,9 +58,9 @@ describe('#1578 deriveNowView — narrowed NOW render-input', () => {
   })
 
   test('an iteration-typed story in the pool is never a member row', () => {
-    const iter = iteration({ number: 200, is_current: true, stories: [201] })
+    const iter = iteration({ number: 200, is_current: true, stories: [asStoryId(201)] })
     const iterationStoryInPool = story({
-      number: 201,
+      id: asStoryId(201),
       labels: ['iteration']
     })
     const view = deriveNowView([iter], [iterationStoryInPool])

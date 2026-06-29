@@ -1,3 +1,7 @@
+export type StoryId = number & { readonly __brand: 'StoryId' }
+
+export const asStoryId = (n: number): StoryId => n as StoryId
+
 export type StoryState =
   | 'icebox'
   | 'ready'
@@ -71,8 +75,8 @@ export interface OutcomeMembership {
   position: number
 }
 
-export interface BoardStory {
-  number: number
+export interface Story {
+  id: StoryId
   title: string
   state: StoryState
   gh_state?: 'open' | 'closed'
@@ -80,7 +84,7 @@ export interface BoardStory {
   assignees: string[]
   created_at: string
   body: string
-  parent_epic?: number | null
+  parent_epic?: StoryId | null
   iteration_membership?: IterationMembership | null
   iteration_order?: number | null
   is_current?: boolean
@@ -90,11 +94,6 @@ export interface BoardStory {
   outcome_readiness?: OutcomeReadiness | null
   outcome_membership?: OutcomeMembership | null
   readiness?: IterationReadiness | null
-}
-
-export interface BoardResponse {
-  stories: BoardStory[]
-  fetched_at: string
 }
 
 export interface GroupSpec {
@@ -134,25 +133,22 @@ export const storyTypeFromLabels = (labels: string[]): StoryType => {
   return 'unknown'
 }
 
-export const isActiveEpic = (story: BoardStory): boolean => {
+export const isActiveEpic = (story: Story): boolean => {
   if (storyTypeFromLabels(story.labels) !== 'epic') return false
   return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
 }
 
-export const isActiveIteration = (story: BoardStory): boolean => {
+export const isActiveIteration = (story: Story): boolean => {
   if (storyTypeFromLabels(story.labels) !== 'iteration') return false
   return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
 }
 
-export const isClosedIterationMarker = (story: BoardStory): boolean => {
+export const isClosedIterationMarker = (story: Story): boolean => {
   if (storyTypeFromLabels(story.labels) !== 'iteration') return false
   return story.gh_state === 'closed'
 }
 
-export const deriveEpicState = (
-  _epicExplicitState: StoryState,
-  children: BoardStory[]
-): StoryState => {
+export const deriveEpicState = (_epicExplicitState: StoryState, children: Story[]): StoryState => {
   if (children.length === 0 || children.every((c) => c.state === 'icebox')) {
     return 'icebox'
   }
@@ -171,8 +167,8 @@ export const deriveEpicState = (
   return 'icebox'
 }
 
-export const groupStories = (stories: BoardStory[]): Map<ColumnState, BoardStory[]> => {
-  const out = new Map<ColumnState, BoardStory[]>()
+export const groupStories = (stories: Story[]): Map<ColumnState, Story[]> => {
+  const out = new Map<ColumnState, Story[]>()
   for (const group of GROUP_ORDER) out.set(group.state, [])
   for (const story of stories) {
     const list = out.get(

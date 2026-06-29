@@ -32,7 +32,7 @@ pub(crate) fn run_iteration_remove_member(
 ) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("iteration_number".to_string(), serde_json::json!(iteration));
-    args.insert("story_number".to_string(), serde_json::json!(story));
+    args.insert("story_id".to_string(), serde_json::json!(story));
     args.insert("reason".to_string(), serde_json::json!(reason));
     let role = crate::resolve_role(&None);
     let message = super::write::post_rpc_write(
@@ -48,7 +48,7 @@ pub(crate) fn run_iteration_remove_member(
 pub(crate) fn run_iteration_move_member(iteration: u64, story: u64, to: u32) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("iteration_number".to_string(), serde_json::json!(iteration));
-    args.insert("story_number".to_string(), serde_json::json!(story));
+    args.insert("story_id".to_string(), serde_json::json!(story));
     args.insert("position".to_string(), serde_json::json!(to));
     let role = crate::resolve_role(&None);
     let message = super::write::post_rpc_write(
@@ -76,7 +76,7 @@ pub(crate) fn run_iteration_rename(iteration: u64, name: &str) -> anyhow::Result
 pub(crate) fn run_iteration_add(iteration: u64, story: u64, position: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("iteration_number".to_string(), serde_json::json!(iteration));
-    args.insert("story_number".to_string(), serde_json::json!(story));
+    args.insert("story_id".to_string(), serde_json::json!(story));
     args.insert("position".to_string(), serde_json::json!(position));
     super::write::dispatch_write("add_story_to_iteration", args)
 }

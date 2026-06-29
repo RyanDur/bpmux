@@ -19,7 +19,7 @@ fn story(number: u64, title: &str, state: StoryState) -> Story {
 fn project_mirrors_core_identity_fields() {
     let s = story(42, "[Feature] do the thing", StoryState::Ready);
     let view = StoryView::project(&GhLabelCodec, &s);
-    assert_eq!(view.number, 42);
+    assert_eq!(view.id, 42);
     assert_eq!(view.title, "[Feature] do the thing");
     assert_eq!(view.state, "ready");
     assert_eq!(view.gh_state, "open");
@@ -72,7 +72,7 @@ fn story_view_serializes_to_the_renderer_wire_shape() {
     let s = story(5, "wire", StoryState::Ready);
     let view = StoryView::project(&GhLabelCodec, &s);
     let json = serde_json::to_value(&view).expect("StoryView serializes");
-    assert_eq!(json["number"], 5);
+    assert_eq!(json["id"], 5);
     assert_eq!(json["state"], "ready");
     assert_eq!(json["gh_state"], "open");
     assert!(json.get("labels").is_some(), "labels key present");

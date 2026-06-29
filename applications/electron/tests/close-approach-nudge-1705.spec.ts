@@ -129,7 +129,7 @@ const seedCloseApproach = async (
   for (let i = 0; i < currentMembers.length; i += 1) {
     const addResp = await rpc(
       'add_story_to_iteration',
-      { story_number: currentMembers[i], iteration_number: currentIter, position: i + 1 },
+      { story_id: currentMembers[i], iteration_number: currentIter, position: i + 1 },
       'pm'
     )
     expect(addResp.status).toBe(200)
@@ -137,7 +137,7 @@ const seedCloseApproach = async (
 
   const addNextResp = await rpc(
     'add_story_to_iteration',
-    { story_number: nextMember, iteration_number: nextIter, position: 1 },
+    { story_id: nextMember, iteration_number: nextIter, position: 1 },
     'pm'
   )
   expect(addNextResp.status).toBe(200)

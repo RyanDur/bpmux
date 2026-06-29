@@ -1,4 +1,4 @@
-import { type BoardStory } from './types'
+import { type Story } from './types'
 
 export type BadgeKind =
   | 'team-accepted'
@@ -23,7 +23,7 @@ export const blockerNumberFromLabels = (labels: string[]): number | null => {
   return null
 }
 
-export const deriveBadge = (story: BoardStory): BadgeKind | null => {
+export const deriveBadge = (story: Story): BadgeKind | null => {
   if (story.state !== 'delivered' && story.state !== 'accepted') return null
   const normalized = story.labels.map((l) => l.toLowerCase())
   if (story.state === 'delivered' && normalized.includes(BLOCKED_LABEL)) {
@@ -42,7 +42,7 @@ export const deriveBadge = (story: BoardStory): BadgeKind | null => {
   }
 }
 
-export const labelFor = (kind: BadgeKind, state: BoardStory['state']): string => {
+export const labelFor = (kind: BadgeKind, state: Story['state']): string => {
   if (kind === 'blocked') return 'blocked'
   if (kind === 'rework') return 'rework'
   if (kind === 'pending') return 'awaiting verdict'

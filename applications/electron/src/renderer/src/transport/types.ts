@@ -1,6 +1,7 @@
 import type { MessageType } from './messageType'
 import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
+import type { Story, StoryId } from '../board/types'
 
 export interface ServerWelcome {
   type: 'welcome'
@@ -38,7 +39,7 @@ export interface CiSnapshotWire {
 }
 
 export interface DroppedEventWire {
-  story_number: number
+  story_id: StoryId
   error: string
   ts: string
 }
@@ -74,7 +75,7 @@ export type StateDeltaPayload =
   | { domain: 'roster'; members: RosterMemberWire[] }
   | {
       domain: 'iteration_close'
-      promoted: number[]
+      promoted: StoryId[]
       deleted_marker_id: number | null
     }
   | {
@@ -82,7 +83,7 @@ export type StateDeltaPayload =
       blockers: { number: number; title: string; state: string }[]
     }
   | { domain: 'board_invalidated'; reason: string }
-  | { domain: 'board_snapshot'; stories: unknown[] }
+  | { domain: 'stories'; stories: Story[] }
   | { domain: 'outcomes'; outcomes: RoadmapOutcomeData[] }
   | { domain: 'iterations'; iterations: BoardIterationData[] }
   | { domain: 'roadmap'; roadmap: RoadmapCard[] }
@@ -107,7 +108,7 @@ export interface CommentWire {
 
 export interface ServerCommentsHydrated {
   type: 'comments_hydrated'
-  story_number: number
+  story_id: StoryId
   comments: CommentWire[]
 }
 
@@ -121,7 +122,7 @@ export interface TimelineEventWire {
 
 export interface ServerTimelineHydrated {
   type: 'timeline_hydrated'
-  story_number: number
+  story_id: StoryId
   events: TimelineEventWire[]
 }
 
@@ -217,12 +218,12 @@ export interface ClientReactionToggle {
 
 export interface ClientCommentsHydrate {
   type: 'comments_hydrate'
-  story_number: number
+  story_id: StoryId
 }
 
 export interface ClientTimelineHydrate {
   type: 'timeline_hydrate'
-  story_number: number
+  story_id: StoryId
 }
 
 export interface ClientHistoryHydrate {
@@ -236,10 +237,6 @@ export interface ClientHistoryPage {
   request_id: number
   before: string
   limit: number
-}
-
-export interface ClientBoardHydrate {
-  type: 'board_hydrate'
 }
 
 export interface ClientSetOutcomeHorizon {
@@ -270,7 +267,7 @@ export interface ClientReorderIteration {
 export interface ClientAddStoryToIteration {
   type: 'add_story_to_iteration'
   iteration_number: number
-  story_number: number
+  story_id: StoryId
   position: number
 }
 
@@ -286,7 +283,6 @@ export type ClientMessage =
   | ClientTimelineHydrate
   | ClientHistoryHydrate
   | ClientHistoryPage
-  | ClientBoardHydrate
   | ClientSetOutcomeHorizon
   | ClientReorderOutcomeIteration
   | ClientReprioritizeOutcome

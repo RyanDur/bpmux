@@ -74,7 +74,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 fn remove_args(iteration: u64, story: u64, reason: Option<&str>) -> Map<String, Value> {
     let mut m = Map::new();
     m.insert("iteration_number".into(), json!(iteration));
-    m.insert("story_number".into(), json!(story));
+    m.insert("story_id".into(), json!(story));
     if let Some(re) = reason {
         m.insert("reason".into(), json!(re));
     }
@@ -198,7 +198,7 @@ async fn move_member_reorders_within_the_iteration_1762() {
         member_story(720, StoryState::Ready),
     ])
     .await;
-    let args = json!({ "iteration_number": 1700, "story_number": 720, "position": 1 })
+    let args = json!({ "iteration_number": 1700, "story_id": 720, "position": 1 })
         .as_object()
         .cloned()
         .unwrap();

@@ -91,12 +91,12 @@ export const dispatchServerFrame = (
     )
     .or(() =>
       maybe(commentsHydratedDecoder.decode(frame)).map((hydrated) =>
-        dispatch(commentsHydrated(hydrated.story_number, hydrated.comments))
+        dispatch(commentsHydrated(hydrated.story_id, hydrated.comments))
       )
     )
     .or(() =>
       maybe(timelineHydratedDecoder.decode(frame)).map((hydrated) =>
-        dispatch(timelineHydrated(hydrated.story_number, hydrated.events))
+        dispatch(timelineHydrated(hydrated.story_id, hydrated.events))
       )
     )
     .or(() =>

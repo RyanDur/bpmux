@@ -2,7 +2,8 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import BoardGroup from './BoardGroup'
-import type { BoardStory, GroupSpec } from './types'
+import type { Story, GroupSpec } from './types'
+import { asStoryId } from './types'
 
 const makeDataTransfer = (): DataTransfer => {
   const store: Record<string, string> = {}
@@ -24,8 +25,8 @@ const makeDataTransfer = (): DataTransfer => {
 
 const featureLabels = ['Feature']
 
-const story = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 1,
+const story = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(1),
   title: 'stub',
   state: 'ready',
   labels: featureLabels,
@@ -54,7 +55,7 @@ const baseProps = {
 
 describe('#1357 BoardGroup independence', () => {
   test('renders standalone (substrate-axis) — no Board.tsx parent required', () => {
-    const stories = [story({ number: 101, title: 'first ready story' })]
+    const stories = [story({ id: asStoryId(101), title: 'first ready story' })]
     const html = renderToStaticMarkup(<BoardGroup {...baseProps} stories={stories} />)
     expect(html).toContain('data-test="board-group-ready"')
     expect(html).toContain('first ready story')
@@ -73,14 +74,18 @@ describe('#1357 BoardGroup independence', () => {
   })
 
   test('renders count badge derived from stories.length', () => {
-    const stories = [story({ number: 101 }), story({ number: 102 }), story({ number: 103 })]
+    const stories = [
+      story({ id: asStoryId(101) }),
+      story({ id: asStoryId(102) }),
+      story({ id: asStoryId(103) })
+    ]
     const html = renderToStaticMarkup(<BoardGroup {...baseProps} stories={stories} />)
     expect(html).toContain('data-test="board-group-ready-count"')
     expect(html).toContain('(3)')
   })
 
   test('respects collapsed=true (omits the open attribute on details)', () => {
-    const stories = [story({ number: 101 })]
+    const stories = [story({ id: asStoryId(101) })]
     const html = renderToStaticMarkup(
       <BoardGroup {...baseProps} stories={stories} collapsed={true} />
     )
@@ -88,7 +93,7 @@ describe('#1357 BoardGroup independence', () => {
   })
 
   test('respects collapsed=false (open attribute present on details)', () => {
-    const stories = [story({ number: 101 })]
+    const stories = [story({ id: asStoryId(101) })]
     const html = renderToStaticMarkup(
       <BoardGroup {...baseProps} stories={stories} collapsed={false} />
     )
@@ -112,7 +117,7 @@ describe('#1357 BoardGroup independence', () => {
       label: 'Accepted',
       collapsed: true
     }
-    const stories = [story({ number: 101, state: 'accepted', title: 'shipped' })]
+    const stories = [story({ id: asStoryId(101), state: 'accepted', title: 'shipped' })]
     const html = renderToStaticMarkup(
       <BoardGroup {...baseProps} group={acceptedGroup} stories={stories} collapsed={true} />
     )
@@ -127,9 +132,9 @@ describe('#1524 ready-queue real per-row drop fires onReorder(state, moved, targ
   test('dragging a grip and dropping onto a sibling row reorders (not the dropAt/ul path)', () => {
     const onReorder = vi.fn()
     const stories = [
-      story({ number: 701, title: 'first' }),
-      story({ number: 702, title: 'second' }),
-      story({ number: 703, title: 'third' })
+      story({ id: asStoryId(701), title: 'first' }),
+      story({ id: asStoryId(702), title: 'second' }),
+      story({ id: asStoryId(703), title: 'third' })
     ]
     render(<BoardGroup {...baseProps} stories={stories} onReorder={onReorder} />)
 
@@ -147,9 +152,9 @@ describe('#1524 ready-queue real per-row drop fires onReorder(state, moved, targ
   test('dropping onto a non-adjacent row targets that row', () => {
     const onReorder = vi.fn()
     const stories = [
-      story({ number: 701, title: 'first' }),
-      story({ number: 702, title: 'second' }),
-      story({ number: 703, title: 'third' })
+      story({ id: asStoryId(701), title: 'first' }),
+      story({ id: asStoryId(702), title: 'second' }),
+      story({ id: asStoryId(703), title: 'third' })
     ]
     render(<BoardGroup {...baseProps} stories={stories} onReorder={onReorder} />)
 

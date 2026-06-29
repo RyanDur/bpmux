@@ -48,7 +48,7 @@ pub(crate) fn run_reject(number: u64, reason: &Option<String>) -> anyhow::Result
 
 pub(crate) fn run_verdict(number: u64, verdict: &str, grounding: &str) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("story_number".to_string(), serde_json::json!(number));
+    args.insert("story_id".to_string(), serde_json::json!(number));
     args.insert("verdict".to_string(), serde_json::json!(verdict));
     args.insert(
         "substrate_grounding".to_string(),

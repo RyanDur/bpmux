@@ -45,9 +45,9 @@ pub enum ClientMessage {
         user: String,
     },
     #[serde(rename = "comments_hydrate")]
-    CommentsHydrate { story_number: u64 },
+    CommentsHydrate { story_id: u64 },
     #[serde(rename = "timeline_hydrate")]
-    TimelineHydrate { story_number: u64 },
+    TimelineHydrate { story_id: u64 },
     #[serde(rename = "history_hydrate")]
     HistoryHydrate {
         chat_limit: usize,
@@ -59,8 +59,6 @@ pub enum ClientMessage {
         before: String,
         limit: usize,
     },
-    #[serde(rename = "board_hydrate")]
-    BoardHydrate,
     #[serde(rename = "set_outcome_horizon")]
     SetOutcomeHorizon {
         outcome_number: u64,
@@ -82,7 +80,7 @@ pub enum ClientMessage {
     #[serde(rename = "add_story_to_iteration")]
     AddStoryToIteration {
         iteration_number: u64,
-        story_number: u64,
+        story_id: u64,
         position: u32,
     },
 }
@@ -125,12 +123,12 @@ pub enum ServerMessage {
     },
     #[serde(rename = "comments_hydrated")]
     CommentsHydrated {
-        story_number: u64,
+        story_id: u64,
         comments: Vec<serde_json::Value>,
     },
     #[serde(rename = "timeline_hydrated")]
     TimelineHydrated {
-        story_number: u64,
+        story_id: u64,
         events: Vec<serde_json::Value>,
     },
     #[serde(rename = "history_hydrated")]

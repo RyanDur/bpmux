@@ -28,15 +28,12 @@ fn reaction_toggle_frame_deserializes_with_snake_case_fields() {
 }
 
 #[test]
-fn comments_hydrate_frame_deserializes_with_snake_case_story_number() {
-    let wire = r#"{"type":"comments_hydrate","story_number":366}"#;
+fn comments_hydrate_frame_deserializes_with_snake_case_story_id() {
+    let wire = r#"{"type":"comments_hydrate","story_id":366}"#;
     let parsed: ClientMessage =
         serde_json::from_str(wire).expect("renderer comments_hydrate frame must deserialize");
     assert!(
-        matches!(
-            &parsed,
-            ClientMessage::CommentsHydrate { story_number: 366 }
-        ),
+        matches!(&parsed, ClientMessage::CommentsHydrate { story_id: 366 }),
         "expected CommentsHydrate{{366}}, got {parsed:?}"
     );
 }
@@ -44,7 +41,7 @@ fn comments_hydrate_frame_deserializes_with_snake_case_story_number() {
 #[test]
 fn comments_hydrated_reply_serializes_to_the_caller_only_frame() {
     let msg = ServerMessage::CommentsHydrated {
-        story_number: 366,
+        story_id: 366,
         comments: vec![serde_json::json!({
             "id": 7700,
             "author": "designer",
@@ -58,8 +55,8 @@ fn comments_hydrated_reply_serializes_to_the_caller_only_frame() {
         "missing type tag: {json}"
     );
     assert!(
-        json.contains(r#""story_number":366"#),
-        "missing story_number: {json}"
+        json.contains(r#""story_id":366"#),
+        "missing story_id: {json}"
     );
     assert!(
         json.contains(r#""author":"designer""#),
@@ -68,15 +65,12 @@ fn comments_hydrated_reply_serializes_to_the_caller_only_frame() {
 }
 
 #[test]
-fn timeline_hydrate_frame_deserializes_with_snake_case_story_number() {
-    let wire = r#"{"type":"timeline_hydrate","story_number":366}"#;
+fn timeline_hydrate_frame_deserializes_with_snake_case_story_id() {
+    let wire = r#"{"type":"timeline_hydrate","story_id":366}"#;
     let parsed: ClientMessage =
         serde_json::from_str(wire).expect("renderer timeline_hydrate frame must deserialize");
     assert!(
-        matches!(
-            &parsed,
-            ClientMessage::TimelineHydrate { story_number: 366 }
-        ),
+        matches!(&parsed, ClientMessage::TimelineHydrate { story_id: 366 }),
         "expected TimelineHydrate{{366}}, got {parsed:?}"
     );
 }
@@ -84,7 +78,7 @@ fn timeline_hydrate_frame_deserializes_with_snake_case_story_number() {
 #[test]
 fn timeline_hydrated_reply_serializes_to_the_caller_only_frame() {
     let msg = ServerMessage::TimelineHydrated {
-        story_number: 366,
+        story_id: 366,
         events: vec![serde_json::json!({
             "event": "labeled",
             "actor": "dev",
@@ -98,8 +92,8 @@ fn timeline_hydrated_reply_serializes_to_the_caller_only_frame() {
         "missing type tag: {json}"
     );
     assert!(
-        json.contains(r#""story_number":366"#),
-        "missing story_number: {json}"
+        json.contains(r#""story_id":366"#),
+        "missing story_id: {json}"
     );
     assert!(
         json.contains(r#""label":"delivered""#),
@@ -185,17 +179,6 @@ fn history_page_loaded_reply_echoes_request_id_caller_only() {
     assert!(
         json.contains(r#""text":"older""#),
         "missing page payload: {json}"
-    );
-}
-
-#[test]
-fn board_hydrate_frame_deserializes_as_unit_variant() {
-    let wire = r#"{"type":"board_hydrate"}"#;
-    let parsed: ClientMessage =
-        serde_json::from_str(wire).expect("renderer board_hydrate frame must deserialize");
-    assert!(
-        matches!(&parsed, ClientMessage::BoardHydrate),
-        "expected BoardHydrate, got {parsed:?}"
     );
 }
 

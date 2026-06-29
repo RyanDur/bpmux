@@ -2,7 +2,7 @@ import { useIterationCollapse } from './useIterationCollapse'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
 import { RENDERER_IDENTITY } from '../transport/session'
 import { findCurrentIteration } from './currentIteration'
-import type { BoardStory } from './types'
+import type { Story } from './types'
 import type { BoardIterationData } from './selectIterations'
 import { type IterationDragPayload } from './iterationMembers'
 import { SortableList } from './SortableList'
@@ -14,7 +14,7 @@ import IterationRow from './IterationRow'
 import UnscheduledList from './UnscheduledList'
 
 interface Props {
-  stories: BoardStory[]
+  stories: Story[]
   onOpen: (n: number) => void
   onReorderAnnounce?: (text: string) => void
 }

@@ -1,21 +1,21 @@
 import { useCallback, useMemo, useState } from 'react'
-import type { BoardResponse, BoardStory } from './types'
+import type { Story } from './types'
 
 export interface UsePendingReadyOrderResult {
   setPendingReadyOrder: (storyNumber: number, position: number) => void
   clearPendingReadyOrder: (storyNumbers: number[]) => void
-  effectiveReadyPosition: (story: BoardStory) => number | null
+  effectiveReadyPosition: (story: Story) => number | null
 }
 
-export const usePendingReadyOrder = (data: BoardResponse | null): UsePendingReadyOrderResult => {
-  const stories = useMemo(() => data?.stories ?? [], [data])
+export const usePendingReadyOrder = (data: Story[] | null): UsePendingReadyOrderResult => {
+  const stories = useMemo(() => data ?? [], [data])
   const [pending, setPending] = useState<Record<number, number>>({})
 
   const effective = useMemo<Record<number, number>>(() => {
     const out: Record<number, number> = {}
     for (const [numStr, position] of Object.entries(pending)) {
       const num = Number(numStr)
-      const story = stories.find((s) => s.number === num)
+      const story = stories.find((s) => s.id === num)
       const actual = story?.iteration_membership?.position ?? null
       if (actual === position) continue
       out[num] = position
@@ -42,8 +42,8 @@ export const usePendingReadyOrder = (data: BoardResponse | null): UsePendingRead
   }, [])
 
   const effectiveReadyPosition = useCallback(
-    (story: BoardStory): number | null => {
-      const held = effective[story.number]
+    (story: Story): number | null => {
+      const held = effective[story.id]
       if (held !== undefined) return held
       return story.iteration_membership?.position ?? null
     },

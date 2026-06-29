@@ -62,7 +62,7 @@ async fn bpmux_ready_json_mode_is_machine_parseable() {
         .expect("bpmux ready --json must emit parseable JSON for agent column-free parsing");
     let arr = parsed.as_array().expect("ready --json is a JSON array");
     assert!(
-        arr.iter().any(|s| s["number"].as_u64() == Some(1234)),
+        arr.iter().any(|s| s["id"].as_u64() == Some(1234)),
         "the --json array carries the structured ready stories; got: {parsed}"
     );
 }

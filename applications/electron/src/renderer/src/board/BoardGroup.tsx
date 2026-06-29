@@ -1,11 +1,11 @@
 import StoryRow from './StoryRow'
 import { SortableList } from './SortableList'
 import { READY_STORY_DRAG } from './sortableDragConfigs'
-import { isClosedIterationMarker, type BoardStory, type ColumnState, type GroupSpec } from './types'
+import { isClosedIterationMarker, type Story, type ColumnState, type GroupSpec } from './types'
 
 export interface BoardGroupProps {
   group: GroupSpec
-  stories: BoardStory[]
+  stories: Story[]
   epicTitleByNumber: Map<number, string>
   loading: boolean
   selectedNumber: number | null
@@ -75,12 +75,12 @@ const BoardGroup = ({
         ) : stories.length === 0 ? (
           <p className="board-group-empty">none</p>
         ) : (
-          <SortableList<number, BoardStory>
+          <SortableList<number, Story>
             items={stories}
-            keyOf={(s) => s.number}
-            rowKey={(s) => s.number}
+            keyOf={(s) => s.id}
+            rowKey={(s) => s.id}
             config={READY_STORY_DRAG}
-            buildPayload={(s) => s.number}
+            buildPayload={(s) => s.id}
             onReorder={(moved, targetNumber) => {
               if (onReorder === undefined) return
               onReorder(group.state, moved, targetNumber)
@@ -97,7 +97,7 @@ const BoardGroup = ({
                       ? epicTitleByNumber.get(story.parent_epic)
                       : undefined
                   }
-                  selected={story.number === selectedNumber}
+                  selected={story.id === selectedNumber}
                   draggable={rowDraggable}
                   dragging={dragging}
                   position={index + 1}
@@ -109,7 +109,7 @@ const BoardGroup = ({
                           if (direction === 'down' && index === stories.length - 1) return
                           const target =
                             direction === 'up' ? stories[index - 1] : stories[index + 1]
-                          onReorder(group.state, story.number, target.number)
+                          onReorder(group.state, story.id, target.id)
                         }
                       : undefined
                   }

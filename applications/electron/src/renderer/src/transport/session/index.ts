@@ -1,6 +1,5 @@
 import { dispatchSession } from './store'
 import {
-  boardHydrateRequested,
   chatSendRequested,
   commentsHydrateRequested,
   frameReceived,
@@ -15,6 +14,7 @@ import {
   type SessionConfig
 } from './actions'
 import { nextOlderHistoryRequest } from './olderHistory'
+import type { StoryId } from '../../board/types'
 import type { HistoryMessageWire } from '../types'
 import { startSentFrameCapture } from './testCapture'
 import type { ClientMessage } from '../types'
@@ -28,7 +28,7 @@ export {
   useReactionsByChannel,
   useCiSnapshot,
   useSyncStatus,
-  useBoardSnapshot,
+  useStories,
   useBoardInvalidateTick,
   useComments,
   useTimelineEvents
@@ -56,11 +56,11 @@ export const toggleReaction = (
   user: string
 ): void => dispatchSession(reactionToggleRequested(channel, messageKey, emoji, user))
 
-export const requestCommentsHydrate = (storyNumber: number): void =>
-  dispatchSession(commentsHydrateRequested(storyNumber))
+export const requestCommentsHydrate = (storyId: StoryId): void =>
+  dispatchSession(commentsHydrateRequested(storyId))
 
-export const requestTimelineHydrate = (storyNumber: number): void =>
-  dispatchSession(timelineHydrateRequested(storyNumber))
+export const requestTimelineHydrate = (storyId: StoryId): void =>
+  dispatchSession(timelineHydrateRequested(storyId))
 
 export const requestOlderHistory = (
   before: string,
@@ -70,8 +70,6 @@ export const requestOlderHistory = (
   dispatchSession(olderHistoryRequested(requestId, before, limit))
   return promise
 }
-
-export const requestBoardHydrate = (): void => dispatchSession(boardHydrateRequested())
 
 export const sendPtySubscribe = (terminalId: string): void =>
   dispatchSession(ptySubscribeRequested(terminalId))

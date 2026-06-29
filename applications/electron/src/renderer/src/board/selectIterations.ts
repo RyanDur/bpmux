@@ -1,4 +1,4 @@
-import type { IterationReadiness } from './types'
+import type { IterationReadiness, StoryId } from './types'
 
 export interface BoardIterationData {
   number: number
@@ -7,7 +7,7 @@ export interface BoardIterationData {
   is_current: boolean
   complete: boolean
   readiness: IterationReadiness
-  stories: number[]
+  stories: StoryId[]
 }
 
 export interface IterationsState {

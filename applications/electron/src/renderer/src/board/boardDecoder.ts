@@ -1,5 +1,7 @@
 import * as D from 'schemawax'
-import { type BoardResponse } from './types'
+import { asStoryId } from './types'
+
+const storyId = D.number.andThen(asStoryId)
 
 const iterationMembership = D.object({
   required: { iteration_number: D.number, position: D.number }
@@ -39,9 +41,9 @@ const acceptor = D.literalUnion('team', 'owner', 'dev')
 
 const horizon = D.literalUnion('now', 'next', 'later')
 
-const boardStory = D.object({
+export const story = D.object({
   required: {
-    number: D.number,
+    id: storyId,
     title: D.string,
     state: storyState,
     labels: D.array(D.string),
@@ -51,7 +53,7 @@ const boardStory = D.object({
   },
   optional: {
     gh_state: D.literalUnion('open', 'closed'),
-    parent_epic: D.nullable(D.number),
+    parent_epic: D.nullable(storyId),
     iteration_membership: D.nullable(iterationMembership),
     iteration_order: D.nullable(D.number),
     is_current: D.boolean,
@@ -61,12 +63,5 @@ const boardStory = D.object({
     outcome_readiness: D.nullable(outcomeReadiness),
     outcome_membership: D.nullable(outcomeMembership),
     readiness: D.nullable(iterationReadiness)
-  }
-})
-
-export const boardResponseDecoder: D.Decoder<BoardResponse> = D.object({
-  required: {
-    stories: D.array(boardStory),
-    fetched_at: D.string
   }
 })

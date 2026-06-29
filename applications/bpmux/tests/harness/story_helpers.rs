@@ -81,7 +81,7 @@ pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_
         .call_tool(
             "submit_verdict",
             serde_json::json!({
-                "story_number": story_number,
+                "story_id": story_number,
                 "verdict": "verified",
                 "substrate_grounding": "test-harness seed: designer verdict for accept-evidence"
             }),
@@ -91,7 +91,7 @@ pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_
     dev.call_tool(
         "submit_verdict",
         serde_json::json!({
-            "story_number": story_number,
+            "story_id": story_number,
             "verdict": "verified",
             "substrate_grounding": "test-harness seed: dev verdict for accept-evidence"
         }),
@@ -126,7 +126,7 @@ pub async fn seed_team_verifiable_evidence_with_mock_gh(
         .call_tool(
             "submit_verdict",
             serde_json::json!({
-                "story_number": story_number,
+                "story_id": story_number,
                 "verdict": "verified",
                 "substrate_grounding": "test-harness seed: designer verdict for accept-evidence"
             }),
@@ -136,7 +136,7 @@ pub async fn seed_team_verifiable_evidence_with_mock_gh(
     dev.call_tool(
         "submit_verdict",
         serde_json::json!({
-            "story_number": story_number,
+            "story_id": story_number,
             "verdict": "verified",
             "substrate_grounding": "test-harness seed: dev verdict for accept-evidence"
         }),

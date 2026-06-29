@@ -1,5 +1,5 @@
 import { parseUnscheduledPosition } from './labelSchema'
-import { storyTypeFromLabels, type BoardStory, type IterationMembership } from './types'
+import { storyTypeFromLabels, type Story, type IterationMembership } from './types'
 
 export interface DragPayload {
   storyNumber: number
@@ -30,7 +30,7 @@ export const buildMembershipIndex = (
   return index
 }
 
-export const isIterationStory = (story: BoardStory): boolean =>
+export const isIterationStory = (story: Story): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'
 
 export const positionInParentIteration = (
@@ -45,7 +45,7 @@ export const positionInParentIteration = (
   return null
 }
 
-export const positionInUnscheduled = (story: BoardStory): number | null => {
+export const positionInUnscheduled = (story: Story): number | null => {
   for (const label of story.labels) {
     const n = parseUnscheduledPosition(label)
     if (n !== null) return n
@@ -53,10 +53,10 @@ export const positionInUnscheduled = (story: BoardStory): number | null => {
   return null
 }
 
-export const isLooseStory = (story: BoardStory, index: MembershipIndex): boolean => {
+export const isLooseStory = (story: Story, index: MembershipIndex): boolean => {
   if (isIterationStory(story)) return false
   if (story.state !== 'icebox') return false
-  return !index.has(story.number)
+  return !index.has(story.id)
 }
 
 export const eagerReorder = <T>(

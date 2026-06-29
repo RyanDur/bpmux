@@ -123,7 +123,7 @@ fn designer_firing_pass_desk_check_with_broadcast_succeeds() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
                 }),

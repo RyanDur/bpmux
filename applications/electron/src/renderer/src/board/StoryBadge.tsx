@@ -1,9 +1,9 @@
-import { type BoardStory } from './types'
+import { type Story } from './types'
 import { blockerNumberFromLabels, deriveBadge, labelFor, type BadgeKind } from './StoryBadge.utils'
 
 const tooltipFor = (
   kind: BadgeKind,
-  state: BoardStory['state'],
+  state: Story['state'],
   blockerNumber: number | null
 ): string => {
   if (kind === 'blocked') {
@@ -36,7 +36,7 @@ const KIND_GLYPH: Record<Exclude<BadgeKind, 'blocked'>, string> = {
 }
 
 interface Props {
-  story: BoardStory
+  story: Story
   onOpenTimeline?: (storyNumber: number) => void
   onOpenBlocker?: (storyNumber: number) => void
 }
@@ -52,10 +52,10 @@ const StoryBadge = ({ story, onOpenTimeline, onOpenBlocker }: Props): React.JSX.
   const handler =
     kind === 'blocked'
       ? onOpenBlocker
-        ? () => onOpenBlocker(blockerNumber ?? story.number)
+        ? () => onOpenBlocker(blockerNumber ?? story.id)
         : undefined
       : onOpenTimeline
-        ? () => onOpenTimeline(story.number)
+        ? () => onOpenTimeline(story.id)
         : undefined
   const ariaSuffix =
     kind === 'blocked' ? (blockerNumber !== null ? ' — open blocker' : '') : ' — open timeline'

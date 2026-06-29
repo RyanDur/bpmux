@@ -50,7 +50,7 @@ export const addStoryToIterationViaRpc = async (
 ): Promise<void> => {
   const addResp = await rpc(
     'add_story_to_iteration',
-    { story_number: storyNumber, iteration_number: iterationNumber, position },
+    { story_id: storyNumber, iteration_number: iterationNumber, position },
     'pm'
   )
   expect(addResp.status).toBe(200)

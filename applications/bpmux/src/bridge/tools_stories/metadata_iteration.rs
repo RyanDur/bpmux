@@ -26,10 +26,10 @@ pub(crate) async fn handle_add_story_to_iteration(
         workflow.owner_role_id().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
-    let story_number = args
-        .get("story_number")
+    let story_id = args
+        .get("story_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'story_number' argument")?;
+        .ok_or("missing 'story_id' argument")?;
     let iteration_number = args
         .get("iteration_number")
         .and_then(|v| v.as_u64())
@@ -38,20 +38,19 @@ pub(crate) async fn handle_add_story_to_iteration(
         .get("position")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'position' argument")? as u32;
-    if story_number == iteration_number {
+    if story_id == iteration_number {
         return Err(format!(
-            "story #{story_number} cannot be added to itself as iteration-member"
+            "story #{story_id} cannot be added to itself as iteration-member"
         ));
     }
     let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
-    ensure_story_in_canonical_store(r, story_number).await?;
+    ensure_story_in_canonical_store(r, story_id).await?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
     for other in r.iterations() {
         let Some(other_number) = other.id().saved_id().map(|id| id.value()) else {
             continue;
         };
-        if other_number == iteration_number || !other.stories.contains(&StoryId::new(story_number))
-        {
+        if other_number == iteration_number || !other.stories.contains(&StoryId::new(story_id)) {
             continue;
         }
         let mut other_rel = other
@@ -60,9 +59,7 @@ pub(crate) async fn handle_add_story_to_iteration(
             .as_deref()
             .and_then(IterationRelationships::read_from_body)
             .unwrap_or_default();
-        other_rel
-            .stories
-            .retain(|n| *n != StoryId::new(story_number));
+        other_rel.stories.retain(|n| *n != StoryId::new(story_id));
         let other_body =
             other_rel.write_into_body(other.content.body.as_deref().unwrap_or_default());
         r.update_body(other_number, other_body)
@@ -75,15 +72,15 @@ pub(crate) async fn handle_add_story_to_iteration(
         .as_deref()
         .and_then(IterationRelationships::read_from_body)
         .unwrap_or_default();
-    rel.stories.retain(|n| *n != StoryId::new(story_number));
+    rel.stories.retain(|n| *n != StoryId::new(story_id));
     let insert_index = (position.max(1) as usize - 1).min(rel.stories.len());
-    rel.stories.insert(insert_index, StoryId::new(story_number));
+    rel.stories.insert(insert_index, StoryId::new(story_id));
     let body = rel.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
     r.update_body(iteration_number, body)
         .await
         .map_err(|e| format!("#{iteration_number} add-member body update failed: {e}"))?;
     Ok(format!(
-        "#{story_number} added to iteration #{iteration_number} at position {position}"
+        "#{story_id} added to iteration #{iteration_number} at position {position}"
     ))
 }
 

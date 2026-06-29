@@ -9,17 +9,14 @@ use crate::transport::protocol::ServerMessage;
 pub(super) async fn handle_comments_hydrate(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
-    story_number: u64,
+    story_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match ctx.tracker.clone() {
         Some(tracker) => {
             let reply_tx = ctx.reply_tx.clone();
             tokio::spawn(async move {
-                let reply = match tracker.list_story_comments(story_number).await {
-                    Ok(comments) => ServerMessage::CommentsHydrated {
-                        story_number,
-                        comments,
-                    },
+                let reply = match tracker.list_story_comments(story_id).await {
+                    Ok(comments) => ServerMessage::CommentsHydrated { story_id, comments },
                     Err(e) => ServerMessage::Error {
                         reason: format!("list comments failed: {e}"),
                     },
@@ -74,50 +71,6 @@ pub(super) async fn handle_history_hydrate(
     Ok(())
 }
 
-pub(super) async fn handle_board_hydrate(
-    ctx: &ClientCtx<'_>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let orchestrator = ctx.orchestrator.clone();
-    let tracker = ctx.tracker.clone();
-    let reply_tx = ctx.reply_tx.clone();
-    tokio::spawn(async move {
-        let stories: Option<Vec<serde_json::Value>> = if let Some(refresh) = orchestrator.as_ref() {
-            if refresh.store_is_empty() {
-                let _ = refresh.refresh_all().await;
-            }
-            Some(crate::transport::rest::ordered_board_stories(refresh))
-        } else if let Some(tracker) = tracker.as_ref() {
-            tracker.fetch_board_stories().await.ok().map(
-                crate::product_management::board::ready_order_label::sort_board_ready_by_membership,
-            )
-        } else {
-            None
-        };
-        if let Some(stories) = stories {
-            let msg =
-                crate::transport::rest::board_snapshot_message(serde_json::Value::Array(stories));
-            let _ = reply_tx.send(ServerMessage::from(msg));
-        }
-        if let Some(refresh) = orchestrator.as_ref() {
-            let outcomes =
-                serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
-            let _ = reply_tx.send(ServerMessage::from(
-                crate::transport::rest::outcomes_message(outcomes),
-            ));
-            let iterations =
-                serde_json::Value::Array(crate::transport::rest::board_iterations(refresh));
-            let _ = reply_tx.send(ServerMessage::from(
-                crate::transport::rest::iterations_message(iterations),
-            ));
-            let roadmap = serde_json::Value::Array(crate::transport::rest::board_roadmap(refresh));
-            let _ = reply_tx.send(ServerMessage::from(
-                crate::transport::rest::roadmap_message(roadmap),
-            ));
-        }
-    });
-    Ok(())
-}
-
 pub(super) async fn handle_history_page(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
@@ -156,17 +109,14 @@ pub(super) async fn handle_history_page(
 pub(super) async fn handle_timeline_hydrate(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
-    story_number: u64,
+    story_id: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match ctx.tracker.clone() {
         Some(tracker) => {
             let reply_tx = ctx.reply_tx.clone();
             tokio::spawn(async move {
-                let reply = match tracker.list_story_timeline(story_number).await {
-                    Ok(events) => ServerMessage::TimelineHydrated {
-                        story_number,
-                        events,
-                    },
+                let reply = match tracker.list_story_timeline(story_id).await {
+                    Ok(events) => ServerMessage::TimelineHydrated { story_id, events },
                     Err(e) => ServerMessage::Error {
                         reason: format!("list timeline failed: {e}"),
                     },

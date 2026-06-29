@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use super::shared::{broadcast_board_invalidate, broadcast_board_snapshot, err_body, json_headers};
+use super::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
 use crate::session;
 
 #[derive(Deserialize)]
@@ -80,7 +80,7 @@ pub async fn post_story_labels(
         }
     }
     broadcast_board_invalidate(&session);
-    broadcast_board_snapshot(&session, &refresh);
+    broadcast_stories(&session, &refresh);
     (
         StatusCode::OK,
         json_headers(),

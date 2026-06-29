@@ -19,7 +19,7 @@ fn add_story_to_iteration_rejects_dev_caller_per_pm_lane_gate() {
                 "add_story_to_iteration",
                 serde_json::json!({
                     "iteration_number": 1397,
-                    "story_number": 1500,
+                    "story_id": 1500,
                     "position": 100
                 }),
             )
@@ -50,7 +50,7 @@ fn add_story_to_iteration_rejects_missing_iteration_number() {
         let err = pm
             .call_tool(
                 "add_story_to_iteration",
-                serde_json::json!({"story_number": 1500, "position": 100}),
+                serde_json::json!({"story_id": 1500, "position": 100}),
             )
             .await
             .expect_err("missing iteration_number should be rejected");
@@ -65,7 +65,7 @@ fn add_story_to_iteration_rejects_missing_iteration_number() {
 }
 
 #[test]
-fn add_story_to_iteration_rejects_missing_story_number() {
+fn add_story_to_iteration_rejects_missing_story_id() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -78,10 +78,10 @@ fn add_story_to_iteration_rejects_missing_story_number() {
                 serde_json::json!({"iteration_number": 1397, "position": 100}),
             )
             .await
-            .expect_err("missing story_number should be rejected");
+            .expect_err("missing story_id should be rejected");
 
         assert!(
-            err.contains("story_number"),
+            err.contains("story_id"),
             "rejection names the missing field; got {err}"
         );
 
@@ -100,7 +100,7 @@ fn add_story_to_iteration_rejects_missing_position() {
         let err = pm
             .call_tool(
                 "add_story_to_iteration",
-                serde_json::json!({"iteration_number": 1397, "story_number": 1500}),
+                serde_json::json!({"iteration_number": 1397, "story_id": 1500}),
             )
             .await
             .expect_err("missing position should be rejected");

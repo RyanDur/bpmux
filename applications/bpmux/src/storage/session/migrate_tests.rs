@@ -40,17 +40,14 @@ fn delta(payload: StateDeltaPayload) -> Message {
     msg
 }
 
-fn board_snapshot() -> Message {
-    delta(StateDeltaPayload::BoardSnapshot {
+fn stories_delta() -> Message {
+    delta(StateDeltaPayload::Stories {
         stories: serde_json::json!([]),
     })
 }
 
-fn is_board_snapshot(msg: &Message) -> bool {
-    matches!(
-        msg.state_delta,
-        Some(StateDeltaPayload::BoardSnapshot { .. })
-    )
+fn is_stories_delta(msg: &Message) -> bool {
+    matches!(msg.state_delta, Some(StateDeltaPayload::Stories { .. }))
 }
 
 fn seed_jsonl(dir: &Path, msgs: &[Message]) {
@@ -74,19 +71,19 @@ fn drops_only_board_snapshot_keeps_all_else_in_order() {
         dir.path(),
         &[
             chat("first"),
-            board_snapshot(),
+            stories_delta(),
             delta(StateDeltaPayload::Roster { members: vec![] }),
             chat("second"),
             delta(StateDeltaPayload::BoardInvalidated {
                 reason: "board changed".to_string(),
             }),
-            board_snapshot(),
+            stories_delta(),
             chat("third"),
         ],
     );
 
     let report = migrate_file_log_to_sqlite(dir.path()).unwrap();
-    assert_eq!(report.filtered, 2, "both BoardSnapshot deltas dropped");
+    assert_eq!(report.filtered, 2, "both Stories deltas dropped");
     assert_eq!(
         report.migrated, 5,
         "chat x3 + Roster + BoardInvalidated migrated (roster is durable per #1642; BoardInvalidated is a replay-event)"
@@ -94,8 +91,8 @@ fn drops_only_board_snapshot_keeps_all_else_in_order() {
 
     let migrated = read_target(dir.path());
     assert!(
-        migrated.iter().all(|m| !is_board_snapshot(m)),
-        "zero BoardSnapshot deltas survive in the migrated store"
+        migrated.iter().all(|m| !is_stories_delta(m)),
+        "zero Stories deltas survive in the migrated store"
     );
     assert_eq!(
         migrated
@@ -131,7 +128,7 @@ fn drops_only_board_snapshot_keeps_all_else_in_order() {
 #[test]
 fn rerun_is_idempotent_and_adds_no_rows() {
     let dir = TempDir::new().unwrap();
-    seed_jsonl(dir.path(), &[chat("a"), board_snapshot(), chat("b")]);
+    seed_jsonl(dir.path(), &[chat("a"), stories_delta(), chat("b")]);
 
     let first = migrate_file_log_to_sqlite(dir.path()).unwrap();
     assert_eq!(first.migrated, 2);
@@ -154,7 +151,7 @@ fn rerun_is_idempotent_and_adds_no_rows() {
 #[test]
 fn recovers_from_a_partial_interrupted_run() {
     let dir = TempDir::new().unwrap();
-    seed_jsonl(dir.path(), &[chat("a"), board_snapshot(), chat("b")]);
+    seed_jsonl(dir.path(), &[chat("a"), stories_delta(), chat("b")]);
 
     let partial = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
     partial

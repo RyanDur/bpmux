@@ -6,6 +6,7 @@ import { boardTabs } from './BoardTabs.page'
 import { buildProps, epicStory, featureStory } from './BoardTabs.fixtures'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
 import { resetSessionForTest } from '../transport/session/store'
+import { asStoryId } from './types'
 
 afterEach(() => {
   cleanup()
@@ -36,20 +37,20 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
         number: 1552,
         title: 'Iteration Carina',
         is_current: true,
-        stories: [9001, 9002]
+        stories: [asStoryId(9001), asStoryId(9002)]
       })
     ])
     const m1 = featureStory({
-      number: 9001,
+      id: asStoryId(9001),
       state: 'ready',
       iteration_membership: { iteration_number: 1552, position: 100 }
     })
     const m2 = featureStory({
-      number: 9002,
+      id: asStoryId(9002),
       state: 'in-progress',
       iteration_membership: { iteration_number: 1552, position: 200 }
     })
-    const nonMember = featureStory({ number: 9999, state: 'ready' })
+    const nonMember = featureStory({ id: asStoryId(9999), state: 'ready' })
     render(<BoardTabs {...buildProps([m1, m2, nonMember])} />)
     expect(boardTabs.panelHasStory('now', 9001)).toBe(true)
     expect(boardTabs.panelHasStory('now', 9002)).toBe(true)
@@ -68,11 +69,11 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
         number: 1500,
         title: 'Iteration Sextans',
         is_current: true,
-        stories: [9101]
+        stories: [asStoryId(9101)]
       })
     ])
     const inFlightChild = featureStory({
-      number: 9101,
+      id: asStoryId(9101),
       state: 'in-progress',
       iteration_membership: { iteration_number: 1500, position: 100 }
     })
@@ -86,19 +87,19 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
         number: 1500,
         title: 'Iteration Sextans',
         is_current: true,
-        stories: [9101]
+        stories: [asStoryId(9101)]
       })
     ])
-    const epicIn = epicStory({ number: 8001, title: 'Epic In' })
-    const epicOut = epicStory({ number: 8002, title: 'Epic Out' })
+    const epicIn = epicStory({ id: asStoryId(8001), title: 'Epic In' })
+    const epicOut = epicStory({ id: asStoryId(8002), title: 'Epic Out' })
     const memberOfIter = featureStory({
-      number: 9101,
-      parent_epic: 8001,
+      id: asStoryId(9101),
+      parent_epic: asStoryId(8001),
       iteration_membership: { iteration_number: 1500, position: 100 }
     })
     const memberOfOther = featureStory({
-      number: 9102,
-      parent_epic: 8002,
+      id: asStoryId(9102),
+      parent_epic: asStoryId(8002),
       iteration_membership: { iteration_number: 9999, position: 100 }
     })
     render(<BoardTabs {...buildProps([epicIn, epicOut, memberOfIter, memberOfOther])} />)
@@ -108,7 +109,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
 
   test('Scenario 4: Plan tab renders active Epics, the Iteration component, and the icebox section', async () => {
     seedIterations([boardIteration({ number: 1500, title: 'Iteration Sextans' })])
-    const epic = epicStory({ number: 8001, title: 'Epic Foo' })
+    const epic = epicStory({ id: asStoryId(8001), title: 'Epic Foo' })
     render(<BoardTabs {...buildProps([epic])} />)
     await boardTabs.selectTab('plan')
     expect(boardTabs.panelHasGroup('plan', 'Icebox')).toBe(true)
@@ -143,10 +144,15 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
 
   test('Scenario 10: a current-iteration member appears in Now, not in Done', async () => {
     seedIterations([
-      boardIteration({ number: 1552, title: 'Iteration Carina', is_current: true, stories: [9101] })
+      boardIteration({
+        number: 1552,
+        title: 'Iteration Carina',
+        is_current: true,
+        stories: [asStoryId(9101)]
+      })
     ])
     const member = featureStory({
-      number: 9101,
+      id: asStoryId(9101),
       state: 'ready',
       iteration_membership: { iteration_number: 1552, position: 100 }
     })
@@ -158,10 +164,10 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
 
   test('Scenario regression: legacy iteration-{Name}.{N} label still derives current-iter Epic', () => {
     seedIterations([boardIteration({ number: 1500, title: 'Iteration Sextans' })])
-    const epicIn = epicStory({ number: 8001, title: 'Epic Legacy' })
+    const epicIn = epicStory({ id: asStoryId(8001), title: 'Epic Legacy' })
     const legacyMember = featureStory({
-      number: 9101,
-      parent_epic: 8001,
+      id: asStoryId(9101),
+      parent_epic: asStoryId(8001),
       labels: ['feature', iterationLabel('Sextans', 100)]
     })
     render(<BoardTabs {...buildProps([epicIn, legacyMember])} />)

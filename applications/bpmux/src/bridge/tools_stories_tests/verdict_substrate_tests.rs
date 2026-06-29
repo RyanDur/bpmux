@@ -89,7 +89,7 @@ mod verdict_substrate_integration_1407 {
 
     fn verdict_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
         let mut m = serde_json::Map::new();
-        m.insert("story_number".into(), serde_json::json!(number));
+        m.insert("story_id".into(), serde_json::json!(number));
         m.insert("verdict".into(), serde_json::json!("verified"));
         m.insert(
             "substrate_grounding".into(),
@@ -316,7 +316,7 @@ mod verdict_substrate_integration_1407 {
         );
         assert!(
             msg.text.contains("#42"),
-            "payload carries story_number; got {}",
+            "payload carries story id; got {}",
             msg.text
         );
         assert!(
@@ -365,7 +365,7 @@ mod verdict_substrate_integration_1407 {
         assert!(first.text.contains("verified"));
 
         let mut second_args = serde_json::Map::new();
-        second_args.insert("story_number".into(), serde_json::json!(42));
+        second_args.insert("story_id".into(), serde_json::json!(42));
         second_args.insert("verdict".into(), serde_json::json!("rejected"));
         second_args.insert(
             "substrate_grounding".into(),
@@ -391,7 +391,7 @@ mod verdict_substrate_integration_1407 {
         let session = make_session(dir.path().to_path_buf());
         let mut rx = session.subscribe();
         let mut bad_args = serde_json::Map::new();
-        bad_args.insert("story_number".into(), serde_json::json!(42));
+        bad_args.insert("story_id".into(), serde_json::json!(42));
         bad_args.insert("verdict".into(), serde_json::json!("verified"));
         let err = handle_submit_verdict(&bad_args, "designer:claude-code", &session)
             .await
@@ -422,7 +422,7 @@ mod verdict_substrate_integration_1407 {
 
     fn view_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
         let mut m = serde_json::Map::new();
-        m.insert("story_number".into(), serde_json::json!(number));
+        m.insert("story_id".into(), serde_json::json!(number));
         m
     }
 
@@ -467,7 +467,7 @@ mod verdict_substrate_integration_1407 {
     }
 
     #[tokio::test]
-    async fn view_verdicts_scopes_by_story_number() {
+    async fn view_verdicts_scopes_by_story_id() {
         let dir = TempDir::new().unwrap();
         let session = make_session(dir.path().to_path_buf());
         crate::bridge::tools::handle_submit_verdict(
@@ -559,14 +559,14 @@ mod verdict_substrate_integration_1407 {
     }
 
     #[tokio::test]
-    async fn view_verdicts_refuses_missing_story_number() {
+    async fn view_verdicts_refuses_missing_story_id() {
         let dir = TempDir::new().unwrap();
         let session = make_session(dir.path().to_path_buf());
         let empty_args = serde_json::Map::new();
         let err = crate::bridge::tools::handle_view_verdicts(&empty_args, &session, None)
             .await
-            .expect_err("missing story_number must refuse");
-        assert!(err.contains("story_number"));
+            .expect_err("missing story_id must refuse");
+        assert!(err.contains("story_id"));
     }
 
     #[tokio::test]

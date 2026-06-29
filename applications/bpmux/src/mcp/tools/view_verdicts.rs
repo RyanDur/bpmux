@@ -4,12 +4,12 @@ pub fn view_verdicts_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "story_number": {
+            "story_id": {
                 "type": "integer",
                 "description": "Issue number whose verdicts to read."
             }
         },
-        "required": ["story_number"]
+        "required": ["story_id"]
     });
     Tool::new(
         "view_verdicts",

@@ -9,11 +9,11 @@ import {
 } from './iterationPosition'
 import { eagerReorder } from './iterationMembers'
 import { parseParentIterationLabel } from './labelSchema'
-import { columnFor, storyTypeFromLabels, type BoardResponse, type ColumnState } from './types'
+import { columnFor, storyTypeFromLabels, type Story, type ColumnState } from './types'
 
 export interface UseBoardReorderOptions {
-  data: BoardResponse | null
-  setData: React.Dispatch<React.SetStateAction<BoardResponse | null>>
+  data: Story[] | null
+  setData: React.Dispatch<React.SetStateAction<Story[] | null>>
   setReorderAnnounce: (msg: string) => void
   setError: (msg: string) => void
   setPendingReadyOrder: (storyNumber: number, position: number) => void
@@ -37,20 +37,20 @@ export const useBoardReorder = ({
   return useCallback(
     (state, moved, targetNumber) => {
       const prevData = data
-      const inGroupOf = (resp: BoardResponse): BoardResponse['stories'] =>
-        resp.stories.filter(
+      const inGroupOf = (resp: Story[]): Story[] =>
+        resp.filter(
           (s) =>
             columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
         )
 
       if (state === 'ready' && prevData) {
         const readyStories = inGroupOf(prevData)
-        const draggedStory = readyStories.find((s) => s.number === moved)
+        const draggedStory = readyStories.find((s) => s.id === moved)
         const membership = draggedStory?.iteration_membership
         if (membership === undefined || membership === null) return
         const iterationNumber = membership.iteration_number
         const draggedOldPosition = membership.position
-        const targetMemberIndex = readyStories.findIndex((s) => s.number === targetNumber)
+        const targetMemberIndex = readyStories.findIndex((s) => s.id === targetNumber)
         if (targetMemberIndex === -1) return
         const targetMemberPositions = readyStories
           .map((s) => s.iteration_membership?.position)
@@ -64,11 +64,11 @@ export const useBoardReorder = ({
         if (
           insertPositionWouldCascade(draggedOldPosition, targetMemberPositions, targetMemberIndex)
         ) {
-          const newSequence = eagerReorder(readyStories, (s) => s.number, moved, targetNumber)
+          const newSequence = eagerReorder(readyStories, (s) => s.id, moved, targetNumber)
           const respaced = computeMemberRespace(
             iterationNumber,
             newSequence.map((s) => ({
-              storyNumber: s.number,
+              storyNumber: s.id,
               currentPosition: s.iteration_membership?.position ?? null
             }))
           )
@@ -101,28 +101,25 @@ export const useBoardReorder = ({
         }
         setData((prev) => {
           if (!prev) return prev
-          return {
-            ...prev,
-            stories: prev.stories.map((s) => {
-              const newPosition = positionByStory.get(s.number)
-              return newPosition === undefined
-                ? s
-                : {
-                    ...s,
-                    iteration_membership: {
-                      iteration_number: iterationNumber,
-                      position: newPosition
-                    }
+          return prev.map((s) => {
+            const newPosition = positionByStory.get(s.id)
+            return newPosition === undefined
+              ? s
+              : {
+                  ...s,
+                  iteration_membership: {
+                    iteration_number: iterationNumber,
+                    position: newPosition
                   }
-            })
-          }
+                }
+          })
         })
 
         const orderedAfter = readyStories
           .map((s) => ({
-            number: s.number,
+            number: s.id,
             position:
-              positionByStory.get(s.number) ??
+              positionByStory.get(s.id) ??
               s.iteration_membership?.position ??
               Number.MAX_SAFE_INTEGER
           }))
@@ -150,8 +147,8 @@ export const useBoardReorder = ({
       let newPosition = 0
       let groupSize = 0
       if (prevData) {
-        const reordered = eagerReorder(inGroupOf(prevData), (s) => s.number, moved, targetNumber)
-        const movedIdx = reordered.findIndex((s) => s.number === moved)
+        const reordered = eagerReorder(inGroupOf(prevData), (s) => s.id, moved, targetNumber)
+        const movedIdx = reordered.findIndex((s) => s.id === moved)
         if (movedIdx !== -1) {
           newPosition = movedIdx + 1
           groupSize = reordered.length
@@ -161,13 +158,13 @@ export const useBoardReorder = ({
       setData((prev) => {
         if (!prev) return prev
         const inGroup = inGroupOf(prev)
-        const reordered = eagerReorder(inGroup, (s) => s.number, moved, targetNumber)
+        const reordered = eagerReorder(inGroup, (s) => s.id, moved, targetNumber)
         if (reordered === inGroup) return prev
-        const others = prev.stories.filter(
+        const others = prev.filter(
           (s) =>
             columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) !== state
         )
-        return { ...prev, stories: [...others, ...reordered] }
+        return [...others, ...reordered]
       })
 
       if (groupSize > 0) {

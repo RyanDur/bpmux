@@ -259,7 +259,7 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
         1,
         "rest get_board should have triggered re-ingest from adapter; got body: {json}"
     );
-    assert_eq!(stories[0]["number"].as_u64(), Some(5050));
+    assert_eq!(stories[0]["id"].as_u64(), Some(5050));
     assert!(
         !orch.all_stories().is_empty(),
         "post-call store populated; recovery completed"
@@ -288,7 +288,7 @@ async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
 
     let stories = json["stories"].as_array().expect("stories array");
     assert_eq!(stories.len(), 1);
-    assert_eq!(stories[0]["number"].as_u64(), Some(1));
+    assert_eq!(stories[0]["id"].as_u64(), Some(1));
     assert_eq!(
         stories[0]["title"].as_str(),
         Some("[Feature] http-roundtrip-marker")

@@ -8,7 +8,7 @@ pub fn add_story_to_iteration_tool(description: &'static str) -> Tool {
                 "type": "integer",
                 "description": "Iteration entity issue number (the parent iteration this story is being added to)."
             },
-            "story_number": {
+            "story_id": {
                 "type": "integer",
                 "description": "Member story issue number (the story being added to the iteration)."
             },
@@ -17,7 +17,7 @@ pub fn add_story_to_iteration_tool(description: &'static str) -> Tool {
                 "description": "Position within the iteration (1-indexed)."
             }
         },
-        "required": ["iteration_number", "story_number", "position"]
+        "required": ["iteration_number", "story_id", "position"]
     });
     Tool::new(
         "add_story_to_iteration",

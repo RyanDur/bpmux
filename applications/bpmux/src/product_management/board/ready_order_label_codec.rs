@@ -4,7 +4,7 @@ use super::ready_order_label::*;
 
 fn ready_json(number: u64, membership: Option<(u64, u32)>) -> serde_json::Value {
     serde_json::json!({
-        "number": number,
+        "id": number,
         "state": "ready",
         "iteration_membership": membership.map(|(it, pos)| serde_json::json!({
             "iteration_number": it,
@@ -16,7 +16,7 @@ fn ready_json(number: u64, membership: Option<(u64, u32)>) -> serde_json::Value 
 
 fn current_iteration_json(number: u64) -> serde_json::Value {
     serde_json::json!({
-        "number": number,
+        "id": number,
         "state": "icebox",
         "iteration_membership": serde_json::Value::Null,
         "is_current": true,
@@ -27,7 +27,7 @@ fn ready_numbers_in_order(sorted: &[serde_json::Value]) -> Vec<u64> {
     sorted
         .iter()
         .filter(|s| s.get("state").and_then(|v| v.as_str()) == Some("ready"))
-        .filter_map(|s| s.get("number").and_then(|v| v.as_u64()))
+        .filter_map(|s| s.get("id").and_then(|v| v.as_u64()))
         .collect()
 }
 

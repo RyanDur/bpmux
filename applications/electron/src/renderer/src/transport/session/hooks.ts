@@ -10,7 +10,7 @@ import type {
   SyncStatusWire,
   TimelineEventWire
 } from '../types'
-import type { BoardResponse } from '../../board/types'
+import type { Story, StoryId } from '../../board/types'
 
 const useSelector = <T>(selector: (snapshot: ReturnType<typeof getSessionSnapshot>) => T): T => {
   const snapshot = (): T => selector(getSessionSnapshot())
@@ -32,12 +32,12 @@ export const useCiSnapshot = (): CiSnapshotWire | null => useSelector((s) => s.m
 
 export const useSyncStatus = (): SyncStatusWire | null => useSelector((s) => s.mirror.sync)
 
-export const useBoardSnapshot = (): BoardResponse | null => useSelector((s) => s.boardSnapshot)
+export const useStories = (): Story[] => useSelector((s) => s.stories)
 
 export const useBoardInvalidateTick = (): number => useSelector((s) => s.boardInvalidateTick)
 
-export const useComments = (storyNumber: number): CommentWire[] | null =>
-  useSelector((s) => s.commentsByStory.get(storyNumber) ?? null)
+export const useComments = (storyId: StoryId): CommentWire[] | null =>
+  useSelector((s) => s.commentsByStory.get(storyId) ?? null)
 
-export const useTimelineEvents = (storyNumber: number): TimelineEventWire[] | null =>
-  useSelector((s) => s.timelineByStory.get(storyNumber) ?? null)
+export const useTimelineEvents = (storyId: StoryId): TimelineEventWire[] | null =>
+  useSelector((s) => s.timelineByStory.get(storyId) ?? null)

@@ -2,19 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { describeHttpError } from '../api/http'
 import { postStoryAccept, postStoryReject } from '../api/storiesClient'
 import BugQuestionDialog from './BugQuestionDialog'
-import type { BoardStory } from './types'
+import type { Story } from './types'
 
 export type ActionMode = 'idle' | 'bug-question' | 'rejecting'
 type BusyKind = 'accept' | 'reject' | null
 
 interface Props {
-  story: BoardStory
+  story: Story
   canAct: boolean
   apiBase: string | undefined
   authToken: string | undefined
   mode: ActionMode
   setMode: (m: ActionMode) => void
-  onStoryMutated: (story: BoardStory) => void
+  onStoryMutated: (story: Story) => void
   onBack: () => void
   onError: (msg: string) => void
 }
@@ -65,11 +65,7 @@ const DrillInActions = ({
         onBack()
         return
       }
-      const proceed = await postStoryAccept(
-        { apiBase, authToken },
-        story.number,
-        payload
-      ).mapEither(
+      const proceed = await postStoryAccept({ apiBase, authToken }, story.id, payload).mapEither(
         () => true,
         (error) => {
           rollback(describeHttpError(error))
@@ -121,7 +117,7 @@ const DrillInActions = ({
       onBack()
       return
     }
-    const proceed = await postStoryReject({ apiBase, authToken }, story.number, {
+    const proceed = await postStoryReject({ apiBase, authToken }, story.id, {
       note: trimmed
     }).mapEither(
       () => true,

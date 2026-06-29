@@ -7,8 +7,7 @@ use super::client_handlers::{
     handle_pty_input, handle_pty_subscribe, handle_reaction_toggle, handle_send,
 };
 use super::hydrate::{
-    handle_board_hydrate, handle_comments_hydrate, handle_history_hydrate, handle_history_page,
-    handle_timeline_hydrate,
+    handle_comments_hydrate, handle_history_hydrate, handle_history_page, handle_timeline_hydrate,
 };
 use super::roadmap_write_handlers::{
     handle_add_story_to_iteration, handle_reorder_iteration, handle_reorder_outcome_iteration,
@@ -110,11 +109,11 @@ pub(crate) async fn handle_client_message(
         }) => {
             handle_reaction_toggle(ctx, tx, channel, message_key, emoji, user).await?;
         }
-        Ok(ClientMessage::CommentsHydrate { story_number }) => {
-            handle_comments_hydrate(ctx, tx, story_number).await?;
+        Ok(ClientMessage::CommentsHydrate { story_id }) => {
+            handle_comments_hydrate(ctx, tx, story_id).await?;
         }
-        Ok(ClientMessage::TimelineHydrate { story_number }) => {
-            handle_timeline_hydrate(ctx, tx, story_number).await?;
+        Ok(ClientMessage::TimelineHydrate { story_id }) => {
+            handle_timeline_hydrate(ctx, tx, story_id).await?;
         }
         Ok(ClientMessage::HistoryHydrate {
             chat_limit,
@@ -128,9 +127,6 @@ pub(crate) async fn handle_client_message(
             limit,
         }) => {
             handle_history_page(ctx, tx, request_id, before, limit).await?;
-        }
-        Ok(ClientMessage::BoardHydrate) => {
-            handle_board_hydrate(ctx).await?;
         }
         Ok(ClientMessage::SetOutcomeHorizon {
             outcome_number,
@@ -167,18 +163,11 @@ pub(crate) async fn handle_client_message(
         }
         Ok(ClientMessage::AddStoryToIteration {
             iteration_number,
-            story_number,
+            story_id,
             position,
         }) => {
-            handle_add_story_to_iteration(
-                ctx,
-                tx,
-                identity,
-                iteration_number,
-                story_number,
-                position,
-            )
-            .await?;
+            handle_add_story_to_iteration(ctx, tx, identity, iteration_number, story_id, position)
+                .await?;
         }
         Err(e) => {
             send_json(

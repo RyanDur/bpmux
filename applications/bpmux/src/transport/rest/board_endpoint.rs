@@ -59,6 +59,13 @@ fn find(stories: &[serde_json::Value], number: u64) -> &serde_json::Value {
         .expect("story present in snapshot")
 }
 
+fn find_story(stories: &[serde_json::Value], id: u64) -> &serde_json::Value {
+    stories
+        .iter()
+        .find(|s| s["id"].as_u64() == Some(id))
+        .expect("story present in snapshot")
+}
+
 fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(number),
@@ -142,7 +149,7 @@ async fn outcomes_never_ride_in_the_board_story_collection_1738() {
     let orch = orchestrator(vec![outcome(3000, vec![])]).await;
     let stories = ordered_board_stories(&orch);
     assert!(
-        !stories.iter().any(|s| s["number"].as_u64() == Some(3000)),
+        !stories.iter().any(|s| s["id"].as_u64() == Some(3000)),
         "an outcome is not a story — it never appears in the board story collection"
     );
 }
@@ -171,7 +178,7 @@ async fn iterations_never_ride_in_the_board_story_collection_1703() {
     let orch = orchestrator(vec![iteration(2000)]).await;
     let stories = ordered_board_stories(&orch);
     assert!(
-        !stories.iter().any(|s| s["number"].as_u64() == Some(2000)),
+        !stories.iter().any(|s| s["id"].as_u64() == Some(2000)),
         "an iteration is a planning container, not a story — it never appears in the board story collection (readiness rides the iterations wire)"
     );
 }
@@ -181,7 +188,7 @@ async fn non_iteration_story_has_no_readiness_key_1703() {
     let orch = orchestrator(vec![member(2001, 2000, 100)]).await;
     let stories = ordered_board_stories(&orch);
     assert!(
-        find(&stories, 2001).get("readiness").is_none(),
+        find_story(&stories, 2001).get("readiness").is_none(),
         "readiness is an iteration-only concern; feature stories carry no readiness key"
     );
 }

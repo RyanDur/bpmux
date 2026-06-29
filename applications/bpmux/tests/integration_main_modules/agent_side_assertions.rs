@@ -188,7 +188,7 @@ fn pass_desk_check_signal_routes_to_owner_not_dev() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": 203,
+                    "story_id": 203,
                     "verdict": "verified",
                     "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
                 }),
@@ -365,7 +365,7 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": 213,
+                    "story_id": 213,
                     "verdict": "verified",
                     "substrate_grounding": "test-harness: designer verdict"
                 }),
@@ -375,7 +375,7 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         dev.call_tool(
             "submit_verdict",
             serde_json::json!({
-                "story_number": 213,
+                "story_id": 213,
                 "verdict": "verified",
                 "substrate_grounding": "test-harness: dev verdict"
             }),

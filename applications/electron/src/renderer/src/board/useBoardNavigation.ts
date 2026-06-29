@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import type { BoardStory } from './types'
+import type { Story } from './types'
 
 interface UseBoardNavigationResult {
   asideRef: React.RefObject<HTMLElement | null>
@@ -8,8 +8,8 @@ interface UseBoardNavigationResult {
   drilledNumber: number | null
   focusTimelineFor: number | null
   effectiveSelected: number | null
-  drilledStory: BoardStory | null
-  renderedDrill: BoardStory | null
+  drilledStory: Story | null
+  renderedDrill: Story | null
   handleOpen: (number: number) => void
   handleOpenTimeline: (number: number) => void
   handleBack: () => void
@@ -18,7 +18,7 @@ interface UseBoardNavigationResult {
 }
 
 export const useBoardNavigation = (
-  stories: BoardStory[],
+  stories: Story[],
   navOrder: number[]
 ): UseBoardNavigationResult => {
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
@@ -41,8 +41,7 @@ export const useBoardNavigation = (
   }, [])
 
   const drilledStory = useMemo(
-    () =>
-      drilledNumber === null ? null : (stories.find((s) => s.number === drilledNumber) ?? null),
+    () => (drilledNumber === null ? null : (stories.find((s) => s.id === drilledNumber) ?? null)),
     [drilledNumber, stories]
   )
 

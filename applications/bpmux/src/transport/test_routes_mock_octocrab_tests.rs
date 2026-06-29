@@ -128,7 +128,7 @@ async fn roundtrip_coherence_create_story_through_real_github_decode_path() {
     let board = read_json(resp).await;
     let stories = board["stories"].as_array().expect("stories array");
     assert_eq!(stories.len(), 1);
-    assert_eq!(stories[0]["number"].as_u64(), Some(42));
+    assert_eq!(stories[0]["id"].as_u64(), Some(42));
     assert_eq!(
         stories[0]["title"].as_str(),
         Some("[Feature] mock-octocrab-roundtrip")

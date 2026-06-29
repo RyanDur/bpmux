@@ -6,7 +6,8 @@ import { iterationLabel } from './labelSchema'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
 import { resetSessionForTest } from '../transport/session/store'
 import { startSentFrameCapture, stopSentFrameCapture } from '../transport/session/testCapture'
-import type { BoardStory } from './types'
+import type { Story } from './types'
+import { asStoryId } from './types'
 
 afterEach(() => {
   cleanup()
@@ -32,8 +33,8 @@ const makeDataTransfer = (): DataTransfer => {
   } as unknown as DataTransfer
 }
 
-const memberStory = (overrides: Partial<BoardStory>): BoardStory => ({
-  number: 9100,
+const memberStory = (overrides: Partial<Story>): Story => ({
+  id: asStoryId(9100),
   title: 'member',
   state: 'icebox',
   gh_state: 'open',
@@ -44,7 +45,7 @@ const memberStory = (overrides: Partial<BoardStory>): BoardStory => ({
   ...overrides
 })
 
-const renderIteration = (members: BoardStory[] = []): string =>
+const renderIteration = (members: Story[] = []): string =>
   renderToStaticMarkup(<Iteration stories={members} onOpen={() => {}} />)
 
 describe('#1413 Iteration — renders regardless of member-count or open/closed state', () => {
@@ -69,14 +70,18 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
 
   test('Scenario 3 (regression-anchor): open + N members surfaces with member-count', () => {
     seedIterations([
-      boardIteration({ number: 9002, title: 'Iteration Carina', stories: [9201, 9202] })
+      boardIteration({
+        number: 9002,
+        title: 'Iteration Carina',
+        stories: [asStoryId(9201), asStoryId(9202)]
+      })
     ])
     const m1 = memberStory({
-      number: 9201,
+      id: asStoryId(9201),
       iteration_membership: { iteration_number: 9002, position: 100 }
     })
     const m2 = memberStory({
-      number: 9202,
+      id: asStoryId(9202),
       iteration_membership: { iteration_number: 9002, position: 200 }
     })
     const html = renderIteration([m1, m2])
@@ -92,11 +97,11 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
         number: 9003,
         title: 'Iteration Andromeda',
         complete: true,
-        stories: [9301]
+        stories: [asStoryId(9301)]
       })
     ])
     const m1 = memberStory({
-      number: 9301,
+      id: asStoryId(9301),
       iteration_membership: { iteration_number: 9003, position: 100 }
     })
     const html = renderIteration([m1])
@@ -114,14 +119,18 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
 describe('#1492 Iteration — reads canonical-relation iteration_membership typed field', () => {
   test('Scenario 5 (fix-anchor): canonical-relation members via typed field surface in count', () => {
     seedIterations([
-      boardIteration({ number: 1464, title: 'Iteration Reticulum', stories: [9501, 9502] })
+      boardIteration({
+        number: 1464,
+        title: 'Iteration Reticulum',
+        stories: [asStoryId(9501), asStoryId(9502)]
+      })
     ])
     const m1 = memberStory({
-      number: 9501,
+      id: asStoryId(9501),
       iteration_membership: { iteration_number: 1464, position: 100 }
     })
     const m2 = memberStory({
-      number: 9502,
+      id: asStoryId(9502),
       iteration_membership: { iteration_number: 1464, position: 200 }
     })
     const html = renderIteration([m1, m2])
@@ -132,18 +141,22 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
 
   test('Scenario 6 (regression-anchor): legacy-only member is dropped; only canonical-typed members count', () => {
     seedIterations([
-      boardIteration({ number: 1491, title: 'Iteration Caelum', stories: [9602, 9603] })
+      boardIteration({
+        number: 1491,
+        title: 'Iteration Caelum',
+        stories: [asStoryId(9602), asStoryId(9603)]
+      })
     ])
     const legacyOnly = memberStory({
-      number: 9601,
+      id: asStoryId(9601),
       labels: ['Feature', iterationLabel('Caelum', 100)]
     })
     const canonicalOnly = memberStory({
-      number: 9602,
+      id: asStoryId(9602),
       iteration_membership: { iteration_number: 1491, position: 200 }
     })
     const both = memberStory({
-      number: 9603,
+      id: asStoryId(9603),
       labels: ['Feature', iterationLabel('Caelum', 300)],
       iteration_membership: { iteration_number: 1491, position: 300 }
     })
@@ -155,10 +168,10 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
 
   test('Scenario 7 (drill-in-axis): canonical-typed members enumerated in member-list', () => {
     seedIterations([
-      boardIteration({ number: 1398, title: 'Iteration Microscopium', stories: [9701] })
+      boardIteration({ number: 1398, title: 'Iteration Microscopium', stories: [asStoryId(9701)] })
     ])
     const m1 = memberStory({
-      number: 9701,
+      id: asStoryId(9701),
       title: 'canonical-member-one',
       iteration_membership: { iteration_number: 1398, position: 100 }
     })
@@ -169,10 +182,10 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
   test('Scenario 8 (other-iteration-isolation): membership for iter A does NOT count toward iter B', () => {
     seedIterations([
       boardIteration({ number: 1464, title: 'Iteration Reticulum', stories: [] }),
-      boardIteration({ number: 1491, title: 'Iteration Caelum', stories: [9801] })
+      boardIteration({ number: 1491, title: 'Iteration Caelum', stories: [asStoryId(9801)] })
     ])
     const memberOfCaelum = memberStory({
-      number: 9801,
+      id: asStoryId(9801),
       iteration_membership: { iteration_number: 1491, position: 100 }
     })
     const html = renderIteration([memberOfCaelum])
@@ -192,9 +205,11 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
 
 describe('#1547 facet 1 — member workflow-state is legible in the iteration-view', () => {
   test('a ready member renders a visible state label hooked on data-state', () => {
-    seedIterations([boardIteration({ number: 1543, title: 'Iteration Crux', stories: [1537] })])
+    seedIterations([
+      boardIteration({ number: 1543, title: 'Iteration Crux', stories: [asStoryId(1537)] })
+    ])
     const readyMember = memberStory({
-      number: 1537,
+      id: asStoryId(1537),
       title: 'ready-member',
       state: 'ready',
       iteration_membership: { iteration_number: 1543, position: 100 }
@@ -208,16 +223,20 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
 
   test('in-progress and desk-check members carry their own legible state labels', () => {
     seedIterations([
-      boardIteration({ number: 1543, title: 'Iteration Crux', stories: [1538, 1539] })
+      boardIteration({
+        number: 1543,
+        title: 'Iteration Crux',
+        stories: [asStoryId(1538), asStoryId(1539)]
+      })
     ])
     const inProgress = memberStory({
-      number: 1538,
+      id: asStoryId(1538),
       title: 'in-progress-member',
       state: 'in-progress',
       iteration_membership: { iteration_number: 1543, position: 100 }
     })
     const deskCheck = memberStory({
-      number: 1539,
+      id: asStoryId(1539),
       title: 'desk-check-member',
       state: 'desk-check',
       iteration_membership: { iteration_number: 1543, position: 200 }
@@ -230,9 +249,11 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
   })
 
   test('an icebox member stays neutral — no active-state label (icebox is the planned default)', () => {
-    seedIterations([boardIteration({ number: 1543, title: 'Iteration Crux', stories: [1540] })])
+    seedIterations([
+      boardIteration({ number: 1543, title: 'Iteration Crux', stories: [asStoryId(1540)] })
+    ])
     const iceboxMember = memberStory({
-      number: 1540,
+      id: asStoryId(1540),
       title: 'icebox-member',
       state: 'icebox',
       iteration_membership: { iteration_number: 1543, position: 100 }
@@ -305,23 +326,23 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
         number: 9001,
         title: 'Iteration First',
         iteration_order: 100,
-        stories: [9501]
+        stories: [asStoryId(9501)]
       }),
       boardIteration({
         number: 9002,
         title: 'Iteration Second',
         iteration_order: 200,
         is_current: true,
-        stories: [9502]
+        stories: [asStoryId(9502)]
       })
     ])
     const firstIceboxChild = memberStory({
-      number: 9501,
+      id: asStoryId(9501),
       state: 'icebox',
       iteration_membership: { iteration_number: 9001, position: 100 }
     })
     const secondInFlightChild = memberStory({
-      number: 9502,
+      id: asStoryId(9502),
       state: 'in-progress',
       iteration_membership: { iteration_number: 9002, position: 100 }
     })

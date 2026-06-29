@@ -144,10 +144,10 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
         })
         return
       case SessionActionType.CommentsHydrateRequested:
-        send({ type: 'comments_hydrate', story_number: action.storyNumber })
+        send({ type: 'comments_hydrate', story_id: action.storyId })
         return
       case SessionActionType.TimelineHydrateRequested:
-        send({ type: 'timeline_hydrate', story_number: action.storyNumber })
+        send({ type: 'timeline_hydrate', story_id: action.storyId })
         return
       case SessionActionType.HistoryHydrateRequested:
         send({
@@ -163,9 +163,6 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           before: action.before,
           limit: action.limit
         })
-        return
-      case SessionActionType.BoardHydrateRequested:
-        send({ type: 'board_hydrate' })
         return
       case SessionActionType.OutcomeHorizonChangeRequested:
         send({
@@ -200,7 +197,7 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
         send({
           type: 'add_story_to_iteration',
           iteration_number: action.iterationNumber,
-          story_number: action.storyNumber,
+          story_id: action.storyId,
           position: action.position
         })
         return

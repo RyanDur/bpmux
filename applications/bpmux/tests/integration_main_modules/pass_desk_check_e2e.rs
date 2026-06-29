@@ -38,7 +38,7 @@ fn pass_desk_check_designer_succeeds() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": target_number,
+                    "story_id": target_number,
                     "verdict": "verified",
                     "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
                 }),
@@ -124,7 +124,7 @@ fn pass_desk_check_view_board_reflects_ready_for_accept_via_fixture_seed() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_number": 500,
+                    "story_id": 500,
                     "verdict": "verified",
                     "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
                 }),

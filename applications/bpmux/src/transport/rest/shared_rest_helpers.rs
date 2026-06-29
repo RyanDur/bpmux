@@ -8,7 +8,7 @@ use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrat
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 
 #[tokio::test]
-async fn board_snapshot_delta_wakes_subscribers_but_is_not_persisted_durably() {
+async fn stories_delta_wakes_subscribers_but_is_not_persisted_durably() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
     let session =
@@ -21,27 +21,24 @@ async fn board_snapshot_delta_wakes_subscribers_but_is_not_persisted_durably() {
     let refresh: Arc<dyn RefreshDriver> = Arc::new(orch);
 
     let mut subscriber = session.subscribe();
-    super::shared::broadcast_board_snapshot(&session, &refresh);
+    super::shared::broadcast_stories(&session, &refresh);
 
     let woken = subscriber
         .try_recv()
-        .expect("a connected client must still receive the live board snapshot");
+        .expect("a connected client must still receive the live stories delta");
     assert!(
-        matches!(
-            woken.state_delta,
-            Some(StateDeltaPayload::BoardSnapshot { .. })
-        ),
-        "the woken delta is the board snapshot"
+        matches!(woken.state_delta, Some(StateDeltaPayload::Stories { .. })),
+        "the woken delta is the stories delta"
     );
 
-    let durable_board_snapshots = session
+    let durable_stories_deltas = session
         .read_messages()
         .expect("read durable log")
         .iter()
-        .filter(|m| matches!(m.state_delta, Some(StateDeltaPayload::BoardSnapshot { .. })))
+        .filter(|m| matches!(m.state_delta, Some(StateDeltaPayload::Stories { .. })))
         .count();
     assert_eq!(
-        durable_board_snapshots, 0,
-        "board snapshots are ephemeral current-state (a reconnecting client re-hydrates fresh from the live tracker) — they must not accrete in the durable session log"
+        durable_stories_deltas, 0,
+        "stories deltas are ephemeral current-state (a reconnecting client re-hydrates fresh from the live tracker) — they must not accrete in the durable session log"
     );
 }

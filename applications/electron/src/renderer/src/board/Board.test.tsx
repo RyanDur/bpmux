@@ -2,21 +2,16 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import Board from './Board'
-import type { BoardResponse, BoardStory } from './types'
+import { asStoryId, type Story } from './types'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
 import { dispatchSession, resetSessionForTest } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
 
-const pushSnapshot = (snapshot: BoardResponse): void =>
-  dispatchSession(
-    mirrorDeltaReceived(
-      { domain: 'board_snapshot', stories: snapshot.stories },
-      snapshot.fetched_at
-    )
-  )
+const pushStories = (stories: Story[]): void =>
+  dispatchSession(mirrorDeltaReceived({ domain: 'stories', stories }, '2026-06-16T00:00:00Z'))
 
-const story = (over: Partial<BoardStory>): BoardStory => ({
-  number: 1,
+const story = (over: Partial<Story>): Story => ({
+  id: asStoryId(1),
   title: 'story',
   state: 'ready',
   labels: [],
@@ -31,28 +26,22 @@ const seedCurrentIteration = (): void =>
 
 const seedNoCurrentIteration = (): void => seedIterations([])
 
-const MEMBERS: BoardResponse = {
-  fetched_at: '2026-06-16T00:00:00Z',
-  stories: [
-    story({
-      number: 101,
-      title: 'a ready member',
-      state: 'ready',
-      labels: ['Feature'],
-      iteration_membership: { iteration_number: 100, position: 100 }
-    })
-  ]
-}
+const MEMBERS: Story[] = [
+  story({
+    id: asStoryId(101),
+    title: 'a ready member',
+    state: 'ready',
+    labels: ['Feature'],
+    iteration_membership: { iteration_number: 100, position: 100 }
+  })
+]
 
-const NO_ITERATION: BoardResponse = {
-  fetched_at: '2026-06-16T00:00:01Z',
-  stories: [
-    story({ number: 200, title: 'an iceboxed feature', state: 'icebox', labels: ['Feature'] })
-  ]
-}
+const NO_ITERATION: Story[] = [
+  story({ id: asStoryId(200), title: 'an iceboxed feature', state: 'icebox', labels: ['Feature'] })
+]
 
-const renderBoard = (snapshot: BoardResponse): ReturnType<typeof render> => {
-  pushSnapshot(snapshot)
+const renderBoard = (stories: Story[]): ReturnType<typeof render> => {
+  pushStories(stories)
   return render(<Board />)
 }
 

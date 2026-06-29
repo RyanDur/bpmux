@@ -5,7 +5,7 @@ import DrillInActions, { type ActionMode } from './DrillInActions'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import Timeline from './Timeline'
-import { storyTypeFromLabels, type BoardStory } from './types'
+import { storyTypeFromLabels, type Story } from './types'
 import './DrillIn.css'
 
 const LIFECYCLE_LABELS: ReadonlySet<string> = new Set([
@@ -24,14 +24,14 @@ const isLifecycleLabel = (label: string): boolean =>
   LIFECYCLE_LABELS.has(label) || label.startsWith('blocked-by:')
 
 interface Props {
-  story: BoardStory
+  story: Story
   isOwner: boolean
   apiBase: string | undefined
   authToken: string | undefined
   visible: boolean
   focusTimeline?: boolean
   onBack: () => void
-  onStoryMutated: (story: BoardStory) => void
+  onStoryMutated: (story: Story) => void
   onUnmountReady?: () => void
 }
 
@@ -89,7 +89,7 @@ const DrillIn = ({
       aria-hidden={!visible || undefined}
       ref={articleRef}
       data-test="board-drill-in"
-      aria-label={`Story ${story.number}: ${story.title}`}
+      aria-label={`Story ${story.id}: ${story.title}`}
       onTransitionEnd={(event) => {
         if (!visible && event.propertyName === 'opacity' && onUnmountReady) {
           onUnmountReady()
@@ -104,7 +104,7 @@ const DrillIn = ({
           aria-label="Back to board list"
         >
           <BackArrow />
-          <small className="drill-in-crumb">Board · #{story.number}</small>
+          <small className="drill-in-crumb">Board · #{story.id}</small>
         </button>
       </header>
 
@@ -146,12 +146,7 @@ const DrillIn = ({
         )}
       </section>
 
-      <Comments
-        storyNumber={story.number}
-        apiBase={apiBase}
-        authToken={authToken}
-        onError={setToast}
-      />
+      <Comments storyId={story.id} apiBase={apiBase} authToken={authToken} onError={setToast} />
 
       <Timeline story={story} apiBase={apiBase} focusTimeline={focusTimeline} />
 

@@ -24,7 +24,7 @@ const buildTooltip = (state: SyncState, report: SyncStatusWire | null): string =
     case 'drained-permanent-failure':
       lines.push(`Sync · ${report.dropped_events.length} dropped on permanent failure`)
       for (const d of report.dropped_events.slice(0, 3)) {
-        lines.push(`#${d.story_number}: ${d.error}`)
+        lines.push(`#${d.story_id}: ${d.error}`)
       }
       break
     case 'stale':

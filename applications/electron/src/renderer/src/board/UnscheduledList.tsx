@@ -2,10 +2,10 @@ import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyNavigateLabel } from './storyNavigateLabel'
-import { storyTypeFromLabels, type BoardStory } from './types'
+import { storyTypeFromLabels, type Story } from './types'
 
 interface Props {
-  stories: BoardStory[]
+  stories: Story[]
   open: boolean
   onToggle: (open: boolean) => void
   onOpen: (n: number) => void
@@ -31,18 +31,18 @@ const UnscheduledList = ({ stories, open, onToggle, onOpen }: Props): React.JSX.
         <ul className="board-iteration-body">
           {stories.map((story) => (
             <li
-              key={story.number}
+              key={story.id}
               className="board-iteration-member"
-              data-test={`board-story-${story.number}`}
-              data-iteration-member={story.number}
+              data-test={`board-story-${story.id}`}
+              data-iteration-member={story.id}
             >
               <button
                 type="button"
                 className="board-iteration-member-navigate board-story-navigate"
                 aria-label={storyNavigateLabel(story)}
-                onClick={() => onOpen(story.number)}
+                onClick={() => onOpen(story.id)}
               />
-              <small className="board-story-number">#{story.number}</small>
+              <small className="board-story-number">#{story.id}</small>
               <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
               <StoryBadge story={story} onOpenBlocker={onOpen} />
               <b className="board-story-title" data-test="story-title">

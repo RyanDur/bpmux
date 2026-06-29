@@ -4,7 +4,7 @@ import { SortableList } from './SortableList'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyNavigateLabel } from './storyNavigateLabel'
-import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
+import { GROUP_ORDER, asStoryId, columnFor, storyTypeFromLabels, type Story } from './types'
 import { type DragPayload } from './iterationMembers'
 import { ITERATION_MEMBER_DRAG } from './sortableDragConfigs'
 import { useDispatch } from '../transport/useDispatch'
@@ -12,7 +12,7 @@ import { addStoryToIterationRequested } from '../transport/session/actions'
 import type { BoardIterationData } from './selectIterations'
 import type { IterationMember } from './useIterationMembers'
 
-const activeStateLabel = (story: BoardStory): string | null => {
+const activeStateLabel = (story: Story): string | null => {
   if (story.state === 'icebox') return null
   const column = columnFor(
     story.state,
@@ -42,28 +42,30 @@ const MemberList = ({
   return (
     <SortableList<DragPayload, IterationMember>
       items={members}
-      keyOf={(m) => m.story.number}
-      rowKey={(m) => m.story.number}
+      keyOf={(m) => m.story.id}
+      rowKey={(m) => m.story.id}
       config={ITERATION_MEMBER_DRAG}
       buildPayload={(m) => ({
-        storyNumber: m.story.number,
+        storyNumber: m.story.id,
         iterationNumber: iteration.number,
         oldPosition: m.position
       })}
       disabled={iteration.complete}
       onReorder={(payload, targetKey) => {
-        const originalIdx = members.findIndex((m) => m.story.number === targetKey)
+        const originalIdx = members.findIndex((m) => m.story.id === targetKey)
         if (originalIdx === -1) return
         const position = originalIdx + 1
-        dispatch(addStoryToIterationRequested(iteration.number, payload.storyNumber, position))
+        dispatch(
+          addStoryToIterationRequested(iteration.number, asStoryId(payload.storyNumber), position)
+        )
         setPending(payload.storyNumber, iteration.number, position)
       }}
       ulClassName="board-iteration-body"
       renderRow={({ story }, { rowDragProps, gripDragProps, dragging }) => (
         <li
           className="board-iteration-member"
-          data-test={`board-story-${story.number}`}
-          data-iteration-member={story.number}
+          data-test={`board-story-${story.id}`}
+          data-iteration-member={story.id}
           data-dragging={dragging ? 'true' : undefined}
           {...rowDragProps}
         >
@@ -71,7 +73,7 @@ const MemberList = ({
             type="button"
             className="board-iteration-member-navigate board-story-navigate"
             aria-label={storyNavigateLabel(story)}
-            onClick={() => onOpen(story.number)}
+            onClick={() => onOpen(story.id)}
             onKeyDown={(event) => {
               if (!event.ctrlKey || !event.shiftKey) return
               if (iteration.complete) return
@@ -79,7 +81,7 @@ const MemberList = ({
                 event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : null
               if (direction === null) return
               event.preventDefault()
-              const originalIdx = members.findIndex((m) => m.story.number === story.number)
+              const originalIdx = members.findIndex((m) => m.story.id === story.id)
               if (originalIdx === -1) return
               if (direction === 'up' && originalIdx === 0) {
                 onReorderAnnounce?.(`${story.title} is already at position 1 in ${iteration.title}`)
@@ -93,17 +95,17 @@ const MemberList = ({
               }
               const targetMemberIndex = direction === 'up' ? originalIdx - 1 : originalIdx + 1
               const newPosition = targetMemberIndex + 1
-              dispatch(addStoryToIterationRequested(iteration.number, story.number, newPosition))
-              setPending(story.number, iteration.number, newPosition)
+              dispatch(addStoryToIterationRequested(iteration.number, story.id, newPosition))
+              setPending(story.id, iteration.number, newPosition)
               onReorderAnnounce?.(
                 `Moved ${story.title} to position ${newPosition} of ${members.length} in ${iteration.title}`
               )
             }}
           />
           {!iteration.complete ? (
-            <DragGrip storyNumber={story.number} gripDragProps={gripDragProps} />
+            <DragGrip storyNumber={story.id} gripDragProps={gripDragProps} />
           ) : null}
-          <small className="board-story-number">#{story.number}</small>
+          <small className="board-story-number">#{story.id}</small>
           <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
           <StoryBadge story={story} onOpenBlocker={onOpen} />
           {activeStateLabel(story) !== null && (

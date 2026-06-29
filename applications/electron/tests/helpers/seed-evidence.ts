@@ -9,7 +9,7 @@ export const seedTeamVerdicts = async (
     const resp = await rpc(
       'submit_verdict',
       {
-        story_number: storyNumber,
+        story_id: storyNumber,
         verdict: 'verified',
         substrate_grounding: `test-harness: ${role} verdict on #${storyNumber}`
       },

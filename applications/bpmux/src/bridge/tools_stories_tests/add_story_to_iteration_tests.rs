@@ -57,7 +57,7 @@ fn args(
         "iteration_number".into(),
         serde_json::json!(iteration_number),
     );
-    m.insert("story_number".into(), serde_json::json!(story_number));
+    m.insert("story_id".into(), serde_json::json!(story_number));
     m.insert("position".into(), serde_json::json!(position));
     m
 }
@@ -163,7 +163,7 @@ async fn self_add_rejected_1399() {
 #[tokio::test]
 async fn missing_iteration_number_rejected_1399() {
     let mut m = serde_json::Map::new();
-    m.insert("story_number".into(), serde_json::json!(1500));
+    m.insert("story_id".into(), serde_json::json!(1500));
     m.insert("position".into(), serde_json::json!(100));
     let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
     let err = result.expect_err("missing iteration_number must be rejected");
@@ -174,14 +174,14 @@ async fn missing_iteration_number_rejected_1399() {
 }
 
 #[tokio::test]
-async fn missing_story_number_rejected_1399() {
+async fn missing_story_id_rejected_1399() {
     let mut m = serde_json::Map::new();
     m.insert("iteration_number".into(), serde_json::json!(1397));
     m.insert("position".into(), serde_json::json!(100));
     let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
-    let err = result.expect_err("missing story_number must be rejected");
+    let err = result.expect_err("missing story_id must be rejected");
     assert!(
-        err.contains("story_number"),
+        err.contains("story_id"),
         "rejection names the missing arg: {err}"
     );
 }
@@ -190,7 +190,7 @@ async fn missing_story_number_rejected_1399() {
 async fn missing_position_rejected_1399() {
     let mut m = serde_json::Map::new();
     m.insert("iteration_number".into(), serde_json::json!(1397));
-    m.insert("story_number".into(), serde_json::json!(1500));
+    m.insert("story_id".into(), serde_json::json!(1500));
     let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
     let err = result.expect_err("missing position must be rejected");
     assert!(

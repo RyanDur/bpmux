@@ -24,7 +24,7 @@ pub struct OutcomeMembershipView {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StoryView {
-    pub number: u64,
+    pub id: u64,
     pub title: String,
     pub state: &'static str,
     pub gh_state: &'static str,
@@ -47,7 +47,7 @@ pub struct StoryView {
 impl StoryView {
     pub fn project<C: LabelCodec>(codec: &C, story: &Story) -> Self {
         Self {
-            number: story.id.value(),
+            id: story.id.value(),
             title: story.title().to_string(),
             state: story.state().as_str(),
             gh_state: if story.is_closed { "closed" } else { "open" },
