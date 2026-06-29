@@ -6,14 +6,14 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Horizon, Story, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Horizon, Story, StoryId, StoryKind, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
 fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -84,7 +84,7 @@ async fn pm_moves_an_outcome_to_a_new_band_and_the_horizon_rederives_1759() {
         refresh
             .outcomes()
             .iter()
-            .find(|o| o.id().saved_number() == Some(700))
+            .find(|o| o.id().saved_id() == Some(StoryId::new(700)))
             .expect("outcome present")
             .horizon(),
         Some(Horizon::Now),
@@ -145,7 +145,7 @@ async fn reprioritize_outcome_is_pm_lane_non_pm_refused_1759() {
         refresh
             .outcomes()
             .iter()
-            .find(|o| o.id().saved_number() == Some(700))
+            .find(|o| o.id().saved_id() == Some(StoryId::new(700)))
             .expect("outcome present")
             .horizon(),
         Some(Horizon::Next),
@@ -191,7 +191,7 @@ async fn reprioritize_to_the_current_band_is_an_idempotent_noop_1759() {
         refresh
             .outcomes()
             .iter()
-            .find(|o| o.id().saved_number() == Some(700))
+            .find(|o| o.id().saved_id() == Some(StoryId::new(700)))
             .expect("outcome present")
             .horizon(),
         Some(Horizon::Now),
@@ -299,7 +299,7 @@ async fn band_move_resets_a_stale_within_band_position_1759() {
         refresh
             .outcomes()
             .iter()
-            .find(|o| o.id().saved_number() == Some(700))
+            .find(|o| o.id().saved_id() == Some(StoryId::new(700)))
             .expect("present")
             .horizon_order(),
         None,

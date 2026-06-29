@@ -86,7 +86,7 @@ fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> 
         .iter()
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
-            let number = outcome.id().saved_number().unwrap_or(0);
+            let number = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
             let building = building_iterations(outcome, &all_iterations);
             let done = !building.is_empty() && building.iter().all(|iteration| iteration.complete);
             RoadmapOutcomeInput {

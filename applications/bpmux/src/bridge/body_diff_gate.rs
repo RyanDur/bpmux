@@ -1,12 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::deliver_story_body_diff_gate::*;
-use crate::product_management::story::{Gate, GateComment, Story, StoryState};
+use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
 use chrono::{DateTime, TimeZone, Utc};
 
 fn story_with_pickup(pickup_ts: DateTime<Utc>) -> Story {
     let mut s = Story::new_minimal(
-        1001,
+        StoryId::new(1001),
         "test".to_string(),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap(),
@@ -49,7 +49,7 @@ fn pickup_ts_picks_most_recent_pickup_gate() {
 #[test]
 fn pickup_ts_returns_none_when_no_gate_comments() {
     let s = Story::new_minimal(
-        1,
+        StoryId::new(1),
         "t".to_string(),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap(),
@@ -103,7 +103,7 @@ fn verify_body_atp_in_changed_paths_lenient_when_body_has_no_source_atp() {
 fn verify_deliver_drift_passes_when_pickup_ts_missing() {
     let body = "## Acceptance test path\n`applications/never.test.tsx`";
     let s = Story::new_minimal(
-        1,
+        StoryId::new(1),
         "t".to_string(),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap(),

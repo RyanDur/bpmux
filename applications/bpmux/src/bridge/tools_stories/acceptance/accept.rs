@@ -6,6 +6,7 @@ use crate::bridge::tools_stories::build_verdict_reprompt_signal;
 use crate::bridge::tools_stories::helpers::{
     ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
+use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -24,7 +25,7 @@ pub(crate) async fn handle_accept_story(
         "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
     r.test_race_window_rendezvous().await;
-    let story_opt = r.store().story(number);
+    let story_opt = r.store().story(StoryId::new(number));
     let class = story_opt
         .as_ref()
         .map(|s| {
@@ -120,7 +121,7 @@ pub(crate) async fn accept_via_canonical_store(
         .mutate_sync(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
                 gate: crate::product_management::story::Gate::Accepted,
                 payload: bypass.map(format_bypass_payload),
             },
@@ -130,7 +131,7 @@ pub(crate) async fn accept_via_canonical_store(
         .mutate_sync(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
                 new_state: crate::product_management::story::StoryState::Accepted,
             },
         )
@@ -138,7 +139,7 @@ pub(crate) async fn accept_via_canonical_store(
     refresh
         .mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
             meta,
-            number,
+            id: StoryId::new(number),
             reason: None,
         })
         .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;

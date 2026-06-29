@@ -4,16 +4,16 @@ use crate::product_management::story::{FreeComment, GateComment};
 
 pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
     match event {
-        BoardEvent::FreeCommentAppended { number, body, meta } => {
+        BoardEvent::FreeCommentAppended { id, body, meta } => {
             let entry = FreeComment {
                 body: body.clone(),
                 author: meta.actor.clone(),
                 ts: meta.ts,
             };
-            s.free_comments.entry(*number).or_default().push(entry);
+            s.free_comments.entry(id.value()).or_default().push(entry);
         }
         BoardEvent::GateCommentAppended {
-            number,
+            id,
             gate,
             payload,
             meta,
@@ -24,18 +24,18 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                 actor: meta.actor.clone(),
                 payload: payload.clone(),
             };
-            s.gate_comments.entry(*number).or_default().push(entry);
+            s.gate_comments.entry(id.value()).or_default().push(entry);
         }
-        BoardEvent::BodyFetched { number, body, .. } => {
-            s.bodies.insert(*number, body.clone());
+        BoardEvent::BodyFetched { id, body, .. } => {
+            s.bodies.insert(id.value(), body.clone());
         }
-        BoardEvent::TagAdded { number, label, .. } => {
-            let labels = s.labels.entry(*number).or_default();
+        BoardEvent::TagAdded { id, label, .. } => {
+            let labels = s.labels.entry(id.value()).or_default();
             if !labels.iter().any(|l| l.eq_ignore_ascii_case(label)) {
                 labels.push(label.clone());
             }
             if label.eq_ignore_ascii_case("blocked")
-                && let Some(story) = s.stories.get_mut(number)
+                && let Some(story) = s.stories.get_mut(&id.value())
                 && !story
                     .raw_labels
                     .iter()
@@ -44,38 +44,36 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                 story.raw_labels.push("blocked".to_string());
             }
         }
-        BoardEvent::TagRemoved { number, label, .. } => {
-            if let Some(labels) = s.labels.get_mut(number) {
+        BoardEvent::TagRemoved { id, label, .. } => {
+            if let Some(labels) = s.labels.get_mut(&id.value()) {
                 labels.retain(|l| !l.eq_ignore_ascii_case(label));
             }
             if label.eq_ignore_ascii_case("blocked")
-                && let Some(story) = s.stories.get_mut(number)
+                && let Some(story) = s.stories.get_mut(&id.value())
             {
                 story
                     .raw_labels
                     .retain(|l| !l.eq_ignore_ascii_case("blocked"));
             }
         }
-        BoardEvent::StoryClosed { number, .. } => {
-            if let Some(story) = s.stories.get_mut(number) {
+        BoardEvent::StoryClosed { id, .. } => {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
                 story.is_closed = true;
             }
         }
-        BoardEvent::StoryReopened { number, .. } => {
-            if let Some(story) = s.stories.get_mut(number) {
+        BoardEvent::StoryReopened { id, .. } => {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
                 story.is_closed = false;
             }
         }
-        BoardEvent::StateTransitioned {
-            number, new_state, ..
-        } => {
-            if let Some(story) = s.stories.get_mut(number) {
+        BoardEvent::StateTransitioned { id, new_state, .. } => {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
                 story.state = *new_state;
             }
         }
-        BoardEvent::CurrentIterationDesignated { number, .. } => {
+        BoardEvent::CurrentIterationDesignated { id, .. } => {
             use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(number)
+            if let Some(story) = s.stories.get_mut(&id.value())
                 && !story
                     .raw_labels
                     .iter()
@@ -86,25 +84,25 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                     .push(GhLabelCodec.encode_current_iteration());
             }
         }
-        BoardEvent::CurrentIterationCleared { number, .. } => {
+        BoardEvent::CurrentIterationCleared { id, .. } => {
             use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(number) {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
                 story
                     .raw_labels
                     .retain(|l| !GhLabelCodec.is_current_iteration_label(l));
             }
         }
         BoardEvent::StoryCreated {
-            number,
+            id,
             title,
             body,
             initial_state,
             story_type,
             meta,
         } => {
-            let story = s.stories.entry(*number).or_insert_with(|| {
+            let story = s.stories.entry(id.value()).or_insert_with(|| {
                 crate::product_management::story::Story::new_minimal(
-                    *number,
+                    *id,
                     title.clone(),
                     *initial_state,
                     meta.ts,
@@ -119,13 +117,11 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
             }
         }
         BoardEvent::ParentEpicSet {
-            number,
-            epic_number,
-            ..
+            id, epic_number, ..
         } => {
             use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
             use crate::product_management::board::label_codec::LabelCodec;
-            if let Some(story) = s.stories.get_mut(number) {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
                 story
                     .raw_labels
                     .retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
@@ -134,22 +130,22 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                     .push(GhLabelCodec.encode_parent_epic(*epic_number));
             }
         }
-        BoardEvent::ParentEpicUnset { number, .. } => {
+        BoardEvent::ParentEpicUnset { id, .. } => {
             use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(number) {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
                 story
                     .raw_labels
                     .retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
             }
         }
         BoardEvent::IterationMembershipSet {
-            number,
+            id,
             iteration_number,
             position,
             ..
         } => {
             use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(number) {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
                 story
                     .raw_labels
                     .retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
@@ -158,9 +154,9 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                     .push(GhLabelCodec.encode_parent_iteration(*iteration_number, *position));
             }
         }
-        BoardEvent::IterationMembershipCleared { number, .. } => {
+        BoardEvent::IterationMembershipCleared { id, .. } => {
             use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(number) {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
                 story
                     .raw_labels
                     .retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());

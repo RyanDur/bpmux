@@ -42,7 +42,7 @@ pub fn building_iterations(outcome: &Outcome, iterations: &[Iteration]) -> Vec<I
         .filter_map(|number| {
             iterations
                 .iter()
-                .find(|iteration| iteration.id().saved_number() == Some(*number))
+                .find(|iteration| iteration.id().saved_id().map(|id| id.value()) == Some(*number))
                 .cloned()
         })
         .collect()

@@ -3,6 +3,7 @@ use super::types::cache_fill_meta;
 use super::{FreeComment, GateComment, SyncOrchestrator};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
+use crate::product_management::story::StoryId;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_body(&self, number: u64) -> Result<String, SyncError> {
@@ -10,7 +11,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             Ok(body) => {
                 let event = BoardEvent::BodyFetched {
                     meta: cache_fill_meta(),
-                    number,
+                    id: StoryId::new(number),
                     body: body.clone(),
                     etag: None,
                 };
@@ -42,7 +43,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             Ok(ConditionalBody::Modified { body, etag }) => {
                 let event = BoardEvent::BodyFetched {
                     meta: cache_fill_meta(),
-                    number,
+                    id: StoryId::new(number),
                     body: body.clone(),
                     etag: etag.clone(),
                 };
@@ -65,7 +66,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             Ok(comments) => {
                 let event = BoardEvent::FreeCommentsFetched {
                     meta: cache_fill_meta(),
-                    number,
+                    id: StoryId::new(number),
                     comments: comments.clone(),
                 };
                 self.store.apply(&event);
@@ -84,7 +85,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             Ok(comments) => {
                 let event = BoardEvent::GateCommentsFetched {
                     meta: cache_fill_meta(),
-                    number,
+                    id: StoryId::new(number),
                     comments: comments.clone(),
                 };
                 self.store.apply(&event);

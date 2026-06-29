@@ -53,7 +53,7 @@ pub async fn post_story_labels(
                 (
                     crate::product_management::board::BoardEvent::TagAdded {
                         meta,
-                        number,
+                        id: crate::product_management::story::StoryId::new(number),
                         label,
                     },
                     descriptor,
@@ -64,7 +64,7 @@ pub async fn post_story_labels(
                 (
                     crate::product_management::board::BoardEvent::TagRemoved {
                         meta,
-                        number,
+                        id: crate::product_management::story::StoryId::new(number),
                         label,
                     },
                     descriptor,

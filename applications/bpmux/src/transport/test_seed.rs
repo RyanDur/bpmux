@@ -174,7 +174,7 @@ pub async fn post_seed_stories(
         if let Err(e) =
             refresh.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
                 meta,
-                number: s.number,
+                id: crate::product_management::story::StoryId::new(s.number),
                 title: s.title.clone(),
                 body: s.body.clone(),
                 initial_state,
@@ -194,7 +194,7 @@ pub async fn post_seed_stories(
         if let Err(e) =
             refresh.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
                 meta: type_label_meta,
-                number: s.number,
+                id: crate::product_management::story::StoryId::new(s.number),
                 label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
                     .encode_story_type(story_type),
             })
@@ -216,7 +216,7 @@ pub async fn post_seed_stories(
             if let Err(e) =
                 refresh.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
                     meta: tag_meta,
-                    number: s.number,
+                    id: crate::product_management::story::StoryId::new(s.number),
                     label: label.clone(),
                 })
             {
@@ -238,7 +238,7 @@ pub async fn post_seed_stories(
             if let Err(e) =
                 refresh.mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
                     meta: close_meta,
-                    number: s.number,
+                    id: crate::product_management::story::StoryId::new(s.number),
                     reason: Some("test-seed: closed at seed time".to_string()),
                 })
             {

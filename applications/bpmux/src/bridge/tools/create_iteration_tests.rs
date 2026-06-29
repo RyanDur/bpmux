@@ -8,14 +8,14 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
 fn seed_iteration_story(number: u64, name: &str, is_closed: bool) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration {name}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),
@@ -42,7 +42,7 @@ fn iteration_number_by_title(refresh: &Arc<dyn RefreshDriver>, title: &str) -> u
         .iterations()
         .iter()
         .find(|it| it.content.title == title)
-        .and_then(|it| it.id().saved_number())
+        .and_then(|it| it.id().saved_id().map(|i| i.value()))
         .unwrap_or_else(|| panic!("iteration '{title}' persisted"))
 }
 
@@ -140,7 +140,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
         .expect("refetch from source succeeds");
     let refetched = refresh
         .store()
-        .backing_story(number)
+        .backing_story(StoryId::new(number))
         .expect("the issue is present after a source refetch");
     assert!(
         refetched

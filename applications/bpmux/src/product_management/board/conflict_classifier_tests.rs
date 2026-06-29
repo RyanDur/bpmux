@@ -11,7 +11,7 @@ use crate::product_management::board::orchestrator::{
 };
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -23,7 +23,7 @@ fn meta() -> EventMeta {
 
 fn seed_story(number: u64, state: StoryState) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("title-{number}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap(),
@@ -45,7 +45,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
 
     orch.mutate(BoardEvent::StateTransitioned {
         meta: meta(),
-        number: 500,
+        id: StoryId::new(500),
         new_state: StoryState::InProgress,
     })
     .unwrap();
@@ -83,7 +83,7 @@ async fn mutate_pre_state_none_when_story_not_in_store_at_queue_time() {
 
     orch.mutate(BoardEvent::TagAdded {
         meta: meta(),
-        number: 999,
+        id: StoryId::new(999),
         label: "blocked".to_string(),
     })
     .unwrap();
@@ -102,7 +102,7 @@ async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
     let path = dir.path().join("legacy-outbox.json");
     let legacy_event = BoardEvent::TagAdded {
         meta: meta(),
-        number: 42,
+        id: StoryId::new(42),
         label: "ready".to_string(),
     };
     let legacy_payload = serde_json::to_vec(&vec![legacy_event]).unwrap();
@@ -113,7 +113,7 @@ async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
     let entry = entries.front().unwrap();
     assert!(matches!(
         entry.event,
-        BoardEvent::TagAdded { number: 42, .. }
+        BoardEvent::TagAdded { id, .. } if id == StoryId::new(42)
     ));
     assert!(
         entry.pre_state.is_none(),
@@ -129,7 +129,7 @@ async fn outbox_round_trips_new_shape_through_disk() {
     let queued = QueuedEvent::new(
         BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 7,
+            id: StoryId::new(7),
             new_state: StoryState::Accepted,
         },
         Some(pre.clone()),
@@ -141,7 +141,7 @@ async fn outbox_round_trips_new_shape_through_disk() {
     assert_eq!(entries.len(), 1);
     let entry = entries.front().unwrap();
     let restored_pre = entry.pre_state.as_ref().unwrap();
-    assert_eq!(restored_pre.number, pre.number);
+    assert_eq!(restored_pre.id, pre.id);
     assert_eq!(restored_pre.state, StoryState::Delivered);
 }
 
@@ -151,7 +151,7 @@ fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
     let cur = seed_story(1, StoryState::InProgress);
     let event = BoardEvent::StateTransitioned {
         meta: meta(),
-        number: 1,
+        id: StoryId::new(1),
         new_state: StoryState::InProgress,
     };
     assert_eq!(classify_conflict(Some(&pre), &event, Some(&cur)), None);
@@ -177,7 +177,7 @@ async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
 
     orch.mutate_sync(BoardEvent::StateTransitioned {
         meta: meta(),
-        number: 800,
+        id: StoryId::new(800),
         new_state: StoryState::InProgress,
     })
     .unwrap();

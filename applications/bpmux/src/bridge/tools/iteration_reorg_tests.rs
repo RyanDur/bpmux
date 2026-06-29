@@ -13,14 +13,14 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
 fn iteration(number: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration {name}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -43,7 +43,7 @@ fn iteration_with_members(number: u64, name: &str, members: Vec<u64>) -> Story {
     s.body = Some(
         IterationRelationships {
             outcome: None,
-            stories: members,
+            stories: members.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body("## composed"),
     );
@@ -52,7 +52,7 @@ fn iteration_with_members(number: u64, name: &str, members: Vec<u64>) -> Story {
 
 fn member_story(number: u64, state: StoryState) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("[Feature] member-{number}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -148,7 +148,7 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
             .iteration(1700)
             .expect("present")
             .stories
-            .contains(&710),
+            .contains(&StoryId::new(710)),
         "a reasonless remove mutates nothing"
     );
 }
@@ -207,7 +207,7 @@ async fn move_member_reorders_within_the_iteration_1762() {
         .expect("pm reorders the member");
     assert_eq!(
         refresh.iteration(1700).expect("present").stories,
-        vec![720, 710],
+        vec![StoryId::new(720), StoryId::new(710)],
         "the member moves to the requested 1-indexed position within the iteration"
     );
 }
@@ -309,7 +309,7 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
 #[tokio::test]
 async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
     let mut feature = Story::new_minimal(
-        700,
+        StoryId::new(700),
         "[Feature] plain".into(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),

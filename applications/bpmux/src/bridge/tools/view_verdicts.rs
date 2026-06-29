@@ -1,3 +1,4 @@
+use crate::product_management::story::StoryId;
 use crate::workflow::verdicts::{Verdict, load, verdicts_for_story};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -17,9 +18,9 @@ struct VerdictView {
 
 fn resolve_accept_window_secs(
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
-    story_number: u64,
+    story_id: StoryId,
 ) -> Option<u64> {
-    let story = refresh?.store().story(story_number)?;
+    let story = refresh?.store().story(story_id)?;
     let class = crate::workflow::gate_class_from_labels_and_story_type(
         &story.raw_labels,
         story.story_type(),
@@ -35,14 +36,15 @@ pub(in crate::bridge) async fn handle_view_verdicts(
     session: &Arc<crate::session::Session>,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let story_number = args
-        .get("story_number")
-        .and_then(|v| v.as_u64())
-        .ok_or("missing 'story_number' argument")?;
+    let story_id = StoryId::new(
+        args.get("story_number")
+            .and_then(|v| v.as_u64())
+            .ok_or("missing 'story_number' argument")?,
+    );
 
     let store = load(&session.dir);
-    let records = verdicts_for_story(&store, story_number);
-    let window_secs = resolve_accept_window_secs(refresh, story_number);
+    let records = verdicts_for_story(&store, story_id);
+    let window_secs = resolve_accept_window_secs(refresh, story_id);
     let current_head = crate::bridge::tools::git_repo::current_head_sha();
     let now = chrono::Utc::now();
     let views: Vec<VerdictView> = records

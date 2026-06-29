@@ -15,46 +15,44 @@ pub(super) async fn apply_push_event(
 ) -> Result<Option<BoardEvent>, SyncError> {
     match event {
         BoardEvent::StoryCreated { .. } => Ok(None),
-        BoardEvent::StateTransitioned {
-            number, new_state, ..
-        } => push_state_transitioned(inner, *number, *new_state).await,
-        BoardEvent::StoryClosed { number, reason, .. } => {
-            push_story_closed(inner, *number, reason).await
+        BoardEvent::StateTransitioned { id, new_state, .. } => {
+            push_state_transitioned(inner, id.value(), *new_state).await
         }
-        BoardEvent::StoryReopened { number, .. } => push_story_reopened(inner, *number).await,
+        BoardEvent::StoryClosed { id, reason, .. } => {
+            push_story_closed(inner, id.value(), reason).await
+        }
+        BoardEvent::StoryReopened { id, .. } => push_story_reopened(inner, id.value()).await,
         BoardEvent::GateCommentAppended {
             meta,
-            number,
+            id,
             gate,
             payload,
-        } => push_gate_comment_appended(inner, *number, meta, *gate, payload.as_deref()).await,
-        BoardEvent::FreeCommentAppended { number, body, .. } => {
-            push_free_comment_appended(inner, *number, body).await
+        } => push_gate_comment_appended(inner, id.value(), meta, *gate, payload.as_deref()).await,
+        BoardEvent::FreeCommentAppended { id, body, .. } => {
+            push_free_comment_appended(inner, id.value(), body).await
         }
-        BoardEvent::TagAdded { number, label, .. } => push_tag_added(inner, *number, label).await,
-        BoardEvent::TagRemoved { number, label, .. } => {
-            push_tag_removed(inner, *number, label).await
+        BoardEvent::TagAdded { id, label, .. } => push_tag_added(inner, id.value(), label).await,
+        BoardEvent::TagRemoved { id, label, .. } => {
+            push_tag_removed(inner, id.value(), label).await
         }
         BoardEvent::ParentEpicSet {
-            number,
-            epic_number,
-            ..
-        } => push_parent_epic_set(inner, *number, *epic_number).await,
-        BoardEvent::ParentEpicUnset { number, .. } => push_parent_epic_unset(inner, *number).await,
+            id, epic_number, ..
+        } => push_parent_epic_set(inner, id.value(), *epic_number).await,
+        BoardEvent::ParentEpicUnset { id, .. } => push_parent_epic_unset(inner, id.value()).await,
         BoardEvent::IterationMembershipSet {
-            number,
+            id,
             iteration_number,
             position,
             ..
-        } => push_iteration_membership_set(inner, *number, *iteration_number, *position).await,
-        BoardEvent::IterationMembershipCleared { number, .. } => {
-            push_iteration_membership_cleared(inner, *number).await
+        } => push_iteration_membership_set(inner, id.value(), *iteration_number, *position).await,
+        BoardEvent::IterationMembershipCleared { id, .. } => {
+            push_iteration_membership_cleared(inner, id.value()).await
         }
-        BoardEvent::CurrentIterationDesignated { number, .. } => {
-            push_current_iteration_designated(inner, *number).await
+        BoardEvent::CurrentIterationDesignated { id, .. } => {
+            push_current_iteration_designated(inner, id.value()).await
         }
-        BoardEvent::CurrentIterationCleared { number, .. } => {
-            push_current_iteration_cleared(inner, *number).await
+        BoardEvent::CurrentIterationCleared { id, .. } => {
+            push_current_iteration_cleared(inner, id.value()).await
         }
         BoardEvent::BodyFetched { .. }
         | BoardEvent::FreeCommentsFetched { .. }

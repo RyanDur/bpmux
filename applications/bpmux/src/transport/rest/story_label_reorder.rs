@@ -4,7 +4,7 @@ use super::labels::{LabelMutationPayload, post_story_labels};
 use crate::product_management::board::adapters::github::iteration_membership_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use crate::session::Session;
 use axum::Json;
 use axum::extract::{Path, State};
@@ -14,7 +14,7 @@ use tokio::sync::broadcast;
 
 fn membered_member(number: u64, label: &str) -> Story {
     let mut story = Story::new_minimal(
-        number,
+        StoryId::new(number),
         "reorder fixture".to_string(),
         StoryState::Ready,
         chrono::Utc::now(),
@@ -26,7 +26,10 @@ fn membered_member(number: u64, label: &str) -> Story {
 }
 
 fn membership(store: &BoardStore, number: u64) -> Option<(u64, u32)> {
-    store.story(number).unwrap().iteration_membership()
+    store
+        .story(StoryId::new(number))
+        .unwrap()
+        .iteration_membership()
 }
 
 #[tokio::test]

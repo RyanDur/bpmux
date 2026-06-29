@@ -5,7 +5,7 @@ use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SyncError};
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{FreeComment, GateComment, Story};
+use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
 
@@ -63,7 +63,7 @@ pub trait RefreshDriver: Send + Sync {
         self.store().iterations()
     }
     fn iteration(&self, number: u64) -> Option<Iteration> {
-        self.store().iteration(number)
+        self.store().iteration(StoryId::new(number))
     }
     fn store_is_empty(&self) -> bool {
         self.store().is_empty()

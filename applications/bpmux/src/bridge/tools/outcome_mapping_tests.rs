@@ -11,14 +11,14 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
 fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Outcome #{number}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -38,7 +38,7 @@ fn outcome(number: u64, iterations: Vec<u64>) -> Story {
 
 fn iteration_for(number: u64, outcome_number: u64) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration #{number}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -76,7 +76,7 @@ fn outcome_iterations(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Vec<u64>
     refresh
         .outcomes()
         .into_iter()
-        .find(|outcome| outcome.id().saved_number() == Some(number))
+        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(number)))
         .map(|outcome| outcome.iterations)
         .unwrap_or_default()
 }
@@ -86,7 +86,7 @@ fn drill_iteration_numbers(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Vec
     let Some(outcome) = refresh
         .outcomes()
         .into_iter()
-        .find(|outcome| outcome.id().saved_number() == Some(number))
+        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(number)))
     else {
         return vec![];
     };
@@ -207,7 +207,7 @@ async fn unmap_rejects_an_unmapped_iteration_1763() {
 #[tokio::test]
 async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary_1763() {
     let mut feature = Story::new_minimal(
-        700,
+        StoryId::new(700),
         "[Feature] plain".into(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),

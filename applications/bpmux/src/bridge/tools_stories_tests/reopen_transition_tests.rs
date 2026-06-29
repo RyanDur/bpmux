@@ -14,13 +14,13 @@ mod reopen_on_state_transition_tests {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
     fn seeded_closed_chore(number: u64, state: StoryState) -> Story {
         let mut s = Story::new_minimal(
-            number,
+            StoryId::new(number),
             "t".into(),
             state,
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -61,9 +61,9 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
         assert!(
-            pushed
-                .iter()
-                .any(|e| matches!(e, BoardEvent::StoryReopened { number: 7110, .. })),
+            pushed.iter().any(
+                |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(7110))
+            ),
             "start_story on closed-state must emit StoryReopened: {pushed:?}"
         );
     }
@@ -83,9 +83,9 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
         assert!(
-            !pushed
-                .iter()
-                .any(|e| matches!(e, BoardEvent::StoryReopened { number: 7111, .. })),
+            !pushed.iter().any(
+                |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(7111))
+            ),
             "start_story on open story must NOT emit StoryReopened: {pushed:?}"
         );
     }
@@ -104,9 +104,9 @@ mod reopen_on_state_transition_tests {
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         let pushed = adapter.pushed_events();
         assert!(
-            pushed
-                .iter()
-                .any(|e| matches!(e, BoardEvent::StoryReopened { number: 7120, .. })),
+            pushed.iter().any(
+                |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(7120))
+            ),
             "deliver_story on closed-state must emit StoryReopened: {pushed:?}"
         );
     }
@@ -124,9 +124,9 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
         assert!(
-            pushed
-                .iter()
-                .any(|e| matches!(e, BoardEvent::StoryReopened { number: 7130, .. })),
+            pushed.iter().any(
+                |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(7130))
+            ),
             "pass_desk_check on closed-state must emit StoryReopened: {pushed:?}"
         );
     }

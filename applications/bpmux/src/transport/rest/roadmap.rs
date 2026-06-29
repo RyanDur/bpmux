@@ -33,7 +33,7 @@ pub async fn get_roadmap(
             let outcome = refresh
                 .outcomes()
                 .into_iter()
-                .find(|outcome| outcome.id().saved_number() == Some(number));
+                .find(|outcome| outcome.id().saved_id().map(|id| id.value()) == Some(number));
             let drill = outcome
                 .as_ref()
                 .map(|outcome| {

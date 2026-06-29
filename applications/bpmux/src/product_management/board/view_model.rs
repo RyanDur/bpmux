@@ -47,7 +47,7 @@ pub struct StoryView {
 impl StoryView {
     pub fn project<C: LabelCodec>(codec: &C, story: &Story) -> Self {
         Self {
-            number: story.number,
+            number: story.id.value(),
             title: story.title().to_string(),
             state: story.state().as_str(),
             gh_state: if story.is_closed { "closed" } else { "open" },

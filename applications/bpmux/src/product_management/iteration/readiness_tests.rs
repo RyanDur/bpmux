@@ -7,7 +7,7 @@ use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use crate::workflow::config::WorkflowConfig;
 use chrono::Utc;
@@ -26,7 +26,7 @@ fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iterat
 
 fn iteration(number: u64) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         "Iteration Vela".to_string(),
         StoryState::Ready,
         Utc::now(),
@@ -43,7 +43,7 @@ fn iteration_with_stories(number: u64, stories: Vec<u64>) -> Story {
     s.body = Some(
         IterationRelationships {
             outcome: None,
-            stories,
+            stories: stories.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
     );
@@ -258,7 +258,7 @@ fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> St
     s.body = Some(
         IterationRelationships {
             outcome: Some(outcome_number),
-            stories,
+            stories: stories.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
     );
@@ -267,7 +267,7 @@ fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> St
 
 fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Outcome #{number}"),
         StoryState::Icebox,
         Utc::now(),

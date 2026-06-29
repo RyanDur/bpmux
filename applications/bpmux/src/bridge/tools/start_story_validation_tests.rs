@@ -7,7 +7,7 @@ mod gate_retire_1348 {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -21,7 +21,7 @@ mod gate_retire_1348 {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let mut seeded = Story::new_minimal(
-            number,
+            StoryId::new(number),
             title.into(),
             state,
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),

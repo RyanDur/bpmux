@@ -5,7 +5,7 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -13,7 +13,7 @@ async fn build_orchestrator() -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let story = Story::new_minimal(
-        200,
+        StoryId::new(200),
         "t".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -102,7 +102,7 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
             "{label} should NOT be affected by #1402 retire: {result:?}"
         );
     }
-    let story = store.story(200).expect("story present");
+    let story = store.story(StoryId::new(200)).expect("story present");
     assert!(
         story
             .raw_labels

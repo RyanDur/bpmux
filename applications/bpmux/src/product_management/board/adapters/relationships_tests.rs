@@ -4,12 +4,13 @@ use super::relationships::{
     EpicRelationships, IterationRelationships, OutcomeRelationships, Relationships,
     RoadmapRelationships, StoryRelationships,
 };
+use crate::product_management::story::StoryId;
 
 #[test]
 fn iteration_relationships_round_trip_through_body_preserving_order() {
     let rel = IterationRelationships {
         outcome: Some(700),
-        stories: vec![1399, 1397, 1398],
+        stories: vec![StoryId::new(1399), StoryId::new(1397), StoryId::new(1398)],
     };
     let body = rel.write_into_body("Iteration prose.");
     assert_eq!(IterationRelationships::read_from_body(&body), Some(rel));
@@ -59,7 +60,7 @@ fn roadmap_relationships_round_trip_preserving_outcome_order() {
 #[test]
 fn epic_relationships_carry_member_stories() {
     let rel = EpicRelationships {
-        stories: vec![1397, 1500],
+        stories: vec![StoryId::new(1397), StoryId::new(1500)],
     };
     let body = rel.write_into_body("Epic prose.");
     assert_eq!(EpicRelationships::read_from_body(&body), Some(rel));

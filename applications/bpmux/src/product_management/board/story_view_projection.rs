@@ -2,12 +2,12 @@
 
 use super::view_model::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 
 fn story(number: u64, title: &str, state: StoryState) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.to_string(),
         state,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),

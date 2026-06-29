@@ -2,11 +2,11 @@
 
 use super::{Outcome, OutcomeLifecycle};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Horizon, Story, StoryState};
+use crate::product_management::story::{Horizon, Story, StoryId, StoryState};
 
 fn outcome_story(state: StoryState, labels: Vec<String>) -> Story {
     let mut story = Story::new_minimal(
-        700,
+        StoryId::new(700),
         "[Outcome] reach the milestone".to_string(),
         state,
         chrono::Utc::now(),

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::relationship_block::{embed, extract};
+use crate::product_management::story::StoryId;
 
 pub trait Relationships: Serialize + serde::de::DeserializeOwned + Sized {
     fn read_from_body(body: &str) -> Option<Self> {
@@ -28,7 +29,7 @@ pub struct IterationRelationships {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<u64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub stories: Vec<u64>,
+    pub stories: Vec<StoryId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -48,7 +49,7 @@ pub struct RoadmapRelationships {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct EpicRelationships {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub stories: Vec<u64>,
+    pub stories: Vec<StoryId>,
 }
 
 impl Relationships for StoryRelationships {}

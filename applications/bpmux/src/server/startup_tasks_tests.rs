@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 
 use super::startup_tasks::spawn_background_ingest;
 
@@ -13,7 +13,7 @@ use super::startup_tasks::spawn_background_ingest;
 async fn ingest_runs_in_background_not_inline() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![Story::new_minimal(
-        7,
+        StoryId::new(7),
         "seven".to_string(),
         StoryState::Ready,
         chrono::Utc::now(),

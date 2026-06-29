@@ -14,7 +14,7 @@ mod verdict_substrate_integration_1407 {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryId, StoryState};
     use crate::session::Session;
     use crate::workflow::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};
@@ -43,7 +43,7 @@ mod verdict_substrate_integration_1407 {
 
     fn delivered_story(number: u64) -> Story {
         let mut story = Story::new_minimal(
-            number,
+            StoryId::new(number),
             format!("story-{number}"),
             StoryState::Delivered,
             Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
@@ -59,7 +59,7 @@ mod verdict_substrate_integration_1407 {
         add_or_replace_verdict(
             &mut store,
             Verdict {
-                story_number: number,
+                story_id: StoryId::new(number),
                 from_role: role.to_string(),
                 verdict: "verified".to_string(),
                 substrate_grounding: "src/foo.rs cite".to_string(),
@@ -76,7 +76,7 @@ mod verdict_substrate_integration_1407 {
         add_or_replace_verdict(
             &mut store,
             Verdict {
-                story_number: number,
+                story_id: StoryId::new(number),
                 from_role: role.to_string(),
                 verdict: "verified".to_string(),
                 substrate_grounding: "src/foo.rs cite".to_string(),
@@ -116,7 +116,7 @@ mod verdict_substrate_integration_1407 {
             .await
             .expect("dev submit_verdict");
         let store = load(&session.dir);
-        let stored = verdicts_for_story(&store, 42);
+        let stored = verdicts_for_story(&store, StoryId::new(42));
         assert_eq!(stored.len(), 2);
         let roles: Vec<&str> = stored.iter().map(|v| v.from_role.as_str()).collect();
         assert!(roles.contains(&"designer"));
@@ -447,7 +447,7 @@ mod verdict_substrate_integration_1407 {
         assert_eq!(records[0]["verdict"], "verified");
         assert_eq!(records[0]["substrate_grounding"], "src/foo.rs cite");
         assert!(records[0]["ts"].is_string());
-        assert_eq!(records[0]["story_number"], 42);
+        assert_eq!(records[0]["story_id"], 42);
     }
 
     #[tokio::test]
@@ -494,7 +494,7 @@ mod verdict_substrate_integration_1407 {
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
         let records = parsed.as_array().unwrap();
         assert_eq!(records.len(), 1);
-        assert_eq!(records[0]["story_number"], 20);
+        assert_eq!(records[0]["story_id"], 20);
         assert_eq!(records[0]["from_role"], "dev");
     }
 
@@ -538,7 +538,7 @@ mod verdict_substrate_integration_1407 {
         .await
         .unwrap();
         let before = load(&session.dir);
-        let count_before = verdicts_for_story(&before, 42).len();
+        let count_before = verdicts_for_story(&before, StoryId::new(42)).len();
 
         crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
             .await
@@ -551,7 +551,7 @@ mod verdict_substrate_integration_1407 {
             .unwrap();
 
         let after = load(&session.dir);
-        let count_after = verdicts_for_story(&after, 42).len();
+        let count_after = verdicts_for_story(&after, StoryId::new(42)).len();
         assert_eq!(
             count_before, count_after,
             "view_verdicts must not mutate the store"

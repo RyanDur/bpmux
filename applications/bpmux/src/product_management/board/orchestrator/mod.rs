@@ -87,7 +87,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.with_pending(|p| {
             p.iter()
                 .find(|q| q.id == id)
-                .map(|q| q.event.story_number())
+                .map(|q| q.event.story_id().value())
         })
     }
 
@@ -139,7 +139,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let stories = self.store.all_stories();
         let mut repairs = 0usize;
         for story in stories {
-            let labels = match self.adapter.fetch_story_labels(story.number).await {
+            let labels = match self.adapter.fetch_story_labels(story.id.value()).await {
                 Ok(l) => l,
                 Err(_) => continue,
             };
@@ -152,7 +152,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 };
                 self.mutate(BoardEvent::TagRemoved {
                     meta,
-                    number: story.number,
+                    id: story.id,
                     label: stale_label,
                 })?;
                 repairs += 1;

@@ -18,14 +18,14 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 break;
             };
             let event = queued.event.clone();
-            let lock = self.issue_lock(event.story_number()).await;
+            let lock = self.issue_lock(event.story_id().value()).await;
             let _guard = lock.lock().await;
             let queued_opt = self.with_pending(|p| p.get(conflict_offset).cloned());
             let Some(queued) = queued_opt else {
                 break;
             };
             let event = queued.event.clone();
-            let current = self.store.backing_story(event.story_number());
+            let current = self.store.backing_story(event.story_id());
             let prior_classification = queued.last_classification;
             let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
 
@@ -40,12 +40,12 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             {
                 self.store.apply(&BoardEvent::ConflictResolved {
                     meta: cache_fill_meta(),
-                    number: event.story_number(),
+                    id: event.story_id(),
                     origin: ConflictResolveOrigin::DrainAutoReclassify,
                 });
                 crate::diag::log_diag(&format!(
                     "orchestrator: conflict auto-resolved on drain re-classify for #{}",
-                    event.story_number()
+                    event.story_id().value()
                 ));
             }
 
@@ -62,7 +62,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     decrement_pending(&self.status);
                     crate::diag::log_diag(&format!(
                         "orchestrator: idempotent-skip dropped #{} (already-applied at canonical store)",
-                        event.story_number()
+                        event.story_id().value()
                     ));
                     continue;
                 }
@@ -77,12 +77,12 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     ) {
                         self.store.apply(&BoardEvent::ConflictDetected {
                             meta: cache_fill_meta(),
-                            number: event.story_number(),
+                            id: event.story_id(),
                             kind: divergent,
                         });
                         crate::diag::log_diag(&format!(
                             "orchestrator: conflict-detected {divergent:?} on #{}; left in outbox for slice-B click-to-resolve",
-                            event.story_number()
+                            event.story_id().value()
                         ));
                     }
                     self.with_pending_mut(|p| {
@@ -126,10 +126,10 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         });
                         self.persist_outbox();
                         decrement_pending(&self.status);
-                        record_dropped(&self.status, event.story_number(), format!("{e}"));
+                        record_dropped(&self.status, event.story_id().value(), format!("{e}"));
                         crate::diag::log_diag(&format!(
                             "orchestrator: dropped event after permanent push failure ({e}); event #{}",
-                            event.story_number()
+                            event.story_id().value()
                         ));
                         continue;
                     }

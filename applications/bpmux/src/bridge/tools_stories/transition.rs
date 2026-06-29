@@ -7,7 +7,7 @@ use super::helpers::{
 };
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
-use crate::product_management::story::{Gate, Story, StoryState};
+use crate::product_management::story::{Gate, Story, StoryId, StoryState};
 
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -71,21 +71,21 @@ pub(crate) async fn handle_start_story(
         if was_closed {
             r.mutate_sync(BoardEvent::StoryReopened {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
             })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), number, &meta, LABEL_IN_PROGRESS)?;
         r.mutate_sync(BoardEvent::GateCommentAppended {
             meta: meta.clone(),
-            number,
+            id: StoryId::new(number),
             gate: Gate::Pickup,
             payload: Some(pickup_payload.clone()),
         })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
         r.mutate_sync(BoardEvent::StateTransitioned {
             meta,
-            number,
+            id: StoryId::new(number),
             new_state: StoryState::InProgress,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
@@ -166,21 +166,21 @@ pub(crate) async fn handle_deliver_story(
         if was_closed {
             r.mutate_sync(BoardEvent::StoryReopened {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
             })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), number, &meta, "desk-check")?;
         r.mutate_sync(BoardEvent::GateCommentAppended {
             meta: meta.clone(),
-            number,
+            id: StoryId::new(number),
             gate: Gate::Delivered,
             payload: Some(verified_observation.to_string()),
         })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
         r.mutate_sync(BoardEvent::StateTransitioned {
             meta,
-            number,
+            id: StoryId::new(number),
             new_state: StoryState::DeskCheck,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;

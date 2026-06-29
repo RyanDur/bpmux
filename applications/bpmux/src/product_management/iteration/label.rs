@@ -49,7 +49,7 @@ pub fn current_iteration_number(iterations: &[super::Iteration]) -> Option<u64> 
     iterations
         .iter()
         .find(|iteration| !iteration.complete && iteration.is_current)
-        .and_then(|iteration| iteration.id().saved_number())
+        .and_then(|iteration| iteration.id().saved_id().map(|id| id.value()))
 }
 
 pub fn members_of_iteration(stories: &[Story], iteration_number: u64) -> Vec<u64> {
@@ -57,7 +57,7 @@ pub fn members_of_iteration(stories: &[Story], iteration_number: u64) -> Vec<u64
         .iter()
         .filter(|s| !s.is_closed)
         .filter_map(|s| match s.iteration_membership() {
-            Some((it, pos)) if it == iteration_number => Some((s.number, pos)),
+            Some((it, pos)) if it == iteration_number => Some((s.id.value(), pos)),
             _ => None,
         })
         .collect();

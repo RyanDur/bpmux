@@ -2,6 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
+use crate::product_management::story::StoryId;
 use crate::product_management::story::StoryType;
 use crate::transport::protocol::ClientMessage;
 
@@ -142,7 +143,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![Story::new_minimal(
-        777,
+        StoryId::new(777),
         "[Bug] bypass-target".to_string(),
         StoryState::Delivered,
         Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
@@ -173,9 +174,9 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     let gate_event = pushed
         .iter()
         .find_map(|e| match e {
-            BoardEvent::GateCommentAppended {
-                number, payload, ..
-            } if *number == 777 => Some(payload.clone()),
+            BoardEvent::GateCommentAppended { id, payload, .. } if *id == StoryId::new(777) => {
+                Some(payload.clone())
+            }
             _ => None,
         })
         .expect("gate-comment event recorded");

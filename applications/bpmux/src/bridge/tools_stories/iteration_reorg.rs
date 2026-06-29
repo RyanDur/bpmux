@@ -4,6 +4,7 @@ use crate::product_management::board::BoardEvent;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::Iteration;
+use crate::product_management::story::StoryId;
 use std::sync::Arc;
 
 pub(crate) async fn handle_reorder_iteration(
@@ -45,7 +46,7 @@ fn renumber_iteration_order(
     actives.sort_by_key(|iteration| {
         (
             iteration.iteration_order.unwrap_or(u32::MAX),
-            iteration.id().saved_number().unwrap_or(0),
+            iteration.id().saved_id().map(|id| id.value()).unwrap_or(0),
         )
     });
 
@@ -53,7 +54,7 @@ fn renumber_iteration_order(
     let clamped = requested_position.clamp(1, band_size.max(1));
     let mut sequence: Vec<u64> = actives
         .iter()
-        .filter_map(|iteration| iteration.id().saved_number())
+        .filter_map(|iteration| iteration.id().saved_id().map(|id| id.value()))
         .filter(|number| *number != moved)
         .collect();
     let insert_index = (clamped as usize - 1).min(sequence.len());
@@ -63,7 +64,7 @@ fn renumber_iteration_order(
         let new_position = (index + 1) as u32;
         let Some(iteration) = actives
             .iter()
-            .find(|iteration| iteration.id().saved_number() == Some(*number))
+            .find(|iteration| iteration.id().saved_id().map(|id| id.value()) == Some(*number))
         else {
             continue;
         };
@@ -73,14 +74,14 @@ fn renumber_iteration_order(
         if let Some(old_position) = iteration.iteration_order {
             r.mutate_sync(BoardEvent::TagRemoved {
                 meta: meta_for(agent_name),
-                number: *number,
+                id: StoryId::new(*number),
                 label: GhLabelCodec.encode_iteration_order(old_position),
             })
             .map_err(|e| format!("#{number} iteration-order clear enqueue failed: {e}"))?;
         }
         r.mutate_sync(BoardEvent::TagAdded {
             meta: meta_for(agent_name),
-            number: *number,
+            id: StoryId::new(*number),
             label: GhLabelCodec.encode_iteration_order(new_position),
         })
         .map_err(|e| format!("#{number} iteration-order set enqueue failed: {e}"))?;

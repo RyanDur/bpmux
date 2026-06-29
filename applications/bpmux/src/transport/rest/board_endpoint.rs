@@ -7,7 +7,7 @@ use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::board::{BoardStore, SyncOrchestrator};
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -22,7 +22,7 @@ async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 
 fn iteration(number: u64) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         "Iteration Vela".to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -41,7 +41,7 @@ fn iteration(number: u64) -> Story {
 
 fn member(number: u64, iteration_number: u64, position: u32) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("member #{number}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -61,7 +61,7 @@ fn find(stories: &[serde_json::Value], number: u64) -> &serde_json::Value {
 
 fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         "An outcome".to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -84,7 +84,7 @@ fn iteration_with_stories(number: u64, stories: Vec<u64>) -> Story {
     s.body = Some(
         IterationRelationships {
             outcome: None,
-            stories,
+            stories: stories.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
     );
@@ -96,7 +96,7 @@ fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> St
     s.body = Some(
         IterationRelationships {
             outcome: Some(outcome_number),
-            stories,
+            stories: stories.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
     );

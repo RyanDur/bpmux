@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
-use crate::product_management::story::{FreeComment, GateComment, Story};
+use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
 use super::{
     BoxedFuture, DrainOneOutcome, MutationId, RefreshDriver, SyncOrchestrator, SyncStatus,
@@ -108,7 +108,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     }
 
     fn story(&self, number: u64) -> Option<Story> {
-        self.store.story(number)
+        self.store.story(StoryId::new(number))
     }
 
     fn all_stories(&self) -> Vec<Story> {
@@ -126,7 +126,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
             adapter.update_body(number, &body).await?;
             store.apply(&BoardEvent::BodyUpdated {
                 meta: cache_fill_meta(),
-                number,
+                id: StoryId::new(number),
                 body,
             });
             Ok(())
@@ -140,7 +140,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
             adapter.update_title(number, &title).await?;
             store.apply(&BoardEvent::TitleUpdated {
                 meta: cache_fill_meta(),
-                number,
+                id: StoryId::new(number),
                 title,
             });
             Ok(())

@@ -3,13 +3,14 @@
 use super::dev_in_flight::*;
 use crate::product_management::board::BoardStore;
 use crate::product_management::story::Story;
+use crate::product_management::story::StoryId;
 use crate::product_management::story::StoryState;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
 fn seed(state: StoryState, number: u64) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("title-{number}"),
         state,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),

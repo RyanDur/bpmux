@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 
 mod codec_injection_substrate {
     use super::*;
@@ -68,7 +68,7 @@ mod codec_injection_substrate {
 
     fn seed_story(number: u64) -> Story {
         Story::new_minimal(
-            number,
+            StoryId::new(number),
             format!("story-{number}"),
             StoryState::InProgress,
             Utc.with_ymd_and_hms(2026, 5, 17, 0, 0, 0).unwrap(),
@@ -100,13 +100,13 @@ mod codec_injection_substrate {
 
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 8801,
+            id: StoryId::new(8801),
             label: "STUB|Andromeda:100".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 8801,
+            id: StoryId::new(8801),
             label: "STUB|Andromeda:200".to_string(),
         })
         .unwrap();
@@ -129,13 +129,13 @@ mod codec_injection_substrate {
 
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 8802,
+            id: StoryId::new(8802),
             label: "STUB|Andromeda:100".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 8802,
+            id: StoryId::new(8802),
             label: "STUB|Pegasus:50".to_string(),
         })
         .unwrap();

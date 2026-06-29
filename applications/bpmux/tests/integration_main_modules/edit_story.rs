@@ -19,14 +19,14 @@ use tokio_util::sync::CancellationToken;
 use bpmux::auth as auth_token;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use bpmux::product_management::story::{Story, StoryState};
+use bpmux::product_management::story::{Story, StoryId, StoryState};
 use bpmux::session::Session;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
 
 fn seed_story(adapter: &InMemorySourceAdapter, number: u64) {
     let story = Story {
-        number,
+        id: StoryId::new(number),
         title: "fixture story".to_string(),
         body: Some("## What\n\noriginal body\n".to_string()),
         state: StoryState::Ready,
@@ -120,7 +120,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
         "edit_story response carries success message; got {body_resp}"
     );
 
-    let stored = store.story(99).expect("story still in store");
+    let stored = store.story(StoryId::new(99)).expect("story still in store");
     assert_eq!(
         stored.body.as_deref(),
         Some(new_body),

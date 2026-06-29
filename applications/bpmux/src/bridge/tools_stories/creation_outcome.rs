@@ -1,4 +1,5 @@
 use super::helpers::{require_nonempty_string, role_from_name};
+use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_create_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -56,7 +57,7 @@ pub(crate) async fn handle_create_outcome(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
         meta: meta.clone(),
-        number,
+        id: StoryId::new(number),
         title: title.clone(),
         body,
         initial_state: crate::product_management::story::StoryState::Icebox,
@@ -65,13 +66,13 @@ pub(crate) async fn handle_create_outcome(
     .map_err(|e| format!("#{number} outcome created but enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta: meta.clone(),
-        number,
+        id: StoryId::new(number),
         label: "outcome".to_string(),
     })
     .map_err(|e| format!("#{number} outcome label enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
-        number,
+        id: StoryId::new(number),
         label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
             .encode_horizon(horizon),
     })

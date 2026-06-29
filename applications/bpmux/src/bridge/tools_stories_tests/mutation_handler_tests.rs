@@ -2,7 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::StoryType;
+use crate::product_management::story::{StoryId, StoryType};
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -19,7 +19,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
-        123,
+        StoryId::new(123),
         "t".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -41,7 +41,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     let result = handle_comment_on_story(&args, "dev:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(123).unwrap();
+    let story = store.story(StoryId::new(123)).unwrap();
     let comments = story.free_comments.expect("FreeCommentAppended applied");
     assert_eq!(comments.len(), 1);
     assert_eq!(comments[0].body, "new comment via orchestrator");
@@ -53,7 +53,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::FreeCommentAppended { number: 123, .. }
+        BoardEvent::FreeCommentAppended { id, .. } if *id == StoryId::new(123)
     ));
 }
 
@@ -71,7 +71,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
-        200,
+        StoryId::new(200),
         "t".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -91,7 +91,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     let result = handle_label_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(200).unwrap();
+    let story = store.story(StoryId::new(200)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::tags_from_labels(&story.raw_labels),
         vec![Tag::Blocked]
@@ -106,7 +106,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::TagAdded { number: 200, label, .. } if label == "blocked"
+        BoardEvent::TagAdded { id, label, .. } if *id == StoryId::new(200) && label == "blocked"
     ));
 }
 
@@ -124,7 +124,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
-        200,
+        StoryId::new(200),
         "t".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -155,7 +155,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "migrated remove path should succeed: {result:?}"
     );
 
-    let story = store.story(200).unwrap();
+    let story = store.story(StoryId::new(200)).unwrap();
     assert!(
         crate::product_management::board::adapters::github::tags_from_labels(&story.raw_labels)
             .is_empty(),
@@ -171,11 +171,11 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     assert_eq!(pushed.len(), 2);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::TagAdded { number: 200, label, .. } if label == "blocked"
+        BoardEvent::TagAdded { id, label, .. } if *id == StoryId::new(200) && label == "blocked"
     ));
     assert!(matches!(
         &pushed[1],
-        BoardEvent::TagRemoved { number: 200, label, .. } if label == "blocked"
+        BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(200) && label == "blocked"
     ));
 }
 
@@ -193,7 +193,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
-        201,
+        StoryId::new(201),
         "t".into(),
         StoryState::DeskCheck,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -213,7 +213,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         handle_pass_desk_check(&args, "designer:claude-code", Some(&orchestrator), None).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(201).unwrap();
+    let story = store.story(StoryId::new(201)).unwrap();
     assert_eq!(story.state, StoryState::Delivered);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
@@ -230,9 +230,9 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
-            BoardEvent::TagRemoved {
-                number: 201, label, ..
-            } => Some(label.as_str()),
+            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(201) => {
+                Some(label.as_str())
+            }
             _ => None,
         })
         .collect();
@@ -244,25 +244,25 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     assert!(matches!(
         &pushed[1],
         BoardEvent::TagAdded {
-            number: 201, label, ..
-        } if label == "awaiting owner"
+            id, label, ..
+        } if *id == StoryId::new(201) && label == "awaiting owner"
     ));
     assert!(matches!(
         &pushed[2],
         BoardEvent::GateCommentAppended {
-            number: 201,
+            id,
             gate: Gate::PassDeskCheck,
             payload: None,
             ..
-        }
+        } if *id == StoryId::new(201)
     ));
     assert!(matches!(
         &pushed[3],
         BoardEvent::StateTransitioned {
-            number: 201,
+            id,
             new_state: StoryState::Delivered,
             ..
-        }
+        } if *id == StoryId::new(201)
     ));
 }
 
@@ -280,7 +280,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
-        202,
+        StoryId::new(202),
         "t".into(),
         StoryState::DeskCheck,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -300,7 +300,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     let result = handle_fail_desk_check(&args, "designer:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(202).unwrap();
+    let story = store.story(StoryId::new(202)).unwrap();
     assert_eq!(story.state, StoryState::InProgress);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
@@ -316,9 +316,9 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
-            BoardEvent::TagRemoved {
-                number: 202, label, ..
-            } => Some(label.as_str()),
+            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(202) => {
+                Some(label.as_str())
+            }
             _ => None,
         })
         .collect();
@@ -330,18 +330,18 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     assert!(matches!(
         &pushed[1],
         BoardEvent::GateCommentAppended {
-            number: 202,
+            id,
             gate: Gate::FailDeskCheck,
             payload: Some(p),
             ..
-        } if p == substantive_reason
+        } if *id == StoryId::new(202) && p == substantive_reason
     ));
     assert!(matches!(
         &pushed[2],
         BoardEvent::StateTransitioned {
-            number: 202,
+            id,
             new_state: StoryState::InProgress,
             ..
-        }
+        } if *id == StoryId::new(202)
     ));
 }

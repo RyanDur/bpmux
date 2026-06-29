@@ -3,7 +3,7 @@ use std::sync::Mutex;
 
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
-use crate::product_management::story::{FreeComment, GateComment, Story};
+use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
 mod mutation;
 mod seed;
@@ -38,7 +38,7 @@ impl SourceAdapter for InMemorySourceAdapter {
             .values()
             .cloned()
             .map(|mut story| {
-                if let Some(labels) = s.labels.get(&story.number) {
+                if let Some(labels) = s.labels.get(&story.id.value()) {
                     story.raw_labels = labels.clone();
                 }
                 story
@@ -141,7 +141,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         }
         let number = s.stories.keys().max().map(|n| n + 1).unwrap_or(1);
         let story = Story::new_minimal(
-            number,
+            StoryId::new(number),
             title.to_string(),
             crate::product_management::story::StoryState::Icebox,
             chrono::Utc::now(),

@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 
 mod slice_7_2_mutation_id_dispatch {
     use super::*;
@@ -32,13 +32,13 @@ mod slice_7_2_mutation_id_dispatch {
 
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 101,
+            id: StoryId::new(101),
             new_state: StoryState::InProgress,
         })
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 102,
+            id: StoryId::new(102),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -66,7 +66,7 @@ mod slice_7_2_mutation_id_dispatch {
         orch.ingest_once().await.unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 201,
+            id: StoryId::new(201),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -83,7 +83,7 @@ mod slice_7_2_mutation_id_dispatch {
         orch.ingest_once().await.unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 301,
+            id: StoryId::new(301),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -119,7 +119,7 @@ mod slice_7_3_drain_one_by_id {
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 401,
+            id: StoryId::new(401),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -143,7 +143,7 @@ mod slice_7_3_drain_one_by_id {
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 601,
+            id: StoryId::new(601),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -176,19 +176,19 @@ mod slice_7_3_drain_one_by_id {
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 701,
+            id: StoryId::new(701),
             new_state: StoryState::InProgress,
         })
         .unwrap();
         assert_eq!(
-            store.story(701).map(|s| s.state),
+            store.story(StoryId::new(701)).map(|s| s.state),
             Some(StoryState::InProgress)
         );
 
         let server_view = seed_story(701, StoryState::Accepted);
         orch.apply_server_rollback(server_view);
         assert_eq!(
-            store.story(701).map(|s| s.state),
+            store.story(StoryId::new(701)).map(|s| s.state),
             Some(StoryState::Accepted)
         );
     }
@@ -206,7 +206,7 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 801,
+            id: StoryId::new(801),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -237,13 +237,13 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         ));
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 901,
+            id: StoryId::new(901),
             new_state: StoryState::InProgress,
         })
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 902,
+            id: StoryId::new(902),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -271,13 +271,13 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 1001,
+            id: StoryId::new(1001),
             new_state: StoryState::InProgress,
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 1001,
+            id: StoryId::new(1001),
             label: "blocked".to_string(),
         })
         .unwrap();

@@ -9,14 +9,14 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
 fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -120,7 +120,7 @@ async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1
         refresh
             .outcomes()
             .iter()
-            .find(|o| o.id().saved_number() == Some(710))
+            .find(|o| o.id().saved_id() == Some(StoryId::new(710)))
             .expect("present")
             .is_retired(),
         "BOTH-HALVES half 1: the domain state mutated to Retired"
@@ -156,7 +156,7 @@ async fn retire_with_no_reason_is_rejected_1761() {
         !refresh
             .outcomes()
             .iter()
-            .find(|o| o.id().saved_number() == Some(700))
+            .find(|o| o.id().saved_id() == Some(StoryId::new(700)))
             .expect("present")
             .is_retired(),
         "a reasonless retire mutates nothing"

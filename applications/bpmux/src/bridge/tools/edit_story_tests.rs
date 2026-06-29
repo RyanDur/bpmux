@@ -8,14 +8,14 @@ use crate::product_management::board::adapters::github::acceptor_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
 fn seed_story(number: u64, title: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
@@ -124,7 +124,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
     refresh
         .mutate_sync(BoardEvent::TagAdded {
             meta,
-            number: 1234,
+            id: StoryId::new(1234),
             label: "awaiting dev".to_string(),
         })
         .unwrap();

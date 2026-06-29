@@ -2,7 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::StoryType;
+use crate::product_management::story::{StoryId, StoryType};
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -26,7 +26,7 @@ async fn view_board_auto_reingests_when_store_is_empty() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap();
     adapter.seed_stories(vec![Story::new_minimal(
-        505,
+        StoryId::new(505),
         "post-restart-recovery".into(),
         StoryState::Accepted,
         ts,
@@ -131,35 +131,35 @@ async fn view_board_buckets_stories_by_story_state() {
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let stories = vec![
         Story::new_minimal(
-            101,
+            StoryId::new(101),
             "icebox-story".into(),
             StoryState::Icebox,
             ts,
             "pm".into(),
         ),
         Story::new_minimal(
-            102,
+            StoryId::new(102),
             "ready-story".into(),
             StoryState::Ready,
             ts,
             "pm".into(),
         ),
         Story::new_minimal(
-            103,
+            StoryId::new(103),
             "in-progress-story".into(),
             StoryState::InProgress,
             ts,
             "dev".into(),
         ),
         Story::new_minimal(
-            104,
+            StoryId::new(104),
             "delivered-story".into(),
             StoryState::Delivered,
             ts,
             "dev".into(),
         ),
         Story::new_minimal(
-            108,
+            StoryId::new(108),
             "accepted-story".into(),
             StoryState::Accepted,
             ts,
@@ -209,7 +209,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut closed_in_progress = Story::new_minimal(
-        201,
+        StoryId::new(201),
         "abandoned-mid-flight".into(),
         StoryState::InProgress,
         ts,
@@ -217,7 +217,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     );
     closed_in_progress.is_closed = true;
     let mut accepted_closed = Story::new_minimal(
-        202,
+        StoryId::new(202),
         "accepted-closed".into(),
         StoryState::Accepted,
         ts,
@@ -271,7 +271,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
-        301,
+        StoryId::new(301),
         "won't fix story".into(),
         StoryState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -294,7 +294,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let result = handle_close_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(301).expect("story exists");
+    let story = store.story(StoryId::new(301)).expect("story exists");
     assert!(story.is_closed, "is_closed flag must be set");
     assert_eq!(
         story.state,
@@ -317,25 +317,26 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         pushed.iter().any(|e| matches!(
             e,
             BoardEvent::StoryClosed {
-                number: 301,
+                id,
                 reason: Some(r),
                 ..
-            } if r == "superseded by #999 — won't ship"
+            } if *id == StoryId::new(301) && r == "superseded by #999 — won't ship"
         )),
         "StoryClosed event must be present with the reason payload"
     );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::TagAdded { number: 301, label, .. } if label == "retired"
+            BoardEvent::TagAdded { id, label, .. } if *id == StoryId::new(301) && label == "retired"
         )),
         "TagAdded 'retired' event must fire for retire-class reason"
     );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::StateTransitioned { number: 301, new_state, .. }
-                if *new_state == crate::product_management::story::StoryState::Retired
+            BoardEvent::StateTransitioned { id, new_state, .. }
+                if *id == StoryId::new(301)
+                    && *new_state == crate::product_management::story::StoryState::Retired
         )),
         "StateTransitioned → Retired must fire for retire-class reason"
     );

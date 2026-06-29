@@ -11,7 +11,7 @@ use crate::product_management::board::adapters::github::{
     warn_on_inconsistent_state_labels,
 };
 use crate::product_management::board::sync::{SyncError, classify_close_error};
-use crate::product_management::story::{Gate, StoryKind, StoryState, StoryType, Tag};
+use crate::product_management::story::{Gate, StoryId, StoryKind, StoryState, StoryType, Tag};
 
 #[test]
 fn is_iteration_position_label_matches_iteration_name_dot_number() {
@@ -188,7 +188,7 @@ fn decode_story_metadata_reads_object_label_shape() {
         "user": {"login": "owner"},
     });
     let story = decode_story_metadata(&json).expect("story");
-    assert_eq!(story.number, 451);
+    assert_eq!(story.id, StoryId::new(451));
     assert_eq!(story.title, "Internal board abstraction");
     assert_eq!(story.state, StoryState::InProgress);
     assert_eq!(story.filed_by, "owner");

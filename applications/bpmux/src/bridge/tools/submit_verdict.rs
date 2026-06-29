@@ -1,4 +1,5 @@
 use crate::message::{Message, MessageType};
+use crate::product_management::story::StoryId;
 use crate::workflow::verdicts::{AddVerdictOutcome, Verdict, add_or_replace_verdict, load, save};
 use std::sync::Arc;
 
@@ -39,7 +40,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
 
     let ts = chrono::Utc::now();
     let entry = Verdict {
-        story_number,
+        story_id: StoryId::new(story_number),
         from_role: role.to_string(),
         verdict: verdict_value.clone(),
         substrate_grounding,

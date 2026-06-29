@@ -5,6 +5,7 @@ use crate::bridge::tools_stories::acceptor_axis::AcceptorClass;
 use crate::bridge::tools_stories::helpers::{
     LABEL_DELIVERED, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
+use crate::product_management::story::StoryId;
 
 fn parse_acceptor_arg(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -45,7 +46,7 @@ pub(crate) async fn handle_pass_desk_check(
     let acceptor = parse_acceptor_arg(args)?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
     let r_opt = refresh;
-    let story_opt = r_opt.and_then(|r| r.store().story(number));
+    let story_opt = r_opt.and_then(|r| r.store().story(StoryId::new(number)));
     let class = story_opt
         .as_ref()
         .map(|s| crate::workflow::gate_class_from_labels(&s.raw_labels))
@@ -91,7 +92,7 @@ pub(crate) async fn handle_pass_desk_check(
             r.mutate_sync(
                 crate::product_management::board::BoardEvent::StoryReopened {
                     meta: meta.clone(),
-                    number,
+                    id: StoryId::new(number),
                 },
             )
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
@@ -110,7 +111,7 @@ pub(crate) async fn handle_pass_desk_check(
         r.mutate_sync(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
                 gate: crate::product_management::story::Gate::PassDeskCheck,
                 payload: bypass.clone().map(format_bypass_payload),
             },
@@ -119,7 +120,7 @@ pub(crate) async fn handle_pass_desk_check(
         r.mutate_sync(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta,
-                number,
+                id: StoryId::new(number),
                 new_state: crate::product_management::story::StoryState::Delivered,
             },
         )

@@ -3,7 +3,7 @@ use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::product_management::board::adapters::github::{decode_story_metadata, state_to_label};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::SyncError;
-use crate::product_management::story::StoryState;
+use crate::product_management::story::{StoryId, StoryState};
 
 pub(in crate::integrations::github) async fn push_state_transitioned(
     inner: &OctocrabStoryTracker,
@@ -33,7 +33,7 @@ pub(in crate::integrations::github) async fn push_story_closed(
         Ok(value) => Ok(
             decode_story_metadata(&value).map(|story| BoardEvent::StoryRefreshed {
                 meta: crate::product_management::board::orchestrator::cache_fill_meta(),
-                number,
+                id: StoryId::new(number),
                 story: Box::new(story),
             }),
         ),
@@ -52,7 +52,7 @@ pub(in crate::integrations::github) async fn push_story_reopened(
     Ok(
         decode_story_metadata(&value).map(|story| BoardEvent::StoryRefreshed {
             meta: crate::product_management::board::orchestrator::cache_fill_meta(),
-            number,
+            id: StoryId::new(number),
             story: Box::new(story),
         }),
     )

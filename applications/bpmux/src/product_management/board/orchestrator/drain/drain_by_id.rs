@@ -13,14 +13,14 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             return DrainOneOutcome::NotFound;
         };
         let event = queued.event.clone();
-        let lock = self.issue_lock(event.story_number()).await;
+        let lock = self.issue_lock(event.story_id().value()).await;
         let _guard = lock.lock().await;
         let queued = self.with_pending(|p| p.iter().find(|q| q.id == id).cloned());
         let Some(queued) = queued else {
             return DrainOneOutcome::Confirmed;
         };
         let event = queued.event.clone();
-        let current = self.store.backing_story(event.story_number());
+        let current = self.store.backing_story(event.story_id());
         let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
         match kind {
             Some(ConflictKind::IdempotentSkip) => {
@@ -29,7 +29,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 decrement_pending(&self.status);
                 crate::diag::log_diag(&format!(
                     "orchestrator: idempotent-skip dropped #{} via drain_one_by_id (already-applied)",
-                    event.story_number()
+                    event.story_id().value()
                 ));
                 DrainOneOutcome::Confirmed
             }
@@ -39,12 +39,12 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 decrement_pending(&self.status);
                 self.store.apply(&BoardEvent::ConflictDetected {
                     meta: cache_fill_meta(),
-                    number: event.story_number(),
+                    id: event.story_id(),
                     kind: divergent,
                 });
                 crate::diag::log_diag(&format!(
                     "orchestrator: drain_one_by_id rolled back #{} ({divergent:?}); applying server_story",
-                    event.story_number()
+                    event.story_id().value()
                 ));
                 DrainOneOutcome::RolledBack {
                     server_story: current.map(Box::new),
@@ -67,10 +67,10 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         self.remove_pending_by_id(id);
                         self.persist_outbox();
                         decrement_pending(&self.status);
-                        record_dropped(&self.status, event.story_number(), format!("{e}"));
+                        record_dropped(&self.status, event.story_id().value(), format!("{e}"));
                         crate::diag::log_diag(&format!(
                             "orchestrator: drain_one_by_id dropped #{} after permanent push failure ({e})",
-                            event.story_number()
+                            event.story_id().value()
                         ));
                         DrainOneOutcome::Confirmed
                     } else {

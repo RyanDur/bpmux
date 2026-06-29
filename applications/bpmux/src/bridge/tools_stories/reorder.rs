@@ -1,4 +1,5 @@
 use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::story::StoryId;
 
 pub(crate) fn reorder_story_retired_error() -> String {
     serde_json::json!({
@@ -26,6 +27,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
     let story = refresh
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in canonical store"))?;
+    let target_id = StoryId::new(number);
     let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
     let current_iteration = story.raw_labels.iter().find_map(|l| {
         crate::product_management::iteration::label::parse_iteration_label(&codec, l)
@@ -38,7 +40,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
     let other_positions: Vec<u32> = refresh
         .all_stories()
         .iter()
-        .filter(|s| s.number != number && !s.is_closed)
+        .filter(|s| s.id != target_id && !s.is_closed)
         .filter_map(|s| {
             s.raw_labels.iter().find_map(|l| {
                 crate::product_management::iteration::label::parse_iteration_label(&codec, l)
@@ -67,7 +69,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
         refresh
             .mutate_sync(crate::product_management::board::BoardEvent::TagRemoved {
                 meta: meta(),
-                number,
+                id: target_id,
                 label: current_label,
             })
             .map_err(|e| format!("TagRemoved #{number}: {e}"))?;
@@ -75,7 +77,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
     refresh
         .mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
             meta: meta(),
-            number,
+            id: target_id,
             label: new_label,
         })
         .map_err(|e| format!("TagAdded #{number}: {e}"))?;

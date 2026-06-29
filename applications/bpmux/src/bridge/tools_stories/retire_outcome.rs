@@ -2,6 +2,7 @@ use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId};
+use crate::product_management::story::StoryId;
 use std::sync::Arc;
 
 pub(crate) async fn handle_retire_outcome(
@@ -30,20 +31,20 @@ pub(crate) async fn handle_retire_outcome(
     };
     r.mutate_sync(BoardEvent::StateTransitioned {
         meta: meta(),
-        number: outcome_number,
+        id: StoryId::new(outcome_number),
         new_state: crate::product_management::story::StoryState::Retired,
     })
     .map_err(|e| format!("#{outcome_number} retire state-transition failed: {e}"))?;
     r.mutate_sync(BoardEvent::StoryClosed {
         meta: meta(),
-        number: outcome_number,
+        id: StoryId::new(outcome_number),
         reason: Some(format!("retired: {reason}")),
     })
     .map_err(|e| format!("#{outcome_number} retire enqueue failed: {e}"))?;
     if !outcome.is_retired() {
         r.mutate_sync(BoardEvent::TagAdded {
             meta: meta(),
-            number: outcome_number,
+            id: StoryId::new(outcome_number),
             label: "retired".to_string(),
         })
         .map_err(|e| format!("#{outcome_number} retire-tag enqueue failed: {e}"))?;

@@ -2,12 +2,13 @@
 
 use super::view_backlog::*;
 use crate::product_management::story::Story;
+use crate::product_management::story::StoryId;
 use crate::product_management::story::StoryState;
 use chrono::{TimeZone, Utc};
 
 fn story(num: u64, title: &str, state: StoryState) -> Story {
     Story::new_minimal(
-        num,
+        StoryId::new(num),
         title.to_string(),
         state,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),

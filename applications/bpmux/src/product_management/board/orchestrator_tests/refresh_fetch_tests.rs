@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 
 #[tokio::test]
 async fn refresh_story_pulls_single_story_from_adapter_into_store() {
@@ -18,10 +18,16 @@ async fn refresh_story_pulls_single_story_from_adapter_into_store() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(42, StoryState::Ready)]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
-    assert!(store.story(42).is_none(), "store starts empty");
+    assert!(
+        store.story(StoryId::new(42)).is_none(),
+        "store starts empty"
+    );
     let result = orchestrator.refresh_story(42).await.unwrap();
     assert!(result.is_some());
-    assert_eq!(store.story(42).unwrap().state, StoryState::Ready);
+    assert_eq!(
+        store.story(StoryId::new(42)).unwrap().state,
+        StoryState::Ready
+    );
     assert!(orchestrator.snapshot_status().last_ingest_at.is_some());
 }
 
@@ -32,7 +38,7 @@ async fn refresh_story_returns_none_when_story_missing_at_source() {
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     let result = orchestrator.refresh_story(999).await.unwrap();
     assert!(result.is_none());
-    assert!(store.story(999).is_none());
+    assert!(store.story(StoryId::new(999)).is_none());
 }
 
 #[tokio::test]
@@ -70,15 +76,21 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
     adapter.seed_stories(vec![seed_story(42, StoryState::Ready)]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(store.story(42).unwrap().state, StoryState::Ready);
+    assert_eq!(
+        store.story(StoryId::new(42)).unwrap().state,
+        StoryState::Ready
+    );
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 42,
+            id: StoryId::new(42),
             new_state: StoryState::InProgress,
         })
         .unwrap();
-    assert_eq!(store.story(42).unwrap().state, StoryState::InProgress);
+    assert_eq!(
+        store.story(StoryId::new(42)).unwrap().state,
+        StoryState::InProgress
+    );
     orchestrator.drain_once().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
@@ -98,17 +110,17 @@ async fn fetch_body_caches_the_body_on_the_story_and_fires_event() {
     adapter.seed_body(7, "the body text".into());
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(store.story(7).unwrap().body, None);
+    assert_eq!(store.story(StoryId::new(7)).unwrap().body, None);
 
     let mut rx = store.subscribe();
     let returned = orchestrator.fetch_body(7).await.unwrap();
     assert_eq!(returned, "the body text");
     assert_eq!(
-        store.story(7).unwrap().body.as_deref(),
+        store.story(StoryId::new(7)).unwrap().body.as_deref(),
         Some("the body text")
     );
     let event = rx.recv().await.unwrap();
-    assert!(matches!(event, BoardEvent::BodyFetched { number: 7, .. }));
+    assert!(matches!(event, BoardEvent::BodyFetched { id, .. } if id == StoryId::new(7)));
 }
 
 #[tokio::test]
@@ -141,16 +153,19 @@ async fn fetch_free_comments_caches_comments_and_fires_event() {
     adapter.seed_free_comments(9, seeded.clone());
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(store.story(9).unwrap().free_comments, None);
+    assert_eq!(store.story(StoryId::new(9)).unwrap().free_comments, None);
 
     let mut rx = store.subscribe();
     let returned = orchestrator.fetch_free_comments(9).await.unwrap();
     assert_eq!(returned, seeded);
-    assert_eq!(store.story(9).unwrap().free_comments.unwrap(), seeded);
+    assert_eq!(
+        store.story(StoryId::new(9)).unwrap().free_comments.unwrap(),
+        seeded
+    );
     let event = rx.recv().await.unwrap();
     assert!(matches!(
         event,
-        BoardEvent::FreeCommentsFetched { number: 9, .. }
+        BoardEvent::FreeCommentsFetched { id, .. } if id == StoryId::new(9)
     ));
 }
 
@@ -169,16 +184,23 @@ async fn fetch_gate_comments_caches_comments_and_fires_event() {
     adapter.seed_gate_comments(11, seeded.clone());
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(store.story(11).unwrap().gate_comments, None);
+    assert_eq!(store.story(StoryId::new(11)).unwrap().gate_comments, None);
 
     let mut rx = store.subscribe();
     let returned = orchestrator.fetch_gate_comments(11).await.unwrap();
     assert_eq!(returned, seeded);
-    assert_eq!(store.story(11).unwrap().gate_comments.unwrap(), seeded);
+    assert_eq!(
+        store
+            .story(StoryId::new(11))
+            .unwrap()
+            .gate_comments
+            .unwrap(),
+        seeded
+    );
     let event = rx.recv().await.unwrap();
     assert!(matches!(
         event,
-        BoardEvent::GateCommentsFetched { number: 11, .. }
+        BoardEvent::GateCommentsFetched { id, .. } if id == StoryId::new(11)
     ));
 }
 

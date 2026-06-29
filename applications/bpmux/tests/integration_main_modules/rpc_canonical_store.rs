@@ -31,14 +31,14 @@ use tokio_util::sync::CancellationToken;
 use bpmux::auth as auth_token;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use bpmux::product_management::story::{Story, StoryState};
+use bpmux::product_management::story::{Story, StoryId, StoryState};
 use bpmux::session::Session;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
 
 fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
     let story = Story {
-        number,
+        id: StoryId::new(number),
         title: title.to_string(),
         body: Some(
             "## What\n\nfixture\n\n## Acceptance test path\n\ntests/integration_main_modules/rpc_canonical_store.rs\n"

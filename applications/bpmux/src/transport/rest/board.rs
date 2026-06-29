@@ -22,11 +22,11 @@ pub(crate) fn board_iterations(
         .iterations()
         .iter()
         .map(|iteration| {
-            let number = iteration.id().saved_number().unwrap_or(0);
+            let number = iteration.id().saved_id().map(|id| id.value()).unwrap_or(0);
             let position = iteration.builds_outcome().and_then(|outcome_number| {
                 outcomes
                     .iter()
-                    .find(|o| o.id().saved_number() == Some(outcome_number))
+                    .find(|o| o.id().saved_id().map(|id| id.value()) == Some(outcome_number))
                     .and_then(|o| o.position_of(number))
                     .map(|index| index + 1)
             });
@@ -67,13 +67,13 @@ pub(crate) fn board_outcomes(
         .iter()
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
-            let number = outcome.id().saved_number().unwrap_or(0);
+            let number = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
             let iterations: Vec<serde_json::Value> = building_iterations(outcome, &all_iterations)
                 .iter()
                 .enumerate()
                 .map(|(index, iteration)| {
                     serde_json::json!({
-                        "number": iteration.id().saved_number().unwrap_or(0),
+                        "number": iteration.id().saved_id().map(|id| id.value()).unwrap_or(0),
                         "name": iteration.content.title,
                         "position": index as u32 + 1,
                         "readiness": iteration_readiness(iteration, workflow),

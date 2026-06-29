@@ -1,10 +1,10 @@
 use super::Stories;
 use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::board::item::ProductItem;
-use crate::product_management::story::StoryKey;
+use crate::product_management::story::{StoryId, StoryKey};
 
-pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, fields: &LabelDerivedFields) {
-    match w.get_mut(&StoryKey::Saved(number)) {
+pub(super) fn apply_raw_labels(w: &mut Stories, id: StoryId, fields: &LabelDerivedFields) {
+    match w.get_mut(&StoryKey::Saved(id)) {
         Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
             story.acceptor = fields.acceptor;
             story.parent_epic = fields.parent_epic;
@@ -20,11 +20,11 @@ pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, fields: &LabelDeriv
     }
 }
 
-pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &LabelDerivedFields) {
+pub(super) fn apply_labels_refreshed(w: &mut Stories, id: StoryId, fields: &LabelDerivedFields) {
     if fields.raw_labels.is_empty() {
         return;
     }
-    match w.get_mut(&StoryKey::Saved(number)) {
+    match w.get_mut(&StoryKey::Saved(id)) {
         Some(ProductItem::Story(existing)) | Some(ProductItem::Iteration(existing)) => {
             existing.acceptor = fields.acceptor;
             existing.parent_epic = fields.parent_epic;

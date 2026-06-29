@@ -10,8 +10,8 @@ pub(in crate::bridge) async fn handle_list_ready(
     let current = current_iteration_number(&store.iterations());
     let mut ready_stories = store.stories_in_state(StoryState::Ready);
     ready_stories.sort_by_cached_key(|s| match (current, s.iteration_membership()) {
-        (Some(ci), Some((it, pos))) if it == ci => (0u8, pos, s.number),
-        _ => (1u8, u32::MAX, s.number),
+        (Some(ci), Some((it, pos))) if it == ci => (0u8, pos, s.id),
+        _ => (1u8, u32::MAX, s.id),
     });
     let queue: Vec<serde_json::Value> = ready_stories
         .iter()
@@ -19,7 +19,7 @@ pub(in crate::bridge) async fn handle_list_ready(
         .map(|(idx, s)| {
             serde_json::json!({
                 "position": idx + 1,
-                "number": s.number,
+                "number": s.id,
                 "title": s.title,
             })
         })

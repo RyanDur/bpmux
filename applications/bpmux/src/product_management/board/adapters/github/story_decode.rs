@@ -2,7 +2,9 @@ use chrono::{DateTime, Utc};
 
 use super::label_fields::story_type_from_labels;
 use crate::product_management::board::events::LabelDerivedFields;
-use crate::product_management::story::{Story, StoryState, StoryType, Tag, story_type_from_title};
+use crate::product_management::story::{
+    Story, StoryId, StoryState, StoryType, Tag, story_type_from_title,
+};
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {
     story_type_from_labels(labels).unwrap_or_else(|| story_type_from_title(title))
@@ -70,7 +72,13 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
         .and_then(|x| x.as_str())
         .map(ToString::to_string)
         .unwrap_or_else(|| "unknown".to_string());
-    let mut story = Story::new_minimal(number, title.clone(), state, filed_at, filed_by);
+    let mut story = Story::new_minimal(
+        StoryId::new(number),
+        title.clone(),
+        state,
+        filed_at,
+        filed_by,
+    );
     story.is_closed = is_closed;
     story.story_type = story_type_from_labels_or_title(&labels, &title);
     story.acceptor = super::label_fields::acceptor_from_labels(&labels);

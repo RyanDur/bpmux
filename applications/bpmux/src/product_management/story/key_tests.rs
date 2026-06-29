@@ -4,12 +4,12 @@ use std::collections::HashMap;
 
 use uuid::Uuid;
 
-use super::StoryKey;
+use super::{StoryId, StoryKey};
 
 #[test]
 fn pending_and_saved_keys_coexist_in_one_map_without_collision() {
     let pending = StoryKey::Pending(Uuid::new_v4());
-    let saved = StoryKey::Saved(7);
+    let saved = StoryKey::Saved(StoryId::new(7));
 
     let mut map: HashMap<StoryKey, &str> = HashMap::new();
     map.insert(pending, "optimistic");
@@ -27,11 +27,11 @@ fn pending_and_saved_keys_coexist_in_one_map_without_collision() {
 #[test]
 fn saved_keys_with_the_same_number_are_the_same_handle() {
     let mut map: HashMap<StoryKey, u32> = HashMap::new();
-    map.insert(StoryKey::Saved(42), 1);
-    map.insert(StoryKey::Saved(42), 2);
+    map.insert(StoryKey::Saved(StoryId::new(42)), 1);
+    map.insert(StoryKey::Saved(StoryId::new(42)), 2);
 
     assert_eq!(map.len(), 1, "equal numbers address the same story");
-    assert_eq!(*map.get(&StoryKey::Saved(42)).unwrap(), 2);
+    assert_eq!(*map.get(&StoryKey::Saved(StoryId::new(42))).unwrap(), 2);
 }
 
 #[test]
@@ -47,7 +47,7 @@ fn distinct_pending_handles_address_distinct_stories() {
 
 #[test]
 fn saved_key_displays_as_hash_number_and_unwraps_to_its_number() {
-    let key = StoryKey::Saved(42);
+    let key = StoryKey::Saved(StoryId::new(42));
 
     assert_eq!(
         key.to_string(),
@@ -55,8 +55,8 @@ fn saved_key_displays_as_hash_number_and_unwraps_to_its_number() {
         "a saved story shows its GitHub number"
     );
     assert_eq!(
-        key.saved_number(),
-        Some(42),
+        key.saved_id(),
+        Some(StoryId::new(42)),
         "the edge unwraps a saved key to its raw GitHub number"
     );
 }
@@ -71,7 +71,7 @@ fn pending_key_displays_as_unsaved_and_has_no_saved_number() {
         "a pending story has no number to show"
     );
     assert_eq!(
-        key.saved_number(),
+        key.saved_id(),
         None,
         "a pending key carries no GitHub number for the edge to use"
     );

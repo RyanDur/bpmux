@@ -6,7 +6,7 @@ use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use std::sync::Arc;
 
 async fn member_of(
@@ -16,7 +16,7 @@ async fn member_of(
 ) -> Result<(Iteration, Story), String> {
     let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
     let story = ensure_story_in_canonical_store(r, story_number).await?;
-    if !iteration.stories.contains(&story_number) {
+    if !iteration.stories.contains(&StoryId::new(story_number)) {
         return Err(format!(
             "#{story_number} is not a member of iteration #{iteration_number}"
         ));
@@ -27,9 +27,13 @@ async fn member_of(
 async fn rewrite_members(
     r: &Arc<dyn RefreshDriver>,
     iteration: &Iteration,
-    stories: Vec<u64>,
+    stories: Vec<StoryId>,
 ) -> Result<(), String> {
-    let number = iteration.id().saved_number().unwrap_or_default();
+    let number = iteration
+        .id()
+        .saved_id()
+        .map(|id| id.value())
+        .unwrap_or_default();
     let mut rel = iteration
         .content
         .body
@@ -67,7 +71,7 @@ pub(crate) async fn handle_remove_iteration_member(
     let (iteration, story) = member_of(r, iteration_number, story_number).await?;
 
     let mut stories = iteration.stories.clone();
-    stories.retain(|n| *n != story_number);
+    stories.retain(|n| *n != StoryId::new(story_number));
     rewrite_members(r, &iteration, stories).await?;
 
     let state_flag = match story.state {
@@ -102,9 +106,9 @@ pub(crate) async fn handle_move_iteration_member(
     let (iteration, _) = member_of(r, iteration_number, story_number).await?;
 
     let mut stories = iteration.stories.clone();
-    stories.retain(|n| *n != story_number);
+    stories.retain(|n| *n != StoryId::new(story_number));
     let insert_index = (position.max(1) as usize - 1).min(stories.len());
-    stories.insert(insert_index, story_number);
+    stories.insert(insert_index, StoryId::new(story_number));
     rewrite_members(r, &iteration, stories).await?;
 
     Ok(format!(

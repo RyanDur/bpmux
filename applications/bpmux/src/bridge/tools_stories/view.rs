@@ -85,8 +85,14 @@ pub(in crate::bridge) fn build_board_text(
             None => String::new(),
         };
         (
-            s.number,
-            format!("{prefix}#{} {}{}{}", s.number, s.title, suffix, acceptor),
+            s.id.value(),
+            format!(
+                "{prefix}#{} {}{}{}",
+                s.id.value(),
+                s.title,
+                suffix,
+                acceptor
+            ),
         )
     };
     use crate::product_management::board::column::{ColumnBucket, column_for};
@@ -118,20 +124,20 @@ pub(in crate::bridge) fn build_board_text(
             .iter()
             .filter(|s| s.story_type() == crate::product_management::story::StoryType::Epic)
             .collect();
-        epics.sort_by_key(|s| s.number);
+        epics.sort_by_key(|s| s.id);
         if !epics.is_empty() {
             out.push_str(&format!("EPICS ({})\n", epics.len()));
             for epic in &epics {
                 let children: Vec<&crate::product_management::story::Story> = stories
                     .iter()
-                    .filter(|c| c.parent_epic() == Some(epic.number))
+                    .filter(|c| c.parent_epic() == Some(epic.id.value()))
                     .collect();
                 let counts = crate::product_management::epic::derive_epic_counts(&children);
                 let derived =
                     crate::product_management::epic::derive_epic_state(epic.state, &children);
                 out.push_str(&format!(
                     "  #{} [{}] {} ({total} children: {accepted} accepted, {retired} retired, {active} active, {icebox} icebox)\n",
-                    epic.number,
+                    epic.id.value(),
                     derived.as_str(),
                     epic.title,
                     total = counts.total_count,

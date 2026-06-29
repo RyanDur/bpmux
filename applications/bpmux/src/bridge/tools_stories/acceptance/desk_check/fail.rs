@@ -1,6 +1,7 @@
 use crate::bridge::tools_stories::helpers::{
     ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
+use crate::product_management::story::StoryId;
 
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
 
@@ -76,7 +77,7 @@ pub(crate) async fn handle_fail_desk_check(
             r.mutate_sync(
                 crate::product_management::board::BoardEvent::StoryReopened {
                     meta: meta.clone(),
-                    number,
+                    id: StoryId::new(number),
                 },
             )
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
@@ -86,7 +87,7 @@ pub(crate) async fn handle_fail_desk_check(
         r.mutate_sync(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
                 gate: crate::product_management::story::Gate::FailDeskCheck,
                 payload: Some(reason.to_string()),
             },
@@ -95,7 +96,7 @@ pub(crate) async fn handle_fail_desk_check(
         r.mutate_sync(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta,
-                number,
+                id: StoryId::new(number),
                 new_state: target_state,
             },
         )

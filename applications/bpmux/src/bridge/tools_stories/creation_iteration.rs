@@ -1,4 +1,5 @@
 use super::helpers::{compose_iteration_body, require_nonempty_string, role_from_name};
+use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_create_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -34,7 +35,11 @@ pub(crate) async fn handle_create_iteration(
     if let Some(existing) = existing_open_iteration {
         return Err(format!(
             "iteration named '{name}' already open as #{n}; close it first or pick a different name (#1281 sister-discipline: duplicate-collision rejected at create-time)",
-            n = existing.id().saved_number().unwrap_or_default()
+            n = existing
+                .id()
+                .saved_id()
+                .map(|id| id.value())
+                .unwrap_or_default()
         ));
     }
     let title = format!("Iteration {name}");
@@ -50,7 +55,7 @@ pub(crate) async fn handle_create_iteration(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
         meta: meta.clone(),
-        number,
+        id: StoryId::new(number),
         title: title.clone(),
         body: body.clone(),
         initial_state: crate::product_management::story::StoryState::Icebox,
@@ -59,14 +64,14 @@ pub(crate) async fn handle_create_iteration(
     .map_err(|e| format!("#{number} iteration created but enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta: meta.clone(),
-        number,
+        id: StoryId::new(number),
         label: "iteration".to_string(),
     })
     .map_err(|e| format!("#{number} iteration label enqueue failed: {e}"))?;
     let next_order = r
         .iterations()
         .into_iter()
-        .filter(|it| !it.complete && it.id().saved_number() != Some(number))
+        .filter(|it| !it.complete && it.id().saved_id() != Some(StoryId::new(number)))
         .filter_map(|it| it.iteration_order)
         .max()
         .map_or(
@@ -75,7 +80,7 @@ pub(crate) async fn handle_create_iteration(
         );
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
-        number,
+        id: StoryId::new(number),
         label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
             .encode_iteration_order(next_order),
     })

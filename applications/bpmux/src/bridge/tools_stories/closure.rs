@@ -6,6 +6,7 @@ use super::helpers::{
     role_from_name,
 };
 use super::signals::build_iteration_close_signal;
+use crate::product_management::story::StoryId;
 
 const REASON_CITE_MIN_CHARS: usize = 16;
 
@@ -59,14 +60,14 @@ pub(crate) async fn handle_close_story(
         if disposition == "retire" || disposition == "wontfix" {
             r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
                 label: "retired".to_string(),
             })
             .map_err(|e| format!("#{number} retired-tag enqueue failed: {e}"))?;
             r.mutate_sync(
                 crate::product_management::board::BoardEvent::StateTransitioned {
                     meta: meta.clone(),
-                    number,
+                    id: StoryId::new(number),
                     new_state: crate::product_management::story::StoryState::Retired,
                 },
             )
@@ -74,7 +75,7 @@ pub(crate) async fn handle_close_story(
         }
         r.mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
             meta,
-            number,
+            id: StoryId::new(number),
             reason: Some(reason.to_string()),
         })
         .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;

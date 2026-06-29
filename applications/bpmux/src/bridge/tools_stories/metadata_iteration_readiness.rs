@@ -1,6 +1,7 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, require_purpose, require_purpose_any, role_from_name,
 };
+use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_designate_current_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -27,14 +28,14 @@ pub(crate) async fn handle_designate_current_iteration(
     let prior: Vec<u64> = r
         .iterations()
         .into_iter()
-        .filter(|it| it.is_current && it.id().saved_number() != Some(iteration_number))
-        .filter_map(|it| it.id().saved_number())
+        .filter(|it| it.is_current && it.id().saved_id() != Some(StoryId::new(iteration_number)))
+        .filter_map(|it| it.id().saved_id().map(|id| id.value()))
         .collect();
     for n in prior {
         r.mutate_sync(
             crate::product_management::board::BoardEvent::CurrentIterationCleared {
                 meta: meta(),
-                number: n,
+                id: StoryId::new(n),
             },
         )
         .map_err(|e| format!("#{n} current-designation-clear enqueue failed: {e}"))?;
@@ -42,7 +43,7 @@ pub(crate) async fn handle_designate_current_iteration(
     r.mutate_sync(
         crate::product_management::board::BoardEvent::CurrentIterationDesignated {
             meta: meta(),
-            number: iteration_number,
+            id: StoryId::new(iteration_number),
         },
     )
     .map_err(|e| format!("#{iteration_number} current-designation enqueue failed: {e}"))?;
@@ -75,7 +76,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
-        number: iteration_number,
+        id: StoryId::new(iteration_number),
         label,
     })
     .map_err(|e| format!("#{iteration_number} review-close enqueue failed: {e}"))?;
@@ -113,7 +114,7 @@ pub(crate) async fn handle_dev_ok_iteration(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
-        number: iteration_number,
+        id: StoryId::new(iteration_number),
         label,
     })
     .map_err(|e| format!("#{iteration_number} dev-OK enqueue failed: {e}"))?;

@@ -7,7 +7,7 @@ pub fn filter_retired_empty_iterations(stories: Vec<Story>) -> Vec<Story> {
     }
     stories
         .into_iter()
-        .filter(|s| !purge.contains(&s.number))
+        .filter(|s| !purge.contains(&s.id.value()))
         .collect()
 }
 
@@ -16,7 +16,7 @@ pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64
     stories
         .iter()
         .filter(|s| s.story_type() == StoryType::Iteration && s.state == StoryState::Retired)
-        .map(|s| s.number)
+        .map(|s| s.id.value())
         .filter(|iteration_number| {
             !stories.iter().any(|s| {
                 s.iteration_membership()

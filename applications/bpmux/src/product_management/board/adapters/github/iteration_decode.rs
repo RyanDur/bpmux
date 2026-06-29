@@ -17,7 +17,7 @@ pub fn decode_iteration(story: &Story) -> Iteration {
         .unwrap_or_default();
     Iteration {
         content: Content {
-            id: story.id(),
+            id: story.key(),
             title: story.title().to_string(),
             body: story.body().map(str::to_string),
             filed_at: story.filed_at(),

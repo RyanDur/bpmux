@@ -7,7 +7,7 @@ use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::readiness::iteration_readiness;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -26,7 +26,7 @@ async fn build_orchestrator(stories: Vec<Story>) -> (Arc<BoardStore>, Arc<dyn Re
 
 fn iteration_seed(number: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -39,7 +39,7 @@ fn iteration_seed(number: u64, name: &str) -> Story {
 
 fn feature_seed(number: u64) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         "a feature".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -62,7 +62,7 @@ async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
     handle_dev_ok_iteration(&args(1552), "dev:claude-code", Some(&orch))
         .await
         .expect("a configured iteration-builder can record dev-OK");
-    let iteration = store.iteration(1552).unwrap();
+    let iteration = store.iteration(StoryId::new(1552)).unwrap();
     assert_eq!(
         iteration.dev_ok_by,
         vec!["dev".to_string()],
@@ -77,7 +77,7 @@ async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
 #[tokio::test]
 async fn no_dev_ok_on_record_means_not_ready_1736() {
     let (store, _orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    let iteration = store.iteration(1552).unwrap();
+    let iteration = store.iteration(StoryId::new(1552)).unwrap();
     assert!(
         !iteration_readiness(&iteration, &bundled_default()).dev_ok,
         "no dev-OK on record → the check is unmet (no false-positive)"

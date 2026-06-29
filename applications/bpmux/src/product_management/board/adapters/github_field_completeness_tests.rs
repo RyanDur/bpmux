@@ -2,7 +2,7 @@
 #![allow(clippy::expect_used)]
 
 use crate::product_management::board::adapters::github::decode_story_metadata;
-use crate::product_management::story::Story;
+use crate::product_management::story::{Story, StoryId};
 
 #[test]
 fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
@@ -35,7 +35,7 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
 
 fn assert_metadata_axis_complete(decoded: &Story) {
     let Story {
-        number,
+        id,
         title,
         state,
         filed_at,
@@ -54,7 +54,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         ready_order,
     } = decoded;
 
-    assert_eq!(*number, 42, "number must roundtrip from JSON");
+    assert_eq!(*id, StoryId::new(42), "number must roundtrip from JSON");
     assert_eq!(
         title.as_str(),
         "FIELD_COMPLETENESS_SENTINEL_TITLE",

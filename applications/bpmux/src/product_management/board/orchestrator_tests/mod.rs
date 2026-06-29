@@ -13,7 +13,7 @@ use chrono::{TimeZone, Utc};
 
 use super::events::EventMeta;
 use super::peer::PeerId;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 
 pub(super) fn meta() -> EventMeta {
     EventMeta {
@@ -25,7 +25,7 @@ pub(super) fn meta() -> EventMeta {
 
 pub(super) fn seed_story(number: u64, state: StoryState) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("title-{number}"),
         state,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),

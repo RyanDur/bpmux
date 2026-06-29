@@ -8,7 +8,7 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -26,7 +26,7 @@ async fn build_orchestrator(stories: Vec<Story>) -> (Arc<BoardStore>, Arc<dyn Re
 
 fn iteration_seed(number: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -39,7 +39,7 @@ fn iteration_seed(number: u64, name: &str) -> Story {
 
 fn member_seed(number: u64, title: &str) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -77,7 +77,7 @@ async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
     );
     assert_eq!(
         orch.iteration(1397).expect("iteration present").stories,
-        vec![1500],
+        vec![StoryId::new(1500)],
         "the member is recorded in the iteration's ordered stories (parent-holds-order)"
     );
 }
@@ -215,8 +215,11 @@ async fn add_records_the_member_in_the_iterations_ordered_stories_1399() {
         .await
         .unwrap();
     assert_eq!(
-        store.iteration(1397).expect("iteration present").stories,
-        vec![1500],
+        store
+            .iteration(StoryId::new(1397))
+            .expect("iteration present")
+            .stories,
+        vec![StoryId::new(1500)],
         "the member is recorded in the iteration's ordered stories (the parent holds the order)"
     );
 }
@@ -229,7 +232,7 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
     it1.body = Some(
         IterationRelationships {
             outcome: None,
-            stories: vec![1500],
+            stories: vec![StoryId::new(1500)],
         }
         .write_into_body("## composed"),
     );
@@ -245,13 +248,16 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
         .await
         .unwrap();
     assert_eq!(
-        store.iteration(1396).expect("target iteration").stories,
-        vec![1500],
+        store
+            .iteration(StoryId::new(1396))
+            .expect("target iteration")
+            .stories,
+        vec![StoryId::new(1500)],
         "the member is recorded in the new iteration"
     );
     assert!(
         store
-            .iteration(1397)
+            .iteration(StoryId::new(1397))
             .expect("prior iteration")
             .stories
             .is_empty(),

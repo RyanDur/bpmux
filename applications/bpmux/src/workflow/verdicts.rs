@@ -3,9 +3,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::product_management::story::StoryId;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Verdict {
-    pub story_number: u64,
+    pub story_id: StoryId,
     pub from_role: String,
     pub verdict: String,
     pub substrate_grounding: String,
@@ -16,7 +18,7 @@ pub struct Verdict {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct VerdictsStore {
-    pub stories: BTreeMap<u64, Vec<Verdict>>,
+    pub stories: BTreeMap<StoryId, Vec<Verdict>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,7 +48,7 @@ pub fn save(session_dir: &Path, store: &VerdictsStore) -> Result<(), std::io::Er
 }
 
 pub fn add_or_replace_verdict(store: &mut VerdictsStore, verdict: Verdict) -> AddVerdictOutcome {
-    let list = store.stories.entry(verdict.story_number).or_default();
+    let list = store.stories.entry(verdict.story_id).or_default();
     if let Some(existing) = list.iter_mut().find(|v| v.from_role == verdict.from_role) {
         *existing = verdict;
         AddVerdictOutcome::Replaced
@@ -56,10 +58,6 @@ pub fn add_or_replace_verdict(store: &mut VerdictsStore, verdict: Verdict) -> Ad
     }
 }
 
-pub fn verdicts_for_story(store: &VerdictsStore, story_number: u64) -> Vec<Verdict> {
-    store
-        .stories
-        .get(&story_number)
-        .cloned()
-        .unwrap_or_default()
+pub fn verdicts_for_story(store: &VerdictsStore, story_id: StoryId) -> Vec<Verdict> {
+    store.stories.get(&story_id).cloned().unwrap_or_default()
 }

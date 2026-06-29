@@ -308,13 +308,14 @@ fn seed_outbox_event(
 ) -> crate::product_management::board::orchestrator::QueuedEvent {
     use crate::product_management::board::events::{BoardEvent, EventMeta};
     use crate::product_management::board::peer::PeerId;
+    use crate::product_management::story::StoryId;
     let event = BoardEvent::TagAdded {
         meta: EventMeta {
             actor: "dev".to_string(),
             ts: Utc.with_ymd_and_hms(2026, 5, 11, 12, 0, 0).unwrap(),
             peer_id: PeerId::local(),
         },
-        number,
+        id: StoryId::new(number),
         label: label.to_string(),
     };
     crate::product_management::board::orchestrator::QueuedEvent::new(event, None)

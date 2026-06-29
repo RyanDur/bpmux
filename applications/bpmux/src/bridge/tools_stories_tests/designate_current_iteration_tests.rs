@@ -5,7 +5,7 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -23,7 +23,7 @@ async fn build_orchestrator(stories: Vec<Story>) -> (Arc<BoardStore>, Arc<dyn Re
 
 fn iteration_seed(number: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -36,7 +36,7 @@ fn iteration_seed(number: u64, name: &str) -> Story {
 
 fn feature_seed(number: u64) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         "a feature".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -60,7 +60,7 @@ async fn pm_designates_current_iteration_sets_is_current_1540() {
         .await
         .expect("designate should succeed");
     assert!(
-        store.iteration(1552).unwrap().is_current,
+        store.iteration(StoryId::new(1552)).unwrap().is_current,
         "the designated iteration carries is_current"
     );
 }
@@ -79,11 +79,11 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
         .await
         .expect("second designate");
     assert!(
-        !store.iteration(1398).unwrap().is_current,
+        !store.iteration(StoryId::new(1398)).unwrap().is_current,
         "prior current holder is cleared (board-singleton replace-semantic)"
     );
     assert!(
-        store.iteration(1552).unwrap().is_current,
+        store.iteration(StoryId::new(1552)).unwrap().is_current,
         "the newly-designated iteration is current"
     );
 }

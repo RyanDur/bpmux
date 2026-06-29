@@ -21,7 +21,7 @@ impl InMemorySourceAdapter {
     pub fn seed_stories(&self, stories: Vec<Story>) {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         for story in stories {
-            s.stories.insert(story.number, story);
+            s.stories.insert(story.id.value(), story);
         }
     }
 

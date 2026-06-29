@@ -19,7 +19,7 @@ pub(crate) async fn collect_ready_queue_blockers(
             matches!(s.state, crate::product_management::story::StoryState::Ready) && !s.is_closed
         })
         .map(|s| IterationCloseBlocker {
-            number: s.number,
+            number: s.id.value(),
             title: s.title,
             state: "ready".to_string(),
         })

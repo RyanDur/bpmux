@@ -132,7 +132,7 @@ pub fn derive_outcome_drill_in(
                 _ => checks_of(&r),
             };
             DrillIteration {
-                number: it.id().saved_number().unwrap_or(0),
+                number: it.id().saved_id().map(|id| id.value()).unwrap_or(0),
                 name: it.content.title.clone(),
                 order: index as u32 + 1,
                 state,

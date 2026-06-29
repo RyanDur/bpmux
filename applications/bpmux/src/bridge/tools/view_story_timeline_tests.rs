@@ -43,7 +43,7 @@ async fn handler_reads_gates_from_canonical_store() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -51,7 +51,7 @@ async fn handler_reads_gates_from_canonical_store() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let filed_at = Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap();
     let mut story = Story::new_minimal(
-        418,
+        StoryId::new(418),
         "title".into(),
         StoryState::Delivered,
         filed_at,
@@ -91,7 +91,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -99,7 +99,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
     let story = Story::new_minimal(
-        419,
+        StoryId::new(419),
         "title".into(),
         StoryState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
@@ -126,11 +126,11 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
 #[test]
 fn build_timeline_from_board_sorts_chronologically() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
-        500,
+        StoryId::new(500),
         "title".into(),
         StoryState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
@@ -160,11 +160,11 @@ fn build_timeline_from_board_sorts_chronologically() {
 #[test]
 fn build_timeline_from_board_renders_full_rework_cycle() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
-        501,
+        StoryId::new(501),
         "title".into(),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
@@ -213,7 +213,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Gate, GateComment, Story, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -221,7 +221,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let reason = "drag srt does not persist and does not have the same drag css as the iteration";
     let story = Story::new_minimal(
-        1524,
+        StoryId::new(1524),
         "title".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),

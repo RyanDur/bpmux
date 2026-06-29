@@ -9,13 +9,13 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
 fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),

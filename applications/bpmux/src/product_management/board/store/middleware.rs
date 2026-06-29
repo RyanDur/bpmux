@@ -16,7 +16,7 @@ impl Middleware<BoardState, BoardAction> for BoardLabelMiddleware {
         };
         match project_label_delta(&state.stories, event) {
             Some(fields) => BoardAction::RawLabelsAssigned {
-                number: event.story_number(),
+                id: event.story_id(),
                 fields,
             },
             None => action,
@@ -26,20 +26,20 @@ impl Middleware<BoardState, BoardAction> for BoardLabelMiddleware {
 
 fn project_label_delta(stories: &Stories, event: &BoardEvent) -> Option<LabelDerivedFields> {
     let new_labels = match event {
-        BoardEvent::TagAdded { number, label, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*number))?.current_labels();
+        BoardEvent::TagAdded { id, label, .. } => {
+            let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             if !labels.iter().any(|l| l == label) {
                 labels.push(label.clone());
             }
             labels
         }
-        BoardEvent::TagRemoved { number, label, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*number))?.current_labels();
+        BoardEvent::TagRemoved { id, label, .. } => {
+            let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             labels.retain(|l| l != label);
             labels
         }
-        BoardEvent::CurrentIterationDesignated { number, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*number))?.current_labels();
+        BoardEvent::CurrentIterationDesignated { id, .. } => {
+            let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             if !labels
                 .iter()
                 .any(|l| GhLabelCodec.is_current_iteration_label(l))
@@ -48,39 +48,37 @@ fn project_label_delta(stories: &Stories, event: &BoardEvent) -> Option<LabelDer
             }
             labels
         }
-        BoardEvent::CurrentIterationCleared { number, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*number))?.current_labels();
+        BoardEvent::CurrentIterationCleared { id, .. } => {
+            let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             labels.retain(|l| !GhLabelCodec.is_current_iteration_label(l));
             labels
         }
         BoardEvent::IterationMembershipSet {
-            number,
+            id,
             iteration_number,
             position,
             ..
         } => {
-            let mut labels = stories.get(&StoryKey::Saved(*number))?.current_labels();
+            let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             labels.retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
             labels.push(GhLabelCodec.encode_parent_iteration(*iteration_number, *position));
             labels
         }
-        BoardEvent::IterationMembershipCleared { number, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*number))?.current_labels();
+        BoardEvent::IterationMembershipCleared { id, .. } => {
+            let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             labels.retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
             labels
         }
         BoardEvent::ParentEpicSet {
-            number,
-            epic_number,
-            ..
+            id, epic_number, ..
         } => {
-            let mut labels = stories.get(&StoryKey::Saved(*number))?.current_labels();
+            let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             labels.retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
             labels.push(GhLabelCodec.encode_parent_epic(*epic_number));
             labels
         }
-        BoardEvent::ParentEpicUnset { number, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*number))?.current_labels();
+        BoardEvent::ParentEpicUnset { id, .. } => {
+            let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             labels.retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
             labels
         }

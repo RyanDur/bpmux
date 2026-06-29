@@ -19,9 +19,9 @@ pub(super) fn coalesce_iteration_label_events(
     new_id: MutationId,
     new_pre_state: &Option<Story>,
 ) -> bool {
-    let (number, label, is_add) = match new_event {
-        BoardEvent::TagAdded { number, label, .. } => (*number, label.clone(), true),
-        BoardEvent::TagRemoved { number, label, .. } => (*number, label.clone(), false),
+    let (id, label, is_add) = match new_event {
+        BoardEvent::TagAdded { id, label, .. } => (*id, label.clone(), true),
+        BoardEvent::TagRemoved { id, label, .. } => (*id, label.clone(), false),
         _ => return false,
     };
     let Some(prefix) = iteration_prefix_class(codec, &label) else {
@@ -32,15 +32,11 @@ pub(super) fn coalesce_iteration_label_events(
         .enumerate()
         .filter_map(|(i, q)| match &q.event {
             BoardEvent::TagAdded {
-                number: n,
-                label: l,
-                ..
+                id: n, label: l, ..
             }
             | BoardEvent::TagRemoved {
-                number: n,
-                label: l,
-                ..
-            } if *n == number
+                id: n, label: l, ..
+            } if *n == id
                 && iteration_prefix_class(codec, l).as_deref() == Some(prefix.as_str()) =>
             {
                 Some(i)

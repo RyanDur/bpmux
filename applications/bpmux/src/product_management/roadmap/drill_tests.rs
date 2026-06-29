@@ -6,13 +6,13 @@ use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
 
 fn iteration(number: u64, outcome_number: u64) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Crux-{number}"),
         StoryState::Ready,
         Utc::now(),
@@ -32,7 +32,7 @@ fn iteration(number: u64, outcome_number: u64) -> Story {
 
 fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Outcome #{number}"),
         StoryState::Icebox,
         Utc::now(),
@@ -63,7 +63,7 @@ fn fully_ready(number: u64, outcome_number: u64, member: u64) -> Story {
     it.body = Some(
         IterationRelationships {
             outcome: Some(outcome_number),
-            stories: vec![member],
+            stories: vec![StoryId::new(member)],
         }
         .write_into_body("## composed"),
     );

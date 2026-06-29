@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use super::retired_filter::*;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::Utc;
 
 fn iter_story(number: u64, name: &str, state: StoryState) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration {name}"),
         state,
         Utc::now(),
@@ -18,7 +18,7 @@ fn iter_story(number: u64, name: &str, state: StoryState) -> Story {
 
 fn member_story(number: u64, iteration_number: u64, position: u32) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("[Feature] member-{number}"),
         StoryState::Icebox,
         Utc::now(),
@@ -50,7 +50,7 @@ fn retired_with_members_preserved_history_value() {
     ];
     let filtered = filter_retired_empty_iterations(stories);
     assert_eq!(filtered.len(), 3, "closed+N kept; got {filtered:?}");
-    assert!(filtered.iter().any(|s| s.number == 1));
+    assert!(filtered.iter().any(|s| s.id == StoryId::new(1)));
 }
 
 #[test]
@@ -93,15 +93,15 @@ fn mix_of_retired_empty_and_retired_with_members_filters_only_empty() {
     ];
     let filtered = filter_retired_empty_iterations(stories);
     assert_eq!(filtered.len(), 2);
-    assert!(filtered.iter().any(|s| s.number == 2));
-    assert!(filtered.iter().any(|s| s.number == 3));
-    assert!(!filtered.iter().any(|s| s.number == 1));
+    assert!(filtered.iter().any(|s| s.id == StoryId::new(2)));
+    assert!(filtered.iter().any(|s| s.id == StoryId::new(3)));
+    assert!(!filtered.iter().any(|s| s.id == StoryId::new(1)));
 }
 
 #[test]
 fn non_iteration_retired_story_not_subject_to_filter() {
     let mut s = Story::new_minimal(
-        1,
+        StoryId::new(1),
         "[Chore] retired-chore".to_string(),
         StoryState::Retired,
         Utc::now(),
@@ -121,7 +121,7 @@ fn retired_iteration_with_canonical_members_not_purged_1556() {
     ];
     let filtered = filter_retired_empty_iterations(stories);
     assert!(
-        filtered.iter().any(|s| s.number == 1400),
+        filtered.iter().any(|s| s.id == StoryId::new(1400)),
         "retired iteration with a canonically-attributed member (no name-label) is NOT purged: {filtered:?}"
     );
     assert_eq!(

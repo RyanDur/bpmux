@@ -7,7 +7,7 @@ use crate::bridge::tools_stories::{KEEP_NONE, reap_workflow_labels};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 use crate::product_management::iteration::label::current_iteration_number;
-use crate::product_management::story::StoryState;
+use crate::product_management::story::{StoryId, StoryState};
 
 mod target;
 
@@ -77,11 +77,12 @@ pub(in crate::bridge) async fn handle_move_story(
         ts: chrono::Utc::now(),
         peer_id: PeerId::local(),
     };
+    let id = StoryId::new(number);
 
     if was_closed && !target.closes_issue() {
         r.mutate_sync(BoardEvent::StoryReopened {
             meta: meta.clone(),
-            number,
+            id,
         })
         .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
     }
@@ -97,7 +98,7 @@ pub(in crate::bridge) async fn handle_move_story(
         if !already_labeled {
             r.mutate_sync(BoardEvent::TagAdded {
                 meta: meta.clone(),
-                number,
+                id,
                 label: label.to_string(),
             })
             .map_err(|e| format!("#{number} tag-add enqueue failed: {e}"))?;
@@ -108,14 +109,14 @@ pub(in crate::bridge) async fn handle_move_story(
         TargetState::Workflow(state) => {
             r.mutate_sync(BoardEvent::StateTransitioned {
                 meta: meta.clone(),
-                number,
+                id,
                 new_state: state,
             })
             .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
             if matches!(state, StoryState::Accepted) && !was_closed {
                 r.mutate_sync(BoardEvent::StoryClosed {
                     meta: meta.clone(),
-                    number,
+                    id,
                     reason: Some(rationale.clone()),
                 })
                 .map_err(|e| format!("#{number} accept-close enqueue failed: {e}"))?;
@@ -124,7 +125,7 @@ pub(in crate::bridge) async fn handle_move_story(
         TargetState::Retired => {
             r.mutate_sync(BoardEvent::StoryClosed {
                 meta: meta.clone(),
-                number,
+                id,
                 reason: Some(format!("retired: {rationale}")),
             })
             .map_err(|e| format!("#{number} retire enqueue failed: {e}"))?;
@@ -139,7 +140,7 @@ pub(in crate::bridge) async fn handle_move_story(
             if !already_retired {
                 r.mutate_sync(BoardEvent::TagAdded {
                     meta: meta.clone(),
-                    number,
+                    id,
                     label: "retired".to_string(),
                 })
                 .map_err(|e| format!("#{number} retire-tag enqueue failed: {e}"))?;
@@ -158,7 +159,7 @@ pub(in crate::bridge) async fn handle_move_story(
     {
         r.mutate_sync(BoardEvent::IterationMembershipSet {
             meta: meta.clone(),
-            number,
+            id,
             iteration_number,
             position: pos as u32,
         })
@@ -166,7 +167,7 @@ pub(in crate::bridge) async fn handle_move_story(
     }
 
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
-    r.mutate_sync(BoardEvent::FreeCommentAppended { meta, number, body })
+    r.mutate_sync(BoardEvent::FreeCommentAppended { meta, id, body })
         .map_err(|e| format!("#{number} audit-comment enqueue failed: {e}"))?;
 
     let pos_msg = match position {

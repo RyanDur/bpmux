@@ -3,13 +3,13 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
 fn seed_story_with_labels(number: u64, state: StoryState, labels: Vec<String>) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("story-{number}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::board::{BoardStore, RefreshDriver};
-use crate::product_management::story::{Gate, GateComment, Story};
+use crate::product_management::story::{Gate, GateComment, Story, StoryId};
 
 pub fn gate_as_str(gate: Gate) -> &'static str {
     match gate {
@@ -50,14 +50,14 @@ pub(in crate::bridge) async fn handle_view_story_timeline(
         .ok_or("missing 'number' argument")?;
     let b = board.ok_or("view_story_timeline requires board (canonical-store)")?;
     let mut story = b
-        .story(number)
+        .story(StoryId::new(number))
         .ok_or_else(|| format!("story #{number} not found in board"))?;
     if story.gate_comments.is_none()
         && let Some(r) = refresh
     {
         match r.fetch_gate_comments(number).await {
             Ok(_) => {
-                story = b.story(number).ok_or_else(|| {
+                story = b.story(StoryId::new(number)).ok_or_else(|| {
                     format!("story #{number} not found in board after gate fetch")
                 })?;
             }

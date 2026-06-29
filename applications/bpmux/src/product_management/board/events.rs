@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::peer::PeerId;
 use crate::product_management::story::{
-    Acceptor, FreeComment, Gate, GateComment, Story, StoryState, StoryType, Tag,
+    Acceptor, FreeComment, Gate, GateComment, Story, StoryId, StoryState, StoryType, Tag,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,7 +32,7 @@ pub struct LabelDerivedFields {
 pub enum BoardEvent {
     StoryCreated {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         title: String,
         body: String,
         initial_state: StoryState,
@@ -40,111 +40,111 @@ pub enum BoardEvent {
     },
     StateTransitioned {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         new_state: StoryState,
     },
     TagAdded {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         label: String,
     },
     TagRemoved {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         label: String,
     },
     GateCommentAppended {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         gate: Gate,
         payload: Option<String>,
     },
     FreeCommentAppended {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         body: String,
     },
     BodyFetched {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         body: String,
         #[serde(default)]
         etag: Option<String>,
     },
     FreeCommentsFetched {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         comments: Vec<FreeComment>,
     },
     GateCommentsFetched {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         comments: Vec<GateComment>,
     },
     StoryClosed {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         reason: Option<String>,
     },
     StoryReopened {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
     },
     ParentEpicSet {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         epic_number: u64,
     },
     ParentEpicUnset {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
     },
     IterationMembershipSet {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         iteration_number: u64,
         position: u32,
     },
     IterationMembershipCleared {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
     },
     CurrentIterationDesignated {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
     },
     CurrentIterationCleared {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
     },
     StoryRefreshed {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         story: Box<Story>,
     },
     LabelsRefreshed {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         fields: LabelDerivedFields,
     },
     TitleUpdated {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         title: String,
     },
     BodyUpdated {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         body: String,
     },
     ConflictDetected {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         kind: super::orchestrator::ConflictKind,
     },
     ConflictResolved {
         meta: EventMeta,
-        number: u64,
+        id: StoryId,
         origin: super::orchestrator::ConflictResolveOrigin,
     },
 }
@@ -178,31 +178,31 @@ impl BoardEvent {
         }
     }
 
-    pub fn story_number(&self) -> u64 {
+    pub fn story_id(&self) -> StoryId {
         match self {
-            BoardEvent::StoryCreated { number, .. }
-            | BoardEvent::StateTransitioned { number, .. }
-            | BoardEvent::GateCommentAppended { number, .. }
-            | BoardEvent::FreeCommentAppended { number, .. }
-            | BoardEvent::BodyFetched { number, .. }
-            | BoardEvent::FreeCommentsFetched { number, .. }
-            | BoardEvent::GateCommentsFetched { number, .. }
-            | BoardEvent::TagAdded { number, .. }
-            | BoardEvent::TagRemoved { number, .. }
-            | BoardEvent::StoryClosed { number, .. }
-            | BoardEvent::StoryReopened { number, .. }
-            | BoardEvent::ParentEpicSet { number, .. }
-            | BoardEvent::ParentEpicUnset { number, .. }
-            | BoardEvent::IterationMembershipSet { number, .. }
-            | BoardEvent::IterationMembershipCleared { number, .. }
-            | BoardEvent::CurrentIterationDesignated { number, .. }
-            | BoardEvent::CurrentIterationCleared { number, .. }
-            | BoardEvent::StoryRefreshed { number, .. }
-            | BoardEvent::LabelsRefreshed { number, .. }
-            | BoardEvent::TitleUpdated { number, .. }
-            | BoardEvent::BodyUpdated { number, .. }
-            | BoardEvent::ConflictDetected { number, .. }
-            | BoardEvent::ConflictResolved { number, .. } => *number,
+            BoardEvent::StoryCreated { id, .. }
+            | BoardEvent::StateTransitioned { id, .. }
+            | BoardEvent::GateCommentAppended { id, .. }
+            | BoardEvent::FreeCommentAppended { id, .. }
+            | BoardEvent::BodyFetched { id, .. }
+            | BoardEvent::FreeCommentsFetched { id, .. }
+            | BoardEvent::GateCommentsFetched { id, .. }
+            | BoardEvent::TagAdded { id, .. }
+            | BoardEvent::TagRemoved { id, .. }
+            | BoardEvent::StoryClosed { id, .. }
+            | BoardEvent::StoryReopened { id, .. }
+            | BoardEvent::ParentEpicSet { id, .. }
+            | BoardEvent::ParentEpicUnset { id, .. }
+            | BoardEvent::IterationMembershipSet { id, .. }
+            | BoardEvent::IterationMembershipCleared { id, .. }
+            | BoardEvent::CurrentIterationDesignated { id, .. }
+            | BoardEvent::CurrentIterationCleared { id, .. }
+            | BoardEvent::StoryRefreshed { id, .. }
+            | BoardEvent::LabelsRefreshed { id, .. }
+            | BoardEvent::TitleUpdated { id, .. }
+            | BoardEvent::BodyUpdated { id, .. }
+            | BoardEvent::ConflictDetected { id, .. }
+            | BoardEvent::ConflictResolved { id, .. } => *id,
         }
     }
 }

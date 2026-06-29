@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use crate::storage::{SqliteStorage, Storage};
 
 mod outbox_persistence {
@@ -47,7 +47,7 @@ mod outbox_persistence {
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 10,
+            id: StoryId::new(10),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -72,7 +72,7 @@ mod outbox_persistence {
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 20,
+            id: StoryId::new(20),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -99,7 +99,7 @@ mod outbox_persistence {
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 90,
+            id: StoryId::new(90),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -132,7 +132,7 @@ mod outbox_persistence {
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 30,
+            id: StoryId::new(30),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -159,7 +159,7 @@ mod outbox_persistence {
         orch_a
             .mutate(BoardEvent::StateTransitioned {
                 meta: meta(),
-                number: 40,
+                id: StoryId::new(40),
                 new_state: StoryState::Delivered,
             })
             .unwrap();
@@ -193,7 +193,7 @@ mod outbox_persistence {
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 60,
+            id: StoryId::new(60),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -223,7 +223,7 @@ mod outbox_persistence {
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 65,
+            id: StoryId::new(65),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -250,7 +250,7 @@ mod outbox_persistence {
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 66,
+            id: StoryId::new(66),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -281,7 +281,7 @@ mod outbox_persistence {
         for n in [70u64, 71] {
             orch.mutate(BoardEvent::StateTransitioned {
                 meta: meta(),
-                number: n,
+                id: StoryId::new(n),
                 new_state: StoryState::Delivered,
             })
             .unwrap();
@@ -311,7 +311,7 @@ mod outbox_persistence {
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 80,
+            id: StoryId::new(80),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -348,7 +348,7 @@ mod outbox_persistence {
             orch_a
                 .mutate(BoardEvent::StateTransitioned {
                     meta: meta(),
-                    number: n,
+                    id: StoryId::new(n),
                     new_state: StoryState::InProgress,
                 })
                 .unwrap();
@@ -361,9 +361,9 @@ mod outbox_persistence {
                 .unwrap();
         orch_b.drain_once().await.unwrap();
         let pushed = adapter_b.pushed_events();
-        assert_eq!(pushed[0].story_number(), 50);
-        assert_eq!(pushed[1].story_number(), 51);
-        assert_eq!(pushed[2].story_number(), 52);
+        assert_eq!(pushed[0].story_id(), StoryId::new(50));
+        assert_eq!(pushed[1].story_id(), StoryId::new(51));
+        assert_eq!(pushed[2].story_id(), StoryId::new(52));
     }
 
     #[tokio::test]
@@ -374,13 +374,13 @@ mod outbox_persistence {
 
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 999,
+            id: StoryId::new(999),
             new_state: StoryState::InProgress,
         })
         .unwrap();
 
         assert!(
-            store.story(999).is_none(),
+            store.story(StoryId::new(999)).is_none(),
             "reducer silently no-ops when story not in store; #1197 fix is at gate-tool layer"
         );
     }
@@ -394,29 +394,29 @@ mod outbox_persistence {
 
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 777,
+            id: StoryId::new(777),
             new_state: StoryState::InProgress,
         })
         .unwrap();
         assert!(
-            store.story(777).is_none(),
+            store.story(StoryId::new(777)).is_none(),
             "pre-refresh mutate silently no-ops"
         );
 
         orch.refresh_story(777).await.unwrap();
         assert!(
-            store.story(777).is_some(),
+            store.story(StoryId::new(777)).is_some(),
             "refresh_story populates the store from adapter"
         );
 
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 777,
+            id: StoryId::new(777),
             new_state: StoryState::InProgress,
         })
         .unwrap();
         assert_eq!(
-            store.story(777).map(|s| s.state),
+            store.story(StoryId::new(777)).map(|s| s.state),
             Some(StoryState::InProgress),
             "post-refresh mutate lands"
         );

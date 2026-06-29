@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::board::{BoardStore, RefreshDriver};
+use crate::product_management::story::StoryId;
 
 pub(in crate::bridge) async fn handle_view_comments(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -13,7 +14,7 @@ pub(in crate::bridge) async fn handle_view_comments(
         .ok_or("missing 'number' argument")?;
     let b = board.ok_or("view_comments requires board (canonical-store)")?;
     let story = b
-        .story(number)
+        .story(StoryId::new(number))
         .ok_or_else(|| format!("story #{number} not found in board"))?;
     let hydrated = story.free_comments.is_some();
     let shaped: Vec<serde_json::Value> = story

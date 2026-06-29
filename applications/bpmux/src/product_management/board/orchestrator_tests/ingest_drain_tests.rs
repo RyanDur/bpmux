@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
 
 #[tokio::test]
 async fn ingest_once_populates_store_from_adapter() {
@@ -23,8 +23,8 @@ async fn ingest_once_populates_store_from_adapter() {
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(store.len(), 2);
-    assert!(store.story(1).is_some());
-    assert!(store.story(2).is_some());
+    assert!(store.story(StoryId::new(1)).is_some());
+    assert!(store.story(StoryId::new(2)).is_some());
     assert!(orchestrator.snapshot_status().last_ingest_at.is_some());
 }
 
@@ -49,7 +49,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
     orchestrator
         .mutate(BoardEvent::StoryCreated {
             meta: meta(),
-            number: 100,
+            id: StoryId::new(100),
             title: "test".to_string(),
             body: "b".to_string(),
             initial_state: StoryState::Ready,
@@ -57,7 +57,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
         })
         .unwrap();
     assert_eq!(store.len(), 1);
-    assert_eq!(store.story(100).unwrap().title, "test");
+    assert_eq!(store.story(StoryId::new(100)).unwrap().title, "test");
     assert_eq!(orchestrator.snapshot_status().pending_events, 1);
     assert!(
         adapter.pushed_events().is_empty(),
@@ -74,7 +74,7 @@ async fn drain_once_pushes_pending_events_to_adapter() {
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 1,
+            id: StoryId::new(1),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -94,7 +94,7 @@ async fn drain_once_requeues_event_on_adapter_failure() {
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 1,
+            id: StoryId::new(1),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -127,14 +127,14 @@ async fn drain_once_handles_multiple_events_in_order() {
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 1,
+            id: StoryId::new(1),
             new_state: StoryState::Delivered,
         })
         .unwrap();
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 2,
+            id: StoryId::new(2),
             new_state: StoryState::InProgress,
         })
         .unwrap();
@@ -143,8 +143,8 @@ async fn drain_once_handles_multiple_events_in_order() {
     assert_eq!(drained, 2);
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 2);
-    assert_eq!(pushed[0].story_number(), 1);
-    assert_eq!(pushed[1].story_number(), 2);
+    assert_eq!(pushed[0].story_id(), StoryId::new(1));
+    assert_eq!(pushed[1].story_id(), StoryId::new(2));
 }
 
 #[tokio::test]
@@ -159,7 +159,7 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
 
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(
-        store.story(1687).and_then(|s| {
+        store.story(StoryId::new(1687)).and_then(|s| {
             crate::product_management::board::adapters::github::iteration_membership_from_labels(
                 &s.raw_labels,
             )
@@ -171,19 +171,19 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     orchestrator
         .mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 1687,
+            id: StoryId::new(1687),
             label: "parent-iteration-#1655.106".to_string(),
         })
         .unwrap();
     orchestrator
         .mutate(BoardEvent::TagRemoved {
             meta: meta(),
-            number: 1687,
+            id: StoryId::new(1687),
             label: "parent-iteration-#1655.125".to_string(),
         })
         .unwrap();
     assert_eq!(
-        store.story(1687).and_then(|s| {
+        store.story(StoryId::new(1687)).and_then(|s| {
             crate::product_management::board::adapters::github::iteration_membership_from_labels(
                 &s.raw_labels,
             )
@@ -195,7 +195,7 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     orchestrator.ingest_once().await.unwrap();
 
     assert_eq!(
-        store.story(1687).and_then(|s| {
+        store.story(StoryId::new(1687)).and_then(|s| {
             crate::product_management::board::adapters::github::iteration_membership_from_labels(
                 &s.raw_labels,
             )

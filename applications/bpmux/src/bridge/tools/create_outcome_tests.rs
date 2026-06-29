@@ -6,7 +6,7 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Horizon, Story, StoryState, StoryType};
+use crate::product_management::story::{Horizon, Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -21,7 +21,7 @@ async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
 
 fn typed_seed(number: u64, story_type: StoryType, label: &str) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("#{number}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -125,7 +125,7 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
     let outcome = refresh
         .outcomes()
         .into_iter()
-        .find(|outcome| outcome.id().saved_number() == Some(700))
+        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(700)))
         .expect("outcome present");
     assert_eq!(
         outcome.iterations,

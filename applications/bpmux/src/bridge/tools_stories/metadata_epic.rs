@@ -1,4 +1,5 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_set_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -35,7 +36,7 @@ pub(crate) async fn handle_set_parent_epic(
     r.mutate_sync(
         crate::product_management::board::BoardEvent::ParentEpicSet {
             meta,
-            number,
+            id: StoryId::new(number),
             epic_number,
         },
     )
@@ -60,7 +61,12 @@ pub(crate) async fn handle_unset_parent_epic(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::BoardEvent::ParentEpicUnset { meta, number })
-        .map_err(|e| format!("#{number} parent_epic-unset enqueue failed: {e}"))?;
+    r.mutate_sync(
+        crate::product_management::board::BoardEvent::ParentEpicUnset {
+            meta,
+            id: StoryId::new(number),
+        },
+    )
+    .map_err(|e| format!("#{number} parent_epic-unset enqueue failed: {e}"))?;
     Ok(format!("#{number} ungrouped from parent epic"))
 }

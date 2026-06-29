@@ -1,4 +1,5 @@
 use super::helpers::{compose_story_body, require_nonempty_string, role_from_name};
+use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -141,7 +142,7 @@ async fn create_and_broadcast_story_events(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
         meta: meta.clone(),
-        number,
+        id: StoryId::new(number),
         title: title.to_string(),
         body: composed_body,
         initial_state: crate::product_management::story::StoryState::Icebox,
@@ -151,7 +152,7 @@ async fn create_and_broadcast_story_events(
     if let Some(label) = acceptor_label {
         r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
             meta: meta.clone(),
-            number,
+            id: StoryId::new(number),
             label: label.to_string(),
         })
         .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
@@ -160,7 +161,7 @@ async fn create_and_broadcast_story_events(
         r.mutate_sync(
             crate::product_management::board::BoardEvent::ParentEpicSet {
                 meta,
-                number,
+                id: StoryId::new(number),
                 epic_number,
             },
         )

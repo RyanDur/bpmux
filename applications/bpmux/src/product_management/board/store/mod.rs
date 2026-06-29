@@ -6,7 +6,7 @@ use super::events::BoardEvent;
 use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryKey, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryKey, StoryState};
 use crate::store::kernel::Store;
 
 mod action;
@@ -61,14 +61,14 @@ impl BoardStore {
         self.store.dispatch(BoardAction::Cleared);
     }
 
-    pub fn remove(&self, number: u64) -> Option<Story> {
+    pub fn remove(&self, id: StoryId) -> Option<Story> {
         let removed = self.store.select(|state| {
             state
                 .stories
-                .get(&StoryKey::Saved(number))
+                .get(&StoryKey::Saved(id))
                 .and_then(|item| item.backing_story().cloned())
         });
-        self.store.dispatch(BoardAction::Removed(number));
+        self.store.dispatch(BoardAction::Removed(id));
         removed
     }
 
@@ -80,20 +80,20 @@ impl BoardStore {
         self.event_tx.receiver_count()
     }
 
-    pub fn story(&self, number: u64) -> Option<Story> {
+    pub fn story(&self, id: StoryId) -> Option<Story> {
         self.store.select(|state| {
             state
                 .stories
-                .get(&StoryKey::Saved(number))
+                .get(&StoryKey::Saved(id))
                 .and_then(|item| item.as_story().cloned())
         })
     }
 
-    pub fn backing_story(&self, number: u64) -> Option<Story> {
+    pub fn backing_story(&self, id: StoryId) -> Option<Story> {
         self.store.select(|state| {
             state
                 .stories
-                .get(&StoryKey::Saved(number))
+                .get(&StoryKey::Saved(id))
                 .and_then(|item| item.backing_story().cloned())
         })
     }
@@ -129,11 +129,11 @@ impl BoardStore {
         })
     }
 
-    pub fn iteration(&self, number: u64) -> Option<Iteration> {
+    pub fn iteration(&self, id: StoryId) -> Option<Iteration> {
         self.store.select(|state| {
             state
                 .stories
-                .get(&StoryKey::Saved(number))
+                .get(&StoryKey::Saved(id))
                 .and_then(|item| item.iteration_story())
                 .map(decode_iteration)
         })

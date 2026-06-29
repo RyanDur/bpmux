@@ -2,6 +2,7 @@ use crate::bridge::tools_stories::helpers::{
     LABEL_DELIVERED, LABEL_IN_PROGRESS, LABEL_READY, ensure_story_in_canonical_store,
     reap_workflow_labels, role_from_name,
 };
+use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -33,7 +34,7 @@ pub(crate) async fn handle_reject_story(
     let r = refresh.ok_or(
         "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
-    let story_opt = r.store().story(number);
+    let story_opt = r.store().story(StoryId::new(number));
     let class = story_opt
         .as_ref()
         .map(|s| {
@@ -91,7 +92,7 @@ pub(crate) async fn reject_via_canonical_store(
             .mutate_sync(
                 crate::product_management::board::BoardEvent::StoryReopened {
                     meta: meta.clone(),
-                    number,
+                    id: StoryId::new(number),
                 },
             )
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
@@ -100,7 +101,7 @@ pub(crate) async fn reject_via_canonical_store(
         .mutate_sync(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
                 gate: crate::product_management::story::Gate::Rejected,
                 payload: Some(reason),
             },
@@ -110,7 +111,7 @@ pub(crate) async fn reject_via_canonical_store(
         .mutate_sync(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta,
-                number,
+                id: StoryId::new(number),
                 new_state: target_state,
             },
         )

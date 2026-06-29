@@ -19,7 +19,7 @@ pub(crate) fn select_stories_to_hydrate(
             ) && s.body.is_none()
         })
         .take(limit)
-        .map(|s| s.number)
+        .map(|s| u64::from(s.id))
         .collect()
 }
 
@@ -40,7 +40,7 @@ pub(crate) fn select_stories_to_revalidate(
             ) && s.body.is_some()
         })
         .take(limit)
-        .map(|s| (s.number, s.body_etag.clone()))
+        .map(|s| (u64::from(s.id), s.body_etag.clone()))
         .collect()
 }
 

@@ -3,7 +3,7 @@ use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::Horizon;
+use crate::product_management::story::{Horizon, StoryId};
 use std::sync::Arc;
 
 pub(crate) async fn handle_reprioritize_outcome(
@@ -82,7 +82,7 @@ fn move_to_band(
     outcome: &Outcome,
     target_band: Horizon,
 ) -> Result<(), String> {
-    let number = outcome.id().saved_number().unwrap_or(0);
+    let number = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
     let target_label = codec.encode_horizon(target_band);
     let mut stale: Vec<String> = Vec::new();
     if let Some(current) = outcome.horizon() {
@@ -97,14 +97,14 @@ fn move_to_band(
     for label in stale {
         r.mutate_sync(BoardEvent::TagRemoved {
             meta: meta(),
-            number,
+            id: StoryId::new(number),
             label,
         })
         .map_err(|e| format!("#{number} band-change label removal failed: {e}"))?;
     }
     r.mutate_sync(BoardEvent::TagAdded {
         meta: meta(),
-        number,
+        id: StoryId::new(number),
         label: target_label,
     })
     .map_err(|e| format!("#{number} horizon label enqueue failed: {e}"))
@@ -127,7 +127,11 @@ fn reorder_within_band(
     ordered.sort_by_key(|outcome| {
         (
             outcome.horizon_order().unwrap_or(u32::MAX),
-            outcome.id().saved_number().unwrap_or(u64::MAX),
+            outcome
+                .id()
+                .saved_id()
+                .map(|id| id.value())
+                .unwrap_or(u64::MAX),
         )
     });
 
@@ -135,7 +139,7 @@ fn reorder_within_band(
     let clamped = requested_position.clamp(1, band_size.max(1));
     let mut sequence: Vec<u64> = ordered
         .iter()
-        .filter_map(|outcome| outcome.id().saved_number())
+        .filter_map(|outcome| outcome.id().saved_id().map(|id| id.value()))
         .filter(|n| *n != outcome_number)
         .collect();
     let insert_index = (clamped as usize - 1).min(sequence.len());
@@ -145,7 +149,7 @@ fn reorder_within_band(
         let new_position = (index + 1) as u32;
         let member = members
             .iter()
-            .find(|outcome| outcome.id().saved_number() == Some(*number))
+            .find(|outcome| outcome.id().saved_id().map(|id| id.value()) == Some(*number))
             .ok_or_else(|| format!("#{number} vanished from band mid-reorder"))?;
         if member.horizon_order() == Some(new_position) {
             continue;
@@ -153,14 +157,14 @@ fn reorder_within_band(
         if let Some(order) = member.horizon_order() {
             r.mutate_sync(BoardEvent::TagRemoved {
                 meta: meta(),
-                number: *number,
+                id: StoryId::new(*number),
                 label: codec.encode_horizon_order(order),
             })
             .map_err(|e| format!("#{number} prior-position removal failed: {e}"))?;
         }
         r.mutate_sync(BoardEvent::TagAdded {
             meta: meta(),
-            number: *number,
+            id: StoryId::new(*number),
             label: codec.encode_horizon_order(new_position),
         })
         .map_err(|e| format!("#{number} position label enqueue failed: {e}"))?;

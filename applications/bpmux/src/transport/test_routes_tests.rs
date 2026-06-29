@@ -201,7 +201,7 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
     assert_eq!(stories.len(), 1, "exactly one story present");
 
     let stored_body = refresh
-        .fetch_body(stories[0].number)
+        .fetch_body(stories[0].id.value())
         .await
         .expect("fetch_body");
     assert!(
@@ -217,14 +217,14 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
 #[tokio::test]
 async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
 
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap();
     adapter.seed_stories(vec![Story::new_minimal(
-        5050,
+        StoryId::new(5050),
         "post-restart-rest-recovery".into(),
         StoryState::Accepted,
         ts,
@@ -309,7 +309,7 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
     let resp = post_create_story(router.clone(), feature).await;
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let parent_number = refresh.all_stories()[0].number;
+    let parent_number = refresh.all_stories()[0].id.value();
 
     let child = format!(
         r#"{{
@@ -354,7 +354,7 @@ async fn comment_on_story_response_correctness_happy_path_returns_message() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].number;
+    let target_number = refresh.all_stories()[0].id.value();
 
     let comment = format!(
         r#"{{
@@ -386,7 +386,7 @@ async fn comment_on_story_response_correctness_rejects_empty_body() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].number;
+    let target_number = refresh.all_stories()[0].id.value();
 
     let comment = format!(
         r#"{{
@@ -414,7 +414,7 @@ async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].number;
+    let target_number = refresh.all_stories()[0].id.value();
 
     let marker = "ROUNDTRIP_MARKER_C1";
     let comment = format!(
@@ -461,7 +461,7 @@ async fn close_story_response_correctness_happy_path_returns_message() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].number;
+    let target_number = refresh.all_stories()[0].id.value();
 
     let close = format!(
         r#"{{
@@ -497,7 +497,7 @@ async fn close_story_response_correctness_rejects_empty_reason() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].number;
+    let target_number = refresh.all_stories()[0].id.value();
 
     let close = format!(
         r#"{{
@@ -529,7 +529,7 @@ async fn close_story_roundtrip_api_board_reflects_closed_state() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].number;
+    let target_number = refresh.all_stories()[0].id.value();
 
     let close = format!(
         r#"{{

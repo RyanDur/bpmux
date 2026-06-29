@@ -5,6 +5,7 @@ use super::helpers::{
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
+use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -46,10 +47,11 @@ pub(crate) async fn handle_add_story_to_iteration(
     ensure_story_in_canonical_store(r, story_number).await?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
     for other in r.iterations() {
-        let Some(other_number) = other.id().saved_number() else {
+        let Some(other_number) = other.id().saved_id().map(|id| id.value()) else {
             continue;
         };
-        if other_number == iteration_number || !other.stories.contains(&story_number) {
+        if other_number == iteration_number || !other.stories.contains(&StoryId::new(story_number))
+        {
             continue;
         }
         let mut other_rel = other
@@ -58,7 +60,9 @@ pub(crate) async fn handle_add_story_to_iteration(
             .as_deref()
             .and_then(IterationRelationships::read_from_body)
             .unwrap_or_default();
-        other_rel.stories.retain(|n| *n != story_number);
+        other_rel
+            .stories
+            .retain(|n| *n != StoryId::new(story_number));
         let other_body =
             other_rel.write_into_body(other.content.body.as_deref().unwrap_or_default());
         r.update_body(other_number, other_body)
@@ -71,9 +75,9 @@ pub(crate) async fn handle_add_story_to_iteration(
         .as_deref()
         .and_then(IterationRelationships::read_from_body)
         .unwrap_or_default();
-    rel.stories.retain(|n| *n != story_number);
+    rel.stories.retain(|n| *n != StoryId::new(story_number));
     let insert_index = (position.max(1) as usize - 1).min(rel.stories.len());
-    rel.stories.insert(insert_index, story_number);
+    rel.stories.insert(insert_index, StoryId::new(story_number));
     let body = rel.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
     r.update_body(iteration_number, body)
         .await

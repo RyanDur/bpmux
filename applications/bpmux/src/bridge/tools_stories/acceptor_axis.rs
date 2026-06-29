@@ -1,4 +1,5 @@
 use super::helpers::{LABEL_AWAITING_DEV, LABEL_AWAITING_OWNER, LABEL_AWAITING_TEAM};
+use crate::product_management::story::StoryId;
 
 const ALL_ACCEPTOR_LABELS: [&str; 3] = [
     LABEL_AWAITING_TEAM,
@@ -48,7 +49,7 @@ pub(crate) fn acceptor_label_events(
         if current_labels.iter().any(|l| l == stale) {
             events.push(crate::product_management::board::BoardEvent::TagRemoved {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
                 label: stale.to_string(),
             });
         }
@@ -57,7 +58,7 @@ pub(crate) fn acceptor_label_events(
     if !current_labels.iter().any(|l| l == keep) {
         events.push(crate::product_management::board::BoardEvent::TagAdded {
             meta: meta.clone(),
-            number,
+            id: StoryId::new(number),
             label: keep.to_string(),
         });
     }

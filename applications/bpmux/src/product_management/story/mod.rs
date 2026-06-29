@@ -37,7 +37,7 @@ pub struct FreeComment {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Story {
-    pub number: u64,
+    pub id: StoryId,
     pub title: String,
     pub state: StoryState,
     pub filed_at: DateTime<Utc>,
@@ -65,7 +65,7 @@ pub struct Story {
 
 impl Story {
     pub fn new_minimal(
-        number: u64,
+        id: StoryId,
         title: String,
         state: StoryState,
         filed_at: DateTime<Utc>,
@@ -77,7 +77,7 @@ impl Story {
         };
         let story_type = story_type::story_type_from_title(&title);
         Self {
-            number,
+            id,
             title,
             state,
             filed_at,
@@ -97,8 +97,8 @@ impl Story {
         }
     }
 
-    pub fn id(&self) -> StoryKey {
-        StoryKey::Saved(self.number)
+    pub fn key(&self) -> StoryKey {
+        StoryKey::Saved(self.id)
     }
 
     pub fn title(&self) -> &str {

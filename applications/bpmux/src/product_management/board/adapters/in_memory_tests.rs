@@ -6,7 +6,7 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
-use crate::product_management::story::{FreeComment, Story, StoryState};
+use crate::product_management::story::{FreeComment, Story, StoryId, StoryState};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -18,7 +18,7 @@ fn meta() -> EventMeta {
 
 fn seed_story(number: u64, title: &str) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -86,7 +86,7 @@ async fn push_event_records_the_event() {
     let adapter = InMemorySourceAdapter::new();
     let event = BoardEvent::StateTransitioned {
         meta: meta(),
-        number: 10,
+        id: StoryId::new(10),
         new_state: StoryState::Delivered,
     };
     adapter.push_event(&event).await.unwrap();
@@ -101,7 +101,7 @@ async fn push_event_errs_when_configured_to_fail() {
     adapter.set_push_failures(true);
     let event = BoardEvent::StateTransitioned {
         meta: meta(),
-        number: 10,
+        id: StoryId::new(10),
         new_state: StoryState::Delivered,
     };
     let result = adapter.push_event(&event).await;
@@ -117,20 +117,20 @@ async fn multiple_pushed_events_preserve_order() {
     let adapter = InMemorySourceAdapter::new();
     let e1 = BoardEvent::StateTransitioned {
         meta: meta(),
-        number: 1,
+        id: StoryId::new(1),
         new_state: StoryState::InProgress,
     };
     let e2 = BoardEvent::StateTransitioned {
         meta: meta(),
-        number: 2,
+        id: StoryId::new(2),
         new_state: StoryState::Delivered,
     };
     adapter.push_event(&e1).await.unwrap();
     adapter.push_event(&e2).await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 2);
-    assert_eq!(pushed[0].story_number(), 1);
-    assert_eq!(pushed[1].story_number(), 2);
+    assert_eq!(pushed[0].story_id(), StoryId::new(1));
+    assert_eq!(pushed[1].story_id(), StoryId::new(2));
 }
 
 #[tokio::test]
@@ -143,7 +143,7 @@ async fn create_story_auto_assigns_first_number_when_empty() {
     assert_eq!(number, 1, "first story in empty adapter should be #1");
     let stories = adapter.ingest_metadata().await.unwrap();
     assert_eq!(stories.len(), 1);
-    assert_eq!(stories[0].number, 1);
+    assert_eq!(stories[0].id, StoryId::new(1));
     assert_eq!(stories[0].title, "first ever");
     assert_eq!(adapter.fetch_story_body(1).await.unwrap(), "body");
 }
@@ -172,7 +172,7 @@ async fn push_event_accepts_story_created_variant() {
     let adapter = InMemorySourceAdapter::new();
     let event = BoardEvent::StoryCreated {
         meta: meta(),
-        number: 99,
+        id: StoryId::new(99),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Icebox,
@@ -192,13 +192,13 @@ async fn tag_added_surfaces_label_in_ingested_raw_labels() {
     adapter
         .push_event(&BoardEvent::TagAdded {
             meta: meta(),
-            number: 42,
+            id: StoryId::new(42),
             label: "iteration-Unscheduled.300".to_string(),
         })
         .await
         .unwrap();
     let stories = adapter.ingest_metadata().await.unwrap();
-    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert!(
         story
             .raw_labels
@@ -216,13 +216,13 @@ async fn tag_removed_drops_label_from_ingested_raw_labels() {
     adapter
         .push_event(&BoardEvent::TagRemoved {
             meta: meta(),
-            number: 42,
+            id: StoryId::new(42),
             label: "iteration-Unscheduled.300".to_string(),
         })
         .await
         .unwrap();
     let stories = adapter.ingest_metadata().await.unwrap();
-    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert!(
         !story
             .raw_labels
@@ -239,13 +239,13 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
     adapter
         .push_event(&BoardEvent::ParentEpicSet {
             meta: meta(),
-            number: 42,
+            id: StoryId::new(42),
             epic_number: 7,
         })
         .await
         .unwrap();
     let stories = adapter.ingest_metadata().await.unwrap();
-    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::parent_epic_from_labels(
             &story.raw_labels
@@ -270,7 +270,7 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
     adapter
         .push_event(&BoardEvent::ParentEpicSet {
             meta: meta(),
-            number: 42,
+            id: StoryId::new(42),
             epic_number: 7,
         })
         .await
@@ -278,12 +278,12 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
     adapter
         .push_event(&BoardEvent::ParentEpicUnset {
             meta: meta(),
-            number: 42,
+            id: StoryId::new(42),
         })
         .await
         .unwrap();
     let stories = adapter.ingest_metadata().await.unwrap();
-    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::parent_epic_from_labels(
             &story.raw_labels
@@ -308,14 +308,14 @@ async fn iteration_membership_set_surfaces_in_ingested_metadata() {
     adapter
         .push_event(&BoardEvent::IterationMembershipSet {
             meta: meta(),
-            number: 42,
+            id: StoryId::new(42),
             iteration_number: 1300,
             position: 200,
         })
         .await
         .unwrap();
     let stories = adapter.ingest_metadata().await.unwrap();
-    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::iteration_membership_from_labels(
             &story.raw_labels
@@ -339,7 +339,7 @@ async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
     adapter
         .push_event(&BoardEvent::IterationMembershipSet {
             meta: meta(),
-            number: 999,
+            id: StoryId::new(999),
             iteration_number: 1,
             position: 1,
         })
@@ -348,14 +348,14 @@ async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
     adapter
         .push_event(&BoardEvent::ParentEpicSet {
             meta: meta(),
-            number: 999,
+            id: StoryId::new(999),
             epic_number: 1,
         })
         .await
         .unwrap();
     let stories = adapter.ingest_metadata().await.unwrap();
     assert!(
-        stories.iter().all(|s| s.number != 999),
+        stories.iter().all(|s| s.id != StoryId::new(999)),
         "events for an unseeded story must no-op, never phantom-create"
     );
 }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::board::BoardStore;
-use crate::product_management::story::{Story, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryType};
 
 pub(in crate::bridge) async fn handle_list_epic_children(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -12,7 +12,7 @@ pub(in crate::bridge) async fn handle_list_epic_children(
         .and_then(|v| v.as_u64())
         .ok_or_else(|| "list_epic_children: epic_number argument required (u64)".to_string())?;
     let epic = store
-        .story(epic_number)
+        .story(StoryId::new(epic_number))
         .ok_or_else(|| format!("list_epic_children: epic_number {epic_number} not found"))?;
     let story_type = epic.story_type();
     if !matches!(story_type, StoryType::Epic) {
@@ -26,13 +26,13 @@ pub(in crate::bridge) async fn handle_list_epic_children(
         .into_iter()
         .filter(|s| s.parent_epic() == Some(epic_number))
         .collect();
-    children.sort_by_key(|s| s.number);
+    children.sort_by_key(|s| s.id);
     let body = serde_json::json!({
         "epic_number": epic_number,
         "children": children
             .iter()
             .map(|s| serde_json::json!({
-                "number": s.number,
+                "number": s.id,
                 "title": s.title,
                 "state": format!("{:?}", s.state).to_lowercase(),
                 "story_type": s.story_type().as_label(),

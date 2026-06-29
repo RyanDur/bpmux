@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 
 mod outbox_coalesce_1339_step_2e {
     use super::*;
@@ -41,37 +41,37 @@ mod outbox_coalesce_1339_step_2e {
 
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7011,
+            id: StoryId::new(7011),
             label: "iteration-Pegasus.150".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagRemoved {
             meta: meta(),
-            number: 7011,
+            id: StoryId::new(7011),
             label: "iteration-Pegasus.300".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7011,
+            id: StoryId::new(7011),
             label: "iteration-Pegasus.75".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagRemoved {
             meta: meta(),
-            number: 7011,
+            id: StoryId::new(7011),
             label: "iteration-Pegasus.150".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7011,
+            id: StoryId::new(7011),
             label: "iteration-Pegasus.50".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagRemoved {
             meta: meta(),
-            number: 7011,
+            id: StoryId::new(7011),
             label: "iteration-Pegasus.75".to_string(),
         })
         .unwrap();
@@ -96,19 +96,19 @@ mod outbox_coalesce_1339_step_2e {
 
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7012,
+            id: StoryId::new(7012),
             label: "iteration-Pegasus.100".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7012,
+            id: StoryId::new(7012),
             label: "iteration-order.50".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7012,
+            id: StoryId::new(7012),
             label: "iteration-Pegasus.50".to_string(),
         })
         .unwrap();
@@ -136,19 +136,19 @@ mod outbox_coalesce_1339_step_2e {
 
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7013,
+            id: StoryId::new(7013),
             label: "iteration-Pegasus.100".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7014,
+            id: StoryId::new(7014),
             label: "iteration-Pegasus.100".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7013,
+            id: StoryId::new(7013),
             label: "iteration-Pegasus.50".to_string(),
         })
         .unwrap();
@@ -157,7 +157,7 @@ mod outbox_coalesce_1339_step_2e {
         let by_story: Vec<(u64, String)> = pending
             .iter()
             .filter_map(|q| match &q.event {
-                BoardEvent::TagAdded { number, label, .. } => Some((*number, label.clone())),
+                BoardEvent::TagAdded { id, label, .. } => Some((id.value(), label.clone())),
                 _ => None,
             })
             .collect();
@@ -180,19 +180,19 @@ mod outbox_coalesce_1339_step_2e {
 
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7015,
+            id: StoryId::new(7015),
             label: "blocked".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagRemoved {
             meta: meta(),
-            number: 7015,
+            id: StoryId::new(7015),
             label: "ready".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7015,
+            id: StoryId::new(7015),
             label: "in progress".to_string(),
         })
         .unwrap();
@@ -214,19 +214,19 @@ mod outbox_coalesce_1339_step_2e {
 
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7016,
+            id: StoryId::new(7016),
             label: "iteration-Pegasus.200".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7016,
+            id: StoryId::new(7016),
             label: "iteration-Pegasus.150".to_string(),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {
             meta: meta(),
-            number: 7016,
+            id: StoryId::new(7016),
             label: "iteration-Pegasus.100".to_string(),
         })
         .unwrap();

@@ -7,13 +7,13 @@ entity_id!(StoryId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StoryKey {
     Pending(Uuid),
-    Saved(u64),
+    Saved(StoryId),
 }
 
 impl StoryKey {
-    pub fn saved_number(self) -> Option<u64> {
+    pub fn saved_id(self) -> Option<StoryId> {
         match self {
-            StoryKey::Saved(number) => Some(number),
+            StoryKey::Saved(id) => Some(id),
             StoryKey::Pending(_) => None,
         }
     }
@@ -22,7 +22,7 @@ impl StoryKey {
 impl fmt::Display for StoryKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StoryKey::Saved(number) => write!(f, "#{number}"),
+            StoryKey::Saved(id) => write!(f, "{id}"),
             StoryKey::Pending(_) => write!(f, "(unsaved)"),
         }
     }

@@ -25,7 +25,7 @@ use bpmux::product_management::board::RefreshDriver;
 use bpmux::product_management::board::SyncOrchestrator;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::board::events::EventMeta;
-use bpmux::product_management::story::{Story, StoryState};
+use bpmux::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 
 #[tokio::test]
@@ -36,7 +36,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
-        909,
+        StoryId::new(909),
         "slice 1 reap parity".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 28, 0, 0, 0).unwrap(),
@@ -70,7 +70,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     ] {
         orch.mutate_sync(BoardEvent::TagRemoved {
             meta: meta.clone(),
-            number: 909,
+            id: StoryId::new(909),
             label: stale.to_string(),
         })
         .unwrap();
@@ -84,7 +84,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     let pushed = adapter.pushed_events();
     let strip_count = pushed
         .iter()
-        .filter(|e| matches!(e, BoardEvent::TagRemoved { number: 909, .. }))
+        .filter(|e| matches!(e, BoardEvent::TagRemoved { id, .. } if *id == StoryId::new(909)))
         .count();
     assert_eq!(strip_count, 8);
 

@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
@@ -26,7 +26,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
     orchestrator
         .mutate_sync(BoardEvent::StateTransitioned {
             meta: meta(),
-            number: 1,
+            id: StoryId::new(1),
             new_state: StoryState::Delivered,
         })
         .unwrap();
@@ -61,7 +61,7 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::TagRemoved { number: 450, label, .. } if label == "in progress"
+        BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(450) && label == "in progress"
     ));
 }
 

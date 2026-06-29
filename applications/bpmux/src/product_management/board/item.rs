@@ -22,7 +22,7 @@ pub enum ProductItem {
 impl ProductItem {
     pub fn id(&self) -> StoryKey {
         match self {
-            ProductItem::Story(story) | ProductItem::Iteration(story) => story.id(),
+            ProductItem::Story(story) | ProductItem::Iteration(story) => story.key(),
             ProductItem::Outcome(outcome) => outcome.id(),
         }
     }

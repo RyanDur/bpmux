@@ -88,7 +88,10 @@ async fn external_create_via_gh_cli_appears_in_bpmux_after_refresh() {
     );
 
     let story = refresh.story(101).expect("story in store");
-    assert_eq!(story.number, 101);
+    assert_eq!(
+        story.id,
+        crate::product_management::story::StoryId::new(101)
+    );
     assert_eq!(story.title, "[Feature] external-via-gh-cli");
 }
 

@@ -46,7 +46,10 @@ pub(crate) fn recent_evidence_for_story(
     story_number: u64,
 ) -> Result<Vec<EvidenceMessage>, String> {
     let store = crate::workflow::verdicts::load(&session.dir);
-    let verdicts = crate::workflow::verdicts::verdicts_for_story(&store, story_number);
+    let verdicts = crate::workflow::verdicts::verdicts_for_story(
+        &store,
+        crate::product_management::story::StoryId::new(story_number),
+    );
     Ok(verdicts
         .into_iter()
         .map(|v| EvidenceMessage {

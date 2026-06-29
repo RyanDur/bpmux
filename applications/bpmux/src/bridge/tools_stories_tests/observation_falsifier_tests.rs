@@ -263,14 +263,14 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
-        42,
+        StoryId::new(42),
         "t".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),

@@ -3,6 +3,7 @@ pub(crate) use super::canonical_store::{
     ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store,
     ensure_story_in_canonical_store,
 };
+use crate::product_management::story::StoryId;
 
 pub(crate) const LABEL_DELIVERED: &str = "delivered";
 pub(crate) const LABEL_IN_PROGRESS: &str = "in progress";
@@ -57,7 +58,7 @@ pub(crate) fn reap_workflow_labels(
         refresh
             .mutate_sync(crate::product_management::board::BoardEvent::TagRemoved {
                 meta: meta.clone(),
-                number,
+                id: StoryId::new(number),
                 label: stale.to_string(),
             })
             .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;

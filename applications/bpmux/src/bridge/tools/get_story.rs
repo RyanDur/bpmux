@@ -5,7 +5,7 @@ use crate::product_management::iteration::section::{
     derive_iteration_member_section, substitute_member_stories_section,
 };
 use crate::product_management::story::{
-    Gate, GateComment, StoryState, most_recent_backward_transition, replay_transitions,
+    Gate, GateComment, StoryId, StoryState, most_recent_backward_transition, replay_transitions,
 };
 
 use super::rework_context::enrich_body;
@@ -64,13 +64,15 @@ async fn render_iteration_detail(
     refresh: Option<&Arc<dyn RefreshDriver>>,
     iteration: &crate::product_management::iteration::Iteration,
 ) -> Result<String, String> {
-    let number = iteration.id().saved_number().unwrap_or_default();
+    let number = iteration.id().saved_id().map(u64::from).unwrap_or_default();
     let mut body = iteration.content.body.clone();
     if body.is_none()
         && let Some(r) = refresh
         && r.fetch_body(number).await.is_ok()
     {
-        body = b.iteration(number).and_then(|it| it.content.body);
+        body = b
+            .iteration(StoryId::new(number))
+            .and_then(|it| it.content.body);
     }
     let body_hydrated = body.is_some();
     let mut body_out = body.unwrap_or_else(|| NOT_HYDRATED_PLACEHOLDER.to_string());
@@ -81,7 +83,7 @@ async fn render_iteration_detail(
             .filter_map(|n| {
                 b.story(*n)
                     .filter(|s| !s.is_closed)
-                    .map(|s| (*n, s.title.clone()))
+                    .map(|s| ((*n).value(), s.title.clone()))
             })
             .collect();
         let members_refs: Vec<(u64, &str)> =
@@ -110,11 +112,12 @@ pub(in crate::bridge) async fn handle_get_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let b = board.ok_or("get_story requires board (canonical-store)")?;
-    if let Some(iteration) = b.iteration(number) {
+    let id = StoryId::new(number);
+    if let Some(iteration) = b.iteration(id) {
         return render_iteration_detail(b, refresh, &iteration).await;
     }
     let mut story = b
-        .story(number)
+        .story(id)
         .ok_or_else(|| format!("story #{number} not found in board"))?;
     if story.body.is_none()
         && let Some(r) = refresh
@@ -122,7 +125,7 @@ pub(in crate::bridge) async fn handle_get_story(
         match r.fetch_body(number).await {
             Ok(_) => {
                 story = b
-                    .story(number)
+                    .story(id)
                     .ok_or_else(|| format!("story #{number} not found in board after fetch"))?;
             }
             Err(e) => {
@@ -141,7 +144,7 @@ pub(in crate::bridge) async fn handle_get_story(
     {
         match r.fetch_gate_comments(number).await {
             Ok(_) => {
-                story = b.story(number).ok_or_else(|| {
+                story = b.story(id).ok_or_else(|| {
                     format!("story #{number} not found in board after gate fetch")
                 })?;
             }
@@ -175,7 +178,7 @@ pub(in crate::bridge) async fn handle_get_story(
         .map(|name| serde_json::json!({"name": name}))
         .collect();
     let out = serde_json::json!({
-        "number": story.number,
+        "number": story.id,
         "title": story.title,
         "body": body_out,
         "workflow_state": workflow_state,

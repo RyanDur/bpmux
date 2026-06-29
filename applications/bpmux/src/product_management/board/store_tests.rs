@@ -10,7 +10,7 @@ use crate::product_management::board::adapters::github::{
     story_type_from_labels_or_title, tags_from_labels,
 };
 use crate::product_management::story::{
-    Acceptor, FreeComment, Gate, Story, StoryKind, StoryState, StoryType, Tag,
+    Acceptor, FreeComment, Gate, Story, StoryId, StoryKind, StoryState, StoryType, Tag,
 };
 
 fn meta(actor: &str, ts_year: i32, peer: &str) -> EventMeta {
@@ -33,7 +33,7 @@ fn store_starts_empty() {
 fn seed_all_populates_stories() {
     let store = BoardStore::new();
     let s1 = Story::new_minimal(
-        1,
+        StoryId::new(1),
         "first".to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
@@ -41,7 +41,7 @@ fn seed_all_populates_stories() {
     );
     store.seed_all(vec![s1]);
     assert_eq!(store.len(), 1);
-    assert_eq!(store.story(1).unwrap().title, "first");
+    assert_eq!(store.story(StoryId::new(1)).unwrap().title, "first");
 }
 
 #[test]
@@ -49,14 +49,14 @@ fn story_created_event_populates_store() {
     let store = BoardStore::new();
     let event = BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 500,
+        id: StoryId::new(500),
         title: "new story".to_string(),
         body: "body text".to_string(),
         initial_state: StoryState::Ready,
         story_type: StoryType::Story(StoryKind::Feature),
     };
     store.apply(&event);
-    let story = store.story(500).expect("story exists");
+    let story = store.story(StoryId::new(500)).expect("story exists");
     assert_eq!(story.title, "new story");
     assert_eq!(story.state, StoryState::Ready);
     assert_eq!(story.body.as_deref(), Some("body text"));
@@ -68,24 +68,24 @@ fn tag_added_acceptor_label_decodes_into_the_stored_acceptor_field() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 8,
+        id: StoryId::new(8),
         title: "needs an acceptor".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Delivered,
         story_type: StoryType::Story(StoryKind::Feature),
     });
     assert_eq!(
-        store.story(8).unwrap().acceptor(),
+        store.story(StoryId::new(8)).unwrap().acceptor(),
         None,
         "a freshly created story carries no acceptor label yet"
     );
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 8,
+        id: StoryId::new(8),
         label: "awaiting owner".to_string(),
     });
     assert_eq!(
-        store.story(8).unwrap().acceptor(),
+        store.story(StoryId::new(8)).unwrap().acceptor(),
         Some(Acceptor::Owner),
         "the codec decodes the acceptor label into the stored field on the label-add event"
     );
@@ -96,24 +96,24 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 12,
+        id: StoryId::new(12),
         title: "child story".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Icebox,
         story_type: StoryType::Story(StoryKind::Feature),
     });
     assert_eq!(
-        store.story(12).unwrap().parent_epic(),
+        store.story(StoryId::new(12)).unwrap().parent_epic(),
         None,
         "a freshly created story has no parent epic yet"
     );
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
-        number: 12,
+        id: StoryId::new(12),
         epic_number: 300,
     });
     assert_eq!(
-        store.story(12).unwrap().parent_epic(),
+        store.story(StoryId::new(12)).unwrap().parent_epic(),
         Some(300),
         "the codec decodes the parent-epic label into the stored field on the ParentEpicSet event"
     );
@@ -124,23 +124,23 @@ fn tag_added_blocked_label_decodes_into_the_stored_tags_field() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 15,
+        id: StoryId::new(15),
         title: "blockable".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Delivered,
         story_type: StoryType::Story(StoryKind::Feature),
     });
     assert!(
-        store.story(15).unwrap().tags().is_empty(),
+        store.story(StoryId::new(15)).unwrap().tags().is_empty(),
         "a freshly created story carries no tags yet"
     );
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 15,
+        id: StoryId::new(15),
         label: "blocked".to_string(),
     });
     assert_eq!(
-        store.story(15).unwrap().tags(),
+        store.story(StoryId::new(15)).unwrap().tags(),
         [Tag::Blocked],
         "the codec decodes the blocked label into the stored tags field on the label-add event"
     );
@@ -151,24 +151,24 @@ fn tag_added_ready_order_label_decodes_into_the_stored_ready_order_field() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 18,
+        id: StoryId::new(18),
         title: "orderable".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
         story_type: StoryType::Story(StoryKind::Feature),
     });
     assert_eq!(
-        store.story(18).unwrap().ready_order(),
+        store.story(StoryId::new(18)).unwrap().ready_order(),
         None,
         "a freshly created story has no ready-order yet"
     );
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 18,
+        id: StoryId::new(18),
         label: "ready-order.3".to_string(),
     });
     assert_eq!(
-        store.story(18).unwrap().ready_order(),
+        store.story(StoryId::new(18)).unwrap().ready_order(),
         Some(3),
         "the codec decodes the ready-order label into the stored field on the label-add event"
     );
@@ -178,7 +178,7 @@ fn tag_added_ready_order_label_decodes_into_the_stored_ready_order_field() {
 fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transitioned() {
     let store = BoardStore::new();
     let story = Story::new_minimal(
-        77,
+        StoryId::new(77),
         "membered".to_string(),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
@@ -188,7 +188,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
 
     store.apply(&BoardEvent::LabelsRefreshed {
         meta: meta("pm", 2026, "local"),
-        number: 77,
+        id: StoryId::new(77),
         fields: LabelDerivedFields {
             raw_labels: vec![
                 "parent-epic-#7".to_string(),
@@ -203,7 +203,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
         },
     });
 
-    let s = store.story(77).expect("story exists");
+    let s = store.story(StoryId::new(77)).expect("story exists");
     assert_eq!(parent_epic_from_labels(&s.raw_labels), Some(7));
     assert_eq!(
         iteration_membership_from_labels(&s.raw_labels),
@@ -230,7 +230,7 @@ fn state_transitioned_event_updates_existing_story() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -238,10 +238,13 @@ fn state_transitioned_event_updates_existing_story() {
     });
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta("dev", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         new_state: StoryState::InProgress,
     });
-    assert_eq!(store.story(1).unwrap().state, StoryState::InProgress);
+    assert_eq!(
+        store.story(StoryId::new(1)).unwrap().state,
+        StoryState::InProgress
+    );
 }
 
 #[test]
@@ -249,10 +252,10 @@ fn state_transitioned_event_silently_drops_when_story_missing() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta("dev", 2026, "local"),
-        number: 999,
+        id: StoryId::new(999),
         new_state: StoryState::InProgress,
     });
-    assert!(store.story(999).is_none());
+    assert!(store.story(StoryId::new(999)).is_none());
 }
 
 #[test]
@@ -260,7 +263,7 @@ fn gate_comment_appended_event_accumulates() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -268,17 +271,17 @@ fn gate_comment_appended_event_accumulates() {
     });
     store.apply(&BoardEvent::GateCommentAppended {
         meta: meta("dev", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         gate: Gate::Pickup,
         payload: Some("scope".to_string()),
     });
     store.apply(&BoardEvent::GateCommentAppended {
         meta: meta("dev", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         gate: Gate::Delivered,
         payload: Some("observation".to_string()),
     });
-    let story = store.story(1).unwrap();
+    let story = store.story(StoryId::new(1)).unwrap();
     let gates = story.gate_comments.as_ref().unwrap();
     assert_eq!(gates.len(), 2);
     assert_eq!(gates[0].gate, Gate::Pickup);
@@ -290,7 +293,7 @@ fn free_comment_appended_event_accumulates() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -298,10 +301,10 @@ fn free_comment_appended_event_accumulates() {
     });
     store.apply(&BoardEvent::FreeCommentAppended {
         meta: meta("designer", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         body: "design note".to_string(),
     });
-    let story = store.story(1).unwrap();
+    let story = store.story(StoryId::new(1)).unwrap();
     let free = story.free_comments.as_ref().unwrap();
     assert_eq!(free.len(), 1);
     assert_eq!(free[0].body, "design note");
@@ -312,21 +315,21 @@ fn free_comment_appended_event_accumulates() {
 fn body_fetched_event_populates_lazy_body() {
     let store = BoardStore::new();
     store.seed_all(vec![Story::new_minimal(
-        1,
+        StoryId::new(1),
         "t".to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )]);
-    assert_eq!(store.story(1).unwrap().body, None);
+    assert_eq!(store.story(StoryId::new(1)).unwrap().body, None);
     store.apply(&BoardEvent::BodyFetched {
         meta: meta("dev", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         body: "fetched body text".to_string(),
         etag: None,
     });
     assert_eq!(
-        store.story(1).unwrap().body.as_deref(),
+        store.story(StoryId::new(1)).unwrap().body.as_deref(),
         Some("fetched body text")
     );
 }
@@ -335,7 +338,7 @@ fn body_fetched_event_populates_lazy_body() {
 fn free_comments_fetched_event_replaces_lazy_field() {
     let store = BoardStore::new();
     store.seed_all(vec![Story::new_minimal(
-        1,
+        StoryId::new(1),
         "t".to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
@@ -348,10 +351,13 @@ fn free_comments_fetched_event_replaces_lazy_field() {
     }];
     store.apply(&BoardEvent::FreeCommentsFetched {
         meta: meta("dev", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         comments: comments.clone(),
     });
-    assert_eq!(store.story(1).unwrap().free_comments, Some(comments));
+    assert_eq!(
+        store.story(StoryId::new(1)).unwrap().free_comments,
+        Some(comments)
+    );
 }
 
 #[test]
@@ -359,21 +365,21 @@ fn stories_in_state_filters_correctly() {
     let store = BoardStore::new();
     store.seed_all(vec![
         Story::new_minimal(
-            1,
+            StoryId::new(1),
             "a".to_string(),
             StoryState::Ready,
             Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
             "pm".to_string(),
         ),
         Story::new_minimal(
-            2,
+            StoryId::new(2),
             "b".to_string(),
             StoryState::Delivered,
             Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
             "pm".to_string(),
         ),
         Story::new_minimal(
-            3,
+            StoryId::new(3),
             "c".to_string(),
             StoryState::Ready,
             Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
@@ -382,9 +388,9 @@ fn stories_in_state_filters_correctly() {
     ]);
     let ready = store.stories_in_state(StoryState::Ready);
     assert_eq!(ready.len(), 2);
-    let mut nums: Vec<u64> = ready.iter().map(|s| s.number).collect();
+    let mut nums: Vec<StoryId> = ready.iter().map(|s| s.id).collect();
     nums.sort();
-    assert_eq!(nums, vec![1, 3]);
+    assert_eq!(nums, vec![StoryId::new(1), StoryId::new(3)]);
 }
 
 #[test]
@@ -423,7 +429,7 @@ async fn subscribe_delivers_applied_events_to_listeners() {
     let mut rx = store.subscribe();
     let event = BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "sub".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -441,11 +447,11 @@ async fn subscribe_fans_out_to_multiple_listeners() {
     let mut b = store.subscribe();
     let event = BoardEvent::StateTransitioned {
         meta: meta("dev", 2026, "local"),
-        number: 7,
+        id: StoryId::new(7),
         new_state: StoryState::Delivered,
     };
     store.seed_all(vec![Story::new_minimal(
-        7,
+        StoryId::new(7),
         "t".to_string(),
         StoryState::Ready,
         chrono::Utc::now(),
@@ -475,14 +481,14 @@ async fn apply_succeeds_when_no_subscribers_are_attached() {
     let store = BoardStore::new();
     let event = BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 99,
+        id: StoryId::new(99),
         title: "no-subs".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
         story_type: StoryType::Story(StoryKind::Feature),
     };
     store.apply(&event);
-    assert!(store.story(99).is_some());
+    assert!(store.story(StoryId::new(99)).is_some());
 }
 
 #[test]
@@ -490,7 +496,7 @@ fn tag_added_event_appends_to_story_tags() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -498,11 +504,11 @@ fn tag_added_event_appends_to_story_tags() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "blocked".to_string(),
     });
     assert_eq!(
-        tags_from_labels(&store.story(1).unwrap().raw_labels),
+        tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
         vec![Tag::Blocked]
     );
 }
@@ -512,7 +518,7 @@ fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Delivered,
@@ -520,21 +526,21 @@ fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("designer", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "awaiting team".to_string(),
     });
     assert_eq!(
-        acceptor_from_labels(&store.story(1).unwrap().raw_labels),
+        acceptor_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
         Some(Acceptor::Team),
         "the awaiting-label add re-derives the typed acceptor (closes the view refresh-gap)"
     );
     store.apply(&BoardEvent::TagRemoved {
         meta: meta("designer", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "awaiting team".to_string(),
     });
     assert_eq!(
-        acceptor_from_labels(&store.story(1).unwrap().raw_labels),
+        acceptor_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
         None,
         "removing the awaiting-label clears the acceptor — honest-neutral, not stale"
     );
@@ -545,7 +551,7 @@ fn iteration_accessor_returns_the_typed_iteration_for_an_iteration_issue() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1400,
+        id: StoryId::new(1400),
         title: "Iteration Vela".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -553,23 +559,25 @@ fn iteration_accessor_returns_the_typed_iteration_for_an_iteration_issue() {
     });
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 42,
+        id: StoryId::new(42),
         title: "A regular story".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
         story_type: StoryType::Story(StoryKind::Feature),
     });
     assert_eq!(
-        store.iteration(1400).map(|it| it.id().saved_number()),
-        Some(Some(1400)),
+        store
+            .iteration(StoryId::new(1400))
+            .map(|it| it.id().saved_id()),
+        Some(Some(StoryId::new(1400))),
         "iteration(n) returns the typed Iteration for an iteration issue"
     );
     assert!(
-        store.iteration(42).is_none(),
+        store.iteration(StoryId::new(42)).is_none(),
         "iteration(n) returns None for a non-iteration issue"
     );
     assert!(
-        store.iteration(9999).is_none(),
+        store.iteration(StoryId::new(9999)).is_none(),
         "iteration(n) returns None for an absent issue"
     );
 }
@@ -579,7 +587,7 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "Iteration Vela".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -587,21 +595,25 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("designer", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "iteration-review-closed.designer".to_string(),
     });
     assert_eq!(
-        store.iteration(1).unwrap().review_closers,
+        store.iteration(StoryId::new(1)).unwrap().review_closers,
         vec!["designer".to_string()],
         "the review-close label add re-derives the closer-set from the recorded act"
     );
     store.apply(&BoardEvent::TagRemoved {
         meta: meta("designer", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "iteration-review-closed.designer".to_string(),
     });
     assert!(
-        store.iteration(1).unwrap().review_closers.is_empty(),
+        store
+            .iteration(StoryId::new(1))
+            .unwrap()
+            .review_closers
+            .is_empty(),
         "removing the review-close label clears the closer — derived, never stale"
     );
 }
@@ -611,7 +623,7 @@ fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "Iteration Vela".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -619,21 +631,25 @@ fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("dev", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "iteration-dev-ok.dev".to_string(),
     });
     assert_eq!(
-        store.iteration(1).unwrap().dev_ok_by,
+        store.iteration(StoryId::new(1)).unwrap().dev_ok_by,
         vec!["dev".to_string()],
         "the dev-OK label add re-derives the approver-set from the recorded act"
     );
     store.apply(&BoardEvent::TagRemoved {
         meta: meta("dev", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "iteration-dev-ok.dev".to_string(),
     });
     assert!(
-        store.iteration(1).unwrap().dev_ok_by.is_empty(),
+        store
+            .iteration(StoryId::new(1))
+            .unwrap()
+            .dev_ok_by
+            .is_empty(),
         "removing the dev-OK label clears the approver — derived, never stale"
     );
 }
@@ -643,7 +659,7 @@ fn tag_added_horizon_label_rederives_horizon_then_removal_clears_it_1738() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "An outcome".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Icebox,
@@ -651,14 +667,14 @@ fn tag_added_horizon_label_rederives_horizon_then_removal_clears_it_1738() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "horizon.next".to_string(),
     });
     assert_eq!(
         store
             .outcomes()
             .iter()
-            .find(|o| o.id().saved_number() == Some(1))
+            .find(|o| o.id().saved_id() == Some(StoryId::new(1)))
             .unwrap()
             .horizon(),
         Some(crate::product_management::story::Horizon::Next),
@@ -666,14 +682,14 @@ fn tag_added_horizon_label_rederives_horizon_then_removal_clears_it_1738() {
     );
     store.apply(&BoardEvent::TagRemoved {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "horizon.next".to_string(),
     });
     assert!(
         store
             .outcomes()
             .iter()
-            .find(|o| o.id().saved_number() == Some(1))
+            .find(|o| o.id().saved_id() == Some(StoryId::new(1)))
             .unwrap()
             .horizon()
             .is_none(),
@@ -686,7 +702,7 @@ fn tag_added_unknown_label_is_dropped() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -694,10 +710,10 @@ fn tag_added_unknown_label_is_dropped() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "high-priority".to_string(),
     });
-    assert!(tags_from_labels(&store.story(1).unwrap().raw_labels).is_empty());
+    assert!(tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels).is_empty());
 }
 
 #[test]
@@ -705,7 +721,7 @@ fn tag_added_is_idempotent() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -713,16 +729,16 @@ fn tag_added_is_idempotent() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "blocked".to_string(),
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "blocked".to_string(),
     });
     assert_eq!(
-        tags_from_labels(&store.story(1).unwrap().raw_labels),
+        tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
         vec![Tag::Blocked]
     );
 }
@@ -732,7 +748,7 @@ fn tag_removed_event_strips_tag() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -740,15 +756,15 @@ fn tag_removed_event_strips_tag() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "blocked".to_string(),
     });
     store.apply(&BoardEvent::TagRemoved {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "blocked".to_string(),
     });
-    assert!(tags_from_labels(&store.story(1).unwrap().raw_labels).is_empty());
+    assert!(tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels).is_empty());
 }
 
 #[test]
@@ -756,7 +772,7 @@ fn tag_removed_unknown_label_is_noop() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -764,16 +780,16 @@ fn tag_removed_unknown_label_is_noop() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "blocked".to_string(),
     });
     store.apply(&BoardEvent::TagRemoved {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "high-priority".to_string(),
     });
     assert_eq!(
-        tags_from_labels(&store.story(1).unwrap().raw_labels),
+        tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
         vec![Tag::Blocked]
     );
 }
@@ -783,7 +799,7 @@ fn tag_added_parent_iteration_label_rederives_iteration_membership_1553() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -791,11 +807,11 @@ fn tag_added_parent_iteration_label_rederives_iteration_membership_1553() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "parent-iteration-#9301.100".to_string(),
     });
     assert_eq!(
-        iteration_membership_from_labels(&store.story(1).unwrap().raw_labels),
+        iteration_membership_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
         Some((9301, 100))
     );
 }
@@ -805,7 +821,7 @@ fn tag_removed_parent_iteration_label_clears_iteration_membership_1553() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -813,16 +829,16 @@ fn tag_removed_parent_iteration_label_clears_iteration_membership_1553() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "parent-iteration-#9301.100".to_string(),
     });
     store.apply(&BoardEvent::TagRemoved {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "parent-iteration-#9301.100".to_string(),
     });
     assert_eq!(
-        iteration_membership_from_labels(&store.story(1).unwrap().raw_labels),
+        iteration_membership_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
         None
     );
 }
@@ -832,7 +848,7 @@ fn story_created_event_carries_story_type() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
@@ -840,13 +856,13 @@ fn story_created_event_carries_story_type() {
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        number: 1,
+        id: StoryId::new(1),
         label: "bug".to_string(),
     });
     assert_eq!(
         story_type_from_labels_or_title(
-            &store.story(1).unwrap().raw_labels,
-            &store.story(1).unwrap().title
+            &store.story(StoryId::new(1)).unwrap().raw_labels,
+            &store.story(StoryId::new(1)).unwrap().title
         ),
         StoryType::Story(StoryKind::Bug)
     );
@@ -857,7 +873,7 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 100,
+        id: StoryId::new(100),
         title: "child".to_string(),
         body: "".to_string(),
         initial_state: StoryState::Ready,
@@ -865,11 +881,11 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
     });
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
-        number: 100,
+        id: StoryId::new(100),
         epic_number: 50,
     });
     assert_eq!(
-        parent_epic_from_labels(&store.story(100).unwrap().raw_labels),
+        parent_epic_from_labels(&store.story(StoryId::new(100)).unwrap().raw_labels),
         Some(50)
     );
 }
@@ -879,7 +895,7 @@ fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        number: 101,
+        id: StoryId::new(101),
         title: "child".to_string(),
         body: "".to_string(),
         initial_state: StoryState::Ready,
@@ -887,15 +903,15 @@ fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     });
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
-        number: 101,
+        id: StoryId::new(101),
         epic_number: 51,
     });
     store.apply(&BoardEvent::ParentEpicUnset {
         meta: meta("pm", 2026, "local"),
-        number: 101,
+        id: StoryId::new(101),
     });
     assert_eq!(
-        parent_epic_from_labels(&store.story(101).unwrap().raw_labels),
+        parent_epic_from_labels(&store.story(StoryId::new(101)).unwrap().raw_labels),
         None
     );
 }
@@ -905,12 +921,12 @@ fn parent_epic_events_no_op_on_missing_story() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
-        number: 999,
+        id: StoryId::new(999),
         epic_number: 888,
     });
     store.apply(&BoardEvent::ParentEpicUnset {
         meta: meta("pm", 2026, "local"),
-        number: 999,
+        id: StoryId::new(999),
     });
-    assert!(store.story(999).is_none());
+    assert!(store.story(StoryId::new(999)).is_none());
 }

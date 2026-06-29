@@ -90,9 +90,9 @@ async fn reactions_listener_emits_typed_state_delta() {
 }
 
 fn owner_parked_story(number: u64) -> crate::product_management::story::Story {
-    use crate::product_management::story::StoryState;
+    use crate::product_management::story::{StoryId, StoryState};
     let mut story = crate::product_management::story::Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("story {number}"),
         StoryState::Delivered,
         chrono::Utc::now(),
@@ -108,9 +108,9 @@ fn ready_story(
     iteration: u64,
     position: u32,
 ) -> crate::product_management::story::Story {
-    use crate::product_management::story::StoryState;
+    use crate::product_management::story::{StoryId, StoryState};
     let mut story = crate::product_management::story::Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("ready {number}"),
         StoryState::Ready,
         chrono::Utc::now(),
@@ -133,7 +133,7 @@ fn state_transitioned(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::peer::PeerId::local(),
         },
-        number,
+        id: crate::product_management::story::StoryId::new(number),
         new_state,
     }
 }

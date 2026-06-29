@@ -3,7 +3,7 @@ pub mod readiness;
 pub mod section;
 
 use crate::product_management::board::item::Content;
-use crate::product_management::story::StoryKey;
+use crate::product_management::story::{StoryId, StoryKey};
 
 entity_id!(IterationId);
 
@@ -12,7 +12,7 @@ pub struct Iteration {
     pub content: Content,
     pub outcome: Option<u64>,
     pub iteration_order: Option<u32>,
-    pub stories: Vec<u64>,
+    pub stories: Vec<StoryId>,
     pub review_closers: Vec<String>,
     pub dev_ok_by: Vec<String>,
     pub is_current: bool,

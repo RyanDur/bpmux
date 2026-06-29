@@ -9,14 +9,14 @@ mod canonical_via_gh_1300 {
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::board::orchestrator::SyncOrchestrator;
     use crate::product_management::board::store::BoardStore;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
     use crate::transport::rest::{close_iteration_canonical, collect_ready_queue_blockers};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
     fn seed_member(number: u64, state: StoryState, iteration: Option<(&str, u32)>) -> Story {
         let mut s = Story::new_minimal(
-            number,
+            StoryId::new(number),
             format!("[Feature] member-{number}"),
             state,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
@@ -34,7 +34,7 @@ mod canonical_via_gh_1300 {
 
     fn seed_iteration_issue(number: u64, name: &str) -> Story {
         let mut s = Story::new_minimal(
-            number,
+            StoryId::new(number),
             format!("Iteration {name}"),
             StoryState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
@@ -57,7 +57,7 @@ mod canonical_via_gh_1300 {
     #[tokio::test]
     async fn close_promotes_nothing_and_does_not_error_on_canonical_member_1556() {
         let mut canonical_member = Story::new_minimal(
-            200,
+            StoryId::new(200),
             "[Feature] canonical-member".to_string(),
             StoryState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
@@ -185,9 +185,9 @@ mod canonical_via_gh_1300 {
         let member_promotion_touch = events.iter().any(|e| {
             matches!(
                 e,
-                crate::product_management::board::BoardEvent::TagAdded { number, .. }
-                    | crate::product_management::board::BoardEvent::StateTransitioned { number, .. }
-                    if *number == 200
+                crate::product_management::board::BoardEvent::TagAdded { id, .. }
+                    | crate::product_management::board::BoardEvent::StateTransitioned { id, .. }
+                    if *id == StoryId::new(200)
             )
         });
         assert!(

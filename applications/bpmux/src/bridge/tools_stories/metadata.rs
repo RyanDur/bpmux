@@ -1,4 +1,5 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use crate::product_management::story::StoryId;
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
     use crate::product_management::board::label_codec::LabelCodec;
@@ -55,7 +56,7 @@ pub(crate) async fn handle_label_story(
             "add" => (
                 crate::product_management::board::BoardEvent::TagAdded {
                     meta,
-                    number,
+                    id: StoryId::new(number),
                     label: label.to_string(),
                 },
                 format!("#{number} labeled '{label}'"),
@@ -63,7 +64,7 @@ pub(crate) async fn handle_label_story(
             "remove" => (
                 crate::product_management::board::BoardEvent::TagRemoved {
                     meta,
-                    number,
+                    id: StoryId::new(number),
                     label: label.to_string(),
                 },
                 format!("#{number} unlabeled '{label}'"),
@@ -111,7 +112,7 @@ pub(crate) async fn handle_comment_on_story(
                 ts: chrono::Utc::now(),
                 peer_id: crate::product_management::board::PeerId::local(),
             },
-            number,
+            id: StoryId::new(number),
             body: body.to_string(),
         };
         r.mutate_sync(event)

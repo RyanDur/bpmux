@@ -7,11 +7,11 @@ use chrono::{TimeZone, Utc};
 use crate::bridge::tools::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 
 fn seed_minimal(number: u64, state: StoryState) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("[Feature] target-{number}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
@@ -152,11 +152,11 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     store.seed_all(vec![seed_minimal(9000, StoryState::Ready)]);
     store.apply(&BoardEvent::BodyFetched {
         meta: crate::product_management::board::orchestrator::cache_fill_meta(),
-        number: 9000,
+        id: StoryId::new(9000),
         body: "hydrated body content".to_string(),
         etag: Some("W/\"deadbeef\"".to_string()),
     });
-    let story = store.story(9000).expect("story present");
+    let story = store.story(StoryId::new(9000)).expect("story present");
     assert_eq!(story.body.as_deref(), Some("hydrated body content"));
     assert_eq!(story.body_etag.as_deref(), Some("W/\"deadbeef\""));
 }
@@ -178,10 +178,10 @@ async fn local_body_mutate_invalidates_prior_etag() {
             ts: Utc::now(),
             peer_id: PeerId::local(),
         },
-        number: 9100,
+        id: StoryId::new(9100),
         story: Box::new(updated),
     });
-    let after = store.story(9100).expect("story present");
+    let after = store.story(StoryId::new(9100)).expect("story present");
     assert_eq!(after.body.as_deref(), Some("v2"));
     assert_eq!(
         after.body_etag, None,
@@ -205,10 +205,10 @@ async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
             ts: Utc::now(),
             peer_id: PeerId::local(),
         },
-        number: 9200,
+        id: StoryId::new(9200),
         story: Box::new(refreshed),
     });
-    let after = store.story(9200).expect("story present");
+    let after = store.story(StoryId::new(9200)).expect("story present");
     assert!(
         after
             .raw_labels
@@ -237,10 +237,10 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     let event = rx.recv().await.expect("event dispatched");
     assert!(matches!(
         event,
-        BoardEvent::BodyFetched { number: 9001, .. }
+        BoardEvent::BodyFetched { id, .. } if id == StoryId::new(9001)
     ));
     assert_eq!(
-        store.story(9001).unwrap().body.as_deref(),
+        store.story(StoryId::new(9001)).unwrap().body.as_deref(),
         Some("real body")
     );
 }

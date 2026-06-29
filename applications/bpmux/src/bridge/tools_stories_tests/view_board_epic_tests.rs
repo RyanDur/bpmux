@@ -2,7 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::StoryType;
+use crate::product_management::story::{StoryId, StoryType};
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
@@ -19,14 +19,14 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let child = Story::new_minimal(
-        300,
+        StoryId::new(300),
         "child".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
     let mut epic = Story::new_minimal(
-        457,
+        StoryId::new(457),
         "epic story".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -47,7 +47,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(300).unwrap();
+    let story = store.story(StoryId::new(300)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::parent_epic_from_labels(
             &story.raw_labels
@@ -62,10 +62,10 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     assert!(matches!(
         &pushed[0],
         BoardEvent::ParentEpicSet {
-            number: 300,
+            id,
             epic_number: 457,
             ..
-        }
+        } if *id == StoryId::new(300)
     ));
 }
 
@@ -82,7 +82,7 @@ async fn set_parent_epic_rejects_non_existent_epic() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let child = Story::new_minimal(
-        310,
+        StoryId::new(310),
         "orphan".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -116,14 +116,14 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let child = Story::new_minimal(
-        311,
+        StoryId::new(311),
         "child".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
     let mut not_epic = Story::new_minimal(
-        458,
+        StoryId::new(458),
         "ordinary feature".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -160,7 +160,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
-        301,
+        StoryId::new(301),
         "child".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -179,7 +179,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     let result = handle_unset_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(301).unwrap();
+    let story = store.story(StoryId::new(301)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::parent_epic_from_labels(
             &story.raw_labels
@@ -193,7 +193,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::ParentEpicUnset { number: 301, .. }
+        BoardEvent::ParentEpicUnset { id, .. } if *id == StoryId::new(301)
     ));
 }
 
@@ -235,7 +235,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut epic = Story::new_minimal(
-        500,
+        StoryId::new(500),
         "epic story".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -291,7 +291,7 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut not_epic = Story::new_minimal(
-        501,
+        StoryId::new(501),
         "not epic".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -334,7 +334,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut epic = Story::new_minimal(
-        700,
+        StoryId::new(700),
         "umbrella story".into(),
         StoryState::Ready,
         ts,
@@ -342,13 +342,18 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     );
     epic.raw_labels.push("epic".to_string());
     epic.story_type = StoryType::Epic;
-    let mut child_a =
-        Story::new_minimal(701, "child a".into(), StoryState::Accepted, ts, "pm".into());
+    let mut child_a = Story::new_minimal(
+        StoryId::new(701),
+        "child a".into(),
+        StoryState::Accepted,
+        ts,
+        "pm".into(),
+    );
     child_a.raw_labels.push("parent-epic-#700".to_string());
     child_a.parent_epic = Some(700);
     child_a.is_closed = true;
     let mut child_b = Story::new_minimal(
-        702,
+        StoryId::new(702),
         "child b".into(),
         StoryState::Delivered,
         ts,
@@ -357,7 +362,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     child_b.raw_labels.push("parent-epic-#700".to_string());
     child_b.parent_epic = Some(700);
     let mut child_c = Story::new_minimal(
-        703,
+        StoryId::new(703),
         "child c".into(),
         StoryState::InProgress,
         ts,
@@ -407,7 +412,7 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let plain = Story::new_minimal(
-        800,
+        StoryId::new(800),
         "plain feature".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -442,7 +447,7 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut epic = Story::new_minimal(
-        710,
+        StoryId::new(710),
         "another umbrella".into(),
         StoryState::Ready,
         ts,
@@ -499,7 +504,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut epic = Story::new_minimal(
-        720,
+        StoryId::new(720),
         "delivered umbrella".into(),
         StoryState::Ready,
         ts,
@@ -507,10 +512,22 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     );
     epic.raw_labels.push("epic".to_string());
     epic.story_type = StoryType::Epic;
-    let mut a = Story::new_minimal(721, "a".into(), StoryState::Delivered, ts, "pm".into());
+    let mut a = Story::new_minimal(
+        StoryId::new(721),
+        "a".into(),
+        StoryState::Delivered,
+        ts,
+        "pm".into(),
+    );
     a.raw_labels.push("parent-epic-#720".to_string());
     a.parent_epic = Some(720);
-    let mut b = Story::new_minimal(722, "b".into(), StoryState::Delivered, ts, "pm".into());
+    let mut b = Story::new_minimal(
+        StoryId::new(722),
+        "b".into(),
+        StoryState::Delivered,
+        ts,
+        "pm".into(),
+    );
     b.raw_labels.push("parent-epic-#720".to_string());
     b.parent_epic = Some(720);
     adapter.seed_stories(vec![epic, a, b]);
@@ -542,7 +559,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut epic = Story::new_minimal(
-        730,
+        StoryId::new(730),
         "owner-accepted umbrella".into(),
         StoryState::Accepted,
         ts,
@@ -550,7 +567,13 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     );
     epic.raw_labels.push("epic".to_string());
     epic.story_type = StoryType::Epic;
-    let mut a = Story::new_minimal(731, "a".into(), StoryState::InProgress, ts, "pm".into());
+    let mut a = Story::new_minimal(
+        StoryId::new(731),
+        "a".into(),
+        StoryState::InProgress,
+        ts,
+        "pm".into(),
+    );
     a.raw_labels.push("parent-epic-#730".to_string());
     a.parent_epic = Some(730);
     adapter.seed_stories(vec![epic, a]);

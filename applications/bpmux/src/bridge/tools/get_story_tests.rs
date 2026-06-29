@@ -7,14 +7,14 @@ use chrono::{TimeZone, Utc};
 use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::story::{Gate, GateComment, Story, StoryState};
+use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
 
 async fn seeded_orchestrator(
     mut stories: Vec<Story>,
     gates: Vec<(u64, Vec<GateComment>)>,
 ) -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
     for (n, gs) in &gates {
-        if let Some(s) = stories.iter_mut().find(|s| s.number == *n) {
+        if let Some(s) = stories.iter_mut().find(|s| s.id == StoryId::new(*n)) {
             s.gate_comments = Some(gs.clone());
         }
     }
@@ -34,7 +34,7 @@ async fn seeded_orchestrator(
 
 fn make_story(number: u64, state: StoryState, body: Option<&str>) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         "title".into(),
         state,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -432,7 +432,7 @@ async fn cache_hit_does_not_refetch_when_body_already_present() {
 
 fn make_iteration(number: u64, name: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -452,7 +452,7 @@ fn make_iteration_with_members(number: u64, name: &str, body: &str, members: Vec
     s.body = Some(
         IterationRelationships {
             outcome: None,
-            stories: members,
+            stories: members.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(body),
     );
@@ -461,7 +461,7 @@ fn make_iteration_with_members(number: u64, name: &str, body: &str, members: Vec
 
 fn make_member(number: u64, title: &str, iteration_number: u64, position: u32) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -704,12 +704,12 @@ async fn latest_reject_survives_an_iteration_move() {
     let meta = crate::product_management::board::orchestrator::cache_fill_meta();
     store.apply(&crate::product_management::board::BoardEvent::TagAdded {
         meta: meta.clone(),
-        number: 1524,
+        id: StoryId::new(1524),
         label: "parent-iteration-#1656.1".to_string(),
     });
     store.apply(&crate::product_management::board::BoardEvent::TagRemoved {
         meta,
-        number: 1524,
+        id: StoryId::new(1524),
         label: "parent-iteration-#1655.1".to_string(),
     });
 

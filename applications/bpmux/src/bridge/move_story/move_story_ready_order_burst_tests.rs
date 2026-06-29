@@ -5,13 +5,13 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
 fn ready_story(number: u64) -> Story {
     Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("story-{number}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
@@ -21,7 +21,7 @@ fn ready_story(number: u64) -> Story {
 
 fn current_iteration_story(number: u64) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("Iteration #{number}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),

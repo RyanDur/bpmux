@@ -2,6 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
+use crate::product_management::story::StoryId;
 use crate::product_management::story::StoryType;
 use crate::transport::protocol::ClientMessage;
 
@@ -18,7 +19,7 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
-        882,
+        StoryId::new(882),
         "[Feature] missing-test-file".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -58,7 +59,7 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
-        883,
+        StoryId::new(883),
         "[Chore] no test required".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -94,7 +95,7 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
-        4690,
+        StoryId::new(4690),
         "[Bug] cascade-drain-on-reject".into(),
         StoryState::Accepted,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
@@ -118,15 +119,15 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
 
     let pushed = adapter.pushed_events();
     assert!(
-        pushed
-            .iter()
-            .any(|e| matches!(e, BoardEvent::StoryReopened { number: 4690, .. })),
+        pushed.iter().any(
+            |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(4690))
+        ),
         "reject_story must drain StoryReopened to adapter BEFORE returning (#469 cascade-fix). Without internal drain, the GH-side reopen does not propagate until next handler triggers drain. Pushed: {pushed:?}"
     );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::TagRemoved { number: 4690, label, .. } if label == "accepted"
+            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(4690) && label == "accepted"
         )),
         "reject_story must drain TagRemoved(accepted) to adapter BEFORE returning. Pushed: {pushed:?}"
     );
@@ -146,7 +147,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
-        4691,
+        StoryId::new(4691),
         "[Bug] cascade-drain-on-fail-desk-check".into(),
         StoryState::DeskCheck,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
@@ -171,7 +172,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::StateTransitioned { number: 4691, new_state, .. } if *new_state == StoryState::InProgress
+            BoardEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == StoryState::InProgress
         )),
         "fail_desk_check must drain StateTransitioned(InProgress) to adapter BEFORE returning. Pushed: {pushed:?}"
     );
@@ -191,7 +192,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
-        469,
+        StoryId::new(469),
         "[Bug] rework-after-accept".into(),
         StoryState::Accepted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -218,7 +219,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
     let tag_removed_accepted = pushed.iter().any(|e| {
         matches!(
             e,
-            BoardEvent::TagRemoved { number: 469, label, .. } if label == "accepted"
+            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(469) && label == "accepted"
         )
     });
     assert!(
@@ -228,13 +229,13 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
 
     let story_reopened = pushed
         .iter()
-        .any(|e| matches!(e, BoardEvent::StoryReopened { number: 469, .. }));
+        .any(|e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(469)));
     assert!(
         story_reopened,
         "reject_story on previously-Accepted must emit StoryReopened: {pushed:?}"
     );
 
-    let story = store.story(469).unwrap();
+    let story = store.story(StoryId::new(469)).unwrap();
     assert!(
         !story.is_closed,
         "store must reflect re-opened state post-reject"
@@ -256,7 +257,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
-        470,
+        StoryId::new(470),
         "[Bug] reject-from-delivered".into(),
         StoryState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -281,7 +282,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     let pushed = adapter.pushed_events();
     let any_reopen = pushed
         .iter()
-        .any(|e| matches!(e, BoardEvent::StoryReopened { number: 470, .. }));
+        .any(|e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(470)));
     assert!(
         !any_reopen,
         "reject on non-Accepted must NOT emit StoryReopened: {pushed:?}"
@@ -301,7 +302,7 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
-        450,
+        StoryId::new(450),
         "[Chore] label-leak repro".into(),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),

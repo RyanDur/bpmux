@@ -5,7 +5,7 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -23,7 +23,7 @@ async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 
 fn make_story(number: u64, story_type: StoryType) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         format!("story-{number}"),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),

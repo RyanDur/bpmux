@@ -2,11 +2,11 @@
 
 use super::json::story_to_board_json;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
 
 fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> Story {
     let mut s = Story {
-        number: 42,
+        id: StoryId::new(42),
         title: "[Feature] sample".to_string(),
         state,
         filed_at: chrono::DateTime::parse_from_rfc3339("2026-04-26T01:00:00Z")

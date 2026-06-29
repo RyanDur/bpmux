@@ -2,6 +2,7 @@ use super::SyncOrchestrator;
 use super::status::{record_error, record_ingest_success};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
+use crate::product_management::story::StoryId;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn ingest_once(&self) -> Result<(), SyncError> {
@@ -22,12 +23,12 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                                 BoardEvent::TagAdded { .. } | BoardEvent::TagRemoved { .. }
                             )
                         })
-                        .map(|q| q.event.story_number())
-                        .collect::<Vec<u64>>()
+                        .map(|q| q.event.story_id())
+                        .collect::<Vec<StoryId>>()
                 });
                 let stories = stories
                     .into_iter()
-                    .filter(|s| !in_flight_label_stories.contains(&s.number))
+                    .filter(|s| !in_flight_label_stories.contains(&s.id))
                     .collect::<Vec<_>>();
                 let purge =
                     crate::product_management::board::adapters::github::iteration_numbers_to_purge_as_retired_empty(
@@ -35,7 +36,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     );
                 self.store.seed_all(stories);
                 for n in purge {
-                    self.store.remove(n);
+                    self.store.remove(StoryId::new(n));
                 }
                 record_ingest_success(&self.status);
                 Ok(())

@@ -6,14 +6,14 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
 fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
-        number,
+        StoryId::new(number),
         title.to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -98,7 +98,7 @@ async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read_176
     let outcomes = refresh.outcomes();
     let outcome = outcomes
         .iter()
-        .find(|o| o.id().saved_number() == Some(700))
+        .find(|o| o.id().saved_id() == Some(StoryId::new(700)))
         .expect("present");
     assert_eq!(
         outcome.content.body.as_deref(),

@@ -4,7 +4,7 @@ use super::{BoardAction, BoardState};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::item::ProductItem;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryKey, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKey, StoryType};
 
 mod comments;
 mod labels;
@@ -30,8 +30,8 @@ pub(super) fn item_from_story(story: &Story) -> ProductItem {
     }
 }
 
-pub(super) fn story_mut(w: &mut Stories, number: u64) -> Option<&mut Story> {
-    w.get_mut(&StoryKey::Saved(number))
+pub(super) fn story_mut(w: &mut Stories, id: StoryId) -> Option<&mut Story> {
+    w.get_mut(&StoryKey::Saved(id))
         .and_then(ProductItem::backing_story_mut)
 }
 
@@ -39,16 +39,16 @@ pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
     let mut stories = state.stories.clone();
     match action {
         BoardAction::Event(event) => apply_event(&mut stories, event),
-        BoardAction::RawLabelsAssigned { number, fields } => {
-            apply_raw_labels(&mut stories, *number, fields)
+        BoardAction::RawLabelsAssigned { id, fields } => {
+            apply_raw_labels(&mut stories, *id, fields)
         }
         BoardAction::Seeded(incoming) => {
             for story in incoming {
-                stories.insert(StoryKey::Saved(story.number), item_from_story(story));
+                stories.insert(StoryKey::Saved(story.id), item_from_story(story));
             }
         }
-        BoardAction::Removed(number) => {
-            stories.remove(&StoryKey::Saved(*number));
+        BoardAction::Removed(id) => {
+            stories.remove(&StoryKey::Saved(*id));
         }
         BoardAction::Cleared => stories.clear(),
     }
@@ -56,37 +56,37 @@ pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
 }
 
 fn apply_event(w: &mut Stories, event: &BoardEvent) {
-    let number = event.story_number();
+    let id = event.story_id();
     match event {
         BoardEvent::StoryCreated {
             meta,
-            number: n,
+            id: n,
             title,
             body,
             initial_state,
             story_type,
         } => apply_story_created(w, *n, meta, title, body, *initial_state, *story_type),
         BoardEvent::StateTransitioned { new_state, .. } => {
-            apply_state_transitioned(w, number, *new_state)
+            apply_state_transitioned(w, id, *new_state)
         }
         BoardEvent::GateCommentAppended {
             meta,
             gate,
             payload,
             ..
-        } => apply_gate_comment_appended(w, number, meta, *gate, payload.clone()),
+        } => apply_gate_comment_appended(w, id, meta, *gate, payload.clone()),
         BoardEvent::FreeCommentAppended { meta, body, .. } => {
-            apply_free_comment_appended(w, number, meta, body)
+            apply_free_comment_appended(w, id, meta, body)
         }
-        BoardEvent::BodyFetched { body, etag, .. } => apply_body_fetched(w, number, body, etag),
+        BoardEvent::BodyFetched { body, etag, .. } => apply_body_fetched(w, id, body, etag),
         BoardEvent::FreeCommentsFetched { comments, .. } => {
-            apply_free_comments_fetched(w, number, comments)
+            apply_free_comments_fetched(w, id, comments)
         }
         BoardEvent::GateCommentsFetched { comments, .. } => {
-            apply_gate_comments_fetched(w, number, comments)
+            apply_gate_comments_fetched(w, id, comments)
         }
-        BoardEvent::StoryClosed { .. } => apply_story_closed(w, number),
-        BoardEvent::StoryReopened { .. } => apply_story_reopened(w, number),
+        BoardEvent::StoryClosed { .. } => apply_story_closed(w, id),
+        BoardEvent::StoryReopened { .. } => apply_story_reopened(w, id),
         BoardEvent::TagAdded { .. }
         | BoardEvent::TagRemoved { .. }
         | BoardEvent::ParentEpicSet { .. }
@@ -95,10 +95,10 @@ fn apply_event(w: &mut Stories, event: &BoardEvent) {
         | BoardEvent::IterationMembershipCleared { .. }
         | BoardEvent::CurrentIterationDesignated { .. }
         | BoardEvent::CurrentIterationCleared { .. } => {}
-        BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, number, story),
-        BoardEvent::TitleUpdated { title, .. } => apply_title_updated(w, number, title),
-        BoardEvent::BodyUpdated { body, .. } => apply_body_updated(w, number, body),
-        BoardEvent::LabelsRefreshed { fields, .. } => apply_labels_refreshed(w, number, fields),
+        BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, id, story),
+        BoardEvent::TitleUpdated { title, .. } => apply_title_updated(w, id, title),
+        BoardEvent::BodyUpdated { body, .. } => apply_body_updated(w, id, body),
+        BoardEvent::LabelsRefreshed { fields, .. } => apply_labels_refreshed(w, id, fields),
         BoardEvent::ConflictDetected { .. } | BoardEvent::ConflictResolved { .. } => {}
     }
 }
