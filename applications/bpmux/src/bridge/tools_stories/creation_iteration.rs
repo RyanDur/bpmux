@@ -24,15 +24,17 @@ pub(crate) async fn handle_create_iteration(
     )?;
     let r = refresh
         .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
-    let existing_open_iteration = r.all_stories().into_iter().find(|s| {
-        s.story_type() == crate::product_management::story::StoryType::Iteration
-            && !s.is_closed
-            && s.title.eq_ignore_ascii_case(&format!("Iteration {name}"))
+    let existing_open_iteration = r.iterations().into_iter().find(|it| {
+        !it.complete
+            && it
+                .content
+                .title
+                .eq_ignore_ascii_case(&format!("Iteration {name}"))
     });
     if let Some(existing) = existing_open_iteration {
         return Err(format!(
             "iteration named '{name}' already open as #{n}; close it first or pick a different name (#1281 sister-discipline: duplicate-collision rejected at create-time)",
-            n = existing.number
+            n = existing.id().saved_number().unwrap_or_default()
         ));
     }
     let title = format!("Iteration {name}");
@@ -62,18 +64,10 @@ pub(crate) async fn handle_create_iteration(
     })
     .map_err(|e| format!("#{number} iteration label enqueue failed: {e}"))?;
     let next_order = r
-        .all_stories()
+        .iterations()
         .into_iter()
-        .filter(|s| {
-            s.story_type() == crate::product_management::story::StoryType::Iteration
-                && !s.is_closed
-                && s.number != number
-        })
-        .filter_map(|s| {
-            crate::product_management::board::adapters::github::iteration_order_from_labels(
-                &s.raw_labels,
-            )
-        })
+        .filter(|it| !it.complete && it.id().saved_number() != Some(number))
+        .filter_map(|it| it.iteration_order)
         .max()
         .map_or(
             crate::product_management::iteration::label::DEFAULT_FIRST_POSITION,

@@ -34,7 +34,7 @@ mod story_label_reorder;
 
 pub(crate) use board::{board_iterations, board_outcomes, board_roadmap, ordered_board_stories};
 pub use board_acceptance::{AcceptPayload, RejectPayload, post_accept_story, post_reject_story};
-pub use board_read::{get_board, get_story};
+pub use board_read::{get_board, get_iterations, get_story};
 pub use board_story_detail::{get_story_comments, get_story_timeline, post_story_comment};
 pub use capture::{ElectronCaptureQuery, get_electron_capture};
 pub use ci::{get_ci, get_ci_jobs, get_ci_log, post_ci_rerun};

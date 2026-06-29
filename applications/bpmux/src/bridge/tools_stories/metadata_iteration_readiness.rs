@@ -32,14 +32,10 @@ pub(crate) async fn handle_designate_current_iteration(
         peer_id: crate::product_management::board::PeerId::local(),
     };
     let prior: Vec<u64> = r
-        .all_stories()
+        .iterations()
         .into_iter()
-        .filter(|s| {
-            crate::product_management::board::adapters::github::is_current_from_labels(
-                &s.raw_labels,
-            ) && s.number != iteration_number
-        })
-        .map(|s| s.number)
+        .filter(|it| it.is_current && it.id().saved_number() != Some(iteration_number))
+        .filter_map(|it| it.id().saved_number())
         .collect();
     for n in prior {
         r.mutate_sync(

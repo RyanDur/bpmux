@@ -92,6 +92,7 @@ fn drill_iteration_numbers(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Vec
     };
     crate::product_management::roadmap::drill::derive_outcome_drill_in(
         &outcome,
+        &refresh.iterations(),
         &refresh.all_stories(),
         workflow,
     )

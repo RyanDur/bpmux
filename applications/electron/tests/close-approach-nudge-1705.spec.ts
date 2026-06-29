@@ -10,14 +10,14 @@ const iterationOrderOf = async (
   result: MockGhLaunchResult,
   iterationNumber: number
 ): Promise<number | null> => {
-  const resp = await fetch(`http://127.0.0.1:${result.backendPort}/api/board`, {
+  const resp = await fetch(`http://127.0.0.1:${result.backendPort}/api/iterations`, {
     headers: { Authorization: `Bearer ${result.authToken}` }
   })
   expect(resp.status).toBe(200)
-  const board = (await resp.json()) as {
-    stories: { number: number; iteration_order: number | null }[]
+  const body = (await resp.json()) as {
+    iterations: { number: number; iteration_order: number | null }[]
   }
-  return board.stories.find((s) => s.number === iterationNumber)?.iteration_order ?? null
+  return body.iterations.find((s) => s.number === iterationNumber)?.iteration_order ?? null
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::board::{board_outcomes, ordered_board_stories};
+use super::board::{board_iterations, board_outcomes, ordered_board_stories};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
@@ -137,21 +137,31 @@ async fn outcomes_never_ride_in_the_board_story_collection_1738() {
 }
 
 #[tokio::test]
-async fn iteration_snapshot_carries_computed_readiness_1703() {
+async fn iteration_readiness_rides_the_iterations_wire_1703() {
     let orch = orchestrator(vec![iteration(2000), member(2001, 2000, 100)]).await;
-    let stories = ordered_board_stories(&orch);
-    let readiness = &find(&stories, 2000)["readiness"];
+    let iterations = board_iterations(&orch);
+    let readiness = &find(&iterations, 2000)["readiness"];
     assert_eq!(
         readiness["review_closed"].as_bool(),
         Some(true),
-        "the designer review-close derives review_closed=true, exposed for #1704 to consume"
+        "the designer review-close derives review_closed=true on the iterations wire, exposed for #1704 to consume"
     );
     assert_eq!(readiness["drafted"].as_bool(), Some(true));
     assert_eq!(readiness["stories_ordered"].as_bool(), Some(true));
     assert_eq!(
         readiness["dev_ok"].as_bool(),
         Some(true),
-        "the dev-OK derives dev_ok=true, exposed for #1704 to consume"
+        "the dev-OK derives dev_ok=true on the iterations wire, exposed for #1704 to consume"
+    );
+}
+
+#[tokio::test]
+async fn iterations_never_ride_in_the_board_story_collection_1703() {
+    let orch = orchestrator(vec![iteration(2000)]).await;
+    let stories = ordered_board_stories(&orch);
+    assert!(
+        !stories.iter().any(|s| s["number"].as_u64() == Some(2000)),
+        "an iteration is a planning container, not a story — it never appears in the board story collection (readiness rides the iterations wire)"
     );
 }
 

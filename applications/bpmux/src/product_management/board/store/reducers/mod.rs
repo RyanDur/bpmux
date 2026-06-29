@@ -25,15 +25,14 @@ pub(super) type Stories = HashMap<StoryKey, ProductItem>;
 pub(super) fn item_from_story(story: &Story) -> ProductItem {
     match story.story_type() {
         StoryType::Outcome => ProductItem::Outcome(Outcome::from_story(story)),
-        StoryType::Story(_) | StoryType::Epic | StoryType::Iteration => {
-            ProductItem::Story(story.clone())
-        }
+        StoryType::Iteration => ProductItem::Iteration(story.clone()),
+        StoryType::Story(_) | StoryType::Epic => ProductItem::Story(story.clone()),
     }
 }
 
 pub(super) fn story_mut(w: &mut Stories, number: u64) -> Option<&mut Story> {
     w.get_mut(&StoryKey::Saved(number))
-        .and_then(ProductItem::as_story_mut)
+        .and_then(ProductItem::backing_story_mut)
 }
 
 pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {

@@ -25,22 +25,22 @@ const beforeContent = (win: Page, selector: string): Promise<string> =>
     return el === null ? '' : getComputedStyle(el, '::before').content
   }, selector)
 
-interface BoardStorySnapshot {
+interface IterationSnapshot {
   number: number
   iteration_order: number | null
   readiness: { drafted: boolean } | null
 }
 
-const boardStory = async (
+const iterationSnapshot = async (
   result: MockGhLaunchResult,
-  storyNumber: number
-): Promise<BoardStorySnapshot | undefined> => {
-  const resp = await fetch(`http://127.0.0.1:${result.backendPort}/api/board`, {
+  iterationNumber: number
+): Promise<IterationSnapshot | undefined> => {
+  const resp = await fetch(`http://127.0.0.1:${result.backendPort}/api/iterations`, {
     headers: { Authorization: `Bearer ${result.authToken}` }
   })
   expect(resp.status).toBe(200)
-  const board = (await resp.json()) as { stories: BoardStorySnapshot[] }
-  return board.stories.find((s) => s.number === storyNumber)
+  const body = (await resp.json()) as { iterations: IterationSnapshot[] }
+  return body.iterations.find((s) => s.number === iterationNumber)
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -72,12 +72,12 @@ const waitForDrillOrder = async (
 const waitForIterationSettled = async (
   result: MockGhLaunchResult,
   iterationNumber: number,
-  predicate: (s: BoardStorySnapshot) => boolean
+  predicate: (s: IterationSnapshot) => boolean
 ): Promise<void> => {
   const deadline = Date.now() + 20_000
   let hits = 0
   while (Date.now() < deadline) {
-    const story = await boardStory(result, iterationNumber)
+    const story = await iterationSnapshot(result, iterationNumber)
     if (story !== undefined && predicate(story)) {
       hits += 1
       if (hits >= 3) return

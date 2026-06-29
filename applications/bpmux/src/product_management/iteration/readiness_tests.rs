@@ -16,6 +16,14 @@ fn readiness(it: &Story, members: &[&Story], workflow: &WorkflowConfig) -> Itera
     iteration_readiness(&decode_iteration(it), members, workflow)
 }
 
+fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iteration::Iteration> {
+    stories
+        .iter()
+        .filter(|s| s.story_type() == StoryType::Iteration)
+        .map(decode_iteration)
+        .collect()
+}
+
 fn iteration(number: u64) -> Story {
     let mut s = Story::new_minimal(
         number,
@@ -310,7 +318,7 @@ fn outcome_readiness_rolls_up_gaps_from_building_iterations() {
     let gappy_it = building_iteration(720, 700);
     let gappy_member = member(7201, 720, 100);
     let all = vec![ready_it, ready_member, gappy_it, gappy_member];
-    let rolled = outcome_readiness(&outcome, &all, &bundled_default());
+    let rolled = outcome_readiness(&outcome, &decode_iterations(&all), &all, &bundled_default());
     assert_eq!(
         rolled.iteration_count, 2,
         "two iterations build this outcome"
@@ -335,7 +343,7 @@ fn outcome_readiness_all_ready_when_every_building_iteration_is_met() {
         .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
     let m = member(7101, 710, 100);
     let all = vec![it, m];
-    let rolled = outcome_readiness(&outcome, &all, &bundled_default());
+    let rolled = outcome_readiness(&outcome, &decode_iterations(&all), &all, &bundled_default());
     assert_eq!(rolled.gap_count, 0);
     assert!(
         rolled.all_ready,
@@ -346,7 +354,7 @@ fn outcome_readiness_all_ready_when_every_building_iteration_is_met() {
 #[test]
 fn outcome_readiness_not_ready_with_no_building_iterations() {
     let outcome = outcome_with(700, vec![]);
-    let rolled = outcome_readiness(&outcome, &[], &bundled_default());
+    let rolled = outcome_readiness(&outcome, &[], &[], &bundled_default());
     assert_eq!(rolled.iteration_count, 0);
     assert!(
         !rolled.all_ready,

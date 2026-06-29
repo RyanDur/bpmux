@@ -6,7 +6,7 @@ pub(crate) async fn handle_view_board(
         "view_board requires refresh (RefreshDriver) — tracker fallback retired in slice 5l",
     )?;
     let mut stories = r.all_stories();
-    if stories.is_empty() {
+    if r.store_is_empty() {
         match r.refresh_all().await {
             Ok(()) => {
                 stories = r.all_stories();

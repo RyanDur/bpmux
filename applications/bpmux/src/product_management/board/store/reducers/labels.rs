@@ -5,7 +5,7 @@ use crate::product_management::story::StoryKey;
 
 pub(super) fn apply_raw_labels(w: &mut Stories, number: u64, fields: &LabelDerivedFields) {
     match w.get_mut(&StoryKey::Saved(number)) {
-        Some(ProductItem::Story(story)) => {
+        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
             story.acceptor = fields.acceptor;
             story.parent_epic = fields.parent_epic;
             story.iteration_membership = fields.iteration_membership;
@@ -25,7 +25,7 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, number: u64, fields: &Labe
         return;
     }
     match w.get_mut(&StoryKey::Saved(number)) {
-        Some(ProductItem::Story(existing)) => {
+        Some(ProductItem::Story(existing)) | Some(ProductItem::Iteration(existing)) => {
             existing.acceptor = fields.acceptor;
             existing.parent_epic = fields.parent_epic;
             existing.iteration_membership = fields.iteration_membership;

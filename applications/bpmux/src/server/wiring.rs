@@ -57,6 +57,10 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         )
         .route("/api/board", axum::routing::get(transport::rest::get_board))
         .route(
+            "/api/iterations",
+            axum::routing::get(transport::rest::get_iterations),
+        )
+        .route(
             "/api/roadmap",
             axum::routing::get(transport::rest::get_roadmap),
         )

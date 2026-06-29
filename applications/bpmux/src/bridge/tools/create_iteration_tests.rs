@@ -39,6 +39,15 @@ async fn build_refresh_with_stories(stories: Vec<Story>) -> Arc<dyn RefreshDrive
     orch
 }
 
+fn iteration_number_by_title(refresh: &Arc<dyn RefreshDriver>, title: &str) -> u64 {
+    refresh
+        .iterations()
+        .iter()
+        .find(|it| it.content.title == title)
+        .and_then(|it| it.id().saved_number())
+        .unwrap_or_else(|| panic!("iteration '{title}' persisted"))
+}
+
 async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
     build_refresh_with_stories(vec![]).await
 }
@@ -62,11 +71,8 @@ async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
         result.contains("Iteration Aquila"),
         "title includes name: {result}"
     );
-    let stories = refresh.all_stories();
-    let iteration = stories
-        .iter()
-        .find(|s| s.title == "Iteration Aquila")
-        .expect("iteration issue persisted");
+    let number = iteration_number_by_title(&refresh, "Iteration Aquila");
+    let iteration = refresh.story(number).expect("iteration issue persisted");
     assert_eq!(
         story_type_from_labels_or_title(&iteration.raw_labels, &iteration.title),
         StoryType::Iteration,
@@ -108,11 +114,8 @@ async fn create_iteration_body_reserves_member_stories_section() {
     handle_create_iteration(&args("Pegasus"), "pm:claude-code", Some(&refresh))
         .await
         .unwrap();
-    let stories = refresh.all_stories();
-    let iteration = stories
-        .iter()
-        .find(|s| s.title == "Iteration Pegasus")
-        .expect("Pegasus issue persisted");
+    let number = iteration_number_by_title(&refresh, "Iteration Pegasus");
+    let iteration = refresh.story(number).expect("Pegasus issue persisted");
     let body = iteration.body.clone().unwrap_or_default();
     assert!(
         body.contains("## Member stories"),
@@ -134,12 +137,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
     handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect("create_iteration succeeds");
-    let number = refresh
-        .all_stories()
-        .iter()
-        .find(|s| s.title == "Iteration Aquila")
-        .expect("iteration persisted")
-        .number;
+    let number = iteration_number_by_title(&refresh, "Iteration Aquila");
     refresh
         .refresh_story(number)
         .await
@@ -171,11 +169,8 @@ async fn create_iteration_assigns_order_at_birth_1735() {
     handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect("create_iteration succeeds");
-    let stories = refresh.all_stories();
-    let iteration = stories
-        .iter()
-        .find(|s| s.title == "Iteration Aquila")
-        .expect("iteration persisted");
+    let number = iteration_number_by_title(&refresh, "Iteration Aquila");
+    let iteration = refresh.story(number).expect("iteration persisted");
     assert!(
         iteration_order_from_labels(&iteration.raw_labels).is_some(),
         "a freshly-created iteration is born with a canonical order (no order-less iteration → no Fornax-last); got {:?}",
@@ -191,14 +186,11 @@ async fn create_iteration_appends_order_after_existing_1735() {
     handle_create_iteration(&args("Pegasus"), "pm:claude-code", Some(&refresh))
         .await
         .expect("create succeeds");
-    let stories = refresh.all_stories();
-    let pegasus = stories
-        .iter()
-        .find(|s| s.title == "Iteration Pegasus")
+    let pegasus = refresh
+        .story(iteration_number_by_title(&refresh, "Iteration Pegasus"))
         .expect("Pegasus persisted");
-    let aquila = stories
-        .iter()
-        .find(|s| s.title == "Iteration Aquila")
+    let aquila = refresh
+        .story(iteration_number_by_title(&refresh, "Iteration Aquila"))
         .expect("Aquila persisted");
     assert!(
         iteration_order_from_labels(&pegasus.raw_labels).expect("Pegasus has order")

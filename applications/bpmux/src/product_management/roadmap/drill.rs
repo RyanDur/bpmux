@@ -111,10 +111,11 @@ fn readiness_of(
 
 pub fn derive_outcome_drill_in(
     outcome: &Outcome,
+    iterations: &[Iteration],
     stories: &[Story],
     workflow: &WorkflowConfig,
 ) -> OutcomeDrillIn {
-    let building = building_iterations(outcome, stories);
+    let building = building_iterations(outcome, iterations);
 
     let next_index = building.iter().position(|it| {
         !it.complete && {

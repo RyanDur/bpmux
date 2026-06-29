@@ -82,7 +82,7 @@ pub(super) async fn handle_board_hydrate(
     let reply_tx = ctx.reply_tx.clone();
     tokio::spawn(async move {
         let stories: Option<Vec<serde_json::Value>> = if let Some(refresh) = orchestrator.as_ref() {
-            if refresh.all_stories().is_empty() {
+            if refresh.store_is_empty() {
                 let _ = refresh.refresh_all().await;
             }
             Some(crate::transport::rest::ordered_board_stories(refresh))

@@ -24,12 +24,13 @@ pub async fn get_roadmap(
             err_body("roadmap view requires the canonical store"),
         );
     };
-    if refresh.all_stories().is_empty() {
+    if refresh.store_is_empty() {
         let _ = refresh.refresh_all().await;
     }
     let body = match query.outcome {
         Some(number) => {
             let all = refresh.all_stories();
+            let all_iterations = refresh.iterations();
             let outcome = refresh
                 .outcomes()
                 .into_iter()
@@ -39,6 +40,7 @@ pub async fn get_roadmap(
                 .map(|outcome| {
                     crate::product_management::roadmap::drill::derive_outcome_drill_in(
                         outcome,
+                        &all_iterations,
                         &all,
                         crate::workflow::current_workflow(),
                     )

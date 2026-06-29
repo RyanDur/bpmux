@@ -80,6 +80,7 @@ pub fn roadmap_cards(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeCard
 
 fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> {
     let all = refresh.all_stories();
+    let all_iterations = refresh.iterations();
     let workflow = crate::workflow::current_workflow();
     refresh
         .outcomes()
@@ -87,7 +88,7 @@ fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> 
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
             let number = outcome.id().saved_number().unwrap_or(0);
-            let building = building_iterations(outcome, &all);
+            let building = building_iterations(outcome, &all_iterations);
             let done = !building.is_empty() && building.iter().all(|iteration| iteration.complete);
             RoadmapOutcomeInput {
                 number,
@@ -96,7 +97,7 @@ fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> 
                 horizon: outcome.horizon(),
                 horizon_order: outcome.horizon_order(),
                 done,
-                readiness: Some(outcome_readiness(outcome, &all, workflow)),
+                readiness: Some(outcome_readiness(outcome, &all_iterations, &all, workflow)),
             }
         })
         .collect()

@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
-use super::board::ordered_board_stories;
+use super::board::{board_iterations, ordered_board_stories};
 use super::shared::{TrackerHandle, err_body, json_headers};
 
 pub async fn get_board(
@@ -9,7 +9,7 @@ pub async fn get_board(
     axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
 ) -> impl IntoResponse {
     if let Some(refresh) = orchestrator.as_ref() {
-        if refresh.all_stories().is_empty() {
+        if refresh.store_is_empty() {
             match refresh.refresh_all().await {
                 Ok(()) => {
                     if refresh.all_stories().is_empty() {
@@ -61,6 +61,26 @@ pub async fn get_board(
             err_body(&format!("board fetch failed: {e}")),
         ),
     }
+}
+
+pub async fn get_iterations(
+    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+) -> impl IntoResponse {
+    let Some(refresh) = orchestrator.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("iterations view requires the canonical store"),
+        );
+    };
+    if refresh.store_is_empty() {
+        let _ = refresh.refresh_all().await;
+    }
+    let body = serde_json::json!({
+        "iterations": board_iterations(refresh),
+        "fetched_at": chrono::Utc::now().to_rfc3339(),
+    });
+    (StatusCode::OK, json_headers(), body.to_string())
 }
 
 pub async fn get_story(

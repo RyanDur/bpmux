@@ -5,31 +5,9 @@ pub(crate) fn ordered_board_stories(
 ) -> Vec<serde_json::Value> {
     let all = refresh.all_stories();
     let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-    let workflow = crate::workflow::current_workflow();
     let items: Vec<serde_json::Value> = all
         .iter()
-        .map(|s| {
-            let mut json =
-                crate::product_management::board::adapters::json::story_to_board_json(&codec, s);
-            if s.story_type() == crate::product_management::story::StoryType::Iteration
-                && let serde_json::Value::Object(map) = &mut json
-            {
-                let members: Vec<&crate::product_management::story::Story> = all
-                    .iter()
-                    .filter(|m| m.iteration_membership().map(|(it, _)| it) == Some(s.number))
-                    .collect();
-                let iteration =
-                    crate::product_management::board::adapters::github::decode_iteration(s);
-                let readiness =
-                    crate::product_management::iteration::readiness::iteration_readiness(
-                        &iteration, &members, workflow,
-                    );
-                if let Ok(value) = serde_json::to_value(readiness) {
-                    map.insert("readiness".to_string(), value);
-                }
-            }
-            json
-        })
+        .map(|s| crate::product_management::board::adapters::json::story_to_board_json(&codec, s))
         .collect();
     crate::product_management::board::ready_order_label::sort_board_ready_by_membership(items)
 }
@@ -87,6 +65,7 @@ pub(crate) fn board_outcomes(
         building_iterations, iteration_readiness, outcome_readiness,
     };
     let all = refresh.all_stories();
+    let all_iterations = refresh.iterations();
     let workflow = crate::workflow::current_workflow();
     refresh
         .outcomes()
@@ -94,7 +73,7 @@ pub(crate) fn board_outcomes(
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
             let number = outcome.id().saved_number().unwrap_or(0);
-            let iterations: Vec<serde_json::Value> = building_iterations(outcome, &all)
+            let iterations: Vec<serde_json::Value> = building_iterations(outcome, &all_iterations)
                 .iter()
                 .enumerate()
                 .map(|(index, iteration)| {
@@ -119,7 +98,7 @@ pub(crate) fn board_outcomes(
                 "body": outcome.content.body.clone().unwrap_or_default(),
                 "horizon": outcome.horizon().map(|horizon| horizon.as_str()),
                 "horizon_order": outcome.horizon_order(),
-                "outcome_readiness": outcome_readiness(outcome, &all, workflow),
+                "outcome_readiness": outcome_readiness(outcome, &all_iterations, &all, workflow),
                 "iterations": iterations,
             })
         })

@@ -6,7 +6,7 @@ use super::events::BoardEvent;
 use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryKey, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryKey, StoryState};
 use crate::store::kernel::Store;
 
 mod action;
@@ -66,7 +66,7 @@ impl BoardStore {
             state
                 .stories
                 .get(&StoryKey::Saved(number))
-                .and_then(|item| item.as_story().cloned())
+                .and_then(|item| item.backing_story().cloned())
         });
         self.store.dispatch(BoardAction::Removed(number));
         removed
@@ -85,7 +85,7 @@ impl BoardStore {
             state
                 .stories
                 .get(&StoryKey::Saved(number))
-                .and_then(|item| item.as_story().cloned())
+                .and_then(|item| item.backing_story().cloned())
         })
     }
 
@@ -114,8 +114,7 @@ impl BoardStore {
             state
                 .stories
                 .values()
-                .filter_map(|item| item.as_story())
-                .filter(|story| story.story_type() == StoryType::Iteration)
+                .filter_map(|item| item.iteration_story())
                 .map(decode_iteration)
                 .collect()
         })
@@ -126,8 +125,7 @@ impl BoardStore {
             state
                 .stories
                 .get(&StoryKey::Saved(number))
-                .and_then(|item| item.as_story())
-                .filter(|story| story.story_type() == StoryType::Iteration)
+                .and_then(|item| item.iteration_story())
                 .map(decode_iteration)
         })
     }

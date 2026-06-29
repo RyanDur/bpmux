@@ -58,11 +58,19 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
         }).then(
           (r) =>
             r.json() as Promise<{
-              stories: { number: number; state: string; gh_state?: string }[]
+              stories: { number: number; state: string }[]
+            }>
+        )
+        const iterations = await fetch(`${apiBase}/api/iterations`, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        }).then(
+          (r) =>
+            r.json() as Promise<{
+              iterations: { number: number; complete: boolean }[]
             }>
         )
         return {
-          iterationClosed: body.stories.find((s) => s.number === 9401)?.gh_state === 'closed',
+          iterationClosed: iterations.iterations.find((s) => s.number === 9401)?.complete === true,
           memberStates: Object.fromEntries(
             body.stories
               .filter((s) => s.number === 9411 || s.number === 9412)

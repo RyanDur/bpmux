@@ -1,9 +1,8 @@
 use serde::Serialize;
 
-use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryType};
+use crate::product_management::story::Story;
 use crate::workflow::config::WorkflowConfig;
 
 pub const ITERATION_REVIEWER_PURPOSE: &str = "iteration-reviewer";
@@ -37,32 +36,36 @@ pub struct OutcomeReadiness {
     pub all_ready: bool,
 }
 
-pub fn building_iterations(outcome: &Outcome, all: &[Story]) -> Vec<Iteration> {
+pub fn building_iterations(outcome: &Outcome, iterations: &[Iteration]) -> Vec<Iteration> {
     outcome
         .iterations
         .iter()
-        .filter_map(|number| all.iter().find(|story| story.number == *number))
-        .filter(|story| story.story_type() == StoryType::Iteration)
-        .map(decode_iteration)
+        .filter_map(|number| {
+            iterations
+                .iter()
+                .find(|iteration| iteration.id().saved_number() == Some(*number))
+                .cloned()
+        })
         .collect()
 }
 
 pub fn outcome_readiness(
     outcome: &Outcome,
-    all: &[Story],
+    iterations: &[Iteration],
+    members: &[Story],
     workflow: &WorkflowConfig,
 ) -> OutcomeReadiness {
-    let building = building_iterations(outcome, all);
+    let building = building_iterations(outcome, iterations);
     let gap_count = building
         .iter()
         .map(|iteration| {
-            let members: Vec<&Story> = all
+            let iteration_members: Vec<&Story> = members
                 .iter()
                 .filter(|m| {
                     m.iteration_membership().map(|(it, _)| it) == iteration.id().saved_number()
                 })
                 .collect();
-            iteration_readiness(iteration, &members, workflow).unmet_count()
+            iteration_readiness(iteration, &iteration_members, workflow).unmet_count()
         })
         .sum();
     let iteration_count = building.len() as u32;

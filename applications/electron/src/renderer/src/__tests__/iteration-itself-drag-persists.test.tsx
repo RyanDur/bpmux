@@ -80,24 +80,20 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
 
     await waitFor(
       async () => {
-        const boardRes = await fetch(`${apiBase}/api/board`, {
+        const iterRes = await fetch(`${apiBase}/api/iterations`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
-        const boardBody = (await boardRes.json()) as {
-          stories: { number: number; labels: string[] }[]
+        const iterBody = (await iterRes.json()) as {
+          iterations: { number: number; iteration_order: number | null }[]
         }
-        const orderOf = (labels: string[]): number | undefined => {
-          const label = labels.find((x) => x.startsWith('iteration-order.'))
-          return label === undefined ? undefined : Number(label.slice('iteration-order.'.length))
-        }
-        const sirius = boardBody.stories.find((s) => s.number === 8101)
-        const vega = boardBody.stories.find((s) => s.number === 8102)
-        const siriusOrder = orderOf(sirius?.labels ?? [])
-        const vegaOrder = orderOf(vega?.labels ?? [])
-        expect(siriusOrder).toBeDefined()
-        expect(vegaOrder).toBeDefined()
+        const orderOf = (n: number): number | null =>
+          iterBody.iterations.find((s) => s.number === n)?.iteration_order ?? null
+        const siriusOrder = orderOf(8101)
+        const vegaOrder = orderOf(8102)
+        expect(siriusOrder).not.toBeNull()
+        expect(vegaOrder).not.toBeNull()
         expect(Number(siriusOrder)).toBeLessThan(Number(vegaOrder))
-        expect(sirius?.labels).not.toContain('iteration-order.200')
+        expect(siriusOrder).not.toBe(200)
       },
       { timeout: 10_000, interval: 200 }
     )

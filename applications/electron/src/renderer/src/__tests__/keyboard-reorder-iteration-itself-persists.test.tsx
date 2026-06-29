@@ -15,15 +15,6 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
     rendered = null
   })
 
-  const orderFor = (labels: readonly string[] | undefined): number | null => {
-    if (!labels) return null
-    for (const l of labels) {
-      const m = l.match(/^iteration-order\.(\d+)$/)
-      if (m) return parseInt(m[1], 10)
-    }
-    return null
-  }
-
   it('Ctrl+Shift+ArrowUp on Iteration Draco (high iteration-order) lowers its order below Iteration Tucana and removes the old label', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
@@ -70,20 +61,20 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
 
     await waitFor(
       async () => {
-        const boardRes = await fetch(`${apiBase}/api/board`, {
+        const iterRes = await fetch(`${apiBase}/api/iterations`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
-        const boardBody = (await boardRes.json()) as {
-          stories: { number: number; labels: string[] }[]
+        const iterBody = (await iterRes.json()) as {
+          iterations: { number: number; iteration_order: number | null }[]
         }
-        const draco = boardBody.stories.find((s) => s.number === 8402)
-        const tucana = boardBody.stories.find((s) => s.number === 8401)
-        const dracoOrder = orderFor(draco?.labels)
-        const tucanaOrder = orderFor(tucana?.labels)
+        const orderOf = (n: number): number | null =>
+          iterBody.iterations.find((s) => s.number === n)?.iteration_order ?? null
+        const dracoOrder = orderOf(8402)
+        const tucanaOrder = orderOf(8401)
         expect(dracoOrder).not.toBeNull()
         expect(tucanaOrder).not.toBeNull()
         expect(dracoOrder).toBeLessThan(tucanaOrder!)
-        expect(draco?.labels).not.toContain('iteration-order.60000')
+        expect(dracoOrder).not.toBe(60000)
       },
       { timeout: 10_000, interval: 200 }
     )

@@ -38,7 +38,9 @@ pub(super) fn apply_story_created(
 
 pub(super) fn apply_state_transitioned(w: &mut Stories, number: u64, new_state: StoryState) {
     match w.get_mut(&StoryKey::Saved(number)) {
-        Some(ProductItem::Story(story)) => story.state = new_state,
+        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
+            story.state = new_state
+        }
         Some(ProductItem::Outcome(outcome)) if new_state == StoryState::Retired => {
             *outcome = outcome.retired();
         }
@@ -48,7 +50,7 @@ pub(super) fn apply_state_transitioned(w: &mut Stories, number: u64, new_state: 
 
 pub(super) fn apply_body_fetched(w: &mut Stories, number: u64, body: &str, etag: &Option<String>) {
     match w.get_mut(&StoryKey::Saved(number)) {
-        Some(ProductItem::Story(story)) => {
+        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
             story.body = Some(body.to_string());
             story.body_etag = etag.clone();
         }
@@ -59,7 +61,9 @@ pub(super) fn apply_body_fetched(w: &mut Stories, number: u64, body: &str, etag:
 
 pub(super) fn apply_title_updated(w: &mut Stories, number: u64, title: &str) {
     match w.get_mut(&StoryKey::Saved(number)) {
-        Some(ProductItem::Story(story)) => story.title = title.to_string(),
+        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
+            story.title = title.to_string()
+        }
         Some(ProductItem::Outcome(outcome)) => *outcome = outcome.with_title(title),
         None => {}
     }
@@ -67,7 +71,9 @@ pub(super) fn apply_title_updated(w: &mut Stories, number: u64, title: &str) {
 
 pub(super) fn apply_body_updated(w: &mut Stories, number: u64, body: &str) {
     match w.get_mut(&StoryKey::Saved(number)) {
-        Some(ProductItem::Story(story)) => story.body = Some(body.to_string()),
+        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
+            story.body = Some(body.to_string())
+        }
         Some(ProductItem::Outcome(outcome)) => *outcome = outcome.with_body(body),
         None => {}
     }
@@ -101,7 +107,7 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
         return;
     }
     match w.get_mut(&key) {
-        Some(ProductItem::Story(existing)) => {
+        Some(ProductItem::Story(existing)) | Some(ProductItem::Iteration(existing)) => {
             existing.title = story.title.clone();
             existing.state = story.state;
             existing.raw_labels = story.raw_labels.clone();
@@ -112,7 +118,7 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, number: u64, story: &Story)
             }
         }
         _ => {
-            w.insert(key, ProductItem::Story(story.clone()));
+            w.insert(key, item_from_story(story));
         }
     }
 }

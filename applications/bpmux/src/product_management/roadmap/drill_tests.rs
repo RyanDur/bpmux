@@ -50,6 +50,14 @@ fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
     Outcome::from_story(&s)
 }
 
+fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iteration::Iteration> {
+    stories
+        .iter()
+        .filter(|s| s.story_type() == StoryType::Iteration)
+        .map(crate::product_management::board::adapters::github::decode_iteration)
+        .collect()
+}
+
 fn fully_ready(number: u64, outcome_number: u64, member: u64) -> (Story, Story) {
     let mut it = iteration(number, outcome_number);
     it.raw_labels
@@ -72,7 +80,12 @@ fn fully_ready(number: u64, outcome_number: u64, member: u64) -> (Story, Story) 
 fn iterations_render_in_the_outcomes_priority_order() {
     let outcome = outcome_with(11, vec![20, 21]);
     let stories = vec![iteration(21, 11), iteration(20, 11)];
-    let drill = derive_outcome_drill_in(&outcome, &stories, &bundled_default());
+    let drill = derive_outcome_drill_in(
+        &outcome,
+        &decode_iterations(&stories),
+        &stories,
+        &bundled_default(),
+    );
     let numbers: Vec<u64> = drill.iterations.iter().map(|i| i.number).collect();
     assert_eq!(
         numbers,
@@ -89,7 +102,12 @@ fn an_iteration_with_nothing_done_reads_not_started_with_no_checks_and_no_conven
     it.body = None;
     let outcome = outcome_with(11, vec![20]);
     let stories = vec![it];
-    let drill = derive_outcome_drill_in(&outcome, &stories, &bundled_default());
+    let drill = derive_outcome_drill_in(
+        &outcome,
+        &decode_iterations(&stories),
+        &stories,
+        &bundled_default(),
+    );
     assert_eq!(drill.iterations[0].state, DrillIterationState::NotStarted);
     assert!(drill.iterations[0].checks.is_empty());
     assert!(
@@ -103,7 +121,12 @@ fn an_iteration_meeting_every_check_reads_ready_with_no_convene() {
     let (it, member) = fully_ready(20, 11, 30);
     let outcome = outcome_with(11, vec![20]);
     let stories = vec![it, member];
-    let drill = derive_outcome_drill_in(&outcome, &stories, &bundled_default());
+    let drill = derive_outcome_drill_in(
+        &outcome,
+        &decode_iterations(&stories),
+        &stories,
+        &bundled_default(),
+    );
     assert_eq!(drill.iterations[0].state, DrillIterationState::Ready);
     assert_eq!(drill.iterations[0].gap_count, 0);
     assert!(
@@ -116,7 +139,12 @@ fn an_iteration_meeting_every_check_reads_ready_with_no_convene() {
 fn the_first_partially_done_gap_holder_reads_next_and_others_read_gap() {
     let outcome = outcome_with(11, vec![20, 21]);
     let stories = vec![iteration(20, 11), iteration(21, 11)];
-    let drill = derive_outcome_drill_in(&outcome, &stories, &bundled_default());
+    let drill = derive_outcome_drill_in(
+        &outcome,
+        &decode_iterations(&stories),
+        &stories,
+        &bundled_default(),
+    );
     assert_eq!(drill.iterations[0].state, DrillIterationState::Next);
     assert_eq!(drill.iterations[0].gap_count, 3);
     assert_eq!(
@@ -139,7 +167,12 @@ fn a_closed_iteration_reads_done_excluded_from_convene_with_no_checks() {
     done.is_closed = true;
     let outcome = outcome_with(11, vec![20, 21]);
     let stories = vec![done, iteration(21, 11)];
-    let drill = derive_outcome_drill_in(&outcome, &stories, &bundled_default());
+    let drill = derive_outcome_drill_in(
+        &outcome,
+        &decode_iterations(&stories),
+        &stories,
+        &bundled_default(),
+    );
     assert_eq!(drill.iterations[0].state, DrillIterationState::Done);
     assert!(drill.iterations[0].checks.is_empty());
     assert_eq!(
@@ -155,7 +188,12 @@ fn a_closed_iteration_reads_done_excluded_from_convene_with_no_checks() {
 fn checks_render_met_then_first_gap_then_pending() {
     let outcome = outcome_with(11, vec![20]);
     let stories = vec![iteration(20, 11)];
-    let drill = derive_outcome_drill_in(&outcome, &stories, &bundled_default());
+    let drill = derive_outcome_drill_in(
+        &outcome,
+        &decode_iterations(&stories),
+        &stories,
+        &bundled_default(),
+    );
     let checks = &drill.iterations[0].checks;
     assert_eq!(checks.len(), 4);
     assert_eq!(checks[0].label, "drafted");

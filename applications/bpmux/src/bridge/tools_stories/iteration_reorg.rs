@@ -3,8 +3,8 @@ use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 use crate::product_management::board::BoardEvent;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::iteration_order_from_labels;
-use crate::product_management::story::{Story, StoryType};
+use crate::product_management::iteration::Iteration;
+use crate::product_management::story::StoryType;
 use std::sync::Arc;
 
 pub(crate) async fn handle_reorder_iteration(
@@ -45,15 +45,15 @@ fn renumber_iteration_order(
     moved: u64,
     requested_position: u32,
 ) -> Result<u32, String> {
-    let mut actives: Vec<Story> = r
-        .all_stories()
+    let mut actives: Vec<Iteration> = r
+        .iterations()
         .into_iter()
-        .filter(|s| s.story_type() == StoryType::Iteration && !s.is_closed)
+        .filter(|iteration| !iteration.complete)
         .collect();
-    actives.sort_by_key(|s| {
+    actives.sort_by_key(|iteration| {
         (
-            iteration_order_from_labels(&s.raw_labels).unwrap_or(u32::MAX),
-            s.number,
+            iteration.iteration_order.unwrap_or(u32::MAX),
+            iteration.id().saved_number().unwrap_or(0),
         )
     });
 
@@ -61,7 +61,7 @@ fn renumber_iteration_order(
     let clamped = requested_position.clamp(1, band_size.max(1));
     let mut sequence: Vec<u64> = actives
         .iter()
-        .map(|s| s.number)
+        .filter_map(|iteration| iteration.id().saved_number())
         .filter(|number| *number != moved)
         .collect();
     let insert_index = (clamped as usize - 1).min(sequence.len());
@@ -69,14 +69,17 @@ fn renumber_iteration_order(
 
     for (index, number) in sequence.iter().enumerate() {
         let new_position = (index + 1) as u32;
-        let Some(story) = actives.iter().find(|s| s.number == *number) else {
+        let Some(iteration) = actives
+            .iter()
+            .find(|iteration| iteration.id().saved_number() == Some(*number))
+        else {
             continue;
         };
-        if iteration_order_from_labels(&story.raw_labels) == Some(new_position) {
+        if iteration.iteration_order == Some(new_position) {
             continue;
         }
-        for stale in story
-            .raw_labels
+        let raw_labels = r.story(*number).map(|s| s.raw_labels).unwrap_or_default();
+        for stale in raw_labels
             .iter()
             .filter(|label| GhLabelCodec.decode_iteration_order(label).is_some())
         {
