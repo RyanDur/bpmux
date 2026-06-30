@@ -3,7 +3,7 @@ import { dispatchSession } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
 
 export const boardIteration = (overrides: Partial<BoardIterationData>): BoardIterationData => ({
-  number: 9000,
+  id: 9000,
   title: 'Iteration Lyra',
   iteration_order: null,
   is_current: false,

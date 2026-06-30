@@ -62,9 +62,9 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const iterBody = (await iterRes.json()) as {
-          iterations: { number: number; stories: number[] }[]
+          iterations: { id: number; stories: number[] }[]
         }
-        const lacerta = iterBody.iterations.find((i) => i.number === 7801)
+        const lacerta = iterBody.iterations.find((i) => i.id === 7801)
         expect(lacerta?.stories).toEqual([7812, 7811, 7813])
       },
       { timeout: 10_000, interval: 200 }
@@ -121,9 +121,9 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const iterBody = (await iterRes.json()) as {
-          iterations: { number: number; stories: number[] }[]
+          iterations: { id: number; stories: number[] }[]
         }
-        const centaurus = iterBody.iterations.find((i) => i.number === 7701)
+        const centaurus = iterBody.iterations.find((i) => i.id === 7701)
         expect(centaurus?.stories).toEqual([7711, 7713, 7712])
       },
       { timeout: 10_000, interval: 200 }

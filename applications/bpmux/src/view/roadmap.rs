@@ -6,6 +6,7 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::iteration::readiness::{
     OutcomeReadiness, building_iterations, outcome_readiness,
 };
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::Horizon;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -54,7 +55,7 @@ pub enum OutcomeCardTone {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RoadmapOutcomeInput {
-    pub number: u64,
+    pub id: OutcomeId,
     pub title: String,
     pub body: String,
     pub horizon: Option<Horizon>,
@@ -65,7 +66,7 @@ pub struct RoadmapOutcomeInput {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RoadmapOutcomeCard {
-    pub number: u64,
+    pub id: OutcomeId,
     pub name: String,
     pub why: OutcomeWhy,
     pub horizon: Horizon,
@@ -86,11 +87,11 @@ fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> 
         .iter()
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
-            let number = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
+            let id = OutcomeId::new(outcome.id().saved_id().map(|id| id.value()).unwrap_or(0));
             let building = building_iterations(outcome, &all_iterations);
             let done = !building.is_empty() && building.iter().all(|iteration| iteration.complete);
             RoadmapOutcomeInput {
-                number,
+                id,
                 title: outcome.content.title.clone(),
                 body: outcome.content.body.clone().unwrap_or_default(),
                 horizon: outcome.horizon(),
@@ -108,7 +109,7 @@ pub fn derive_roadmap(outcomes: &[RoadmapOutcomeInput]) -> Vec<RoadmapOutcomeCar
         (
             horizon_rank(outcome.horizon.unwrap_or(Horizon::Later)),
             outcome.horizon_order.unwrap_or(u32::MAX),
-            outcome.number,
+            outcome.id,
         )
     });
     ordered.into_iter().map(to_card).collect()
@@ -126,7 +127,7 @@ fn to_card(outcome: &RoadmapOutcomeInput) -> RoadmapOutcomeCard {
     let horizon = outcome.horizon.unwrap_or(Horizon::Later);
     let state = state_of(outcome.done, outcome.readiness);
     RoadmapOutcomeCard {
-        number: outcome.number,
+        id: outcome.id,
         name: outcome.title.clone(),
         why: parse_outcome_why(&outcome.body),
         horizon,

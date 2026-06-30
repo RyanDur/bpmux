@@ -2,13 +2,15 @@ use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::SyncError;
+use crate::product_management::epic::EpicId;
+use crate::product_management::iteration::IterationId;
 
 pub(in crate::integrations::github) async fn push_parent_epic_set(
     inner: &OctocrabStoryTracker,
     number: u64,
-    epic_number: u64,
+    epic_id: EpicId,
 ) -> Result<Option<BoardEvent>, SyncError> {
-    let label = format!("parent-epic-#{epic_number}");
+    let label = format!("parent-epic-#{}", epic_id.value());
     let labels = inner
         .add_label(number, &label)
         .await
@@ -35,7 +37,7 @@ pub(in crate::integrations::github) async fn push_parent_epic_unset(
 pub(in crate::integrations::github) async fn push_iteration_membership_set(
     inner: &OctocrabStoryTracker,
     number: u64,
-    iteration_number: u64,
+    iteration_id: IterationId,
     position: u32,
 ) -> Result<Option<BoardEvent>, SyncError> {
     let current = inner.get_story_labels(number).await;
@@ -48,7 +50,7 @@ pub(in crate::integrations::github) async fn push_iteration_membership_set(
             .await
             .map_err(SyncError::Other)?;
     }
-    let label = format!("parent-iteration-#{iteration_number}.{position}");
+    let label = format!("parent-iteration-#{}.{position}", iteration_id.value());
     let labels = inner
         .add_label(number, &label)
         .await

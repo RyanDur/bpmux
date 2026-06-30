@@ -7,7 +7,7 @@ fn ready_json(number: u64, membership: Option<(u64, u32)>) -> serde_json::Value 
         "id": number,
         "state": "ready",
         "iteration_membership": membership.map(|(it, pos)| serde_json::json!({
-            "iteration_number": it,
+            "iteration_id": it,
             "position": pos,
         })),
         "is_current": false,

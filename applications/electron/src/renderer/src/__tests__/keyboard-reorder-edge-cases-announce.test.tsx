@@ -64,9 +64,9 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
       headers: { Authorization: `Bearer ${authToken}` }
     })
     const iterBody = (await iterRes.json()) as {
-      iterations: { number: number; stories: number[] }[]
+      iterations: { id: number; stories: number[] }[]
     }
-    const andromeda = iterBody.iterations.find((i) => i.number === 8201)
+    const andromeda = iterBody.iterations.find((i) => i.id === 8201)
     expect(andromeda?.stories).toEqual([8211, 8212])
   }, 25_000)
 
@@ -119,9 +119,9 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
       headers: { Authorization: `Bearer ${authToken}` }
     })
     const iterBody = (await iterRes.json()) as {
-      iterations: { number: number; stories: number[] }[]
+      iterations: { id: number; stories: number[] }[]
     }
-    const perseus = iterBody.iterations.find((i) => i.number === 8301)
+    const perseus = iterBody.iterations.find((i) => i.id === 8301)
     expect(perseus?.stories).toEqual([8311, 8312])
   }, 25_000)
 })

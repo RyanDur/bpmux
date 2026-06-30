@@ -8,6 +8,7 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -53,10 +54,7 @@ fn args(
     position: u64,
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert(
-        "iteration_number".into(),
-        serde_json::json!(iteration_number),
-    );
+    m.insert("iteration_id".into(), serde_json::json!(iteration_number));
     m.insert("story_id".into(), serde_json::json!(story_number));
     m.insert("position".into(), serde_json::json!(position));
     m
@@ -76,7 +74,9 @@ async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
         "PM add_story_to_iteration must succeed: {result:?}"
     );
     assert_eq!(
-        orch.iteration(1397).expect("iteration present").stories,
+        orch.iteration(IterationId::new(1397))
+            .expect("iteration present")
+            .stories,
         vec![StoryId::new(1500)],
         "the member is recorded in the iteration's ordered stories (parent-holds-order)"
     );
@@ -166,9 +166,9 @@ async fn missing_iteration_number_rejected_1399() {
     m.insert("story_id".into(), serde_json::json!(1500));
     m.insert("position".into(), serde_json::json!(100));
     let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
-    let err = result.expect_err("missing iteration_number must be rejected");
+    let err = result.expect_err("missing iteration_id must be rejected");
     assert!(
-        err.contains("iteration_number"),
+        err.contains("iteration_id"),
         "rejection names the missing arg: {err}"
     );
 }
@@ -176,7 +176,7 @@ async fn missing_iteration_number_rejected_1399() {
 #[tokio::test]
 async fn missing_story_id_rejected_1399() {
     let mut m = serde_json::Map::new();
-    m.insert("iteration_number".into(), serde_json::json!(1397));
+    m.insert("iteration_id".into(), serde_json::json!(1397));
     m.insert("position".into(), serde_json::json!(100));
     let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
     let err = result.expect_err("missing story_id must be rejected");
@@ -189,7 +189,7 @@ async fn missing_story_id_rejected_1399() {
 #[tokio::test]
 async fn missing_position_rejected_1399() {
     let mut m = serde_json::Map::new();
-    m.insert("iteration_number".into(), serde_json::json!(1397));
+    m.insert("iteration_id".into(), serde_json::json!(1397));
     m.insert("story_id".into(), serde_json::json!(1500));
     let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
     let err = result.expect_err("missing position must be rejected");

@@ -11,7 +11,6 @@ import {
 import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
 import { story } from '../board/boardDecoder'
-import { asStoryId } from '../board/types'
 
 const ciState = D.literalUnion('unknown', 'green', 'red', 'running', 'quota_exhausted')
 
@@ -27,7 +26,7 @@ const ciSnapshot: D.Decoder<CiSnapshotWire> = D.object({
 })
 
 const droppedEvent = D.object({
-  required: { story_id: D.number.andThen(asStoryId), error: D.string, ts: D.string }
+  required: { story_id: D.number, error: D.string, ts: D.string }
 })
 
 const syncStatus: D.Decoder<SyncStatusWire> = D.object({
@@ -81,7 +80,7 @@ const iterationReadinessWire = D.object({
 
 const roadmapIteration = D.object({
   required: {
-    number: D.number,
+    id: D.number,
     name: D.string,
     position: D.number,
     readiness: iterationReadinessWire
@@ -90,19 +89,19 @@ const roadmapIteration = D.object({
 
 const boardIteration: D.Decoder<BoardIterationData> = D.object({
   required: {
-    number: D.number,
+    id: D.number,
     title: D.string,
     iteration_order: D.nullable(D.number),
     is_current: D.boolean,
     complete: D.boolean,
     readiness: iterationReadinessWire,
-    stories: D.array(D.number.andThen(asStoryId))
+    stories: D.array(D.number)
   }
 })
 
 const roadmapOutcome: D.Decoder<RoadmapOutcomeData> = D.object({
   required: {
-    number: D.number,
+    id: D.number,
     title: D.string,
     body: D.string,
     horizon: D.nullable(D.literalUnion('now', 'next', 'later')),
@@ -123,7 +122,7 @@ const outcomeWhy = D.object({
 
 const roadmapCard: D.Decoder<RoadmapCard> = D.object({
   required: {
-    number: D.number,
+    id: D.number,
     name: D.string,
     why: outcomeWhy,
     horizon: D.literalUnion('now', 'next', 'later'),
@@ -156,7 +155,7 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
   D.object({
     required: {
       domain: D.literal('iteration_close'),
-      promoted: D.array(D.number.andThen(asStoryId)),
+      promoted: D.array(D.number),
       deleted_marker_id: D.nullable(D.number)
     }
   }),

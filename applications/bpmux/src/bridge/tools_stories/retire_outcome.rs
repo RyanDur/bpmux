@@ -11,10 +11,10 @@ pub(crate) async fn handle_retire_outcome(
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "retire an outcome")?;
-    let outcome_number = args
-        .get("outcome_number")
+    let outcome_id = args
+        .get("outcome_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'outcome_number' argument")?;
+        .ok_or("missing 'outcome_id' argument")?;
     let reason = args
         .get("reason")
         .and_then(serde_json::Value::as_str)
@@ -22,7 +22,7 @@ pub(crate) async fn handle_retire_outcome(
         .ok_or("outcome retire needs --reason <R> (retire is destructive; the reason is the audit-trail)")?;
 
     let r = refresh.ok_or("retire_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
+    let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
 
     let meta = || EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
@@ -31,23 +31,23 @@ pub(crate) async fn handle_retire_outcome(
     };
     r.mutate_sync(BoardEvent::StateTransitioned {
         meta: meta(),
-        id: StoryId::new(outcome_number),
+        id: StoryId::new(outcome_id),
         new_state: crate::product_management::story::StoryState::Retired,
     })
-    .map_err(|e| format!("#{outcome_number} retire state-transition failed: {e}"))?;
+    .map_err(|e| format!("#{outcome_id} retire state-transition failed: {e}"))?;
     r.mutate_sync(BoardEvent::StoryClosed {
         meta: meta(),
-        id: StoryId::new(outcome_number),
+        id: StoryId::new(outcome_id),
         reason: Some(format!("retired: {reason}")),
     })
-    .map_err(|e| format!("#{outcome_number} retire enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{outcome_id} retire enqueue failed: {e}"))?;
     if !outcome.is_retired() {
         r.mutate_sync(BoardEvent::TagAdded {
             meta: meta(),
-            id: StoryId::new(outcome_number),
+            id: StoryId::new(outcome_id),
             label: "retired".to_string(),
         })
-        .map_err(|e| format!("#{outcome_number} retire-tag enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{outcome_id} retire-tag enqueue failed: {e}"))?;
     }
 
     let orphaned = outcome.iterations.len();
@@ -56,7 +56,7 @@ pub(crate) async fn handle_retire_outcome(
         n => format!(" — {n} iteration(s) now unmapped (re-home: outcome add ...)"),
     };
     Ok(format!(
-        "#{outcome_number} {} retired (reason: {reason}){mapping_note}; it no longer appears in bpmux roadmap",
+        "#{outcome_id} {} retired (reason: {reason}){mapping_note}; it no longer appears in bpmux roadmap",
         outcome.content.title
     ))
 }

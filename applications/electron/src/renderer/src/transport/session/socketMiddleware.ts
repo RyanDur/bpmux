@@ -167,36 +167,36 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
       case SessionActionType.OutcomeHorizonChangeRequested:
         send({
           type: 'set_outcome_horizon',
-          outcome_number: action.outcomeNumber,
+          outcome_id: action.outcomeId,
           horizon: action.horizon
         })
         return
       case SessionActionType.OutcomeIterationReorderRequested:
         send({
           type: 'reorder_outcome_iteration',
-          outcome_number: action.outcomeNumber,
-          iteration_number: action.iterationNumber,
+          outcome_id: action.outcomeId,
+          iteration_id: action.iterationId,
           position: action.position
         })
         return
       case SessionActionType.OutcomeReprioritizeRequested:
         send({
           type: 'reprioritize_outcome',
-          outcome_number: action.outcomeNumber,
+          outcome_id: action.outcomeId,
           position: action.position
         })
         return
       case SessionActionType.IterationReorderRequested:
         send({
           type: 'reorder_iteration',
-          iteration_number: action.iterationNumber,
+          iteration_id: action.iterationId,
           position: action.position
         })
         return
       case SessionActionType.AddStoryToIterationRequested:
         send({
           type: 'add_story_to_iteration',
-          iteration_number: action.iterationNumber,
+          iteration_id: action.iterationId,
           story_id: action.storyId,
           position: action.position
         })

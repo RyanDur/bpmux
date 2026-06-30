@@ -2,8 +2,7 @@ import { describe, expect, test, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardReorder } from './useBoardReorder'
 import { parentIterationLabel, parseParentIterationLabel } from './labelSchema'
-import { asStoryId, type Story, type IterationMembership } from './types'
-
+import { type Story, type IterationMembership } from './types'
 const { postStoryLabelsMock } = vi.hoisted(() => ({
   postStoryLabelsMock: vi.fn(
     (_ctx: unknown, _storyNumber: number, _mutation: { add: string[]; remove: string[] }) => ({
@@ -19,7 +18,7 @@ vi.mock('../api/labelsClient', () => ({
 const ITER = 9000
 
 const iterationStory = (): Story => ({
-  id: asStoryId(ITER),
+  id: ITER,
   title: 'Iteration Current',
   state: 'icebox',
   gh_state: 'open',
@@ -31,11 +30,11 @@ const iterationStory = (): Story => ({
 })
 
 const story = (id: number, position: number): Story => ({
-  id: asStoryId(id),
+  id: id,
   title: `s${id}`,
   state: 'ready',
   labels: ['Feature', 'ready'],
-  iteration_membership: { iteration_number: ITER, position },
+  iteration_membership: { iteration_id: ITER, position },
   assignees: [],
   created_at: '2026-05-10T00:00:00Z',
   body: ''
@@ -115,7 +114,7 @@ describe('#1524 useBoardReorder — ready-queue reorders on the shared canonical
     ])
     run(701, 703)
     const moved = membershipOf(701)
-    expect(moved?.iteration_number).toBe(ITER)
+    expect(moved?.iteration_id).toBe(ITER)
     expect(moved?.position).toBeGreaterThan(300)
   })
 

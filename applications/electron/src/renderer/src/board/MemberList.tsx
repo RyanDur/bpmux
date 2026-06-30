@@ -4,7 +4,7 @@ import { SortableList } from './SortableList'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyNavigateLabel } from './storyNavigateLabel'
-import { GROUP_ORDER, asStoryId, columnFor, storyTypeFromLabels, type Story } from './types'
+import { GROUP_ORDER, columnFor, storyTypeFromLabels, type Story } from './types'
 import { type DragPayload } from './iterationMembers'
 import { ITERATION_MEMBER_DRAG } from './sortableDragConfigs'
 import { useDispatch } from '../transport/useDispatch'
@@ -26,7 +26,7 @@ const activeStateLabel = (story: Story): string | null => {
 interface Props {
   iteration: BoardIterationData
   members: IterationMember[]
-  setPending: (storyNumber: number, iterationNumber: number, position: number) => void
+  setPending: (storyId: number, iterationId: number, position: number) => void
   onOpen: (n: number) => void
   onReorderAnnounce?: (text: string) => void
 }
@@ -47,7 +47,7 @@ const MemberList = ({
       config={ITERATION_MEMBER_DRAG}
       buildPayload={(m) => ({
         storyNumber: m.story.id,
-        iterationNumber: iteration.number,
+        iterationId: iteration.id,
         oldPosition: m.position
       })}
       disabled={iteration.complete}
@@ -55,10 +55,8 @@ const MemberList = ({
         const originalIdx = members.findIndex((m) => m.story.id === targetKey)
         if (originalIdx === -1) return
         const position = originalIdx + 1
-        dispatch(
-          addStoryToIterationRequested(iteration.number, asStoryId(payload.storyNumber), position)
-        )
-        setPending(payload.storyNumber, iteration.number, position)
+        dispatch(addStoryToIterationRequested(iteration.id, payload.storyNumber, position))
+        setPending(payload.storyNumber, iteration.id, position)
       }}
       ulClassName="board-iteration-body"
       renderRow={({ story }, { rowDragProps, gripDragProps, dragging }) => (
@@ -95,8 +93,8 @@ const MemberList = ({
               }
               const targetMemberIndex = direction === 'up' ? originalIdx - 1 : originalIdx + 1
               const newPosition = targetMemberIndex + 1
-              dispatch(addStoryToIterationRequested(iteration.number, story.id, newPosition))
-              setPending(story.id, iteration.number, newPosition)
+              dispatch(addStoryToIterationRequested(iteration.id, story.id, newPosition))
+              setPending(story.id, iteration.id, newPosition)
               onReorderAnnounce?.(
                 `Moved ${story.title} to position ${newPosition} of ${members.length} in ${iteration.title}`
               )

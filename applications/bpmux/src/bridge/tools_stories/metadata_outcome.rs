@@ -12,10 +12,10 @@ pub(crate) async fn handle_reprioritize_outcome(
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "reprioritize an outcome")?;
-    let outcome_number = args
-        .get("outcome_number")
+    let outcome_id = args
+        .get("outcome_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'outcome_number' argument")?;
+        .ok_or("missing 'outcome_id' argument")?;
     let to_raw = args.get("to").and_then(serde_json::Value::as_str);
     let position = args
         .get("position")
@@ -35,12 +35,12 @@ pub(crate) async fn handle_reprioritize_outcome(
         .transpose()?;
 
     let r = refresh.ok_or("reprioritize_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
+    let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
 
     let target_band = match requested_band {
         Some(band) => band,
         None => outcome.horizon().ok_or_else(|| {
-            format!("#{outcome_number} has no band yet; pass --to <now|next|later> to set one")
+            format!("#{outcome_id} has no band yet; pass --to <now|next|later> to set one")
         })?,
     };
 
@@ -57,19 +57,19 @@ pub(crate) async fn handle_reprioritize_outcome(
     }
 
     let position_note = match position {
-        Some(p) => reorder_within_band(r, &codec, &meta, outcome_number, target_band, p)?,
+        Some(p) => reorder_within_band(r, &codec, &meta, outcome_id, target_band, p)?,
         None => String::new(),
     };
 
     if !band_changed && position.is_none() {
         return Ok(format!(
-            "#{outcome_number} {} → {} (unchanged)",
+            "#{outcome_id} {} → {} (unchanged)",
             outcome.content.title,
             target_band.band_label()
         ));
     }
     Ok(format!(
-        "#{outcome_number} {} → {}{position_note}",
+        "#{outcome_id} {} → {}{position_note}",
         outcome.content.title,
         target_band.band_label()
     ))
@@ -114,7 +114,7 @@ fn reorder_within_band(
     r: &Arc<dyn RefreshDriver>,
     codec: &GhLabelCodec,
     meta: &impl Fn() -> EventMeta,
-    outcome_number: u64,
+    outcome_id: u64,
     band: Horizon,
     requested_position: u32,
 ) -> Result<String, String> {
@@ -140,10 +140,10 @@ fn reorder_within_band(
     let mut sequence: Vec<u64> = ordered
         .iter()
         .filter_map(|outcome| outcome.id().saved_id().map(|id| id.value()))
-        .filter(|n| *n != outcome_number)
+        .filter(|n| *n != outcome_id)
         .collect();
     let insert_index = (clamped as usize - 1).min(sequence.len());
-    sequence.insert(insert_index, outcome_number);
+    sequence.insert(insert_index, outcome_id);
 
     for (index, number) in sequence.iter().enumerate() {
         let new_position = (index + 1) as u32;

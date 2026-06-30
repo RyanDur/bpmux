@@ -1,4 +1,5 @@
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use crate::product_management::epic::EpicId;
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_set_parent_epic(
@@ -11,20 +12,20 @@ pub(crate) async fn handle_set_parent_epic(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let epic_number = args
-        .get("epic_number")
+    let epic_id = args
+        .get("epic_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'epic_number' argument")?;
-    if number == epic_number {
+        .ok_or("missing 'epic_id' argument")?;
+    if number == epic_id {
         return Err(format!("story #{number} cannot be its own parent epic"));
     }
     let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, number).await?;
-    let parent = ensure_story_in_canonical_store(r, epic_number).await?;
+    let parent = ensure_story_in_canonical_store(r, epic_id).await?;
     let story_type = parent.story_type();
     if story_type != crate::product_management::story::StoryType::Epic {
         return Err(format!(
-            "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
+            "story #{epic_id} is not an Epic (story_type={:?}); only Epic stories can be parents",
             story_type
         ));
     }
@@ -37,11 +38,11 @@ pub(crate) async fn handle_set_parent_epic(
         crate::product_management::board::BoardEvent::ParentEpicSet {
             meta,
             id: StoryId::new(number),
-            epic_number,
+            epic_id: EpicId::new(epic_id),
         },
     )
     .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
-    Ok(format!("#{number} grouped under epic #{epic_number}"))
+    Ok(format!("#{number} grouped under epic #{epic_id}"))
 }
 
 pub(crate) async fn handle_unset_parent_epic(

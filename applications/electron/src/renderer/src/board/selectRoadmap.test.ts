@@ -7,9 +7,8 @@ import {
   type RoadmapOutcomeData
 } from './selectRoadmap'
 import type { Horizon, OutcomeReadiness } from './types'
-
 const outcome = (overrides: Partial<RoadmapOutcomeData>): RoadmapOutcomeData => ({
-  number: 1,
+  id: 1,
   title: 'An outcome',
   body: '',
   horizon: 'now',
@@ -32,9 +31,9 @@ const readiness = (over: Partial<OutcomeReadiness>): OutcomeReadiness => ({
 describe('selectRoadmap — outcomes grouped by horizon', () => {
   it('groups outcomes into Now/Next/Later bands in that fixed order', () => {
     const bands = bandsOf(
-      outcome({ number: 3, title: 'Later thing', horizon: 'later' }),
-      outcome({ number: 1, title: 'Now thing', horizon: 'now' }),
-      outcome({ number: 2, title: 'Next thing', horizon: 'next' })
+      outcome({ id: 3, title: 'Later thing', horizon: 'later' }),
+      outcome({ id: 1, title: 'Now thing', horizon: 'now' }),
+      outcome({ id: 2, title: 'Next thing', horizon: 'next' })
     )
     expect(bands.map((b) => b.horizon)).toEqual<Horizon[]>(['now', 'next', 'later'])
     expect(bands.map((b) => b.label)).toEqual(['Now', 'Next', 'Later'])
@@ -42,22 +41,22 @@ describe('selectRoadmap — outcomes grouped by horizon', () => {
   })
 
   it('omits a horizon band that has no outcomes (compact-curated, not empty headers)', () => {
-    expect(bandsOf(outcome({ number: 1, horizon: 'now' })).map((b) => b.horizon)).toEqual<
-      Horizon[]
-    >(['now'])
+    expect(bandsOf(outcome({ id: 1, horizon: 'now' })).map((b) => b.horizon)).toEqual<Horizon[]>([
+      'now'
+    ])
   })
 
   it('orders outcomes within a band deterministically by issue-number', () => {
     const bands = bandsOf(
-      outcome({ number: 9, title: 'nine', horizon: 'now' }),
-      outcome({ number: 4, title: 'four', horizon: 'now' })
+      outcome({ id: 9, title: 'nine', horizon: 'now' }),
+      outcome({ id: 4, title: 'four', horizon: 'now' })
     )
-    expect(bands[0].outcomes.map((o) => o.number)).toEqual([4, 9])
+    expect(bands[0].outcomes.map((o) => o.id)).toEqual([4, 9])
   })
 
   it('renders the plain outcome name — never substrate-jargon', () => {
     const bands = bandsOf(
-      outcome({ number: 42, title: 'The team runs on its own infra', horizon: 'now' })
+      outcome({ id: 42, title: 'The team runs on its own infra', horizon: 'now' })
     )
     expect(bands[0].outcomes[0].name).toBe('The team runs on its own infra')
   })
@@ -68,16 +67,16 @@ describe('selectRoadmap — outcomes grouped by horizon', () => {
 
   it('orders outcomes within a band by horizon_order, then number', () => {
     const [band] = bandsOf(
-      outcome({ number: 10, title: 'second', horizon: 'now', horizon_order: 2 }),
-      outcome({ number: 20, title: 'first', horizon: 'now', horizon_order: 1 })
+      outcome({ id: 10, title: 'second', horizon: 'now', horizon_order: 2 }),
+      outcome({ id: 20, title: 'first', horizon: 'now', horizon_order: 1 })
     )
     expect(band.outcomes.map((o) => o.name)).toEqual(['first', 'second'])
   })
 
   it('sinks an outcome with no horizon_order below ordered peers, ties broken by number', () => {
     const [band] = bandsOf(
-      outcome({ number: 5, title: 'unordered', horizon: 'now', horizon_order: null }),
-      outcome({ number: 9, title: 'ordered', horizon: 'now', horizon_order: 1 })
+      outcome({ id: 5, title: 'unordered', horizon: 'now', horizon_order: null }),
+      outcome({ id: 9, title: 'ordered', horizon: 'now', horizon_order: 1 })
     )
     expect(band.outcomes.map((o) => o.name)).toEqual(['ordered', 'unordered'])
   })

@@ -2,17 +2,16 @@ import { describe, expect, test } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { usePendingReadyOrder } from './usePendingReadyOrder'
 import { useBoardData } from './useBoardData'
-import { asStoryId, type Story, type ColumnState } from './types'
-
+import { type Story, type ColumnState } from './types'
 const readyStory = (id: number, position: number): Story => ({
-  id: asStoryId(id),
+  id: id,
   title: `story-${id}`,
   state: 'ready',
   labels: ['ready', `parent-iteration-#1655.${position}`],
   assignees: [],
   created_at: '2026-06-07T00:00:00Z',
   body: '',
-  iteration_membership: { iteration_number: 1655, position }
+  iteration_membership: { iteration_id: 1655, position }
 })
 
 const board = (stories: Story[]): Story[] => stories

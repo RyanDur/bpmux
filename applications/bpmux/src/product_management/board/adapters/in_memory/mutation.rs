@@ -116,9 +116,7 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                 story.body = Some(body.clone());
             }
         }
-        BoardEvent::ParentEpicSet {
-            id, epic_number, ..
-        } => {
+        BoardEvent::ParentEpicSet { id, epic_id, .. } => {
             use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
             use crate::product_management::board::label_codec::LabelCodec;
             if let Some(story) = s.stories.get_mut(&id.value()) {
@@ -127,7 +125,7 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                     .retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
                 story
                     .raw_labels
-                    .push(GhLabelCodec.encode_parent_epic(*epic_number));
+                    .push(GhLabelCodec.encode_parent_epic(epic_id.value()));
             }
         }
         BoardEvent::ParentEpicUnset { id, .. } => {
@@ -140,7 +138,7 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
         }
         BoardEvent::IterationMembershipSet {
             id,
-            iteration_number,
+            iteration_id,
             position,
             ..
         } => {
@@ -151,7 +149,7 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                     .retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
                 story
                     .raw_labels
-                    .push(GhLabelCodec.encode_parent_iteration(*iteration_number, *position));
+                    .push(GhLabelCodec.encode_parent_iteration(iteration_id.value(), *position));
             }
         }
         BoardEvent::IterationMembershipCleared { id, .. } => {

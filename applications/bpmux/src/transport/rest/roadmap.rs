@@ -50,7 +50,7 @@ pub async fn get_roadmap(
             let outcome_name = outcome.map(|outcome| outcome.content.title.clone());
             serde_json::json!({
                 "drill": drill,
-                "outcome_number": number,
+                "outcome_id": number,
                 "outcome_name": outcome_name,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),
             })

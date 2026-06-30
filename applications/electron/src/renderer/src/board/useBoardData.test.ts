@@ -1,12 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardData } from './useBoardData'
-import { asStoryId, type Story } from './types'
-
+import { type Story } from './types'
 const ITER = 9000
 
 const iterationStory = (): Story => ({
-  id: asStoryId(ITER),
+  id: ITER,
   title: 'Iteration Current',
   state: 'icebox',
   gh_state: 'open',
@@ -18,11 +17,11 @@ const iterationStory = (): Story => ({
 })
 
 const ready = (id: number, position: number): Story => ({
-  id: asStoryId(id),
+  id: id,
   title: `s${id}`,
   state: 'ready',
   labels: ['Feature', 'ready'],
-  iteration_membership: { iteration_number: ITER, position },
+  iteration_membership: { iteration_id: ITER, position },
   assignees: [],
   created_at: '2026-05-10T00:00:00Z',
   body: ''

@@ -1,13 +1,12 @@
-import type { IterationReadiness, StoryId } from './types'
-
+import type { IterationReadiness } from './types'
 export interface BoardIterationData {
-  number: number
+  id: number
   title: string
   iteration_order: number | null
   is_current: boolean
   complete: boolean
   readiness: IterationReadiness
-  stories: StoryId[]
+  stories: number[]
 }
 
 export interface IterationsState {
@@ -18,4 +17,4 @@ const orderOf = (iteration: BoardIterationData): number =>
   iteration.iteration_order ?? Number.MAX_SAFE_INTEGER
 
 export const selectIterations = (state: IterationsState): BoardIterationData[] =>
-  [...state.iterations].sort((a, b) => orderOf(a) - orderOf(b) || a.number - b.number)
+  [...state.iterations].sort((a, b) => orderOf(a) - orderOf(b) || a.id - b.id)

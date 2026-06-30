@@ -1,30 +1,29 @@
 import { parseUnscheduledPosition } from './labelSchema'
 import { storyTypeFromLabels, type Story, type IterationMembership } from './types'
-
 export interface DragPayload {
   storyNumber: number
-  iterationNumber: number
+  iterationId: number
   oldPosition: number
 }
 
 export interface IterationDragPayload {
-  iterationNumber: number
+  iterationId: number
 }
 
 export interface PendingMemberPosition {
-  iterationNumber: number
+  iterationId: number
   position: number
 }
 
 export type MembershipIndex = Map<number, IterationMembership>
 
 export const buildMembershipIndex = (
-  iterations: { number: number; stories: number[] }[]
+  iterations: { id: number; stories: number[] }[]
 ): MembershipIndex => {
   const index: MembershipIndex = new Map()
   for (const iteration of iterations) {
-    iteration.stories.forEach((storyNumber, i) => {
-      index.set(storyNumber, { iteration_number: iteration.number, position: i + 1 })
+    iteration.stories.forEach((storyId, i) => {
+      index.set(storyId, { iteration_id: iteration.id, position: i + 1 })
     })
   }
   return index
@@ -35,11 +34,11 @@ export const isIterationStory = (story: Story): boolean =>
 
 export const positionInParentIteration = (
   index: MembershipIndex,
-  storyNumber: number,
-  iterationNumber: number
+  storyId: number,
+  iterationId: number
 ): number | null => {
-  const membership = index.get(storyNumber)
-  if (membership && membership.iteration_number === iterationNumber) {
+  const membership = index.get(storyId)
+  if (membership && membership.iteration_id === iterationId) {
     return membership.position
   }
   return null

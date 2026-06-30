@@ -5,8 +5,6 @@ import {
   useTimelineEvents
 } from '../transport/session'
 import type { TimelineEventWire } from '../transport/types'
-import { asStoryId, type StoryId } from '../board/types'
-
 export type TimelineEvent = TimelineEventWire
 
 export const TIMELINE_GATE = {
@@ -30,7 +28,7 @@ export interface ClassifiedEvent {
 
 interface UseTimelineArgs {
   apiBase: string | undefined
-  storyId: StoryId | null
+  storyId: number | null
 }
 
 export interface UseTimelineResult {
@@ -90,7 +88,7 @@ const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
 export const useTimeline = ({ apiBase, storyId }: UseTimelineArgs): UseTimelineResult => {
   const boardInvalidateTick = useBoardInvalidateTick()
   const offline = apiBase === undefined
-  const rawEvents = useTimelineEvents(storyId ?? asStoryId(-1))
+  const rawEvents = useTimelineEvents(storyId ?? -1)
 
   const events = useMemo<ClassifiedEvent[] | null>(() => {
     if (offline) return []

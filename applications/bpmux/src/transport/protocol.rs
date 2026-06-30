@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::message::Message;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -61,25 +63,28 @@ pub enum ClientMessage {
     },
     #[serde(rename = "set_outcome_horizon")]
     SetOutcomeHorizon {
-        outcome_number: u64,
+        outcome_id: OutcomeId,
         horizon: String,
     },
     #[serde(rename = "reorder_outcome_iteration")]
     ReorderOutcomeIteration {
-        outcome_number: u64,
-        iteration_number: u64,
+        outcome_id: OutcomeId,
+        iteration_id: IterationId,
         position: u32,
     },
     #[serde(rename = "reprioritize_outcome")]
-    ReprioritizeOutcome { outcome_number: u64, position: u32 },
+    ReprioritizeOutcome {
+        outcome_id: OutcomeId,
+        position: u32,
+    },
     #[serde(rename = "reorder_iteration")]
     ReorderIteration {
-        iteration_number: u64,
+        iteration_id: IterationId,
         position: u32,
     },
     #[serde(rename = "add_story_to_iteration")]
     AddStoryToIteration {
-        iteration_number: u64,
+        iteration_id: IterationId,
         story_id: u64,
         position: u32,
     },

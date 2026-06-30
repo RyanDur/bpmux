@@ -6,19 +6,22 @@ use crate::product_management::board::adapters::github::{
     outcome_membership_from_labels,
 };
 use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::epic::EpicId;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{
     Story, Tag, most_recent_backward_transition, replay_transitions,
 };
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IterationMembershipView {
-    pub iteration_number: u64,
+    pub iteration_id: IterationId,
     pub position: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct OutcomeMembershipView {
-    pub outcome_number: u64,
+    pub outcome_id: OutcomeId,
     pub position: u32,
 }
 
@@ -29,7 +32,7 @@ pub struct StoryView {
     pub state: &'static str,
     pub gh_state: &'static str,
     pub labels: Vec<String>,
-    pub parent_epic: Option<u64>,
+    pub parent_epic: Option<EpicId>,
     pub iteration_membership: Option<IterationMembershipView>,
     pub outcome_membership: Option<OutcomeMembershipView>,
     pub iteration_order: Option<u32>,
@@ -53,15 +56,15 @@ impl StoryView {
             gh_state: if story.is_closed { "closed" } else { "open" },
             labels: wire_labels(codec, story),
             parent_epic: story.parent_epic(),
-            iteration_membership: story.iteration_membership().map(
-                |(iteration_number, position)| IterationMembershipView {
-                    iteration_number,
+            iteration_membership: story
+                .iteration_membership()
+                .map(|(iteration_id, position)| IterationMembershipView {
+                    iteration_id,
                     position,
-                },
-            ),
+                }),
             outcome_membership: outcome_membership_from_labels(story.raw_labels()).map(
                 |(outcome_number, position)| OutcomeMembershipView {
-                    outcome_number,
+                    outcome_id: OutcomeId::new(outcome_number),
                     position,
                 },
             ),
@@ -93,7 +96,7 @@ fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
         }
     }
     if let Some(epic) = story.parent_epic() {
-        labels.push(codec.encode_parent_epic(epic));
+        labels.push(codec.encode_parent_epic(epic.value()));
     }
     if let Some(position) = story.ready_order() {
         labels.push(codec.encode_ready_order(position));

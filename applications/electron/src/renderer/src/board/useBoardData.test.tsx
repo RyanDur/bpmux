@@ -2,10 +2,9 @@ import { describe, expect, test } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardData } from './useBoardData'
 import type { BoardIterationData } from './selectIterations'
-import { asStoryId, type Story, type StoryId } from './types'
-
+import { type Story } from './types'
 const story = (overrides: Partial<Story>): Story => ({
-  id: asStoryId(0),
+  id: 0,
   title: 'story',
   state: 'icebox',
   labels: [],
@@ -15,7 +14,7 @@ const story = (overrides: Partial<Story>): Story => ({
   ...overrides
 })
 
-const iteration = (number: number, stories: StoryId[]): BoardIterationData => ({
+const iteration = (number: number, stories: number[]): BoardIterationData => ({
   number,
   title: `Iteration ${number}`,
   iteration_order: null,
@@ -25,21 +24,21 @@ const iteration = (number: number, stories: StoryId[]): BoardIterationData => ({
   stories
 })
 
-const containerNumbers = (stories: Story[], iterations: BoardIterationData[] = []): StoryId[] => {
+const containerNumbers = (stories: Story[], iterations: BoardIterationData[] = []): number[] => {
   const { result } = renderHook(() => useBoardData(stories, iterations))
   return result.current.iterationContainerStories.map((s) => s.id)
 }
 
 describe('#1547 facet 1 — iterationContainerStories gates on membership, not workflow-state', () => {
   test('a canonical member promoted to ready stays in the iteration container (empty-Crux fix)', () => {
-    const member = story({ id: asStoryId(1547), state: 'ready', labels: ['ready', 'bug'] })
-    expect(containerNumbers([member], [iteration(1543, [asStoryId(1547)])])).toContain(1547)
+    const member = story({ id: 1547, state: 'ready', labels: ['ready', 'bug'] })
+    expect(containerNumbers([member], [iteration(1543, [1547])])).toContain(1547)
   })
 
   test('a canonical member is included in every active workflow-state', () => {
     const states = ['ready', 'in-progress', 'desk-check', 'delivered'] as const
     const members = states.map((state, i) =>
-      story({ id: asStoryId(2000 + i), state, labels: [state, 'feature'] })
+      story({ id: 2000 + i, state, labels: [state, 'feature'] })
     )
     const iter = iteration(
       1543,
@@ -50,12 +49,12 @@ describe('#1547 facet 1 — iterationContainerStories gates on membership, not w
   })
 
   test('a loose icebox story (no membership) still appears in the container', () => {
-    const loose = story({ id: asStoryId(900), state: 'icebox', labels: ['chore'] })
+    const loose = story({ id: 900, state: 'icebox', labels: ['chore'] })
     expect(containerNumbers([loose])).toContain(900)
   })
 
   test('a ready story that is neither an iteration nor a member is NOT in the container', () => {
-    const looseReady = story({ id: asStoryId(901), state: 'ready', labels: ['ready', 'chore'] })
+    const looseReady = story({ id: 901, state: 'ready', labels: ['ready', 'chore'] })
     expect(containerNumbers([looseReady])).not.toContain(901)
   })
 })

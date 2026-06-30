@@ -35,16 +35,16 @@ pub(super) async fn apply_push_event(
         BoardEvent::TagRemoved { id, label, .. } => {
             push_tag_removed(inner, id.value(), label).await
         }
-        BoardEvent::ParentEpicSet {
-            id, epic_number, ..
-        } => push_parent_epic_set(inner, id.value(), *epic_number).await,
+        BoardEvent::ParentEpicSet { id, epic_id, .. } => {
+            push_parent_epic_set(inner, id.value(), *epic_id).await
+        }
         BoardEvent::ParentEpicUnset { id, .. } => push_parent_epic_unset(inner, id.value()).await,
         BoardEvent::IterationMembershipSet {
             id,
-            iteration_number,
+            iteration_id,
             position,
             ..
-        } => push_iteration_membership_set(inner, id.value(), *iteration_number, *position).await,
+        } => push_iteration_membership_set(inner, id.value(), *iteration_id, *position).await,
         BoardEvent::IterationMembershipCleared { id, .. } => {
             push_iteration_membership_cleared(inner, id.value()).await
         }

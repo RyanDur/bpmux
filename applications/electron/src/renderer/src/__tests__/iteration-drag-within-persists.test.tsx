@@ -68,9 +68,9 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const iterBody = (await iterRes.json()) as {
-          iterations: { number: number; stories: number[] }[]
+          iterations: { id: number; stories: number[] }[]
         }
-        const pegasus = iterBody.iterations.find((i) => i.number === 7601)
+        const pegasus = iterBody.iterations.find((i) => i.id === 7601)
         expect(pegasus?.stories).toEqual([7613, 7611, 7612])
       },
       { timeout: 10_000, interval: 200 }

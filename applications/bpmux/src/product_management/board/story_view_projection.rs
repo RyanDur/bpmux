@@ -2,6 +2,8 @@
 
 use super::view_model::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 
@@ -37,12 +39,12 @@ fn project_marks_a_closed_story_gh_state_closed() {
 fn project_translates_iteration_membership_into_a_typed_subview() {
     let mut s = story(10, "member", StoryState::Ready);
     s.raw_labels.push("parent-iteration-#200.150".to_string());
-    s.iteration_membership = Some((200, 150));
+    s.iteration_membership = Some((IterationId::new(200), 150));
     let view = StoryView::project(&GhLabelCodec, &s);
     let m = view
         .iteration_membership
         .expect("iteration membership present");
-    assert_eq!(m.iteration_number, 200);
+    assert_eq!(m.iteration_id, IterationId::new(200));
     assert_eq!(m.position, 150);
 }
 
@@ -52,7 +54,7 @@ fn project_translates_outcome_membership_into_a_typed_subview() {
     s.raw_labels.push("parent-outcome-#700.2".to_string());
     let view = StoryView::project(&GhLabelCodec, &s);
     let m = view.outcome_membership.expect("outcome membership present");
-    assert_eq!(m.outcome_number, 700);
+    assert_eq!(m.outcome_id, OutcomeId::new(700));
     assert_eq!(m.position, 2);
 }
 

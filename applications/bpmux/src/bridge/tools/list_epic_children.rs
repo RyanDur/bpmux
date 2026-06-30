@@ -1,34 +1,35 @@
 use std::sync::Arc;
 
 use crate::product_management::board::BoardStore;
+use crate::product_management::epic::EpicId;
 use crate::product_management::story::{Story, StoryId, StoryType};
 
 pub(in crate::bridge) async fn handle_list_epic_children(
     args: &serde_json::Map<String, serde_json::Value>,
     store: &Arc<BoardStore>,
 ) -> Result<String, String> {
-    let epic_number = args
-        .get("epic_number")
+    let epic_id = args
+        .get("epic_id")
         .and_then(|v| v.as_u64())
-        .ok_or_else(|| "list_epic_children: epic_number argument required (u64)".to_string())?;
+        .ok_or_else(|| "list_epic_children: epic_id argument required (u64)".to_string())?;
     let epic = store
-        .story(StoryId::new(epic_number))
-        .ok_or_else(|| format!("list_epic_children: epic_number {epic_number} not found"))?;
+        .story(StoryId::new(epic_id))
+        .ok_or_else(|| format!("list_epic_children: epic_id {epic_id} not found"))?;
     let story_type = epic.story_type();
     if !matches!(story_type, StoryType::Epic) {
         return Err(format!(
-            "list_epic_children: #{epic_number} is not an Epic (story_type={:?})",
+            "list_epic_children: #{epic_id} is not an Epic (story_type={:?})",
             story_type
         ));
     }
     let mut children: Vec<Story> = store
         .all_stories()
         .into_iter()
-        .filter(|s| s.parent_epic() == Some(epic_number))
+        .filter(|s| s.parent_epic() == Some(EpicId::new(epic_id)))
         .collect();
     children.sort_by_key(|s| s.id);
     let body = serde_json::json!({
-        "epic_number": epic_number,
+        "epic_id": epic_id,
         "children": children
             .iter()
             .map(|s| serde_json::json!({

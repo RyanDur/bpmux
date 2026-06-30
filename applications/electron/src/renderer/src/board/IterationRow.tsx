@@ -14,8 +14,8 @@ interface Props {
   iteration: BoardIterationData
   collapse: ReturnType<typeof useIterationCollapse>
   currentIterationNumber: number | null
-  getMembersFor: (iterationNumber: number) => IterationMember[]
-  setPending: (storyNumber: number, iterationNumber: number, position: number) => void
+  getMembersFor: (iterationId: number) => IterationMember[]
+  setPending: (storyId: number, iterationId: number, position: number) => void
   onOpen: (n: number) => void
   onReorderAnnounce?: (text: string) => void
   onReorderByKeyboard: (iteration: BoardIterationData, direction: 'up' | 'down') => void
@@ -34,12 +34,12 @@ const IterationRow = ({
   drag
 }: Props): React.JSX.Element => {
   const [dragRejected, setDragRejected] = useState(false)
-  const key = String(iteration.number)
+  const key = String(iteration.id)
   const iterationName = iterationNameFromTitle(iteration.title)
-  const members = getMembersFor(iteration.number)
+  const members = getMembersFor(iteration.id)
   const defaultOpen = !iteration.complete
   const open = collapse.isOpen(key, defaultOpen)
-  const isCurrent = iteration.number === currentIterationNumber
+  const isCurrent = iteration.id === currentIterationNumber
   const draggable = drag !== undefined
 
   const rejectClosedDrop = (event: React.DragEvent<HTMLElement>): void => {
@@ -57,8 +57,8 @@ const IterationRow = ({
       <article className="board-iteration-row" {...(drag ? drag.rowDragProps : {})}>
         <details
           className="board-iteration-card"
-          data-test={boardIterationTestId(iteration.number)}
-          aria-label={`Iteration #${iteration.number} ${iteration.title}`}
+          data-test={boardIterationTestId(iteration.id)}
+          aria-label={`Iteration #${iteration.id} ${iteration.title}`}
           data-iteration-kind="named"
           data-iteration-name={iterationName}
           data-closed={iteration.complete ? 'true' : undefined}
@@ -77,7 +77,7 @@ const IterationRow = ({
             data-test="board-iteration-summary"
           >
             <StoryTypeGlyph type="iteration" />
-            <small className="board-story-number">#{iteration.number}</small>
+            <small className="board-story-number">#{iteration.id}</small>
             <b className="board-iteration-title">{iteration.title}</b>
             {iteration.complete && <small className="board-iteration-closed-badge">(closed)</small>}
             <small className="board-iteration-count">({members.length})</small>
@@ -93,9 +93,9 @@ const IterationRow = ({
             <button
               type="button"
               className="board-iteration-view-details"
-              data-test={`board-iteration-view-details-${iteration.number}`}
-              onClick={() => onOpen(iteration.number)}
-              aria-label={`view iteration details: #${iteration.number} ${iteration.title}`}
+              data-test={`board-iteration-view-details-${iteration.id}`}
+              onClick={() => onOpen(iteration.id)}
+              aria-label={`view iteration details: #${iteration.id} ${iteration.title}`}
             >
               view iteration details →
             </button>
@@ -107,7 +107,7 @@ const IterationRow = ({
             className="board-iteration-grip"
             data-test={ITERATION_GRIP_TEST_ID}
             tabIndex={0}
-            aria-label={`Reorder iteration #${iteration.number} ${iteration.title} — drag, or Ctrl+Shift+Up/Down`}
+            aria-label={`Reorder iteration #${iteration.id} ${iteration.title} — drag, or Ctrl+Shift+Up/Down`}
             aria-keyshortcuts="Control+Shift+ArrowUp Control+Shift+ArrowDown"
             {...drag.gripDragProps}
             onKeyDown={(event) => {

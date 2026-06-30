@@ -6,6 +6,7 @@ use crate::product_management::board::adapters::relationships::{
     OutcomeRelationships, Relationships,
 };
 use crate::product_management::board::item::Content;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Horizon, Story, StoryKey, StoryState};
 
 entity_id!(OutcomeId);
@@ -26,7 +27,7 @@ pub enum OutcomeLifecycle {
 pub struct Outcome {
     pub content: Content,
     pub lifecycle: OutcomeLifecycle,
-    pub iterations: Vec<u64>,
+    pub iterations: Vec<IterationId>,
 }
 
 impl Outcome {
@@ -62,10 +63,10 @@ impl Outcome {
         self.content.id
     }
 
-    pub fn position_of(&self, iteration_number: u64) -> Option<u32> {
+    pub fn position_of(&self, iteration_id: IterationId) -> Option<u32> {
         self.iterations
             .iter()
-            .position(|n| *n == iteration_number)
+            .position(|n| *n == iteration_id)
             .map(|index| index as u32)
     }
 

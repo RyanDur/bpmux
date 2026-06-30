@@ -30,7 +30,7 @@ fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Sto
 
 fn args_full(outcome: u64, to: Option<&str>, position: Option<u32>) -> Map<String, Value> {
     let mut m = Map::new();
-    m.insert("outcome_number".into(), json!(outcome));
+    m.insert("outcome_id".into(), json!(outcome));
     if let Some(t) = to {
         m.insert("to".into(), json!(t));
     }
@@ -44,7 +44,7 @@ fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
     crate::view::roadmap::roadmap_cards(refresh)
         .into_iter()
         .filter(|c| c.horizon == horizon)
-        .map(|c| c.number)
+        .map(|c| c.id.value())
         .collect()
 }
 
@@ -58,7 +58,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 }
 
 fn args(outcome: u64, to: &str) -> Map<String, Value> {
-    json!({ "outcome_number": outcome, "to": to })
+    json!({ "outcome_id": outcome, "to": to })
         .as_object()
         .cloned()
         .unwrap_or_default()
@@ -105,7 +105,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
     assert!(
         before
             .iter()
-            .any(|c| c.horizon == Horizon::Later && c.number == 700),
+            .any(|c| c.horizon == Horizon::Later && c.id.value() == 700),
         "the outcome reads in the Later band before the move"
     );
 
@@ -117,13 +117,13 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
     assert!(
         after
             .iter()
-            .any(|c| c.horizon == Horizon::Now && c.number == 700),
+            .any(|c| c.horizon == Horizon::Now && c.id.value() == 700),
         "the SAME derive /api/roadmap serves now places the outcome in Now — read<->write loop closed over the real substrate"
     );
     assert!(
         !after
             .iter()
-            .any(|c| c.horizon == Horizon::Later && c.number == 700),
+            .any(|c| c.horizon == Horizon::Later && c.id.value() == 700),
         "the outcome no longer reads in Later — the band genuinely moved, not duplicated"
     );
 }

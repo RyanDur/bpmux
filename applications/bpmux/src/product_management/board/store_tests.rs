@@ -9,6 +9,8 @@ use crate::product_management::board::adapters::github::{
     acceptor_from_labels, iteration_membership_from_labels, parent_epic_from_labels,
     story_type_from_labels_or_title, tags_from_labels,
 };
+use crate::product_management::epic::EpicId;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, Story, StoryId, StoryKind, StoryState, StoryType, Tag,
 };
@@ -110,11 +112,11 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(12),
-        epic_number: 300,
+        epic_id: EpicId::new(300),
     });
     assert_eq!(
         store.story(StoryId::new(12)).unwrap().parent_epic(),
-        Some(300),
+        Some(EpicId::new(300)),
         "the codec decodes the parent-epic label into the stored field on the ParentEpicSet event"
     );
 }
@@ -196,8 +198,8 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                 "awaiting dev".to_string(),
             ],
             acceptor: Some(crate::product_management::story::Acceptor::Dev),
-            parent_epic: Some(7),
-            iteration_membership: Some((1655, 106)),
+            parent_epic: Some(EpicId::new(7)),
+            iteration_membership: Some((IterationId::new(1655), 106)),
             tags: Vec::new(),
             ready_order: None,
         },
@@ -882,7 +884,7 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(100),
-        epic_number: 50,
+        epic_id: EpicId::new(50),
     });
     assert_eq!(
         parent_epic_from_labels(&store.story(StoryId::new(100)).unwrap().raw_labels),
@@ -904,7 +906,7 @@ fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(101),
-        epic_number: 51,
+        epic_id: EpicId::new(51),
     });
     store.apply(&BoardEvent::ParentEpicUnset {
         meta: meta("pm", 2026, "local"),
@@ -922,7 +924,7 @@ fn parent_epic_events_no_op_on_missing_story() {
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(999),
-        epic_number: 888,
+        epic_id: EpicId::new(888),
     });
     store.apply(&BoardEvent::ParentEpicUnset {
         meta: meta("pm", 2026, "local"),

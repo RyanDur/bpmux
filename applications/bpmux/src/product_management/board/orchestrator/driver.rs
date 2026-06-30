@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SyncError};
-use crate::product_management::iteration::Iteration;
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
@@ -62,8 +62,8 @@ pub trait RefreshDriver: Send + Sync {
     fn iterations(&self) -> Vec<Iteration> {
         self.store().iterations()
     }
-    fn iteration(&self, number: u64) -> Option<Iteration> {
-        self.store().iteration(StoryId::new(number))
+    fn iteration(&self, iteration_id: IterationId) -> Option<Iteration> {
+        self.store().iteration(StoryId::new(iteration_id.value()))
     }
     fn store_is_empty(&self) -> bool {
         self.store().is_empty()

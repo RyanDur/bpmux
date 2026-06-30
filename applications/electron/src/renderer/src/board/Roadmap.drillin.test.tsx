@@ -15,7 +15,7 @@ const OUTCOME = 'You see what is coming'
 const seedSingle = (): void =>
   seedOutcomes([
     outcome({
-      number: 1,
+      id: 1,
       title: OUTCOME,
       horizon: 'now',
       iterations: [
@@ -68,13 +68,13 @@ describe('#1737 Roadmap drill-in — focus an outcome → its iterations buildin
   it('focuses one outcome at a time — focusing another collapses the first', async () => {
     seedOutcomes([
       outcome({
-        number: 1,
+        id: 1,
         title: 'first',
         horizon: 'now',
         iterations: [buildingIteration(10, 'Crux', 1, checks(true, false, false, false))]
       }),
       outcome({
-        number: 2,
+        id: 2,
         title: 'second',
         horizon: 'now',
         iterations: [buildingIteration(30, 'Vega', 1, checks(true, false, false, false))]

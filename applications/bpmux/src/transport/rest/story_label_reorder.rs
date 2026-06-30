@@ -4,6 +4,7 @@ use super::labels::{LabelMutationPayload, post_story_labels};
 use crate::product_management::board::adapters::github::iteration_membership_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use crate::session::Session;
 use axum::Json;
@@ -21,11 +22,12 @@ fn membered_member(number: u64, label: &str) -> Story {
         "tester".to_string(),
     );
     story.raw_labels = vec![label.to_string()];
-    story.iteration_membership = iteration_membership_from_labels(&story.raw_labels);
+    story.iteration_membership = iteration_membership_from_labels(&story.raw_labels)
+        .map(|(number, position)| (IterationId::new(number), position));
     story
 }
 
-fn membership(store: &BoardStore, number: u64) -> Option<(u64, u32)> {
+fn membership(store: &BoardStore, number: u64) -> Option<(IterationId, u32)> {
     store
         .story(StoryId::new(number))
         .unwrap()
@@ -89,7 +91,7 @@ async fn reordering_a_member_through_the_label_endpoint_never_transiently_orphan
 
     assert_eq!(
         membership(&store, 1687),
-        Some((1655, 106)),
+        Some((IterationId::new(1655), 106)),
         "after the swap the story is membered at the new position"
     );
 }

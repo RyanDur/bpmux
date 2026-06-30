@@ -3,19 +3,21 @@ use futures::stream::SplitSink;
 
 use super::client::ClientCtx;
 use super::send_json;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::transport::protocol::ServerMessage;
 
 pub(super) async fn handle_set_outcome_horizon(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
     identity: &str,
-    outcome_number: u64,
+    outcome_id: OutcomeId,
     horizon: String,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut args = serde_json::Map::new();
     args.insert(
-        "outcome_number".to_string(),
-        serde_json::json!(outcome_number),
+        "outcome_id".to_string(),
+        serde_json::json!(outcome_id.value()),
     );
     args.insert("to".to_string(), serde_json::json!(horizon));
     if let Err(e) =
@@ -37,18 +39,18 @@ pub(super) async fn handle_reorder_outcome_iteration(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
     identity: &str,
-    outcome_number: u64,
-    iteration_number: u64,
+    outcome_id: OutcomeId,
+    iteration_id: IterationId,
     position: u32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut args = serde_json::Map::new();
     args.insert(
-        "outcome_number".to_string(),
-        serde_json::json!(outcome_number),
+        "outcome_id".to_string(),
+        serde_json::json!(outcome_id.value()),
     );
     args.insert(
-        "iteration_number".to_string(),
-        serde_json::json!(iteration_number),
+        "iteration_id".to_string(),
+        serde_json::json!(iteration_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
     if let Err(e) =
@@ -70,13 +72,13 @@ pub(super) async fn handle_reorder_iteration(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
     identity: &str,
-    iteration_number: u64,
+    iteration_id: IterationId,
     position: u32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut args = serde_json::Map::new();
     args.insert(
-        "iteration_number".to_string(),
-        serde_json::json!(iteration_number),
+        "iteration_id".to_string(),
+        serde_json::json!(iteration_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
     if let Err(e) =
@@ -97,14 +99,14 @@ pub(super) async fn handle_add_story_to_iteration(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
     identity: &str,
-    iteration_number: u64,
+    iteration_id: IterationId,
     story_id: u64,
     position: u32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut args = serde_json::Map::new();
     args.insert(
-        "iteration_number".to_string(),
-        serde_json::json!(iteration_number),
+        "iteration_id".to_string(),
+        serde_json::json!(iteration_id.value()),
     );
     args.insert("story_id".to_string(), serde_json::json!(story_id));
     args.insert("position".to_string(), serde_json::json!(position));
@@ -127,13 +129,13 @@ pub(super) async fn handle_reprioritize_outcome(
     ctx: &ClientCtx<'_>,
     tx: &mut SplitSink<WebSocket, WsMessage>,
     identity: &str,
-    outcome_number: u64,
+    outcome_id: OutcomeId,
     position: u32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut args = serde_json::Map::new();
     args.insert(
-        "outcome_number".to_string(),
-        serde_json::json!(outcome_number),
+        "outcome_id".to_string(),
+        serde_json::json!(outcome_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
     if let Err(e) =

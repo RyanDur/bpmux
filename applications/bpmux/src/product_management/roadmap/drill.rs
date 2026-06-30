@@ -1,9 +1,9 @@
 use serde::Serialize;
 
-use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::readiness::{
     IterationReadiness, building_iterations, iteration_readiness,
 };
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
 use crate::workflow::config::WorkflowConfig;
 
@@ -33,7 +33,7 @@ pub enum DrillIterationState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DrillIteration {
-    pub number: u64,
+    pub id: IterationId,
     pub name: String,
     pub order: u32,
     pub state: DrillIterationState,
@@ -132,7 +132,7 @@ pub fn derive_outcome_drill_in(
                 _ => checks_of(&r),
             };
             DrillIteration {
-                number: it.id().saved_id().map(|id| id.value()).unwrap_or(0),
+                id: IterationId::new(it.id().saved_id().map(|id| id.value()).unwrap_or(0)),
                 name: it.content.title.clone(),
                 order: index as u32 + 1,
                 state,

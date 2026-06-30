@@ -10,8 +10,6 @@ import {
   RENDERER_IDENTITY
 } from '../transport/session'
 import type { CommentWire } from '../transport/types'
-import type { StoryId } from './types'
-
 const OPTIMISTIC_ID_BASE = -1_000_000_000
 
 const mergeComments = (
@@ -24,7 +22,7 @@ const mergeComments = (
 }
 
 interface Props {
-  storyId: StoryId
+  storyId: number
   apiBase: string | undefined
   authToken: string | undefined
   onError: (msg: string) => void

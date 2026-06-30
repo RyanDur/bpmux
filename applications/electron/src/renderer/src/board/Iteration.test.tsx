@@ -7,8 +7,6 @@ import { boardIteration, seedIterations } from './Iteration.fixtures'
 import { resetSessionForTest } from '../transport/session/store'
 import { startSentFrameCapture, stopSentFrameCapture } from '../transport/session/testCapture'
 import type { Story } from './types'
-import { asStoryId } from './types'
-
 afterEach(() => {
   cleanup()
   stopSentFrameCapture()
@@ -34,7 +32,7 @@ const makeDataTransfer = (): DataTransfer => {
 }
 
 const memberStory = (overrides: Partial<Story>): Story => ({
-  id: asStoryId(9100),
+  id: 9100,
   title: 'member',
   state: 'icebox',
   gh_state: 'open',
@@ -50,7 +48,7 @@ const renderIteration = (members: Story[] = []): string =>
 
 describe('#1413 Iteration — renders regardless of member-count or open/closed state', () => {
   test('Scenario 1 (fix-anchor): open + 0 members surfaces in icebox-iterations-list', () => {
-    seedIterations([boardIteration({ number: 9000, title: 'Iteration Lyra' })])
+    seedIterations([boardIteration({ id: 9000, title: 'Iteration Lyra' })])
     const html = renderIteration()
     expect(html).toContain('data-test="board-iteration-9000"')
     expect(html).toContain('Iteration Lyra')
@@ -58,9 +56,7 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
   })
 
   test('Scenario 2 (regression-anchor): closed + 0 members surfaces with closed badge', () => {
-    seedIterations([
-      boardIteration({ number: 9001, title: 'Iteration WalkVerify', complete: true })
-    ])
+    seedIterations([boardIteration({ id: 9001, title: 'Iteration WalkVerify', complete: true })])
     const html = renderIteration()
     expect(html).toContain('data-test="board-iteration-9001"')
     expect(html).toContain('Iteration WalkVerify')
@@ -71,18 +67,18 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
   test('Scenario 3 (regression-anchor): open + N members surfaces with member-count', () => {
     seedIterations([
       boardIteration({
-        number: 9002,
+        id: 9002,
         title: 'Iteration Carina',
-        stories: [asStoryId(9201), asStoryId(9202)]
+        stories: [9201, 9202]
       })
     ])
     const m1 = memberStory({
-      id: asStoryId(9201),
-      iteration_membership: { iteration_number: 9002, position: 100 }
+      id: 9201,
+      iteration_membership: { iteration_id: 9002, position: 100 }
     })
     const m2 = memberStory({
-      id: asStoryId(9202),
-      iteration_membership: { iteration_number: 9002, position: 200 }
+      id: 9202,
+      iteration_membership: { iteration_id: 9002, position: 200 }
     })
     const html = renderIteration([m1, m2])
     expect(html).toContain('data-test="board-iteration-9002"')
@@ -94,15 +90,15 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
   test('Scenario 4 (regression-anchor): closed + N members surfaces with closed badge + count', () => {
     seedIterations([
       boardIteration({
-        number: 9003,
+        id: 9003,
         title: 'Iteration Andromeda',
         complete: true,
-        stories: [asStoryId(9301)]
+        stories: [9301]
       })
     ])
     const m1 = memberStory({
-      id: asStoryId(9301),
-      iteration_membership: { iteration_number: 9003, position: 100 }
+      id: 9301,
+      iteration_membership: { iteration_id: 9003, position: 100 }
     })
     const html = renderIteration([m1])
     expect(html).toContain('data-test="board-iteration-9003"')
@@ -120,18 +116,18 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
   test('Scenario 5 (fix-anchor): canonical-relation members via typed field surface in count', () => {
     seedIterations([
       boardIteration({
-        number: 1464,
+        id: 1464,
         title: 'Iteration Reticulum',
-        stories: [asStoryId(9501), asStoryId(9502)]
+        stories: [9501, 9502]
       })
     ])
     const m1 = memberStory({
-      id: asStoryId(9501),
-      iteration_membership: { iteration_number: 1464, position: 100 }
+      id: 9501,
+      iteration_membership: { iteration_id: 1464, position: 100 }
     })
     const m2 = memberStory({
-      id: asStoryId(9502),
-      iteration_membership: { iteration_number: 1464, position: 200 }
+      id: 9502,
+      iteration_membership: { iteration_id: 1464, position: 200 }
     })
     const html = renderIteration([m1, m2])
     expect(html).toContain('data-test="board-iteration-1464"')
@@ -142,23 +138,23 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
   test('Scenario 6 (regression-anchor): legacy-only member is dropped; only canonical-typed members count', () => {
     seedIterations([
       boardIteration({
-        number: 1491,
+        id: 1491,
         title: 'Iteration Caelum',
-        stories: [asStoryId(9602), asStoryId(9603)]
+        stories: [9602, 9603]
       })
     ])
     const legacyOnly = memberStory({
-      id: asStoryId(9601),
+      id: 9601,
       labels: ['Feature', iterationLabel('Caelum', 100)]
     })
     const canonicalOnly = memberStory({
-      id: asStoryId(9602),
-      iteration_membership: { iteration_number: 1491, position: 200 }
+      id: 9602,
+      iteration_membership: { iteration_id: 1491, position: 200 }
     })
     const both = memberStory({
-      id: asStoryId(9603),
+      id: 9603,
       labels: ['Feature', iterationLabel('Caelum', 300)],
-      iteration_membership: { iteration_number: 1491, position: 300 }
+      iteration_membership: { iteration_id: 1491, position: 300 }
     })
     const html = renderIteration([legacyOnly, canonicalOnly, both])
     expect(html).toContain('data-test="board-iteration-1491"')
@@ -168,12 +164,16 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
 
   test('Scenario 7 (drill-in-axis): canonical-typed members enumerated in member-list', () => {
     seedIterations([
-      boardIteration({ number: 1398, title: 'Iteration Microscopium', stories: [asStoryId(9701)] })
+      boardIteration({
+        id: 1398,
+        title: 'Iteration Microscopium',
+        stories: [9701]
+      })
     ])
     const m1 = memberStory({
-      id: asStoryId(9701),
+      id: 9701,
       title: 'canonical-member-one',
-      iteration_membership: { iteration_number: 1398, position: 100 }
+      iteration_membership: { iteration_id: 1398, position: 100 }
     })
     const html = renderIteration([m1])
     expect(html).toContain('canonical-member-one')
@@ -181,12 +181,16 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
 
   test('Scenario 8 (other-iteration-isolation): membership for iter A does NOT count toward iter B', () => {
     seedIterations([
-      boardIteration({ number: 1464, title: 'Iteration Reticulum', stories: [] }),
-      boardIteration({ number: 1491, title: 'Iteration Caelum', stories: [asStoryId(9801)] })
+      boardIteration({ id: 1464, title: 'Iteration Reticulum', stories: [] }),
+      boardIteration({
+        id: 1491,
+        title: 'Iteration Caelum',
+        stories: [9801]
+      })
     ])
     const memberOfCaelum = memberStory({
-      id: asStoryId(9801),
-      iteration_membership: { iteration_number: 1491, position: 100 }
+      id: 9801,
+      iteration_membership: { iteration_id: 1491, position: 100 }
     })
     const html = renderIteration([memberOfCaelum])
     const reticulumOpenTag =
@@ -205,14 +209,12 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
 
 describe('#1547 facet 1 — member workflow-state is legible in the iteration-view', () => {
   test('a ready member renders a visible state label hooked on data-state', () => {
-    seedIterations([
-      boardIteration({ number: 1543, title: 'Iteration Crux', stories: [asStoryId(1537)] })
-    ])
+    seedIterations([boardIteration({ id: 1543, title: 'Iteration Crux', stories: [1537] })])
     const readyMember = memberStory({
-      id: asStoryId(1537),
+      id: 1537,
       title: 'ready-member',
       state: 'ready',
-      iteration_membership: { iteration_number: 1543, position: 100 }
+      iteration_membership: { iteration_id: 1543, position: 100 }
     })
     const html = renderIteration([readyMember])
     expect(html).toContain('ready-member')
@@ -224,22 +226,22 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
   test('in-progress and desk-check members carry their own legible state labels', () => {
     seedIterations([
       boardIteration({
-        number: 1543,
+        id: 1543,
         title: 'Iteration Crux',
-        stories: [asStoryId(1538), asStoryId(1539)]
+        stories: [1538, 1539]
       })
     ])
     const inProgress = memberStory({
-      id: asStoryId(1538),
+      id: 1538,
       title: 'in-progress-member',
       state: 'in-progress',
-      iteration_membership: { iteration_number: 1543, position: 100 }
+      iteration_membership: { iteration_id: 1543, position: 100 }
     })
     const deskCheck = memberStory({
-      id: asStoryId(1539),
+      id: 1539,
       title: 'desk-check-member',
       state: 'desk-check',
-      iteration_membership: { iteration_number: 1543, position: 200 }
+      iteration_membership: { iteration_id: 1543, position: 200 }
     })
     const html = renderIteration([inProgress, deskCheck])
     expect(html).toContain('data-state="in-progress"')
@@ -249,14 +251,12 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
   })
 
   test('an icebox member stays neutral — no active-state label (icebox is the planned default)', () => {
-    seedIterations([
-      boardIteration({ number: 1543, title: 'Iteration Crux', stories: [asStoryId(1540)] })
-    ])
+    seedIterations([boardIteration({ id: 1543, title: 'Iteration Crux', stories: [1540] })])
     const iceboxMember = memberStory({
-      id: asStoryId(1540),
+      id: 1540,
       title: 'icebox-member',
       state: 'icebox',
-      iteration_membership: { iteration_number: 1543, position: 100 }
+      iteration_membership: { iteration_id: 1543, position: 100 }
     })
     const html = renderIteration([iceboxMember])
     expect(html).toContain('icebox-member')
@@ -267,9 +267,9 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
 describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Closed)', () => {
   test('Scenario 1: renders 2 sub-sections with canonical labels + counts', () => {
     seedIterations([
-      boardIteration({ number: 9001, title: 'Iteration ActiveA' }),
-      boardIteration({ number: 9002, title: 'Iteration ActiveB' }),
-      boardIteration({ number: 9003, title: 'Iteration ClosedA', complete: true })
+      boardIteration({ id: 9001, title: 'Iteration ActiveA' }),
+      boardIteration({ id: 9002, title: 'Iteration ActiveB' }),
+      boardIteration({ id: 9003, title: 'Iteration ClosedA', complete: true })
     ])
     const html = renderIteration()
     expect(html).toContain('data-test="board-iterations-section-active-planned"')
@@ -284,8 +284,8 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
 
   test('Scenario 2: Active+Planned section open by default; Closed collapsed', () => {
     seedIterations([
-      boardIteration({ number: 9001, title: 'Iteration A' }),
-      boardIteration({ number: 9002, title: 'Iteration B', complete: true })
+      boardIteration({ id: 9001, title: 'Iteration A' }),
+      boardIteration({ id: 9002, title: 'Iteration B', complete: true })
     ])
     const html = renderIteration()
     const activeMatch = html.match(
@@ -298,11 +298,11 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
 
   test('Scenario 4: each section count reflects partition counts', () => {
     seedIterations([
-      boardIteration({ number: 9001, title: 'A' }),
-      boardIteration({ number: 9002, title: 'B' }),
-      boardIteration({ number: 9003, title: 'C' }),
-      boardIteration({ number: 9101, title: 'X', complete: true }),
-      boardIteration({ number: 9102, title: 'Y', complete: true })
+      boardIteration({ id: 9001, title: 'A' }),
+      boardIteration({ id: 9002, title: 'B' }),
+      boardIteration({ id: 9003, title: 'C' }),
+      boardIteration({ id: 9101, title: 'X', complete: true }),
+      boardIteration({ id: 9102, title: 'Y', complete: true })
     ])
     const html = renderIteration()
     const activeCountIdx = html.indexOf('board-iterations-section-active-planned-count')
@@ -313,8 +313,8 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
 
   test('#1540: no iteration is anchored when none is designated (honest-empty, no auto-pick)', () => {
     seedIterations([
-      boardIteration({ number: 9001, title: 'Iteration First', iteration_order: 100 }),
-      boardIteration({ number: 9002, title: 'Iteration Second', iteration_order: 200 })
+      boardIteration({ id: 9001, title: 'Iteration First', iteration_order: 100 }),
+      boardIteration({ id: 9002, title: 'Iteration Second', iteration_order: 200 })
     ])
     const html = renderIteration()
     expect(html.match(/data-current-iteration="true"/)).toBeNull()
@@ -323,28 +323,28 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
   test('#1540: the explicitly-designated iteration is anchored regardless of order or in-flight children', () => {
     seedIterations([
       boardIteration({
-        number: 9001,
+        id: 9001,
         title: 'Iteration First',
         iteration_order: 100,
-        stories: [asStoryId(9501)]
+        stories: [9501]
       }),
       boardIteration({
-        number: 9002,
+        id: 9002,
         title: 'Iteration Second',
         iteration_order: 200,
         is_current: true,
-        stories: [asStoryId(9502)]
+        stories: [9502]
       })
     ])
     const firstIceboxChild = memberStory({
-      id: asStoryId(9501),
+      id: 9501,
       state: 'icebox',
-      iteration_membership: { iteration_number: 9001, position: 100 }
+      iteration_membership: { iteration_id: 9001, position: 100 }
     })
     const secondInFlightChild = memberStory({
-      id: asStoryId(9502),
+      id: 9502,
       state: 'in-progress',
-      iteration_membership: { iteration_number: 9002, position: 100 }
+      iteration_membership: { iteration_id: 9002, position: 100 }
     })
     const html = renderIteration([firstIceboxChild, secondInFlightChild])
     expect(
@@ -356,7 +356,7 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
   })
 
   test('Scenario regression: closed iterations omit drag-handle (grip)', () => {
-    seedIterations([boardIteration({ number: 9001, title: 'Iteration ClosedA', complete: true })])
+    seedIterations([boardIteration({ id: 9001, title: 'Iteration ClosedA', complete: true })])
     const html = renderIteration()
     const closedCardChunk = html.slice(html.indexOf('data-test="board-iteration-9001"'))
     expect(closedCardChunk).not.toContain('data-test="iteration-grip"')
@@ -371,12 +371,12 @@ describe('#1517 iteration-row redesign — summary toggle-only + grip-sibling-ri
   }
 
   test('summary is toggle-only — no nested interactive element (grip + navigate moved out)', () => {
-    seedIterations([boardIteration({ number: 9000, title: 'Iteration Lyra' })])
+    seedIterations([boardIteration({ id: 9000, title: 'Iteration Lyra' })])
     expect(summaryOf(renderIteration())).not.toContain('<button')
   })
 
   test('grip is a SIBLING of <details> (outside the summary), within the iteration-row parent', () => {
-    seedIterations([boardIteration({ number: 9000, title: 'Iteration Lyra' })])
+    seedIterations([boardIteration({ id: 9000, title: 'Iteration Lyra' })])
     const html = renderIteration()
     expect(html).toContain('class="board-iteration-row"')
     expect(summaryOf(html)).not.toContain('data-test="iteration-grip"')
@@ -386,14 +386,14 @@ describe('#1517 iteration-row redesign — summary toggle-only + grip-sibling-ri
   })
 
   test('navigate (view iteration details) lives in the body, not the summary', () => {
-    seedIterations([boardIteration({ number: 9000, title: 'Iteration Lyra' })])
+    seedIterations([boardIteration({ id: 9000, title: 'Iteration Lyra' })])
     const html = renderIteration()
     expect(html).toContain('view iteration details')
     expect(summaryOf(html)).not.toContain('view iteration details')
   })
 
   test('grip is a keyboard-operable reorder control (tabindex=0 + aria-keyshortcuts)', () => {
-    seedIterations([boardIteration({ number: 9000, title: 'Iteration Lyra' })])
+    seedIterations([boardIteration({ id: 9000, title: 'Iteration Lyra' })])
     const html = renderIteration()
     const gripIdx = html.indexOf('data-test="iteration-grip"')
     const gripTagStart = html.lastIndexOf('<button', gripIdx)
@@ -406,8 +406,8 @@ describe('#1517 iteration-row redesign — summary toggle-only + grip-sibling-ri
 describe('#1517 iteration-row drag-sort dispatches a reorder over the wire (truth-on-the-wire)', () => {
   test('dropping a dragged iteration onto a sibling sends its new 1-indexed planning position', () => {
     seedIterations([
-      boardIteration({ number: 9001, title: 'Iteration A', iteration_order: 100 }),
-      boardIteration({ number: 9002, title: 'Iteration B', iteration_order: 200 })
+      boardIteration({ id: 9001, title: 'Iteration A', iteration_order: 100 }),
+      boardIteration({ id: 9002, title: 'Iteration B', iteration_order: 200 })
     ])
     render(<Iteration stories={[]} onOpen={() => {}} />)
 
@@ -419,13 +419,13 @@ describe('#1517 iteration-row drag-sort dispatches a reorder over the wire (trut
     fireEvent.dragOver(rows[1] as HTMLElement, { dataTransfer })
     fireEvent.drop(rows[1] as HTMLElement, { dataTransfer })
 
-    expect(sent).toEqual([{ type: 'reorder_iteration', iteration_number: 9001, position: 2 }])
+    expect(sent).toEqual([{ type: 'reorder_iteration', iteration_id: 9001, position: 2 }])
   })
 
   test('an unordered iteration (how create_iteration makes them) still dispatches a position', () => {
     seedIterations([
-      boardIteration({ number: 9001, title: 'Iteration A' }),
-      boardIteration({ number: 9002, title: 'Iteration B' })
+      boardIteration({ id: 9001, title: 'Iteration A' }),
+      boardIteration({ id: 9002, title: 'Iteration B' })
     ])
     render(<Iteration stories={[]} onOpen={() => {}} />)
 
@@ -437,14 +437,14 @@ describe('#1517 iteration-row drag-sort dispatches a reorder over the wire (trut
     fireEvent.dragOver(rows[0] as HTMLElement, { dataTransfer })
     fireEvent.drop(rows[0] as HTMLElement, { dataTransfer })
 
-    expect(sent).toEqual([{ type: 'reorder_iteration', iteration_number: 9002, position: 1 }])
+    expect(sent).toEqual([{ type: 'reorder_iteration', iteration_id: 9002, position: 1 }])
   })
 
   test('closed iterations are not drag sources (no grip) — drag-sort is active-planned only', () => {
     seedIterations([
-      boardIteration({ number: 9003, title: 'Open Iteration', iteration_order: 100 }),
+      boardIteration({ id: 9003, title: 'Open Iteration', iteration_order: 100 }),
       boardIteration({
-        number: 9004,
+        id: 9004,
         title: 'Closed Iteration',
         iteration_order: 200,
         complete: true

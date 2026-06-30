@@ -1,10 +1,8 @@
 import { describe, test, expect } from 'vitest'
 import { deriveBadge } from './StoryBadge.utils'
 import type { Story } from './types'
-import { asStoryId } from './types'
-
 const baseStory = (overrides: Partial<Story> = {}): Story => ({
-  id: asStoryId(100),
+  id: 100,
   title: 'test story',
   state: 'delivered',
   labels: [],

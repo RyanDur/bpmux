@@ -11,6 +11,8 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -29,7 +31,7 @@ fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
-            iterations,
+            iterations: iterations.into_iter().map(IterationId::new).collect(),
         }
         .write_into_body("## Outcome\n"),
     );
@@ -48,7 +50,7 @@ fn iteration_for(number: u64, outcome_number: u64) -> Story {
     s.story_type = StoryType::Iteration;
     s.body = Some(
         IterationRelationships {
-            outcome: Some(outcome_number),
+            outcome: Some(OutcomeId::new(outcome_number)),
             stories: vec![],
         }
         .write_into_body("## composed"),
@@ -66,7 +68,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 }
 
 fn args(outcome: u64, iteration: u64) -> Map<String, Value> {
-    json!({ "outcome_number": outcome, "iteration_number": iteration })
+    json!({ "outcome_id": outcome, "iteration_id": iteration })
         .as_object()
         .cloned()
         .unwrap()
@@ -77,7 +79,7 @@ fn outcome_iterations(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Vec<u64>
         .outcomes()
         .into_iter()
         .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(number)))
-        .map(|outcome| outcome.iterations)
+        .map(|outcome| outcome.iterations.iter().map(|i| i.value()).collect())
         .unwrap_or_default()
 }
 
@@ -97,7 +99,7 @@ fn drill_iteration_numbers(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Vec
     )
     .iterations
     .iter()
-    .map(|it| it.number)
+    .map(|it| it.id.value())
     .collect()
 }
 
@@ -138,7 +140,7 @@ async fn unmap_leaves_the_iteration_itself_untouched_1763() {
         .await
         .expect("pm unmaps");
     let iteration = refresh
-        .iteration(710)
+        .iteration(IterationId::new(710))
         .expect("the iteration itself still exists — unmap removes only the relation");
     assert_eq!(
         iteration.builds_outcome(),
@@ -164,7 +166,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         vec![710, 720],
         "before: 710 leads 720"
     );
-    let reorder = json!({ "outcome_number": 700, "iteration_number": 710, "position": 3 })
+    let reorder = json!({ "outcome_id": 700, "iteration_id": 710, "position": 3 })
         .as_object()
         .cloned()
         .unwrap();

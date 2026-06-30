@@ -1,5 +1,6 @@
 use super::label::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 
@@ -123,7 +124,7 @@ fn seed_with_iteration_membership(number: u64, iteration_number: u64, position: 
     let mut s = seed(number, vec![]);
     s.raw_labels
         .push(format!("parent-iteration-#{iteration_number}.{position}"));
-    s.iteration_membership = Some((iteration_number, position));
+    s.iteration_membership = Some((IterationId::new(iteration_number), position));
     s
 }
 
@@ -133,7 +134,10 @@ fn members_of_iteration_attributes_by_canonical_identity_1553() {
         seed_with_iteration_membership(2001, 1397, 100),
         seed_with_iteration_membership(2002, 1397, 200),
     ];
-    assert_eq!(members_of_iteration(&stories, 1397), vec![2001, 2002]);
+    assert_eq!(
+        members_of_iteration(&stories, IterationId::new(1397)),
+        vec![2001, 2002]
+    );
 }
 
 #[test]
@@ -143,7 +147,7 @@ fn members_of_iteration_no_longer_attributes_legacy_name_label_1553() {
         seed(2002, vec!["iteration-Telescopium.200".to_string()]),
     ];
     assert!(
-        members_of_iteration(&stories, 1397).is_empty(),
+        members_of_iteration(&stories, IterationId::new(1397)).is_empty(),
         "legacy name labels are retired; attribution is identity-only"
     );
 }
@@ -156,7 +160,7 @@ fn members_of_iteration_returns_only_canonical_members_dropping_legacy_only_1553
         seed_with_iteration_membership(2003, 1397, 300),
     ];
     assert_eq!(
-        members_of_iteration(&stories, 1397),
+        members_of_iteration(&stories, IterationId::new(1397)),
         vec![2001, 2003],
         "a legacy-only member drops; only identity-attributed members remain"
     );
@@ -166,9 +170,12 @@ fn members_of_iteration_returns_only_canonical_members_dropping_legacy_only_1553
 fn members_of_iteration_ignores_legacy_label_when_canonical_present_1553() {
     let mut s = seed(2001, vec!["iteration-Telescopium.999".to_string()]);
     s.raw_labels.push("parent-iteration-#1397.100".to_string());
-    s.iteration_membership = Some((1397, 100));
+    s.iteration_membership = Some((IterationId::new(1397), 100));
     let stories = vec![s];
-    assert_eq!(members_of_iteration(&stories, 1397), vec![2001]);
+    assert_eq!(
+        members_of_iteration(&stories, IterationId::new(1397)),
+        vec![2001]
+    );
 }
 
 #[test]
@@ -176,7 +183,10 @@ fn members_of_iteration_skips_closed_stories_1399() {
     let mut closed = seed_with_iteration_membership(2001, 1397, 100);
     closed.is_closed = true;
     let stories = vec![closed, seed_with_iteration_membership(2002, 1397, 200)];
-    assert_eq!(members_of_iteration(&stories, 1397), vec![2002]);
+    assert_eq!(
+        members_of_iteration(&stories, IterationId::new(1397)),
+        vec![2002]
+    );
 }
 
 #[test]
@@ -185,7 +195,10 @@ fn members_of_iteration_does_not_match_different_iteration_number_1399() {
         seed_with_iteration_membership(2001, 1397, 100),
         seed_with_iteration_membership(2002, 1398, 200),
     ];
-    assert_eq!(members_of_iteration(&stories, 1397), vec![2001]);
+    assert_eq!(
+        members_of_iteration(&stories, IterationId::new(1397)),
+        vec![2001]
+    );
 }
 
 #[test]
@@ -195,7 +208,10 @@ fn members_of_iteration_sorts_canonical_members_by_position_ascending_1553() {
         seed_with_iteration_membership(2002, 1397, 100),
         seed_with_iteration_membership(2003, 1397, 200),
     ];
-    assert_eq!(members_of_iteration(&stories, 1397), vec![2002, 2003, 2001]);
+    assert_eq!(
+        members_of_iteration(&stories, IterationId::new(1397)),
+        vec![2002, 2003, 2001]
+    );
 }
 
 #[test]
@@ -203,7 +219,7 @@ fn members_of_iteration_does_not_inherit_legacy_same_named_iteration_1553() {
     let legacy_only = seed(2001, vec!["iteration-Carina.100".to_string()]);
     let stories = vec![legacy_only];
     assert!(
-        members_of_iteration(&stories, 2000).is_empty(),
+        members_of_iteration(&stories, IterationId::new(2000)).is_empty(),
         "a new iteration must not claim a story by a retired same-named iteration's name"
     );
 }
@@ -212,7 +228,7 @@ fn members_of_iteration_does_not_inherit_legacy_same_named_iteration_1553() {
 fn members_of_iteration_attributes_by_identity_across_rename_1553() {
     let stories = vec![seed_with_iteration_membership(2001, 2000, 1)];
     assert_eq!(
-        members_of_iteration(&stories, 2000),
+        members_of_iteration(&stories, IterationId::new(2000)),
         vec![2001],
         "canonical identity attribution is name-independent; survives a rename"
     );

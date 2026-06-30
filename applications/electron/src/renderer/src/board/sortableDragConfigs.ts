@@ -17,7 +17,7 @@ export const ITERATION_MEMBER_DRAG: SortableDragConfig<DragPayload> = {
   payloadKey: (payload) => payload.storyNumber
 }
 
-const decodeStoryNumber = (raw: string): number | null => {
+const decodeNumber = (raw: string): number | null => {
   const n = Number.parseInt(raw, 10)
   return Number.isNaN(n) ? null : n
 }
@@ -25,22 +25,28 @@ const decodeStoryNumber = (raw: string): number | null => {
 export const READY_STORY_DRAG: SortableDragConfig<number> = {
   mimeType: DRAG_MIMETYPE_REGISTRY.STORY_ROW,
   encode: String,
-  decode: decodeStoryNumber,
+  decode: decodeNumber,
   payloadKey: (storyNumber) => storyNumber
 }
 
 export const OUTCOME_ITERATION_DRAG: SortableDragConfig<number> = {
   mimeType: DRAG_MIMETYPE_REGISTRY.OUTCOME_ITERATION,
   encode: String,
-  decode: decodeStoryNumber,
-  payloadKey: (iterationNumber) => iterationNumber
+  decode: (raw) => {
+    const n = decodeNumber(raw)
+    return n === null ? null : n
+  },
+  payloadKey: (iterationId) => iterationId
 }
 
 export const OUTCOME_REPRIORITIZE_DRAG: SortableDragConfig<number> = {
   mimeType: DRAG_MIMETYPE_REGISTRY.OUTCOME_REPRIORITIZE,
   encode: String,
-  decode: decodeStoryNumber,
-  payloadKey: (outcomeNumber) => outcomeNumber
+  decode: (raw) => {
+    const n = decodeNumber(raw)
+    return n === null ? null : n
+  },
+  payloadKey: (outcomeId) => outcomeId
 }
 
 const decodeIterationPayload = (raw: string): IterationDragPayload | null => {
@@ -55,5 +61,5 @@ export const ITERATION_ITSELF_DRAG: SortableDragConfig<IterationDragPayload> = {
   mimeType: DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF,
   encode: JSON.stringify,
   decode: decodeIterationPayload,
-  payloadKey: (payload) => payload.iterationNumber
+  payloadKey: (payload) => payload.iterationId
 }

@@ -67,11 +67,11 @@ fn order_within_horizon(
 ) -> Ordering {
     match order {
         RoadmapOrder::Priority => Ordering::Equal,
-        RoadmapOrder::GapCount => b.gap_count.cmp(&a.gap_count).then(a.number.cmp(&b.number)),
+        RoadmapOrder::GapCount => b.gap_count.cmp(&a.gap_count).then(a.id.cmp(&b.id)),
         RoadmapOrder::State => state_rank(a.state)
             .cmp(&state_rank(b.state))
-            .then(a.number.cmp(&b.number)),
-        RoadmapOrder::Name => a.name.cmp(&b.name).then(a.number.cmp(&b.number)),
+            .then(a.id.cmp(&b.id)),
+        RoadmapOrder::Name => a.name.cmp(&b.name).then(a.id.cmp(&b.id)),
     }
 }
 

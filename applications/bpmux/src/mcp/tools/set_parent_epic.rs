@@ -8,12 +8,12 @@ pub fn set_parent_epic_tool(description: &'static str) -> Tool {
                 "type": "integer",
                 "description": "Issue number of the child story"
             },
-            "epic_number": {
+            "epic_id": {
                 "type": "integer",
                 "description": "Issue number of the Epic that owns the child"
             }
         },
-        "required": ["number", "epic_number"]
+        "required": ["number", "epic_id"]
     });
     Tool::new(
         "set_parent_epic",

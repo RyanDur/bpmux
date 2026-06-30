@@ -69,9 +69,9 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const iterBody = (await iterRes.json()) as {
-          iterations: { number: number; stories: number[] }[]
+          iterations: { id: number; stories: number[] }[]
         }
-        const displacedDrop = iterBody.iterations.find((i) => i.number === 9501)
+        const displacedDrop = iterBody.iterations.find((i) => i.id === 9501)
         expect(displacedDrop?.stories).toEqual([9513, 9511, 9512])
       },
       { timeout: 10_000, interval: 200 }

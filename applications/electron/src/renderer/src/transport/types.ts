@@ -1,8 +1,7 @@
 import type { MessageType } from './messageType'
 import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
-import type { Story, StoryId } from '../board/types'
-
+import type { Story } from '../board/types'
 export interface ServerWelcome {
   type: 'welcome'
   session_id: string
@@ -39,7 +38,7 @@ export interface CiSnapshotWire {
 }
 
 export interface DroppedEventWire {
-  story_id: StoryId
+  story_id: number
   error: string
   ts: string
 }
@@ -75,7 +74,7 @@ export type StateDeltaPayload =
   | { domain: 'roster'; members: RosterMemberWire[] }
   | {
       domain: 'iteration_close'
-      promoted: StoryId[]
+      promoted: number[]
       deleted_marker_id: number | null
     }
   | {
@@ -108,7 +107,7 @@ export interface CommentWire {
 
 export interface ServerCommentsHydrated {
   type: 'comments_hydrated'
-  story_id: StoryId
+  story_id: number
   comments: CommentWire[]
 }
 
@@ -122,7 +121,7 @@ export interface TimelineEventWire {
 
 export interface ServerTimelineHydrated {
   type: 'timeline_hydrated'
-  story_id: StoryId
+  story_id: number
   events: TimelineEventWire[]
 }
 
@@ -218,12 +217,12 @@ export interface ClientReactionToggle {
 
 export interface ClientCommentsHydrate {
   type: 'comments_hydrate'
-  story_id: StoryId
+  story_id: number
 }
 
 export interface ClientTimelineHydrate {
   type: 'timeline_hydrate'
-  story_id: StoryId
+  story_id: number
 }
 
 export interface ClientHistoryHydrate {
@@ -241,33 +240,33 @@ export interface ClientHistoryPage {
 
 export interface ClientSetOutcomeHorizon {
   type: 'set_outcome_horizon'
-  outcome_number: number
+  outcome_id: number
   horizon: 'now' | 'next' | 'later'
 }
 
 export interface ClientReorderOutcomeIteration {
   type: 'reorder_outcome_iteration'
-  outcome_number: number
-  iteration_number: number
+  outcome_id: number
+  iteration_id: number
   position: number
 }
 
 export interface ClientReprioritizeOutcome {
   type: 'reprioritize_outcome'
-  outcome_number: number
+  outcome_id: number
   position: number
 }
 
 export interface ClientReorderIteration {
   type: 'reorder_iteration'
-  iteration_number: number
+  iteration_id: number
   position: number
 }
 
 export interface ClientAddStoryToIteration {
   type: 'add_story_to_iteration'
-  iteration_number: number
-  story_id: StoryId
+  iteration_id: number
+  story_id: number
   position: number
 }
 

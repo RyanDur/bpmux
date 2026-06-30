@@ -2,7 +2,7 @@ import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from '../state-
 import { asMessageType } from '../messageType'
 import { SessionActionType, type SessionAction, type HistoryMessage } from './actions'
 import type { ChatMessage, CommentWire, ConnectionStatus, TimelineEventWire } from '../types'
-import type { Story, StoryId } from '../../board/types'
+import type { Story } from '../../board/types'
 import type { RoadmapCard, RoadmapOutcomeData } from '../../board/selectRoadmap'
 import type { BoardIterationData } from '../../board/selectIterations'
 import type { MirrorState } from '../state-delta'
@@ -18,8 +18,8 @@ export interface SessionSnapshot {
   outcomes: RoadmapOutcomeData[]
   iterations: BoardIterationData[]
   roadmap: RoadmapCard[]
-  commentsByStory: ReadonlyMap<StoryId, CommentWire[]>
-  timelineByStory: ReadonlyMap<StoryId, TimelineEventWire[]>
+  commentsByStory: ReadonlyMap<number, CommentWire[]>
+  timelineByStory: ReadonlyMap<number, TimelineEventWire[]>
 }
 
 export const messageKey = (m: { from: string; text: string; ts: string }): string =>

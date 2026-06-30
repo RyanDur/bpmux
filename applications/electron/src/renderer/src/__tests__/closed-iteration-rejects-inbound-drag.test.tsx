@@ -64,10 +64,10 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
       headers: { Authorization: `Bearer ${authToken}` }
     })
     const iterBody = (await iterRes.json()) as {
-      iterations: { number: number; stories: number[] }[]
+      iterations: { id: number; stories: number[] }[]
     }
-    const carinaIteration = iterBody.iterations.find((i) => i.number === 8501)
-    const eridanusIteration = iterBody.iterations.find((i) => i.number === 8502)
+    const carinaIteration = iterBody.iterations.find((i) => i.id === 8501)
+    const eridanusIteration = iterBody.iterations.find((i) => i.id === 8502)
     expect(carinaIteration?.stories).toEqual([8511])
     expect(eridanusIteration?.stories).toEqual([])
   }, 25_000)

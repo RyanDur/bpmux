@@ -2,6 +2,8 @@
 #![allow(clippy::expect_used)]
 
 use crate::product_management::board::adapters::github::decode_story_metadata;
+use crate::product_management::epic::EpicId;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId};
 
 #[test]
@@ -100,12 +102,12 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     assert!(!*is_closed, "is_closed must decode from gh_state");
     assert_eq!(
         *parent_epic,
-        Some(100),
+        Some(EpicId::new(100)),
         "parent_epic must decode from the parent-epic label into the stored domain field at ingest"
     );
     assert_eq!(
         *iteration_membership,
-        Some((300, 5)),
+        Some((IterationId::new(300), 5)),
         "iteration_membership must decode (iteration_number, position) from the parent-iteration label into the stored domain field at ingest"
     );
     assert!(

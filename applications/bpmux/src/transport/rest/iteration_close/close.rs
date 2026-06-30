@@ -17,7 +17,7 @@ use crate::transport::rest::shared::{
 #[derive(Default, Deserialize)]
 pub struct CloseIterationRequest {
     #[serde(default)]
-    pub iteration_number: Option<u64>,
+    pub iteration_id: Option<u64>,
 }
 
 pub async fn post_close_iteration(
@@ -26,13 +26,13 @@ pub async fn post_close_iteration(
     axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
     body: Option<axum::Json<CloseIterationRequest>>,
 ) -> impl IntoResponse {
-    let iter_n = match body.and_then(|b| b.0.iteration_number) {
+    let iter_n = match body.and_then(|b| b.0.iteration_id) {
         Some(n) => n,
         None => {
             return (
                 StatusCode::BAD_REQUEST,
                 json_headers(),
-                err_body("close_iteration requires iteration_number (canonical Iteration issue#)."),
+                err_body("close_iteration requires iteration_id (canonical Iteration issue#)."),
             );
         }
     };
@@ -43,7 +43,7 @@ async fn post_close_iteration_canonical(
     session: Arc<session::Session>,
     tracker: TrackerHandle,
     orchestrator: crate::server::OrchestratorHandle,
-    iteration_number: u64,
+    iteration_id: u64,
 ) -> (
     StatusCode,
     [(axum::http::HeaderName, &'static str); 1],
@@ -58,15 +58,17 @@ async fn post_close_iteration_canonical(
             ),
         );
     };
-    let iteration = match refresh.iteration(iteration_number) {
+    let iteration = match refresh.iteration(crate::product_management::iteration::IterationId::new(
+        iteration_id,
+    )) {
         Some(it) => it,
         None => {
-            if refresh.story(iteration_number).is_some() {
+            if refresh.story(iteration_id).is_some() {
                 return (
                     StatusCode::BAD_REQUEST,
                     json_headers(),
                     err_body(&format!(
-                        "close_iteration: #{iteration_number} is not an Iteration"
+                        "close_iteration: #{iteration_id} is not an Iteration"
                     )),
                 );
             }
@@ -74,7 +76,7 @@ async fn post_close_iteration_canonical(
                 StatusCode::NOT_FOUND,
                 json_headers(),
                 err_body(&format!(
-                    "close_iteration: iteration_number #{iteration_number} not found"
+                    "close_iteration: iteration_id #{iteration_id} not found"
                 )),
             );
         }
@@ -84,7 +86,7 @@ async fn post_close_iteration_canonical(
             StatusCode::BAD_REQUEST,
             json_headers(),
             err_body(&format!(
-                "close_iteration: iteration #{iteration_number} is already closed"
+                "close_iteration: iteration #{iteration_id} is already closed"
             )),
         );
     }
@@ -94,7 +96,7 @@ async fn post_close_iteration_canonical(
         broadcast_iteration_close_blocked(&session, &ready_queue_blockers);
         return (StatusCode::CONFLICT, json_headers(), body);
     }
-    if let Err(close_err) = close_iteration_canonical(refresh, iteration_number).await {
+    if let Err(close_err) = close_iteration_canonical(refresh, iteration_id).await {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             json_headers(),
@@ -115,9 +117,9 @@ async fn post_close_iteration_canonical(
     };
     if let Some(t) = tracker.as_ref() {
         let body = "iteration-close: terminal close, promote-on-close retired (#1556).";
-        if let Err(e) = t.post_story_comment(iteration_number, body).await {
+        if let Err(e) = t.post_story_comment(iteration_id, body).await {
             crate::diag::log_diag(&format!(
-                "[#1556] comment_on_story #{iteration_number} (close) failed: {e}"
+                "[#1556] comment_on_story #{iteration_id} (close) failed: {e}"
             ));
         }
     }
@@ -131,14 +133,14 @@ async fn post_close_iteration_canonical(
     let body = serde_json::json!({
         "promoted": Vec::<u64>::new(),
         "deleted_marker_id": serde_json::Value::Null,
-        "iteration_number": iteration_number,
+        "iteration_id": iteration_id,
     });
     (StatusCode::OK, json_headers(), body.to_string())
 }
 
 pub(crate) async fn close_iteration_canonical(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
-    iteration_number: u64,
+    iteration_id: u64,
 ) -> Result<(), String> {
     let meta = || crate::product_management::board::events::EventMeta {
         actor: "pm".to_string(),
@@ -149,18 +151,16 @@ pub(crate) async fn close_iteration_canonical(
         .mutate_sync(
             crate::product_management::board::BoardEvent::CurrentIterationCleared {
                 meta: meta(),
-                id: crate::product_management::story::StoryId::new(iteration_number),
+                id: crate::product_management::story::StoryId::new(iteration_id),
             },
         )
-        .map_err(|e| {
-            format!("#{iteration_number} current-designation-clear enqueue failed: {e}")
-        })?;
+        .map_err(|e| format!("#{iteration_id} current-designation-clear enqueue failed: {e}"))?;
     refresh
         .mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
             meta: meta(),
-            id: crate::product_management::story::StoryId::new(iteration_number),
+            id: crate::product_management::story::StoryId::new(iteration_id),
             reason: Some("iteration-close (terminal; promote-on-close retired #1556)".to_string()),
         })
-        .map_err(|e| format!("#{iteration_number} iteration-close enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{iteration_id} iteration-close enqueue failed: {e}"))?;
     Ok(())
 }

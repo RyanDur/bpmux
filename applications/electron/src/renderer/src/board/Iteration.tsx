@@ -53,7 +53,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     sectionStorage.setState({ ...sectionOpen, [id]: next })
   }
   if (iterations.length === 0 && sortedLoose.length === 0) return null
-  const currentIterationNumber = findCurrentIteration(iterations)?.number ?? null
+  const currentIterationNumber = findCurrentIteration(iterations)?.id ?? null
 
   const activePlannedCount = activePlannedIterations.length
   return (
@@ -80,11 +80,11 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
         </summary>
         <SortableList<IterationDragPayload, BoardIterationData>
           items={activePlannedIterations}
-          keyOf={(it) => it.number}
-          rowKey={(it) => it.number}
+          keyOf={(it) => it.id}
+          rowKey={(it) => it.id}
           config={ITERATION_ITSELF_DRAG}
           buildPayload={(it) => ({
-            iterationNumber: it.number
+            iterationId: it.id
           })}
           onReorder={reorderIterationByDrag}
           ulClassName="board-iterations-list"
@@ -126,7 +126,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
         <ul className="board-iterations-list">
           {closedIterations.map((it) => (
             <IterationRow
-              key={it.number}
+              key={it.id}
               iteration={it}
               collapse={collapse}
               currentIterationNumber={currentIterationNumber}

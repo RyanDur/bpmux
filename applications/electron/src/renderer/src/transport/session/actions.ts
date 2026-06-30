@@ -5,8 +5,6 @@ import type {
   StateSnapshotPayload,
   TimelineEventWire
 } from '../types'
-import type { StoryId } from '../../board/types'
-
 export interface SendOptions {
   addressee?: string | null
   to?: string[] | null
@@ -87,16 +85,16 @@ export type SessionAction =
       emoji: string
       user: string
     }
-  | { type: typeof SessionActionType.CommentsHydrateRequested; storyId: StoryId }
+  | { type: typeof SessionActionType.CommentsHydrateRequested; storyId: number }
   | {
       type: typeof SessionActionType.CommentsHydrated
-      storyId: StoryId
+      storyId: number
       comments: CommentWire[]
     }
-  | { type: typeof SessionActionType.TimelineHydrateRequested; storyId: StoryId }
+  | { type: typeof SessionActionType.TimelineHydrateRequested; storyId: number }
   | {
       type: typeof SessionActionType.TimelineHydrated
-      storyId: StoryId
+      storyId: number
       events: TimelineEventWire[]
     }
   | {
@@ -112,29 +110,29 @@ export type SessionAction =
     }
   | {
       type: typeof SessionActionType.OutcomeHorizonChangeRequested
-      outcomeNumber: number
+      outcomeId: number
       horizon: 'now' | 'next' | 'later'
     }
   | {
       type: typeof SessionActionType.OutcomeIterationReorderRequested
-      outcomeNumber: number
-      iterationNumber: number
+      outcomeId: number
+      iterationId: number
       position: number
     }
   | {
       type: typeof SessionActionType.OutcomeReprioritizeRequested
-      outcomeNumber: number
+      outcomeId: number
       position: number
     }
   | {
       type: typeof SessionActionType.IterationReorderRequested
-      iterationNumber: number
+      iterationId: number
       position: number
     }
   | {
       type: typeof SessionActionType.AddStoryToIterationRequested
-      iterationNumber: number
-      storyId: StoryId
+      iterationId: number
+      storyId: number
       position: number
     }
   | { type: typeof SessionActionType.PtySubscribeRequested; terminalId: string }
@@ -220,23 +218,23 @@ export const reactionToggleRequested = (
   user
 })
 
-export const commentsHydrateRequested = (storyId: StoryId): SessionAction => ({
+export const commentsHydrateRequested = (storyId: number): SessionAction => ({
   type: SessionActionType.CommentsHydrateRequested,
   storyId
 })
 
-export const commentsHydrated = (storyId: StoryId, comments: CommentWire[]): SessionAction => ({
+export const commentsHydrated = (storyId: number, comments: CommentWire[]): SessionAction => ({
   type: SessionActionType.CommentsHydrated,
   storyId,
   comments
 })
 
-export const timelineHydrateRequested = (storyId: StoryId): SessionAction => ({
+export const timelineHydrateRequested = (storyId: number): SessionAction => ({
   type: SessionActionType.TimelineHydrateRequested,
   storyId
 })
 
-export const timelineHydrated = (storyId: StoryId, events: TimelineEventWire[]): SessionAction => ({
+export const timelineHydrated = (storyId: number, events: TimelineEventWire[]): SessionAction => ({
   type: SessionActionType.TimelineHydrated,
   storyId,
   events
@@ -263,50 +261,50 @@ export const olderHistoryRequested = (
 })
 
 export const outcomeHorizonChangeRequested = (
-  outcomeNumber: number,
+  outcomeId: number,
   horizon: 'now' | 'next' | 'later'
 ): SessionAction => ({
   type: SessionActionType.OutcomeHorizonChangeRequested,
-  outcomeNumber,
+  outcomeId,
   horizon
 })
 
 export const outcomeIterationReorderRequested = (
-  outcomeNumber: number,
-  iterationNumber: number,
+  outcomeId: number,
+  iterationId: number,
   position: number
 ): SessionAction => ({
   type: SessionActionType.OutcomeIterationReorderRequested,
-  outcomeNumber,
-  iterationNumber,
+  outcomeId,
+  iterationId,
   position
 })
 
 export const outcomeReprioritizeRequested = (
-  outcomeNumber: number,
+  outcomeId: number,
   position: number
 ): SessionAction => ({
   type: SessionActionType.OutcomeReprioritizeRequested,
-  outcomeNumber,
+  outcomeId,
   position
 })
 
 export const iterationReorderRequested = (
-  iterationNumber: number,
+  iterationId: number,
   position: number
 ): SessionAction => ({
   type: SessionActionType.IterationReorderRequested,
-  iterationNumber,
+  iterationId,
   position
 })
 
 export const addStoryToIterationRequested = (
-  iterationNumber: number,
-  storyId: StoryId,
+  iterationId: number,
+  storyId: number,
   position: number
 ): SessionAction => ({
   type: SessionActionType.AddStoryToIterationRequested,
-  iterationNumber,
+  iterationId,
   storyId,
   position
 })

@@ -48,7 +48,7 @@ export const useBoardReorder = ({
         const draggedStory = readyStories.find((s) => s.id === moved)
         const membership = draggedStory?.iteration_membership
         if (membership === undefined || membership === null) return
-        const iterationNumber = membership.iteration_number
+        const iterationId = membership.iteration_id
         const draggedOldPosition = membership.position
         const targetMemberIndex = readyStories.findIndex((s) => s.id === targetNumber)
         if (targetMemberIndex === -1) return
@@ -66,7 +66,7 @@ export const useBoardReorder = ({
         ) {
           const newSequence = eagerReorder(readyStories, (s) => s.id, moved, targetNumber)
           const respaced = computeMemberRespace(
-            iterationNumber,
+            iterationId,
             newSequence.map((s) => ({
               storyNumber: s.id,
               currentPosition: s.iteration_membership?.position ?? null
@@ -81,9 +81,9 @@ export const useBoardReorder = ({
           }
         } else {
           const mutation = computeMemberDropMutation({
-            draggedIterationNumber: iterationNumber,
+            draggedIterationNumber: iterationId,
             draggedOldPosition,
-            targetIterationNumber: iterationNumber,
+            targetIterationNumber: iterationId,
             targetMemberPositions,
             targetMemberIndex,
             targetMembersIncludeDragged: true
@@ -108,7 +108,7 @@ export const useBoardReorder = ({
               : {
                   ...s,
                   iteration_membership: {
-                    iteration_number: iterationNumber,
+                    iteration_id: iterationId,
                     position: newPosition
                   }
                 }

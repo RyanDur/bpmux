@@ -5,6 +5,8 @@ use super::helpers::{
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_add_story_to_iteration(
@@ -30,27 +32,27 @@ pub(crate) async fn handle_add_story_to_iteration(
         .get("story_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'story_id' argument")?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let position = args
         .get("position")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'position' argument")? as u32;
-    if story_id == iteration_number {
+    if story_id == iteration_id {
         return Err(format!(
             "story #{story_id} cannot be added to itself as iteration-member"
         ));
     }
     let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, story_id).await?;
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     for other in r.iterations() {
         let Some(other_number) = other.id().saved_id().map(|id| id.value()) else {
             continue;
         };
-        if other_number == iteration_number || !other.stories.contains(&StoryId::new(story_id)) {
+        if other_number == iteration_id || !other.stories.contains(&StoryId::new(story_id)) {
             continue;
         }
         let mut other_rel = other
@@ -76,11 +78,11 @@ pub(crate) async fn handle_add_story_to_iteration(
     let insert_index = (position.max(1) as usize - 1).min(rel.stories.len());
     rel.stories.insert(insert_index, StoryId::new(story_id));
     let body = rel.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
-    r.update_body(iteration_number, body)
+    r.update_body(iteration_id, body)
         .await
-        .map_err(|e| format!("#{iteration_number} add-member body update failed: {e}"))?;
+        .map_err(|e| format!("#{iteration_id} add-member body update failed: {e}"))?;
     Ok(format!(
-        "#{story_id} added to iteration #{iteration_number} at position {position}"
+        "#{story_id} added to iteration #{iteration_id} at position {position}"
     ))
 }
 
@@ -90,21 +92,21 @@ pub(crate) async fn handle_map_iteration_to_outcome(
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "map an iteration to an outcome")?;
-    let outcome_number = args
-        .get("outcome_number")
+    let outcome_id = args
+        .get("outcome_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'outcome_number' argument")?;
-    let iteration_number = args
-        .get("iteration_number")
+        .ok_or("missing 'outcome_id' argument")?;
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let position = args
         .get("position")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'position' argument")? as u32;
     let r = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
-    let outcome = ensure_outcome_in_canonical_store(r, outcome_number).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
 
     let mut parent = outcome
         .content
@@ -114,13 +116,15 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .unwrap_or_default();
     parent
         .iterations
-        .retain(|number| *number != iteration_number);
+        .retain(|id| *id != IterationId::new(iteration_id));
     let insert_index = (position.max(1) as usize - 1).min(parent.iterations.len());
-    parent.iterations.insert(insert_index, iteration_number);
+    parent
+        .iterations
+        .insert(insert_index, IterationId::new(iteration_id));
     let outcome_body = parent.write_into_body(outcome.content.body.as_deref().unwrap_or_default());
-    r.update_body(outcome_number, outcome_body)
+    r.update_body(outcome_id, outcome_body)
         .await
-        .map_err(|e| format!("#{outcome_number} iteration-map body update failed: {e}"))?;
+        .map_err(|e| format!("#{outcome_id} iteration-map body update failed: {e}"))?;
 
     let mut child = iteration
         .content
@@ -128,14 +132,14 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .as_deref()
         .and_then(IterationRelationships::read_from_body)
         .unwrap_or_default();
-    child.outcome = Some(outcome_number);
+    child.outcome = Some(OutcomeId::new(outcome_id));
     let iteration_body =
         child.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
-    r.update_body(iteration_number, iteration_body)
+    r.update_body(iteration_id, iteration_body)
         .await
-        .map_err(|e| format!("#{iteration_number} outcome-FK-set body update failed: {e}"))?;
+        .map_err(|e| format!("#{iteration_id} outcome-FK-set body update failed: {e}"))?;
 
     Ok(format!(
-        "iteration #{iteration_number} maps to outcome #{outcome_number} at position {position}"
+        "iteration #{iteration_id} maps to outcome #{outcome_id} at position {position}"
     ))
 }

@@ -171,9 +171,8 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       })
       await capture(win, 'lifecycle-04-renamed')
 
-      const close = await postTest(backendPort, token, 'close_story', {
-        number: numberA,
-        reason: 'live-walk slice 2/2 close-step substrate-verification',
+      const close = await postTest(backendPort, token, 'close_iteration', {
+        iteration_number: numberA,
         agent: 'pm:test'
       })
       expect(close.ok, JSON.stringify(close.json)).toBe(true)

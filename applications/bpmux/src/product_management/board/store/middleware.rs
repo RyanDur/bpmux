@@ -55,13 +55,13 @@ fn project_label_delta(stories: &Stories, event: &BoardEvent) -> Option<LabelDer
         }
         BoardEvent::IterationMembershipSet {
             id,
-            iteration_number,
+            iteration_id,
             position,
             ..
         } => {
             let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             labels.retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
-            labels.push(GhLabelCodec.encode_parent_iteration(*iteration_number, *position));
+            labels.push(GhLabelCodec.encode_parent_iteration(iteration_id.value(), *position));
             labels
         }
         BoardEvent::IterationMembershipCleared { id, .. } => {
@@ -69,12 +69,10 @@ fn project_label_delta(stories: &Stories, event: &BoardEvent) -> Option<LabelDer
             labels.retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
             labels
         }
-        BoardEvent::ParentEpicSet {
-            id, epic_number, ..
-        } => {
+        BoardEvent::ParentEpicSet { id, epic_id, .. } => {
             let mut labels = stories.get(&StoryKey::Saved(*id))?.current_labels();
             labels.retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
-            labels.push(GhLabelCodec.encode_parent_epic(*epic_number));
+            labels.push(GhLabelCodec.encode_parent_epic(epic_id.value()));
             labels
         }
         BoardEvent::ParentEpicUnset { id, .. } => {

@@ -2,6 +2,8 @@
 
 use super::json::story_to_board_json;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::product_management::epic::EpicId;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
 
 fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> Story {
@@ -93,12 +95,12 @@ fn story_to_board_json_iteration_membership_object_when_set_1492() {
         false,
     );
     s.raw_labels.push("parent-iteration-#1464.100".to_string());
-    s.iteration_membership = Some((1464, 100));
+    s.iteration_membership = Some((IterationId::new(1464), 100));
     let json = story_to_board_json(&GhLabelCodec, &s);
     let membership = json["iteration_membership"]
         .as_object()
         .expect("iteration_membership object when Some");
-    assert_eq!(membership["iteration_number"].as_u64(), Some(1464));
+    assert_eq!(membership["iteration_id"].as_u64(), Some(1464));
     assert_eq!(membership["position"].as_u64(), Some(100));
 }
 
@@ -362,7 +364,7 @@ fn story_to_board_json_parent_epic_emits_field_and_label() {
         StoryType::Story(StoryKind::Feature),
         false,
     );
-    s.parent_epic = Some(7);
+    s.parent_epic = Some(EpicId::new(7));
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(json["parent_epic"].as_u64(), Some(7));
     let labels = json["labels"].as_array().expect("labels array");
@@ -477,7 +479,7 @@ fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
         StoryType::Story(StoryKind::Feature),
         false,
     );
-    s.parent_epic = Some(42);
+    s.parent_epic = Some(EpicId::new(42));
     s.ready_order = Some(100);
     s.raw_labels = vec!["iter|Pegasus:200".to_string(), "noise-label".to_string()];
     let json = story_to_board_json(&StubLabelCodec, &s);

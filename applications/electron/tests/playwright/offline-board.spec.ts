@@ -62,7 +62,7 @@ test.describe('#1158 — offline-first board', () => {
             ts: '2026-05-03T20:00:00Z',
             peer_id: 'local'
           },
-          number: 100,
+          id: 100,
           new_state: 'InProgress'
         }
       },
@@ -73,7 +73,7 @@ test.describe('#1158 — offline-first board', () => {
             ts: '2026-05-03T20:00:01Z',
             peer_id: 'local'
           },
-          number: 101,
+          id: 101,
           new_state: 'InProgress'
         }
       }
@@ -156,7 +156,7 @@ test.describe('#1158 — offline-first board', () => {
           ts: '2026-05-03T20:00:00Z',
           peer_id: 'local'
         },
-        number: 200,
+        id: 200,
         new_state: 'Delivered'
       }
     }

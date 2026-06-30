@@ -5,7 +5,8 @@ use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::outcome::Outcome;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
@@ -21,7 +22,7 @@ fn iteration(number: u64, outcome_number: u64) -> Story {
     s.raw_labels.push("iteration".to_string());
     s.body = Some(
         IterationRelationships {
-            outcome: Some(outcome_number),
+            outcome: Some(OutcomeId::new(outcome_number)),
             stories: vec![],
         }
         .write_into_body("## composed"),
@@ -42,7 +43,7 @@ fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
-            iterations,
+            iterations: iterations.into_iter().map(IterationId::new).collect(),
         }
         .write_into_body("## Outcome\n"),
     );
@@ -62,7 +63,7 @@ fn fully_ready(number: u64, outcome_number: u64, member: u64) -> Story {
     let mut it = iteration(number, outcome_number);
     it.body = Some(
         IterationRelationships {
-            outcome: Some(outcome_number),
+            outcome: Some(OutcomeId::new(outcome_number)),
             stories: vec![StoryId::new(member)],
         }
         .write_into_body("## composed"),
@@ -79,7 +80,7 @@ fn iterations_render_in_the_outcomes_priority_order() {
     let outcome = outcome_with(11, vec![20, 21]);
     let stories = vec![iteration(21, 11), iteration(20, 11)];
     let drill = derive_outcome_drill_in(&outcome, &decode_iterations(&stories), &bundled_default());
-    let numbers: Vec<u64> = drill.iterations.iter().map(|i| i.number).collect();
+    let numbers: Vec<u64> = drill.iterations.iter().map(|i| i.id.value()).collect();
     assert_eq!(
         numbers,
         vec![20, 21],

@@ -31,12 +31,12 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     .filter(|s| !in_flight_label_stories.contains(&s.id))
                     .collect::<Vec<_>>();
                 let purge =
-                    crate::product_management::board::adapters::github::iteration_numbers_to_purge_as_retired_empty(
+                    crate::product_management::board::adapters::github::iterations_to_purge_as_retired_empty(
                         &stories,
                     );
                 self.store.seed_all(stories);
-                for n in purge {
-                    self.store.remove(StoryId::new(n));
+                for iteration_id in purge {
+                    self.store.remove(StoryId::new(iteration_id.value()));
                 }
                 record_ingest_success(&self.status);
                 Ok(())

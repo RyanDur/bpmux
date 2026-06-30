@@ -13,7 +13,7 @@ export interface ConveneCheck {
 export type DrillIterationState = 'ready' | 'next' | 'gap' | 'not-started'
 
 export interface DrillIteration {
-  number: number
+  id: number
   name: string
   order: number
   state: DrillIterationState
@@ -63,7 +63,7 @@ export const deriveOutcomeDrillIn = (outcomeIterations: RoadmapIteration[]): Out
           ? 'next'
           : 'gap'
     return {
-      number: iteration.number,
+      id: iteration.id,
       name: iteration.name,
       order: index + 1,
       state,

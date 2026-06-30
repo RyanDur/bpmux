@@ -69,10 +69,10 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const iterBody = (await iterRes.json()) as {
-          iterations: { number: number; stories: number[] }[]
+          iterations: { id: number; stories: number[] }[]
         }
-        const cygnus = iterBody.iterations.find((i) => i.number === 7702)
-        const vela = iterBody.iterations.find((i) => i.number === 7701)
+        const cygnus = iterBody.iterations.find((i) => i.id === 7702)
+        const vela = iterBody.iterations.find((i) => i.id === 7701)
         expect(cygnus?.stories).toEqual([7711, 7721])
         expect(vela?.stories).toEqual([])
       },

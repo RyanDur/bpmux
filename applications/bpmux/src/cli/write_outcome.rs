@@ -14,8 +14,8 @@ pub(crate) fn run_outcome_create(
 
 pub(crate) fn run_outcome_add(outcome: u64, iteration: u64, position: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("outcome_number".to_string(), serde_json::json!(outcome));
-    args.insert("iteration_number".to_string(), serde_json::json!(iteration));
+    args.insert("outcome_id".to_string(), serde_json::json!(outcome));
+    args.insert("iteration_id".to_string(), serde_json::json!(iteration));
     args.insert("position".to_string(), serde_json::json!(position));
     super::write::dispatch_write("map_iteration_to_outcome", args)
 }
@@ -26,7 +26,7 @@ pub(crate) fn run_outcome_edit(
     body: Option<&str>,
 ) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("outcome_number".to_string(), serde_json::json!(outcome));
+    args.insert("outcome_id".to_string(), serde_json::json!(outcome));
     if let Some(t) = title {
         args.insert("title".to_string(), serde_json::json!(t));
     }
@@ -48,7 +48,7 @@ pub(crate) fn run_outcome_edit(
 
 pub(crate) fn run_outcome_retire(outcome: u64, reason: &str) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("outcome_number".to_string(), serde_json::json!(outcome));
+    args.insert("outcome_id".to_string(), serde_json::json!(outcome));
     args.insert("reason".to_string(), serde_json::json!(reason));
     let role = crate::resolve_role(&None);
     let message =
@@ -60,8 +60,8 @@ pub(crate) fn run_outcome_retire(outcome: u64, reason: &str) -> anyhow::Result<(
 
 pub(crate) fn run_outcome_unmap(outcome: u64, iteration: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("outcome_number".to_string(), serde_json::json!(outcome));
-    args.insert("iteration_number".to_string(), serde_json::json!(iteration));
+    args.insert("outcome_id".to_string(), serde_json::json!(outcome));
+    args.insert("iteration_id".to_string(), serde_json::json!(iteration));
     let role = crate::resolve_role(&None);
     let message = super::write::post_rpc_write(
         "unmap_outcome_iteration",
@@ -75,8 +75,8 @@ pub(crate) fn run_outcome_unmap(outcome: u64, iteration: u64) -> anyhow::Result<
 
 pub(crate) fn run_outcome_reorder(outcome: u64, iteration: u64, to: u32) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("outcome_number".to_string(), serde_json::json!(outcome));
-    args.insert("iteration_number".to_string(), serde_json::json!(iteration));
+    args.insert("outcome_id".to_string(), serde_json::json!(outcome));
+    args.insert("iteration_id".to_string(), serde_json::json!(iteration));
     args.insert("position".to_string(), serde_json::json!(to));
     let role = crate::resolve_role(&None);
     let message = super::write::post_rpc_write(
@@ -95,7 +95,7 @@ pub(crate) fn run_outcome_reprioritize(
     position: Option<u32>,
 ) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("outcome_number".to_string(), serde_json::json!(outcome));
+    args.insert("outcome_id".to_string(), serde_json::json!(outcome));
     if let Some(band) = to {
         args.insert("to".to_string(), serde_json::json!(band));
     }

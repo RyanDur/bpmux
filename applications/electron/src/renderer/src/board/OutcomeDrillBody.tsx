@@ -36,22 +36,22 @@ const conveneTail = (drill: OutcomeDrillIn): string => {
 }
 
 const OutcomeDrillBody = ({
-  outcomeNumber,
+  outcomeId,
   drill
 }: {
-  outcomeNumber: number
+  outcomeId: number
   drill: OutcomeDrillIn
 }): React.JSX.Element => {
   const dispatch = useDispatch()
-  const reorder = (iterationNumber: number, targetKey: number): void => {
-    const position = drill.iterations.findIndex((it) => it.number === targetKey) + 1
+  const reorder = (iterationId: number, targetKey: number): void => {
+    const position = drill.iterations.findIndex((it) => it.id === targetKey) + 1
     if (position === 0) return
-    dispatch(outcomeIterationReorderRequested(outcomeNumber, iterationNumber, position))
+    dispatch(outcomeIterationReorderRequested(outcomeId, iterationId, position))
   }
   return (
-    <section className="roadmap-drill" data-test={`roadmap-drill-${outcomeNumber}`}>
+    <section className="roadmap-drill" data-test={`roadmap-drill-${outcomeId}`}>
       {drill.convene !== null && (
-        <p className="roadmap-convene" data-test={`roadmap-convene-${outcomeNumber}`}>
+        <p className="roadmap-convene" data-test={`roadmap-convene-${outcomeId}`}>
           <b>CONVENE?</b> next iteration <b>{drill.convene.nextIterationName}</b>
           {conveneTail(drill)}
         </p>
@@ -61,21 +61,21 @@ const OutcomeDrillBody = ({
       </p>
       <SortableList
         items={drill.iterations}
-        keyOf={(iteration) => iteration.number}
-        rowKey={(iteration) => iteration.number}
+        keyOf={(iteration) => iteration.id}
+        rowKey={(iteration) => iteration.id}
         config={OUTCOME_ITERATION_DRAG}
-        buildPayload={(iteration) => iteration.number}
+        buildPayload={(iteration) => iteration.id}
         onReorder={reorder}
         ulClassName="roadmap-drill-iterations"
         renderRow={(iteration, { rowDragProps, gripDragProps }) => (
           <li
             className="roadmap-drill-iteration"
-            data-test={`roadmap-drill-iteration-${iteration.number}`}
+            data-test={`roadmap-drill-iteration-${iteration.id}`}
             data-state={iteration.state}
             {...rowDragProps}
           >
             <p className="roadmap-drill-iteration-head">
-              <DragGrip storyNumber={iteration.number} gripDragProps={gripDragProps} />
+              <DragGrip storyNumber={iteration.id} gripDragProps={gripDragProps} />
               <b className="roadmap-drill-iteration-name" data-test="roadmap-drill-iteration-name">
                 {iteration.name}
               </b>
@@ -86,7 +86,7 @@ const OutcomeDrillBody = ({
             {iteration.checks.length > 0 && (
               <ul
                 className="roadmap-drill-checks"
-                data-test={`roadmap-drill-checks-${iteration.number}`}
+                data-test={`roadmap-drill-checks-${iteration.id}`}
               >
                 {iteration.checks.map((check) => (
                   <li

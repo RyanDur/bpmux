@@ -4,12 +4,12 @@ pub fn list_epic_children_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "epic_number": {
+            "epic_id": {
                 "type": "integer",
                 "description": "Issue number of the Epic story whose children to list."
             }
         },
-        "required": ["epic_number"]
+        "required": ["epic_id"]
     });
     Tool::new(
         "list_epic_children",

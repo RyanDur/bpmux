@@ -18,7 +18,7 @@ fn add_story_to_iteration_rejects_dev_caller_per_pm_lane_gate() {
             .call_tool(
                 "add_story_to_iteration",
                 serde_json::json!({
-                    "iteration_number": 1397,
+                    "iteration_id": 1397,
                     "story_id": 1500,
                     "position": 100
                 }),
@@ -53,10 +53,10 @@ fn add_story_to_iteration_rejects_missing_iteration_number() {
                 serde_json::json!({"story_id": 1500, "position": 100}),
             )
             .await
-            .expect_err("missing iteration_number should be rejected");
+            .expect_err("missing iteration_id should be rejected");
 
         assert!(
-            err.contains("iteration_number"),
+            err.contains("iteration_id"),
             "rejection names the missing field; got {err}"
         );
 
@@ -75,7 +75,7 @@ fn add_story_to_iteration_rejects_missing_story_id() {
         let err = pm
             .call_tool(
                 "add_story_to_iteration",
-                serde_json::json!({"iteration_number": 1397, "position": 100}),
+                serde_json::json!({"iteration_id": 1397, "position": 100}),
             )
             .await
             .expect_err("missing story_id should be rejected");
@@ -100,7 +100,7 @@ fn add_story_to_iteration_rejects_missing_position() {
         let err = pm
             .call_tool(
                 "add_story_to_iteration",
-                serde_json::json!({"iteration_number": 1397, "story_id": 1500}),
+                serde_json::json!({"iteration_id": 1397, "story_id": 1500}),
             )
             .await
             .expect_err("missing position should be rejected");

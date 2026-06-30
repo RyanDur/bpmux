@@ -7,6 +7,8 @@ use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::board::{BoardStore, SyncOrchestrator};
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -48,14 +50,14 @@ fn member(number: u64, iteration_number: u64, position: u32) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec![format!("parent-iteration-#{iteration_number}.{position}")];
-    s.iteration_membership = Some((iteration_number, position));
+    s.iteration_membership = Some((IterationId::new(iteration_number), position));
     s
 }
 
-fn find(stories: &[serde_json::Value], number: u64) -> &serde_json::Value {
+fn find(stories: &[serde_json::Value], id: u64) -> &serde_json::Value {
     stories
         .iter()
-        .find(|s| s["number"].as_u64() == Some(number))
+        .find(|s| s["id"].as_u64() == Some(id))
         .expect("story present in snapshot")
 }
 
@@ -79,7 +81,7 @@ fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
-            iterations,
+            iterations: iterations.into_iter().map(IterationId::new).collect(),
         }
         .write_into_body("## Outcome\n"),
     );
@@ -102,7 +104,7 @@ fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> St
     let mut s = iteration(number);
     s.body = Some(
         IterationRelationships {
-            outcome: Some(outcome_number),
+            outcome: Some(OutcomeId::new(outcome_number)),
             stories: stories.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
@@ -135,7 +137,7 @@ async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738
         .as_array()
         .expect("the outcome carries its building iterations");
     assert_eq!(building.len(), 1, "the one building iteration is present");
-    assert_eq!(building[0]["number"].as_u64(), Some(3010));
+    assert_eq!(building[0]["id"].as_u64(), Some(3010));
     assert_eq!(building[0]["position"].as_u64(), Some(1));
     assert_eq!(
         building[0]["readiness"]["review_closed"].as_bool(),

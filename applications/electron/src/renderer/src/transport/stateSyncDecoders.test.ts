@@ -69,7 +69,7 @@ describe('stateDeltaDecoder', () => {
       domain: 'roadmap',
       roadmap: [
         {
-          number: 700,
+          id: 700,
           name: 'Now thing',
           why: { benefit: 'agents and humans share one view' },
           horizon: 'now',
@@ -92,7 +92,7 @@ describe('stateDeltaDecoder', () => {
       domain: 'roadmap',
       roadmap: [
         {
-          number: 700,
+          id: 700,
           name: 'Lean why',
           why: {},
           horizon: 'later',

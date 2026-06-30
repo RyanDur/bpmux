@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::peer::PeerId;
+use crate::product_management::epic::EpicId;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
     Acceptor, FreeComment, Gate, GateComment, Story, StoryId, StoryState, StoryType, Tag,
 };
@@ -19,9 +21,9 @@ pub struct LabelDerivedFields {
     #[serde(default)]
     pub acceptor: Option<Acceptor>,
     #[serde(default)]
-    pub parent_epic: Option<u64>,
+    pub parent_epic: Option<EpicId>,
     #[serde(default)]
-    pub iteration_membership: Option<(u64, u32)>,
+    pub iteration_membership: Option<(IterationId, u32)>,
     #[serde(default)]
     pub tags: Vec<Tag>,
     #[serde(default)]
@@ -93,7 +95,7 @@ pub enum BoardEvent {
     ParentEpicSet {
         meta: EventMeta,
         id: StoryId,
-        epic_number: u64,
+        epic_id: EpicId,
     },
     ParentEpicUnset {
         meta: EventMeta,
@@ -102,7 +104,7 @@ pub enum BoardEvent {
     IterationMembershipSet {
         meta: EventMeta,
         id: StoryId,
-        iteration_number: u64,
+        iteration_id: IterationId,
         position: u32,
     },
     IterationMembershipCleared {

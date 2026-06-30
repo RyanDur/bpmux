@@ -13,6 +13,7 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -73,7 +74,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 
 fn remove_args(iteration: u64, story: u64, reason: Option<&str>) -> Map<String, Value> {
     let mut m = Map::new();
-    m.insert("iteration_number".into(), json!(iteration));
+    m.insert("iteration_id".into(), json!(iteration));
     m.insert("story_id".into(), json!(story));
     if let Some(re) = reason {
         m.insert("reason".into(), json!(re));
@@ -96,7 +97,11 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
     .await
     .expect("pm removes the member");
     assert!(
-        refresh.iteration(1700).expect("present").stories.is_empty(),
+        refresh
+            .iteration(IterationId::new(1700))
+            .expect("present")
+            .stories
+            .is_empty(),
         "the membership is cleared (the only intentional vanish-path) — board no longer renders it under the iteration"
     );
     assert!(
@@ -145,7 +150,7 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
     );
     assert!(
         refresh
-            .iteration(1700)
+            .iteration(IterationId::new(1700))
             .expect("present")
             .stories
             .contains(&StoryId::new(710)),
@@ -198,7 +203,7 @@ async fn move_member_reorders_within_the_iteration_1762() {
         member_story(720, StoryState::Ready),
     ])
     .await;
-    let args = json!({ "iteration_number": 1700, "story_id": 720, "position": 1 })
+    let args = json!({ "iteration_id": 1700, "story_id": 720, "position": 1 })
         .as_object()
         .cloned()
         .unwrap();
@@ -206,7 +211,10 @@ async fn move_member_reorders_within_the_iteration_1762() {
         .await
         .expect("pm reorders the member");
     assert_eq!(
-        refresh.iteration(1700).expect("present").stories,
+        refresh
+            .iteration(IterationId::new(1700))
+            .expect("present")
+            .stories,
         vec![StoryId::new(720), StoryId::new(710)],
         "the member moves to the requested 1-indexed position within the iteration"
     );
@@ -220,7 +228,7 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
         iteration_at(1720, "Eridanus", 300),
     ])
     .await;
-    let args = json!({ "iteration_number": 1720, "position": 1 })
+    let args = json!({ "iteration_id": 1720, "position": 1 })
         .as_object()
         .cloned()
         .unwrap();
@@ -229,7 +237,7 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
         .expect("pm reorders the iteration to the front");
     let order_of = |n: u64| {
         refresh
-            .iteration(n)
+            .iteration(IterationId::new(n))
             .expect("present")
             .iteration_order
             .expect("ordered")
@@ -245,7 +253,7 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
 async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
     let refresh = build_refresh(vec![iteration_at(1700, "Circinus", 100)]).await;
     let err = handle_reorder_iteration(
-        &json!({ "iteration_number": 1700, "position": 1 })
+        &json!({ "iteration_id": 1700, "position": 1 })
             .as_object()
             .cloned()
             .unwrap(),
@@ -260,7 +268,7 @@ async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
 #[tokio::test]
 async fn rename_updates_the_iteration_title_1762() {
     let refresh = build_refresh(vec![iteration(1700, "Circinus")]).await;
-    let args = json!({ "iteration_number": 1700, "name": "Vela" })
+    let args = json!({ "iteration_id": 1700, "name": "Vela" })
         .as_object()
         .cloned()
         .unwrap();
@@ -268,7 +276,11 @@ async fn rename_updates_the_iteration_title_1762() {
         .await
         .expect("pm renames the iteration");
     assert_eq!(
-        refresh.iteration(1700).expect("present").content.title,
+        refresh
+            .iteration(IterationId::new(1700))
+            .expect("present")
+            .content
+            .title,
         "Iteration Vela",
         "the rename updates the iteration title (surfaced in board/roadmap)"
     );
@@ -280,7 +292,7 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
 
     let refresh = build_refresh(vec![iteration(1700, "Vela")]).await;
 
-    let designate = json!({ "iteration_number": 1700 })
+    let designate = json!({ "iteration_id": 1700 })
         .as_object()
         .cloned()
         .unwrap();
@@ -288,7 +300,10 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
         .await
         .expect("pm designates the iteration current");
     assert!(
-        refresh.iteration(1700).expect("present").is_current,
+        refresh
+            .iteration(IterationId::new(1700))
+            .expect("present")
+            .is_current,
         "sanity: the iteration is current right after designation"
     );
 
@@ -301,7 +316,10 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
         .expect("pm renames the iteration");
 
     assert!(
-        refresh.iteration(1700).expect("present").is_current,
+        refresh
+            .iteration(IterationId::new(1700))
+            .expect("present")
+            .is_current,
         "renaming a current iteration must NOT clear its current designation"
     );
 }
@@ -317,7 +335,7 @@ async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
     );
     feature.raw_labels.push("feature".to_string());
     let refresh = build_refresh(vec![feature]).await;
-    let args = json!({ "iteration_number": 700, "name": "X" })
+    let args = json!({ "iteration_id": 700, "name": "X" })
         .as_object()
         .cloned()
         .unwrap();

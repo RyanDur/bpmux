@@ -23,9 +23,9 @@ export const deriveNowView = (iterations: BoardIterationData[], stories: Story[]
   const members: NowRow[] = []
   for (const story of stories) {
     if (isIterationStory(story)) continue
-    const position = positionInParentIteration(index, story.id, iteration.number)
+    const position = positionInParentIteration(index, story.id, iteration.id)
     if (position === null) continue
-    members.push({ story, membership: { iteration_number: iteration.number, position } })
+    members.push({ story, membership: { iteration_id: iteration.id, position } })
   }
   return { kind: 'current', iteration, members }
 }

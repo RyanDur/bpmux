@@ -47,7 +47,7 @@ fn store_with(stories: Vec<Story>) -> Arc<BoardStore> {
 
 fn args(epic_number: u64) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("epic_number".to_string(), serde_json::json!(epic_number));
+    m.insert("epic_id".to_string(), serde_json::json!(epic_number));
     m
 }
 
@@ -56,7 +56,7 @@ async fn returns_zero_children_for_empty_epic() {
     let store = store_with(vec![epic(100)]);
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
-    assert_eq!(parsed["epic_number"], 100);
+    assert_eq!(parsed["epic_id"], 100);
     assert_eq!(parsed["children"].as_array().unwrap().len(), 0);
 }
 
@@ -179,7 +179,7 @@ async fn rejects_missing_epic_number_arg() {
     let store = store_with(vec![]);
     let empty = serde_json::Map::new();
     let err = handle_list_epic_children(&empty, &store).await.unwrap_err();
-    assert!(err.contains("epic_number"), "got: {err}");
+    assert!(err.contains("epic_id"), "got: {err}");
 }
 
 #[tokio::test]

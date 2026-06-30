@@ -10,11 +10,9 @@ import {
 import { startSession, getSessionSnapshot, resetSessionForTest } from '../transport/session'
 import { dispatchSession } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
-import { asStoryId } from '../board/types'
-
 const props = {
   apiBase: 'http://backend.invalid',
-  storyId: asStoryId(700)
+  storyId: 700
 }
 
 const bumpBoard = (): void =>
@@ -95,9 +93,7 @@ describe('useTimeline — offline (mock) mode', () => {
   })
 
   test('renders empty (not loading) when offline (apiBase undefined)', () => {
-    const { result } = renderHook(() =>
-      useTimeline({ apiBase: undefined, storyId: asStoryId(700) })
-    )
+    const { result } = renderHook(() => useTimeline({ apiBase: undefined, storyId: 700 }))
     expect(result.current.events).toEqual([])
     expect(result.current.loading).toBe(false)
   })

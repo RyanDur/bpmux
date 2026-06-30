@@ -17,6 +17,8 @@ mod key_tests;
 #[cfg(test)]
 mod story_type_tests;
 
+use crate::product_management::epic::EpicId;
+use crate::product_management::iteration::IterationId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -54,9 +56,9 @@ pub struct Story {
     #[serde(default)]
     pub acceptor: Option<Acceptor>,
     #[serde(default)]
-    pub parent_epic: Option<u64>,
+    pub parent_epic: Option<EpicId>,
     #[serde(default)]
-    pub iteration_membership: Option<(u64, u32)>,
+    pub iteration_membership: Option<(IterationId, u32)>,
     #[serde(default)]
     pub tags: Vec<Tag>,
     #[serde(default)]
@@ -121,11 +123,11 @@ impl Story {
         self.acceptor
     }
 
-    pub fn parent_epic(&self) -> Option<u64> {
+    pub fn parent_epic(&self) -> Option<EpicId> {
         self.parent_epic
     }
 
-    pub fn iteration_membership(&self) -> Option<(u64, u32)> {
+    pub fn iteration_membership(&self) -> Option<(IterationId, u32)> {
         self.iteration_membership
     }
 

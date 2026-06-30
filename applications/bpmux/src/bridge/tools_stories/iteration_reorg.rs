@@ -13,10 +13,10 @@ pub(crate) async fn handle_reorder_iteration(
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "reorder iterations")?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let position = args
         .get("position")
         .and_then(serde_json::Value::as_u64)
@@ -24,11 +24,11 @@ pub(crate) async fn handle_reorder_iteration(
         as u32;
 
     let r = refresh.ok_or("reorder_iteration requires refresh (RefreshDriver)")?;
-    ensure_iteration_in_canonical_store(r, iteration_number).await?;
+    ensure_iteration_in_canonical_store(r, iteration_id).await?;
 
-    let band_size = renumber_iteration_order(r, agent_name, iteration_number, position)?;
+    let band_size = renumber_iteration_order(r, agent_name, iteration_id, position)?;
     Ok(format!(
-        "iteration #{iteration_number} reordered to planning position {position} of {band_size}"
+        "iteration #{iteration_id} reordered to planning position {position} of {band_size}"
     ))
 }
 
@@ -95,10 +95,10 @@ pub(crate) async fn handle_rename_iteration(
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "edit an iteration name")?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let name = args
         .get("name")
         .and_then(serde_json::Value::as_str)
@@ -106,9 +106,9 @@ pub(crate) async fn handle_rename_iteration(
         .ok_or("iteration rename needs --name <N>")?;
 
     let r = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
-    ensure_iteration_in_canonical_store(r, iteration_number).await?;
-    r.update_title(iteration_number, format!("Iteration {name}"))
+    ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    r.update_title(iteration_id, format!("Iteration {name}"))
         .await
-        .map_err(|e| format!("#{iteration_number} name update failed: {e}"))?;
-    Ok(format!("iteration #{iteration_number} renamed to {name}"))
+        .map_err(|e| format!("#{iteration_id} name update failed: {e}"))?;
+    Ok(format!("iteration #{iteration_id} renamed to {name}"))
 }

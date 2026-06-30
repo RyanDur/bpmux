@@ -1,7 +1,3 @@
-export type StoryId = number & { readonly __brand: 'StoryId' }
-
-export const asStoryId = (n: number): StoryId => n as StoryId
-
 export type StoryState =
   | 'icebox'
   | 'ready'
@@ -53,7 +49,7 @@ export type Acceptor = 'team' | 'owner' | 'dev'
 export type Horizon = 'now' | 'next' | 'later'
 
 export interface IterationMembership {
-  iteration_number: number
+  iteration_id: number
   position: number
 }
 
@@ -71,12 +67,12 @@ export interface IterationReadiness {
 }
 
 export interface OutcomeMembership {
-  outcome_number: number
+  outcome_id: number
   position: number
 }
 
 export interface Story {
-  id: StoryId
+  id: number
   title: string
   state: StoryState
   gh_state?: 'open' | 'closed'
@@ -84,7 +80,7 @@ export interface Story {
   assignees: string[]
   created_at: string
   body: string
-  parent_epic?: StoryId | null
+  parent_epic?: number | null
   iteration_membership?: IterationMembership | null
   iteration_order?: number | null
   is_current?: boolean

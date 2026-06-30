@@ -77,7 +77,7 @@ pub(in crate::bridge) fn build_board_text(
         let parent_epic = s.parent_epic();
         let prefix = if parent_epic.is_some() { "↳ " } else { "" };
         let suffix = match parent_epic {
-            Some(n) => format!(" (epic #{n})"),
+            Some(n) => format!(" (epic #{})", n.value()),
             None => String::new(),
         };
         let acceptor = match s.acceptor() {
@@ -98,7 +98,10 @@ pub(in crate::bridge) fn build_board_text(
     use crate::product_management::board::column::{ColumnBucket, column_for};
     let in_scope_iteration = |s: &crate::product_management::story::Story| -> bool {
         match scope.iteration {
-            Some(n) => s.iteration_membership().map(|(it, _)| it) == Some(n),
+            Some(n) => {
+                s.iteration_membership().map(|(it, _)| it)
+                    == Some(crate::product_management::iteration::IterationId::new(n))
+            }
             None => true,
         }
     };
@@ -130,7 +133,12 @@ pub(in crate::bridge) fn build_board_text(
             for epic in &epics {
                 let children: Vec<&crate::product_management::story::Story> = stories
                     .iter()
-                    .filter(|c| c.parent_epic() == Some(epic.id.value()))
+                    .filter(|c| {
+                        c.parent_epic()
+                            == Some(crate::product_management::epic::EpicId::new(
+                                epic.id.value(),
+                            ))
+                    })
                     .collect();
                 let counts = crate::product_management::epic::derive_epic_counts(&children);
                 let derived =

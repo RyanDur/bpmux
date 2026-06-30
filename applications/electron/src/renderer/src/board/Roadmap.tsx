@@ -51,7 +51,7 @@ const RoadmapOutcomeCard = ({
   outcome: RoadmapOutcome
   horizon: Horizon
   focused: boolean
-  onToggle: (outcomeNumber: number) => void
+  onToggle: (outcomeId: number) => void
   gripDragProps: GripDragProps
 }): React.JSX.Element => {
   const dispatch = useDispatch()
@@ -60,19 +60,19 @@ const RoadmapOutcomeCard = ({
   return (
     <article
       className="roadmap-outcome"
-      data-test={`roadmap-outcome-${outcome.number}`}
+      data-test={`roadmap-outcome-${outcome.id}`}
       data-tone={outcome.tone}
       data-focused={focused || undefined}
     >
       <header className="roadmap-outcome-head">
-        <DragGrip storyNumber={outcome.number} gripDragProps={gripDragProps} />
+        <DragGrip storyNumber={outcome.id} gripDragProps={gripDragProps} />
         <h4 className="roadmap-outcome-name">
           <button
             type="button"
             className="roadmap-outcome-toggle"
-            data-test={`roadmap-outcome-toggle-${outcome.number}`}
+            data-test={`roadmap-outcome-toggle-${outcome.id}`}
             aria-expanded={focused}
-            onClick={() => onToggle(outcome.number)}
+            onClick={() => onToggle(outcome.id)}
           >
             {outcome.name}
           </button>
@@ -114,17 +114,14 @@ const RoadmapOutcomeCard = ({
             className="roadmap-outcome-band-pick"
             aria-pressed={target === horizon}
             disabled={target === horizon}
-            onClick={() => dispatch(outcomeHorizonChangeRequested(outcome.number, target))}
+            onClick={() => dispatch(outcomeHorizonChangeRequested(outcome.id, target))}
           >
             {label}
           </button>
         ))}
       </footer>
       {focused && (
-        <OutcomeDrillBody
-          outcomeNumber={outcome.number}
-          drill={deriveOutcomeDrillIn(outcome.iterations)}
-        />
+        <OutcomeDrillBody outcomeId={outcome.id} drill={deriveOutcomeDrillIn(outcome.iterations)} />
       )}
     </article>
   )
@@ -134,8 +131,8 @@ const Roadmap = (): React.JSX.Element => {
   const { bands } = useRoadmap()
   const dispatch = useDispatch()
   const [focusedNumber, setFocusedNumber] = useState<number | null>(null)
-  const toggle = (outcomeNumber: number): void =>
-    setFocusedNumber((current) => (current === outcomeNumber ? null : outcomeNumber))
+  const toggle = (outcomeId: number): void =>
+    setFocusedNumber((current) => (current === outcomeId ? null : outcomeId))
   return (
     <section className="roadmap" data-test="roadmap">
       <p className="roadmap-live" data-test="roadmap-live">
@@ -156,14 +153,14 @@ const Roadmap = (): React.JSX.Element => {
             <h3 className="roadmap-band-label">{band.label}</h3>
             <SortableList
               items={band.outcomes}
-              keyOf={(outcome) => outcome.number}
-              rowKey={(outcome) => outcome.number}
+              keyOf={(outcome) => outcome.id}
+              rowKey={(outcome) => outcome.id}
               config={OUTCOME_REPRIORITIZE_DRAG}
-              buildPayload={(outcome) => outcome.number}
-              onReorder={(draggedNumber, targetKey) => {
-                const position = band.outcomes.findIndex((o) => o.number === targetKey) + 1
+              buildPayload={(outcome) => outcome.id}
+              onReorder={(draggedId, targetKey) => {
+                const position = band.outcomes.findIndex((o) => o.id === targetKey) + 1
                 if (position === 0) return
-                dispatch(outcomeReprioritizeRequested(draggedNumber, position))
+                dispatch(outcomeReprioritizeRequested(draggedId, position))
               }}
               ulClassName="roadmap-band-outcomes"
               renderRow={(outcome, { rowDragProps, gripDragProps }) => (
@@ -171,7 +168,7 @@ const Roadmap = (): React.JSX.Element => {
                   <RoadmapOutcomeCard
                     outcome={outcome}
                     horizon={band.horizon}
-                    focused={focusedNumber === outcome.number}
+                    focused={focusedNumber === outcome.id}
                     onToggle={toggle}
                     gripDragProps={gripDragProps}
                   />

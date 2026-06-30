@@ -14,7 +14,6 @@ import {
   type SessionConfig
 } from './actions'
 import { nextOlderHistoryRequest } from './olderHistory'
-import type { StoryId } from '../../board/types'
 import type { HistoryMessageWire } from '../types'
 import { startSentFrameCapture } from './testCapture'
 import type { ClientMessage } from '../types'
@@ -56,10 +55,10 @@ export const toggleReaction = (
   user: string
 ): void => dispatchSession(reactionToggleRequested(channel, messageKey, emoji, user))
 
-export const requestCommentsHydrate = (storyId: StoryId): void =>
+export const requestCommentsHydrate = (storyId: number): void =>
   dispatchSession(commentsHydrateRequested(storyId))
 
-export const requestTimelineHydrate = (storyId: StoryId): void =>
+export const requestTimelineHydrate = (storyId: number): void =>
   dispatchSession(timelineHydrateRequested(storyId))
 
 export const requestOlderHistory = (

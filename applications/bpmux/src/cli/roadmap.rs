@@ -62,7 +62,7 @@ fn validate_order(order: Option<&str>) -> anyhow::Result<()> {
 }
 
 pub(super) fn render_drill(value: &serde_json::Value) -> String {
-    let number = value["outcome_number"].as_u64().unwrap_or(0);
+    let number = value["outcome_id"].as_u64().unwrap_or(0);
     let name = value["outcome_name"]
         .as_str()
         .unwrap_or("(unknown outcome)");
@@ -91,7 +91,7 @@ pub(super) fn render_drill(value: &serde_json::Value) -> String {
 
 fn render_drill_iteration(iteration: &serde_json::Value) -> String {
     let order = iteration["order"].as_u64().unwrap_or(0);
-    let number = iteration["number"].as_u64().unwrap_or(0);
+    let number = iteration["id"].as_u64().unwrap_or(0);
     let name = iteration["name"].as_str().unwrap_or("");
     let state = iteration["state"].as_str().unwrap_or("");
     let gap_count = iteration["gap_count"].as_u64().unwrap_or(0);

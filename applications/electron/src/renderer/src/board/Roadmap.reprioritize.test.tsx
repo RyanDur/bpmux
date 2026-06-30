@@ -30,8 +30,8 @@ const dragTransfer = (): DataTransfer => {
 describe('dragging an outcome within a band dispatches a reprioritize over the wire', () => {
   it('drops the dragged outcome onto a peer and sends its new 1-indexed position', () => {
     seedOutcomes([
-      outcome({ number: 10, title: 'Leads', horizon: 'now', horizon_order: 1 }),
-      outcome({ number: 20, title: 'Trails', horizon: 'now', horizon_order: 2 })
+      outcome({ id: 10, title: 'Leads', horizon: 'now', horizon_order: 1 }),
+      outcome({ id: 20, title: 'Trails', horizon: 'now', horizon_order: 2 })
     ])
     render(<Roadmap />)
 
@@ -44,6 +44,6 @@ describe('dragging an outcome within a band dispatches a reprioritize over the w
       dataTransfer: transfer
     })
 
-    expect(sent).toEqual([{ type: 'reprioritize_outcome', outcome_number: 10, position: 2 }])
+    expect(sent).toEqual([{ type: 'reprioritize_outcome', outcome_id: 10, position: 2 }])
   })
 })

@@ -2,6 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
+use crate::product_management::epic::EpicId;
 use crate::product_management::story::{StoryId, StoryType};
 use crate::transport::protocol::ClientMessage;
 
@@ -43,7 +44,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
 
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(300));
-    args.insert("epic_number".into(), serde_json::json!(457));
+    args.insert("epic_id".into(), serde_json::json!(457));
     let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
@@ -63,9 +64,9 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
         &pushed[0],
         BoardEvent::ParentEpicSet {
             id,
-            epic_number: 457,
+            epic_id,
             ..
-        } if *id == StoryId::new(300)
+        } if *id == StoryId::new(300) && *epic_id == EpicId::new(457)
     ));
 }
 
@@ -97,7 +98,7 @@ async fn set_parent_epic_rejects_non_existent_epic() {
 
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(310));
-    args.insert("epic_number".into(), serde_json::json!(9999));
+    args.insert("epic_id".into(), serde_json::json!(9999));
     let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found"));
@@ -139,7 +140,7 @@ async fn set_parent_epic_rejects_non_epic_parent() {
 
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(311));
-    args.insert("epic_number".into(), serde_json::json!(458));
+    args.insert("epic_id".into(), serde_json::json!(458));
     let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -201,7 +202,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
 async fn set_parent_epic_rejects_non_pm_role() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(1));
-    args.insert("epic_number".into(), serde_json::json!(2));
+    args.insert("epic_id".into(), serde_json::json!(2));
     let result = handle_set_parent_epic(&args, "dev:claude-code", None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to pm"));
@@ -211,7 +212,7 @@ async fn set_parent_epic_rejects_non_pm_role() {
 async fn set_parent_epic_rejects_self_parent() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(42));
-    args.insert("epic_number".into(), serde_json::json!(42));
+    args.insert("epic_id".into(), serde_json::json!(42));
     let result = handle_set_parent_epic(&args, "pm:claude-code", None).await;
     assert!(result.is_err());
     assert!(
@@ -272,9 +273,9 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     assert!(matches!(
         pushed[1],
         BoardEvent::ParentEpicSet {
-            epic_number: 500,
+            epic_id,
             ..
-        }
+        } if epic_id == EpicId::new(500)
     ));
 }
 
@@ -350,7 +351,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "pm".into(),
     );
     child_a.raw_labels.push("parent-epic-#700".to_string());
-    child_a.parent_epic = Some(700);
+    child_a.parent_epic = Some(EpicId::new(700));
     child_a.is_closed = true;
     let mut child_b = Story::new_minimal(
         StoryId::new(702),
@@ -360,7 +361,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "pm".into(),
     );
     child_b.raw_labels.push("parent-epic-#700".to_string());
-    child_b.parent_epic = Some(700);
+    child_b.parent_epic = Some(EpicId::new(700));
     let mut child_c = Story::new_minimal(
         StoryId::new(703),
         "child c".into(),
@@ -369,7 +370,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "pm".into(),
     );
     child_c.raw_labels.push("parent-epic-#700".to_string());
-    child_c.parent_epic = Some(700);
+    child_c.parent_epic = Some(EpicId::new(700));
     adapter.seed_stories(vec![epic, child_a, child_b, child_c]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -520,7 +521,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
         "pm".into(),
     );
     a.raw_labels.push("parent-epic-#720".to_string());
-    a.parent_epic = Some(720);
+    a.parent_epic = Some(EpicId::new(720));
     let mut b = Story::new_minimal(
         StoryId::new(722),
         "b".into(),
@@ -529,7 +530,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
         "pm".into(),
     );
     b.raw_labels.push("parent-epic-#720".to_string());
-    b.parent_epic = Some(720);
+    b.parent_epic = Some(EpicId::new(720));
     adapter.seed_stories(vec![epic, a, b]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -575,7 +576,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
         "pm".into(),
     );
     a.raw_labels.push("parent-epic-#730".to_string());
-    a.parent_epic = Some(730);
+    a.parent_epic = Some(EpicId::new(730));
     adapter.seed_stories(vec![epic, a]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),

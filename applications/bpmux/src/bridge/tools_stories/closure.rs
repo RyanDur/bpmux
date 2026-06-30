@@ -97,8 +97,8 @@ pub(crate) async fn handle_close_iteration(
     port: u16,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "close iteration")?;
-    let iteration_number = args.get("iteration_number").and_then(|v| v.as_u64());
-    post_close_iteration(port, iteration_number).await?;
+    let iteration_id = args.get("iteration_id").and_then(|v| v.as_u64());
+    post_close_iteration(port, iteration_id).await?;
     let signal = build_iteration_close_signal();
     let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, json).await {
@@ -110,13 +110,13 @@ pub(crate) async fn handle_close_iteration(
     )
 }
 
-async fn post_close_iteration(port: u16, iteration_number: Option<u64>) -> Result<(), String> {
+async fn post_close_iteration(port: u16, iteration_id: Option<u64>) -> Result<(), String> {
     let token_path = crate::auth::default_auth_token_path()
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
     let token = crate::auth::read(&token_path)
         .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
     let url = crate::transport::local_url::api_url(port, "/api/close_iteration");
-    let body = serde_json::json!({ "iteration_number": iteration_number });
+    let body = serde_json::json!({ "iteration_id": iteration_id });
     let res = reqwest::Client::new()
         .post(&url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))

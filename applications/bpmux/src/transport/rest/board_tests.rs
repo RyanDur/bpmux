@@ -9,6 +9,8 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -61,10 +63,10 @@ async fn board_roadmap_serves_flat_priority_cards_carrying_the_enriched_state() 
 
     assert_eq!(cards.len(), 2, "both non-retired outcomes reach the wire");
     assert_eq!(
-        cards[0]["number"], 700,
+        cards[0]["id"], 700,
         "the served layer is flat in priority order — Now precedes Later"
     );
-    assert_eq!(cards[1]["number"], 710);
+    assert_eq!(cards[1]["id"], 710);
     assert_eq!(
         cards[0]["state"], "planned",
         "the enriched kebab state vocabulary rides the wire (an outcome with no building iterations reads planned)"
@@ -84,7 +86,7 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
     let mut iteration = seed(810, "Iteration", StoryType::Iteration, &[]);
     iteration.body = Some(
         IterationRelationships {
-            outcome: Some(700),
+            outcome: Some(OutcomeId::new(700)),
             stories: vec![],
         }
         .write_into_body("## composed"),
@@ -98,7 +100,7 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
     outcome.body = Some(
         OutcomeRelationships {
             roadmap: None,
-            iterations: vec![810],
+            iterations: vec![IterationId::new(810)],
         }
         .write_into_body("## Outcome\n"),
     );
@@ -107,7 +109,7 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
     let iterations = board_iterations(&refresh);
     let mapped = iterations
         .iter()
-        .find(|i| i["number"] == 810)
+        .find(|i| i["id"] == 810)
         .expect("the mapped iteration reaches the wire");
 
     assert_eq!(

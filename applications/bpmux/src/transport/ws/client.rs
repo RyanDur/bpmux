@@ -129,44 +129,37 @@ pub(crate) async fn handle_client_message(
             handle_history_page(ctx, tx, request_id, before, limit).await?;
         }
         Ok(ClientMessage::SetOutcomeHorizon {
-            outcome_number,
+            outcome_id,
             horizon,
         }) => {
-            handle_set_outcome_horizon(ctx, tx, identity, outcome_number, horizon).await?;
+            handle_set_outcome_horizon(ctx, tx, identity, outcome_id, horizon).await?;
         }
         Ok(ClientMessage::ReorderOutcomeIteration {
-            outcome_number,
-            iteration_number,
+            outcome_id,
+            iteration_id,
             position,
         }) => {
-            handle_reorder_outcome_iteration(
-                ctx,
-                tx,
-                identity,
-                outcome_number,
-                iteration_number,
-                position,
-            )
-            .await?;
+            handle_reorder_outcome_iteration(ctx, tx, identity, outcome_id, iteration_id, position)
+                .await?;
         }
         Ok(ClientMessage::ReprioritizeOutcome {
-            outcome_number,
+            outcome_id,
             position,
         }) => {
-            handle_reprioritize_outcome(ctx, tx, identity, outcome_number, position).await?;
+            handle_reprioritize_outcome(ctx, tx, identity, outcome_id, position).await?;
         }
         Ok(ClientMessage::ReorderIteration {
-            iteration_number,
+            iteration_id,
             position,
         }) => {
-            handle_reorder_iteration(ctx, tx, identity, iteration_number, position).await?;
+            handle_reorder_iteration(ctx, tx, identity, iteration_id, position).await?;
         }
         Ok(ClientMessage::AddStoryToIteration {
-            iteration_number,
+            iteration_id,
             story_id,
             position,
         }) => {
-            handle_add_story_to_iteration(ctx, tx, identity, iteration_number, story_id, position)
+            handle_add_story_to_iteration(ctx, tx, identity, iteration_id, story_id, position)
                 .await?;
         }
         Err(e) => {

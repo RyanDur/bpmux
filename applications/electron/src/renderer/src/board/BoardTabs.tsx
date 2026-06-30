@@ -9,14 +9,7 @@ import { RENDERER_IDENTITY } from '../transport/session'
 import { epicNumbersInIteration } from './currentIteration'
 import { deriveNowView } from './deriveNowView'
 import type { BoardIterationData } from './selectIterations'
-import {
-  GROUP_ORDER,
-  isActiveEpic,
-  type Story,
-  type StoryId,
-  type ColumnState,
-  type GroupSpec
-} from './types'
+import { GROUP_ORDER, isActiveEpic, type Story, type ColumnState, type GroupSpec } from './types'
 import './BoardTabs.css'
 
 export type BoardTabId = 'now' | 'plan' | 'done'
@@ -88,7 +81,7 @@ const BoardTabs = ({
     const inIter = new Set(currentIterationEpicNumbers)
     return stories.filter((s) => isActiveEpic(s) && inIter.has(s.id))
   }, [stories, currentIteration, currentIterationEpicNumbers])
-  const currentIterationMemberNumbers = useMemo<Set<StoryId>>(
+  const currentIterationMemberNumbers = useMemo<Set<number>>(
     () => new Set(nowView.kind === 'current' ? nowView.members.map((m) => m.story.id) : []),
     [nowView]
   )

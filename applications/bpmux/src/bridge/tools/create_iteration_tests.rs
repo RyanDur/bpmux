@@ -8,6 +8,7 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -37,12 +38,13 @@ async fn build_refresh_with_stories(stories: Vec<Story>) -> Arc<dyn RefreshDrive
     orch
 }
 
-fn iteration_number_by_title(refresh: &Arc<dyn RefreshDriver>, title: &str) -> u64 {
+fn iteration_id_by_title(refresh: &Arc<dyn RefreshDriver>, title: &str) -> IterationId {
     refresh
         .iterations()
         .iter()
         .find(|it| it.content.title == title)
-        .and_then(|it| it.id().saved_id().map(|i| i.value()))
+        .and_then(|it| it.id().saved_id())
+        .map(|i| IterationId::new(i.value()))
         .unwrap_or_else(|| panic!("iteration '{title}' persisted"))
 }
 
@@ -69,9 +71,9 @@ async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
         result.contains("Iteration Aquila"),
         "title includes name: {result}"
     );
-    let number = iteration_number_by_title(&refresh, "Iteration Aquila");
+    let id = iteration_id_by_title(&refresh, "Iteration Aquila");
     assert!(
-        refresh.iteration(number).is_some(),
+        refresh.iteration(id).is_some(),
         "the created issue is typed as an Iteration (present in the typed iteration collection)"
     );
 }
@@ -110,8 +112,8 @@ async fn create_iteration_body_reserves_member_stories_section() {
     handle_create_iteration(&args("Pegasus"), "pm:claude-code", Some(&refresh))
         .await
         .unwrap();
-    let number = iteration_number_by_title(&refresh, "Iteration Pegasus");
-    let iteration = refresh.iteration(number).expect("Pegasus issue persisted");
+    let id = iteration_id_by_title(&refresh, "Iteration Pegasus");
+    let iteration = refresh.iteration(id).expect("Pegasus issue persisted");
     let body = iteration.content.body.clone().unwrap_or_default();
     assert!(
         body.contains("## Member stories"),
@@ -133,14 +135,14 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
     handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect("create_iteration succeeds");
-    let number = iteration_number_by_title(&refresh, "Iteration Aquila");
+    let id = iteration_id_by_title(&refresh, "Iteration Aquila");
     refresh
-        .refresh_story(number)
+        .refresh_story(id.value())
         .await
         .expect("refetch from source succeeds");
     let refetched = refresh
         .store()
-        .backing_story(StoryId::new(number))
+        .backing_story(StoryId::new(id.value()))
         .expect("the issue is present after a source refetch");
     assert!(
         refetched
@@ -158,8 +160,8 @@ async fn create_iteration_assigns_order_at_birth_1735() {
     handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh))
         .await
         .expect("create_iteration succeeds");
-    let number = iteration_number_by_title(&refresh, "Iteration Aquila");
-    let iteration = refresh.iteration(number).expect("iteration persisted");
+    let id = iteration_id_by_title(&refresh, "Iteration Aquila");
+    let iteration = refresh.iteration(id).expect("iteration persisted");
     assert!(
         iteration.iteration_order.is_some(),
         "a freshly-created iteration is born with a canonical order (no order-less iteration → no Fornax-last); got {:?}",
@@ -176,10 +178,10 @@ async fn create_iteration_appends_order_after_existing_1735() {
         .await
         .expect("create succeeds");
     let pegasus = refresh
-        .iteration(iteration_number_by_title(&refresh, "Iteration Pegasus"))
+        .iteration(iteration_id_by_title(&refresh, "Iteration Pegasus"))
         .expect("Pegasus persisted");
     let aquila = refresh
-        .iteration(iteration_number_by_title(&refresh, "Iteration Aquila"))
+        .iteration(iteration_id_by_title(&refresh, "Iteration Aquila"))
         .expect("Aquila persisted");
     assert!(
         pegasus.iteration_order.expect("Pegasus has order")

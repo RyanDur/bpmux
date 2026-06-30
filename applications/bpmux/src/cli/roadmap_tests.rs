@@ -6,7 +6,7 @@ use serde_json::json;
 #[test]
 fn drill_renders_header_convene_iterations_and_checks() {
     let out = render_drill(&json!({
-        "outcome_number": 34,
+        "outcome_id": 34,
         "outcome_name": "Decision-layer",
         "drill": {
             "convene": {
@@ -16,14 +16,14 @@ fn drill_renders_header_convene_iterations_and_checks() {
                 "then_iteration_name": "Crux-1741"
             },
             "iterations": [
-                {"order": 1, "number": 1740, "name": "Crux-1740", "state": "next",
+                {"order": 1, "id": 1740, "name": "Crux-1740", "state": "next",
                  "gap_count": 2, "checks": [
                     {"label": "drafted", "state": "met"},
                     {"label": "stories-ordered", "state": "gap"},
                     {"label": "designer-review", "state": "pending"},
                     {"label": "dev-OK", "state": "pending"}
                 ]},
-                {"order": 2, "number": 1741, "name": "Crux-1741", "state": "not-started",
+                {"order": 2, "id": 1741, "name": "Crux-1741", "state": "not-started",
                  "gap_count": 4, "checks": []}
             ]
         }

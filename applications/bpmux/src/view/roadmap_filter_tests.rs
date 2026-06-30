@@ -2,6 +2,7 @@
 
 use super::roadmap::{OutcomeCardTone, OutcomeState, OutcomeWhy, RoadmapOutcomeCard};
 use super::roadmap_filter::*;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::Horizon;
 
 fn card(
@@ -12,7 +13,7 @@ fn card(
     gap_count: u32,
 ) -> RoadmapOutcomeCard {
     RoadmapOutcomeCard {
-        number,
+        id: OutcomeId::new(number),
         name: name.to_string(),
         why: OutcomeWhy::default(),
         horizon,
@@ -35,7 +36,7 @@ fn filter_by_state_keeps_only_matching_outcomes() {
         RoadmapOrder::Priority,
         None,
     );
-    let numbers: Vec<u64> = filtered.outcomes.iter().map(|c| c.number).collect();
+    let numbers: Vec<u64> = filtered.outcomes.iter().map(|c| c.id.value()).collect();
     assert_eq!(numbers, vec![1, 3]);
     assert_eq!(filtered.total, 2);
     assert_eq!(filtered.shown, 2);
@@ -49,7 +50,7 @@ fn priority_order_keeps_the_served_order_within_each_horizon() {
         card(3, "c", Horizon::Next, OutcomeState::Ready, 0),
     ];
     let filtered = filter_roadmap(cards, None, RoadmapOrder::Priority, None);
-    let numbers: Vec<u64> = filtered.outcomes.iter().map(|c| c.number).collect();
+    let numbers: Vec<u64> = filtered.outcomes.iter().map(|c| c.id.value()).collect();
     assert_eq!(numbers, vec![1, 2, 3]);
 }
 
@@ -61,7 +62,7 @@ fn gap_count_order_sorts_within_horizon_but_keeps_horizon_grouping() {
         card(3, "c", Horizon::Next, OutcomeState::NeedsAttention, 9),
     ];
     let filtered = filter_roadmap(cards, None, RoadmapOrder::GapCount, None);
-    let numbers: Vec<u64> = filtered.outcomes.iter().map(|c| c.number).collect();
+    let numbers: Vec<u64> = filtered.outcomes.iter().map(|c| c.id.value()).collect();
     assert_eq!(
         numbers,
         vec![2, 1, 3],

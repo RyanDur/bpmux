@@ -53,7 +53,7 @@ fn set_parent_epic_rejects_non_epic_parent() {
         let err = pm
             .call_tool(
                 "set_parent_epic",
-                serde_json::json!({"number": 20, "epic_number": 10}),
+                serde_json::json!({"number": 20, "epic_id": 10}),
             )
             .await
             .expect_err("non-Epic parent should be rejected");
@@ -87,7 +87,7 @@ fn set_parent_epic_rejects_self_parent() {
                 "set_parent_epic",
                 serde_json::json!({
                     "number": target_number,
-                    "epic_number": target_number
+                    "epic_id": target_number
                 }),
             )
             .await
@@ -115,7 +115,7 @@ fn set_parent_epic_rejects_dev_caller_per_pm_lane_gate() {
                 "set_parent_epic",
                 serde_json::json!({
                     "number": 100,
-                    "epic_number": 200
+                    "epic_id": 200
                 }),
             )
             .await
@@ -144,7 +144,7 @@ fn set_parent_epic_rejects_missing_epic_number() {
             .expect_err("missing epic_number should be rejected");
 
         assert!(
-            err.contains("epic_number"),
+            err.contains("epic_id"),
             "rejection names the missing field; got {err}"
         );
 
@@ -161,7 +161,7 @@ fn set_parent_epic_rejects_missing_number() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = pm
-            .call_tool("set_parent_epic", serde_json::json!({"epic_number": 200}))
+            .call_tool("set_parent_epic", serde_json::json!({"epic_id": 200}))
             .await
             .expect_err("missing number should be rejected");
 

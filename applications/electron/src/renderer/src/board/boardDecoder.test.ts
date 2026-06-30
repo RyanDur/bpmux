@@ -11,14 +11,14 @@ const validStory = {
   created_at: '2026-06-17T00:00:00Z',
   body: 'b',
   parent_epic: 100,
-  iteration_membership: { iteration_number: 10, position: 1 },
+  iteration_membership: { iteration_id: 10, position: 1 },
   iteration_order: 2,
   is_current: true,
   acceptor: 'owner',
   rework_comment: null,
   horizon: 'now',
   outcome_readiness: { iteration_count: 2, gap_count: 1, all_ready: false },
-  outcome_membership: { outcome_number: 5, position: 1 },
+  outcome_membership: { outcome_id: 5, position: 1 },
   readiness: { drafted: true, stories_ordered: true, review_closed: false, dev_ok: false }
 }
 
@@ -29,7 +29,7 @@ describe('story decoder', () => {
     if (result.type === 'ok') {
       expect(result.data.id).toBe(2)
       expect(result.data.readiness?.review_closed).toBe(false)
-      expect(result.data.iteration_membership?.iteration_number).toBe(10)
+      expect(result.data.iteration_membership?.iteration_id).toBe(10)
       expect(result.data.rework_comment).toBeNull()
     }
   })

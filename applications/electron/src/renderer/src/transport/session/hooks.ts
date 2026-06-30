@@ -10,8 +10,7 @@ import type {
   SyncStatusWire,
   TimelineEventWire
 } from '../types'
-import type { Story, StoryId } from '../../board/types'
-
+import type { Story } from '../../board/types'
 const useSelector = <T>(selector: (snapshot: ReturnType<typeof getSessionSnapshot>) => T): T => {
   const snapshot = (): T => selector(getSessionSnapshot())
   return useSyncExternalStore(subscribeSession, snapshot, snapshot)
@@ -36,8 +35,8 @@ export const useStories = (): Story[] => useSelector((s) => s.stories)
 
 export const useBoardInvalidateTick = (): number => useSelector((s) => s.boardInvalidateTick)
 
-export const useComments = (storyId: StoryId): CommentWire[] | null =>
+export const useComments = (storyId: number): CommentWire[] | null =>
   useSelector((s) => s.commentsByStory.get(storyId) ?? null)
 
-export const useTimelineEvents = (storyId: StoryId): TimelineEventWire[] | null =>
+export const useTimelineEvents = (storyId: number): TimelineEventWire[] | null =>
   useSelector((s) => s.timelineByStory.get(storyId) ?? null)

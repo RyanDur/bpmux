@@ -31,7 +31,7 @@ const dragTransfer = (): DataTransfer => {
 const seedTwo = (): void =>
   seedOutcomes([
     outcome({
-      number: 5,
+      id: 5,
       title: 'Outcome five',
       horizon: 'now',
       iterations: [
@@ -57,7 +57,7 @@ describe('dragging an iteration in the drill-in dispatches a reorder over the wi
     })
 
     expect(sent).toEqual([
-      { type: 'reorder_outcome_iteration', outcome_number: 5, iteration_number: 710, position: 2 }
+      { type: 'reorder_outcome_iteration', outcome_id: 5, iteration_id: 710, position: 2 }
     ])
   })
 })

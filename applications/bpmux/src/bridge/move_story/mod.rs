@@ -155,12 +155,12 @@ pub(in crate::bridge) async fn handle_move_story(
     }
     if target_is_ready
         && let Some(pos) = position
-        && let Some(iteration_number) = current_iteration_number(&r.iterations())
+        && let Some(iteration_id) = current_iteration_number(&r.iterations())
     {
         r.mutate_sync(BoardEvent::IterationMembershipSet {
             meta: meta.clone(),
             id,
-            iteration_number,
+            iteration_id,
             position: pos as u32,
         })
         .map_err(|e| format!("#{number} ready-order (iteration-membership) enqueue failed: {e}"))?;

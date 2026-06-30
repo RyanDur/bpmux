@@ -2,6 +2,7 @@
 
 use super::view::*;
 use crate::product_management::board::column::ColumnBucket;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::StoryState;
@@ -20,7 +21,7 @@ fn story(num: u64, title: &str, state: StoryState) -> Story {
 fn in_iteration(mut s: Story, iteration: u64) -> Story {
     s.raw_labels
         .push(format!("parent-iteration-#{iteration}.1"));
-    s.iteration_membership = Some((iteration, 1));
+    s.iteration_membership = Some((IterationId::new(iteration), 1));
     s
 }
 

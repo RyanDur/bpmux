@@ -69,7 +69,9 @@ pub(crate) async fn ensure_iteration_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     number: u64,
 ) -> Result<crate::product_management::iteration::Iteration, String> {
-    if let Some(iteration) = refresh.iteration(number) {
+    if let Some(iteration) = refresh.iteration(
+        crate::product_management::iteration::IterationId::new(number),
+    ) {
         return Ok(iteration);
     }
     if refresh.story(number).is_some() {
@@ -81,7 +83,9 @@ pub(crate) async fn ensure_iteration_in_canonical_store(
              cannot proceed with an iteration operation against unknown state"
         )
     })?;
-    if let Some(iteration) = refresh.iteration(number) {
+    if let Some(iteration) = refresh.iteration(
+        crate::product_management::iteration::IterationId::new(number),
+    ) {
         return Ok(iteration);
     }
     if refresh.story(number).is_some() {

@@ -11,14 +11,14 @@ use std::sync::Arc;
 
 async fn member_of(
     r: &Arc<dyn RefreshDriver>,
-    iteration_number: u64,
+    iteration_id: u64,
     story_id: u64,
 ) -> Result<(Iteration, Story), String> {
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let story = ensure_story_in_canonical_store(r, story_id).await?;
     if !iteration.stories.contains(&StoryId::new(story_id)) {
         return Err(format!(
-            "#{story_id} is not a member of iteration #{iteration_number}"
+            "#{story_id} is not a member of iteration #{iteration_id}"
         ));
     }
     Ok((iteration, story))
@@ -53,10 +53,10 @@ pub(crate) async fn handle_remove_iteration_member(
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "remove an iteration member")?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let story_id = args
         .get("story_id")
         .and_then(serde_json::Value::as_u64)
@@ -68,7 +68,7 @@ pub(crate) async fn handle_remove_iteration_member(
         .ok_or("remove-member needs --reason <R> (destructive scope-cut; the reason is the audit-trail)")?;
 
     let r = refresh.ok_or("remove_iteration_member requires refresh (RefreshDriver)")?;
-    let (iteration, story) = member_of(r, iteration_number, story_id).await?;
+    let (iteration, story) = member_of(r, iteration_id, story_id).await?;
 
     let mut stories = iteration.stories.clone();
     stories.retain(|n| *n != StoryId::new(story_id));
@@ -79,7 +79,7 @@ pub(crate) async fn handle_remove_iteration_member(
         other => format!(" (was: {})", other.as_str()),
     };
     Ok(format!(
-        "#{story_id} removed from iteration #{iteration_number} (reason: {reason}){state_flag}; the story is otherwise untouched"
+        "#{story_id} removed from iteration #{iteration_id} (reason: {reason}){state_flag}; the story is otherwise untouched"
     ))
 }
 
@@ -89,10 +89,10 @@ pub(crate) async fn handle_move_iteration_member(
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "reorder an iteration member")?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let story_id = args
         .get("story_id")
         .and_then(serde_json::Value::as_u64)
@@ -103,7 +103,7 @@ pub(crate) async fn handle_move_iteration_member(
             .ok_or("move-member needs --to <P> (the new 1-indexed position)")? as u32;
 
     let r = refresh.ok_or("move_iteration_member requires refresh (RefreshDriver)")?;
-    let (iteration, _) = member_of(r, iteration_number, story_id).await?;
+    let (iteration, _) = member_of(r, iteration_id, story_id).await?;
 
     let mut stories = iteration.stories.clone();
     stories.retain(|n| *n != StoryId::new(story_id));
@@ -112,6 +112,6 @@ pub(crate) async fn handle_move_iteration_member(
     rewrite_members(r, &iteration, stories).await?;
 
     Ok(format!(
-        "#{story_id} moved to position {position} in iteration #{iteration_number}"
+        "#{story_id} moved to position {position} in iteration #{iteration_id}"
     ))
 }

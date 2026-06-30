@@ -9,6 +9,8 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -40,7 +42,7 @@ fn iteration_in_outcome(number: u64, outcome: u64) -> Story {
     );
     s.body = Some(
         IterationRelationships {
-            outcome: Some(outcome),
+            outcome: Some(OutcomeId::new(outcome)),
             stories: vec![],
         }
         .write_into_body("## composed"),
@@ -58,7 +60,7 @@ fn outcome_with(number: u64, iterations: Vec<u64>) -> Story {
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
-            iterations,
+            iterations: iterations.into_iter().map(IterationId::new).collect(),
         }
         .write_into_body("## Outcome\n"),
     );
@@ -76,7 +78,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 
 fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
     let mut m = Map::new();
-    m.insert("outcome_number".into(), json!(outcome));
+    m.insert("outcome_id".into(), json!(outcome));
     if let Some(re) = reason {
         m.insert("reason".into(), json!(re));
     }
@@ -86,7 +88,7 @@ fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
 fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
     crate::view::roadmap::roadmap_cards(refresh)
         .into_iter()
-        .map(|c| c.number)
+        .map(|c| c.id.value())
         .collect()
 }
 
@@ -179,7 +181,9 @@ async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
         "the confirm states the orphaned-mapping count so the PM can re-home them: {result}"
     );
     assert!(
-        refresh.iteration(710).is_some_and(|it| !it.complete),
+        refresh
+            .iteration(IterationId::new(710))
+            .is_some_and(|it| !it.complete),
         "retire is soft-delete on the OUTCOME — its iterations are NOT closed (re-mappable)"
     );
 }

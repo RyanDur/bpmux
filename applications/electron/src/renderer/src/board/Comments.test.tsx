@@ -11,10 +11,8 @@ import {
 import { startSession, getSessionSnapshot, resetSessionForTest } from '../transport/session'
 import { dispatchSession } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
-import { asStoryId } from './types'
-
 const baseProps = {
-  storyId: asStoryId(999),
+  storyId: 999,
   apiBase: undefined,
   authToken: undefined,
   onError: () => {}
@@ -58,8 +56,8 @@ describe('#1355 Comments independence', () => {
   })
 
   test('renders standalone for different stories with distinct storyNumber prop', () => {
-    const a = renderToStaticMarkup(<Comments {...baseProps} storyId={asStoryId(101)} />)
-    const b = renderToStaticMarkup(<Comments {...baseProps} storyId={asStoryId(102)} />)
+    const a = renderToStaticMarkup(<Comments {...baseProps} storyId={101} />)
+    const b = renderToStaticMarkup(<Comments {...baseProps} storyId={102} />)
     expect(a).toContain('drill-in-comments')
     expect(b).toContain('drill-in-comments')
   })
@@ -67,7 +65,7 @@ describe('#1355 Comments independence', () => {
 
 describe('Comments reads over the live session (real socket + store)', () => {
   const liveProps = {
-    storyId: asStoryId(700),
+    storyId: 700,
     apiBase: 'http://backend.invalid',
     authToken: 'tok',
     onError: (): void => {}

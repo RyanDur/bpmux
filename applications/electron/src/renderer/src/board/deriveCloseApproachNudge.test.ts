@@ -2,11 +2,9 @@ import { describe, expect, test } from 'vitest'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
 import type { BoardIterationData } from './selectIterations'
 import type { Story, IterationReadiness, StoryState } from './types'
-import { asStoryId } from './types'
-
 let seq = 1
 const iteration = (over: Partial<BoardIterationData>): BoardIterationData => ({
-  number: seq++,
+  id: seq++,
   title: 'Iteration X',
   iteration_order: null,
   is_current: false,
@@ -22,7 +20,7 @@ const member = (
   state: StoryState,
   over: Partial<Story> = {}
 ): Story => ({
-  id: asStoryId(seq++),
+  id: seq++,
   title: 'a member',
   state,
   labels: ['Feature'],
@@ -30,7 +28,7 @@ const member = (
   created_at: '2026-06-16T00:00:00Z',
   body: '',
   gh_state: 'open',
-  iteration_membership: { iteration_number: iterationNumber, position },
+  iteration_membership: { iteration_id: iterationNumber, position },
   ...over
 })
 
@@ -58,14 +56,14 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
   test('FIRES: current draining (>=75% work-done, delivered pre-batch-accept) + next exists + next not-ready', () => {
     const members = drainingMembers(100)
     const current = iteration({
-      number: 100,
+      id: 100,
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
       stories: members.map((m) => m.id)
     })
     const next = iteration({
-      number: 200,
+      id: 200,
       title: 'Iteration Fornax',
       iteration_order: 2,
       readiness: NOT_READY
@@ -85,14 +83,14 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       member(100, 4, 'in-progress')
     ]
     const current = iteration({
-      number: 100,
+      id: 100,
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
       stories: members.map((m) => m.id)
     })
     const next = iteration({
-      number: 200,
+      id: 200,
       title: 'Iteration Fornax',
       iteration_order: 2,
       readiness: NOT_READY
@@ -102,7 +100,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
 
   test('NULL: no current iteration (the #1684 no-iteration board state)', () => {
     const planned = iteration({
-      number: 200,
+      id: 200,
       title: 'Iteration Fornax',
       iteration_order: 2,
       readiness: NOT_READY
@@ -118,14 +116,14 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       member(100, 4, 'ready')
     ]
     const current = iteration({
-      number: 100,
+      id: 100,
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
       stories: members.map((m) => m.id)
     })
     const next = iteration({
-      number: 200,
+      id: 200,
       title: 'Iteration Fornax',
       iteration_order: 2,
       readiness: NOT_READY
@@ -136,7 +134,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
   test('NULL: no next iteration exists (current is the last in order)', () => {
     const members = drainingMembers(100)
     const current = iteration({
-      number: 100,
+      id: 100,
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
@@ -148,14 +146,14 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
   test('NULL: next iteration is ready (no alarm)', () => {
     const members = drainingMembers(100)
     const current = iteration({
-      number: 100,
+      id: 100,
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
       stories: members.map((m) => m.id)
     })
     const next = iteration({
-      number: 200,
+      id: 200,
       title: 'Iteration Fornax',
       iteration_order: 2,
       readiness: READY
@@ -166,20 +164,20 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
   test('NULL: far-horizon — the NEXT (+1) is ready even though a +2 is not-ready (gates on +1, not any-future)', () => {
     const members = drainingMembers(100)
     const current = iteration({
-      number: 100,
+      id: 100,
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
       stories: members.map((m) => m.id)
     })
     const next = iteration({
-      number: 200,
+      id: 200,
       title: 'Iteration Fornax',
       iteration_order: 2,
       readiness: READY
     })
     const farHorizon = iteration({
-      number: 300,
+      id: 300,
       title: 'Iteration Hydra',
       iteration_order: 3,
       readiness: NOT_READY
@@ -196,14 +194,14 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       member(100, 5, 'icebox', { gh_state: 'closed' })
     ]
     const current = iteration({
-      number: 100,
+      id: 100,
       title: 'Iteration Lupus',
       is_current: true,
       iteration_order: 1,
       stories: members.map((m) => m.id)
     })
     const next = iteration({
-      number: 200,
+      id: 200,
       title: 'Iteration Fornax',
       iteration_order: 2,
       readiness: NOT_READY

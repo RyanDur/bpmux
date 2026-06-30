@@ -3,11 +3,12 @@
 use super::roadmap::*;
 use super::roadmap_render::{render_overview_layer, render_roadmap};
 use crate::product_management::iteration::readiness::OutcomeReadiness;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::Horizon;
 
 fn outcome(number: u64, title: &str, horizon: Option<Horizon>) -> RoadmapOutcomeInput {
     RoadmapOutcomeInput {
-        number,
+        id: OutcomeId::new(number),
         title: title.to_string(),
         body: String::new(),
         horizon,
@@ -235,9 +236,9 @@ fn render_handles_no_outcomes() {
 fn overview_layer_renders_served_cards_via_the_shared_renderer() {
     let out = render_overview_layer(&serde_json::json!({
         "outcomes": [
-            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"},
-            {"number": 13, "name": "B", "why": {}, "horizon": "now", "state": "needs-attention", "gap_count": 2, "tone": "gap"},
-            {"number": 40, "name": "D", "why": {}, "horizon": "later", "state": "done", "gap_count": 0, "tone": "ready"}
+            {"id": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"},
+            {"id": 13, "name": "B", "why": {}, "horizon": "now", "state": "needs-attention", "gap_count": 2, "tone": "gap"},
+            {"id": 40, "name": "D", "why": {}, "horizon": "later", "state": "done", "gap_count": 0, "tone": "ready"}
         ],
         "total": 3,
         "shown": 3
@@ -252,7 +253,7 @@ fn overview_layer_renders_served_cards_via_the_shared_renderer() {
 fn overview_layer_labels_the_elided_count_when_a_limit_dropped_rows() {
     let out = render_overview_layer(&serde_json::json!({
         "outcomes": [
-            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
+            {"id": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
         ],
         "total": 12,
         "shown": 1
@@ -267,7 +268,7 @@ fn overview_layer_labels_the_elided_count_when_a_limit_dropped_rows() {
 fn overview_layer_omits_the_elision_label_when_nothing_was_dropped() {
     let out = render_overview_layer(&serde_json::json!({
         "outcomes": [
-            {"number": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
+            {"id": 12, "name": "A", "why": {}, "horizon": "now", "state": "ready", "gap_count": 0, "tone": "ready"}
         ],
         "total": 1,
         "shown": 1

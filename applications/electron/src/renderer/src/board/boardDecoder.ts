@@ -1,14 +1,11 @@
 import * as D from 'schemawax'
-import { asStoryId } from './types'
-
-const storyId = D.number.andThen(asStoryId)
 
 const iterationMembership = D.object({
-  required: { iteration_number: D.number, position: D.number }
+  required: { iteration_id: D.number, position: D.number }
 })
 
 const outcomeMembership = D.object({
-  required: { outcome_number: D.number, position: D.number }
+  required: { outcome_id: D.number, position: D.number }
 })
 
 const outcomeReadiness = D.object({
@@ -43,7 +40,7 @@ const horizon = D.literalUnion('now', 'next', 'later')
 
 export const story = D.object({
   required: {
-    id: storyId,
+    id: D.number,
     title: D.string,
     state: storyState,
     labels: D.array(D.string),
@@ -53,7 +50,7 @@ export const story = D.object({
   },
   optional: {
     gh_state: D.literalUnion('open', 'closed'),
-    parent_epic: D.nullable(storyId),
+    parent_epic: D.nullable(D.number),
     iteration_membership: D.nullable(iterationMembership),
     iteration_order: D.nullable(D.number),
     is_current: D.boolean,

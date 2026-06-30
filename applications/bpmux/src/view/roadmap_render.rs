@@ -29,7 +29,7 @@ pub fn render_roadmap(cards: &[RoadmapOutcomeCard]) -> String {
         };
         out.push_str(&format!(
             "{band:<6} #{}  {}  {}\n",
-            card.number,
+            card.id.value(),
             card.name,
             state_text(card)
         ));

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { asStoryId, type Story } from './types'
+import { type Story } from './types'
 import type { BoardIterationData } from './selectIterations'
 import {
   type PendingMemberPosition,
@@ -17,8 +17,8 @@ export interface IterationMember {
 
 export interface UseIterationMembersResult {
   sortedLoose: Story[]
-  getMembersFor: (iterationNumber: number) => IterationMember[]
-  setPending: (storyNumber: number, iterationNumber: number, position: number) => void
+  getMembersFor: (iterationId: number) => IterationMember[]
+  setPending: (storyId: number, iterationId: number, position: number) => void
 }
 
 const compareLoose = (a: Story, b: Story): number => {
@@ -46,7 +46,7 @@ export const useIterationMembers = (
   }, [stories])
   const iterationsByNumber = useMemo(() => {
     const map = new Map<number, BoardIterationData>()
-    for (const it of iterations) map.set(it.number, it)
+    for (const it of iterations) map.set(it.id, it)
     return map
   }, [iterations])
 
@@ -54,7 +54,7 @@ export const useIterationMembers = (
     const out: Record<number, PendingMemberPosition> = {}
     for (const [numStr, pending] of Object.entries(pendingMemberPosition)) {
       const num = Number(numStr)
-      const actualPosition = positionInParentIteration(index, num, pending.iterationNumber)
+      const actualPosition = positionInParentIteration(index, num, pending.iterationId)
       if (actualPosition === pending.position) continue
       out[num] = pending
     }
@@ -67,18 +67,18 @@ export const useIterationMembers = (
   )
 
   const getMembersFor = useCallback(
-    (iterationNumber: number): IterationMember[] => {
-      const iteration = iterationsByNumber.get(iterationNumber)
+    (iterationId: number): IterationMember[] => {
+      const iteration = iterationsByNumber.get(iterationId)
       if (!iteration) return []
       let order = iteration.stories.filter((n) => {
         const s = storiesByNumber.get(n)
         if (!s || isIterationStory(s)) return false
         const pending = effectivePending[n]
-        return !(pending && pending.iterationNumber !== iterationNumber)
+        return !(pending && pending.iterationId !== iterationId)
       })
       for (const [numStr, pending] of Object.entries(effectivePending)) {
-        if (pending.iterationNumber !== iterationNumber) continue
-        const num = asStoryId(Number(numStr))
+        if (pending.iterationId !== iterationId) continue
+        const num = Number(numStr)
         const s = storiesByNumber.get(num)
         if (!s || isIterationStory(s)) continue
         order = order.filter((x) => x !== num)
@@ -90,15 +90,12 @@ export const useIterationMembers = (
     [iterationsByNumber, storiesByNumber, effectivePending]
   )
 
-  const setPending = useCallback(
-    (storyNumber: number, iterationNumber: number, position: number): void => {
-      setPendingMemberPosition((prev) => ({
-        ...prev,
-        [storyNumber]: { iterationNumber, position }
-      }))
-    },
-    []
-  )
+  const setPending = useCallback((storyId: number, iterationId: number, position: number): void => {
+    setPendingMemberPosition((prev) => ({
+      ...prev,
+      [storyId]: { iterationId, position }
+    }))
+  }, [])
 
   return { sortedLoose, getMembersFor, setPending }
 }

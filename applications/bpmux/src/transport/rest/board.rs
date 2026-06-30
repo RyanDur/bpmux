@@ -29,15 +29,23 @@ pub(crate) fn board_iterations(
         .iter()
         .map(|iteration| {
             let number = iteration.id().saved_id().map(|id| id.value()).unwrap_or(0);
-            let position = iteration.builds_outcome().and_then(|outcome_number| {
+            let position = iteration.builds_outcome().and_then(|outcome_id| {
                 outcomes
                     .iter()
-                    .find(|o| o.id().saved_id().map(|id| id.value()) == Some(outcome_number))
-                    .and_then(|o| o.position_of(number))
+                    .find(|o| {
+                        o.id().saved_id().map(|id| {
+                            crate::product_management::outcome::OutcomeId::new(id.value())
+                        }) == Some(outcome_id)
+                    })
+                    .and_then(|o| {
+                        o.position_of(crate::product_management::iteration::IterationId::new(
+                            number,
+                        ))
+                    })
                     .map(|index| index + 1)
             });
             serde_json::json!({
-                "number": number,
+                "id": number,
                 "title": iteration.content.title,
                 "iteration_order": iteration.iteration_order,
                 "is_current": iteration.is_current,
@@ -79,7 +87,7 @@ pub(crate) fn board_outcomes(
                 .enumerate()
                 .map(|(index, iteration)| {
                     serde_json::json!({
-                        "number": iteration.id().saved_id().map(|id| id.value()).unwrap_or(0),
+                        "id": iteration.id().saved_id().map(|id| id.value()).unwrap_or(0),
                         "name": iteration.content.title,
                         "position": index as u32 + 1,
                         "readiness": iteration_readiness(iteration, workflow),
@@ -87,7 +95,7 @@ pub(crate) fn board_outcomes(
                 })
                 .collect();
             serde_json::json!({
-                "number": number,
+                "id": number,
                 "title": outcome.content.title,
                 "body": outcome.content.body.clone().unwrap_or_default(),
                 "horizon": outcome.horizon().map(|horizon| horizon.as_str()),

@@ -26,20 +26,24 @@ pub(crate) async fn dispatch_close_iteration(
 ) -> Result<String, String> {
     tools_stories::helpers::require_purpose(agent_name, &["pm"], "close iteration")?;
     let r = refresh.ok_or("close_iteration requires refresh (RefreshDriver)")?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(|v| v.as_u64())
-        .ok_or("close_iteration requires iteration_number (canonical Iteration issue#).")?;
-    let iteration = r.iteration(iteration_number).ok_or_else(|| {
-        if r.story(iteration_number).is_some() {
-            format!("close_iteration: #{iteration_number} is not an Iteration")
-        } else {
-            format!("close_iteration: iteration_number #{iteration_number} not found")
-        }
-    })?;
+        .ok_or("close_iteration requires iteration_id (canonical Iteration issue#).")?;
+    let iteration = r
+        .iteration(crate::product_management::iteration::IterationId::new(
+            iteration_id,
+        ))
+        .ok_or_else(|| {
+            if r.story(iteration_id).is_some() {
+                format!("close_iteration: #{iteration_id} is not an Iteration")
+            } else {
+                format!("close_iteration: iteration_id #{iteration_id} not found")
+            }
+        })?;
     if iteration.complete {
         return Err(format!(
-            "close_iteration: iteration #{iteration_number} is already closed"
+            "close_iteration: iteration #{iteration_id} is already closed"
         ));
     }
     let blockers =
@@ -50,9 +54,9 @@ pub(crate) async fn dispatch_close_iteration(
                 .to_string(),
         );
     }
-    crate::transport::rest::iteration_close::close_iteration_canonical(r, iteration_number).await?;
+    crate::transport::rest::iteration_close::close_iteration_canonical(r, iteration_id).await?;
     crate::transport::rest::shared::broadcast_board_invalidate(session);
-    Ok(format!("iteration #{iteration_number} closed"))
+    Ok(format!("iteration #{iteration_id} closed"))
 }
 
 pub(crate) async fn dispatch_set_parent_epic(

@@ -7,6 +7,7 @@ use chrono::{TimeZone, Utc};
 use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
 
 async fn seeded_orchestrator(
@@ -471,7 +472,7 @@ fn make_member(number: u64, title: &str, iteration_number: u64, position: u32) -
         "ready".into(),
         format!("parent-iteration-#{iteration_number}.{position}"),
     ];
-    s.iteration_membership = Some((iteration_number, position));
+    s.iteration_membership = Some((IterationId::new(iteration_number), position));
     s
 }
 

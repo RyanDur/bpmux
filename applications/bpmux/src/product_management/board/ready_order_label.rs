@@ -40,7 +40,7 @@ fn membership_position_for_current(s: &serde_json::Value, current: Option<u64>) 
     if membership.is_null() {
         return None;
     }
-    if membership.get("iteration_number")?.as_u64()? != current {
+    if membership.get("iteration_id")?.as_u64()? != current {
         return None;
     }
     membership.get("position")?.as_u64().map(|p| p as u32)

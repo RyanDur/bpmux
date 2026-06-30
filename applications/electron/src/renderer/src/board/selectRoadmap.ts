@@ -1,7 +1,6 @@
 import type { Horizon, IterationReadiness, OutcomeReadiness } from './types'
-
 export interface RoadmapIteration {
-  number: number
+  id: number
   name: string
   position: number
   readiness: IterationReadiness
@@ -21,7 +20,7 @@ export interface OutcomeWhy {
 }
 
 export interface RoadmapOutcome {
-  number: number
+  id: number
   name: string
   why: OutcomeWhy
   readinessState: RoadmapReadinessState
@@ -41,7 +40,7 @@ export interface Roadmap {
 }
 
 export interface RoadmapOutcomeData {
-  number: number
+  id: number
   title: string
   body: string
   horizon: Horizon | null
@@ -51,7 +50,7 @@ export interface RoadmapOutcomeData {
 }
 
 export interface RoadmapCard {
-  number: number
+  id: number
   name: string
   why: OutcomeWhy
   horizon: Horizon
@@ -105,7 +104,7 @@ const toRoadmapOutcome = (outcome: RoadmapOutcomeData): RoadmapOutcome => {
   const horizon = outcome.horizon ?? 'later'
   const readinessState = readinessStateOf(outcome.outcome_readiness)
   return {
-    number: outcome.number,
+    id: outcome.id,
     name: outcome.title,
     why: parseOutcomeWhy(outcome.body),
     readinessState,
@@ -125,7 +124,7 @@ export const selectRoadmap = (state: RoadmapState): Roadmap => {
     const orderOf = (o: RoadmapOutcomeData): number => o.horizon_order ?? Number.MAX_SAFE_INTEGER
     const inBand = state.outcomes
       .filter((o) => (o.horizon ?? 'later') === horizon)
-      .sort((a, b) => orderOf(a) - orderOf(b) || a.number - b.number)
+      .sort((a, b) => orderOf(a) - orderOf(b) || a.id - b.id)
       .map(toRoadmapOutcome)
     if (inBand.length > 0) bands.push({ horizon, label, outcomes: inBand })
   }

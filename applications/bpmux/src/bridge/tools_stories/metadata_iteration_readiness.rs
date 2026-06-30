@@ -9,15 +9,15 @@ pub(crate) async fn handle_designate_current_iteration(
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "designate current iteration")?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let r = refresh.ok_or("designate_current_iteration requires refresh (RefreshDriver)")?;
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_number).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     if iteration.complete {
         return Err(format!(
-            "iteration #{iteration_number} is closed; a closed iteration cannot be the current iteration"
+            "iteration #{iteration_id} is closed; a closed iteration cannot be the current iteration"
         ));
     }
     let meta = || crate::product_management::board::events::EventMeta {
@@ -28,7 +28,7 @@ pub(crate) async fn handle_designate_current_iteration(
     let prior: Vec<u64> = r
         .iterations()
         .into_iter()
-        .filter(|it| it.is_current && it.id().saved_id() != Some(StoryId::new(iteration_number)))
+        .filter(|it| it.is_current && it.id().saved_id() != Some(StoryId::new(iteration_id)))
         .filter_map(|it| it.id().saved_id().map(|id| id.value()))
         .collect();
     for n in prior {
@@ -43,11 +43,11 @@ pub(crate) async fn handle_designate_current_iteration(
     r.mutate_sync(
         crate::product_management::board::BoardEvent::CurrentIterationDesignated {
             meta: meta(),
-            id: StoryId::new(iteration_number),
+            id: StoryId::new(iteration_id),
         },
     )
-    .map_err(|e| format!("#{iteration_number} current-designation enqueue failed: {e}"))?;
-    Ok(format!("iteration #{iteration_number} designated current"))
+    .map_err(|e| format!("#{iteration_id} current-designation enqueue failed: {e}"))?;
+    Ok(format!("iteration #{iteration_id} designated current"))
 }
 
 pub(crate) async fn handle_close_pre_pickup_review(
@@ -60,12 +60,12 @@ pub(crate) async fn handle_close_pre_pickup_review(
         crate::product_management::iteration::readiness::ITERATION_REVIEWER_PURPOSE,
         "close the pre-pickup review",
     )?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let r = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
-    ensure_iteration_in_canonical_store(r, iteration_number).await?;
+    ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let role = role_from_name(agent_name).to_string();
     let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .encode_iteration_review_closed(&role);
@@ -76,15 +76,15 @@ pub(crate) async fn handle_close_pre_pickup_review(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
-        id: StoryId::new(iteration_number),
+        id: StoryId::new(iteration_id),
         label,
     })
-    .map_err(|e| format!("#{iteration_number} review-close enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{iteration_id} review-close enqueue failed: {e}"))?;
     r.drain_pending()
         .await
-        .map_err(|e| format!("#{iteration_number} review-close push failed: {e}"))?;
+        .map_err(|e| format!("#{iteration_id} review-close push failed: {e}"))?;
     Ok(format!(
-        "pre-pickup review for iteration #{iteration_number} closed by {role}"
+        "pre-pickup review for iteration #{iteration_id} closed by {role}"
     ))
 }
 
@@ -98,12 +98,12 @@ pub(crate) async fn handle_dev_ok_iteration(
         crate::product_management::iteration::readiness::ITERATION_BUILDER_PURPOSE,
         "record dev-OK for the iteration",
     )?;
-    let iteration_number = args
-        .get("iteration_number")
+    let iteration_id = args
+        .get("iteration_id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'iteration_number' argument")?;
+        .ok_or("missing 'iteration_id' argument")?;
     let r = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
-    ensure_iteration_in_canonical_store(r, iteration_number).await?;
+    ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let role = role_from_name(agent_name).to_string();
     let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .encode_iteration_dev_ok(&role);
@@ -114,12 +114,12 @@ pub(crate) async fn handle_dev_ok_iteration(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
-        id: StoryId::new(iteration_number),
+        id: StoryId::new(iteration_id),
         label,
     })
-    .map_err(|e| format!("#{iteration_number} dev-OK enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{iteration_id} dev-OK enqueue failed: {e}"))?;
     r.drain_pending()
         .await
-        .map_err(|e| format!("#{iteration_number} dev-OK push failed: {e}"))?;
-    Ok(format!("iteration #{iteration_number} dev-OK'd by {role}"))
+        .map_err(|e| format!("#{iteration_id} dev-OK push failed: {e}"))?;
+    Ok(format!("iteration #{iteration_id} dev-OK'd by {role}"))
 }

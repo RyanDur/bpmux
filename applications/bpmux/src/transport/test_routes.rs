@@ -139,7 +139,7 @@ pub async fn post_test_create_iteration(
 
 #[derive(Debug, Deserialize)]
 pub struct DesignateCurrentIterationReq {
-    pub iteration_number: u64,
+    pub iteration_id: u64,
     pub agent: Option<String>,
 }
 
@@ -153,8 +153,8 @@ pub async fn post_test_designate_current_iteration(
     };
     let mut args = serde_json::Map::new();
     args.insert(
-        "iteration_number".to_string(),
-        serde_json::Value::Number(req.iteration_number.into()),
+        "iteration_id".to_string(),
+        serde_json::Value::Number(req.iteration_id.into()),
     );
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;

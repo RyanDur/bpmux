@@ -6,7 +6,8 @@ use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::outcome::Outcome;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use crate::workflow::config::WorkflowConfig;
@@ -257,7 +258,7 @@ fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> St
     let mut s = iteration(number);
     s.body = Some(
         IterationRelationships {
-            outcome: Some(outcome_number),
+            outcome: Some(OutcomeId::new(outcome_number)),
             stories: stories.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
@@ -277,7 +278,7 @@ fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
-            iterations,
+            iterations: iterations.into_iter().map(IterationId::new).collect(),
         }
         .write_into_body("## Outcome\n"),
     );

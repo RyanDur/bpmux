@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest'
 import { deriveOutcomeDrillIn } from './deriveOutcomeDrillIn'
 import type { RoadmapIteration } from './selectRoadmap'
 import type { IterationReadiness } from './types'
-
 const readiness = (
   drafted: boolean,
   stories_ordered: boolean,
@@ -15,7 +14,7 @@ const iteration = (
   name: string,
   position: number,
   checks: IterationReadiness
-): RoadmapIteration => ({ number, name, position, readiness: checks })
+): RoadmapIteration => ({ id: number, name, position, readiness: checks })
 
 describe('#1737 deriveOutcomeDrillIn — an outcome → the iterations building it, in order', () => {
   test('orders the building iterations by position', () => {

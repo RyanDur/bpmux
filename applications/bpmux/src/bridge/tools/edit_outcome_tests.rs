@@ -39,7 +39,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 
 fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Value> {
     let mut m = Map::new();
-    m.insert("outcome_number".into(), json!(outcome));
+    m.insert("outcome_id".into(), json!(outcome));
     if let Some(t) = title {
         m.insert("title".into(), json!(t));
     }
@@ -52,7 +52,7 @@ fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Va
 fn roadmap_name(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Option<String> {
     crate::view::roadmap::roadmap_cards(refresh)
         .into_iter()
-        .find(|c| c.number == number)
+        .find(|c| c.id.value() == number)
         .map(|c| c.name)
 }
 

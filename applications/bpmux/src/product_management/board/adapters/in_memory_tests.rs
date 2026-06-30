@@ -6,6 +6,8 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
+use crate::product_management::epic::EpicId;
+use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{FreeComment, Story, StoryId, StoryState};
 
 fn meta() -> EventMeta {
@@ -240,7 +242,7 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
         .push_event(&BoardEvent::ParentEpicSet {
             meta: meta(),
             id: StoryId::new(42),
-            epic_number: 7,
+            epic_id: EpicId::new(7),
         })
         .await
         .unwrap();
@@ -271,7 +273,7 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
         .push_event(&BoardEvent::ParentEpicSet {
             meta: meta(),
             id: StoryId::new(42),
-            epic_number: 7,
+            epic_id: EpicId::new(7),
         })
         .await
         .unwrap();
@@ -309,7 +311,7 @@ async fn iteration_membership_set_surfaces_in_ingested_metadata() {
         .push_event(&BoardEvent::IterationMembershipSet {
             meta: meta(),
             id: StoryId::new(42),
-            iteration_number: 1300,
+            iteration_id: IterationId::new(1300),
             position: 200,
         })
         .await
@@ -340,7 +342,7 @@ async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
         .push_event(&BoardEvent::IterationMembershipSet {
             meta: meta(),
             id: StoryId::new(999),
-            iteration_number: 1,
+            iteration_id: IterationId::new(1),
             position: 1,
         })
         .await
@@ -349,7 +351,7 @@ async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
         .push_event(&BoardEvent::ParentEpicSet {
             meta: meta(),
             id: StoryId::new(999),
-            epic_number: 1,
+            epic_id: EpicId::new(1),
         })
         .await
         .unwrap();

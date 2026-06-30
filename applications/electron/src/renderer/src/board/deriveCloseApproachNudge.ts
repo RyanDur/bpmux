@@ -40,7 +40,7 @@ const isDraining = (
   stories: Story[]
 ): boolean => {
   const view = deriveNowView(iterations, stories)
-  if (view.kind !== 'current' || view.iteration.number !== current.number) return false
+  if (view.kind !== 'current' || view.iteration.id !== current.id) return false
   const active = view.members.filter((row) => columnOf(row.story) !== 'retired')
   if (active.length === 0) return false
   const workDone = active.filter((row) => WORK_DONE_COLUMNS.includes(columnOf(row.story))).length
@@ -62,7 +62,7 @@ export const deriveCloseApproachNudge = (
   if (unmetCount(readiness) === 0) return null
 
   return {
-    nextIterationNumber: next.number,
+    nextIterationNumber: next.id,
     nextIterationName: iterationNameFromTitle(next.title),
     activeGapLabel: firstUnmetLabel(readiness) ?? 'not ready'
   }

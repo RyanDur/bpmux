@@ -8,10 +8,10 @@ pub(crate) async fn handle_edit_outcome(
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "edit an outcome")?;
-    let outcome_number = args
-        .get("outcome_number")
+    let outcome_id = args
+        .get("outcome_id")
         .and_then(serde_json::Value::as_u64)
-        .ok_or("missing 'outcome_number' argument")?;
+        .ok_or("missing 'outcome_id' argument")?;
     let title = args.get("title").and_then(serde_json::Value::as_str);
     let body = args.get("body").and_then(serde_json::Value::as_str);
     if title.is_none() && body.is_none() {
@@ -19,20 +19,20 @@ pub(crate) async fn handle_edit_outcome(
     }
 
     let r = refresh.ok_or("edit_outcome requires refresh (RefreshDriver)")?;
-    ensure_outcome_in_canonical_store(r, outcome_number).await?;
+    ensure_outcome_in_canonical_store(r, outcome_id).await?;
 
     let mut updated: Vec<&str> = Vec::new();
     if let Some(t) = title {
-        r.update_title(outcome_number, t.to_string())
+        r.update_title(outcome_id, t.to_string())
             .await
-            .map_err(|e| format!("#{outcome_number} title update failed: {e}"))?;
+            .map_err(|e| format!("#{outcome_id} title update failed: {e}"))?;
         updated.push("title");
     }
     if let Some(b) = body {
-        r.update_body(outcome_number, b.to_string())
+        r.update_body(outcome_id, b.to_string())
             .await
-            .map_err(|e| format!("#{outcome_number} why update failed: {e}"))?;
+            .map_err(|e| format!("#{outcome_id} why update failed: {e}"))?;
         updated.push("why");
     }
-    Ok(format!("#{outcome_number} {} updated", updated.join(" + ")))
+    Ok(format!("#{outcome_id} {} updated", updated.join(" + ")))
 }

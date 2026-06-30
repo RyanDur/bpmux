@@ -8,11 +8,9 @@ import {
   stripEpicPrefix
 } from './epicSummary'
 import type { Story, StoryState } from './types'
-import { asStoryId } from './types'
-
 let seq = 1
 const story = (over: Partial<Story>): Story => ({
-  id: asStoryId(seq++),
+  id: seq++,
   title: 'an epic',
   state: 'ready',
   labels: [],
@@ -23,11 +21,11 @@ const story = (over: Partial<Story>): Story => ({
 })
 
 const child = (epicNumber: number, state: StoryState): Story =>
-  story({ parent_epic: asStoryId(epicNumber), state })
+  story({ parent_epic: epicNumber, state })
 
 describe('epicSummary', () => {
   test('breakdownFor groups child states (delivered+ready-for-accept, in-progress+needs-fixes, ready+rejected) and scopes to the epic', () => {
-    const b = breakdownFor(story({ id: asStoryId(100) }), [
+    const b = breakdownFor(story({ id: 100 }), [
       child(100, 'accepted'),
       child(100, 'delivered'),
       child(100, 'ready-for-accept'),
@@ -51,7 +49,7 @@ describe('epicSummary', () => {
   })
 
   test('progressDenominatorFor excludes retired (scope-removed children)', () => {
-    const b = breakdownFor(story({ id: asStoryId(100) }), [
+    const b = breakdownFor(story({ id: 100 }), [
       child(100, 'accepted'),
       child(100, 'in-progress'),
       child(100, 'retired')
@@ -77,8 +75,8 @@ describe('epicSummary', () => {
   })
 
   test('sortEpics by progress orders the more-complete epic first', () => {
-    const a = story({ id: asStoryId(1) })
-    const b = story({ id: asStoryId(2) })
+    const a = story({ id: 1 })
+    const b = story({ id: 2 })
     const stories = [
       a,
       b,

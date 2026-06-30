@@ -4,7 +4,7 @@ import { dispatchSession } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
 
 export const outcome = (overrides: Partial<RoadmapOutcomeData>): RoadmapOutcomeData => ({
-  number: 1,
+  id: 1,
   title: 'An outcome',
   body: '',
   horizon: 'now',
@@ -19,7 +19,7 @@ export const buildingIteration = (
   name: string,
   position: number,
   readiness: IterationReadiness
-): RoadmapIteration => ({ number, name, position, readiness })
+): RoadmapIteration => ({ id: number, name, position, readiness })
 
 export const checks = (
   drafted: boolean,

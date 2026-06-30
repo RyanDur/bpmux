@@ -1,4 +1,5 @@
 use super::helpers::{compose_story_body, require_nonempty_string, role_from_name};
+use crate::product_management::epic::EpicId;
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_create_story(
@@ -41,7 +42,10 @@ pub(crate) async fn handle_create_story(
         )
         .map_err(|e| e.as_json_string())?;
     }
-    let parent_epic = args.get("parent_epic").and_then(|v| v.as_u64());
+    let parent_epic = args
+        .get("parent_epic")
+        .and_then(|v| v.as_u64())
+        .map(EpicId::new);
     let r = refresh.ok_or(
         "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
@@ -67,8 +71,8 @@ pub(crate) async fn handle_create_story(
     )
     .await?;
     Ok(match parent_epic {
-        Some(epic_number) => {
-            format!("story created: #{number} {title} (under epic #{epic_number})")
+        Some(epic) => {
+            format!("story created: #{number} {title} (under epic {epic})")
         }
         None => format!("story created: #{number} {title}"),
     })
@@ -102,20 +106,20 @@ fn validate_actor_role_can_create(
 
 fn validate_parent_epic(
     r: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
-    parent_epic: Option<u64>,
+    parent_epic: Option<EpicId>,
 ) -> Result<(), String> {
-    let Some(epic_number) = parent_epic else {
+    let Some(epic) = parent_epic else {
         return Ok(());
     };
-    let parent = r.story(epic_number).ok_or_else(|| {
+    let parent = r.story(epic.value()).ok_or_else(|| {
         format!(
-            "epic #{epic_number} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
+            "epic {epic} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
         )
     })?;
     let story_type = parent.story_type();
     if story_type != crate::product_management::story::StoryType::Epic {
         return Err(format!(
-            "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
+            "story {epic} is not an Epic (story_type={:?}); only Epic stories can be parents",
             story_type
         ));
     }
@@ -128,7 +132,7 @@ async fn create_and_broadcast_story_events(
     title: &str,
     composed_body: String,
     story_type: crate::product_management::story::StoryType,
-    parent_epic: Option<u64>,
+    parent_epic: Option<EpicId>,
     acceptor_label: Option<&'static str>,
 ) -> Result<u64, String> {
     let number = r
@@ -157,12 +161,12 @@ async fn create_and_broadcast_story_events(
         })
         .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
     }
-    if let Some(epic_number) = parent_epic {
+    if let Some(epic_id) = parent_epic {
         r.mutate_sync(
             crate::product_management::board::BoardEvent::ParentEpicSet {
                 meta,
                 id: StoryId::new(number),
-                epic_number,
+                epic_id,
             },
         )
         .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;

@@ -49,10 +49,7 @@ fn feature_seed(number: u64) -> Story {
 
 fn args(iteration_number: u64) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert(
-        "iteration_number".into(),
-        serde_json::json!(iteration_number),
-    );
+    m.insert("iteration_id".into(), serde_json::json!(iteration_number));
     m
 }
 

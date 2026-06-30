@@ -1,10 +1,10 @@
 import type BoardTabs from './BoardTabs'
-import { asStoryId, groupStories, type Story, type ColumnState } from './types'
+import { groupStories, type Story, type ColumnState } from './types'
 import { selectIterations } from './selectIterations'
 import { getSessionSnapshot } from '../transport/session/store'
 
 export const iterationStory = (overrides: Partial<Story>): Story => ({
-  id: asStoryId(9000),
+  id: 9000,
   title: 'Iteration Sextans',
   state: 'icebox',
   gh_state: 'open',
@@ -16,7 +16,7 @@ export const iterationStory = (overrides: Partial<Story>): Story => ({
 })
 
 export const epicStory = (overrides: Partial<Story>): Story => ({
-  id: asStoryId(8000),
+  id: 8000,
   title: 'Epic Foo',
   state: 'in-progress',
   gh_state: 'open',
@@ -28,7 +28,7 @@ export const epicStory = (overrides: Partial<Story>): Story => ({
 })
 
 export const featureStory = (overrides: Partial<Story>): Story => ({
-  id: asStoryId(9100),
+  id: 9100,
   title: 'a feature',
   state: 'ready',
   gh_state: 'open',

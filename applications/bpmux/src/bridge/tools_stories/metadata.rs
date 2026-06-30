@@ -16,7 +16,7 @@ pub(crate) fn retired_iteration_label_axis_error(label: &str) -> String {
         "successor": "add_story_to_iteration",
         "message": format!(
             "label_story refuses iteration-axis labels (#1402 retire). \
-             Use add_story_to_iteration(iteration_number, story_id, position) \
+             Use add_story_to_iteration(iteration_id, story_id, position) \
              — iteration-membership is canonical-relation substrate per #1399, \
              not magic-string-parse labels. Label '{label}' parses as iteration-{{Name}}.{{position}}."
         ),
@@ -154,7 +154,10 @@ pub(crate) async fn handle_edit_story(
     let r = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
     if let Some(b) = body
-        && r.iteration(number).is_none()
+        && r.iteration(crate::product_management::iteration::IterationId::new(
+            number,
+        ))
+        .is_none()
     {
         let story = ensure_story_in_canonical_store(r, number).await?;
         if story.kind() != Some(crate::product_management::story::StoryKind::Chore) {

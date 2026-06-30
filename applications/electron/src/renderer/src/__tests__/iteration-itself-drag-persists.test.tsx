@@ -84,10 +84,10 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const iterBody = (await iterRes.json()) as {
-          iterations: { number: number; iteration_order: number | null }[]
+          iterations: { id: number; iteration_order: number | null }[]
         }
         const orderOf = (n: number): number | null =>
-          iterBody.iterations.find((s) => s.number === n)?.iteration_order ?? null
+          iterBody.iterations.find((s) => s.id === n)?.iteration_order ?? null
         const siriusOrder = orderOf(8101)
         const vegaOrder = orderOf(8102)
         expect(siriusOrder).not.toBeNull()

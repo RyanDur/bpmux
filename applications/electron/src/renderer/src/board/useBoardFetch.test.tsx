@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 
 import { useBoardFetch } from './useBoardFetch'
-import { asStoryId, type Story } from './types'
+import { type Story } from './types'
 import { dispatchSession, resetSessionForTest } from '../transport/session/store'
 import { mirrorDeltaReceived } from '../transport/session/actions'
 
@@ -19,7 +19,7 @@ describe('#1720 useBoardFetch — a pushed stories delta becomes the data (rende
 
     const pushed: Story[] = [
       {
-        id: asStoryId(7),
+        id: 7,
         title: 'pushed-live',
         state: 'delivered',
         labels: [],

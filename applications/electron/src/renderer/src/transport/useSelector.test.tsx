@@ -4,10 +4,9 @@ import { useSelector } from './useSelector'
 import { dispatchSession, resetSessionForTest } from './session/store'
 import { mirrorDeltaReceived } from './session/actions'
 import { selectRoadmap, type RoadmapOutcomeData } from '../board/selectRoadmap'
-
 const ts = '2026-06-27T00:00:00Z'
 const nowOutcome: RoadmapOutcomeData = {
-  number: 1,
+  id: 1,
   title: 'Now',
   body: '',
   horizon: 'now',

@@ -6,6 +6,8 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::iteration::IterationId;
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Horizon, Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -46,7 +48,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 }
 
 fn map_args(outcome: u64, iteration: u64, position: u64) -> Map<String, Value> {
-    json!({ "outcome_number": outcome, "iteration_number": iteration, "position": position })
+    json!({ "outcome_id": outcome, "iteration_id": iteration, "position": position })
         .as_object()
         .cloned()
         .unwrap_or_default()
@@ -129,15 +131,15 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
         .expect("outcome present");
     assert_eq!(
         outcome.iterations,
-        vec![710],
+        vec![IterationId::new(710)],
         "the outcome holds its ordered iteration list (parent-holds-order)"
     );
     assert_eq!(
         refresh
-            .iteration(710)
+            .iteration(IterationId::new(710))
             .expect("iteration present")
             .builds_outcome(),
-        Some(700),
+        Some(OutcomeId::new(700)),
         "and the iteration carries the back-FK to the outcome it builds — the drill-mapping"
     );
 }

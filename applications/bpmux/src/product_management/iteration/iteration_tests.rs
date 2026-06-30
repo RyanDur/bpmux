@@ -5,6 +5,7 @@ use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
+use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Story, StoryId, StoryKey, StoryState};
 
 fn iteration_story(labels: Vec<String>, body: Option<String>, closed: bool) -> Story {
@@ -25,7 +26,7 @@ fn iteration_story(labels: Vec<String>, body: Option<String>, closed: bool) -> S
 fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
     let codec = GhLabelCodec;
     let body = IterationRelationships {
-        outcome: Some(900),
+        outcome: Some(OutcomeId::new(900)),
         stories: vec![StoryId::new(101), StoryId::new(102)],
     }
     .write_into_body("## Iteration Crux\n");
@@ -40,8 +41,8 @@ fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
     ));
     assert_eq!(iteration.id(), StoryKey::Saved(StoryId::new(710)));
     assert_eq!(iteration.content.title, "Iteration Crux");
-    assert_eq!(iteration.outcome, Some(900));
-    assert_eq!(iteration.builds_outcome(), Some(900));
+    assert_eq!(iteration.outcome, Some(OutcomeId::new(900)));
+    assert_eq!(iteration.builds_outcome(), Some(OutcomeId::new(900)));
     assert_eq!(
         iteration.stories,
         vec![StoryId::new(101), StoryId::new(102)]
