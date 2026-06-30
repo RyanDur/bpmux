@@ -23,7 +23,7 @@ export interface UseBoardDataResult {
 export const useBoardData = (
   data: Story[] | null,
   iterations: BoardIterationData[],
-  effectiveReadyPosition?: (story: Story) => number | null
+  readyOrder?: number[]
 ): UseBoardDataResult => {
   const stories = useMemo(() => data ?? [], [data])
   const membershipIndex = useMemo(() => buildMembershipIndex(iterations), [iterations])
@@ -62,21 +62,20 @@ export const useBoardData = (
     const byColumn = groupStories(flatBoardStories)
     const ready = byColumn.get('ready')
     if (ready) {
-      const positionOf = (s: Story): number | null =>
-        effectiveReadyPosition
-          ? effectiveReadyPosition(s)
-          : (s.iteration_membership?.position ?? null)
+      const order = readyOrder ?? []
+      const rankOf = (s: Story): number => {
+        const i = order.indexOf(s.id)
+        return i === -1 ? Number.MAX_SAFE_INTEGER : i
+      }
       ready.sort((a, b) => {
-        const ap = positionOf(a)
-        const bp = positionOf(b)
-        if (ap !== null && bp !== null) return ap - bp
-        if (ap !== null) return -1
-        if (bp !== null) return 1
+        const ar = rankOf(a)
+        const br = rankOf(b)
+        if (ar !== br) return ar - br
         return a.id - b.id
       })
     }
     return byColumn
-  }, [flatBoardStories, effectiveReadyPosition])
+  }, [flatBoardStories, readyOrder])
   const navOrder = useMemo(() => {
     const out: number[] = []
     for (const group of GROUP_ORDER) {

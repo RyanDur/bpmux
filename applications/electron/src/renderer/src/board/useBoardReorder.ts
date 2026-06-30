@@ -1,25 +1,16 @@
 import { useCallback } from 'react'
-import { describeHttpError } from '../api/http'
-import { postStoryLabels } from '../api/labelsClient'
-import {
-  computeMemberDropMutation,
-  computeMemberRespace,
-  insertPositionWouldCascade,
-  type DropMutation
-} from './iterationPosition'
 import { eagerReorder } from './iterationMembers'
-import { parseParentIterationLabel } from './labelSchema'
 import { columnFor, storyTypeFromLabels, type Story, type ColumnState } from './types'
+import { addStoryToIterationRequested, type SessionAction } from '../transport/session/actions'
 
 export interface UseBoardReorderOptions {
   data: Story[] | null
   setData: React.Dispatch<React.SetStateAction<Story[] | null>>
   setReorderAnnounce: (msg: string) => void
-  setError: (msg: string) => void
-  setPendingReadyOrder: (storyId: number, position: number) => void
-  clearPendingReadyOrder: (storyIds: number[]) => void
-  apiBase: string | undefined
-  authToken: string | undefined
+  dispatch: (action: SessionAction) => void
+  currentIterationId: number | null
+  currentIterationStories: number[]
+  setPendingReadyOrder: (order: number[]) => void
 }
 
 export type HandleReorder = (state: ColumnState, moved: number, targetId: number) => void
@@ -28,11 +19,10 @@ export const useBoardReorder = ({
   data,
   setData,
   setReorderAnnounce,
-  setError,
-  setPendingReadyOrder,
-  clearPendingReadyOrder,
-  apiBase,
-  authToken
+  dispatch,
+  currentIterationId,
+  currentIterationStories,
+  setPendingReadyOrder
 }: UseBoardReorderOptions): HandleReorder => {
   return useCallback(
     (state, moved, targetId) => {
@@ -44,103 +34,18 @@ export const useBoardReorder = ({
         )
 
       if (state === 'ready' && prevData) {
+        if (currentIterationId === null) return
+        const newOrder = eagerReorder(currentIterationStories, (n) => n, moved, targetId)
+        if (newOrder === currentIterationStories) return
+        const position = newOrder.indexOf(moved) + 1
+        setPendingReadyOrder(newOrder)
         const readyStories = inGroupOf(prevData)
-        const draggedStory = readyStories.find((s) => s.id === moved)
-        const membership = draggedStory?.iteration_membership
-        if (membership === undefined || membership === null) return
-        const iterationId = membership.iteration_id
-        const draggedOldPosition = membership.position
-        const targetMemberIndex = readyStories.findIndex((s) => s.id === targetId)
-        if (targetMemberIndex === -1) return
-        const targetMemberPositions = readyStories
-          .map((s) => s.iteration_membership?.position)
-          .filter((p): p is number => p !== undefined && p !== null)
-
-        const assignments: Array<{
-          storyId: number
-          position: number
-          mutation: DropMutation
-        }> = []
-        if (
-          insertPositionWouldCascade(draggedOldPosition, targetMemberPositions, targetMemberIndex)
-        ) {
-          const newSequence = eagerReorder(readyStories, (s) => s.id, moved, targetId)
-          const respaced = computeMemberRespace(
-            iterationId,
-            newSequence.map((s) => ({
-              storyId: s.id,
-              currentPosition: s.iteration_membership?.position ?? null
-            }))
-          )
-          for (const r of respaced) {
-            assignments.push({
-              storyId: r.storyId,
-              position: r.position,
-              mutation: { add: r.add, remove: r.remove }
-            })
-          }
-        } else {
-          const mutation = computeMemberDropMutation({
-            draggedIterationId: iterationId,
-            draggedOldPosition,
-            targetIterationId: iterationId,
-            targetMemberPositions,
-            targetMemberIndex,
-            targetMembersIncludeDragged: true
-          })
-          if (mutation === null) return
-          const added = parseParentIterationLabel(mutation.add[0])
-          if (added === null) return
-          assignments.push({ storyId: moved, position: added.position, mutation })
+        const newReadySequence = eagerReorder(readyStories, (s) => s.id, moved, targetId)
+        const readyIndex = newReadySequence.findIndex((s) => s.id === moved)
+        if (readyIndex !== -1) {
+          setReorderAnnounce(`Moved to position ${readyIndex + 1} of ${readyStories.length}`)
         }
-        if (assignments.length === 0) return
-
-        const positionByStory = new Map(assignments.map((a) => [a.storyId, a.position]))
-        for (const assignment of assignments) {
-          setPendingReadyOrder(assignment.storyId, assignment.position)
-        }
-        setData((prev) => {
-          if (!prev) return prev
-          return prev.map((s) => {
-            const newPosition = positionByStory.get(s.id)
-            return newPosition === undefined
-              ? s
-              : {
-                  ...s,
-                  iteration_membership: {
-                    iteration_id: iterationId,
-                    position: newPosition
-                  }
-                }
-          })
-        })
-
-        const orderedAfter = readyStories
-          .map((s) => ({
-            id: s.id,
-            position:
-              positionByStory.get(s.id) ??
-              s.iteration_membership?.position ??
-              Number.MAX_SAFE_INTEGER
-          }))
-          .sort((a, b) => a.position - b.position)
-        const newIndex = orderedAfter.findIndex((s) => s.id === moved)
-        if (newIndex !== -1) {
-          setReorderAnnounce(`Moved to position ${newIndex + 1} of ${readyStories.length}`)
-        }
-
-        if (apiBase === undefined) return
-        for (const assignment of assignments) {
-          void postStoryLabels(
-            { apiBase, authToken },
-            assignment.storyId,
-            assignment.mutation
-          ).onFailure((error) => {
-            setData(prevData)
-            clearPendingReadyOrder(assignments.map((a) => a.storyId))
-            setError(`Reorder failed: ${describeHttpError(error)}`)
-          }).value
-        }
+        dispatch(addStoryToIterationRequested(currentIterationId, moved, position))
         return
       }
 
@@ -175,11 +80,10 @@ export const useBoardReorder = ({
       data,
       setData,
       setReorderAnnounce,
-      setError,
-      setPendingReadyOrder,
-      clearPendingReadyOrder,
-      apiBase,
-      authToken
+      dispatch,
+      currentIterationId,
+      currentIterationStories,
+      setPendingReadyOrder
     ]
   )
 }

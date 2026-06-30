@@ -1,139 +1,82 @@
-import { describe, expect, test, vi, beforeEach } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardReorder } from './useBoardReorder'
-import { parentIterationLabel, parseParentIterationLabel } from './labelSchema'
-import { type Story, type IterationMembership } from './types'
-const { postStoryLabelsMock } = vi.hoisted(() => ({
-  postStoryLabelsMock: vi.fn(
-    (_ctx: unknown, _storyId: number, _mutation: { add: string[]; remove: string[] }) => ({
-      onFailure: () => ({ value: undefined })
-    })
-  )
-}))
-
-vi.mock('../api/labelsClient', () => ({
-  postStoryLabels: postStoryLabelsMock
-}))
+import { SessionActionType } from '../transport/session/actions'
+import { type Story } from './types'
 
 const ITER = 9000
 
-const iterationStory = (): Story => ({
-  id: ITER,
-  title: 'Iteration Current',
-  state: 'icebox',
-  gh_state: 'open',
-  labels: ['iteration', 'iteration-order.100'],
-  is_current: true,
-  assignees: [],
-  created_at: '2026-05-10T00:00:00Z',
-  body: ''
-})
-
-const story = (id: number, position: number): Story => ({
+const story = (id: number): Story => ({
   id: id,
   title: `s${id}`,
   state: 'ready',
   labels: ['Feature', 'ready'],
-  iteration_membership: { iteration_id: ITER, position },
   assignees: [],
   created_at: '2026-05-10T00:00:00Z',
   body: ''
 })
 
 const reorderWith = (
-  stories: Story[]
+  stories: Story[],
+  iterationStories: number[]
 ): {
   run: (moved: number, targetId: number) => void
-  membershipOf: (n: number) => IterationMembership | null | undefined
+  dispatch: ReturnType<typeof vi.fn>
+  pending: ReturnType<typeof vi.fn>
 } => {
-  let current: Story[] | null = stories
-  const setData = (updater: React.SetStateAction<Story[] | null>): void => {
-    current = typeof updater === 'function' ? updater(current) : updater
-  }
+  const dispatch = vi.fn()
+  const pending = vi.fn()
   const { result } = renderHook(() =>
     useBoardReorder({
-      data: current,
-      setData,
+      data: stories,
+      setData: vi.fn(),
       setReorderAnnounce: vi.fn(),
-      setError: vi.fn(),
-      setPendingReadyOrder: vi.fn(),
-      clearPendingReadyOrder: vi.fn(),
-      apiBase: 'http://localhost',
-      authToken: 'tok'
+      dispatch,
+      currentIterationId: ITER,
+      currentIterationStories: iterationStories,
+      setPendingReadyOrder: pending
     })
   )
   return {
     run: (moved, targetId) => result.current('ready', moved, targetId),
-    membershipOf: (n) => current?.find((s) => s.id === n)?.iteration_membership
+    dispatch,
+    pending
   }
 }
 
-describe('#1524 useBoardReorder — ready-queue reorders on the shared canonical (parent-iteration position)', () => {
-  beforeEach(() => {
-    postStoryLabelsMock.mockClear()
-  })
-
-  test('drag DOWN onto the last row persists a parent-iteration position, not ready-order', () => {
-    const { run } = reorderWith([
-      iterationStory(),
-      story(701, 100),
-      story(702, 200),
-      story(703, 300)
-    ])
+describe('useBoardReorder — ready reorder dispatches the parent-held ordered-list move', () => {
+  test('drag DOWN onto the last row dispatches add_story_to_iteration at the new 1-based index', () => {
+    const { run, dispatch } = reorderWith([story(701), story(702), story(703)], [701, 702, 703])
     run(701, 703)
-    const [, movedId, mutation] = postStoryLabelsMock.mock.calls[0]
-    expect(movedId).toBe(701)
-    expect(mutation.remove).toEqual([parentIterationLabel(ITER, 100)])
-    const added = parseParentIterationLabel(mutation.add[0])
-    expect(added?.iterationId).toBe(ITER)
-    expect(added?.position).toBeGreaterThan(300)
-    expect(mutation.add[0].startsWith('ready-order.')).toBe(false)
+    expect(dispatch).toHaveBeenCalledWith({
+      type: SessionActionType.AddStoryToIterationRequested,
+      iterationId: ITER,
+      storyId: 701,
+      position: 3
+    })
   })
 
-  test('drag UP onto the first row persists a parent-iteration position below the target', () => {
-    const { run } = reorderWith([
-      iterationStory(),
-      story(701, 100),
-      story(702, 200),
-      story(703, 300)
-    ])
+  test('drag UP onto the first row dispatches position 1', () => {
+    const { run, dispatch } = reorderWith([story(701), story(702), story(703)], [701, 702, 703])
     run(703, 701)
-    const [, movedId, mutation] = postStoryLabelsMock.mock.calls[0]
-    expect(movedId).toBe(703)
-    expect(mutation.remove).toEqual([parentIterationLabel(ITER, 300)])
-    const added = parseParentIterationLabel(mutation.add[0])
-    expect(added?.position).toBeLessThan(100)
+    expect(dispatch).toHaveBeenCalledWith({
+      type: SessionActionType.AddStoryToIterationRequested,
+      iterationId: ITER,
+      storyId: 703,
+      position: 1
+    })
   })
 
-  test('optimistically updates the moved story iteration_membership so both views re-sort in-session', () => {
-    const { run, membershipOf } = reorderWith([
-      iterationStory(),
-      story(701, 100),
-      story(702, 200),
-      story(703, 300)
-    ])
+  test('optimistically reflects the new ordered id-list so the column updates immediately', () => {
+    const { run, pending } = reorderWith([story(701), story(702), story(703)], [701, 702, 703])
     run(701, 703)
-    const moved = membershipOf(701)
-    expect(moved?.iteration_id).toBe(ITER)
-    expect(moved?.position).toBeGreaterThan(300)
+    expect(pending).toHaveBeenCalledWith([702, 703, 701])
   })
 
-  test('DENSE positions (gap<2) re-space the WHOLE member set to clean distinct gaps — no colliding/duplicate position (the snap-back + non-determinism cure)', () => {
-    const { run, membershipOf } = reorderWith([
-      iterationStory(),
-      story(701, 1),
-      story(702, 2),
-      story(703, 3)
-    ])
-    run(703, 702)
-    const p701 = membershipOf(701)?.position
-    const p702 = membershipOf(702)?.position
-    const p703 = membershipOf(703)?.position
-    expect(new Set([p701, p702, p703]).size).toBe(3)
-    for (const p of [p701, p702, p703]) {
-      expect(p).toBeGreaterThanOrEqual(100)
-    }
-    expect(p701).toBeLessThan(p703 ?? 0)
-    expect(p703).toBeLessThan(p702 ?? 0)
+  test('a drop that does not change the iteration order dispatches nothing', () => {
+    const { run, dispatch, pending } = reorderWith([story(701), story(702)], [701, 702])
+    run(999, 701)
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(pending).not.toHaveBeenCalled()
   })
 })

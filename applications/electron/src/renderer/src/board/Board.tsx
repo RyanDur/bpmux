@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
 import { RENDERER_IDENTITY } from '../transport/session'
+import { useDispatch } from '../transport/useDispatch'
 import SyncStatusGlyph from '../sync/SyncStatusGlyph'
 import DrillIn from './DrillIn'
 import BoardTabs from './BoardTabs'
@@ -10,7 +11,6 @@ import { useBoardData } from './useBoardData'
 import { useBoardFetch } from './useBoardFetch'
 import { useBoardNavigation } from './useBoardNavigation'
 import { useBoardReorder } from './useBoardReorder'
-import { usePendingReadyOrder } from './usePendingReadyOrder'
 import { findCurrentIteration } from './currentIteration'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
 import { useIterations } from './useIterations'
@@ -37,7 +37,7 @@ interface BoardProps {
 
 const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
-  const { data, setData, loading, error, setError, refetch } = useBoardFetch({
+  const { data, setData, loading, error, refetch } = useBoardFetch({
     apiBase: bridge?.apiBase
   })
   const [reorderAnnounce, setReorderAnnounce] = useState<string>('')
@@ -54,13 +54,22 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
     [collapseStorage]
   )
 
-  const { setPendingReadyOrder, clearPendingReadyOrder, effectiveReadyPosition } =
-    usePendingReadyOrder(data)
   const iterations = useIterations()
-  const { stories, epics, epicTitleById, iterationContainerStories, grouped, navOrder } =
-    useBoardData(data, iterations, effectiveReadyPosition)
-
   const currentIteration = findCurrentIteration(iterations)
+  const currentIterationStories = currentIteration?.stories ?? null
+  const [pendingReady, setPendingReady] = useState<{
+    order: number[]
+    basedOn: number[] | null
+  } | null>(null)
+  const setPendingReadyOrder = (order: number[]): void =>
+    setPendingReady({ order, basedOn: currentIterationStories })
+  const readyOrder =
+    pendingReady !== null && pendingReady.basedOn === currentIterationStories
+      ? pendingReady.order
+      : (currentIterationStories ?? [])
+  const { stories, epics, epicTitleById, iterationContainerStories, grouped, navOrder } =
+    useBoardData(data, iterations, readyOrder)
+
   const currentIterationName =
     currentIteration !== null ? iterationNameFromTitle(currentIteration.title) : null
   const closeApproachNudge = useMemo(
@@ -92,15 +101,15 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
     [setData]
   )
 
+  const dispatch = useDispatch()
   const handleReorder = useBoardReorder({
     data,
     setData,
     setReorderAnnounce,
-    setError,
-    setPendingReadyOrder,
-    clearPendingReadyOrder,
-    apiBase: bridge?.apiBase,
-    authToken: bridge?.authToken
+    dispatch,
+    currentIterationId: currentIteration?.id ?? null,
+    currentIterationStories: currentIterationStories ?? [],
+    setPendingReadyOrder
   })
 
   const isOwner = RENDERER_IDENTITY === 'owner'
