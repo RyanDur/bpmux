@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use crate::product_management::outcome::{self, OutcomeAction, OutcomeState};
 use crate::store::ci::{self, CiAction, CiBroadcastListener, CiState};
 use crate::store::kernel::{Listener, ListenerFuture, Reaction};
 use crate::store::reactions::{self, ReactionsAction, ReactionsBroadcastListener, ReactionsState};
@@ -11,6 +12,7 @@ pub struct AppState {
     pub roster: Arc<RosterState>,
     pub reactions: Arc<ReactionsState>,
     pub ci: Arc<CiState>,
+    pub outcomes: Arc<OutcomeState>,
 }
 
 #[derive(Clone)]
@@ -19,6 +21,7 @@ pub enum AppAction {
     Reactions(ReactionsAction),
     Ci(CiAction),
     Sync(SyncAction),
+    Outcome(OutcomeAction),
 }
 
 impl From<RosterAction> for AppAction {
@@ -42,6 +45,12 @@ impl From<CiAction> for AppAction {
 impl From<SyncAction> for AppAction {
     fn from(action: SyncAction) -> Self {
         Self::Sync(action)
+    }
+}
+
+impl From<OutcomeAction> for AppAction {
+    fn from(action: OutcomeAction) -> Self {
+        Self::Outcome(action)
     }
 }
 
@@ -69,6 +78,13 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             None => state.clone(),
         },
         AppAction::Sync(_) => state.clone(),
+        AppAction::Outcome(action) => match outcome::reduce(&state.outcomes, action) {
+            Some(outcomes) => AppState {
+                outcomes: Arc::new(outcomes),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
     }
 }
 

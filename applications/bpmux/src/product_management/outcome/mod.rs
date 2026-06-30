@@ -11,8 +11,13 @@ use crate::product_management::story::{Horizon, Story, StoryKey, StoryState};
 
 entity_id!(OutcomeId);
 
+mod slice;
+pub use slice::{OutcomeAction, OutcomeState, all, reduce};
+
 #[cfg(test)]
 mod outcome_tests;
+#[cfg(test)]
+mod slice_tests;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutcomeLifecycle {
