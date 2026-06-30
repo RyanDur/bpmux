@@ -20,15 +20,14 @@ mod slice_7_2_mutation_id_dispatch {
     #[tokio::test]
     async fn mutate_dispatches_start_update_github_with_unique_id() {
         let store = Arc::new(BoardStore::new());
-        let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![
+        store.seed_all(vec![
             seed_story(101, StoryState::Ready),
             seed_story(102, StoryState::Ready),
         ]);
+        let adapter = Arc::new(InMemorySourceAdapter::new());
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StoreAction>();
         let orch =
             SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
-        orch.ingest_once().await.unwrap();
 
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
@@ -75,12 +74,11 @@ mod slice_7_2_mutation_id_dispatch {
     #[tokio::test]
     async fn queued_event_carries_allocated_id() {
         let store = Arc::new(BoardStore::new());
+        store.seed_all(vec![seed_story(301, StoryState::Ready)]);
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seed_story(301, StoryState::Ready)]);
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StoreAction>();
         let orch =
             SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
-        orch.ingest_once().await.unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(301),

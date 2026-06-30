@@ -43,6 +43,15 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     crate::product_management::board::adapters::github::iterations_to_purge_as_retired_empty(
                         &backing,
                     );
+                if let Some(tx) = &self.action_tx {
+                    let outcomes = items
+                        .iter()
+                        .filter_map(|item| item.as_outcome().cloned())
+                        .collect::<Vec<_>>();
+                    let _ = tx.send(crate::store::StoreAction::Outcome(
+                        crate::product_management::outcome::OutcomeAction::Seeded(outcomes),
+                    ));
+                }
                 self.store.seed_items(items);
                 for iteration_id in purge {
                     self.store.remove(StoryId::new(iteration_id.value()));

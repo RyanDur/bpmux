@@ -11,6 +11,7 @@ impl Store {
             StoreAction::Sync(a) => self.app_store.dispatch(a),
             StoreAction::Reactions(a) => self.app_store.dispatch(a),
             StoreAction::Roster(a) => self.app_store.dispatch(a),
+            StoreAction::Outcome(a) => self.app_store.dispatch(a),
         }
     }
 

@@ -1,3 +1,4 @@
+use crate::product_management::outcome::OutcomeAction;
 use crate::store::{CiAction, ReactionsAction, RosterAction, SyncAction};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -13,6 +14,7 @@ pub enum StoreAction {
     Sync(SyncAction),
     Reactions(ReactionsAction),
     Roster(RosterAction),
+    Outcome(OutcomeAction),
 }
 
 pub(super) fn validate_and_log(action: &StoreAction) {
@@ -30,6 +32,7 @@ pub(super) fn validate_and_log(action: &StoreAction) {
         StoreAction::Sync(SyncAction::MutationRolledBack { .. }) => "Sync.MutationRolledBack",
         StoreAction::Reactions(_) => "Reactions",
         StoreAction::Roster(_) => "Roster",
+        StoreAction::Outcome(_) => "Outcome",
     };
     crate::diag::log_diag(&format!("store: dispatch {label}"));
 }
