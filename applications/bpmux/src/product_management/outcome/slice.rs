@@ -8,6 +8,7 @@ pub struct OutcomeState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OutcomeAction {
     Seeded(Vec<Outcome>),
+    Upserted(Vec<Outcome>),
 }
 
 pub fn reduce(state: &OutcomeState, action: &OutcomeAction) -> Option<OutcomeState> {
@@ -19,6 +20,23 @@ pub fn reduce(state: &OutcomeState, action: &OutcomeAction) -> Option<OutcomeSta
                 Some(OutcomeState {
                     outcomes: outcomes.clone(),
                 })
+            }
+        }
+        OutcomeAction::Upserted(incoming) => {
+            let mut outcomes = state.outcomes.clone();
+            for item in incoming {
+                match outcomes
+                    .iter()
+                    .position(|existing| existing.id() == item.id())
+                {
+                    Some(index) => outcomes[index] = item.clone(),
+                    None => outcomes.push(item.clone()),
+                }
+            }
+            if outcomes == state.outcomes {
+                None
+            } else {
+                Some(OutcomeState { outcomes })
             }
         }
     }

@@ -27,6 +27,32 @@ fn seeded_replaces_the_outcome_collection() {
 }
 
 #[test]
+fn upsert_replaces_a_matching_outcome_and_appends_a_new_one() {
+    let state = OutcomeState {
+        outcomes: vec![outcome(700, "before")],
+    };
+    let next = reduce(
+        &state,
+        &OutcomeAction::Upserted(vec![outcome(700, "after"), outcome(701, "fresh")]),
+    )
+    .expect("upsert changes the collection");
+    let all = all(&next);
+    assert_eq!(
+        all.len(),
+        2,
+        "matching id replaced in place, new id appended"
+    );
+    assert_eq!(
+        all.iter()
+            .find(|o| o.id() == outcome(700, "x").id())
+            .unwrap()
+            .content
+            .title,
+        "after"
+    );
+}
+
+#[test]
 fn reseeding_identical_outcomes_is_a_noop() {
     let seeded = vec![outcome(700, "now thing")];
     let state = OutcomeState {
