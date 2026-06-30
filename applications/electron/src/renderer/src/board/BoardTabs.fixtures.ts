@@ -41,7 +41,7 @@ export const featureStory = (overrides: Partial<Story>): Story => ({
 
 export const buildProps = (stories: Story[]): Parameters<typeof BoardTabs>[0] => {
   const epics = stories.filter((s) => s.labels.includes('epic'))
-  const epicTitleByNumber = new Map(epics.map((e) => [e.id, e.title]))
+  const epicTitleById = new Map(epics.map((e) => [e.id, e.title]))
   const iterationContainerStories = stories.filter(
     (s) => s.labels.includes('iteration') || s.state === 'icebox'
   )
@@ -51,7 +51,7 @@ export const buildProps = (stories: Story[]): Parameters<typeof BoardTabs>[0] =>
     stories,
     iterations: selectIterations(getSessionSnapshot()),
     epics,
-    epicTitleByNumber,
+    epicTitleById,
     iterationContainerStories,
     grouped,
     loading: false,

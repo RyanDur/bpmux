@@ -15,20 +15,20 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
         body: JSON.stringify({
           stories: [
             {
-              number: 9401,
+              id: 9401,
               title: 'Iteration Cetus',
               story_type: 'iteration',
               initial_state: 'icebox'
             },
             {
-              number: 9411,
+              id: 9411,
               title: 'cetus-alpha',
               story_type: 'feature',
               initial_state: 'icebox',
               labels: ['iteration-Cetus.100']
             },
             {
-              number: 9412,
+              id: 9412,
               title: 'cetus-bravo',
               story_type: 'feature',
               initial_state: 'icebox',
@@ -58,7 +58,7 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
         }).then(
           (r) =>
             r.json() as Promise<{
-              stories: { number: number; state: string }[]
+              stories: { id: number; state: string }[]
             }>
         )
         const iterations = await fetch(`${apiBase}/api/iterations`, {
@@ -66,15 +66,13 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
         }).then(
           (r) =>
             r.json() as Promise<{
-              iterations: { number: number; complete: boolean }[]
+              iterations: { id: number; complete: boolean }[]
             }>
         )
         return {
-          iterationClosed: iterations.iterations.find((s) => s.number === 9401)?.complete === true,
+          iterationClosed: iterations.iterations.find((s) => s.id === 9401)?.complete === true,
           memberStates: Object.fromEntries(
-            body.stories
-              .filter((s) => s.number === 9411 || s.number === 9412)
-              .map((s) => [s.number, s.state])
+            body.stories.filter((s) => s.id === 9411 || s.id === 9412).map((s) => [s.id, s.state])
           )
         }
       }
@@ -85,7 +83,7 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`
         },
-        body: JSON.stringify({ iteration_number: 9401 })
+        body: JSON.stringify({ iteration_id: 9401 })
       })
       expect(closeRes.ok).toBe(true)
 

@@ -16,7 +16,7 @@ fn dev_firing_fail_desk_check_returns_structured_409_with_workflow_role_not_allo
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-fail-desk-check-substrate-refusal",
             "reject if dev firing fail_desk_check isn't substrate-refused per workflow.toml actor_roles",
@@ -27,7 +27,7 @@ fn dev_firing_fail_desk_check_returns_structured_409_with_workflow_role_not_allo
             .call_tool(
                 "fail_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "observed: ATP file foo.rs has zero assertions, refutes clause (b)",
                 }),
             )
@@ -66,7 +66,7 @@ fn designer_firing_fail_desk_check_with_empty_reason_returns_structured_409_fals
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] empty-reason-substrate-refusal",
             "reject if empty fail_desk_check reason isn't substrate-refused",
@@ -77,7 +77,7 @@ fn designer_firing_fail_desk_check_with_empty_reason_returns_structured_409_fals
             .call_tool(
                 "fail_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "",
                 }),
             )
@@ -111,7 +111,7 @@ fn designer_firing_fail_desk_check_with_generic_reason_returns_structured_409() 
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] generic-reason-substrate-refusal",
             "reject if short generic fail_desk_check reason isn't substrate-refused",
@@ -122,7 +122,7 @@ fn designer_firing_fail_desk_check_with_generic_reason_returns_structured_409() 
             .call_tool(
                 "fail_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "failed",
                 }),
             )

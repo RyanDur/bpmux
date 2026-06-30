@@ -64,15 +64,13 @@ async fn render_iteration_detail(
     refresh: Option<&Arc<dyn RefreshDriver>>,
     iteration: &crate::product_management::iteration::Iteration,
 ) -> Result<String, String> {
-    let number = iteration.id().saved_id().map(u64::from).unwrap_or_default();
+    let id = iteration.id().saved_id().map(u64::from).unwrap_or_default();
     let mut body = iteration.content.body.clone();
     if body.is_none()
         && let Some(r) = refresh
-        && r.fetch_body(number).await.is_ok()
+        && r.fetch_body(id).await.is_ok()
     {
-        body = b
-            .iteration(StoryId::new(number))
-            .and_then(|it| it.content.body);
+        body = b.iteration(StoryId::new(id)).and_then(|it| it.content.body);
     }
     let body_hydrated = body.is_some();
     let mut body_out = body.unwrap_or_else(|| NOT_HYDRATED_PLACEHOLDER.to_string());
@@ -92,7 +90,7 @@ async fn render_iteration_detail(
         body_out = substitute_member_stories_section(&body_out, &derived);
     }
     let out = serde_json::json!({
-        "number": number,
+        "id": id,
         "title": iteration.content.title,
         "body": body_out,
         "is_closed": iteration.complete,
@@ -107,30 +105,30 @@ pub(in crate::bridge) async fn handle_get_story(
     board: Option<&Arc<BoardStore>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let b = board.ok_or("get_story requires board (canonical-store)")?;
-    let id = StoryId::new(number);
-    if let Some(iteration) = b.iteration(id) {
+    let story_id = StoryId::new(id);
+    if let Some(iteration) = b.iteration(story_id) {
         return render_iteration_detail(b, refresh, &iteration).await;
     }
     let mut story = b
-        .story(id)
-        .ok_or_else(|| format!("story #{number} not found in board"))?;
+        .story(story_id)
+        .ok_or_else(|| format!("story #{id} not found in board"))?;
     if story.body.is_none()
         && let Some(r) = refresh
     {
-        match r.fetch_body(number).await {
+        match r.fetch_body(id).await {
             Ok(_) => {
                 story = b
-                    .story(id)
-                    .ok_or_else(|| format!("story #{number} not found in board after fetch"))?;
+                    .story(story_id)
+                    .ok_or_else(|| format!("story #{id} not found in board after fetch"))?;
             }
             Err(e) => {
                 crate::diag::log_diag(&format!(
-                    "get_story #{number} read-through fetch_body failed: {e}"
+                    "get_story #{id} read-through fetch_body failed: {e}"
                 ));
             }
         }
@@ -142,15 +140,15 @@ pub(in crate::bridge) async fn handle_get_story(
         && story.gate_comments.is_none()
         && let Some(r) = refresh
     {
-        match r.fetch_gate_comments(number).await {
+        match r.fetch_gate_comments(id).await {
             Ok(_) => {
-                story = b.story(id).ok_or_else(|| {
-                    format!("story #{number} not found in board after gate fetch")
-                })?;
+                story = b
+                    .story(story_id)
+                    .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {
                 crate::diag::log_diag(&format!(
-                    "get_story #{number} read-through fetch_gate_comments failed: {e}"
+                    "get_story #{id} read-through fetch_gate_comments failed: {e}"
                 ));
             }
         }
@@ -178,7 +176,7 @@ pub(in crate::bridge) async fn handle_get_story(
         .map(|name| serde_json::json!({"name": name}))
         .collect();
     let out = serde_json::json!({
-        "number": story.id,
+        "id": story.id,
         "title": story.title,
         "body": body_out,
         "workflow_state": workflow_state,

@@ -66,10 +66,10 @@ mod codec_injection_substrate {
         }
     }
 
-    fn seed_story(number: u64) -> Story {
+    fn seed_story(id: u64) -> Story {
         Story::new_minimal(
-            StoryId::new(number),
-            format!("story-{number}"),
+            StoryId::new(id),
+            format!("story-{id}"),
             StoryState::InProgress,
             Utc.with_ymd_and_hms(2026, 5, 17, 0, 0, 0).unwrap(),
             "pm".to_string(),

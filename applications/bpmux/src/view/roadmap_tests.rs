@@ -6,9 +6,9 @@ use crate::product_management::iteration::readiness::OutcomeReadiness;
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::Horizon;
 
-fn outcome(number: u64, title: &str, horizon: Option<Horizon>) -> RoadmapOutcomeInput {
+fn outcome(id: u64, title: &str, horizon: Option<Horizon>) -> RoadmapOutcomeInput {
     RoadmapOutcomeInput {
-        id: OutcomeId::new(number),
+        id: OutcomeId::new(id),
         title: title.to_string(),
         body: String::new(),
         horizon,

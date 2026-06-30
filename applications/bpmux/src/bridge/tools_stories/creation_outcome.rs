@@ -46,7 +46,7 @@ pub(crate) async fn handle_create_outcome(
         .unwrap_or_else(|| format!("## {title}\n"));
     let r = refresh
         .ok_or("create_outcome requires refresh (RefreshDriver) — canonical store unavailable")?;
-    let number = r
+    let id = r
         .create_story(title.clone(), body.clone(), vec!["outcome".to_string()])
         .await
         .map_err(|e| format!("create_outcome adapter call failed: {e}"))?;
@@ -57,28 +57,28 @@ pub(crate) async fn handle_create_outcome(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
         meta: meta.clone(),
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         title: title.clone(),
         body,
         initial_state: crate::product_management::story::StoryState::Icebox,
         story_type: crate::product_management::story::StoryType::Outcome,
     })
-    .map_err(|e| format!("#{number} outcome created but enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{id} outcome created but enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta: meta.clone(),
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         label: "outcome".to_string(),
     })
-    .map_err(|e| format!("#{number} outcome label enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{id} outcome label enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
             .encode_horizon(horizon),
     })
-    .map_err(|e| format!("#{number} outcome horizon label enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{id} outcome horizon label enqueue failed: {e}"))?;
     Ok(format!(
-        "outcome created: #{number} {title} (horizon {})",
+        "outcome created: #{id} {title} (horizon {})",
         horizon.as_str()
     ))
 }

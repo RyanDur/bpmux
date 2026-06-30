@@ -49,7 +49,7 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       await setupCurrentIterationViaRpc(rpc, 1, 'HumanObservesDeskCheck')
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase:
           'Picking up the human-observes-delivered story to verify the live-mutation-chain.',
         falsifier_reframing:
@@ -67,7 +67,7 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       )
 
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation:
           'Drove deliver via /api/rpc/deliver_story from Playwright after observing IN-PROGRESS; verifying DESK-CHECK render through real bridge → BoardStore → /api/board.'
       })

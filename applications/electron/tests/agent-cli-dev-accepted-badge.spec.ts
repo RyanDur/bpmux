@@ -22,7 +22,7 @@ test.describe('agent CLI journey — badge-class — a dev-accepted chore render
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const storyNumber = cli.numberFrom(
+      const storyId = cli.numberFrom(
         await cli.run('dev', [
           'create',
           '--title',
@@ -33,27 +33,27 @@ test.describe('agent CLI journey — badge-class — a dev-accepted chore render
           'reject if a delivered dev-accepted chore does not render the dev-accepted badge'
         ])
       )
-      expect(storyNumber).toBeGreaterThan(0)
+      expect(storyId).toBeGreaterThan(0)
 
-      const iterationNumber = cli.numberFrom(
+      const iterationId = cli.numberFrom(
         await cli.run('pm', ['iteration', 'create', '--name', 'DevAcceptedJourney'])
       )
-      expect(iterationNumber).toBeGreaterThan(0)
-      await cli.run('pm', ['iteration', 'designate', String(iterationNumber)])
+      expect(iterationId).toBeGreaterThan(0)
+      await cli.run('pm', ['iteration', 'designate', String(iterationId)])
       await cli.run('pm', [
         'iteration',
         'add',
         '--iteration',
-        String(iterationNumber),
+        String(iterationId),
         '--story',
-        String(storyNumber),
+        String(storyId),
         '--position',
         '1'
       ])
 
       await cli.run('dev', [
         'start',
-        String(storyNumber),
+        String(storyId),
         '--paraphrase',
         'Picking up the dev-accepted chore to drive it to delivered through the CLI.',
         '--falsifier',
@@ -61,25 +61,25 @@ test.describe('agent CLI journey — badge-class — a dev-accepted chore render
       ])
       await cli.run('dev', [
         'deliver',
-        String(storyNumber),
+        String(storyId),
         '--observation',
         'Drove deliver via the bpmux CLI; passing desk-check with acceptor dev next.'
       ])
       await cli.run('designer', [
         'verdict',
-        String(storyNumber),
+        String(storyId),
         '--verdict',
         'verified',
         '--grounding',
         'cli-journey: designer verdict grounding the dev-accepted desk-check pass'
       ])
-      await cli.run('designer', ['pass', String(storyNumber), '--acceptor', 'dev'])
+      await cli.run('designer', ['pass', String(storyId), '--acceptor', 'dev'])
 
       await win.reload()
       await expect(board.region()).toBeVisible()
       await board.openColumn('Acceptance')
 
-      const badge = board.storyStateBadge(storyNumber)
+      const badge = board.storyStateBadge(storyId)
       await expect(badge).toBeVisible()
       await expect(badge).toHaveClass(/story-badge--dev-accepted\b/)
       await expect(badge).toContainText('awaiting dev')

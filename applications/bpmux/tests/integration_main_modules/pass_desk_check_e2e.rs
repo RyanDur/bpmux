@@ -27,7 +27,7 @@ fn pass_desk_check_designer_succeeds() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] pass-desk-check-target",
             "reject if pass_desk_check doesn't fire signal + state transition",
@@ -38,7 +38,7 @@ fn pass_desk_check_designer_succeeds() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
                 }),
@@ -49,14 +49,14 @@ fn pass_desk_check_designer_succeeds() {
         let result = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "acceptor": "owner", "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect("pass_desk_check should succeed");
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -78,7 +78,7 @@ fn pass_desk_check_rejects_dev_caller_per_designer_lane_gate() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-cannot-pass-desk-check-target",
             "reject if dev can pass desk-check bypassing designer-lane gate",
@@ -88,7 +88,7 @@ fn pass_desk_check_rejects_dev_caller_per_designer_lane_gate() {
         let err = dev
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "acceptor": "owner", "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect_err("dev should be rejected by pass_desk_check designer-lane gate");
@@ -135,13 +135,13 @@ fn pass_desk_check_view_board_reflects_ready_for_accept_via_fixture_seed() {
         designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": 500, "acceptor": "owner", "would_file_bug": false}),
+                serde_json::json!({"id": 500, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect("pass_desk_check should succeed against seeded story");
 
         let story = designer
-            .call_tool("get_story", serde_json::json!({"number": 500}))
+            .call_tool("get_story", serde_json::json!({"id": 500}))
             .await
             .expect("get_story should succeed");
         let story_text = story
@@ -173,7 +173,7 @@ fn pass_desk_check_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 

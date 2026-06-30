@@ -1,8 +1,8 @@
 use super::read::{render_board, render_ready, render_story, story_line};
 
-fn story(number: u64, title: &str, state: &str, acceptor: Option<&str>) -> serde_json::Value {
+fn story(id: u64, title: &str, state: &str, acceptor: Option<&str>) -> serde_json::Value {
     serde_json::json!({
-        "id": number,
+        "id": id,
         "title": title,
         "state": state,
         "acceptor": acceptor,

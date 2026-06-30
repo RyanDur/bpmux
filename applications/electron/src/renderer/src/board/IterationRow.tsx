@@ -13,7 +13,7 @@ import MemberList from './MemberList'
 interface Props {
   iteration: BoardIterationData
   collapse: ReturnType<typeof useIterationCollapse>
-  currentIterationNumber: number | null
+  currentIterationId: number | null
   getMembersFor: (iterationId: number) => IterationMember[]
   setPending: (storyId: number, iterationId: number, position: number) => void
   onOpen: (n: number) => void
@@ -25,7 +25,7 @@ interface Props {
 const IterationRow = ({
   iteration,
   collapse,
-  currentIterationNumber,
+  currentIterationId,
   getMembersFor,
   setPending,
   onOpen,
@@ -39,7 +39,7 @@ const IterationRow = ({
   const members = getMembersFor(iteration.id)
   const defaultOpen = !iteration.complete
   const open = collapse.isOpen(key, defaultOpen)
-  const isCurrent = iteration.id === currentIterationNumber
+  const isCurrent = iteration.id === currentIterationId
   const draggable = drag !== undefined
 
   const rejectClosedDrop = (event: React.DragEvent<HTMLElement>): void => {

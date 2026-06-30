@@ -26,10 +26,10 @@ pub(crate) async fn handle_close_story(
         workflow.owner_role_id().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
@@ -50,39 +50,39 @@ pub(crate) async fn handle_close_story(
         return Err(err.to_string());
     }
     if let Some(r) = refresh {
-        ensure_story_in_canonical_store(r, number).await?;
+        ensure_story_in_canonical_store(r, id).await?;
         let meta = crate::product_management::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::PeerId::local(),
         };
-        reap_workflow_labels(r.as_ref(), number, &meta, KEEP_NONE)?;
+        reap_workflow_labels(r.as_ref(), id, &meta, KEEP_NONE)?;
         if disposition == "retire" || disposition == "wontfix" {
             r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
                 meta: meta.clone(),
-                id: StoryId::new(number),
+                id: StoryId::new(id),
                 label: "retired".to_string(),
             })
-            .map_err(|e| format!("#{number} retired-tag enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} retired-tag enqueue failed: {e}"))?;
             r.mutate_sync(
                 crate::product_management::board::BoardEvent::StateTransitioned {
                     meta: meta.clone(),
-                    id: StoryId::new(number),
+                    id: StoryId::new(id),
                     new_state: crate::product_management::story::StoryState::Retired,
                 },
             )
-            .map_err(|e| format!("#{number} retired-state enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} retired-state enqueue failed: {e}"))?;
         }
         r.mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
             meta,
-            id: StoryId::new(number),
+            id: StoryId::new(id),
             reason: Some(reason.to_string()),
         })
-        .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} close enqueue failed: {e}"))?;
         r.drain_pending()
             .await
-            .map_err(|e| format!("#{number} close push failed: {e}"))?;
-        return Ok(format!("#{number} closed: {reason}"));
+            .map_err(|e| format!("#{id} close push failed: {e}"))?;
+        return Ok(format!("#{id} closed: {reason}"));
     }
     Err(
         "close_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"

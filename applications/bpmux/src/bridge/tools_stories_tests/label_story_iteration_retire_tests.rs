@@ -30,7 +30,7 @@ async fn build_orchestrator() -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
 
 fn label_args(label: &str, operation: &str) -> serde_json::Map<String, serde_json::Value> {
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(200));
+    args.insert("id".into(), serde_json::json!(200));
     args.insert("label".into(), serde_json::json!(label));
     args.insert("operation".into(), serde_json::json!(operation));
     args

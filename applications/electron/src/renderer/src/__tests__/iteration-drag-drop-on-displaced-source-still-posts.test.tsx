@@ -13,33 +13,33 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
     rendered = null
   })
 
-  it('drop fires on the source <li> (eagerReorder-displaced slot); mutation still uses hoveredNumber as target', async () => {
+  it('drop fires on the source <li> (eagerReorder-displaced slot); mutation still uses hoveredId as target', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
 
     await seedStories(apiBase, authToken, [
       {
-        number: 9501,
+        id: 9501,
         title: 'Iteration DisplacedDrop',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[9511,9512,9513]} -->'
       },
       {
-        number: 9511,
+        id: 9511,
         title: 'displaced-alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 9512,
+        id: 9512,
         title: 'displaced-bravo',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 9513,
+        id: 9513,
         title: 'displaced-charlie',
         story_type: 'feature',
         initial_state: 'icebox'

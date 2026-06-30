@@ -13,9 +13,9 @@ use axum::response::IntoResponse;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-fn membered_member(number: u64, label: &str) -> Story {
+fn membered_member(id: u64, label: &str) -> Story {
     let mut story = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         "reorder fixture".to_string(),
         StoryState::Ready,
         chrono::Utc::now(),
@@ -23,13 +23,13 @@ fn membered_member(number: u64, label: &str) -> Story {
     );
     story.raw_labels = vec![label.to_string()];
     story.iteration_membership = iteration_membership_from_labels(&story.raw_labels)
-        .map(|(number, position)| (IterationId::new(number), position));
+        .map(|(id, position)| (IterationId::new(id), position));
     story
 }
 
-fn membership(store: &BoardStore, number: u64) -> Option<(IterationId, u32)> {
+fn membership(store: &BoardStore, id: u64) -> Option<(IterationId, u32)> {
     store
-        .story(StoryId::new(number))
+        .story(StoryId::new(id))
         .unwrap()
         .iteration_membership()
 }

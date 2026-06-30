@@ -82,7 +82,7 @@ fn move_to_band(
     outcome: &Outcome,
     target_band: Horizon,
 ) -> Result<(), String> {
-    let number = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
+    let id = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
     let target_label = codec.encode_horizon(target_band);
     let mut stale: Vec<String> = Vec::new();
     if let Some(current) = outcome.horizon() {
@@ -97,17 +97,17 @@ fn move_to_band(
     for label in stale {
         r.mutate_sync(BoardEvent::TagRemoved {
             meta: meta(),
-            id: StoryId::new(number),
+            id: StoryId::new(id),
             label,
         })
-        .map_err(|e| format!("#{number} band-change label removal failed: {e}"))?;
+        .map_err(|e| format!("#{id} band-change label removal failed: {e}"))?;
     }
     r.mutate_sync(BoardEvent::TagAdded {
         meta: meta(),
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         label: target_label,
     })
-    .map_err(|e| format!("#{number} horizon label enqueue failed: {e}"))
+    .map_err(|e| format!("#{id} horizon label enqueue failed: {e}"))
 }
 
 fn reorder_within_band(
@@ -145,29 +145,29 @@ fn reorder_within_band(
     let insert_index = (clamped as usize - 1).min(sequence.len());
     sequence.insert(insert_index, outcome_id);
 
-    for (index, number) in sequence.iter().enumerate() {
+    for (index, id) in sequence.iter().enumerate() {
         let new_position = (index + 1) as u32;
         let member = members
             .iter()
-            .find(|outcome| outcome.id().saved_id().map(|id| id.value()) == Some(*number))
-            .ok_or_else(|| format!("#{number} vanished from band mid-reorder"))?;
+            .find(|outcome| outcome.id().saved_id().map(|id| id.value()) == Some(*id))
+            .ok_or_else(|| format!("#{id} vanished from band mid-reorder"))?;
         if member.horizon_order() == Some(new_position) {
             continue;
         }
         if let Some(order) = member.horizon_order() {
             r.mutate_sync(BoardEvent::TagRemoved {
                 meta: meta(),
-                id: StoryId::new(*number),
+                id: StoryId::new(*id),
                 label: codec.encode_horizon_order(order),
             })
-            .map_err(|e| format!("#{number} prior-position removal failed: {e}"))?;
+            .map_err(|e| format!("#{id} prior-position removal failed: {e}"))?;
         }
         r.mutate_sync(BoardEvent::TagAdded {
             meta: meta(),
-            id: StoryId::new(*number),
+            id: StoryId::new(*id),
             label: codec.encode_horizon_order(new_position),
         })
-        .map_err(|e| format!("#{number} position label enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} position label enqueue failed: {e}"))?;
     }
     Ok(format!(" (position {clamped} of {band_size})"))
 }

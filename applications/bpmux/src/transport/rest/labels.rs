@@ -35,7 +35,7 @@ fn reorder_label_ops(payload: &LabelMutationPayload) -> Vec<LabelOp> {
 pub async fn post_story_labels(
     State(session): State<Arc<session::Session>>,
     axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
-    axum::extract::Path(number): axum::extract::Path<u64>,
+    axum::extract::Path(id): axum::extract::Path<u64>,
     Json(payload): Json<LabelMutationPayload>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref().cloned() else {
@@ -49,22 +49,22 @@ pub async fn post_story_labels(
         let meta = crate::product_management::board::orchestrator::cache_fill_meta();
         let (event, descriptor) = match op {
             LabelOp::Add(label) => {
-                let descriptor = format!("TagAdded {label} on #{number}");
+                let descriptor = format!("TagAdded {label} on #{id}");
                 (
                     crate::product_management::board::BoardEvent::TagAdded {
                         meta,
-                        id: crate::product_management::story::StoryId::new(number),
+                        id: crate::product_management::story::StoryId::new(id),
                         label,
                     },
                     descriptor,
                 )
             }
             LabelOp::Remove(label) => {
-                let descriptor = format!("TagRemoved {label} on #{number}");
+                let descriptor = format!("TagRemoved {label} on #{id}");
                 (
                     crate::product_management::board::BoardEvent::TagRemoved {
                         meta,
-                        id: crate::product_management::story::StoryId::new(number),
+                        id: crate::product_management::story::StoryId::new(id),
                         label,
                     },
                     descriptor,
@@ -84,6 +84,6 @@ pub async fn post_story_labels(
     (
         StatusCode::OK,
         json_headers(),
-        serde_json::json!({ "ok": true, "number": number }).to_string(),
+        serde_json::json!({ "ok": true, "id": id }).to_string(),
     )
 }

@@ -21,14 +21,14 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
 
     await seedStories(apiBase, authToken, [
       {
-        number: 8801,
+        id: 8801,
         title: 'Iteration GripTest',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[8811]} -->'
       },
       {
-        number: 8811,
+        id: 8811,
         title: 'draggable member',
         story_type: 'feature',
         initial_state: 'icebox'
@@ -70,7 +70,7 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
 
     await seedStories(apiBase, authToken, [
       {
-        number: 8802,
+        id: 8802,
         title: 'Iteration ClosedGripTest',
         story_type: 'iteration',
         initial_state: 'icebox',
@@ -78,7 +78,7 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
         body: '<!-- bpmux-relationships: {"stories":[8812]} -->'
       },
       {
-        number: 8812,
+        id: 8812,
         title: 'member of closed iteration',
         story_type: 'feature',
         initial_state: 'icebox'

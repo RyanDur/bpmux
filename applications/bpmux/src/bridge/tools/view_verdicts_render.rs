@@ -14,12 +14,12 @@ fn make_session(dir: PathBuf) -> Arc<Session> {
 }
 
 fn submit_args(
-    number: u64,
+    id: u64,
     verdict: &str,
     substrate_grounding: &str,
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("story_id".into(), serde_json::json!(number));
+    m.insert("story_id".into(), serde_json::json!(id));
     m.insert("verdict".into(), serde_json::json!(verdict));
     m.insert(
         "substrate_grounding".into(),
@@ -28,9 +28,9 @@ fn submit_args(
     m
 }
 
-fn view_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
+fn view_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("story_id".into(), serde_json::json!(number));
+    m.insert("story_id".into(), serde_json::json!(id));
     m
 }
 

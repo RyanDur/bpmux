@@ -4,12 +4,12 @@ pub fn unset_parent_epic_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number of the child story to ungroup from its current Epic"
             }
         },
-        "required": ["number"]
+        "required": ["id"]
     });
     Tool::new(
         "unset_parent_epic",

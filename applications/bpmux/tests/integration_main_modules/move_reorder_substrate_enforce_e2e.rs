@@ -16,7 +16,7 @@ fn dev_firing_reorder_returns_tool_retired_post_1403() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-reorder-tool-retired",
             "post-#1403 reorder_story is retired; dev MUST receive tool-retired (NOT workflow-role-not-allowed) — retire-gate precedes role-gate",
@@ -27,7 +27,7 @@ fn dev_firing_reorder_returns_tool_retired_post_1403() {
             .call_tool(
                 "reorder_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "position": 1,
                     "state": "ready",
                 }),
@@ -66,7 +66,7 @@ fn designer_firing_reorder_returns_tool_retired_post_1403() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] designer-reorder-tool-retired",
             "post-#1403 reorder_story is retired; designer MUST receive tool-retired",
@@ -77,7 +77,7 @@ fn designer_firing_reorder_returns_tool_retired_post_1403() {
             .call_tool(
                 "reorder_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "position": 1,
                     "state": "ready",
                 }),
@@ -108,7 +108,7 @@ fn dev_firing_move_with_position_returns_structured_409() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-position-move-substrate-refusal",
             "reject if dev firing move with position isn't substrate-refused per PM-owns-queue-position canon",
@@ -119,7 +119,7 @@ fn dev_firing_move_with_position_returns_structured_409() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "target_state": "ready",
                     "position": 1,
                     "rationale": "dev should not be able to set queue position per PM-owns-order canon",

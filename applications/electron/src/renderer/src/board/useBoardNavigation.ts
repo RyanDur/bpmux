@@ -3,15 +3,15 @@ import type { Story } from './types'
 
 interface UseBoardNavigationResult {
   asideRef: React.RefObject<HTMLElement | null>
-  selectedNumber: number | null
-  setSelectedNumber: React.Dispatch<React.SetStateAction<number | null>>
-  drilledNumber: number | null
+  selectedId: number | null
+  setSelectedId: React.Dispatch<React.SetStateAction<number | null>>
+  drilledId: number | null
   focusTimelineFor: number | null
   effectiveSelected: number | null
   drilledStory: Story | null
   renderedDrill: Story | null
-  handleOpen: (number: number) => void
-  handleOpenTimeline: (number: number) => void
+  handleOpen: (id: number) => void
+  handleOpenTimeline: (id: number) => void
   handleBack: () => void
   handleDrillUnmountReady: () => void
   handleKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void
@@ -21,28 +21,26 @@ export const useBoardNavigation = (
   stories: Story[],
   navOrder: number[]
 ): UseBoardNavigationResult => {
-  const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
-  const [drilledNumber, setDrilledNumber] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [drilledId, setDrilledId] = useState<number | null>(null)
   const [focusTimelineFor, setFocusTimelineFor] = useState<number | null>(null)
   const asideRef = useRef<HTMLElement | null>(null)
 
   const effectiveSelected =
-    selectedNumber !== null && navOrder.includes(selectedNumber)
-      ? selectedNumber
-      : (navOrder[0] ?? null)
+    selectedId !== null && navOrder.includes(selectedId) ? selectedId : (navOrder[0] ?? null)
 
-  const focusRow = useCallback((number: number | null) => {
-    if (number === null) return
+  const focusRow = useCallback((id: number | null) => {
+    if (id === null) return
     requestAnimationFrame(() => {
       asideRef.current
-        ?.querySelector<HTMLElement>(`.board-story-navigate[aria-label^="Open story #${number} "]`)
+        ?.querySelector<HTMLElement>(`.board-story-navigate[aria-label^="Open story #${id} "]`)
         ?.focus()
     })
   }, [])
 
   const drilledStory = useMemo(
-    () => (drilledNumber === null ? null : (stories.find((s) => s.id === drilledNumber) ?? null)),
-    [drilledNumber, stories]
+    () => (drilledId === null ? null : (stories.find((s) => s.id === drilledId) ?? null)),
+    [drilledId, stories]
   )
 
   const [lastDrilledStory, setLastDrilledStory] = useState<typeof drilledStory>(drilledStory)
@@ -54,27 +52,27 @@ export const useBoardNavigation = (
     if (drilledStory === null) setLastDrilledStory(null)
   }, [drilledStory])
 
-  const handleOpen = useCallback((number: number) => {
-    setSelectedNumber(number)
-    setDrilledNumber(number)
+  const handleOpen = useCallback((id: number) => {
+    setSelectedId(id)
+    setDrilledId(id)
     setFocusTimelineFor(null)
   }, [])
 
-  const handleOpenTimeline = useCallback((number: number) => {
-    setSelectedNumber(number)
-    setDrilledNumber(number)
-    setFocusTimelineFor(number)
+  const handleOpenTimeline = useCallback((id: number) => {
+    setSelectedId(id)
+    setDrilledId(id)
+    setFocusTimelineFor(id)
   }, [])
 
   const handleBack = useCallback(() => {
-    setDrilledNumber(null)
+    setDrilledId(null)
     setFocusTimelineFor(null)
     focusRow(effectiveSelected)
   }, [effectiveSelected, focusRow])
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
-      if (drilledNumber !== null) {
+      if (drilledId !== null) {
         if (event.key === 'Escape') {
           event.preventDefault()
           handleBack()
@@ -87,24 +85,24 @@ export const useBoardNavigation = (
         event.preventDefault()
         const idx = current === null ? -1 : navOrder.indexOf(current)
         const next = navOrder[Math.min(idx + 1, navOrder.length - 1)]
-        setSelectedNumber(next)
+        setSelectedId(next)
         focusRow(next)
       } else if (event.key === 'ArrowUp') {
         event.preventDefault()
         const idx = current === null ? navOrder.length : navOrder.indexOf(current)
         const next = navOrder[Math.max(idx - 1, 0)]
-        setSelectedNumber(next)
+        setSelectedId(next)
         focusRow(next)
       }
     },
-    [drilledNumber, effectiveSelected, focusRow, handleBack, navOrder]
+    [drilledId, effectiveSelected, focusRow, handleBack, navOrder]
   )
 
   return {
     asideRef,
-    selectedNumber,
-    setSelectedNumber,
-    drilledNumber,
+    selectedId,
+    setSelectedId,
+    drilledId,
     focusTimelineFor,
     effectiveSelected,
     drilledStory,

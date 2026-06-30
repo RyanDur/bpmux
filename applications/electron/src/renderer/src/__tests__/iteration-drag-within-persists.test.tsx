@@ -20,26 +20,26 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7601,
+        id: 7601,
         title: 'Iteration Pegasus',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[7611,7612,7613]} -->'
       },
       {
-        number: 7611,
+        id: 7611,
         title: 'alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7612,
+        id: 7612,
         title: 'bravo',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7613,
+        id: 7613,
         title: 'charlie',
         story_type: 'feature',
         initial_state: 'icebox'

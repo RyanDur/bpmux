@@ -128,7 +128,7 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
             .call_tool(
                 "deliver_story",
                 serde_json::json!({
-                    "number": 199,
+                    "id": 199,
                     "title": "test api agent assertions",
                     "verified_observation": "drove agent_side_assertions test end-to-end; designer received desk-check signal, dev did not"
                 }),
@@ -202,7 +202,7 @@ fn pass_desk_check_signal_routes_to_owner_not_dev() {
         let status = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": 203, "acceptor": "owner", "would_file_bug": false}),
+                serde_json::json!({"id": 203, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect("pass_desk_check signal should succeed");
@@ -268,7 +268,7 @@ fn fail_desk_check_signal_reaches_dev_and_the_owner_but_not_other_peers() {
         let status = designer
             .call_tool(
                 "fail_desk_check",
-                serde_json::json!({"number": 203, "reason": "missing negative test"}),
+                serde_json::json!({"id": 203, "reason": "missing negative test"}),
             )
             .await
             .expect("fail_desk_check signal should succeed");
@@ -320,7 +320,7 @@ fn pass_desk_check_rejects_non_designer_callers() {
         let err = dev
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": 203, "acceptor": "owner", "would_file_bug": false}),
+                serde_json::json!({"id": 203, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect_err("dev should be rejected from pass_desk_check");
@@ -386,7 +386,7 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         pm.call_tool(
             "label_story",
             serde_json::json!({
-                "number": 213,
+                "id": 213,
                 "label": "awaiting team",
                 "rationale": "test fixture: acceptor=team for team-verifiable accept"
             }),
@@ -399,7 +399,7 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         let result = pm
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": 213, "would_file_bug": false}),
+                serde_json::json!({"id": 213, "would_file_bug": false}),
             )
             .await;
         assert!(
@@ -432,7 +432,7 @@ fn accept_story_rejects_unknown_roles() {
         let err = unknown
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": 999, "would_file_bug": false}),
+                serde_json::json!({"id": 999, "would_file_bug": false}),
             )
             .await
             .expect_err("unknown role should be rejected");
@@ -477,7 +477,7 @@ fn accept_story_refuses_designer_and_dev_per_workflow_substrate() {
         let err = designer
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": 900, "would_file_bug": false}),
+                serde_json::json!({"id": 900, "would_file_bug": false}),
             )
             .await
             .expect_err("designer should be substrate-refused per workflow.toml");
@@ -490,7 +490,7 @@ fn accept_story_refuses_designer_and_dev_per_workflow_substrate() {
         let err = dev
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": 901, "would_file_bug": false}),
+                serde_json::json!({"id": 901, "would_file_bug": false}),
             )
             .await
             .expect_err("dev should be substrate-refused per workflow.toml");
@@ -529,7 +529,7 @@ fn accept_story_is_idempotent_on_already_closed() {
         let first = pm
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": 213, "would_file_bug": false}),
+                serde_json::json!({"id": 213, "would_file_bug": false}),
             )
             .await;
         assert!(
@@ -541,7 +541,7 @@ fn accept_story_is_idempotent_on_already_closed() {
         let second = pm
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": 213, "would_file_bug": false}),
+                serde_json::json!({"id": 213, "would_file_bug": false}),
             )
             .await;
         let err = second.expect_err(

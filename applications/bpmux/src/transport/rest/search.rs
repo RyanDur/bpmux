@@ -101,16 +101,16 @@ async fn search_stories_and_comments(
         }));
     }
 
-    let story_numbers: Vec<u64> = stories
+    let story_ids: Vec<u64> = stories
         .iter()
         .filter_map(|s| s.get("number").and_then(|n| n.as_u64()))
         .collect();
-    let futures = story_numbers
+    let futures = story_ids
         .iter()
         .map(|n| async move { (*n, tracker.list_story_comments(*n).await) });
     let results = futures::future::join_all(futures).await;
     let mut comment_hits: Vec<serde_json::Value> = Vec::new();
-    for (story_number, res) in results {
+    for (story_id, res) in results {
         let Ok(comments) = res else { continue };
         for c in comments {
             let body = c.get("body").and_then(|v| v.as_str()).unwrap_or("");
@@ -118,7 +118,7 @@ async fn search_stories_and_comments(
                 continue;
             }
             comment_hits.push(serde_json::json!({
-                "story_id": story_number,
+                "story_id": story_id,
                 "comment_id": c.get("id"),
                 "author": c.get("author"),
                 "snippet": extract_snippet(body, &needle),

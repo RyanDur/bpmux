@@ -58,7 +58,7 @@ fn reconnect_replays_state_deltas_but_never_auto_replays_chat() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target,
+                    "id": target,
                     "target_state": "ready",
                     "rationale": "fire board_invalidated during the down-window (positive control)"
                 }),

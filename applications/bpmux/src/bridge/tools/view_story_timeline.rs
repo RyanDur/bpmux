@@ -44,26 +44,26 @@ pub(in crate::bridge) async fn handle_view_story_timeline(
     board: Option<&Arc<BoardStore>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let b = board.ok_or("view_story_timeline requires board (canonical-store)")?;
     let mut story = b
-        .story(StoryId::new(number))
-        .ok_or_else(|| format!("story #{number} not found in board"))?;
+        .story(StoryId::new(id))
+        .ok_or_else(|| format!("story #{id} not found in board"))?;
     if story.gate_comments.is_none()
         && let Some(r) = refresh
     {
-        match r.fetch_gate_comments(number).await {
+        match r.fetch_gate_comments(id).await {
             Ok(_) => {
-                story = b.story(StoryId::new(number)).ok_or_else(|| {
-                    format!("story #{number} not found in board after gate fetch")
-                })?;
+                story = b
+                    .story(StoryId::new(id))
+                    .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {
                 crate::diag::log_diag(&format!(
-                    "view_story_timeline #{number} read-through fetch_gate_comments failed: {e}"
+                    "view_story_timeline #{id} read-through fetch_gate_comments failed: {e}"
                 ));
             }
         }

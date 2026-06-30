@@ -26,7 +26,7 @@ fn move_story_via_mcp_reflects_in_get_story_immediately() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] mutation-parity-target",
             "reject if move_story success-message doesn't reflect in get_story",
@@ -36,7 +36,7 @@ fn move_story_via_mcp_reflects_in_get_story_immediately() {
         pm.call_tool(
             "move_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "target_state": "ready",
                 "rationale": "drive #1197 regression: success-message must match canonical-store"
             }),
@@ -47,7 +47,7 @@ fn move_story_via_mcp_reflects_in_get_story_immediately() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .call_tool("get_story", serde_json::json!({ "id": target_id }))
             .await
             .expect("get_story should succeed");
 
@@ -76,7 +76,7 @@ fn start_story_via_mcp_reflects_in_get_story_immediately() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] start-story-parity-target",
             "reject if start_story success doesn't reflect in get_story",
@@ -86,7 +86,7 @@ fn start_story_via_mcp_reflects_in_get_story_immediately() {
         pm.call_tool(
             "move_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "target_state": "ready",
                 "rationale": "promote into ready so dev can start_story"
             }),
@@ -99,7 +99,7 @@ fn start_story_via_mcp_reflects_in_get_story_immediately() {
         dev.call_tool(
             "start_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "pickup_paraphrase": "regression test for #1197 substrate-fix",
                 "falsifier_reframing": "reject if start_story success doesn't propagate"
             }),
@@ -110,7 +110,7 @@ fn start_story_via_mcp_reflects_in_get_story_immediately() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let story = dev
-            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .call_tool("get_story", serde_json::json!({ "id": target_id }))
             .await
             .expect("get_story should succeed");
 

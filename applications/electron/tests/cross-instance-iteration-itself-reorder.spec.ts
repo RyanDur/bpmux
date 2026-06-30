@@ -15,28 +15,28 @@ test.describe('#1339 Scenario 3 — iteration-itself reorder cross-instance: con
         body: JSON.stringify({
           stories: [
             {
-              number: 9701,
+              id: 9701,
               title: 'Iteration Norma',
               story_type: 'iteration',
               initial_state: 'icebox',
               labels: ['iteration-order.100']
             },
             {
-              number: 9702,
+              id: 9702,
               title: 'Iteration Octans',
               story_type: 'iteration',
               initial_state: 'icebox',
               labels: ['iteration-order.200']
             },
             {
-              number: 9710,
+              id: 9710,
               title: 'norma-member',
               story_type: 'feature',
               initial_state: 'icebox',
               labels: ['iteration-Norma.100']
             },
             {
-              number: 9711,
+              id: 9711,
               title: 'octans-member',
               story_type: 'feature',
               initial_state: 'icebox',

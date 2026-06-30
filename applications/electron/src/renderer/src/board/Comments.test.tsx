@@ -55,7 +55,7 @@ describe('#1355 Comments independence', () => {
     expect(sendButtonMatch?.[0]).toContain('disabled')
   })
 
-  test('renders standalone for different stories with distinct storyNumber prop', () => {
+  test('renders standalone for different stories with distinct storyId prop', () => {
     const a = renderToStaticMarkup(<Comments {...baseProps} storyId={101} />)
     const b = renderToStaticMarkup(<Comments {...baseProps} storyId={102} />)
     expect(a).toContain('drill-in-comments')

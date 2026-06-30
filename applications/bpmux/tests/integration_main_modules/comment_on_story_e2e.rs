@@ -25,7 +25,7 @@ fn comment_on_story_returns_message_naming_target() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] comment-target",
             "reject if comment-on-non-existent-story silently succeeds",
@@ -36,7 +36,7 @@ fn comment_on_story_returns_message_naming_target() {
             .call_tool(
                 "comment_on_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "body": "first comment marker for E2E"
                 }),
             )
@@ -45,7 +45,7 @@ fn comment_on_story_returns_message_naming_target() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -65,7 +65,7 @@ fn comment_on_story_rejects_missing_body() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] body-validation-target",
             "reject if missing-body comment silently succeeds",
@@ -76,7 +76,7 @@ fn comment_on_story_rejects_missing_body() {
             .call_tool(
                 "comment_on_story",
                 serde_json::json!({
-                    "number": target_number
+                    "id": target_id
                 }),
             )
             .await
@@ -99,7 +99,7 @@ fn comment_on_story_rejects_empty_body() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] empty-body-target",
             "reject if empty-body comment silently succeeds",
@@ -110,7 +110,7 @@ fn comment_on_story_rejects_empty_body() {
             .call_tool(
                 "comment_on_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "body": ""
                 }),
             )
@@ -134,7 +134,7 @@ fn comment_on_story_view_comments_reflects_new_comment() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] roundtrip-comment-target",
             "reject if view_comments doesn't reflect appended comment",
@@ -145,7 +145,7 @@ fn comment_on_story_view_comments_reflects_new_comment() {
         pm.call_tool(
             "comment_on_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "body": marker
             }),
         )
@@ -153,10 +153,7 @@ fn comment_on_story_view_comments_reflects_new_comment() {
         .expect("comment_on_story should succeed");
 
         let view = pm
-            .call_tool(
-                "view_comments",
-                serde_json::json!({"number": target_number}),
-            )
+            .call_tool("view_comments", serde_json::json!({"id": target_id}))
             .await
             .expect("view_comments should succeed");
         let view_text = view

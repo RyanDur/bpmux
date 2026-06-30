@@ -39,7 +39,7 @@ export const SortableList = <P, T>({
   ulClassName,
   renderRow
 }: SortableListProps<P, T>): React.JSX.Element => {
-  const { orderedItems, draggedNumber, rowProps, gripProps } = useDragReorder<P, T>({
+  const { orderedItems, draggedId, rowProps, gripProps } = useDragReorder<P, T>({
     items,
     keyOf,
     mimeType: config.mimeType,
@@ -57,7 +57,7 @@ export const SortableList = <P, T>({
           {renderRow(item, {
             rowDragProps: rowProps(item),
             gripDragProps: gripProps(item),
-            dragging: draggedNumber === keyOf(item),
+            dragging: draggedId === keyOf(item),
             index
           })}
         </Fragment>

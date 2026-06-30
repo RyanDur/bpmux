@@ -7,9 +7,9 @@ use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 
-fn story(number: u64, title: &str, state: StoryState) -> Story {
+fn story(id: u64, title: &str, state: StoryState) -> Story {
     Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         title.to_string(),
         state,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),

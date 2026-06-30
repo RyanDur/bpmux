@@ -22,7 +22,7 @@ fn stderr(out: &std::process::Output) -> String {
     String::from_utf8_lossy(&out.stderr).to_string()
 }
 
-fn outcome_number(create_stdout: &str) -> u64 {
+fn outcome_id(create_stdout: &str) -> u64 {
     let digits: String = create_stdout
         .split('#')
         .nth(1)
@@ -43,12 +43,12 @@ async fn outcome_edit_is_pm_gated_off_the_cli_dev_refused() {
         &["outcome", "create", "--title", "X", "--horizon", "now"],
     )
     .await;
-    let number = outcome_number(&stdout(&created));
+    let id = outcome_id(&stdout(&created));
 
     let refused = run(
         &bpmux,
         "dev",
-        &["outcome", "edit", &number.to_string(), "--title", "Y"],
+        &["outcome", "edit", &id.to_string(), "--title", "Y"],
     )
     .await;
     assert!(

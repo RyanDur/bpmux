@@ -137,7 +137,7 @@ fn close_story_allows_pm() {
 #[tokio::test]
 async fn comment_on_story_rejects_empty_body() {
     let mut args = serde_json::Map::new();
-    args.insert("number".to_string(), serde_json::json!(42));
+    args.insert("id".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!(""));
     let result = handle_comment_on_story(&args, "dev:claude-code", None).await;
     assert!(
@@ -150,7 +150,7 @@ async fn comment_on_story_rejects_empty_body() {
 #[tokio::test]
 async fn comment_on_story_rejects_whitespace_only_body() {
     let mut args = serde_json::Map::new();
-    args.insert("number".to_string(), serde_json::json!(42));
+    args.insert("id".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!("   \n  "));
     let result = handle_comment_on_story(&args, "dev:claude-code", None).await;
     assert!(result.is_err(), "whitespace-only body must be rejected");
@@ -160,7 +160,7 @@ async fn comment_on_story_rejects_whitespace_only_body() {
 async fn comment_on_story_rejects_when_refresh_absent() {
     for caller in ["dev:claude-code", "pm:claude-code", "designer:claude-code"] {
         let mut args = serde_json::Map::new();
-        args.insert("number".to_string(), serde_json::json!(42));
+        args.insert("id".to_string(), serde_json::json!(42));
         args.insert("body".to_string(), serde_json::json!("a real comment"));
         let result = handle_comment_on_story(&args, caller, None).await;
         assert!(
@@ -190,25 +190,21 @@ fn require_role_rejects_non_designer_non_owner_from_desk_check_operations() {
     );
 }
 
-fn reorder_args(
-    number: u64,
-    position: u64,
-    state: &str,
-) -> serde_json::Map<String, serde_json::Value> {
+fn reorder_args(id: u64, position: u64, state: &str) -> serde_json::Map<String, serde_json::Value> {
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(number));
+    args.insert("id".into(), serde_json::json!(id));
     args.insert("position".into(), serde_json::json!(position));
     args.insert("state".into(), serde_json::json!(state));
     args
 }
 
 fn move_args(
-    number: u64,
+    id: u64,
     target_state: &str,
     position: Option<u64>,
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(number));
+    args.insert("id".into(), serde_json::json!(id));
     args.insert("target_state".into(), serde_json::json!(target_state));
     args.insert(
         "rationale".into(),

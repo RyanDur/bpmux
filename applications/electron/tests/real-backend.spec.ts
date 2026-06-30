@@ -601,18 +601,18 @@ test.describe('real-backend', () => {
         )
         expect(createResp.status).toBe(200)
       }
-      for (const number of [1, 2, 3]) {
+      for (const id of [1, 2, 3]) {
         const moveResp = await rpc(
           'move_story',
-          { number, target_state: 'ready', rationale: 'real-backend keyboard-reorder fixture' },
+          { id, target_state: 'ready', rationale: 'real-backend keyboard-reorder fixture' },
           'pm'
         )
         expect(moveResp.status).toBe(200)
       }
-      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'KeyboardDragHarness')
-      await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
-      await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
-      await addStoryToIterationViaRpc(rpc, 3, iterNumber, 3)
+      const iterationId = await seedCurrentIterationViaRpc(rpc, 'KeyboardDragHarness')
+      await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
+      await addStoryToIterationViaRpc(rpc, 2, iterationId, 2)
+      await addStoryToIterationViaRpc(rpc, 3, iterationId, 3)
 
       await win.reload()
       await waitForBoardLoaded(win)
@@ -804,24 +804,24 @@ test.describe('real-backend', () => {
       )
       expect(createResp.status).toBe(200)
 
-      const iterNumber = await setupCurrentIterationViaRpc(rpc, 1, 'RealBackendCmdEnter')
-      expect(iterNumber).toBeGreaterThan(0)
+      const iterationId = await setupCurrentIterationViaRpc(rpc, 1, 'RealBackendCmdEnter')
+      expect(iterationId).toBeGreaterThan(0)
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase: 'Driving the chain so the delivered drill-in is reachable.',
         falsifier_reframing: 'reject if start_story does not move story to in-progress'
       })
       expect(startResp.status).toBe(200)
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation: 'Drove deliver so the drill-in opens with a comment textarea.'
       })
       expect(deliverResp.status).toBe(200)
       await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
-        { number: 1, acceptor: 'owner', would_file_bug: false },
+        { id: 1, acceptor: 'owner', would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)

@@ -32,7 +32,7 @@ fn dev_firing_pass_desk_check_returns_workflow_role_not_allowed() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-pass-desk-check-substrate-refusal",
             "reject if dev firing pass_desk_check isn't substrate-refused per workflow.toml actor_roles",
@@ -42,7 +42,7 @@ fn dev_firing_pass_desk_check_returns_workflow_role_not_allowed() {
         let err = dev
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "acceptor": "owner", "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect_err("dev should be substrate-refused");
@@ -74,7 +74,7 @@ fn designer_firing_pass_desk_check_without_broadcast_returns_structured_409() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] designer-pass-without-evidence",
             "reject if designer firing pass_desk_check without recent substrate-broadcast succeeds",
@@ -84,7 +84,7 @@ fn designer_firing_pass_desk_check_without_broadcast_returns_structured_409() {
         let err = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "acceptor": "owner", "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect_err("pass_desk_check without designer-evidence should be refused");
@@ -112,7 +112,7 @@ fn designer_firing_pass_desk_check_with_broadcast_succeeds() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] designer-pass-with-evidence",
             "reject if designer firing pass_desk_check with recent substrate-broadcast doesn't 200",
@@ -123,7 +123,7 @@ fn designer_firing_pass_desk_check_with_broadcast_succeeds() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
                 }),
@@ -134,14 +134,14 @@ fn designer_firing_pass_desk_check_with_broadcast_succeeds() {
         let result = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "acceptor": "owner", "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect("pass_desk_check with designer-evidence should succeed");
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "happy-path message names the story; got {msg}"
         );
 

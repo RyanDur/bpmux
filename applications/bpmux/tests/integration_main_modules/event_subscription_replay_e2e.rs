@@ -56,7 +56,7 @@ fn missed_event_during_down_window_is_replayed_exactly_once_on_reconnect() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target,
+                    "id": target,
                     "target_state": "ready",
                     "rationale": "fire board_invalidated during the subscriber's down-window"
                 }),

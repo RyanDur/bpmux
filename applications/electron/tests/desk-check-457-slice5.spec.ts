@@ -26,10 +26,10 @@ const createStory = async (rpc: RpcFn, title: string, parentEpic?: number): Prom
   expect(resp.status).toBe(200)
 }
 
-const moveTo = async (rpc: RpcFn, number: number, state: string): Promise<void> => {
+const moveTo = async (rpc: RpcFn, id: number, state: string): Promise<void> => {
   const resp = await rpc(
     'move_story',
-    { number, target_state: state, rationale: `desk-check-457 slice5 fixture: ${state}` },
+    { id, target_state: state, rationale: `desk-check-457 slice5 fixture: ${state}` },
     'pm'
   )
   expect(resp.status).toBe(200)
@@ -54,9 +54,9 @@ const seedEpicFixture = async (result: MockGhLaunchResult): Promise<void> => {
   await moveTo(rpc, CHILD_ACCEPTED, 'accepted')
   await moveTo(rpc, STANDALONE, 'ready')
 
-  const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice5')
-  await addStoryToIterationViaRpc(rpc, CHILD_READY, iterNumber, 1)
-  await addStoryToIterationViaRpc(rpc, STANDALONE, iterNumber, 2)
+  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice5')
+  await addStoryToIterationViaRpc(rpc, CHILD_READY, iterationId, 1)
+  await addStoryToIterationViaRpc(rpc, STANDALONE, iterationId, 2)
 }
 
 test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () => {

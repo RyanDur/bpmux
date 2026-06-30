@@ -1,9 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import {
-  epicNumbersInIteration,
-  findCurrentIteration,
-  isMemberOfIteration
-} from './currentIteration'
+import { epicIdsInIteration, findCurrentIteration, isMemberOfIteration } from './currentIteration'
 import { iterationLabel } from './labelSchema'
 import type { BoardIterationData } from './selectIterations'
 import type { Story } from './types'
@@ -108,7 +104,7 @@ describe('#1453 isMemberOfIteration', () => {
   })
 })
 
-describe('#1453 epicNumbersInIteration', () => {
+describe('#1453 epicIdsInIteration', () => {
   test('returns distinct sorted parent_epic numbers of iteration members', () => {
     const iter = iteration({
       id: 1464,
@@ -118,7 +114,7 @@ describe('#1453 epicNumbersInIteration', () => {
     const s1 = story({ id: 9501, parent_epic: 200 })
     const s2 = story({ id: 9502, parent_epic: 100 })
     const s3 = story({ id: 9503, parent_epic: 200 })
-    expect(epicNumbersInIteration([s1, s2, s3], iter)).toEqual([100, 200])
+    expect(epicIdsInIteration([s1, s2, s3], iter)).toEqual([100, 200])
   })
 
   test('ignores stories not in iteration', () => {
@@ -129,7 +125,7 @@ describe('#1453 epicNumbersInIteration', () => {
     })
     const inIter = story({ id: 9501, parent_epic: 200 })
     const otherIter = story({ id: 9601, parent_epic: 300 })
-    expect(epicNumbersInIteration([inIter, otherIter], iter)).toEqual([200])
+    expect(epicIdsInIteration([inIter, otherIter], iter)).toEqual([200])
   })
 
   test('ignores stories without parent_epic', () => {
@@ -139,6 +135,6 @@ describe('#1453 epicNumbersInIteration', () => {
       stories: [9501]
     })
     const noEpic = story({ id: 9501 })
-    expect(epicNumbersInIteration([noEpic], iter)).toEqual([])
+    expect(epicIdsInIteration([noEpic], iter)).toEqual([])
   })
 })

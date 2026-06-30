@@ -22,26 +22,26 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7801,
+        id: 7801,
         title: 'Iteration Lacerta',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[7811,7812,7813]} -->'
       },
       {
-        number: 7811,
+        id: 7811,
         title: 'lacerta-alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7812,
+        id: 7812,
         title: 'lacerta-bravo',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7813,
+        id: 7813,
         title: 'lacerta-charlie',
         story_type: 'feature',
         initial_state: 'icebox'
@@ -78,26 +78,26 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7701,
+        id: 7701,
         title: 'Iteration Centaurus',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[7711,7712,7713]} -->'
       },
       {
-        number: 7711,
+        id: 7711,
         title: 'centaurus-alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7712,
+        id: 7712,
         title: 'centaurus-bravo',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7713,
+        id: 7713,
         title: 'centaurus-charlie',
         story_type: 'feature',
         initial_state: 'icebox'

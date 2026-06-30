@@ -8,19 +8,19 @@ pub(crate) async fn handle_set_parent_epic(
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "set parent epic")?;
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let epic_id = args
         .get("epic_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'epic_id' argument")?;
-    if number == epic_id {
-        return Err(format!("story #{number} cannot be its own parent epic"));
+    if id == epic_id {
+        return Err(format!("story #{id} cannot be its own parent epic"));
     }
     let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
-    ensure_story_in_canonical_store(r, number).await?;
+    ensure_story_in_canonical_store(r, id).await?;
     let parent = ensure_story_in_canonical_store(r, epic_id).await?;
     let story_type = parent.story_type();
     if story_type != crate::product_management::story::StoryType::Epic {
@@ -37,12 +37,12 @@ pub(crate) async fn handle_set_parent_epic(
     r.mutate_sync(
         crate::product_management::board::BoardEvent::ParentEpicSet {
             meta,
-            id: StoryId::new(number),
+            id: StoryId::new(id),
             epic_id: EpicId::new(epic_id),
         },
     )
-    .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
-    Ok(format!("#{number} grouped under epic #{epic_id}"))
+    .map_err(|e| format!("#{id} parent_epic enqueue failed: {e}"))?;
+    Ok(format!("#{id} grouped under epic #{epic_id}"))
 }
 
 pub(crate) async fn handle_unset_parent_epic(
@@ -51,12 +51,12 @@ pub(crate) async fn handle_unset_parent_epic(
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "unset parent epic")?;
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
-    ensure_story_in_canonical_store(r, number).await?;
+    ensure_story_in_canonical_store(r, id).await?;
     let meta = crate::product_management::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
@@ -65,9 +65,9 @@ pub(crate) async fn handle_unset_parent_epic(
     r.mutate_sync(
         crate::product_management::board::BoardEvent::ParentEpicUnset {
             meta,
-            id: StoryId::new(number),
+            id: StoryId::new(id),
         },
     )
-    .map_err(|e| format!("#{number} parent_epic-unset enqueue failed: {e}"))?;
-    Ok(format!("#{number} ungrouped from parent epic"))
+    .map_err(|e| format!("#{id} parent_epic-unset enqueue failed: {e}"))?;
+    Ok(format!("#{id} ungrouped from parent epic"))
 }

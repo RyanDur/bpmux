@@ -22,20 +22,20 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
 
     await seedStories(apiBase, authToken, [
       {
-        number: 8201,
+        id: 8201,
         title: 'Iteration Andromeda',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[8211,8212]} -->'
       },
       {
-        number: 8211,
+        id: 8211,
         title: 'andromeda-alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 8212,
+        id: 8212,
         title: 'andromeda-bravo',
         story_type: 'feature',
         initial_state: 'icebox'
@@ -77,20 +77,20 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
 
     await seedStories(apiBase, authToken, [
       {
-        number: 8301,
+        id: 8301,
         title: 'Iteration Perseus',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[8311,8312]} -->'
       },
       {
-        number: 8311,
+        id: 8311,
         title: 'perseus-alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 8312,
+        id: 8312,
         title: 'perseus-bravo',
         story_type: 'feature',
         initial_state: 'icebox'

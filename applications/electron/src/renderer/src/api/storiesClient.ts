@@ -17,18 +17,18 @@ export interface CommentPayload {
 
 export const postStoryComment = (
   ctx: ApiContext,
-  storyNumber: number,
+  storyId: number,
   payload: CommentPayload
-): AsyncResult<void, HttpError> => http.post(ctx, `/api/stories/${storyNumber}/comments`, payload)
+): AsyncResult<void, HttpError> => http.post(ctx, `/api/stories/${storyId}/comments`, payload)
 
 export const postStoryAccept = (
   ctx: ApiContext,
-  storyNumber: number,
+  storyId: number,
   payload: AcceptPayload
-): AsyncResult<void, HttpError> => http.post(ctx, `/api/stories/${storyNumber}/accept`, payload)
+): AsyncResult<void, HttpError> => http.post(ctx, `/api/stories/${storyId}/accept`, payload)
 
 export const postStoryReject = (
   ctx: ApiContext,
-  storyNumber: number,
+  storyId: number,
   payload: RejectPayload
-): AsyncResult<void, HttpError> => http.post(ctx, `/api/stories/${storyNumber}/reject`, payload)
+): AsyncResult<void, HttpError> => http.post(ctx, `/api/stories/${storyId}/reject`, payload)

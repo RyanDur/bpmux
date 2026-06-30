@@ -158,7 +158,7 @@ async fn bpmux_reject_owner_bypasses_the_reject_role_guard() {
 async fn bpmux_start_then_deliver_drive_the_dev_lifecycle_off_mcp() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
-    let number = create_target_story(
+    let id = create_target_story(
         &pm,
         "[Feature] cli-dev-lifecycle-target",
         "dev drives start then deliver via the CLI subprocess, off MCP",
@@ -166,7 +166,7 @@ async fn bpmux_start_then_deliver_drive_the_dev_lifecycle_off_mcp() {
     .await;
     pm.call_tool(
         "move_story",
-        json!({"number": number, "target_state": "ready", "rationale": "promote icebox->ready for the cli start positive-control"}),
+        json!({"id": id, "target_state": "ready", "rationale": "promote icebox->ready for the cli start positive-control"}),
     )
     .await
     .expect("move to ready");
@@ -176,7 +176,7 @@ async fn bpmux_start_then_deliver_drive_the_dev_lifecycle_off_mcp() {
         "dev",
         &[
             "start",
-            &number.to_string(),
+            &id.to_string(),
             "--paraphrase",
             "cli pickup paraphrase",
             "--falsifier",
@@ -194,7 +194,7 @@ async fn bpmux_start_then_deliver_drive_the_dev_lifecycle_off_mcp() {
         "dev",
         &[
             "deliver",
-            &number.to_string(),
+            &id.to_string(),
             "--observation",
             "drove start+deliver end-to-end via the bpmux CLI subprocess",
         ],
@@ -207,7 +207,7 @@ async fn bpmux_start_then_deliver_drive_the_dev_lifecycle_off_mcp() {
     );
     let out = String::from_utf8_lossy(&delivered.stdout);
     assert!(
-        out.contains(&format!("#{number}")),
+        out.contains(&format!("#{id}")),
         "the CLI prints the handler's own success message — the gated writes completed end-to-end; stdout: {out}"
     );
 }

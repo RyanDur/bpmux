@@ -8,7 +8,7 @@ use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
 async fn accept_requires_refresh_after_5n_fallback_retirement() {
-    let args = serde_json::json!({"number": 213, "would_file_bug": false});
+    let args = serde_json::json!({"id": 213, "would_file_bug": false});
     let result = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", None, None).await;
     assert!(
         result.is_err(),
@@ -29,7 +29,7 @@ async fn accept_rejects_unknown_role_via_handler() {
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
-    let args = serde_json::json!({"number": 1, "would_file_bug": false});
+    let args = serde_json::json!({"id": 1, "would_file_bug": false});
     let result = handle_accept_story(
         args.as_object().unwrap(),
         "intern:claude-code",
@@ -50,7 +50,7 @@ async fn accept_rejects_unknown_role_via_handler() {
 
 #[tokio::test]
 async fn accept_requires_would_file_bug_arg() {
-    let args = serde_json::json!({"number": 213});
+    let args = serde_json::json!({"id": 213});
     let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", None, None)
         .await
         .expect_err("missing would_file_bug should be rejected");
@@ -66,7 +66,7 @@ async fn accept_requires_would_file_bug_arg() {
 
 #[tokio::test]
 async fn accept_blocks_when_would_file_bug_true_without_force() {
-    let args = serde_json::json!({"number": 213, "would_file_bug": true});
+    let args = serde_json::json!({"id": 213, "would_file_bug": true});
     let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", None, None)
         .await
         .expect_err("would_file_bug=true should block accept");
@@ -82,7 +82,7 @@ async fn accept_blocks_when_would_file_bug_true_without_force() {
 
 #[tokio::test]
 async fn accept_force_bypass_requires_bypass_reason() {
-    let args = serde_json::json!({"number": 213, "would_file_bug": true, "force": true});
+    let args = serde_json::json!({"id": 213, "would_file_bug": true, "force": true});
     let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", None, None)
         .await
         .expect_err("force without bypass_reason should be rejected");
@@ -94,7 +94,7 @@ async fn accept_force_bypass_requires_bypass_reason() {
 
 #[tokio::test]
 async fn pass_desk_check_requires_would_file_bug_arg() {
-    let args = serde_json::json!({"number": 201, "acceptor": "owner"});
+    let args = serde_json::json!({"id": 201, "acceptor": "owner"});
     let err = handle_pass_desk_check(
         args.as_object().unwrap(),
         "designer:claude-code",
@@ -115,7 +115,7 @@ async fn pass_desk_check_requires_would_file_bug_arg() {
 
 #[tokio::test]
 async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
-    let args = serde_json::json!({"number": 201, "acceptor": "owner", "would_file_bug": true});
+    let args = serde_json::json!({"id": 201, "acceptor": "owner", "would_file_bug": true});
     let err = handle_pass_desk_check(
         args.as_object().unwrap(),
         "designer:claude-code",
@@ -156,7 +156,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({
-        "number": 777,
+        "id": 777,
         "would_file_bug": true,
         "force": true,
         "bypass_reason": "test-data churn; not feature-bug class"
@@ -195,7 +195,7 @@ async fn reject_allows_pm_designer_dev_owner() {
         "designer:claude-code",
         "dev:claude-code",
     ] {
-        let args = serde_json::json!({"number": 1, "reason": "needs rework"});
+        let args = serde_json::json!({"id": 1, "reason": "needs rework"});
         let result = handle_reject_story(args.as_object().unwrap(), caller, None).await;
         assert!(
             result.is_ok() || !result.as_ref().unwrap_err().contains("restricted to"),
@@ -216,7 +216,7 @@ async fn reject_rejects_unknown_role_via_handler() {
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
-    let args = serde_json::json!({"number": 1, "reason": "test"});
+    let args = serde_json::json!({"id": 1, "reason": "test"});
     let result = handle_reject_story(
         args.as_object().unwrap(),
         "intern:claude-code",

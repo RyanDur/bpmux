@@ -6,13 +6,13 @@ import { isClosedIterationMarker, type Story, type ColumnState, type GroupSpec }
 export interface BoardGroupProps {
   group: GroupSpec
   stories: Story[]
-  epicTitleByNumber: Map<number, string>
+  epicTitleById: Map<number, string>
   loading: boolean
-  selectedNumber: number | null
+  selectedId: number | null
   onOpen: (n: number) => void
   onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
-  onReorder?: (state: ColumnState, moved: number, targetNumber: number) => void
+  onReorder?: (state: ColumnState, moved: number, targetId: number) => void
   collapsed: boolean
   onToggleCollapse: () => void
   children?: React.ReactNode
@@ -21,9 +21,9 @@ export interface BoardGroupProps {
 const BoardGroup = ({
   group,
   stories,
-  epicTitleByNumber,
+  epicTitleById,
   loading,
-  selectedNumber,
+  selectedId,
   onOpen,
   onOpenTimeline,
   onSelect,
@@ -81,9 +81,9 @@ const BoardGroup = ({
             rowKey={(s) => s.id}
             config={READY_STORY_DRAG}
             buildPayload={(s) => s.id}
-            onReorder={(moved, targetNumber) => {
+            onReorder={(moved, targetId) => {
               if (onReorder === undefined) return
-              onReorder(group.state, moved, targetNumber)
+              onReorder(group.state, moved, targetId)
             }}
             disabled={!draggable}
             ulClassName="board-story-list"
@@ -94,10 +94,10 @@ const BoardGroup = ({
                   story={story}
                   parentEpicTitle={
                     typeof story.parent_epic === 'number'
-                      ? epicTitleByNumber.get(story.parent_epic)
+                      ? epicTitleById.get(story.parent_epic)
                       : undefined
                   }
-                  selected={story.id === selectedNumber}
+                  selected={story.id === selectedId}
                   draggable={rowDraggable}
                   dragging={dragging}
                   position={index + 1}

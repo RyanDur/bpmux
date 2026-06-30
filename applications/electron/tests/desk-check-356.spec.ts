@@ -24,7 +24,7 @@ const seedFixture = async (result: MockGhLaunchResult): Promise<void> => {
   const { rpc } = result
   await createStory(rpc, '[Feature] Story for Cmd+Enter comment submit')
   await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck356')
-  const readyResp = await rpc('label_story', { number: 1, label: 'ready' }, 'pm')
+  const readyResp = await rpc('label_story', { id: 1, label: 'ready' }, 'pm')
   expect(readyResp.status).toBe(200)
 }
 

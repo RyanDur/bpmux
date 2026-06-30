@@ -47,9 +47,9 @@ async fn bpmux_backlog_reaches_the_gated_rpc_read_off_mcp() {
 async fn bpmux_timeline_reaches_the_gated_rpc_read_for_a_real_story_off_mcp() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
-    let number = create_target_story(&pm, "[Feature] timeline target", "read its timeline").await;
+    let id = create_target_story(&pm, "[Feature] timeline target", "read its timeline").await;
     pm.close().await;
-    let out = run_verb(&bpmux, "dev", &["timeline", &number.to_string()]).await;
+    let out = run_verb(&bpmux, "dev", &["timeline", &id.to_string()]).await;
     assert!(
         out.status.success(),
         "bpmux timeline reaches /api/rpc/view_story_timeline for a real story off MCP; stderr: {}",

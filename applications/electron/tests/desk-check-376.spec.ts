@@ -28,38 +28,34 @@ const createStory = async (rpc: RpcFn, title: string): Promise<void> => {
 
 const driveToDelivered = async (
   rpc: RpcFn,
-  number: number,
+  id: number,
   acceptor: 'owner' | 'team'
 ): Promise<void> => {
   const startResp = await rpc('start_story', {
-    number,
+    id,
     pickup_paraphrase: 'Driving the chain so the delivered badge is reachable.',
     falsifier_reframing: 'reject if start_story does not move story to in-progress'
   })
   expect(startResp.status).toBe(200)
   const deliverResp = await rpc('deliver_story', {
-    number,
+    id,
     verified_observation: 'Drove deliver so designer can pass desk-check next.'
   })
   expect(deliverResp.status).toBe(200)
-  await seedTeamVerdicts(rpc, number, ['designer'])
-  const passResp = await rpc(
-    'pass_desk_check',
-    { number, acceptor, would_file_bug: false },
-    'designer'
-  )
+  await seedTeamVerdicts(rpc, id, ['designer'])
+  const passResp = await rpc('pass_desk_check', { id, acceptor, would_file_bug: false }, 'designer')
   expect(passResp.status).toBe(200)
 }
 
 const driveToAccepted = async (
   rpc: RpcFn,
-  number: number,
+  id: number,
   acceptor: 'owner' | 'team'
 ): Promise<void> => {
-  await driveToDelivered(rpc, number, acceptor)
-  await seedTeamVerdicts(rpc, number, ['designer', 'dev'])
+  await driveToDelivered(rpc, id, acceptor)
+  await seedTeamVerdicts(rpc, id, ['designer', 'dev'])
   const acceptRole = acceptor === 'owner' ? 'owner' : 'pm'
-  const acceptResp = await rpc('accept_story', { number, would_file_bug: false }, acceptRole)
+  const acceptResp = await rpc('accept_story', { id, would_file_bug: false }, acceptRole)
   expect(acceptResp.status).toBe(200)
 }
 
@@ -69,8 +65,8 @@ const seedFixture = async (result: MockGhLaunchResult): Promise<void> => {
   await createStory(rpc, '[Feature] accepted feature (owner-accepted)')
   await createStory(rpc, '[Chore] delivered chore (awaiting team)')
 
-  const iterNumber = await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck376')
-  await addStoryToIterationViaRpc(rpc, 3, iterNumber, 3)
+  const iterationId = await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck376')
+  await addStoryToIterationViaRpc(rpc, 3, iterationId, 3)
 
   await driveToDelivered(rpc, 1, 'owner')
   await driveToAccepted(rpc, 2, 'owner')

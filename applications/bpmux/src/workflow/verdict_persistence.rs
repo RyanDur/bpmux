@@ -4,12 +4,12 @@ use crate::product_management::story::StoryId;
 use chrono::Utc;
 use tempfile::TempDir;
 
-fn sample_verdict(story_number: u64, role: &str) -> Verdict {
+fn sample_verdict(story_id: u64, role: &str) -> Verdict {
     Verdict {
-        story_id: StoryId::new(story_number),
+        story_id: StoryId::new(story_id),
         from_role: role.to_string(),
         verdict: "verified".to_string(),
-        substrate_grounding: format!("grep-cited line at src/foo.rs:{story_number}"),
+        substrate_grounding: format!("grep-cited line at src/foo.rs:{story_id}"),
         ts: Utc::now(),
         grounded_head: None,
     }

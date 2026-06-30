@@ -49,14 +49,14 @@ test.describe('human-side E2E #499 — StoryBadge no nested-button', () => {
       await setupCurrentIterationViaRpc(rpc, 1, 'StoryBadgeNesting')
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase: 'Driving to deliver so badge surfaces with handler.',
         falsifier_reframing: 'reject if start does not move story to in-progress'
       })
       expect(startResp.status).toBe(200)
 
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation: 'Drove deliver so designer can pass desk-check.'
       })
       expect(deliverResp.status).toBe(200)
@@ -64,7 +64,7 @@ test.describe('human-side E2E #499 — StoryBadge no nested-button', () => {
       await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
-        { number: 1, acceptor: 'owner', would_file_bug: false },
+        { id: 1, acceptor: 'owner', would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)

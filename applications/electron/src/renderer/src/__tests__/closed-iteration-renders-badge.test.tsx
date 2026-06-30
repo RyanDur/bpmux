@@ -19,7 +19,7 @@ describe('#1300 — closed iteration renders "(closed)" badge as JSX sibling (no
 
     await seedStories(apiBase, authToken, [
       {
-        number: 9201,
+        id: 9201,
         title: 'Iteration RetiredOne',
         story_type: 'iteration',
         initial_state: 'icebox',

@@ -16,13 +16,13 @@ export interface UseBoardReorderOptions {
   setData: React.Dispatch<React.SetStateAction<Story[] | null>>
   setReorderAnnounce: (msg: string) => void
   setError: (msg: string) => void
-  setPendingReadyOrder: (storyNumber: number, position: number) => void
-  clearPendingReadyOrder: (storyNumbers: number[]) => void
+  setPendingReadyOrder: (storyId: number, position: number) => void
+  clearPendingReadyOrder: (storyIds: number[]) => void
   apiBase: string | undefined
   authToken: string | undefined
 }
 
-export type HandleReorder = (state: ColumnState, moved: number, targetNumber: number) => void
+export type HandleReorder = (state: ColumnState, moved: number, targetId: number) => void
 
 export const useBoardReorder = ({
   data,
@@ -35,7 +35,7 @@ export const useBoardReorder = ({
   authToken
 }: UseBoardReorderOptions): HandleReorder => {
   return useCallback(
-    (state, moved, targetNumber) => {
+    (state, moved, targetId) => {
       const prevData = data
       const inGroupOf = (resp: Story[]): Story[] =>
         resp.filter(
@@ -50,40 +50,40 @@ export const useBoardReorder = ({
         if (membership === undefined || membership === null) return
         const iterationId = membership.iteration_id
         const draggedOldPosition = membership.position
-        const targetMemberIndex = readyStories.findIndex((s) => s.id === targetNumber)
+        const targetMemberIndex = readyStories.findIndex((s) => s.id === targetId)
         if (targetMemberIndex === -1) return
         const targetMemberPositions = readyStories
           .map((s) => s.iteration_membership?.position)
           .filter((p): p is number => p !== undefined && p !== null)
 
         const assignments: Array<{
-          storyNumber: number
+          storyId: number
           position: number
           mutation: DropMutation
         }> = []
         if (
           insertPositionWouldCascade(draggedOldPosition, targetMemberPositions, targetMemberIndex)
         ) {
-          const newSequence = eagerReorder(readyStories, (s) => s.id, moved, targetNumber)
+          const newSequence = eagerReorder(readyStories, (s) => s.id, moved, targetId)
           const respaced = computeMemberRespace(
             iterationId,
             newSequence.map((s) => ({
-              storyNumber: s.id,
+              storyId: s.id,
               currentPosition: s.iteration_membership?.position ?? null
             }))
           )
           for (const r of respaced) {
             assignments.push({
-              storyNumber: r.storyNumber,
+              storyId: r.storyId,
               position: r.position,
               mutation: { add: r.add, remove: r.remove }
             })
           }
         } else {
           const mutation = computeMemberDropMutation({
-            draggedIterationNumber: iterationId,
+            draggedIterationId: iterationId,
             draggedOldPosition,
-            targetIterationNumber: iterationId,
+            targetIterationId: iterationId,
             targetMemberPositions,
             targetMemberIndex,
             targetMembersIncludeDragged: true
@@ -91,13 +91,13 @@ export const useBoardReorder = ({
           if (mutation === null) return
           const added = parseParentIterationLabel(mutation.add[0])
           if (added === null) return
-          assignments.push({ storyNumber: moved, position: added.position, mutation })
+          assignments.push({ storyId: moved, position: added.position, mutation })
         }
         if (assignments.length === 0) return
 
-        const positionByStory = new Map(assignments.map((a) => [a.storyNumber, a.position]))
+        const positionByStory = new Map(assignments.map((a) => [a.storyId, a.position]))
         for (const assignment of assignments) {
-          setPendingReadyOrder(assignment.storyNumber, assignment.position)
+          setPendingReadyOrder(assignment.storyId, assignment.position)
         }
         setData((prev) => {
           if (!prev) return prev
@@ -117,14 +117,14 @@ export const useBoardReorder = ({
 
         const orderedAfter = readyStories
           .map((s) => ({
-            number: s.id,
+            id: s.id,
             position:
               positionByStory.get(s.id) ??
               s.iteration_membership?.position ??
               Number.MAX_SAFE_INTEGER
           }))
           .sort((a, b) => a.position - b.position)
-        const newIndex = orderedAfter.findIndex((s) => s.number === moved)
+        const newIndex = orderedAfter.findIndex((s) => s.id === moved)
         if (newIndex !== -1) {
           setReorderAnnounce(`Moved to position ${newIndex + 1} of ${readyStories.length}`)
         }
@@ -133,11 +133,11 @@ export const useBoardReorder = ({
         for (const assignment of assignments) {
           void postStoryLabels(
             { apiBase, authToken },
-            assignment.storyNumber,
+            assignment.storyId,
             assignment.mutation
           ).onFailure((error) => {
             setData(prevData)
-            clearPendingReadyOrder(assignments.map((a) => a.storyNumber))
+            clearPendingReadyOrder(assignments.map((a) => a.storyId))
             setError(`Reorder failed: ${describeHttpError(error)}`)
           }).value
         }
@@ -147,7 +147,7 @@ export const useBoardReorder = ({
       let newPosition = 0
       let groupSize = 0
       if (prevData) {
-        const reordered = eagerReorder(inGroupOf(prevData), (s) => s.id, moved, targetNumber)
+        const reordered = eagerReorder(inGroupOf(prevData), (s) => s.id, moved, targetId)
         const movedIdx = reordered.findIndex((s) => s.id === moved)
         if (movedIdx !== -1) {
           newPosition = movedIdx + 1
@@ -158,7 +158,7 @@ export const useBoardReorder = ({
       setData((prev) => {
         if (!prev) return prev
         const inGroup = inGroupOf(prev)
-        const reordered = eagerReorder(inGroup, (s) => s.id, moved, targetNumber)
+        const reordered = eagerReorder(inGroup, (s) => s.id, moved, targetId)
         if (reordered === inGroup) return prev
         const others = prev.filter(
           (s) =>

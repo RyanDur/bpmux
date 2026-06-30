@@ -4,7 +4,7 @@ pub fn pass_desk_check_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number that passed desk-check"
             },
@@ -26,7 +26,7 @@ pub fn pass_desk_check_tool(description: &'static str) -> Tool {
                 "description": "Required when force=true and would_file_bug=true. Explicit justification recorded in gate-comment per `feedback_external_catch_over_self_catch`."
             }
         },
-        "required": ["number", "acceptor", "would_file_bug"]
+        "required": ["id", "acceptor", "would_file_bug"]
     });
     Tool::new(
         "pass_desk_check",

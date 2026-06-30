@@ -23,7 +23,7 @@ fn fail_desk_check_designer_with_reason_succeeds() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] fail-desk-check-target",
             "reject if fail_desk_check doesn't fire signal + state transition",
@@ -34,7 +34,7 @@ fn fail_desk_check_designer_with_reason_succeeds() {
             .call_tool(
                 "fail_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "Component fails accessibility-baseline scan"
                 }),
             )
@@ -43,7 +43,7 @@ fn fail_desk_check_designer_with_reason_succeeds() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -65,7 +65,7 @@ fn fail_desk_check_rejects_dev_caller_per_designer_lane_gate() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-cannot-fail-desk-check-target",
             "reject if dev can fail desk-check bypassing designer-lane gate",
@@ -76,7 +76,7 @@ fn fail_desk_check_rejects_dev_caller_per_designer_lane_gate() {
             .call_tool(
                 "fail_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "dev attempted desk-check fail"
                 }),
             )
@@ -102,7 +102,7 @@ fn fail_desk_check_rejects_missing_reason() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] missing-reason-target",
             "reject if designer can fail desk-check without articulating reason",
@@ -110,10 +110,7 @@ fn fail_desk_check_rejects_missing_reason() {
         .await;
 
         let err = designer
-            .call_tool(
-                "fail_desk_check",
-                serde_json::json!({"number": target_number}),
-            )
+            .call_tool("fail_desk_check", serde_json::json!({"id": target_id}))
             .await
             .expect_err("missing reason should be rejected");
 
@@ -148,7 +145,7 @@ fn fail_desk_check_view_board_reflects_in_progress_via_fixture_seed() {
             .call_tool(
                 "fail_desk_check",
                 serde_json::json!({
-                    "number": 400,
+                    "id": 400,
                     "reason": "test rework needed"
                 }),
             )
@@ -156,7 +153,7 @@ fn fail_desk_check_view_board_reflects_in_progress_via_fixture_seed() {
             .expect("fail_desk_check should succeed against seeded story");
 
         let story = designer
-            .call_tool("get_story", serde_json::json!({"number": 400}))
+            .call_tool("get_story", serde_json::json!({"id": 400}))
             .await
             .expect("get_story should succeed");
         let story_text = story
@@ -190,7 +187,7 @@ fn fail_desk_check_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 

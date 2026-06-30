@@ -23,7 +23,7 @@ fn view_story_timeline_returns_filed_event_for_new_story() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] timeline-target",
             "reject if view_story_timeline omits the filed event",
@@ -31,10 +31,7 @@ fn view_story_timeline_returns_filed_event_for_new_story() {
         .await;
 
         let result = pm
-            .call_tool(
-                "view_story_timeline",
-                serde_json::json!({"number": target_number}),
-            )
+            .call_tool("view_story_timeline", serde_json::json!({"id": target_id}))
             .await
             .expect("view_story_timeline should succeed");
 
@@ -68,7 +65,7 @@ fn view_story_timeline_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 
@@ -85,7 +82,7 @@ fn view_story_timeline_returns_error_for_non_existent_story() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = pm
-            .call_tool("view_story_timeline", serde_json::json!({"number": 999999}))
+            .call_tool("view_story_timeline", serde_json::json!({"id": 999999}))
             .await
             .expect_err("non-existent story should be rejected");
 

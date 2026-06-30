@@ -4,7 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::extract_story_number;
+use harness::story_helpers::extract_story_id;
 
 async fn run_verb(bpmux: &TestBpmux, role: &str, args: &[&str]) -> std::process::Output {
     let bin = env!("CARGO_BIN_EXE_bpmux");
@@ -62,11 +62,11 @@ async fn bpmux_iteration_close_succeeds_for_pm_off_mcp() {
         .await
         .expect("create_iteration should succeed");
     pm.close().await;
-    let number = extract_story_number(create.as_str().unwrap_or(""));
+    let id = extract_story_id(create.as_str().unwrap_or(""));
     let out = run_verb(
         &bpmux,
         "pm",
-        &["iteration", "close", "--iteration", &number.to_string()],
+        &["iteration", "close", "--iteration", &id.to_string()],
     )
     .await;
     assert!(

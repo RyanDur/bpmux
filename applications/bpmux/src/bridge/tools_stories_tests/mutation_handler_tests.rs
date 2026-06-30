@@ -33,7 +33,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(123));
+    args.insert("id".into(), serde_json::json!(123));
     args.insert(
         "body".into(),
         serde_json::json!("new comment via orchestrator"),
@@ -85,7 +85,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(200));
+    args.insert("id".into(), serde_json::json!(200));
     args.insert("label".into(), serde_json::json!("blocked"));
     args.insert("operation".into(), serde_json::json!("add"));
     let result = handle_label_story(&args, "pm:claude-code", Some(&orchestrator)).await;
@@ -138,7 +138,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut add_args = serde_json::Map::new();
-    add_args.insert("number".into(), serde_json::json!(200));
+    add_args.insert("id".into(), serde_json::json!(200));
     add_args.insert("label".into(), serde_json::json!("blocked"));
     add_args.insert("operation".into(), serde_json::json!("add"));
     handle_label_story(&add_args, "pm:claude-code", Some(&orchestrator))
@@ -146,7 +146,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         .unwrap();
 
     let mut remove_args = serde_json::Map::new();
-    remove_args.insert("number".into(), serde_json::json!(200));
+    remove_args.insert("id".into(), serde_json::json!(200));
     remove_args.insert("label".into(), serde_json::json!("blocked"));
     remove_args.insert("operation".into(), serde_json::json!("remove"));
     let result = handle_label_story(&remove_args, "pm:claude-code", Some(&orchestrator)).await;
@@ -206,7 +206,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(201));
+    args.insert("id".into(), serde_json::json!(201));
     args.insert("acceptor".into(), serde_json::json!("owner"));
     args.insert("would_file_bug".into(), serde_json::json!(false));
     let result =
@@ -294,7 +294,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(202));
+    args.insert("id".into(), serde_json::json!(202));
     let substantive_reason = "observed: ATP file foo.rs has zero assertions, refutes clause (b)";
     args.insert("reason".into(), serde_json::json!(substantive_reason));
     let result = handle_fail_desk_check(&args, "designer:claude-code", Some(&orchestrator)).await;

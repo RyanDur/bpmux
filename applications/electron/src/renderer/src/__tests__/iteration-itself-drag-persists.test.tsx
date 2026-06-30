@@ -20,28 +20,28 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
     await resetStories(apiBase, authToken)
     await seedStories(apiBase, authToken, [
       {
-        number: 8101,
+        id: 8101,
         title: 'Iteration Sirius',
         story_type: 'iteration',
         initial_state: 'icebox',
         labels: ['iteration-order.200']
       },
       {
-        number: 8102,
+        id: 8102,
         title: 'Iteration Vega',
         story_type: 'iteration',
         initial_state: 'icebox',
         labels: ['iteration-order.100']
       },
       {
-        number: 8110,
+        id: 8110,
         title: 'sirius-member',
         story_type: 'feature',
         initial_state: 'icebox',
         labels: ['iteration-Sirius.100']
       },
       {
-        number: 8111,
+        id: 8111,
         title: 'vega-member',
         story_type: 'feature',
         initial_state: 'icebox',

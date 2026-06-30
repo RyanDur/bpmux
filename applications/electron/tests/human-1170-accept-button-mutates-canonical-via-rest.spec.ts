@@ -39,7 +39,7 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       await setupCurrentIterationViaRpc(rpc, 1, 'Human1170AcceptCanonical')
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase: 'Picking up the canonical-mutation accept-button regression.',
         falsifier_reframing:
           'reject if accept-button click does not mutate canonical store BoardEvent::StateTransitioned + StoryClosed.'
@@ -47,7 +47,7 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       expect(startResp.status).toBe(200)
 
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation:
           'Drove deliver via /api/rpc/deliver_story; staging accept-button click as the gate under test.'
       })
@@ -56,7 +56,7 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
-        { number: 1, acceptor: 'owner', would_file_bug: false },
+        { id: 1, acceptor: 'owner', would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)
@@ -84,8 +84,8 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
           })
           return r.json()
         })
-        const story = (boardResp.stories as Array<{ number: number; state: string }>).find(
-          (s) => s.number === 1
+        const story = (boardResp.stories as Array<{ id: number; state: string }>).find(
+          (s) => s.id === 1
         )
         expect(story?.state).toBe('accepted')
       }).toPass({ timeout: 10_000 })

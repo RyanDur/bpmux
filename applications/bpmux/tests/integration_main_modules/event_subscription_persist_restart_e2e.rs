@@ -62,7 +62,7 @@ fn subscription_survives_bridge_process_restart_and_resumes_live_push() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target,
+                    "id": target,
                     "target_state": "ready",
                     "rationale": "fire board_invalidated after the subscriber's bridge restarted"
                 }),

@@ -9,10 +9,10 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::product_management::story::{Story, StoryId, StoryState};
 
-fn seed_minimal(number: u64, state: StoryState) -> Story {
+fn seed_minimal(id: u64, state: StoryState) -> Story {
     Story::new_minimal(
-        StoryId::new(number),
-        format!("[Feature] target-{number}"),
+        StoryId::new(id),
+        format!("[Feature] target-{id}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
         "pm".to_string(),
@@ -30,14 +30,14 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
         Arc::clone(&adapter),
     ));
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(8001));
+    args.insert("id".into(), serde_json::json!(8001));
     let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
     assert!(
         result.is_ok(),
         "get_story succeeds without live GH-fetch even when body is None: {result:?}"
     );
     let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
-    assert_eq!(json["number"], 8001);
+    assert_eq!(json["id"], 8001);
     assert_eq!(json["body_hydrated"], false);
     assert!(
         json["body"]
@@ -61,7 +61,7 @@ async fn get_story_serves_cached_body_from_canonical_store() {
         Arc::clone(&adapter),
     ));
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(8002));
+    args.insert("id".into(), serde_json::json!(8002));
     let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
     let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
     assert_eq!(json["body_hydrated"], true);
@@ -86,7 +86,7 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
         Arc::clone(&adapter),
     ));
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(8003));
+    args.insert("id".into(), serde_json::json!(8003));
     let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
     assert!(
         result.is_ok(),
@@ -308,7 +308,7 @@ async fn get_story_returns_gate_comments_hydrated_flag_in_response() {
         Arc::clone(&adapter),
     ));
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(8004));
+    args.insert("id".into(), serde_json::json!(8004));
     let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
     let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
     assert_eq!(

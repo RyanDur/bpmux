@@ -33,7 +33,7 @@ async fn run_create(
         .expect("run bpmux create subprocess")
 }
 
-async fn board_line_for(bpmux: &TestBpmux, role: &str, number: u64) -> String {
+async fn board_line_for(bpmux: &TestBpmux, role: &str, id: u64) -> String {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let out = tokio::process::Command::new(bin)
         .args(["board"])
@@ -49,11 +49,11 @@ async fn board_line_for(bpmux: &TestBpmux, role: &str, number: u64) -> String {
         String::from_utf8_lossy(&out.stderr)
     );
     let stdout = String::from_utf8_lossy(&out.stdout);
-    let needle = format!("#{number}  ");
+    let needle = format!("#{id}  ");
     stdout
         .lines()
         .find(|l| l.contains(&needle))
-        .unwrap_or_else(|| panic!("#{number} should appear on `bpmux board`; board:\n{stdout}"))
+        .unwrap_or_else(|| panic!("#{id} should appear on `bpmux board`; board:\n{stdout}"))
         .to_string()
 }
 
@@ -71,9 +71,9 @@ fn created_number(out: &std::process::Output) -> u64 {
         .unwrap_or_else(|_| panic!("could not parse created story number from stdout: {stdout}"))
 }
 
-async fn story_text(reader: &TestBridge, number: u64) -> String {
+async fn story_text(reader: &TestBridge, id: u64) -> String {
     let story = reader
-        .call_tool("get_story", serde_json::json!({ "number": number }))
+        .call_tool("get_story", serde_json::json!({ "id": id }))
         .await
         .expect("get_story should succeed");
     story

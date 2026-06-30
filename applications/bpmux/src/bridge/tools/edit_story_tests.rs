@@ -13,9 +13,9 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn seed_story(number: u64, title: &str, body: &str) -> Story {
+fn seed_story(id: u64, title: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         title.to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
@@ -48,7 +48,7 @@ async fn edit_story_title_only_updates_title_preserves_body() {
     )])
     .await;
     let args = args_obj(json!({
-        "number": 1234,
+        "id": 1234,
         "title": "[Feature] corrected title"
     }));
     let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
@@ -73,7 +73,7 @@ async fn edit_story_body_only_updates_body_preserves_title() {
     )])
     .await;
     let args = args_obj(json!({
-        "number": 1234,
+        "id": 1234,
         "body": "## What\n\nnew body content"
     }));
     let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
@@ -93,7 +93,7 @@ async fn edit_story_body_only_updates_body_preserves_title() {
 async fn edit_story_with_both_title_and_body_updates_both() {
     let refresh = build_refresh(vec![seed_story(1234, "old title", "old body")]).await;
     let args = args_obj(json!({
-        "number": 1234,
+        "id": 1234,
         "title": "new title",
         "body": "new body"
     }));
@@ -135,7 +135,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         "precondition: the create-derived acceptor is dev"
     );
 
-    let args = args_obj(json!({ "number": 1234, "acceptor": "owner" }));
+    let args = args_obj(json!({ "id": 1234, "acceptor": "owner" }));
     handle_edit_story(&args, "pm:claude-code", Some(&refresh))
         .await
         .expect("edit_story with acceptor-only succeeds");
@@ -156,7 +156,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
 #[tokio::test]
 async fn edit_story_with_neither_field_rejects() {
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
-    let args = args_obj(json!({ "number": 1234 }));
+    let args = args_obj(json!({ "id": 1234 }));
     let err = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
         .await
         .expect_err("edit_story with neither body, title, nor acceptor rejected");
@@ -170,7 +170,7 @@ async fn edit_story_with_neither_field_rejects() {
 async fn edit_story_rejects_non_pm_role() {
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let args = args_obj(json!({
-        "number": 1234,
+        "id": 1234,
         "title": "new title"
     }));
     let err = handle_edit_story(&args, "dev:claude-code", Some(&refresh))

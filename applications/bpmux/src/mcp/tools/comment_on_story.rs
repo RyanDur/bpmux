@@ -4,7 +4,7 @@ pub fn comment_on_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to comment on"
             },
@@ -13,7 +13,7 @@ pub fn comment_on_story_tool(description: &'static str) -> Tool {
                 "description": "Comment body — markdown supported. Durable audit-trail (visible to any future reader of the issue)."
             }
         },
-        "required": ["number", "body"]
+        "required": ["id", "body"]
     });
 
     Tool::new(

@@ -19,9 +19,9 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn iteration(number: u64, name: &str) -> Story {
+fn iteration(id: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         format!("Iteration {name}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -32,15 +32,15 @@ fn iteration(number: u64, name: &str) -> Story {
     s
 }
 
-fn iteration_at(number: u64, name: &str, order: u32) -> Story {
-    let mut s = iteration(number, name);
+fn iteration_at(id: u64, name: &str, order: u32) -> Story {
+    let mut s = iteration(id, name);
     s.raw_labels
         .push(GhLabelCodec.encode_iteration_order(order));
     s
 }
 
-fn iteration_with_members(number: u64, name: &str, members: Vec<u64>) -> Story {
-    let mut s = iteration(number, name);
+fn iteration_with_members(id: u64, name: &str, members: Vec<u64>) -> Story {
+    let mut s = iteration(id, name);
     s.body = Some(
         IterationRelationships {
             outcome: None,
@@ -51,10 +51,10 @@ fn iteration_with_members(number: u64, name: &str, members: Vec<u64>) -> Story {
     s
 }
 
-fn member_story(number: u64, state: StoryState) -> Story {
+fn member_story(id: u64, state: StoryState) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("[Feature] member-{number}"),
+        StoryId::new(id),
+        format!("[Feature] member-{id}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
@@ -307,7 +307,7 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
         "sanity: the iteration is current right after designation"
     );
 
-    let rename = json!({ "number": 1700, "title": "Iteration Vela-RENAMED" })
+    let rename = json!({ "id": 1700, "title": "Iteration Vela-RENAMED" })
         .as_object()
         .cloned()
         .unwrap();

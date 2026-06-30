@@ -4,7 +4,7 @@ pub fn label_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to label"
             },
@@ -18,7 +18,7 @@ pub fn label_story_tool(description: &'static str) -> Tool {
                 "description": "Whether to add or remove the label. Defaults to 'add' for backward-compat with pre-#392 callers. Remove is idempotent: removing a label not attached to the story succeeds silently."
             }
         },
-        "required": ["number", "label"]
+        "required": ["id", "label"]
     });
     Tool::new(
         "label_story",

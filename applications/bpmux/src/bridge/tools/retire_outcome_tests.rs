@@ -16,9 +16,9 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
+fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         title.to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -33,13 +33,8 @@ fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Sto
     s
 }
 
-fn iteration_in_outcome(number: u64, outcome: u64) -> Story {
-    let mut s = seed(
-        number,
-        &format!("Iteration #{number}"),
-        StoryType::Iteration,
-        &[],
-    );
+fn iteration_in_outcome(id: u64, outcome: u64) -> Story {
+    let mut s = seed(id, &format!("Iteration #{id}"), StoryType::Iteration, &[]);
     s.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(outcome)),
@@ -50,9 +45,9 @@ fn iteration_in_outcome(number: u64, outcome: u64) -> Story {
     s
 }
 
-fn outcome_with(number: u64, iterations: Vec<u64>) -> Story {
+fn outcome_with(id: u64, iterations: Vec<u64>) -> Story {
     let mut s = seed(
-        number,
+        id,
         "Outcome",
         StoryType::Outcome,
         &["outcome", "horizon.now"],

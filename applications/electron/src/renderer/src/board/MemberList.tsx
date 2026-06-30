@@ -46,7 +46,7 @@ const MemberList = ({
       rowKey={(m) => m.story.id}
       config={ITERATION_MEMBER_DRAG}
       buildPayload={(m) => ({
-        storyNumber: m.story.id,
+        storyId: m.story.id,
         iterationId: iteration.id,
         oldPosition: m.position
       })}
@@ -55,8 +55,8 @@ const MemberList = ({
         const originalIdx = members.findIndex((m) => m.story.id === targetKey)
         if (originalIdx === -1) return
         const position = originalIdx + 1
-        dispatch(addStoryToIterationRequested(iteration.id, payload.storyNumber, position))
-        setPending(payload.storyNumber, iteration.id, position)
+        dispatch(addStoryToIterationRequested(iteration.id, payload.storyId, position))
+        setPending(payload.storyId, iteration.id, position)
       }}
       ulClassName="board-iteration-body"
       renderRow={({ story }, { rowDragProps, gripDragProps, dragging }) => (
@@ -101,7 +101,7 @@ const MemberList = ({
             }}
           />
           {!iteration.complete ? (
-            <DragGrip storyNumber={story.id} gripDragProps={gripDragProps} />
+            <DragGrip storyId={story.id} gripDragProps={gripDragProps} />
           ) : null}
           <small className="board-story-number">#{story.id}</small>
           <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />

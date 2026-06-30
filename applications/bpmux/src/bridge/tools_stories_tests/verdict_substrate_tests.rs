@@ -41,10 +41,10 @@ mod verdict_substrate_integration_1407 {
         orch
     }
 
-    fn delivered_story(number: u64) -> Story {
+    fn delivered_story(id: u64) -> Story {
         let mut story = Story::new_minimal(
-            StoryId::new(number),
-            format!("story-{number}"),
+            StoryId::new(id),
+            format!("story-{id}"),
             StoryState::Delivered,
             Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
             "dev".to_string(),
@@ -53,13 +53,13 @@ mod verdict_substrate_integration_1407 {
         story
     }
 
-    fn seed_expired_verdict(session: &Arc<Session>, number: u64, role: &str) {
+    fn seed_expired_verdict(session: &Arc<Session>, id: u64, role: &str) {
         use crate::workflow::verdicts::{Verdict, add_or_replace_verdict, save};
         let mut store = load(&session.dir);
         add_or_replace_verdict(
             &mut store,
             Verdict {
-                story_id: StoryId::new(number),
+                story_id: StoryId::new(id),
                 from_role: role.to_string(),
                 verdict: "verified".to_string(),
                 substrate_grounding: "src/foo.rs cite".to_string(),
@@ -70,13 +70,13 @@ mod verdict_substrate_integration_1407 {
         save(&session.dir, &store).unwrap();
     }
 
-    fn seed_verdict_grounded_on(session: &Arc<Session>, number: u64, role: &str, head: &str) {
+    fn seed_verdict_grounded_on(session: &Arc<Session>, id: u64, role: &str, head: &str) {
         use crate::workflow::verdicts::{Verdict, add_or_replace_verdict, save};
         let mut store = load(&session.dir);
         add_or_replace_verdict(
             &mut store,
             Verdict {
-                story_id: StoryId::new(number),
+                story_id: StoryId::new(id),
                 from_role: role.to_string(),
                 verdict: "verified".to_string(),
                 substrate_grounding: "src/foo.rs cite".to_string(),
@@ -87,9 +87,9 @@ mod verdict_substrate_integration_1407 {
         save(&session.dir, &store).unwrap();
     }
 
-    fn verdict_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
+    fn verdict_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
         let mut m = serde_json::Map::new();
-        m.insert("story_id".into(), serde_json::json!(number));
+        m.insert("story_id".into(), serde_json::json!(id));
         m.insert("verdict".into(), serde_json::json!("verified"));
         m.insert(
             "substrate_grounding".into(),
@@ -98,9 +98,9 @@ mod verdict_substrate_integration_1407 {
         m
     }
 
-    fn accept_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
+    fn accept_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
         let mut m = serde_json::Map::new();
-        m.insert("number".into(), serde_json::json!(number));
+        m.insert("id".into(), serde_json::json!(id));
         m.insert("would_file_bug".into(), serde_json::json!(false));
         m
     }
@@ -420,9 +420,9 @@ mod verdict_substrate_integration_1407 {
         );
     }
 
-    fn view_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
+    fn view_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
         let mut m = serde_json::Map::new();
-        m.insert("story_id".into(), serde_json::json!(number));
+        m.insert("story_id".into(), serde_json::json!(id));
         m
     }
 

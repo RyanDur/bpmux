@@ -9,7 +9,7 @@ describe('DragGrip', () => {
   test('renders a non-tabbable grip button with reorder aria-label + grip test id', () => {
     render(
       <DragGrip
-        storyNumber={42}
+        storyId={42}
         gripDragProps={{ draggable: true, onDragStart: () => {}, onDragEnd: () => {} }}
       />
     )
@@ -24,7 +24,7 @@ describe('DragGrip', () => {
   test('wires drag handlers from gripDragProps', () => {
     const onDragStart = vi.fn()
     const onDragEnd = vi.fn()
-    render(<DragGrip storyNumber={7} gripDragProps={{ draggable: true, onDragStart, onDragEnd }} />)
+    render(<DragGrip storyId={7} gripDragProps={{ draggable: true, onDragStart, onDragEnd }} />)
     const grip = screen.getByTestId(STORY_GRIP_TEST_ID)
     fireEvent.dragStart(grip)
     expect(onDragStart).toHaveBeenCalledTimes(1)

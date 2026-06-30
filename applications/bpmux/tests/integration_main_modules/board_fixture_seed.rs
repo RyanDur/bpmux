@@ -90,7 +90,7 @@ fn bpmux_surfaces_fixture_story_body_through_real_adapter_via_mocked_octocrab() 
         tokio::time::sleep(Duration::from_millis(2500)).await;
 
         let story = dev
-            .call_tool("get_story", serde_json::json!({"number": 777}))
+            .call_tool("get_story", serde_json::json!({"id": 777}))
             .await
             .expect("get_story should succeed against mocked-GH-seeded story");
         let story_text = story

@@ -2,9 +2,9 @@
 
 use super::ready_order_label::*;
 
-fn ready_json(number: u64, membership: Option<(u64, u32)>) -> serde_json::Value {
+fn ready_json(id: u64, membership: Option<(u64, u32)>) -> serde_json::Value {
     serde_json::json!({
-        "id": number,
+        "id": id,
         "state": "ready",
         "iteration_membership": membership.map(|(it, pos)| serde_json::json!({
             "iteration_id": it,
@@ -14,9 +14,9 @@ fn ready_json(number: u64, membership: Option<(u64, u32)>) -> serde_json::Value 
     })
 }
 
-fn current_iteration_json(number: u64) -> serde_json::Value {
+fn current_iteration_json(id: u64) -> serde_json::Value {
     serde_json::json!({
-        "id": number,
+        "id": id,
         "state": "icebox",
         "iteration_membership": serde_json::Value::Null,
         "is_current": true,

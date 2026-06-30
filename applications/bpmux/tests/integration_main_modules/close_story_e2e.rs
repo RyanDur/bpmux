@@ -24,7 +24,7 @@ fn close_story_returns_message_with_audit_reason() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] close-target",
             "reject if close-on-non-existent-story silently succeeds",
@@ -35,7 +35,7 @@ fn close_story_returns_message_with_audit_reason() {
             .call_tool(
                 "close_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "superseded by alternate path"
                 }),
             )
@@ -44,7 +44,7 @@ fn close_story_returns_message_with_audit_reason() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -69,7 +69,7 @@ fn close_story_rejects_dev_caller_per_pm_lane_gate() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-cannot-close-target",
             "reject if dev can close a story bypassing pm-lane gate",
@@ -80,7 +80,7 @@ fn close_story_rejects_dev_caller_per_pm_lane_gate() {
             .call_tool(
                 "close_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "dev-attempted-close"
                 }),
             )
@@ -105,7 +105,7 @@ fn close_story_rejects_empty_reason() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] empty-reason-target",
             "reject if empty-reason close is silently accepted",
@@ -116,7 +116,7 @@ fn close_story_rejects_empty_reason() {
             .call_tool(
                 "close_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": ""
                 }),
             )
@@ -144,7 +144,7 @@ fn close_story_view_board_shows_closed_state() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] close-roundtrip-target",
             "reject if view_board doesn't reflect closed state after close_story",
@@ -154,7 +154,7 @@ fn close_story_view_board_shows_closed_state() {
         pm.call_tool(
             "close_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "reason": "close-roundtrip-marker"
             }),
         )
@@ -170,7 +170,7 @@ fn close_story_view_board_shows_closed_state() {
             .map(String::from)
             .unwrap_or_else(|| view.to_string());
         assert!(
-            view_text.contains(&format!("#{target_number}"))
+            view_text.contains(&format!("#{target_id}"))
                 || view_text.contains("ACCEPTED"),
             "view_board reflects the closed-as-accepted story per is_closed→accepted mapping; got:\n{view_text}"
         );
@@ -187,7 +187,7 @@ fn close_with_disposition_retire_lands_retired_regardless_of_reason_phrasing() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] disposition-retire-target",
             "reject if disposition=retire with a non-keyword reason mis-files as accepted",
@@ -197,7 +197,7 @@ fn close_with_disposition_retire_lands_retired_regardless_of_reason_phrasing() {
         pm.call_tool(
             "close_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "reason": "Split into #9999",
                 "disposition": "retire"
             }),
@@ -206,7 +206,7 @@ fn close_with_disposition_retire_lands_retired_regardless_of_reason_phrasing() {
         .expect("close_story with disposition=retire should succeed");
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .call_tool("get_story", serde_json::json!({ "id": target_id }))
             .await
             .expect("get_story should succeed");
 
@@ -228,7 +228,7 @@ fn close_with_disposition_accept_does_not_retire_even_with_retire_keyword_reason
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] disposition-accept-target",
             "reject if a retire-keyword reason forces retire when disposition=accept",
@@ -238,7 +238,7 @@ fn close_with_disposition_accept_does_not_retire_even_with_retire_keyword_reason
         pm.call_tool(
             "close_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "reason": "superseded wording but accept disposition",
                 "disposition": "accept"
             }),
@@ -247,7 +247,7 @@ fn close_with_disposition_accept_does_not_retire_even_with_retire_keyword_reason
         .expect("close_story with disposition=accept should succeed");
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .call_tool("get_story", serde_json::json!({ "id": target_id }))
             .await
             .expect("get_story should succeed");
 
@@ -269,7 +269,7 @@ fn close_without_disposition_defaults_to_retire() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] disposition-default-target",
             "reject if an omitted disposition does not default to retire",
@@ -279,7 +279,7 @@ fn close_without_disposition_defaults_to_retire() {
         pm.call_tool(
             "close_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "reason": "closing this mid-pipeline filing"
             }),
         )
@@ -287,7 +287,7 @@ fn close_without_disposition_defaults_to_retire() {
         .expect("close_story without an explicit disposition should succeed");
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .call_tool("get_story", serde_json::json!({ "id": target_id }))
             .await
             .expect("get_story should succeed");
 
@@ -309,7 +309,7 @@ fn close_with_disposition_wontfix_lands_retired() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] disposition-wontfix-target",
             "reject if disposition=wontfix does not land Retired",
@@ -319,7 +319,7 @@ fn close_with_disposition_wontfix_lands_retired() {
         pm.call_tool(
             "close_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "reason": "out of scope for this milestone",
                 "disposition": "wontfix"
             }),
@@ -328,7 +328,7 @@ fn close_with_disposition_wontfix_lands_retired() {
         .expect("close_story with disposition=wontfix should succeed");
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .call_tool("get_story", serde_json::json!({ "id": target_id }))
             .await
             .expect("get_story should succeed");
 
@@ -391,7 +391,7 @@ fn close_story_does_not_fire_post_mutation_get_issue_round_trip() {
 
         pm.call_tool(
             "close_story",
-            serde_json::json!({"number": 900, "reason": "post-mutation-refresh-test"}),
+            serde_json::json!({"id": 900, "reason": "post-mutation-refresh-test"}),
         )
         .await
         .expect("close_story should succeed against seeded story");

@@ -86,7 +86,7 @@ const StoryRow = ({
         data-rework={story.rework_comment ? 'true' : undefined}
       />
       {draggable && gripDragProps !== undefined ? (
-        <DragGrip storyNumber={story.id} gripDragProps={gripDragProps} />
+        <DragGrip storyId={story.id} gripDragProps={gripDragProps} />
       ) : null}
       <small className="board-story-number">#{story.id}</small>
       <StoryTypeGlyph type={type} />

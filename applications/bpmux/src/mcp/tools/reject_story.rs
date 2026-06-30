@@ -4,7 +4,7 @@ pub fn reject_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to reject"
             },
@@ -13,7 +13,7 @@ pub fn reject_story_tool(description: &'static str) -> Tool {
                 "description": "Rejection reason — added as a comment on the issue"
             }
         },
-        "required": ["number"]
+        "required": ["id"]
     });
     Tool::new(
         "reject_story",

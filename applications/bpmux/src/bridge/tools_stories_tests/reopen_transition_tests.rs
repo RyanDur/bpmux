@@ -18,9 +18,9 @@ mod reopen_on_state_transition_tests {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seeded_closed_chore(number: u64, state: StoryState) -> Story {
+    fn seeded_closed_chore(id: u64, state: StoryState) -> Story {
         let mut s = Story::new_minimal(
-            StoryId::new(number),
+            StoryId::new(id),
             "t".into(),
             state,
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -53,7 +53,7 @@ mod reopen_on_state_transition_tests {
         let seeded = seeded_closed_chore(7110, StoryState::Ready);
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(7110));
+        args.insert("id".into(), serde_json::json!(7110));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
         let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
@@ -74,7 +74,7 @@ mod reopen_on_state_transition_tests {
         seeded.is_closed = false;
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(7111));
+        args.insert("id".into(), serde_json::json!(7111));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
         handle_start_story(&args, "dev:claude-code", Some(&orch))
@@ -95,7 +95,7 @@ mod reopen_on_state_transition_tests {
         let seeded = seeded_closed_chore(7120, StoryState::InProgress);
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(7120));
+        args.insert("id".into(), serde_json::json!(7120));
         args.insert(
             "verified_observation".into(),
             serde_json::json!("verified end-to-end"),
@@ -116,7 +116,7 @@ mod reopen_on_state_transition_tests {
         let seeded = seeded_closed_chore(7130, StoryState::DeskCheck);
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(7130));
+        args.insert("id".into(), serde_json::json!(7130));
         args.insert("acceptor".into(), serde_json::json!("owner"));
         args.insert("would_file_bug".into(), serde_json::json!(false));
         let result = handle_pass_desk_check(&args, "designer:claude-code", Some(&orch), None).await;

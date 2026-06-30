@@ -4,7 +4,7 @@ pub fn close_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to close"
             },
@@ -18,7 +18,7 @@ pub fn close_story_tool(description: &'static str) -> Tool {
                 "description": "Explicit closure disposition — read-canonical, NOT inferred from the reason wording. 'retire' or 'wontfix' lands the story Retired (closed && !accepted) — use for superseded / duplicate / won't-fix. 'accept' closes it as shipped. Defaults to 'accept' when omitted; pass 'retire' explicitly so a supersede is never mis-filed as accepted regardless of how the reason is phrased."
             }
         },
-        "required": ["number", "reason"]
+        "required": ["id", "reason"]
     });
 
     Tool::new(

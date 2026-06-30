@@ -180,7 +180,7 @@ fn edit_story_changing_atp_to_missing_path_returns_structured_409() {
             .await
             .expect("create with substantive ATP");
         let create_msg = create.as_str().unwrap_or("").to_string();
-        let number = harness::story_helpers::extract_story_number(&create_msg);
+        let id = harness::story_helpers::extract_story_id(&create_msg);
 
         let bad_body =
             "## User job\n\nstub\n\n## Observation falsifier\n\nreject\n\n## Acceptance test path\n\n`applications/never/exists/edit_target.rs`\n";
@@ -188,7 +188,7 @@ fn edit_story_changing_atp_to_missing_path_returns_structured_409() {
         let err = pm
             .call_tool(
                 "edit_story",
-                serde_json::json!({"number": number, "body": bad_body}),
+                serde_json::json!({"id": id, "body": bad_body}),
             )
             .await
             .expect_err("edit_story with missing ATP path must be refused");

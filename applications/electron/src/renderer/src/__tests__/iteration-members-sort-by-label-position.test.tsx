@@ -19,26 +19,26 @@ describe('#1339 — iteration members render in the parent iteration stories ord
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7401,
+        id: 7401,
         title: 'Iteration Aquila',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[7412,7411,7413]} -->'
       },
       {
-        number: 7411,
+        id: 7411,
         title: 'story alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7412,
+        id: 7412,
         title: 'story bravo',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7413,
+        id: 7413,
         title: 'story charlie',
         story_type: 'feature',
         initial_state: 'icebox'

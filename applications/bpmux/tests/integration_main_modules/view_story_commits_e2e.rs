@@ -39,7 +39,7 @@ fn view_story_commits_returns_array_for_known_story() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = dev
-            .call_tool("view_story_commits", serde_json::json!({"number": 476}))
+            .call_tool("view_story_commits", serde_json::json!({"id": 476}))
             .await
             .expect("view_story_commits should succeed");
 
@@ -83,10 +83,7 @@ fn view_story_commits_returns_empty_for_unknown_number() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = dev
-            .call_tool(
-                "view_story_commits",
-                serde_json::json!({"number": 999999999}),
-            )
+            .call_tool("view_story_commits", serde_json::json!({"id": 999999999}))
             .await
             .expect("view_story_commits should succeed");
 
@@ -121,7 +118,7 @@ fn view_story_commits_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 

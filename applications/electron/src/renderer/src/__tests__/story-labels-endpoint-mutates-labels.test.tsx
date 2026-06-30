@@ -10,7 +10,7 @@ describe('#1339 — POST /api/stories/:n/labels mutates raw_labels atomically', 
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7501,
+        id: 7501,
         title: 'story to relabel',
         story_type: 'feature',
         initial_state: 'icebox',

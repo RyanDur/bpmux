@@ -11,10 +11,7 @@ export const isMemberOfIteration = (story: Story, iteration: BoardIterationData)
   return iteration.stories.includes(story.id)
 }
 
-export const epicNumbersInIteration = (
-  stories: Story[],
-  iteration: BoardIterationData
-): number[] => {
+export const epicIdsInIteration = (stories: Story[], iteration: BoardIterationData): number[] => {
   const epicSet = new Set<number>()
   for (const s of stories) {
     if (!isMemberOfIteration(s, iteration)) continue

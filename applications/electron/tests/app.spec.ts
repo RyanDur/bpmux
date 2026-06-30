@@ -28,22 +28,22 @@ const createStory = async (rpc: RpcFn, title: string): Promise<number> => {
   return number
 }
 
-const driveToDelivered = async (rpc: RpcFn, number: number): Promise<void> => {
+const driveToDelivered = async (rpc: RpcFn, id: number): Promise<void> => {
   const startResp = await rpc('start_story', {
-    number,
+    id,
     pickup_paraphrase: 'Driving to delivered so the Accept/Reject path is reachable.',
     falsifier_reframing: 'reject if start_story does not move story to in-progress'
   })
   expect(startResp.status).toBe(200)
   const deliverResp = await rpc('deliver_story', {
-    number,
+    id,
     verified_observation: 'Drove deliver so the owner-accept buttons render.'
   })
   expect(deliverResp.status).toBe(200)
-  await seedTeamVerdicts(rpc, number, ['designer'])
+  await seedTeamVerdicts(rpc, id, ['designer'])
   const passResp = await rpc(
     'pass_desk_check',
-    { number, acceptor: 'owner', would_file_bug: false },
+    { id, acceptor: 'owner', would_file_bug: false },
     'designer'
   )
   expect(passResp.status).toBe(200)
@@ -69,8 +69,8 @@ test('board renders stories, opens drill-in, shows Accept for delivered', async 
     const readyNumber = await createStory(rpc, '[Feature] Ready story under test')
     const deliveredNumber = await createStory(rpc, '[Feature] Delivered story awaiting accept')
 
-    const iterNumber = await setupCurrentIterationViaRpc(rpc, readyNumber, 'AppSpec')
-    await addStoryToIterationViaRpc(rpc, deliveredNumber, iterNumber, 2)
+    const iterationId = await setupCurrentIterationViaRpc(rpc, readyNumber, 'AppSpec')
+    await addStoryToIterationViaRpc(rpc, deliveredNumber, iterationId, 2)
     await driveToDelivered(rpc, deliveredNumber)
 
     await win.reload()

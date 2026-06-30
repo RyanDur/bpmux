@@ -21,10 +21,10 @@ async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     orch
 }
 
-fn make_story(number: u64, story_type: StoryType) -> Story {
+fn make_story(id: u64, story_type: StoryType) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("story-{number}"),
+        StoryId::new(id),
+        format!("story-{id}"),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),

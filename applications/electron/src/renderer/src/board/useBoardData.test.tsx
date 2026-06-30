@@ -14,9 +14,9 @@ const story = (overrides: Partial<Story>): Story => ({
   ...overrides
 })
 
-const iteration = (number: number, stories: number[]): BoardIterationData => ({
-  number,
-  title: `Iteration ${number}`,
+const iteration = (id: number, stories: number[]): BoardIterationData => ({
+  id,
+  title: `Iteration ${id}`,
   iteration_order: null,
   is_current: false,
   complete: false,
@@ -24,7 +24,7 @@ const iteration = (number: number, stories: number[]): BoardIterationData => ({
   stories
 })
 
-const containerNumbers = (stories: Story[], iterations: BoardIterationData[] = []): number[] => {
+const containerIds = (stories: Story[], iterations: BoardIterationData[] = []): number[] => {
   const { result } = renderHook(() => useBoardData(stories, iterations))
   return result.current.iterationContainerStories.map((s) => s.id)
 }
@@ -32,7 +32,7 @@ const containerNumbers = (stories: Story[], iterations: BoardIterationData[] = [
 describe('#1547 facet 1 — iterationContainerStories gates on membership, not workflow-state', () => {
   test('a canonical member promoted to ready stays in the iteration container (empty-Crux fix)', () => {
     const member = story({ id: 1547, state: 'ready', labels: ['ready', 'bug'] })
-    expect(containerNumbers([member], [iteration(1543, [1547])])).toContain(1547)
+    expect(containerIds([member], [iteration(1543, [1547])])).toContain(1547)
   })
 
   test('a canonical member is included in every active workflow-state', () => {
@@ -44,17 +44,17 @@ describe('#1547 facet 1 — iterationContainerStories gates on membership, not w
       1543,
       members.map((m) => m.id)
     )
-    const got = containerNumbers(members, [iter])
+    const got = containerIds(members, [iter])
     for (const m of members) expect(got).toContain(m.id)
   })
 
   test('a loose icebox story (no membership) still appears in the container', () => {
     const loose = story({ id: 900, state: 'icebox', labels: ['chore'] })
-    expect(containerNumbers([loose])).toContain(900)
+    expect(containerIds([loose])).toContain(900)
   })
 
   test('a ready story that is neither an iteration nor a member is NOT in the container', () => {
     const looseReady = story({ id: 901, state: 'ready', labels: ['ready', 'chore'] })
-    expect(containerNumbers([looseReady])).not.toContain(901)
+    expect(containerIds([looseReady])).not.toContain(901)
   })
 })

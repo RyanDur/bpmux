@@ -42,9 +42,9 @@ const readyGroup: GroupSpec = {
 
 const baseProps = {
   group: readyGroup,
-  epicTitleByNumber: new Map<number, string>(),
+  epicTitleById: new Map<number, string>(),
   loading: false,
-  selectedNumber: null,
+  selectedId: null,
   onOpen: () => {},
   onSelect: () => {},
   collapsed: false,
@@ -120,7 +120,7 @@ describe('#1357 BoardGroup independence', () => {
   })
 })
 
-describe('#1524 ready-queue real per-row drop fires onReorder(state, moved, targetNumber)', () => {
+describe('#1524 ready-queue real per-row drop fires onReorder(state, moved, targetId)', () => {
   afterEach(cleanup)
 
   test('dragging a grip and dropping onto a sibling row reorders (not the dropAt/ul path)', () => {

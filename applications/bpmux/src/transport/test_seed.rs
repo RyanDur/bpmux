@@ -108,7 +108,7 @@ pub struct SeedRosterBody {
 
 #[derive(Deserialize)]
 pub struct SeedStory {
-    pub number: u64,
+    pub id: u64,
     pub title: String,
     #[serde(default)]
     pub body: String,
@@ -174,7 +174,7 @@ pub async fn post_seed_stories(
         if let Err(e) =
             refresh.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
                 meta,
-                id: crate::product_management::story::StoryId::new(s.number),
+                id: crate::product_management::story::StoryId::new(s.id),
                 title: s.title.clone(),
                 body: s.body.clone(),
                 initial_state,
@@ -183,7 +183,7 @@ pub async fn post_seed_stories(
         {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("seed_stories: StoryCreated #{} failed: {e}", s.number),
+                format!("seed_stories: StoryCreated #{} failed: {e}", s.id),
             );
         }
         let type_label_meta = crate::product_management::board::events::EventMeta {
@@ -194,17 +194,14 @@ pub async fn post_seed_stories(
         if let Err(e) =
             refresh.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
                 meta: type_label_meta,
-                id: crate::product_management::story::StoryId::new(s.number),
+                id: crate::product_management::story::StoryId::new(s.id),
                 label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
                     .encode_story_type(story_type),
             })
         {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!(
-                    "seed_stories: type-label TagAdded on #{} failed: {e}",
-                    s.number
-                ),
+                format!("seed_stories: type-label TagAdded on #{} failed: {e}", s.id),
             );
         }
         for label in &s.labels {
@@ -216,16 +213,13 @@ pub async fn post_seed_stories(
             if let Err(e) =
                 refresh.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
                     meta: tag_meta,
-                    id: crate::product_management::story::StoryId::new(s.number),
+                    id: crate::product_management::story::StoryId::new(s.id),
                     label: label.clone(),
                 })
             {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!(
-                        "seed_stories: TagAdded {label} on #{} failed: {e}",
-                        s.number
-                    ),
+                    format!("seed_stories: TagAdded {label} on #{} failed: {e}", s.id),
                 );
             }
         }
@@ -238,13 +232,13 @@ pub async fn post_seed_stories(
             if let Err(e) =
                 refresh.mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
                     meta: close_meta,
-                    id: crate::product_management::story::StoryId::new(s.number),
+                    id: crate::product_management::story::StoryId::new(s.id),
                     reason: Some("test-seed: closed at seed time".to_string()),
                 })
             {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("seed_stories: StoryClosed #{} failed: {e}", s.number),
+                    format!("seed_stories: StoryClosed #{} failed: {e}", s.id),
                 );
             }
         }

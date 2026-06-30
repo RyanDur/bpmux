@@ -36,7 +36,7 @@ test.describe('human-side E2E #476/#1377 — observation-class — close_story',
       expect(createResp.status).toBe(200)
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase:
           'Pickup so the story leaves icebox; close from a mid-pipeline state exercises the canonical close_story path.',
         falsifier_reframing:
@@ -49,7 +49,7 @@ test.describe('human-side E2E #476/#1377 — observation-class — close_story',
       const closeResp = await rpc(
         'close_story',
         {
-          number: 1,
+          id: 1,
           reason: 'superseded by a sister filing — closing without accept-walk',
           disposition: 'retire'
         },

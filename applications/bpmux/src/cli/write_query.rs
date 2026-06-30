@@ -2,15 +2,15 @@ pub(crate) fn run_backlog() -> anyhow::Result<()> {
     super::write::dispatch_write("view_backlog", serde_json::Map::new())
 }
 
-pub(crate) fn run_comments(number: u64) -> anyhow::Result<()> {
+pub(crate) fn run_comments(id: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("id".to_string(), serde_json::json!(id));
     super::write::dispatch_write("view_comments", args)
 }
 
-pub(crate) fn run_timeline(number: u64) -> anyhow::Result<()> {
+pub(crate) fn run_timeline(id: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("id".to_string(), serde_json::json!(id));
     super::write::dispatch_write("view_story_timeline", args)
 }
 
@@ -26,7 +26,7 @@ pub(crate) fn run_velocity() -> anyhow::Result<()> {
 
 pub(crate) fn run_story_commits(story: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("number".to_string(), serde_json::json!(story));
+    args.insert("id".to_string(), serde_json::json!(story));
     super::write::dispatch_write("view_story_commits", args)
 }
 

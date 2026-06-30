@@ -10,7 +10,7 @@
 
 use super::bridge::TestBridge;
 
-pub fn extract_story_number(create_msg: &str) -> u64 {
+pub fn extract_story_id(create_msg: &str) -> u64 {
     let tail = &create_msg[create_msg.find('#').expect("create message names #N") + 1..];
     let end = tail
         .find(|c: char| !c.is_ascii_digit())
@@ -27,13 +27,13 @@ pub fn extract_story_number(create_msg: &str) -> u64 {
 pub async fn drive_to_delivered(
     pm: &TestBridge,
     dev: &TestBridge,
-    story_number: u64,
+    story_id: u64,
     acceptance_test_path: &str,
 ) {
     pm.call_tool(
         "move_story",
         serde_json::json!({
-            "number": story_number,
+            "id": story_id,
             "target_state": "ready",
             "rationale": "drive_to_delivered: promote icebox→ready for downstream pickup"
         }),
@@ -43,7 +43,7 @@ pub async fn drive_to_delivered(
     dev.call_tool(
         "start_story",
         serde_json::json!({
-            "number": story_number,
+            "id": story_id,
             "pickup_paraphrase": "drive_to_delivered: pickup for state-check coverage",
             "falsifier_reframing": "drive_to_delivered: same falsifier as filing"
         }),
@@ -53,7 +53,7 @@ pub async fn drive_to_delivered(
     dev.call_tool(
         "deliver_story",
         serde_json::json!({
-            "number": story_number,
+            "id": story_id,
             "verified_observation": format!(
                 "drive_to_delivered: simulated deliver against {acceptance_test_path}"
             )
@@ -63,14 +63,14 @@ pub async fn drive_to_delivered(
     .expect("deliver_story");
 }
 
-pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_number: u64) {
+pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_id: u64) {
     let pm = TestBridge::connect(bpmux, "pm").await;
     let designer = TestBridge::connect(bpmux, "designer").await;
     let dev = TestBridge::connect(bpmux, "dev").await;
     pm.call_tool(
         "label_story",
         serde_json::json!({
-            "number": story_number,
+            "id": story_id,
             "label": "awaiting team",
             "rationale": "test-harness seed: acceptor-axis = team for team-verifiable acceptance"
         }),
@@ -81,7 +81,7 @@ pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_
         .call_tool(
             "submit_verdict",
             serde_json::json!({
-                "story_id": story_number,
+                "story_id": story_id,
                 "verdict": "verified",
                 "substrate_grounding": "test-harness seed: designer verdict for accept-evidence"
             }),
@@ -91,7 +91,7 @@ pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_
     dev.call_tool(
         "submit_verdict",
         serde_json::json!({
-            "story_id": story_number,
+            "story_id": story_id,
             "verdict": "verified",
             "substrate_grounding": "test-harness seed: dev verdict for accept-evidence"
         }),
@@ -106,7 +106,7 @@ pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_
 pub async fn seed_team_verifiable_evidence_with_mock_gh(
     bpmux: &super::pty::TestBpmux,
     mock_gh_base_url: &str,
-    story_number: u64,
+    story_id: u64,
 ) {
     let pm = TestBridge::connect_with_mock_gh(bpmux, "pm", mock_gh_base_url).await;
     let designer = TestBridge::connect_with_mock_gh(bpmux, "designer", mock_gh_base_url).await;
@@ -114,7 +114,7 @@ pub async fn seed_team_verifiable_evidence_with_mock_gh(
     pm.call_tool(
         "label_story",
         serde_json::json!({
-            "number": story_number,
+            "id": story_id,
             "label": "awaiting team",
             "rationale": "test-harness seed: acceptor-axis = team for team-verifiable acceptance"
         }),
@@ -126,7 +126,7 @@ pub async fn seed_team_verifiable_evidence_with_mock_gh(
         .call_tool(
             "submit_verdict",
             serde_json::json!({
-                "story_id": story_number,
+                "story_id": story_id,
                 "verdict": "verified",
                 "substrate_grounding": "test-harness seed: designer verdict for accept-evidence"
             }),
@@ -136,7 +136,7 @@ pub async fn seed_team_verifiable_evidence_with_mock_gh(
     dev.call_tool(
         "submit_verdict",
         serde_json::json!({
-            "story_id": story_number,
+            "story_id": story_id,
             "verdict": "verified",
             "substrate_grounding": "test-harness seed: dev verdict for accept-evidence"
         }),
@@ -173,5 +173,5 @@ pub async fn create_target_story(pm: &TestBridge, title: &str, falsifier: &str) 
         .await
         .expect("create_story should succeed");
     let create_msg = create.as_str().unwrap_or("").to_string();
-    extract_story_number(&create_msg)
+    extract_story_id(&create_msg)
 }

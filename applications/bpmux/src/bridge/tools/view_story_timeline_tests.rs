@@ -4,7 +4,7 @@ use super::view_story_timeline::handle_view_story_timeline;
 
 #[tokio::test]
 async fn handler_requires_board_after_canonical_only_refactor() {
-    let args = serde_json::json!({"number": 418});
+    let args = serde_json::json!({"id": 418});
     let result = handle_view_story_timeline(args.as_object().unwrap(), None, None).await;
     let err = result.expect_err("missing-board path errors");
     assert!(
@@ -29,7 +29,7 @@ async fn handler_errors_when_story_not_in_board() {
     ));
     orchestrator.refresh_all().await.unwrap();
 
-    let args = serde_json::json!({"number": 9999});
+    let args = serde_json::json!({"id": 9999});
     let result =
         handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
             .await;
@@ -69,7 +69,7 @@ async fn handler_reads_gates_from_canonical_store() {
         Arc::clone(&adapter),
     ));
 
-    let args = serde_json::json!({"number": 418});
+    let args = serde_json::json!({"id": 418});
     let result =
         handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
             .await
@@ -111,7 +111,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
         Arc::clone(&adapter),
     ));
 
-    let args = serde_json::json!({"number": 419});
+    let args = serde_json::json!({"id": 419});
     let result =
         handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
             .await
@@ -243,7 +243,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
         Arc::clone(&adapter),
     ));
 
-    let args = serde_json::json!({"number": 1524});
+    let args = serde_json::json!({"id": 1524});
     let result =
         handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
             .await

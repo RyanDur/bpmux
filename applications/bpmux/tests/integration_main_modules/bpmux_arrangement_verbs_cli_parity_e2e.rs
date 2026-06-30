@@ -80,7 +80,7 @@ async fn bpmux_move_owner_bypasses_the_pm_only_move_role_guard() {
 async fn bpmux_move_succeeds_for_pm_off_mcp() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
-    let number = create_target_story(
+    let id = create_target_story(
         &pm,
         "[Feature] cli-move-target",
         "pm moves it to ready via the bpmux CLI, off MCP",
@@ -92,7 +92,7 @@ async fn bpmux_move_succeeds_for_pm_off_mcp() {
         "pm",
         &[
             "move",
-            &number.to_string(),
+            &id.to_string(),
             "--target-state",
             "ready",
             "--rationale",
@@ -107,7 +107,7 @@ async fn bpmux_move_succeeds_for_pm_off_mcp() {
     );
     let o = String::from_utf8_lossy(&out.stdout);
     assert!(
-        o.contains(&format!("#{number}")),
+        o.contains(&format!("#{id}")),
         "the CLI prints the handler's success message — the gated move completed; stdout: {o}"
     );
 }
@@ -144,7 +144,7 @@ async fn bpmux_label_owner_bypasses_the_pm_only_require_role_guard() {
 async fn bpmux_label_succeeds_for_pm_off_mcp() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
-    let number = create_target_story(
+    let id = create_target_story(
         &pm,
         "[Feature] cli-label-target",
         "pm labels it via the bpmux CLI, off MCP",
@@ -154,7 +154,7 @@ async fn bpmux_label_succeeds_for_pm_off_mcp() {
     let out = run_verb(
         &bpmux,
         "pm",
-        &["label", &number.to_string(), "--label", "awaiting team"],
+        &["label", &id.to_string(), "--label", "awaiting team"],
     )
     .await;
     assert!(
@@ -164,7 +164,7 @@ async fn bpmux_label_succeeds_for_pm_off_mcp() {
     );
     let o = String::from_utf8_lossy(&out.stdout);
     assert!(
-        o.contains(&format!("#{number}")),
+        o.contains(&format!("#{id}")),
         "the CLI prints the handler's success message — the gated label completed; stdout: {o}"
     );
 }

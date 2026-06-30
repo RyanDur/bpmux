@@ -43,7 +43,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(300));
+    args.insert("id".into(), serde_json::json!(300));
     args.insert("epic_id".into(), serde_json::json!(457));
     let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
@@ -97,7 +97,7 @@ async fn set_parent_epic_rejects_non_existent_epic() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(310));
+    args.insert("id".into(), serde_json::json!(310));
     args.insert("epic_id".into(), serde_json::json!(9999));
     let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_err());
@@ -139,7 +139,7 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(311));
+    args.insert("id".into(), serde_json::json!(311));
     args.insert("epic_id".into(), serde_json::json!(458));
     let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_err());
@@ -176,7 +176,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(301));
+    args.insert("id".into(), serde_json::json!(301));
     let result = handle_unset_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
@@ -201,7 +201,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
 #[tokio::test]
 async fn set_parent_epic_rejects_non_pm_role() {
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(1));
+    args.insert("id".into(), serde_json::json!(1));
     args.insert("epic_id".into(), serde_json::json!(2));
     let result = handle_set_parent_epic(&args, "dev:claude-code", None).await;
     assert!(result.is_err());
@@ -211,7 +211,7 @@ async fn set_parent_epic_rejects_non_pm_role() {
 #[tokio::test]
 async fn set_parent_epic_rejects_self_parent() {
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(42));
+    args.insert("id".into(), serde_json::json!(42));
     args.insert("epic_id".into(), serde_json::json!(42));
     let result = handle_set_parent_epic(&args, "pm:claude-code", None).await;
     assert!(result.is_err());

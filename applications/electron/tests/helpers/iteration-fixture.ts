@@ -3,54 +3,34 @@ import { launchIsolatedWithWindow, launchWithMockGh } from './launch'
 import type { LaunchOpts, LaunchResult, MockGhLaunchResult } from './launch'
 import type { Page } from '@playwright/test'
 
-export const MOCK_CURRENT_ITERATION_NUMBER = 999
-
-export const mockCurrentIteration = (name: string, createdAt: string): Record<string, unknown> => ({
-  number: MOCK_CURRENT_ITERATION_NUMBER,
-  title: `Iteration ${name}`,
-  state: 'in-progress',
-  labels: ['iteration'],
-  assignees: [],
-  created_at: createdAt,
-  body: '',
-  is_current: true
-})
-
-export const inMockCurrentIteration = (position: number): Record<string, unknown> => ({
-  iteration_membership: {
-    iteration_number: MOCK_CURRENT_ITERATION_NUMBER,
-    position
-  }
-})
-
 export type RpcFn = (tool: string, body: unknown, agent?: string) => Promise<Response>
 
 export const seedCurrentIterationViaRpc = async (rpc: RpcFn, name: string): Promise<number> => {
   const iterResp = await rpc('create_iteration', { name }, 'pm')
   expect(iterResp.status).toBe(200)
   const iterJson = (await iterResp.json()) as { message?: string }
-  const iterNumber = Number(iterJson.message?.match(/#(\d+)/)?.[1])
-  expect(iterNumber).toBeGreaterThan(0)
+  const iterationId = Number(iterJson.message?.match(/#(\d+)/)?.[1])
+  expect(iterationId).toBeGreaterThan(0)
 
   const designateResp = await rpc(
     'designate_current_iteration',
-    { iteration_number: iterNumber },
+    { iteration_id: iterationId },
     'pm'
   )
   expect(designateResp.status).toBe(200)
 
-  return iterNumber
+  return iterationId
 }
 
 export const addStoryToIterationViaRpc = async (
   rpc: RpcFn,
-  storyNumber: number,
-  iterationNumber: number,
+  storyId: number,
+  iterationId: number,
   position: number
 ): Promise<void> => {
   const addResp = await rpc(
     'add_story_to_iteration',
-    { story_id: storyNumber, iteration_number: iterationNumber, position },
+    { story_id: storyId, iteration_id: iterationId, position },
     'pm'
   )
   expect(addResp.status).toBe(200)
@@ -58,12 +38,12 @@ export const addStoryToIterationViaRpc = async (
 
 export const setupCurrentIterationViaRpc = async (
   rpc: RpcFn,
-  storyNumber: number,
+  storyId: number,
   name: string
 ): Promise<number> => {
-  const iterNumber = await seedCurrentIterationViaRpc(rpc, name)
-  await addStoryToIterationViaRpc(rpc, storyNumber, iterNumber, 1)
-  return iterNumber
+  const iterationId = await seedCurrentIterationViaRpc(rpc, name)
+  await addStoryToIterationViaRpc(rpc, storyId, iterationId, 1)
+  return iterationId
 }
 
 export const seedCurrentIterationViaTestApi = async (
@@ -81,38 +61,38 @@ export const seedCurrentIterationViaTestApi = async (
     return res.json() as Promise<{ message?: string }>
   }
   const create = await post('create_iteration', { name, agent: 'pm:test' })
-  const iterNumber = Number(create.message?.match(/#(\d+)/)?.[1])
-  expect(iterNumber).toBeGreaterThan(0)
+  const iterationId = Number(create.message?.match(/#(\d+)/)?.[1])
+  expect(iterationId).toBeGreaterThan(0)
   await post('designate_current_iteration', {
-    iteration_number: iterNumber,
+    iteration_id: iterationId,
     agent: 'pm:test'
   })
-  return iterNumber
+  return iterationId
 }
 
 export const launchIsolatedWithSeededIteration = async (
   opts: LaunchOpts & { name?: string } = {}
-): Promise<LaunchResult & { win: Page; currentIterationNumber: number }> => {
+): Promise<LaunchResult & { win: Page; currentIterationId: number }> => {
   const { name = 'SeededIteration', ...launchOpts } = opts
   const result = await launchIsolatedWithWindow(launchOpts)
-  const currentIterationNumber = await seedCurrentIterationViaTestApi(
+  const currentIterationId = await seedCurrentIterationViaTestApi(
     result.backendPort,
     result.authToken,
     name
   )
   await result.win.reload()
   await expect(result.win.locator('[data-test="board-region"]')).toBeVisible()
-  return { ...result, currentIterationNumber }
+  return { ...result, currentIterationId }
 }
 
 export const launchWithMockGhAndSeededIteration = async (
   opts: LaunchOpts & { name?: string } = {}
-): Promise<MockGhLaunchResult & { currentIterationNumber: number }> => {
+): Promise<MockGhLaunchResult & { currentIterationId: number }> => {
   const { name = 'SeededIteration', ...launchOpts } = opts
   const result = await launchWithMockGh(launchOpts)
   await expect(result.win.locator('[data-test="board-region"]')).toBeVisible()
-  const currentIterationNumber = await seedCurrentIterationViaRpc(result.rpc, name)
+  const currentIterationId = await seedCurrentIterationViaRpc(result.rpc, name)
   await result.win.reload()
   await expect(result.win.locator('[data-test="board-region"]')).toBeVisible()
-  return { ...result, currentIterationNumber }
+  return { ...result, currentIterationId }
 }

@@ -184,7 +184,7 @@ async fn create_story_validation_passes_then_refresh_required_after_5n() {
 #[tokio::test]
 async fn deliver_story_rejects_missing_verified_observation() {
     let args = serde_json::json!({
-        "number": 391
+        "id": 391
     });
     let result = handle_deliver_story(args.as_object().unwrap(), "dev:claude-code", None).await;
     assert!(result.is_err(), "missing verified_observation should fail");
@@ -202,7 +202,7 @@ async fn deliver_story_rejects_missing_verified_observation() {
 #[tokio::test]
 async fn deliver_story_rejects_empty_verified_observation() {
     let args = serde_json::json!({
-        "number": 391,
+        "id": 391,
         "verified_observation": ""
     });
     let result = handle_deliver_story(args.as_object().unwrap(), "dev:claude-code", None).await;
@@ -213,7 +213,7 @@ async fn deliver_story_rejects_empty_verified_observation() {
 #[tokio::test]
 async fn label_story_default_op_requires_refresh_after_5n() {
     let args = serde_json::json!({
-        "number": 42,
+        "id": 42,
         "label": "ready"
     });
     let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None).await;
@@ -224,7 +224,7 @@ async fn label_story_default_op_requires_refresh_after_5n() {
 #[tokio::test]
 async fn label_story_add_op_requires_refresh_after_5n() {
     let args = serde_json::json!({
-        "number": 42,
+        "id": 42,
         "label": "blocked",
         "operation": "add"
     });
@@ -236,7 +236,7 @@ async fn label_story_add_op_requires_refresh_after_5n() {
 #[tokio::test]
 async fn label_story_remove_op_requires_refresh_after_5n() {
     let args = serde_json::json!({
-        "number": 42,
+        "id": 42,
         "label": "in progress",
         "operation": "remove"
     });
@@ -248,7 +248,7 @@ async fn label_story_remove_op_requires_refresh_after_5n() {
 #[tokio::test]
 async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
     let args = serde_json::json!({
-        "number": 99,
+        "id": 99,
         "label": "never-attached-label",
         "operation": "remove"
     });
@@ -284,7 +284,7 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({
-        "number": 42,
+        "id": 42,
         "label": "ready",
         "operation": "nuke"
     });
@@ -303,7 +303,7 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
 #[tokio::test]
 async fn label_story_add_propagates_tracker_error_without_broadcast() {
     let args = serde_json::json!({
-        "number": 42,
+        "id": 42,
         "label": "ready",
         "operation": "add"
     });
@@ -317,7 +317,7 @@ async fn label_story_add_propagates_tracker_error_without_broadcast() {
 #[tokio::test]
 async fn label_story_remove_propagates_tracker_error_without_broadcast() {
     let args = serde_json::json!({
-        "number": 42,
+        "id": 42,
         "label": "ready",
         "operation": "remove"
     });
@@ -331,7 +331,7 @@ async fn label_story_remove_propagates_tracker_error_without_broadcast() {
 #[tokio::test]
 async fn label_story_still_pm_gated_with_operation_param() {
     let args = serde_json::json!({
-        "number": 42,
+        "id": 42,
         "label": "ready",
         "operation": "remove"
     });

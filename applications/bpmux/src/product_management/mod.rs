@@ -16,8 +16,8 @@ macro_rules! entity_id {
         pub struct $name(u64);
 
         impl $name {
-            pub fn new(number: u64) -> Self {
-                Self(number)
+            pub fn new(value: u64) -> Self {
+                Self(value)
             }
 
             pub fn value(self) -> u64 {

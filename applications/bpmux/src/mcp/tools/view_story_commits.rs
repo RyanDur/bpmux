@@ -4,12 +4,12 @@ pub fn view_story_commits_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Story issue number whose landing commits to fetch"
             }
         },
-        "required": ["number"]
+        "required": ["id"]
     });
     Tool::new(
         "view_story_commits",

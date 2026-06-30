@@ -24,18 +24,18 @@ const seedReadyMembers = async (rpc: RpcFn): Promise<void> => {
     )
     expect(createResp.status).toBe(200)
   }
-  for (const number of [1, 2, 3]) {
+  for (const id of [1, 2, 3]) {
     const moveResp = await rpc(
       'move_story',
-      { number, target_state: 'ready', rationale: 'desk-check-333 reorder fixture' },
+      { id, target_state: 'ready', rationale: 'desk-check-333 reorder fixture' },
       'pm'
     )
     expect(moveResp.status).toBe(200)
   }
-  const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck333')
-  await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
-  await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
-  await addStoryToIterationViaRpc(rpc, 3, iterNumber, 3)
+  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck333')
+  await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
+  await addStoryToIterationViaRpc(rpc, 2, iterationId, 2)
+  await addStoryToIterationViaRpc(rpc, 3, iterationId, 3)
 }
 
 test.describe('desk-check #333 drag-to-reorder (rework)', () => {

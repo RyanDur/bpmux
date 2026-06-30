@@ -309,14 +309,14 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
     let resp = post_create_story(router.clone(), feature).await;
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let parent_number = refresh.all_stories()[0].id.value();
+    let parent_id = refresh.all_stories()[0].id.value();
 
     let child = format!(
         r#"{{
             "title":"[Feature] child-of-feature",
             "user_job":"When testing, dev needs ...",
             "observation_falsifier":"reject ...",
-            "parent_epic":{parent_number}
+            "parent_epic":{parent_id}
         }}"#
     );
     let resp = post_create_story(router, &child).await;
@@ -354,11 +354,11 @@ async fn comment_on_story_response_correctness_happy_path_returns_message() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].id.value();
+    let target_id = refresh.all_stories()[0].id.value();
 
     let comment = format!(
         r#"{{
-            "number":{target_number},
+            "id":{target_id},
             "body":"first comment marker"
         }}"#
     );
@@ -367,7 +367,7 @@ async fn comment_on_story_response_correctness_happy_path_returns_message() {
     let json = read_json(resp).await;
     let msg = json["message"].as_str().expect("message string");
     assert!(
-        msg.contains(&format!("#{target_number}")),
+        msg.contains(&format!("#{target_id}")),
         "message names target story number; got {msg}"
     );
     assert!(
@@ -386,11 +386,11 @@ async fn comment_on_story_response_correctness_rejects_empty_body() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].id.value();
+    let target_id = refresh.all_stories()[0].id.value();
 
     let comment = format!(
         r#"{{
-            "number":{target_number},
+            "id":{target_id},
             "body":""
         }}"#
     );
@@ -414,12 +414,12 @@ async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].id.value();
+    let target_id = refresh.all_stories()[0].id.value();
 
     let marker = "ROUNDTRIP_MARKER_C1";
     let comment = format!(
         r#"{{
-            "number":{target_number},
+            "id":{target_id},
             "body":"{marker}"
         }}"#
     );
@@ -428,8 +428,8 @@ async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
 
     let mut args = serde_json::Map::new();
     args.insert(
-        "number".to_string(),
-        serde_json::Value::Number(target_number.into()),
+        "id".to_string(),
+        serde_json::Value::Number(target_id.into()),
     );
     let _ = store;
     let view = bridge::dispatch_view_comments(args, Some(&refresh))
@@ -461,11 +461,11 @@ async fn close_story_response_correctness_happy_path_returns_message() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].id.value();
+    let target_id = refresh.all_stories()[0].id.value();
 
     let close = format!(
         r#"{{
-            "number":{target_number},
+            "id":{target_id},
             "reason":"superseded by alternate path"
         }}"#
     );
@@ -474,7 +474,7 @@ async fn close_story_response_correctness_happy_path_returns_message() {
     let json = read_json(resp).await;
     let msg = json["message"].as_str().expect("message string");
     assert!(
-        msg.contains(&format!("#{target_number}")),
+        msg.contains(&format!("#{target_id}")),
         "message names target story; got {msg}"
     );
     assert!(
@@ -497,11 +497,11 @@ async fn close_story_response_correctness_rejects_empty_reason() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].id.value();
+    let target_id = refresh.all_stories()[0].id.value();
 
     let close = format!(
         r#"{{
-            "number":{target_number},
+            "id":{target_id},
             "reason":""
         }}"#
     );
@@ -529,11 +529,11 @@ async fn close_story_roundtrip_api_board_reflects_closed_state() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_number = refresh.all_stories()[0].id.value();
+    let target_id = refresh.all_stories()[0].id.value();
 
     let close = format!(
         r#"{{
-            "number":{target_number},
+            "id":{target_id},
             "reason":"close-roundtrip-marker",
             "disposition":"accept"
         }}"#

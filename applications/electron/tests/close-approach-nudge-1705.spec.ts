@@ -8,29 +8,29 @@ import { RoadmapPage } from './pages/roadmapPage'
 
 const iterationOrderOf = async (
   result: MockGhLaunchResult,
-  iterationNumber: number
+  iterationId: number
 ): Promise<number | null> => {
   const resp = await fetch(`http://127.0.0.1:${result.backendPort}/api/iterations`, {
     headers: { Authorization: `Bearer ${result.authToken}` }
   })
   expect(resp.status).toBe(200)
   const body = (await resp.json()) as {
-    iterations: { number: number; iteration_order: number | null }[]
+    iterations: { id: number; iteration_order: number | null }[]
   }
-  return body.iterations.find((s) => s.number === iterationNumber)?.iteration_order ?? null
+  return body.iterations.find((s) => s.id === iterationId)?.iteration_order ?? null
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 const waitForStableIterationOrder = async (
   result: MockGhLaunchResult,
-  iterationNumber: number
+  iterationId: number
 ): Promise<number> => {
   const deadline = Date.now() + 20_000
   let stableValue: number | null = null
   let stableHits = 0
   while (Date.now() < deadline) {
-    const order = await iterationOrderOf(result, iterationNumber)
+    const order = await iterationOrderOf(result, iterationId)
     if (order !== null && order === stableValue) {
       stableHits += 1
       if (stableHits >= 3) return order
@@ -40,7 +40,7 @@ const waitForStableIterationOrder = async (
     }
     await sleep(300)
   }
-  throw new Error(`iteration #${iterationNumber} order did not settle within 20s`)
+  throw new Error(`iteration #${iterationId} order did not settle within 20s`)
 }
 
 const numberFromMessage = async (resp: Response): Promise<number> => {
@@ -70,33 +70,33 @@ const createIteration = async (rpc: RpcFn, name: string): Promise<number> => {
   return numberFromMessage(resp)
 }
 
-const startMember = async (rpc: RpcFn, number: number): Promise<void> => {
+const startMember = async (rpc: RpcFn, id: number): Promise<void> => {
   const resp = await rpc('start_story', {
-    number,
+    id,
     pickup_paraphrase: 'Driving the member into the current iteration so it can drain.',
     falsifier_reframing: 'reject if start_story does not move the member to in-progress'
   })
   expect(resp.status).toBe(200)
 }
 
-const deliverMember = async (rpc: RpcFn, number: number): Promise<void> => {
-  await startMember(rpc, number)
+const deliverMember = async (rpc: RpcFn, id: number): Promise<void> => {
+  await startMember(rpc, id)
   const deliverResp = await rpc('deliver_story', {
-    number,
+    id,
     verified_observation: 'Drove deliver so the member lands in the Acceptance column.'
   })
   expect(deliverResp.status).toBe(200)
-  await seedTeamVerdicts(rpc, number, ['designer'])
+  await seedTeamVerdicts(rpc, id, ['designer'])
   const passResp = await rpc(
     'pass_desk_check',
-    { number, acceptor: 'team', would_file_bug: false },
+    { id, acceptor: 'team', would_file_bug: false },
     'designer'
   )
   expect(passResp.status).toBe(200)
 }
 
 interface NudgeTopology {
-  nextNumber: number
+  nextId: number
   nextName: string
 }
 
@@ -121,7 +121,7 @@ const seedCloseApproach = async (
 
   const designateResp = await rpc(
     'designate_current_iteration',
-    { iteration_number: currentIter },
+    { iteration_id: currentIter },
     'pm'
   )
   expect(designateResp.status).toBe(200)
@@ -129,7 +129,7 @@ const seedCloseApproach = async (
   for (let i = 0; i < currentMembers.length; i += 1) {
     const addResp = await rpc(
       'add_story_to_iteration',
-      { story_id: currentMembers[i], iteration_number: currentIter, position: i + 1 },
+      { story_id: currentMembers[i], iteration_id: currentIter, position: i + 1 },
       'pm'
     )
     expect(addResp.status).toBe(200)
@@ -137,7 +137,7 @@ const seedCloseApproach = async (
 
   const addNextResp = await rpc(
     'add_story_to_iteration',
-    { story_id: nextMember, iteration_number: nextIter, position: 1 },
+    { story_id: nextMember, iteration_id: nextIter, position: 1 },
     'pm'
   )
   expect(addNextResp.status).toBe(200)
@@ -148,17 +148,13 @@ const seedCloseApproach = async (
   await startMember(rpc, currentMembers[3])
 
   if (makeNextReady) {
-    const reviewResp = await rpc(
-      'close_pre_pickup_review',
-      { iteration_number: nextIter },
-      'designer'
-    )
+    const reviewResp = await rpc('close_pre_pickup_review', { iteration_id: nextIter }, 'designer')
     expect(reviewResp.status).toBe(200)
-    const devOkResp = await rpc('dev_ok_iteration', { iteration_number: nextIter }, 'dev')
+    const devOkResp = await rpc('dev_ok_iteration', { iteration_id: nextIter }, 'dev')
     expect(devOkResp.status).toBe(200)
   }
 
-  return { nextNumber: nextIter, nextName }
+  return { nextId: nextIter, nextName }
 }
 
 type MotionTrace = { minOpacity: number | null; maxAnims: number; samples: number }

@@ -25,9 +25,9 @@ fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iterat
         .collect()
 }
 
-fn iteration(number: u64) -> Story {
+fn iteration(id: u64) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         "Iteration Vela".to_string(),
         StoryState::Ready,
         Utc::now(),
@@ -39,8 +39,8 @@ fn iteration(number: u64) -> Story {
     s
 }
 
-fn iteration_with_stories(number: u64, stories: Vec<u64>) -> Story {
-    let mut s = iteration(number);
+fn iteration_with_stories(id: u64, stories: Vec<u64>) -> Story {
+    let mut s = iteration(id);
     s.body = Some(
         IterationRelationships {
             outcome: None,
@@ -254,11 +254,11 @@ fn owner_close_does_not_spoof_review_closed() {
     );
 }
 
-fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> Story {
-    let mut s = iteration(number);
+fn building_iteration(id: u64, outcome_id: u64, stories: Vec<u64>) -> Story {
+    let mut s = iteration(id);
     s.body = Some(
         IterationRelationships {
-            outcome: Some(OutcomeId::new(outcome_number)),
+            outcome: Some(OutcomeId::new(outcome_id)),
             stories: stories.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
@@ -266,10 +266,10 @@ fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> St
     s
 }
 
-fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
+fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("Outcome #{number}"),
+        StoryId::new(id),
+        format!("Outcome #{id}"),
         StoryState::Icebox,
         Utc::now(),
         "pm".to_string(),

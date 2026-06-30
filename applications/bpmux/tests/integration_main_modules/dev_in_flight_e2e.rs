@@ -87,7 +87,7 @@ fn dev_in_flight_returns_well_formed_boolean_payload() {
             "payload exposes dev_in_flight as boolean; got {parsed}"
         );
         assert!(
-            !text.contains("\"number\"") && !text.contains("\"title\""),
+            !text.contains("\"id\"") && !text.contains("\"title\""),
             "payload omits per-story identifiers (privacy-by-design); got `{text}`"
         );
 

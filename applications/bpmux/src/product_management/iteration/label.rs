@@ -46,7 +46,7 @@ pub fn compute_insert_position(insert_index: usize, existing_positions: &[u32]) 
     left
 }
 
-pub fn current_iteration_number(iterations: &[super::Iteration]) -> Option<IterationId> {
+pub fn current_iteration_id(iterations: &[super::Iteration]) -> Option<IterationId> {
     iterations
         .iter()
         .find(|iteration| !iteration.complete && iteration.is_current)

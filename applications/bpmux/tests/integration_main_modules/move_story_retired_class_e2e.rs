@@ -36,7 +36,7 @@ fn move_story_retired_produces_state_distinct_from_accepted_at_canonical_store()
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-retired-distinct-state-target",
             "reject if move_story → retired collapses to Accepted at canonical-store",
@@ -46,7 +46,7 @@ fn move_story_retired_produces_state_distinct_from_accepted_at_canonical_store()
         pm.call_tool(
             "move_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "target_state": "retired",
                 "rationale": "retire scope to drive #1192 distinct-state assertion"
             }),
@@ -57,7 +57,7 @@ fn move_story_retired_produces_state_distinct_from_accepted_at_canonical_store()
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .call_tool("get_story", serde_json::json!({ "id": target_id }))
             .await
             .expect("get_story should succeed after retire");
 
@@ -99,7 +99,7 @@ fn move_story_retired_then_view_board_buckets_in_retired_not_accepted_column() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-retired-renderer-bucket-target",
             "reject if retired story shows in ACCEPTED column on view_board",
@@ -109,7 +109,7 @@ fn move_story_retired_then_view_board_buckets_in_retired_not_accepted_column() {
         pm.call_tool(
             "move_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "target_state": "retired",
                 "rationale": "drive #1192 view_board renderer-bucket assertion"
             }),
@@ -125,7 +125,7 @@ fn move_story_retired_then_view_board_buckets_in_retired_not_accepted_column() {
             .expect("view_board should succeed");
 
         let board_text = board.as_str().unwrap_or("").to_string();
-        let id_token = format!("#{target_number}");
+        let id_token = format!("#{target_id}");
         assert!(
             board_text.contains(&id_token),
             "view_board must surface the retired story somewhere; got board={board_text}"

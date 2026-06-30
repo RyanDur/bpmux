@@ -4,7 +4,7 @@ pub fn set_parent_epic_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number of the child story"
             },
@@ -13,7 +13,7 @@ pub fn set_parent_epic_tool(description: &'static str) -> Tool {
                 "description": "Issue number of the Epic that owns the child"
             }
         },
-        "required": ["number", "epic_id"]
+        "required": ["id", "epic_id"]
     });
     Tool::new(
         "set_parent_epic",

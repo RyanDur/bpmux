@@ -4,12 +4,12 @@ pub fn view_comments_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number whose comment audit-trail to fetch"
             }
         },
-        "required": ["number"]
+        "required": ["id"]
     });
     Tool::new(
         "view_comments",

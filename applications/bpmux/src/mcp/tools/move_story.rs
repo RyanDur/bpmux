@@ -4,7 +4,7 @@ pub fn move_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to move"
             },
@@ -32,7 +32,7 @@ pub fn move_story_tool(description: &'static str) -> Tool {
                 "description": "REQUIRED. Why this move? Surfaced in the story-timeline + appended as an issue-comment so audit-trail is observable. Blank rejected. Examples: 'rework after desk-check', 'next-iteration promote', 'retire — superseded by #1186'."
             }
         },
-        "required": ["number", "target_state", "rationale"]
+        "required": ["id", "target_state", "rationale"]
     });
     Tool::new(
         "move_story",

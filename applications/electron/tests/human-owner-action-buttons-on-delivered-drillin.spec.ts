@@ -44,14 +44,14 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       await setupCurrentIterationViaRpc(rpc, 1, 'OwnerActions')
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase: 'Picking up to drive deliver before owner-walk.',
         falsifier_reframing: 'reject if start_story does not move story to in-progress'
       })
       expect(startResp.status).toBe(200)
 
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation: 'Drove deliver so designer can pass desk-check next.'
       })
       expect(deliverResp.status).toBe(200)
@@ -59,7 +59,7 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
-        { number: 1, acceptor: 'owner', would_file_bug: false },
+        { id: 1, acceptor: 'owner', would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)

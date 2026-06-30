@@ -19,28 +19,28 @@ describe('#1339 step 2g-a — iteration containers sort by iteration-order.{N} l
 
     await seedStories(apiBase, authToken, [
       {
-        number: 8001,
+        id: 8001,
         title: 'Iteration Lynx',
         story_type: 'iteration',
         initial_state: 'icebox',
         labels: ['iteration-order.200']
       },
       {
-        number: 8002,
+        id: 8002,
         title: 'Iteration Hydra',
         story_type: 'iteration',
         initial_state: 'icebox',
         labels: ['iteration-order.100']
       },
       {
-        number: 8010,
+        id: 8010,
         title: 'lynx-member',
         story_type: 'feature',
         initial_state: 'icebox',
         labels: ['iteration-Lynx.100']
       },
       {
-        number: 8011,
+        id: 8011,
         title: 'hydra-member',
         story_type: 'feature',
         initial_state: 'icebox',

@@ -15,7 +15,7 @@ fn pm_firing_reject_without_reason_returns_structured_409() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] reject-missing-reason",
             "reject if reject_story without reason-cite isn't substrate-refused",
@@ -23,7 +23,7 @@ fn pm_firing_reject_without_reason_returns_structured_409() {
         .await;
 
         let err = pm
-            .call_tool("reject_story", serde_json::json!({"number": target_number}))
+            .call_tool("reject_story", serde_json::json!({"id": target_id}))
             .await
             .expect_err("reject without reason should be refused");
 
@@ -48,7 +48,7 @@ fn pm_firing_reject_with_empty_reason_returns_structured_409() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] reject-empty-reason",
             "reject if empty-string reason silently passes substrate-gate",
@@ -58,7 +58,7 @@ fn pm_firing_reject_with_empty_reason_returns_structured_409() {
         let err = pm
             .call_tool(
                 "reject_story",
-                serde_json::json!({"number": target_number, "reason": "   "}),
+                serde_json::json!({"id": target_id, "reason": "   "}),
             )
             .await
             .expect_err("reject with whitespace-only reason should be refused");
@@ -81,7 +81,7 @@ fn dev_firing_reject_returns_workflow_role_not_allowed() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-reject-substrate-refusal",
             "reject if dev firing reject_story isn't substrate-refused per workflow.toml actor_roles",
@@ -92,7 +92,7 @@ fn dev_firing_reject_returns_workflow_role_not_allowed() {
             .call_tool(
                 "reject_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "dev attempting unauthorized reject"
                 }),
             )
@@ -125,7 +125,7 @@ fn pm_firing_reject_with_reason_succeeds_and_routes_to_ready() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] reject-routes-to-ready",
             "reject if reject_story with reason-cite doesn't route to ready (bundled-default workflow.toml target)",
@@ -136,7 +136,7 @@ fn pm_firing_reject_with_reason_succeeds_and_routes_to_ready() {
             .call_tool(
                 "reject_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "user-job not met — acceptance-walk surfaced X regression"
                 }),
             )

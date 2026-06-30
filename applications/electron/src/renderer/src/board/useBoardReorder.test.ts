@@ -5,7 +5,7 @@ import { parentIterationLabel, parseParentIterationLabel } from './labelSchema'
 import { type Story, type IterationMembership } from './types'
 const { postStoryLabelsMock } = vi.hoisted(() => ({
   postStoryLabelsMock: vi.fn(
-    (_ctx: unknown, _storyNumber: number, _mutation: { add: string[]; remove: string[] }) => ({
+    (_ctx: unknown, _storyId: number, _mutation: { add: string[]; remove: string[] }) => ({
       onFailure: () => ({ value: undefined })
     })
   )
@@ -43,7 +43,7 @@ const story = (id: number, position: number): Story => ({
 const reorderWith = (
   stories: Story[]
 ): {
-  run: (moved: number, targetNumber: number) => void
+  run: (moved: number, targetId: number) => void
   membershipOf: (n: number) => IterationMembership | null | undefined
 } => {
   let current: Story[] | null = stories
@@ -63,7 +63,7 @@ const reorderWith = (
     })
   )
   return {
-    run: (moved, targetNumber) => result.current('ready', moved, targetNumber),
+    run: (moved, targetId) => result.current('ready', moved, targetId),
     membershipOf: (n) => current?.find((s) => s.id === n)?.iteration_membership
   }
 }
@@ -81,11 +81,11 @@ describe('#1524 useBoardReorder — ready-queue reorders on the shared canonical
       story(703, 300)
     ])
     run(701, 703)
-    const [, movedNumber, mutation] = postStoryLabelsMock.mock.calls[0]
-    expect(movedNumber).toBe(701)
+    const [, movedId, mutation] = postStoryLabelsMock.mock.calls[0]
+    expect(movedId).toBe(701)
     expect(mutation.remove).toEqual([parentIterationLabel(ITER, 100)])
     const added = parseParentIterationLabel(mutation.add[0])
-    expect(added?.iterationNumber).toBe(ITER)
+    expect(added?.iterationId).toBe(ITER)
     expect(added?.position).toBeGreaterThan(300)
     expect(mutation.add[0].startsWith('ready-order.')).toBe(false)
   })
@@ -98,8 +98,8 @@ describe('#1524 useBoardReorder — ready-queue reorders on the shared canonical
       story(703, 300)
     ])
     run(703, 701)
-    const [, movedNumber, mutation] = postStoryLabelsMock.mock.calls[0]
-    expect(movedNumber).toBe(703)
+    const [, movedId, mutation] = postStoryLabelsMock.mock.calls[0]
+    expect(movedId).toBe(703)
     expect(mutation.remove).toEqual([parentIterationLabel(ITER, 300)])
     const added = parseParentIterationLabel(mutation.add[0])
     expect(added?.position).toBeLessThan(100)

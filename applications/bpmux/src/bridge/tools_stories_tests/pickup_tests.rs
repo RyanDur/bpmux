@@ -8,7 +8,7 @@ use crate::transport::protocol::ClientMessage;
 #[tokio::test]
 async fn start_story_rejects_missing_pickup_paraphrase() {
     let args = serde_json::json!({
-        "number": 398,
+        "id": 398,
         "falsifier_reframing": "I would reject if the pickup signal is invisible."
     });
     let result = handle_start_story(args.as_object().unwrap(), "dev:claude-code", None).await;
@@ -30,7 +30,7 @@ async fn start_story_rejects_missing_pickup_paraphrase() {
 #[tokio::test]
 async fn start_story_rejects_empty_pickup_paraphrase() {
     let args = serde_json::json!({
-        "number": 398,
+        "id": 398,
         "pickup_paraphrase": "   \n  ",
         "falsifier_reframing": "I would reject if..."
     });
@@ -45,7 +45,7 @@ async fn start_story_rejects_empty_pickup_paraphrase() {
 #[tokio::test]
 async fn start_story_rejects_missing_falsifier_reframing() {
     let args = serde_json::json!({
-        "number": 398,
+        "id": 398,
         "pickup_paraphrase": "As a dev, I restate the user-job..."
     });
     let result = handle_start_story(args.as_object().unwrap(), "dev:claude-code", None).await;
@@ -63,7 +63,7 @@ async fn start_story_rejects_missing_falsifier_reframing() {
 #[tokio::test]
 async fn start_story_validation_passes_then_refresh_required_after_5n() {
     let args = serde_json::json!({
-        "number": 398,
+        "id": 398,
         "pickup_paraphrase": "User-job: dev articulates their read of the story at pickup so the team knows work is in flight.",
         "falsifier_reframing": "I would reject if start_story without the new fields still succeeds."
     });
@@ -75,7 +75,7 @@ async fn start_story_validation_passes_then_refresh_required_after_5n() {
 #[tokio::test]
 async fn start_story_still_dev_only_with_new_params() {
     let args = serde_json::json!({
-        "number": 398,
+        "id": 398,
         "pickup_paraphrase": "any text",
         "falsifier_reframing": "any text"
     });

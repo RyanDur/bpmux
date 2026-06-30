@@ -11,9 +11,9 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
+fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         title.to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -49,10 +49,10 @@ fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Va
     m
 }
 
-fn roadmap_name(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Option<String> {
+fn roadmap_name(refresh: &Arc<dyn RefreshDriver>, id: u64) -> Option<String> {
     crate::view::roadmap::roadmap_cards(refresh)
         .into_iter()
-        .find(|c| c.id.value() == number)
+        .find(|c| c.id.value() == id)
         .map(|c| c.name)
 }
 

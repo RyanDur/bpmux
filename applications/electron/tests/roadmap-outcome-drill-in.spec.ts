@@ -26,58 +26,58 @@ const beforeContent = (win: Page, selector: string): Promise<string> =>
   }, selector)
 
 interface IterationSnapshot {
-  number: number
+  id: number
   iteration_order: number | null
   readiness: { drafted: boolean } | null
 }
 
 const iterationSnapshot = async (
   result: MockGhLaunchResult,
-  iterationNumber: number
+  iterationId: number
 ): Promise<IterationSnapshot | undefined> => {
   const resp = await fetch(`http://127.0.0.1:${result.backendPort}/api/iterations`, {
     headers: { Authorization: `Bearer ${result.authToken}` }
   })
   expect(resp.status).toBe(200)
   const body = (await resp.json()) as { iterations: IterationSnapshot[] }
-  return body.iterations.find((s) => s.number === iterationNumber)
+  return body.iterations.find((s) => s.id === iterationId)
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 const waitForDrillOrder = async (
   result: MockGhLaunchResult,
-  outcomeNumber: number,
+  outcomeId: number,
   expected: number[]
 ): Promise<void> => {
   const deadline = Date.now() + 20_000
   let last: number[] = []
   while (Date.now() < deadline) {
     const resp = await fetch(
-      `http://127.0.0.1:${result.backendPort}/api/roadmap?outcome=${outcomeNumber}`,
+      `http://127.0.0.1:${result.backendPort}/api/roadmap?outcome=${outcomeId}`,
       { headers: { Authorization: `Bearer ${result.authToken}` } }
     )
     if (resp.status === 200) {
-      const body = (await resp.json()) as { drill?: { iterations?: { number: number }[] } }
-      last = (body.drill?.iterations ?? []).map((i) => i.number)
+      const body = (await resp.json()) as { drill?: { iterations?: { id: number }[] } }
+      last = (body.drill?.iterations ?? []).map((i) => i.id)
       if (last.length === expected.length && last.every((n, i) => n === expected[i])) return
     }
     await sleep(300)
   }
   throw new Error(
-    `outcome #${outcomeNumber} drill did not reach order [${expected}] within 20s (last: [${last}])`
+    `outcome #${outcomeId} drill did not reach order [${expected}] within 20s (last: [${last}])`
   )
 }
 
 const waitForIterationSettled = async (
   result: MockGhLaunchResult,
-  iterationNumber: number,
+  iterationId: number,
   predicate: (s: IterationSnapshot) => boolean
 ): Promise<void> => {
   const deadline = Date.now() + 20_000
   let hits = 0
   while (Date.now() < deadline) {
-    const story = await iterationSnapshot(result, iterationNumber)
+    const story = await iterationSnapshot(result, iterationId)
     if (story !== undefined && predicate(story)) {
       hits += 1
       if (hits >= 3) return
@@ -86,7 +86,7 @@ const waitForIterationSettled = async (
     }
     await sleep(300)
   }
-  throw new Error(`iteration #${iterationNumber} did not settle within 20s`)
+  throw new Error(`iteration #${iterationId} did not settle within 20s`)
 }
 
 const createMember = async (rpc: RpcFn, label: string): Promise<number> => {
@@ -126,25 +126,25 @@ const seedOutcomeRoadmap = async (result: MockGhLaunchResult): Promise<void> => 
 
   const mapCrux = await rpc(
     'map_iteration_to_outcome',
-    { outcome_number: outcome, iteration_number: crux, position: 1 },
+    { outcome_id: outcome, iteration_id: crux, position: 1 },
     'pm'
   )
   expect(mapCrux.status).toBe(200)
   const mapLyra = await rpc(
     'map_iteration_to_outcome',
-    { outcome_number: outcome, iteration_number: lyra, position: 2 },
+    { outcome_id: outcome, iteration_id: lyra, position: 2 },
     'pm'
   )
   expect(mapLyra.status).toBe(200)
 
   const addMember = await rpc(
     'add_story_to_iteration',
-    { story_id: cruxMember, iteration_number: crux, position: 1 },
+    { story_id: cruxMember, iteration_id: crux, position: 1 },
     'pm'
   )
   expect(addMember.status).toBe(200)
 
-  const blankLyra = await rpc('edit_story', { number: lyra, body: ' ' }, 'pm')
+  const blankLyra = await rpc('edit_story', { id: lyra, body: ' ' }, 'pm')
   expect(blankLyra.status).toBe(200)
 
   await waitForDrillOrder(result, outcome, [crux, lyra])

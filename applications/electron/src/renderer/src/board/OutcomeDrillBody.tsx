@@ -75,7 +75,7 @@ const OutcomeDrillBody = ({
             {...rowDragProps}
           >
             <p className="roadmap-drill-iteration-head">
-              <DragGrip storyNumber={iteration.id} gripDragProps={gripDragProps} />
+              <DragGrip storyId={iteration.id} gripDragProps={gripDragProps} />
               <b className="roadmap-drill-iteration-name" data-test="roadmap-drill-iteration-name">
                 {iteration.name}
               </b>

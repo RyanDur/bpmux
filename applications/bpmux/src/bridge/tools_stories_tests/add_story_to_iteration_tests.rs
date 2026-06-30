@@ -25,9 +25,9 @@ async fn build_orchestrator(stories: Vec<Story>) -> (Arc<BoardStore>, Arc<dyn Re
     (store, orch)
 }
 
-fn iteration_seed(number: u64, name: &str) -> Story {
+fn iteration_seed(id: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -38,9 +38,9 @@ fn iteration_seed(number: u64, name: &str) -> Story {
     s
 }
 
-fn member_seed(number: u64, title: &str) -> Story {
+fn member_seed(id: u64, title: &str) -> Story {
     Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         title.into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -49,13 +49,13 @@ fn member_seed(number: u64, title: &str) -> Story {
 }
 
 fn args(
-    iteration_number: u64,
-    story_number: u64,
+    iteration_id: u64,
+    story_id: u64,
     position: u64,
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("iteration_id".into(), serde_json::json!(iteration_number));
-    m.insert("story_id".into(), serde_json::json!(story_number));
+    m.insert("iteration_id".into(), serde_json::json!(iteration_id));
+    m.insert("story_id".into(), serde_json::json!(story_id));
     m.insert("position".into(), serde_json::json!(position));
     m
 }
@@ -161,7 +161,7 @@ async fn self_add_rejected_1399() {
 }
 
 #[tokio::test]
-async fn missing_iteration_number_rejected_1399() {
+async fn missing_iteration_id_rejected_1399() {
     let mut m = serde_json::Map::new();
     m.insert("story_id".into(), serde_json::json!(1500));
     m.insert("position".into(), serde_json::json!(100));

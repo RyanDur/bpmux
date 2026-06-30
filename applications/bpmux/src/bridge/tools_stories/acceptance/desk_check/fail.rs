@@ -28,12 +28,12 @@ pub(crate) async fn handle_fail_desk_check(
         workflow.owner_role_id().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let prior = if let Some(r) = refresh {
-        Some(ensure_story_in_canonical_store(r, number).await?)
+        Some(ensure_story_in_canonical_store(r, id).await?)
     } else {
         None
     };
@@ -77,35 +77,35 @@ pub(crate) async fn handle_fail_desk_check(
             r.mutate_sync(
                 crate::product_management::board::BoardEvent::StoryReopened {
                     meta: meta.clone(),
-                    id: StoryId::new(number),
+                    id: StoryId::new(id),
                 },
             )
-            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
         let keep_label = label_for_state(target_state);
-        reap_workflow_labels(r.as_ref(), number, &meta, keep_label)?;
+        reap_workflow_labels(r.as_ref(), id, &meta, keep_label)?;
         r.mutate_sync(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
-                id: StoryId::new(number),
+                id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::FailDeskCheck,
                 payload: Some(reason.to_string()),
             },
         )
-        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
         r.mutate_sync(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta,
-                id: StoryId::new(number),
+                id: StoryId::new(id),
                 new_state: target_state,
             },
         )
-        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()
             .await
-            .map_err(|e| format!("#{number} drain after fail_desk_check failed: {e}"))?;
+            .map_err(|e| format!("#{id} drain after fail_desk_check failed: {e}"))?;
         return Ok(format!(
-            "#{number} failed desk-check: signal sent, label applied"
+            "#{id} failed desk-check: signal sent, label applied"
         ));
     }
     Err(

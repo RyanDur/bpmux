@@ -2,8 +2,8 @@ import { useCallback, useMemo, useState } from 'react'
 import type { Story } from './types'
 
 export interface UsePendingReadyOrderResult {
-  setPendingReadyOrder: (storyNumber: number, position: number) => void
-  clearPendingReadyOrder: (storyNumbers: number[]) => void
+  setPendingReadyOrder: (storyId: number, position: number) => void
+  clearPendingReadyOrder: (storyIds: number[]) => void
   effectiveReadyPosition: (story: Story) => number | null
 }
 
@@ -23,17 +23,17 @@ export const usePendingReadyOrder = (data: Story[] | null): UsePendingReadyOrder
     return out
   }, [stories, pending])
 
-  const setPendingReadyOrder = useCallback((storyNumber: number, position: number): void => {
-    setPending((prev) => ({ ...prev, [storyNumber]: position }))
+  const setPendingReadyOrder = useCallback((storyId: number, position: number): void => {
+    setPending((prev) => ({ ...prev, [storyId]: position }))
   }, [])
 
-  const clearPendingReadyOrder = useCallback((storyNumbers: number[]): void => {
+  const clearPendingReadyOrder = useCallback((storyIds: number[]): void => {
     setPending((prev) => {
       let changed = false
       const next = { ...prev }
-      for (const storyNumber of storyNumbers) {
-        if (storyNumber in next) {
-          delete next[storyNumber]
+      for (const storyId of storyIds) {
+        if (storyId in next) {
+          delete next[storyId]
           changed = true
         }
       }

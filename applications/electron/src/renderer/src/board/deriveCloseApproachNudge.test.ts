@@ -15,7 +15,7 @@ const iteration = (over: Partial<BoardIterationData>): BoardIterationData => ({
 })
 
 const member = (
-  iterationNumber: number,
+  iterationId: number,
   position: number,
   state: StoryState,
   over: Partial<Story> = {}
@@ -28,7 +28,7 @@ const member = (
   created_at: '2026-06-16T00:00:00Z',
   body: '',
   gh_state: 'open',
-  iteration_membership: { iteration_id: iterationNumber, position },
+  iteration_membership: { iteration_id: iterationId, position },
   ...over
 })
 
@@ -45,11 +45,11 @@ const NOT_READY: IterationReadiness = {
   dev_ok: false
 }
 
-const drainingMembers = (iterationNumber: number): Story[] => [
-  member(iterationNumber, 1, 'delivered'),
-  member(iterationNumber, 2, 'delivered'),
-  member(iterationNumber, 3, 'delivered'),
-  member(iterationNumber, 4, 'in-progress')
+const drainingMembers = (iterationId: number): Story[] => [
+  member(iterationId, 1, 'delivered'),
+  member(iterationId, 2, 'delivered'),
+  member(iterationId, 3, 'delivered'),
+  member(iterationId, 4, 'in-progress')
 ]
 
 describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not ready at close-approach', () => {
@@ -70,7 +70,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
     })
     const nudge = deriveCloseApproachNudge([current, next], members)
     expect(nudge).not.toBeNull()
-    expect(nudge?.nextIterationNumber).toBe(200)
+    expect(nudge?.nextIterationId).toBe(200)
     expect(nudge?.nextIterationName).toBe('Fornax')
     expect(nudge?.activeGapLabel).toBe('designer-review')
   })

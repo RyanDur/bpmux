@@ -33,18 +33,18 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
         )
         expect(createResp.status).toBe(200)
       }
-      for (const number of [1, 2]) {
+      for (const id of [1, 2]) {
         const moveResp = await rpc(
           'move_story',
-          { number, target_state: 'ready', rationale: 'kbd-nav roving fixture' },
+          { id, target_state: 'ready', rationale: 'kbd-nav roving fixture' },
           'pm'
         )
         expect(moveResp.status).toBe(200)
       }
 
-      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'KbdNavRoving')
-      await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
-      await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
+      const iterationId = await seedCurrentIterationViaRpc(rpc, 'KbdNavRoving')
+      await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
+      await addStoryToIterationViaRpc(rpc, 2, iterationId, 2)
 
       await win.mouse.move(0, 0)
       await win.reload()

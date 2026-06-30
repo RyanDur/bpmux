@@ -38,7 +38,7 @@ fn move_story_happy_path_returns_message_naming_target_state() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-happy-target",
             "reject if move_story doesn't fire on the target",
@@ -49,7 +49,7 @@ fn move_story_happy_path_returns_message_naming_target_state() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "target_state": "ready",
                     "rationale": "promote into current iteration"
                 }),
@@ -59,7 +59,7 @@ fn move_story_happy_path_returns_message_naming_target_state() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -79,7 +79,7 @@ fn move_story_rejects_blank_rationale_per_falsifier_b() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-blank-rationale-target",
             "reject if blank rationale is silently accepted",
@@ -90,7 +90,7 @@ fn move_story_rejects_blank_rationale_per_falsifier_b() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "target_state": "ready",
                     "rationale": "   "
                 }),
@@ -115,7 +115,7 @@ fn move_story_rejects_zero_position_per_falsifier_d() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-zero-position-target",
             "reject if zero position is silently accepted",
@@ -126,7 +126,7 @@ fn move_story_rejects_zero_position_per_falsifier_d() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "target_state": "ready",
                     "position": 0,
                     "rationale": "test zero rejection"
@@ -152,7 +152,7 @@ fn move_story_rejects_unknown_target_state() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-unknown-state-target",
             "reject if unknown target_state is silently accepted",
@@ -163,7 +163,7 @@ fn move_story_rejects_unknown_target_state() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "target_state": "bogus",
                     "rationale": "test unknown rejection"
                 }),
@@ -189,7 +189,7 @@ fn move_story_dev_caller_with_position_in_ready_rejected_per_pm_lane() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-dev-position-gate-target",
             "reject if dev can specify position in ready bypassing pm-organizes-queue rule",
@@ -200,7 +200,7 @@ fn move_story_dev_caller_with_position_in_ready_rejected_per_pm_lane() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "target_state": "ready",
                     "position": 1,
                     "rationale": "dev shouldn't be able to set queue position"
@@ -237,7 +237,7 @@ fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-recover-from-accepted-target",
             "reject if move_story can't un-stick a closed/Accepted story",
@@ -247,7 +247,7 @@ fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
         pm.call_tool(
             "move_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "target_state": "accepted",
                 "rationale": "stage close so the recovery path has something to undo"
             }),
@@ -259,7 +259,7 @@ fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "target_state": "ready",
                     "rationale": "recover from wrong-Accept — the #1177-stuck class fix"
                 }),
@@ -271,7 +271,7 @@ fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
 
         let msg = recovery.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")) && msg.contains("ready"),
+            msg.contains(&format!("#{target_id}")) && msg.contains("ready"),
             "recovery message names target story + destination state; got {msg}"
         );
 
@@ -288,7 +288,7 @@ fn move_story_dev_bare_column_move_is_pm_rejected_1548() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-dev-column-only-target",
             "reject if dev bare column-move is not PM-gated (#1548 supersedes owner-01:54 agent-class column-move with the owner-2026-05-24 role-reset: the board is the PM's lane)",
@@ -299,7 +299,7 @@ fn move_story_dev_bare_column_move_is_pm_rejected_1548() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "target_state": "icebox",
                     "rationale": "dev bare column-move must be role-rejected per #1548 PM-only-on-all-paths"
                 }),
@@ -332,7 +332,7 @@ fn move_story_audit_comment_surfaces_via_view_comments_per_falsifier_f() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] move-story-audit-trail-target",
             "reject if move_story doesn't surface audit-comment via view_comments",
@@ -342,7 +342,7 @@ fn move_story_audit_comment_surfaces_via_view_comments_per_falsifier_f() {
         pm.call_tool(
             "move_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "target_state": "ready",
                 "rationale": "AUDIT_TRAIL_MARKER_RATIONALE for view_comments readback"
             }),
@@ -355,7 +355,7 @@ fn move_story_audit_comment_surfaces_via_view_comments_per_falsifier_f() {
         let comments = pm
             .call_tool(
                 "view_comments",
-                serde_json::json!({ "number": target_number }),
+                serde_json::json!({ "id": target_id }),
             )
             .await
             .expect("view_comments should succeed");

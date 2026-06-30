@@ -141,15 +141,14 @@ async fn bpmux_edit_owner_bypasses_the_pm_only_require_role_guard() {
 async fn bpmux_edit_succeeds_for_pm_off_mcp() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
-    let number =
-        create_target_story(&pm, "[Feature] cli-edit-target", "pm edits it via the CLI").await;
+    let id = create_target_story(&pm, "[Feature] cli-edit-target", "pm edits it via the CLI").await;
     pm.close().await;
     let out = run_verb(
         &bpmux,
         "pm",
         &[
             "edit",
-            &number.to_string(),
+            &id.to_string(),
             "--title",
             "[Feature] cli-edit-target (edited)",
         ],
@@ -166,7 +165,7 @@ async fn bpmux_edit_succeeds_for_pm_off_mcp() {
 async fn bpmux_comment_allows_any_role_off_mcp_no_role_restriction() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
-    let number = create_target_story(
+    let id = create_target_story(
         &pm,
         "[Feature] cli-comment-target",
         "dev comments on it via the CLI",
@@ -178,7 +177,7 @@ async fn bpmux_comment_allows_any_role_off_mcp_no_role_restriction() {
         "dev",
         &[
             "comment",
-            &number.to_string(),
+            &id.to_string(),
             "--body",
             "a dev comment via the bpmux CLI",
         ],
@@ -235,7 +234,7 @@ async fn bpmux_close_owner_bypasses_the_close_transition_role_guard() {
 async fn bpmux_close_succeeds_for_pm_off_mcp() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
-    let number = create_target_story(
+    let id = create_target_story(
         &pm,
         "[Feature] cli-close-target",
         "pm closes it via the CLI",
@@ -247,7 +246,7 @@ async fn bpmux_close_succeeds_for_pm_off_mcp() {
         "pm",
         &[
             "close",
-            &number.to_string(),
+            &id.to_string(),
             "--reason",
             "closing via the bpmux CLI off MCP",
         ],

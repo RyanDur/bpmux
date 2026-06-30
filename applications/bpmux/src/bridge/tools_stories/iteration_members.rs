@@ -29,7 +29,7 @@ async fn rewrite_members(
     iteration: &Iteration,
     stories: Vec<StoryId>,
 ) -> Result<(), String> {
-    let number = iteration
+    let id = iteration
         .id()
         .saved_id()
         .map(|id| id.value())
@@ -42,9 +42,9 @@ async fn rewrite_members(
         .unwrap_or_default();
     rel.stories = stories;
     let body = rel.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
-    r.update_body(number, body)
+    r.update_body(id, body)
         .await
-        .map_err(|e| format!("#{number} iteration-member body update failed: {e}"))
+        .map_err(|e| format!("#{id} iteration-member body update failed: {e}"))
 }
 
 pub(crate) async fn handle_remove_iteration_member(

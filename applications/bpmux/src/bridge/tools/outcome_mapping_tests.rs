@@ -18,10 +18,10 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn outcome(number: u64, iterations: Vec<u64>) -> Story {
+fn outcome(id: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("Outcome #{number}"),
+        StoryId::new(id),
+        format!("Outcome #{id}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
@@ -38,10 +38,10 @@ fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     s
 }
 
-fn iteration_for(number: u64, outcome_number: u64) -> Story {
+fn iteration_for(id: u64, outcome_id: u64) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("Iteration #{number}"),
+        StoryId::new(id),
+        format!("Iteration #{id}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
@@ -50,7 +50,7 @@ fn iteration_for(number: u64, outcome_number: u64) -> Story {
     s.story_type = StoryType::Iteration;
     s.body = Some(
         IterationRelationships {
-            outcome: Some(OutcomeId::new(outcome_number)),
+            outcome: Some(OutcomeId::new(outcome_id)),
             stories: vec![],
         }
         .write_into_body("## composed"),
@@ -74,21 +74,21 @@ fn args(outcome: u64, iteration: u64) -> Map<String, Value> {
         .unwrap()
 }
 
-fn outcome_iterations(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Vec<u64> {
+fn outcome_iterations(refresh: &Arc<dyn RefreshDriver>, id: u64) -> Vec<u64> {
     refresh
         .outcomes()
         .into_iter()
-        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(number)))
+        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(id)))
         .map(|outcome| outcome.iterations.iter().map(|i| i.value()).collect())
         .unwrap_or_default()
 }
 
-fn drill_iteration_numbers(refresh: &Arc<dyn RefreshDriver>, number: u64) -> Vec<u64> {
+fn drill_iteration_ids(refresh: &Arc<dyn RefreshDriver>, id: u64) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
     let Some(outcome) = refresh
         .outcomes()
         .into_iter()
-        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(number)))
+        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(id)))
     else {
         return vec![];
     };
@@ -112,7 +112,7 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
     ])
     .await;
     assert_eq!(
-        drill_iteration_numbers(&refresh, 700),
+        drill_iteration_ids(&refresh, 700),
         vec![710, 720],
         "both iterations build the outcome before unmap"
     );
@@ -127,7 +127,7 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
         "the parent's ordered iteration list drops the unmapped iteration"
     );
     assert_eq!(
-        drill_iteration_numbers(&refresh, 700),
+        drill_iteration_ids(&refresh, 700),
         vec![720],
         "the unmapped iteration drops from the outcome's drill (read<->write over the real derive)"
     );
@@ -162,7 +162,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
     ])
     .await;
     assert_eq!(
-        drill_iteration_numbers(&refresh, 700),
+        drill_iteration_ids(&refresh, 700),
         vec![710, 720],
         "before: 710 leads 720"
     );
@@ -179,7 +179,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         "moving 710 to the end clamps to the band size and lands it last — the parent holds the new order in one write"
     );
     assert_eq!(
-        drill_iteration_numbers(&refresh, 700),
+        drill_iteration_ids(&refresh, 700),
         vec![720, 710],
         "the outcome's drill reflects the new priority-order — 710 moved behind 720"
     );

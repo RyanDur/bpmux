@@ -28,27 +28,27 @@ const createStory = async (rpc: RpcFn, title: string, parentEpic?: number): Prom
   return number
 }
 
-const driveToAccepted = async (rpc: RpcFn, number: number): Promise<void> => {
+const driveToAccepted = async (rpc: RpcFn, id: number): Promise<void> => {
   const startResp = await rpc('start_story', {
-    number,
+    id,
     pickup_paraphrase: 'Driving an epic child to accepted for the disclosure fixture.',
     falsifier_reframing: 'reject if start_story does not move story to in-progress'
   })
   expect(startResp.status).toBe(200)
   const deliverResp = await rpc('deliver_story', {
-    number,
+    id,
     verified_observation: 'Drove deliver so the child reaches accepted.'
   })
   expect(deliverResp.status).toBe(200)
-  await seedTeamVerdicts(rpc, number, ['designer'])
+  await seedTeamVerdicts(rpc, id, ['designer'])
   const passResp = await rpc(
     'pass_desk_check',
-    { number, acceptor: 'team', would_file_bug: false },
+    { id, acceptor: 'team', would_file_bug: false },
     'designer'
   )
   expect(passResp.status).toBe(200)
-  await seedTeamVerdicts(rpc, number, ['designer', 'dev'])
-  const acceptResp = await rpc('accept_story', { number, would_file_bug: false }, 'pm')
+  await seedTeamVerdicts(rpc, id, ['designer', 'dev'])
+  const acceptResp = await rpc('accept_story', { id, would_file_bug: false }, 'pm')
   expect(acceptResp.status).toBe(200)
 }
 
@@ -70,8 +70,8 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
       )
 
       const memberNumber = await createStory(rpc, '[Feature] Member of Alpha')
-      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'Alpha')
-      await addStoryToIterationViaRpc(rpc, memberNumber, iterNumber, 1)
+      const iterationId = await seedCurrentIterationViaRpc(rpc, 'Alpha')
+      await addStoryToIterationViaRpc(rpc, memberNumber, iterationId, 1)
 
       await createStory(rpc, '[Feature] Unscheduled loose story A')
       await createStory(rpc, '[Feature] Unscheduled loose story B')
@@ -156,9 +156,9 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
       table['board-iteration-summary'] = {}
       table['board-iteration-summary-current'] = {}
       {
-        const card = board.iterationCard(iterNumber)
+        const card = board.iterationCard(iterationId)
         await expect(card).toBeVisible()
-        const sum = board.iterationSummary(iterNumber)
+        const sum = board.iterationSummary(iterationId)
         await expect(card).toHaveAttribute('data-current-iteration', 'true')
         if (!(await isOpen(card))) await toggleVia(sum)
         table['board-iteration-summary-current'].open = await restRead(sum)

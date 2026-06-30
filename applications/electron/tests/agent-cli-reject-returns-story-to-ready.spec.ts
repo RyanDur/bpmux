@@ -22,7 +22,7 @@ test.describe('agent CLI journey — observation-class — reject returns a deli
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const storyNumber = cli.numberFrom(
+      const storyId = cli.numberFrom(
         await cli.run('pm', [
           'create',
           '--title',
@@ -33,27 +33,27 @@ test.describe('agent CLI journey — observation-class — reject returns a deli
           'reject if the board does not show the story back in READY after reject'
         ])
       )
-      expect(storyNumber).toBeGreaterThan(0)
+      expect(storyId).toBeGreaterThan(0)
 
-      const iterationNumber = cli.numberFrom(
+      const iterationId = cli.numberFrom(
         await cli.run('pm', ['iteration', 'create', '--name', 'RejectJourney'])
       )
-      expect(iterationNumber).toBeGreaterThan(0)
-      await cli.run('pm', ['iteration', 'designate', String(iterationNumber)])
+      expect(iterationId).toBeGreaterThan(0)
+      await cli.run('pm', ['iteration', 'designate', String(iterationId)])
       await cli.run('pm', [
         'iteration',
         'add',
         '--iteration',
-        String(iterationNumber),
+        String(iterationId),
         '--story',
-        String(storyNumber),
+        String(storyId),
         '--position',
         '1'
       ])
 
       await cli.run('dev', [
         'start',
-        String(storyNumber),
+        String(storyId),
         '--paraphrase',
         'Picking up to verify the reject-returns-to-ready transition through the CLI.',
         '--falsifier',
@@ -61,22 +61,22 @@ test.describe('agent CLI journey — observation-class — reject returns a deli
       ])
       await cli.run('dev', [
         'deliver',
-        String(storyNumber),
+        String(storyId),
         '--observation',
         'Drove deliver via the bpmux CLI; passing desk-check next to reach DELIVERED before reject.'
       ])
       await cli.run('designer', [
         'verdict',
-        String(storyNumber),
+        String(storyId),
         '--verdict',
         'verified',
         '--grounding',
         'cli-journey: designer verdict grounding the desk-check pass'
       ])
-      await cli.run('designer', ['pass', String(storyNumber), '--acceptor', 'owner'])
+      await cli.run('designer', ['pass', String(storyId), '--acceptor', 'owner'])
       await cli.run('pm', [
         'reject',
-        String(storyNumber),
+        String(storyId),
         '--reason',
         'sent back: the falsifier scenario was not actually exercised end-to-end'
       ])
@@ -91,7 +91,7 @@ test.describe('agent CLI journey — observation-class — reject returns a deli
       for (const otherColumn of ['In Progress', 'Desk Check', 'Acceptance']) {
         await expect(
           board.group(otherColumn).getByRole('button', {
-            name: new RegExp(`Open story #${storyNumber}\\b`)
+            name: new RegExp(`Open story #${storyId}\\b`)
           })
         ).toHaveCount(0)
       }

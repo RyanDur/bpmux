@@ -1,14 +1,10 @@
 import { type Story } from './types'
-import { blockerNumberFromLabels, deriveBadge, labelFor, type BadgeKind } from './StoryBadge.utils'
+import { blockerIdFromLabels, deriveBadge, labelFor, type BadgeKind } from './StoryBadge.utils'
 
-const tooltipFor = (
-  kind: BadgeKind,
-  state: Story['state'],
-  blockerNumber: number | null
-): string => {
+const tooltipFor = (kind: BadgeKind, state: Story['state'], blockerId: number | null): string => {
   if (kind === 'blocked') {
-    return blockerNumber !== null
-      ? `blocked — waiting on #${blockerNumber}`
+    return blockerId !== null
+      ? `blocked — waiting on #${blockerId}`
       : 'blocked — (no blocker specified)'
   }
   if (kind === 'rework') return 'rework cycle — awaiting re-delivery'
@@ -37,28 +33,28 @@ const KIND_GLYPH: Record<Exclude<BadgeKind, 'blocked'>, string> = {
 
 interface Props {
   story: Story
-  onOpenTimeline?: (storyNumber: number) => void
-  onOpenBlocker?: (storyNumber: number) => void
+  onOpenTimeline?: (storyId: number) => void
+  onOpenBlocker?: (storyId: number) => void
 }
 
 const StoryBadge = ({ story, onOpenTimeline, onOpenBlocker }: Props): React.JSX.Element | null => {
   const kind = deriveBadge(story)
   if (kind === null) return null
-  const blockerNumber = kind === 'blocked' ? blockerNumberFromLabels(story.labels) : null
-  const tooltip = tooltipFor(kind, story.state, blockerNumber)
+  const blockerId = kind === 'blocked' ? blockerIdFromLabels(story.labels) : null
+  const tooltip = tooltipFor(kind, story.state, blockerId)
   const label = labelFor(kind, story.state)
   const classes = `story-badge story-badge--${kind}`
 
   const handler =
     kind === 'blocked'
       ? onOpenBlocker
-        ? () => onOpenBlocker(blockerNumber ?? story.id)
+        ? () => onOpenBlocker(blockerId ?? story.id)
         : undefined
       : onOpenTimeline
         ? () => onOpenTimeline(story.id)
         : undefined
   const ariaSuffix =
-    kind === 'blocked' ? (blockerNumber !== null ? ' — open blocker' : '') : ' — open timeline'
+    kind === 'blocked' ? (blockerId !== null ? ' — open blocker' : '') : ' — open timeline'
 
   const inner = (
     <>

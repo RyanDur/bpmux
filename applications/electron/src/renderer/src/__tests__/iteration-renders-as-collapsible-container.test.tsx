@@ -21,13 +21,13 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7101,
+        id: 7101,
         title: 'Iteration Cassiopeia',
         story_type: 'iteration',
         initial_state: 'icebox'
       },
       {
-        number: 7100,
+        id: 7100,
         title: 'cassiopeia-member',
         story_type: 'feature',
         initial_state: 'icebox',
@@ -51,13 +51,13 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7102,
+        id: 7102,
         title: 'Iteration RemountCollapseScope',
         story_type: 'iteration',
         initial_state: 'icebox'
       },
       {
-        number: 7103,
+        id: 7103,
         title: 'remount-collapse-scope-member',
         story_type: 'feature',
         initial_state: 'icebox',
@@ -93,7 +93,7 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7201,
+        id: 7201,
         title: 'a loose icebox story',
         story_type: 'feature',
         initial_state: 'icebox'

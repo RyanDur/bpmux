@@ -19,14 +19,14 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
 
     await seedStories(apiBase, authToken, [
       {
-        number: 8501,
+        id: 8501,
         title: 'Iteration Carina',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[8511]} -->'
       },
       {
-        number: 8502,
+        id: 8502,
         title: 'Iteration Eridanus',
         story_type: 'iteration',
         initial_state: 'icebox',
@@ -34,7 +34,7 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
         body: '<!-- bpmux-relationships: {"stories":[]} -->'
       },
       {
-        number: 8511,
+        id: 8511,
         title: 'carina-member',
         story_type: 'feature',
         initial_state: 'icebox'

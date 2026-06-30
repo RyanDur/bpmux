@@ -4,7 +4,7 @@ pub fn edit_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to edit"
             },
@@ -17,7 +17,7 @@ pub fn edit_story_tool(description: &'static str) -> Tool {
                 "description": "New title — replaces the existing title (#1279). Optional: omit to leave title unchanged. Use for in-flight title corrections (typos, template leaks) without losing issue number / comments / state-machine continuity. Cascade: GitHub issue updated → canonical store refreshed → board-invalidate broadcast."
             }
         },
-        "required": ["number"]
+        "required": ["id"]
     });
 
     Tool::new(

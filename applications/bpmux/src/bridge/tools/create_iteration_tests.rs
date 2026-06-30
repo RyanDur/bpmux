@@ -14,9 +14,9 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn seed_iteration_story(number: u64, name: &str, is_closed: bool) -> Story {
+fn seed_iteration_story(id: u64, name: &str, is_closed: bool) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         format!("Iteration {name}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),

@@ -7,21 +7,21 @@ pub(crate) fn run_iteration_create(name: &str, position_after: Option<u64>) -> a
     super::write::dispatch_write("create_iteration", args)
 }
 
-pub(crate) fn run_iteration_designate(number: u64) -> anyhow::Result<()> {
+pub(crate) fn run_iteration_designate(iteration_id: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("iteration_id".to_string(), serde_json::json!(number));
+    args.insert("iteration_id".to_string(), serde_json::json!(iteration_id));
     super::write::dispatch_write("designate_current_iteration", args)
 }
 
-pub(crate) fn run_iteration_close_review(number: u64) -> anyhow::Result<()> {
+pub(crate) fn run_iteration_close_review(iteration_id: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("iteration_id".to_string(), serde_json::json!(number));
+    args.insert("iteration_id".to_string(), serde_json::json!(iteration_id));
     super::write::dispatch_write("close_pre_pickup_review", args)
 }
 
-pub(crate) fn run_iteration_dev_ok(number: u64) -> anyhow::Result<()> {
+pub(crate) fn run_iteration_dev_ok(iteration_id: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("iteration_id".to_string(), serde_json::json!(number));
+    args.insert("iteration_id".to_string(), serde_json::json!(iteration_id));
     super::write::dispatch_write("dev_ok_iteration", args)
 }
 
@@ -87,16 +87,16 @@ pub(crate) fn run_iteration_close(iteration: u64) -> anyhow::Result<()> {
     super::write::dispatch_write("close_iteration", args)
 }
 
-pub(crate) fn run_epic_set_parent(number: u64, epic: u64) -> anyhow::Result<()> {
+pub(crate) fn run_epic_set_parent(id: u64, epic: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("id".to_string(), serde_json::json!(id));
     args.insert("epic_id".to_string(), serde_json::json!(epic));
     super::write::dispatch_write("set_parent_epic", args)
 }
 
-pub(crate) fn run_epic_unset_parent(number: u64) -> anyhow::Result<()> {
+pub(crate) fn run_epic_unset_parent(id: u64) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
-    args.insert("number".to_string(), serde_json::json!(number));
+    args.insert("id".to_string(), serde_json::json!(id));
     super::write::dispatch_write("unset_parent_epic", args)
 }
 

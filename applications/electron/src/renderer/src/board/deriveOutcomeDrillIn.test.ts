@@ -10,11 +10,11 @@ const readiness = (
 ): IterationReadiness => ({ drafted, stories_ordered, review_closed, dev_ok })
 
 const iteration = (
-  number: number,
+  id: number,
   name: string,
   position: number,
   checks: IterationReadiness
-): RoadmapIteration => ({ id: number, name, position, readiness: checks })
+): RoadmapIteration => ({ id, name, position, readiness: checks })
 
 describe('#1737 deriveOutcomeDrillIn — an outcome → the iterations building it, in order', () => {
   test('orders the building iterations by position', () => {

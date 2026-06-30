@@ -36,7 +36,7 @@ fn start_story_dev_returns_in_progress_marker() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] start-target",
             "reject if start_story doesn't transition state to in-progress",
@@ -47,7 +47,7 @@ fn start_story_dev_returns_in_progress_marker() {
             .call_tool(
                 "start_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "pickup_paraphrase": PICKUP,
                     "falsifier_reframing": FALSIFIER_REFRAMING
                 }),
@@ -57,7 +57,7 @@ fn start_story_dev_returns_in_progress_marker() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -78,7 +78,7 @@ fn start_story_rejects_pm_caller_per_dev_lane_gate() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] pm-cannot-start-target",
             "reject if pm can call start_story bypassing dev-lane gate",
@@ -89,7 +89,7 @@ fn start_story_rejects_pm_caller_per_dev_lane_gate() {
             .call_tool(
                 "start_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "pickup_paraphrase": PICKUP,
                     "falsifier_reframing": FALSIFIER_REFRAMING
                 }),
@@ -115,7 +115,7 @@ fn start_story_rejects_missing_pickup_paraphrase() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] missing-pickup-target",
             "reject if dev can start_story without pickup-paraphrase",
@@ -126,7 +126,7 @@ fn start_story_rejects_missing_pickup_paraphrase() {
             .call_tool(
                 "start_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "falsifier_reframing": FALSIFIER_REFRAMING
                 }),
             )
@@ -166,7 +166,7 @@ fn start_story_view_board_reflects_in_progress_via_board_fixture_seed() {
         dev.call_tool(
             "start_story",
             serde_json::json!({
-                "number": 200,
+                "id": 200,
                 "pickup_paraphrase": PICKUP,
                 "falsifier_reframing": FALSIFIER_REFRAMING
             }),
@@ -175,7 +175,7 @@ fn start_story_view_board_reflects_in_progress_via_board_fixture_seed() {
         .expect("start_story should succeed against seeded story");
 
         let story = dev
-            .call_tool("get_story", serde_json::json!({"number": 200}))
+            .call_tool("get_story", serde_json::json!({"id": 200}))
             .await
             .expect("get_story should succeed");
         let story_text = story
@@ -198,7 +198,7 @@ fn start_story_rejects_missing_falsifier_reframing() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] missing-falsifier-target",
             "reject if dev can start_story without falsifier-reframing",
@@ -209,7 +209,7 @@ fn start_story_rejects_missing_falsifier_reframing() {
             .call_tool(
                 "start_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "pickup_paraphrase": PICKUP
                 }),
             )

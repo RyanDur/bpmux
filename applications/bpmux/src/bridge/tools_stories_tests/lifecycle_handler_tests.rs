@@ -34,7 +34,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(203));
+    args.insert("id".into(), serde_json::json!(203));
     args.insert(
         "pickup_paraphrase".into(),
         serde_json::json!("paraphrase content"),
@@ -124,7 +124,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(204));
+    args.insert("id".into(), serde_json::json!(204));
     args.insert(
         "verified_observation".into(),
         serde_json::json!("drove the falsifier scenario end-to-end"),
@@ -198,7 +198,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(205));
+    args.insert("id".into(), serde_json::json!(205));
     args.insert("would_file_bug".into(), serde_json::json!(false));
     let result = handle_accept_story(&args, "owner:human", Some(&orchestrator), None).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
@@ -299,7 +299,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(5070));
+    args.insert("id".into(), serde_json::json!(5070));
     args.insert("would_file_bug".into(), serde_json::json!(false));
     handle_accept_story(&args, "owner:human", Some(&orch), None)
         .await
@@ -373,7 +373,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(206));
+    args.insert("id".into(), serde_json::json!(206));
     args.insert("reason".into(), serde_json::json!("scope mismatch"));
     let result = handle_reject_story(&args, "owner:human", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
@@ -428,7 +428,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
 }
 
 #[tokio::test]
-async fn create_story_migrated_path_assigns_number_and_emits_story_created_event() {
+async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
@@ -473,7 +473,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     let response = result.unwrap();
     assert!(
         response.contains("#51"),
-        "response should carry the source-assigned number 51 (max+1 over seed 50): {response}"
+        "response should carry the source-assigned id 51 (max+1 over seed 50): {response}"
     );
 
     let story = store
@@ -553,7 +553,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     let mut rx = session.subscribe();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(207));
+    args.insert("id".into(), serde_json::json!(207));
     args.insert(
         "verified_observation".into(),
         serde_json::json!("ran end-to-end"),
@@ -614,7 +614,7 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(1524));
+    args.insert("id".into(), serde_json::json!(1524));
     args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
     let result = handle_start_story(&args, "dev:claude-code", Some(&orchestrator))
@@ -690,7 +690,7 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(1525));
+    args.insert("id".into(), serde_json::json!(1525));
     args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
     let result = handle_start_story(&args, "dev:claude-code", Some(&orchestrator))
@@ -730,10 +730,10 @@ mod classify_for_pass_desk_check_tests {
         orch
     }
 
-    fn make_story(number: u64, story_type: StoryType) -> Story {
+    fn make_story(id: u64, story_type: StoryType) -> Story {
         let mut s = Story::new_minimal(
-            StoryId::new(number),
-            format!("story-{number}"),
+            StoryId::new(id),
+            format!("story-{id}"),
             StoryState::Delivered,
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),

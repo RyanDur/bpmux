@@ -1,7 +1,7 @@
 import { parseUnscheduledPosition } from './labelSchema'
 import { storyTypeFromLabels, type Story, type IterationMembership } from './types'
 export interface DragPayload {
-  storyNumber: number
+  storyId: number
   iterationId: number
   oldPosition: number
 }

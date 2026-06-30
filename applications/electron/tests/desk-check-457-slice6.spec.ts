@@ -20,10 +20,10 @@ const createStory = async (rpc: RpcFn, title: string, parentEpic?: number): Prom
   expect(resp.status).toBe(200)
 }
 
-const moveTo = async (rpc: RpcFn, number: number, state: string): Promise<void> => {
+const moveTo = async (rpc: RpcFn, id: number, state: string): Promise<void> => {
   const resp = await rpc(
     'move_story',
-    { number, target_state: state, rationale: `desk-check-457 slice6 fixture: ${state}` },
+    { id, target_state: state, rationale: `desk-check-457 slice6 fixture: ${state}` },
     'pm'
   )
   expect(resp.status).toBe(200)
@@ -124,8 +124,8 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
       await moveTo(rpc, 1, 'ready')
       await moveTo(rpc, 2, 'ready')
 
-      const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice6')
-      await addStoryToIterationViaRpc(rpc, 2, iterNumber, 1)
+      const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice6')
+      await addStoryToIterationViaRpc(rpc, 2, iterationId, 1)
 
       await win.reload()
       await expect(board.region()).toBeVisible()

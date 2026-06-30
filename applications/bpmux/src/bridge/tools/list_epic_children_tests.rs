@@ -45,9 +45,9 @@ fn store_with(stories: Vec<Story>) -> Arc<BoardStore> {
     Arc::new(store)
 }
 
-fn args(epic_number: u64) -> serde_json::Map<String, serde_json::Value> {
+fn args(epic_id: u64) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("epic_id".to_string(), serde_json::json!(epic_number));
+    m.insert("epic_id".to_string(), serde_json::json!(epic_id));
     m
 }
 
@@ -75,7 +75,7 @@ async fn returns_single_child_with_parent_epic_match() {
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     let children = parsed["children"].as_array().unwrap();
     assert_eq!(children.len(), 1);
-    assert_eq!(children[0]["number"], 101);
+    assert_eq!(children[0]["id"], 101);
     assert_eq!(children[0]["state"], "ready");
     assert_eq!(children[0]["story_type"], "feature");
     assert_eq!(children[0]["is_closed"], false);
@@ -108,9 +108,9 @@ async fn returns_multiple_children_sorted_by_number() {
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     let children = parsed["children"].as_array().unwrap();
     assert_eq!(children.len(), 3);
-    assert_eq!(children[0]["number"], 102);
-    assert_eq!(children[1]["number"], 105);
-    assert_eq!(children[2]["number"], 108);
+    assert_eq!(children[0]["id"], 102);
+    assert_eq!(children[1]["id"], 105);
+    assert_eq!(children[2]["id"], 108);
 }
 
 #[tokio::test]
@@ -135,7 +135,7 @@ async fn excludes_stories_with_different_parent() {
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     let children = parsed["children"].as_array().unwrap();
     assert_eq!(children.len(), 1);
-    assert_eq!(children[0]["number"], 101);
+    assert_eq!(children[0]["id"], 101);
 }
 
 #[tokio::test]

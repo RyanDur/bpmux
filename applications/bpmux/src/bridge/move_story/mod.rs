@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::bridge::tools_stories::{KEEP_NONE, reap_workflow_labels};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
-use crate::product_management::iteration::label::current_iteration_number;
+use crate::product_management::iteration::label::current_iteration_id;
 use crate::product_management::story::{StoryId, StoryState};
 
 mod target;
@@ -20,10 +20,10 @@ pub(in crate::bridge) async fn handle_move_story(
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let target_str = args
         .get("target_state")
         .and_then(|v| v.as_str())
@@ -66,8 +66,7 @@ pub(in crate::bridge) async fn handle_move_story(
 
     let r = refresh
         .ok_or("move_story requires refresh (RefreshDriver) — tracker fallback not supported")?;
-    let prior =
-        Some(crate::bridge::tools_stories::ensure_story_in_canonical_store(r, number).await?);
+    let prior = Some(crate::bridge::tools_stories::ensure_story_in_canonical_store(r, id).await?);
     let from_display = current_state_display(prior.as_ref()).to_string();
     let was_closed = prior.as_ref().map(|s| s.is_closed).unwrap_or(false);
 
@@ -77,18 +76,18 @@ pub(in crate::bridge) async fn handle_move_story(
         ts: chrono::Utc::now(),
         peer_id: PeerId::local(),
     };
-    let id = StoryId::new(number);
+    let story_id = StoryId::new(id);
 
     if was_closed && !target.closes_issue() {
         r.mutate_sync(BoardEvent::StoryReopened {
             meta: meta.clone(),
-            id,
+            id: story_id,
         })
-        .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
     }
 
     let keep_label = target.as_label().unwrap_or(KEEP_NONE);
-    reap_workflow_labels(r.as_ref(), number, &meta, keep_label)?;
+    reap_workflow_labels(r.as_ref(), id, &meta, keep_label)?;
 
     if let Some(label) = target.as_label() {
         let already_labeled = prior
@@ -98,10 +97,10 @@ pub(in crate::bridge) async fn handle_move_story(
         if !already_labeled {
             r.mutate_sync(BoardEvent::TagAdded {
                 meta: meta.clone(),
-                id,
+                id: story_id,
                 label: label.to_string(),
             })
-            .map_err(|e| format!("#{number} tag-add enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} tag-add enqueue failed: {e}"))?;
         }
     }
 
@@ -109,26 +108,26 @@ pub(in crate::bridge) async fn handle_move_story(
         TargetState::Workflow(state) => {
             r.mutate_sync(BoardEvent::StateTransitioned {
                 meta: meta.clone(),
-                id,
+                id: story_id,
                 new_state: state,
             })
-            .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
             if matches!(state, StoryState::Accepted) && !was_closed {
                 r.mutate_sync(BoardEvent::StoryClosed {
                     meta: meta.clone(),
-                    id,
+                    id: story_id,
                     reason: Some(rationale.clone()),
                 })
-                .map_err(|e| format!("#{number} accept-close enqueue failed: {e}"))?;
+                .map_err(|e| format!("#{id} accept-close enqueue failed: {e}"))?;
             }
         }
         TargetState::Retired => {
             r.mutate_sync(BoardEvent::StoryClosed {
                 meta: meta.clone(),
-                id,
+                id: story_id,
                 reason: Some(format!("retired: {rationale}")),
             })
-            .map_err(|e| format!("#{number} retire enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} retire enqueue failed: {e}"))?;
             let already_retired = prior
                 .as_ref()
                 .map(|s| {
@@ -140,10 +139,10 @@ pub(in crate::bridge) async fn handle_move_story(
             if !already_retired {
                 r.mutate_sync(BoardEvent::TagAdded {
                     meta: meta.clone(),
-                    id,
+                    id: story_id,
                     label: "retired".to_string(),
                 })
-                .map_err(|e| format!("#{number} retire-tag enqueue failed: {e}"))?;
+                .map_err(|e| format!("#{id} retire-tag enqueue failed: {e}"))?;
             }
         }
     }
@@ -151,31 +150,35 @@ pub(in crate::bridge) async fn handle_move_story(
     let target_is_icebox = matches!(target, TargetState::Workflow(StoryState::Icebox));
     let target_is_ready = matches!(target, TargetState::Workflow(StoryState::Ready));
     if target_is_icebox && let Some(pos) = position {
-        crate::bridge::tools_stories::reorder_icebox_story_via_labels(r, number, pos)?;
+        crate::bridge::tools_stories::reorder_icebox_story_via_labels(r, id, pos)?;
     }
     if target_is_ready
         && let Some(pos) = position
-        && let Some(iteration_id) = current_iteration_number(&r.iterations())
+        && let Some(iteration_id) = current_iteration_id(&r.iterations())
     {
         r.mutate_sync(BoardEvent::IterationMembershipSet {
             meta: meta.clone(),
-            id,
+            id: story_id,
             iteration_id,
             position: pos as u32,
         })
-        .map_err(|e| format!("#{number} ready-order (iteration-membership) enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} ready-order (iteration-membership) enqueue failed: {e}"))?;
     }
 
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
-    r.mutate_sync(BoardEvent::FreeCommentAppended { meta, id, body })
-        .map_err(|e| format!("#{number} audit-comment enqueue failed: {e}"))?;
+    r.mutate_sync(BoardEvent::FreeCommentAppended {
+        meta,
+        id: story_id,
+        body,
+    })
+    .map_err(|e| format!("#{id} audit-comment enqueue failed: {e}"))?;
 
     let pos_msg = match position {
         Some(p) => format!(" at position {p}"),
         None => String::new(),
     };
     Ok(format!(
-        "#{number} moved {from_display} → {to}{pos_msg}",
+        "#{id} moved {from_display} → {to}{pos_msg}",
         to = target.as_display()
     ))
 }

@@ -15,27 +15,27 @@ test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration o
         body: JSON.stringify({
           stories: [
             {
-              number: 9301,
+              id: 9301,
               title: 'Iteration Reticulum',
               story_type: 'iteration',
               initial_state: 'icebox'
             },
             {
-              number: 9311,
+              id: 9311,
               title: 'reticulum-alpha',
               story_type: 'feature',
               initial_state: 'icebox',
               labels: ['parent-iteration-#9301.100']
             },
             {
-              number: 9312,
+              id: 9312,
               title: 'reticulum-bravo',
               story_type: 'feature',
               initial_state: 'icebox',
               labels: ['parent-iteration-#9301.200']
             },
             {
-              number: 9313,
+              id: 9313,
               title: 'reticulum-charlie',
               story_type: 'feature',
               initial_state: 'icebox',

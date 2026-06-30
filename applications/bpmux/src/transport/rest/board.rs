@@ -28,7 +28,7 @@ pub(crate) fn board_iterations(
         .iterations()
         .iter()
         .map(|iteration| {
-            let number = iteration.id().saved_id().map(|id| id.value()).unwrap_or(0);
+            let id = iteration.id().saved_id().map(|id| id.value()).unwrap_or(0);
             let position = iteration.builds_outcome().and_then(|outcome_id| {
                 outcomes
                     .iter()
@@ -38,14 +38,12 @@ pub(crate) fn board_iterations(
                         }) == Some(outcome_id)
                     })
                     .and_then(|o| {
-                        o.position_of(crate::product_management::iteration::IterationId::new(
-                            number,
-                        ))
+                        o.position_of(crate::product_management::iteration::IterationId::new(id))
                     })
                     .map(|index| index + 1)
             });
             serde_json::json!({
-                "id": number,
+                "id": id,
                 "title": iteration.content.title,
                 "iteration_order": iteration.iteration_order,
                 "is_current": iteration.is_current,
@@ -81,7 +79,7 @@ pub(crate) fn board_outcomes(
         .iter()
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
-            let number = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
+            let id = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
             let iterations: Vec<serde_json::Value> = building_iterations(outcome, &all_iterations)
                 .iter()
                 .enumerate()
@@ -95,7 +93,7 @@ pub(crate) fn board_outcomes(
                 })
                 .collect();
             serde_json::json!({
-                "id": number,
+                "id": id,
                 "title": outcome.content.title,
                 "body": outcome.content.body.clone().unwrap_or_default(),
                 "horizon": outcome.horizon().map(|horizon| horizon.as_str()),

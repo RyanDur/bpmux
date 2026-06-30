@@ -47,7 +47,7 @@ test.describe('human-side E2E #476 — observation-class — fail_desk_check', (
       await setupCurrentIterationViaRpc(rpc, 1, 'NeedsFixesObserve')
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase: 'Picking up to verify the fail-desk-check rework return.',
         falsifier_reframing:
           'reject if fail_desk_check does not move the story back to NEEDS-FIXES (in-progress column) visible to the human'
@@ -55,7 +55,7 @@ test.describe('human-side E2E #476 — observation-class — fail_desk_check', (
       expect(startResp.status).toBe(200)
 
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation:
           'Drove deliver via /api/rpc/deliver_story; queueing fail_desk_check as the gate under test.'
       })
@@ -64,7 +64,7 @@ test.describe('human-side E2E #476 — observation-class — fail_desk_check', (
       const failResp = await rpc(
         'fail_desk_check',
         {
-          number: 1,
+          id: 1,
           reason: 'designer flagged accessibility regression on the touched surface'
         },
         'designer'

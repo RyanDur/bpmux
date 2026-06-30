@@ -45,11 +45,11 @@ fn accept_story_concurrent_fire_returns_target_state_invalid_on_second() {
         let (pm_outcome, pm2_outcome) = tokio::join!(
             pm.call_tool(
                 "accept_story",
-                serde_json::json!({"number": target, "would_file_bug": false}),
+                serde_json::json!({"id": target, "would_file_bug": false}),
             ),
             pm2.call_tool(
                 "accept_story",
-                serde_json::json!({"number": target, "would_file_bug": false}),
+                serde_json::json!({"id": target, "would_file_bug": false}),
             ),
         );
 

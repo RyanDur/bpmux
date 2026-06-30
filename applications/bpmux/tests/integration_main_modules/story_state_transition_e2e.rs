@@ -22,12 +22,12 @@ async fn drain_pending_events(agent: &TestBridge, subscription_id: &str) {
     }
 }
 
-async fn move_to_ready(mutator: &TestBridge, number: u64) {
+async fn move_to_ready(mutator: &TestBridge, id: u64) {
     mutator
         .call_tool(
             "move_story",
             serde_json::json!({
-                "number": number,
+                "id": id,
                 "target_state": "ready",
                 "rationale": "promote for the story_state_transition coverage test"
             }),
@@ -156,7 +156,7 @@ fn target_state_filter_discriminates_matching_from_non_matching_to_state() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": story,
+                    "id": story,
                     "target_state": "in-progress",
                     "rationale": "drive a NON-ready transition the ready-filter must reject"
                 }),
@@ -214,7 +214,7 @@ fn move_story_backward_rework_transition_still_fires_state_transition_event() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": story,
+                    "id": story,
                     "target_state": "in-progress",
                     "rationale": "advance the story before driving the backward rework"
                 }),

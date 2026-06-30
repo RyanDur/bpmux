@@ -15,7 +15,7 @@ fn pm_firing_start_story_returns_structured_409_with_workflow_role_not_allowed_k
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] pm-start-story-substrate-refusal",
             "reject if PM firing start_story isn't substrate-refused per workflow.toml actor_roles",
@@ -26,7 +26,7 @@ fn pm_firing_start_story_returns_structured_409_with_workflow_role_not_allowed_k
             .call_tool(
                 "start_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "pickup_paraphrase": "irrelevant — should refuse before paraphrase-check",
                     "falsifier_reframing": "irrelevant — should refuse before falsifier-check",
                 }),
@@ -64,7 +64,7 @@ fn designer_firing_start_story_returns_structured_409() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] designer-start-story-substrate-refusal",
             "reject if designer firing start_story isn't substrate-refused per workflow.toml actor_roles",
@@ -75,7 +75,7 @@ fn designer_firing_start_story_returns_structured_409() {
             .call_tool(
                 "start_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "pickup_paraphrase": "irrelevant",
                     "falsifier_reframing": "irrelevant",
                 }),

@@ -20,27 +20,27 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7701,
+        id: 7701,
         title: 'Iteration Vela',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[7711]} -->'
       },
       {
-        number: 7702,
+        id: 7702,
         title: 'Iteration Cygnus',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[7721]} -->'
       },
       {
-        number: 7711,
+        id: 7711,
         title: 'vela-member-one',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7721,
+        id: 7721,
         title: 'cygnus-member-one',
         story_type: 'feature',
         initial_state: 'icebox'

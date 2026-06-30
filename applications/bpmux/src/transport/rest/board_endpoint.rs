@@ -22,9 +22,9 @@ async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     orch
 }
 
-fn iteration(number: u64) -> Story {
+fn iteration(id: u64) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         "Iteration Vela".to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -41,16 +41,16 @@ fn iteration(number: u64) -> Story {
     s
 }
 
-fn member(number: u64, iteration_number: u64, position: u32) -> Story {
+fn member(id: u64, iteration_id: u64, position: u32) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("member #{number}"),
+        StoryId::new(id),
+        format!("member #{id}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec![format!("parent-iteration-#{iteration_number}.{position}")];
-    s.iteration_membership = Some((IterationId::new(iteration_number), position));
+    s.raw_labels = vec![format!("parent-iteration-#{iteration_id}.{position}")];
+    s.iteration_membership = Some((IterationId::new(iteration_id), position));
     s
 }
 
@@ -68,9 +68,9 @@ fn find_story(stories: &[serde_json::Value], id: u64) -> &serde_json::Value {
         .expect("story present in snapshot")
 }
 
-fn outcome(number: u64, iterations: Vec<u64>) -> Story {
+fn outcome(id: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         "An outcome".to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -88,8 +88,8 @@ fn outcome(number: u64, iterations: Vec<u64>) -> Story {
     s
 }
 
-fn iteration_with_stories(number: u64, stories: Vec<u64>) -> Story {
-    let mut s = iteration(number);
+fn iteration_with_stories(id: u64, stories: Vec<u64>) -> Story {
+    let mut s = iteration(id);
     s.body = Some(
         IterationRelationships {
             outcome: None,
@@ -100,11 +100,11 @@ fn iteration_with_stories(number: u64, stories: Vec<u64>) -> Story {
     s
 }
 
-fn building_iteration(number: u64, outcome_number: u64, stories: Vec<u64>) -> Story {
-    let mut s = iteration(number);
+fn building_iteration(id: u64, outcome_id: u64, stories: Vec<u64>) -> Story {
+    let mut s = iteration(id);
     s.body = Some(
         IterationRelationships {
-            outcome: Some(OutcomeId::new(outcome_number)),
+            outcome: Some(OutcomeId::new(outcome_id)),
             stories: stories.into_iter().map(StoryId::new).collect(),
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),

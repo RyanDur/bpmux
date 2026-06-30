@@ -17,11 +17,11 @@ export interface UseStoryDragOptions<P> {
 }
 
 export interface UseStoryDragResult<P> {
-  draggedNumber: number | null
-  hoveredNumber: number | null
-  startDrag: (event: React.DragEvent<HTMLElement>, storyNumber: number, payload: P) => void
+  draggedId: number | null
+  hoveredId: number | null
+  startDrag: (event: React.DragEvent<HTMLElement>, storyId: number, payload: P) => void
   endDrag: () => void
-  hover: (storyNumber: number | null) => void
+  hover: (storyId: number | null) => void
   decode: (event: React.DragEvent<HTMLElement>) => P | null
   hasType: (event: React.DragEvent<HTMLElement>) => boolean
 }
@@ -72,27 +72,27 @@ const setDragImageFromClosestLi = (event: React.DragEvent<HTMLElement>): void =>
 
 export const useStoryDrag = <P>(options: UseStoryDragOptions<P>): UseStoryDragResult<P> => {
   const { mimeType, encode, decode: decodePayload } = options
-  const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
-  const [hoveredNumber, setHoveredNumber] = useState<number | null>(null)
+  const [draggedId, setDraggedId] = useState<number | null>(null)
+  const [hoveredId, setHoveredId] = useState<number | null>(null)
 
   const startDrag = useCallback(
-    (event: React.DragEvent<HTMLElement>, storyNumber: number, payload: P): void => {
+    (event: React.DragEvent<HTMLElement>, storyId: number, payload: P): void => {
       event.dataTransfer.setData(mimeType, encode(payload))
       event.dataTransfer.effectAllowed = 'move'
       setDragImageFromClosestLi(event)
-      setDraggedNumber(storyNumber)
+      setDraggedId(storyId)
     },
     [encode, mimeType]
   )
 
   const endDrag = useCallback((): void => {
     removeDragGhosts()
-    setDraggedNumber(null)
-    setHoveredNumber(null)
+    setDraggedId(null)
+    setHoveredId(null)
   }, [])
 
-  const hover = useCallback((storyNumber: number | null): void => {
-    setHoveredNumber(storyNumber)
+  const hover = useCallback((storyId: number | null): void => {
+    setHoveredId(storyId)
   }, [])
 
   const decode = useCallback(
@@ -109,5 +109,5 @@ export const useStoryDrag = <P>(options: UseStoryDragOptions<P>): UseStoryDragRe
     [mimeType]
   )
 
-  return { draggedNumber, hoveredNumber, startDrag, endDrag, hover, decode, hasType }
+  return { draggedId, hoveredId, startDrag, endDrag, hover, decode, hasType }
 }

@@ -15,11 +15,11 @@ export const outcome = (overrides: Partial<RoadmapOutcomeData>): RoadmapOutcomeD
 })
 
 export const buildingIteration = (
-  number: number,
+  id: number,
   name: string,
   position: number,
   readiness: IterationReadiness
-): RoadmapIteration => ({ id: number, name, position, readiness })
+): RoadmapIteration => ({ id, name, position, readiness })
 
 export const checks = (
   drafted: boolean,

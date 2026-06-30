@@ -231,7 +231,7 @@ mod outbox_persistence {
         let _ = orch.drain_once().await;
         let status = orch.snapshot_status();
         assert_eq!(status.dropped_events.len(), 1);
-        assert_eq!(status.dropped_events[0].story_number, 65);
+        assert_eq!(status.dropped_events[0].story_id, 65);
     }
 
     #[tokio::test]

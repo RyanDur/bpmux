@@ -1,17 +1,17 @@
 import { GROUP_ORDER, groupStories, type Story } from './types'
 
 interface Props {
-  epicNumber: number
+  epicId: number
   stories: Story[]
 }
 
-const MiniBoard = ({ epicNumber, stories }: Props): React.JSX.Element => {
+const MiniBoard = ({ epicId, stories }: Props): React.JSX.Element => {
   const grouped = groupStories(stories)
   return (
-    <section className="board-epic-miniboard" data-test={`board-epic-${epicNumber}-miniboard`}>
+    <section className="board-epic-miniboard" data-test={`board-epic-${epicId}-miniboard`}>
       {GROUP_ORDER.map((group) => {
         const colStories = grouped.get(group.state) ?? []
-        const colTest = `board-epic-${epicNumber}-miniboard-column-${group.state}`
+        const colTest = `board-epic-${epicId}-miniboard-column-${group.state}`
         const childrenWord = colStories.length === 1 ? 'child' : 'children'
         return (
           <details
@@ -36,7 +36,7 @@ const MiniBoard = ({ epicNumber, stories }: Props): React.JSX.Element => {
                   <li
                     key={story.id}
                     className="board-epic-miniboard-child"
-                    data-test={`board-epic-${epicNumber}-miniboard-child-${story.id}`}
+                    data-test={`board-epic-${epicId}-miniboard-child-${story.id}`}
                     aria-label={`#${story.id} ${story.title}, ${story.state}`}
                   >
                     <small className="board-epic-miniboard-child-number">#{story.id}</small>

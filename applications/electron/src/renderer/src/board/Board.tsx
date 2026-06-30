@@ -57,7 +57,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
   const { setPendingReadyOrder, clearPendingReadyOrder, effectiveReadyPosition } =
     usePendingReadyOrder(data)
   const iterations = useIterations()
-  const { stories, epics, epicTitleByNumber, iterationContainerStories, grouped, navOrder } =
+  const { stories, epics, epicTitleById, iterationContainerStories, grouped, navOrder } =
     useBoardData(data, iterations, effectiveReadyPosition)
 
   const currentIteration = findCurrentIteration(iterations)
@@ -70,7 +70,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
 
   const {
     asideRef,
-    setSelectedNumber,
+    setSelectedId,
     drilledStory,
     focusTimelineFor,
     effectiveSelected,
@@ -168,7 +168,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
                 stories={stories}
                 iterations={iterations}
                 epics={epics}
-                epicTitleByNumber={epicTitleByNumber}
+                epicTitleById={epicTitleById}
                 iterationContainerStories={iterationContainerStories}
                 grouped={grouped}
                 loading={loading && !data}
@@ -177,7 +177,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
                 onToggleCollapse={toggleCollapsed}
                 onOpen={handleOpen}
                 onOpenTimeline={handleOpenTimeline}
-                onSelect={setSelectedNumber}
+                onSelect={setSelectedId}
                 onReorder={handleReorder}
                 onReorderAnnounce={setReorderAnnounce}
               />

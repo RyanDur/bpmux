@@ -62,7 +62,7 @@ export const seedRoster = async (
 }
 
 export interface SeedStory {
-  number: number
+  id: number
   title: string
   body?: string
   initial_state?: 'icebox' | 'ready' | 'in-progress' | 'desk-check' | 'delivered' | 'accepted'

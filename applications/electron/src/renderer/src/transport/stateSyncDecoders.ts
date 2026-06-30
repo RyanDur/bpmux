@@ -162,9 +162,7 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
   D.object({
     required: {
       domain: D.literal('iteration_close_blocked'),
-      blockers: D.array(
-        D.object({ required: { number: D.number, title: D.string, state: D.string } })
-      )
+      blockers: D.array(D.object({ required: { id: D.number, title: D.string, state: D.string } }))
     }
   }),
   D.object({ required: { domain: D.literal('board_invalidated'), reason: D.string } }),

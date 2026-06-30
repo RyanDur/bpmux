@@ -37,9 +37,9 @@ impl Drop for AuthTokenGuard {
     }
 }
 
-fn args(number: u64) -> Map<String, Value> {
+fn args(id: u64) -> Map<String, Value> {
     let mut map = Map::new();
-    map.insert("number".into(), serde_json::json!(number));
+    map.insert("id".into(), serde_json::json!(id));
     map.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     map.insert("falsifier_reframing".into(), serde_json::json!("falsifier"));
     map
@@ -54,7 +54,7 @@ async fn dispatch_carries_bearer_and_agent_header_to_endpoint() {
             .path("/api/rpc/start_story")
             .header("authorization", "Bearer test-token-123")
             .header("X-BPMUX-Agent", "dev")
-            .body_includes("\"number\":42")
+            .body_includes("\"id\":42")
             .body_includes("\"pickup_paraphrase\":\"paraphrase\"");
         then.status(200)
             .header("content-type", "application/json")

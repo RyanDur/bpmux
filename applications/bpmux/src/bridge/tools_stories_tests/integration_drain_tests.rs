@@ -34,7 +34,7 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(882));
+    args.insert("id".into(), serde_json::json!(882));
     args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
     args.insert("falsifier_reframing".into(), serde_json::json!("f"));
     args.insert(
@@ -74,7 +74,7 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(883));
+    args.insert("id".into(), serde_json::json!(883));
     args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
     args.insert("falsifier_reframing".into(), serde_json::json!("f"));
     let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
@@ -111,7 +111,7 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(4690));
+    args.insert("id".into(), serde_json::json!(4690));
     args.insert("reason".into(), serde_json::json!("cascade drain test"));
     handle_reject_story(&args, "owner:human", Some(&orch))
         .await
@@ -162,7 +162,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(4691));
+    args.insert("id".into(), serde_json::json!(4691));
     args.insert("reason".into(), serde_json::json!("cascade drain test"));
     handle_fail_desk_check(&args, "designer:test", Some(&orch))
         .await
@@ -208,7 +208,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(469));
+    args.insert("id".into(), serde_json::json!(469));
     args.insert("reason".into(), serde_json::json!("rework needed"));
     let result = handle_reject_story(&args, "owner:human", Some(&orch)).await;
     assert!(result.is_ok(), "reject should succeed: {result:?}");
@@ -272,7 +272,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(470));
+    args.insert("id".into(), serde_json::json!(470));
     args.insert("reason".into(), serde_json::json!("not done"));
     handle_reject_story(&args, "owner:human", Some(&orch))
         .await
@@ -319,7 +319,7 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     adapter.set_push_failures(true);
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(450));
+    args.insert("id".into(), serde_json::json!(450));
     args.insert(
         "verified_observation".into(),
         serde_json::json!("drove the label-leak failure-injection scenario"),

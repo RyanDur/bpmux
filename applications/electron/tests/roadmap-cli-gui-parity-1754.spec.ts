@@ -58,7 +58,7 @@ test.describe('#1754 — an agent reading via the CLI and the owner viewing the 
       )
       const mapped = await rpc(
         'map_iteration_to_outcome',
-        { outcome_number: outcome, iteration_number: buildingIteration, position: 1 },
+        { outcome_id: outcome, iteration_id: buildingIteration, position: 1 },
         'pm'
       )
       expect(mapped.status).toBe(200)
@@ -101,7 +101,7 @@ test.describe('#1754 — an agent reading via the CLI and the owner viewing the 
       )
       const mapped = await rpc(
         'map_iteration_to_outcome',
-        { outcome_number: needsAttention, iteration_number: iteration, position: 1 },
+        { outcome_id: needsAttention, iteration_id: iteration, position: 1 },
         'pm'
       )
       expect(mapped.status).toBe(200)

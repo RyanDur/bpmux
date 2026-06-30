@@ -16,7 +16,7 @@ fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind(
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-accept-substrate-refusal",
             "reject if dev firing accept_story isn't substrate-refused per workflow.toml actor_roles",
@@ -26,7 +26,7 @@ fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind(
         pm.call_tool(
             "label_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "label": "awaiting team",
                 "rationale": "test fixture: acceptor=team to assert allowed_roles=[pm] (owner bypasses via #1548 superset)"
             }),
@@ -37,7 +37,7 @@ fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind(
         let err = dev
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect_err("dev should be substrate-refused");
@@ -72,19 +72,19 @@ fn pm_fires_team_verifiable_with_both_verdicts_succeeds() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] accept-with-evidence",
             "reject if PM-fire accept with both designer + dev verdicts in window doesn't 200",
         )
         .await;
 
-        seed_team_verifiable_evidence(&bpmux, target_number).await;
+        seed_team_verifiable_evidence(&bpmux, target_id).await;
 
         let result = pm
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect("accept_story should succeed with both verdicts present");
@@ -109,7 +109,7 @@ fn dev_accept_story_succeeds_on_awaiting_dev_chore_with_designer_evidence() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Chore] dev-accepts-chore-with-designer-evidence",
             "reject if dev-fire accept on an awaiting-dev Chore with designer-verdict doesn't 200 (chore-ownership-triad accept-half)",
@@ -119,7 +119,7 @@ fn dev_accept_story_succeeds_on_awaiting_dev_chore_with_designer_evidence() {
         pm.call_tool(
             "label_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "label": "awaiting dev",
                 "rationale": "test fixture: acceptor=dev (Chore dev-acceptor)"
             }),
@@ -131,7 +131,7 @@ fn dev_accept_story_succeeds_on_awaiting_dev_chore_with_designer_evidence() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "test-harness: designer verdict = required-evidence for dev-verifiable accept"
                 }),
@@ -142,7 +142,7 @@ fn dev_accept_story_succeeds_on_awaiting_dev_chore_with_designer_evidence() {
         let result = dev
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect("dev accept_story should succeed on awaiting-dev Chore with designer-evidence");
@@ -168,7 +168,7 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] accept-missing-designer-evidence",
             "reject if PM-fire accept without designer-verdict isn't substrate-refused",
@@ -178,7 +178,7 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
         pm.call_tool(
             "label_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "label": "awaiting team",
                 "rationale": "test fixture: acceptor=team"
             }),
@@ -189,7 +189,7 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
         dev.call_tool(
             "submit_verdict",
             serde_json::json!({
-                "story_id": target_number,
+                "story_id": target_id,
                 "verdict": "verified",
                 "substrate_grounding": "test-harness: dev verdict (no designer pair)"
             }),
@@ -200,7 +200,7 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
         let err = pm
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect_err("accept_story should be refused without designer-verdict");
@@ -232,7 +232,7 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] accept-missing-dev-evidence",
             "reject if PM-fire accept without dev-verdict isn't substrate-refused",
@@ -242,7 +242,7 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
         pm.call_tool(
             "label_story",
             serde_json::json!({
-                "number": target_number,
+                "id": target_id,
                 "label": "awaiting team",
                 "rationale": "test fixture: acceptor=team"
             }),
@@ -254,7 +254,7 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "test-harness: designer verdict (no dev pair)"
                 }),
@@ -265,7 +265,7 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
         let err = pm
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect_err("accept_story should be refused without dev-verdict");
@@ -288,7 +288,7 @@ fn pm_firing_accept_on_owner_walk_story_returns_role_not_allowed() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] owner-walk-target",
             "reject if PM firing accept on a gate:owner-walk story doesn't return role-not-allowed",
@@ -297,7 +297,7 @@ fn pm_firing_accept_on_owner_walk_story_returns_role_not_allowed() {
 
         pm.call_tool(
             "label_story",
-            serde_json::json!({"number": target_number, "label": "gate:owner-walk"}),
+            serde_json::json!({"id": target_id, "label": "gate:owner-walk"}),
         )
         .await
         .expect("label_story to add gate:owner-walk");
@@ -305,7 +305,7 @@ fn pm_firing_accept_on_owner_walk_story_returns_role_not_allowed() {
         let err = pm
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect_err("pm firing owner-walk accept should be refused");

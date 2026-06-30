@@ -16,7 +16,7 @@ fn pass_desk_check_missing_acceptor_returns_structured_409() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] pass-desk-check-missing-acceptor",
             "reject if pass_desk_check without acceptor-arg succeeds (illegal-state-representable per Wlaschin)",
@@ -27,7 +27,7 @@ fn pass_desk_check_missing_acceptor_returns_structured_409() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
                 }),
@@ -38,7 +38,7 @@ fn pass_desk_check_missing_acceptor_returns_structured_409() {
         let err = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect_err("missing acceptor-arg should be rejected");
@@ -66,7 +66,7 @@ fn pass_desk_check_invalid_acceptor_returns_structured_409() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] pass-desk-check-invalid-acceptor",
             "reject if pass_desk_check accepts non-canonical acceptor values",
@@ -77,7 +77,7 @@ fn pass_desk_check_invalid_acceptor_returns_structured_409() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "cite cite cite cite cite cite",
                 }),
@@ -89,7 +89,7 @@ fn pass_desk_check_invalid_acceptor_returns_structured_409() {
             .call_tool(
                 "pass_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "acceptor": "bogus",
                     "would_file_bug": false
                 }),
@@ -120,7 +120,7 @@ fn pass_desk_check_acceptor_team_applies_awaiting_team_label() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Chore] pass-desk-check-team-acceptor",
             "reject if pass_desk_check with acceptor=team does NOT apply awaiting team label atomically",
@@ -131,7 +131,7 @@ fn pass_desk_check_acceptor_team_applies_awaiting_team_label() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "src/bar.rs:10 + rg snippet for team-class atomic-label-application",
                 }),
@@ -143,7 +143,7 @@ fn pass_desk_check_acceptor_team_applies_awaiting_team_label() {
             .call_tool(
                 "pass_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "acceptor": "team",
                     "would_file_bug": false
                 }),
@@ -152,7 +152,7 @@ fn pass_desk_check_acceptor_team_applies_awaiting_team_label() {
             .expect("pass_desk_check with acceptor=team should succeed");
 
         let story = designer
-            .call_tool("get_story", serde_json::json!({"number": target_number}))
+            .call_tool("get_story", serde_json::json!({"id": target_id}))
             .await
             .expect("get_story should succeed");
         let story_text = story
@@ -182,7 +182,7 @@ fn pass_desk_check_acceptor_owner_applies_awaiting_owner_label() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] pass-desk-check-owner-acceptor",
             "reject if pass_desk_check with acceptor=owner does NOT apply awaiting owner label atomically",
@@ -193,7 +193,7 @@ fn pass_desk_check_acceptor_owner_applies_awaiting_owner_label() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "src/baz.rs:99 + rg snippet for owner-class atomic-label-application",
                 }),
@@ -205,7 +205,7 @@ fn pass_desk_check_acceptor_owner_applies_awaiting_owner_label() {
             .call_tool(
                 "pass_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "acceptor": "owner",
                     "would_file_bug": false
                 }),
@@ -214,7 +214,7 @@ fn pass_desk_check_acceptor_owner_applies_awaiting_owner_label() {
             .expect("pass_desk_check with acceptor=owner should succeed");
 
         let story = designer
-            .call_tool("get_story", serde_json::json!({"number": target_number}))
+            .call_tool("get_story", serde_json::json!({"id": target_id}))
             .await
             .expect("get_story should succeed");
         let story_text = story
@@ -244,7 +244,7 @@ fn pass_desk_check_acceptor_dev_applies_awaiting_dev_label() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Chore] pass-desk-check-dev-acceptor",
             "reject if pass_desk_check with acceptor=dev does NOT apply awaiting dev label atomically",
@@ -255,7 +255,7 @@ fn pass_desk_check_acceptor_dev_applies_awaiting_dev_label() {
             .call_tool(
                 "submit_verdict",
                 serde_json::json!({
-                    "story_id": target_number,
+                    "story_id": target_id,
                     "verdict": "verified",
                     "substrate_grounding": "src/qux.rs:42 + rg snippet for dev-class atomic-label-application",
                 }),
@@ -267,7 +267,7 @@ fn pass_desk_check_acceptor_dev_applies_awaiting_dev_label() {
             .call_tool(
                 "pass_desk_check",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "acceptor": "dev",
                     "would_file_bug": false
                 }),
@@ -276,7 +276,7 @@ fn pass_desk_check_acceptor_dev_applies_awaiting_dev_label() {
             .expect("pass_desk_check with acceptor=dev should succeed");
 
         let story = designer
-            .call_tool("get_story", serde_json::json!({"number": target_number}))
+            .call_tool("get_story", serde_json::json!({"id": target_id}))
             .await
             .expect("get_story should succeed");
         let story_text = story

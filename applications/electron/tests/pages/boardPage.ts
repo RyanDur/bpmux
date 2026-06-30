@@ -32,17 +32,17 @@ export class BoardPage {
       .click()
   }
 
-  storyNavigate(storyNumber: number): Locator {
-    return this.win.getByRole('button', { name: new RegExp(`Open story #${storyNumber}\\b`) })
+  storyNavigate(storyId: number): Locator {
+    return this.win.getByRole('button', { name: new RegExp(`Open story #${storyId}\\b`) })
   }
 
-  storyRow(storyNumber: number): Locator {
-    return this.storyNavigate(storyNumber).locator('xpath=ancestor::li[1]')
+  storyRow(storyId: number): Locator {
+    return this.storyNavigate(storyId).locator('xpath=ancestor::li[1]')
   }
 
-  storyGrip(storyNumber: number): Locator {
+  storyGrip(storyId: number): Locator {
     return this.win.getByRole('button', {
-      name: new RegExp(`Drag to reorder #${storyNumber}\\b`)
+      name: new RegExp(`Drag to reorder #${storyId}\\b`)
     })
   }
 
@@ -88,8 +88,8 @@ export class BoardPage {
     })
   }
 
-  epicLink(storyNumber: number): Locator {
-    return this.storyRow(storyNumber).getByRole('button', { name: /^open epic #/ })
+  epicLink(storyId: number): Locator {
+    return this.storyRow(storyId).getByRole('button', { name: /^open epic #/ })
   }
 
   closeApproachNudge(): Locator {
@@ -120,8 +120,8 @@ export class BoardPage {
       )
   }
 
-  async openStory(storyNumber: number): Promise<void> {
-    await this.storyNavigate(storyNumber).click({ position: { x: 4, y: 4 } })
+  async openStory(storyId: number): Promise<void> {
+    await this.storyNavigate(storyId).click({ position: { x: 4, y: 4 } })
   }
 
   group(label: string): Locator {
@@ -139,8 +139,8 @@ export class BoardPage {
     }
   }
 
-  storyStateBadge(storyNumber: number): Locator {
-    return this.storyRow(storyNumber).locator('.story-badge')
+  storyStateBadge(storyId: number): Locator {
+    return this.storyRow(storyId).locator('.story-badge')
   }
 
   reorderAnnounce(): Locator {
@@ -159,28 +159,28 @@ export class BoardPage {
     return this.group(label).locator('.board-group-count')
   }
 
-  storyInColumn(label: string, storyNumber: number): Locator {
-    return this.group(label).locator(`[aria-label^="Open story #${storyNumber} "]`)
+  storyInColumn(label: string, storyId: number): Locator {
+    return this.group(label).locator(`[aria-label^="Open story #${storyId} "]`)
   }
 
-  storyAnywhere(storyNumber: number): Locator {
-    return this.win.locator(`[aria-label^="Open story #${storyNumber} "]`)
+  storyAnywhere(storyId: number): Locator {
+    return this.win.locator(`[aria-label^="Open story #${storyId} "]`)
   }
 
   storyBadge(column: string, label: string): Locator {
     return this.group(column).getByLabel(new RegExp(`^${label}:`))
   }
 
-  iterationGrip(iterationNumber: number): Locator {
-    return this.win.getByLabel(new RegExp(`^Reorder iteration #${iterationNumber}\\b`))
+  iterationGrip(iterationId: number): Locator {
+    return this.win.getByLabel(new RegExp(`^Reorder iteration #${iterationId}\\b`))
   }
 
-  iterationRow(iterationNumber: number): Locator {
-    return this.iterationGrip(iterationNumber).locator('xpath=ancestor::article[1]')
+  iterationRow(iterationId: number): Locator {
+    return this.iterationGrip(iterationId).locator('xpath=ancestor::article[1]')
   }
 
-  async memberOrder(iterationNumber: number): Promise<number[]> {
-    return this.iterationRow(iterationNumber).evaluate((article) =>
+  async memberOrder(iterationId: number): Promise<number[]> {
+    return this.iterationRow(iterationId).evaluate((article) =>
       Array.from(article.querySelectorAll('[data-iteration-member]')).map((el) =>
         Number(el.getAttribute('data-iteration-member'))
       )
@@ -196,12 +196,12 @@ export class BoardPage {
     )
   }
 
-  iterationCard(iterationNumber: number): Locator {
-    return this.win.getByRole('group', { name: new RegExp(`Iteration #${iterationNumber}\\b`) })
+  iterationCard(iterationId: number): Locator {
+    return this.win.getByRole('group', { name: new RegExp(`Iteration #${iterationId}\\b`) })
   }
 
-  iterationSummary(iterationNumber: number): Locator {
-    return this.iterationCard(iterationNumber).locator(':scope > summary')
+  iterationSummary(iterationId: number): Locator {
+    return this.iterationCard(iterationId).locator(':scope > summary')
   }
 
   activePlannedSection(): Locator {

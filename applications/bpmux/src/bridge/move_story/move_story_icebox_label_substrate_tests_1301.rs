@@ -7,10 +7,10 @@ use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-fn seed_story_with_labels(number: u64, state: StoryState, labels: Vec<String>) -> Story {
+fn seed_story_with_labels(id: u64, state: StoryState, labels: Vec<String>) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("story-{number}"),
+        StoryId::new(id),
+        format!("story-{id}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
         "pm".to_string(),

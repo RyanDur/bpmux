@@ -35,7 +35,7 @@ test.describe('#1720 — board reflects a real state-transition LIVE (no reload)
       await setupCurrentIterationViaRpc(rpc, 1, 'Live1720Transition')
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase: 'Picking up the live-transition board-freshness story for verification.',
         falsifier_reframing:
           'reject if a real transition does not move the rendered card to its new column live.'
@@ -49,7 +49,7 @@ test.describe('#1720 — board reflects a real state-transition LIVE (no reload)
       })
 
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation:
           'Drove deliver via /api/rpc/deliver_story to stage the desk-check transition.'
       })
@@ -64,7 +64,7 @@ test.describe('#1720 — board reflects a real state-transition LIVE (no reload)
       await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
-        { number: 1, acceptor: 'owner', would_file_bug: false },
+        { id: 1, acceptor: 'owner', would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)

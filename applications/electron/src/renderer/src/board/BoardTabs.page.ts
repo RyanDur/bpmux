@@ -17,8 +17,8 @@ export const boardTabs = {
   isPanelVisible: (name: TabName): boolean =>
     screen.queryByRole('article', { name: TAB_LABEL[name] }) !== null,
   selectTab: (name: TabName): Promise<void> => userEvent.click(radio(name)),
-  panelHasStory: (name: TabName, storyNumber: number): boolean =>
-    within(visiblePanel(name)).queryAllByRole('button', { name: new RegExp(`#${storyNumber}\\b`) })
+  panelHasStory: (name: TabName, storyId: number): boolean =>
+    within(visiblePanel(name)).queryAllByRole('button', { name: new RegExp(`#${storyId}\\b`) })
       .length > 0,
   panelHasGroup: (name: TabName, groupLabel: string): boolean =>
     within(visiblePanel(name)).queryAllByText(groupLabel).length > 0,

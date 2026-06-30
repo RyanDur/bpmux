@@ -11,10 +11,10 @@ use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
 
-fn iteration(number: u64, outcome_number: u64) -> Story {
+fn iteration(id: u64, outcome_id: u64) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("Crux-{number}"),
+        StoryId::new(id),
+        format!("Crux-{id}"),
         StoryState::Ready,
         Utc::now(),
         "pm".to_string(),
@@ -22,7 +22,7 @@ fn iteration(number: u64, outcome_number: u64) -> Story {
     s.raw_labels.push("iteration".to_string());
     s.body = Some(
         IterationRelationships {
-            outcome: Some(OutcomeId::new(outcome_number)),
+            outcome: Some(OutcomeId::new(outcome_id)),
             stories: vec![],
         }
         .write_into_body("## composed"),
@@ -31,10 +31,10 @@ fn iteration(number: u64, outcome_number: u64) -> Story {
     s
 }
 
-fn outcome_with(number: u64, iterations: Vec<u64>) -> Outcome {
+fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("Outcome #{number}"),
+        StoryId::new(id),
+        format!("Outcome #{id}"),
         StoryState::Icebox,
         Utc::now(),
         "pm".to_string(),
@@ -59,11 +59,11 @@ fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iterat
         .collect()
 }
 
-fn fully_ready(number: u64, outcome_number: u64, member: u64) -> Story {
-    let mut it = iteration(number, outcome_number);
+fn fully_ready(id: u64, outcome_id: u64, member: u64) -> Story {
+    let mut it = iteration(id, outcome_id);
     it.body = Some(
         IterationRelationships {
-            outcome: Some(OutcomeId::new(outcome_number)),
+            outcome: Some(OutcomeId::new(outcome_id)),
             stories: vec![StoryId::new(member)],
         }
         .write_into_body("## composed"),
@@ -80,9 +80,9 @@ fn iterations_render_in_the_outcomes_priority_order() {
     let outcome = outcome_with(11, vec![20, 21]);
     let stories = vec![iteration(21, 11), iteration(20, 11)];
     let drill = derive_outcome_drill_in(&outcome, &decode_iterations(&stories), &bundled_default());
-    let numbers: Vec<u64> = drill.iterations.iter().map(|i| i.id.value()).collect();
+    let ids: Vec<u64> = drill.iterations.iter().map(|i| i.id.value()).collect();
     assert_eq!(
-        numbers,
+        ids,
         vec![20, 21],
         "ordered by the outcome's iteration list, not insertion order"
     );

@@ -36,9 +36,9 @@ use bpmux::session::Session;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
 
-fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
+fn seed_story(adapter: &InMemorySourceAdapter, id: u64, title: &str) {
     let story = Story {
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         title: title.to_string(),
         body: Some(
             "## What\n\nfixture\n\n## Acceptance test path\n\ntests/integration_main_modules/rpc_canonical_store.rs\n"
@@ -136,7 +136,7 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         "dev",
         &token,
         serde_json::json!({
-            "number": 42,
+            "id": 42,
             "pickup_paraphrase": "drive #42 fixture user-job end-to-end",
             "falsifier_reframing": "reject if state never transitions to in-progress",
         }),

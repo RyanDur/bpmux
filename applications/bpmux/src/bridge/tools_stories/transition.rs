@@ -25,16 +25,16 @@ pub(crate) async fn handle_start_story(
         workflow.owner_role_id().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let (was_closed, prior_state, reject_lead) = if let Some(r) = refresh {
-        let prior = ensure_story_in_canonical_store(r, number).await?;
-        let _ = r.fetch_body(number).await;
-        let _ = r.fetch_gate_comments(number).await;
+        let prior = ensure_story_in_canonical_store(r, id).await?;
+        let _ = r.fetch_body(id).await;
+        let _ = r.fetch_gate_comments(id).await;
         let lead = r
-            .story(number)
+            .story(id)
             .and_then(|s| s.gate_comments)
             .as_deref()
             .and_then(super::super::tools::rework_context::latest_reject)
@@ -58,7 +58,7 @@ pub(crate) async fn handle_start_story(
         "falsifier_reframing is required (2026-04-23 retro): restate the observation-falsifier — either verbatim from filing or your sharpening. Forces engagement with the rejection criteria before code.",
     )?;
     if let Some(r) = refresh {
-        validate_acceptance_test_path_at_pickup(args, number, r.as_ref())?;
+        validate_acceptance_test_path_at_pickup(args, id, r.as_ref())?;
     }
     let pickup_payload =
         format!("{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}");
@@ -71,30 +71,30 @@ pub(crate) async fn handle_start_story(
         if was_closed {
             r.mutate_sync(BoardEvent::StoryReopened {
                 meta: meta.clone(),
-                id: StoryId::new(number),
+                id: StoryId::new(id),
             })
-            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
-        reap_workflow_labels(r.as_ref(), number, &meta, LABEL_IN_PROGRESS)?;
+        reap_workflow_labels(r.as_ref(), id, &meta, LABEL_IN_PROGRESS)?;
         r.mutate_sync(BoardEvent::GateCommentAppended {
             meta: meta.clone(),
-            id: StoryId::new(number),
+            id: StoryId::new(id),
             gate: Gate::Pickup,
             payload: Some(pickup_payload.clone()),
         })
-        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
         r.mutate_sync(BoardEvent::StateTransitioned {
             meta,
-            id: StoryId::new(number),
+            id: StoryId::new(id),
             new_state: StoryState::InProgress,
         })
-        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()
             .await
-            .map_err(|e| format!("#{number} start push failed: {e}"))?;
+            .map_err(|e| format!("#{id} start push failed: {e}"))?;
         return Ok(match reject_lead {
-            Some(lead) => format!("{lead}\n#{number} marked as in progress"),
-            None => format!("#{number} marked as in progress"),
+            Some(lead) => format!("{lead}\n#{id} marked as in progress"),
+            None => format!("#{id} marked as in progress"),
         });
     }
     Err(
@@ -119,14 +119,14 @@ pub(crate) async fn handle_deliver_story(
         workflow.owner_role_id().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let refreshed: Option<Option<Story>> = match refresh {
         Some(r) => {
-            let story = ensure_story_in_canonical_store(r, number).await?;
-            let _ = r.fetch_body(number).await;
+            let story = ensure_story_in_canonical_store(r, id).await?;
+            let _ = r.fetch_body(id).await;
             Some(Some(story))
         }
         None => None,
@@ -136,7 +136,7 @@ pub(crate) async fn handle_deliver_story(
             .map_err(|e| e.as_json_string())?;
     }
     if let Some(r) = refresh {
-        validate_acceptance_test_path_at_deliver(number, r.as_ref())?;
+        validate_acceptance_test_path_at_deliver(id, r.as_ref())?;
         if let Some(story) = refreshed.as_ref().and_then(|s| s.as_ref())
             && let Some(body) = story.body.as_deref()
         {
@@ -166,28 +166,28 @@ pub(crate) async fn handle_deliver_story(
         if was_closed {
             r.mutate_sync(BoardEvent::StoryReopened {
                 meta: meta.clone(),
-                id: StoryId::new(number),
+                id: StoryId::new(id),
             })
-            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
-        reap_workflow_labels(r.as_ref(), number, &meta, "desk-check")?;
+        reap_workflow_labels(r.as_ref(), id, &meta, "desk-check")?;
         r.mutate_sync(BoardEvent::GateCommentAppended {
             meta: meta.clone(),
-            id: StoryId::new(number),
+            id: StoryId::new(id),
             gate: Gate::Delivered,
             payload: Some(verified_observation.to_string()),
         })
-        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
         r.mutate_sync(BoardEvent::StateTransitioned {
             meta,
-            id: StoryId::new(number),
+            id: StoryId::new(id),
             new_state: StoryState::DeskCheck,
         })
-        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()
             .await
-            .map_err(|e| format!("#{number} drain after deliver failed: {e}"))?;
-        return Ok(format!("#{number} delivered: signals sent, labels updated"));
+            .map_err(|e| format!("#{id} drain after deliver failed: {e}"))?;
+        return Ok(format!("#{id} delivered: signals sent, labels updated"));
     }
     Err(
         "deliver_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"

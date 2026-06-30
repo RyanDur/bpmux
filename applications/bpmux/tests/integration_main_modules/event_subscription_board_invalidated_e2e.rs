@@ -55,7 +55,7 @@ fn subscribe_then_non_create_board_mutation_delivers_board_invalidated() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target,
+                    "id": target,
                     "target_state": "ready",
                     "rationale": "promote for the event-subscription coverage test"
                 }),

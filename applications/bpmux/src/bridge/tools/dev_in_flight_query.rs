@@ -47,7 +47,7 @@ async fn response_contains_no_story_identifiers() {
     let store = Arc::new(BoardStore::new());
     store.seed_all(vec![seed(StoryState::InProgress, 1)]);
     let result = handle_dev_in_flight(&store).await.unwrap();
-    assert!(!result.contains("number"));
+    assert!(!result.contains("\"id\""));
     assert!(!result.contains("title"));
 }
 

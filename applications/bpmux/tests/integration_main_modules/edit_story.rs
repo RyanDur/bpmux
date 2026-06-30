@@ -24,9 +24,9 @@ use bpmux::session::Session;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
 
-fn seed_story(adapter: &InMemorySourceAdapter, number: u64) {
+fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
     let story = Story {
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         title: "fixture story".to_string(),
         body: Some("## What\n\noriginal body\n".to_string()),
         state: StoryState::Ready,
@@ -45,7 +45,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64) {
         ready_order: None,
     };
     adapter.seed_stories(vec![story]);
-    adapter.seed_body(number, "## What\n\noriginal body\n".to_string());
+    adapter.seed_body(id, "## What\n\noriginal body\n".to_string());
 }
 
 #[tokio::test]
@@ -103,7 +103,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
         .header("X-BPMUX-Agent", "pm")
         .json(&serde_json::json!({
-            "number": 99,
+            "id": 99,
             "body": new_body,
         }))
         .send()
@@ -132,7 +132,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
         .header("X-BPMUX-Agent", "designer")
         .json(&serde_json::json!({
-            "number": 99,
+            "id": 99,
             "body": "would-be-rejected",
         }))
         .send()

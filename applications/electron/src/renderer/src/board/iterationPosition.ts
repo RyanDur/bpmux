@@ -59,9 +59,9 @@ const resolveReorderPosition = (
 }
 
 export interface MemberDropMutationInput {
-  draggedIterationNumber: number
+  draggedIterationId: number
   draggedOldPosition: number
-  targetIterationNumber: number
+  targetIterationId: number
   targetMemberPositions: number[]
   targetMemberIndex: number
   targetMembersIncludeDragged: boolean
@@ -69,7 +69,7 @@ export interface MemberDropMutationInput {
 
 export const computeMemberDropMutation = (input: MemberDropMutationInput): DropMutation | null => {
   const position = resolveReorderPosition(
-    input.draggedIterationNumber === input.targetIterationNumber,
+    input.draggedIterationId === input.targetIterationId,
     input.draggedOldPosition,
     input.targetMemberPositions,
     input.targetMemberIndex,
@@ -77,8 +77,8 @@ export const computeMemberDropMutation = (input: MemberDropMutationInput): DropM
   )
   if (position === null) return null
   return {
-    add: [parentIterationLabel(input.targetIterationNumber, position)],
-    remove: [parentIterationLabel(input.draggedIterationNumber, input.draggedOldPosition)]
+    add: [parentIterationLabel(input.targetIterationId, position)],
+    remove: [parentIterationLabel(input.draggedIterationId, input.draggedOldPosition)]
   }
 }
 
@@ -93,17 +93,17 @@ export const insertPositionWouldCascade = (
 }
 
 export interface MemberSlot {
-  storyNumber: number
+  storyId: number
   currentPosition: number | null
 }
 
 export interface MemberOrderAssignment extends DropMutation {
-  storyNumber: number
+  storyId: number
   position: number
 }
 
 export const computeMemberRespace = (
-  iterationNumber: number,
+  iterationId: number,
   sequence: MemberSlot[]
 ): MemberOrderAssignment[] => {
   const out: MemberOrderAssignment[] = []
@@ -111,13 +111,13 @@ export const computeMemberRespace = (
     const targetPosition = (index + 1) * DEFAULT_STEP
     if (slot.currentPosition === targetPosition) return
     out.push({
-      storyNumber: slot.storyNumber,
+      storyId: slot.storyId,
       position: targetPosition,
-      add: [parentIterationLabel(iterationNumber, targetPosition)],
+      add: [parentIterationLabel(iterationId, targetPosition)],
       remove:
         slot.currentPosition === null
           ? []
-          : [parentIterationLabel(iterationNumber, slot.currentPosition)]
+          : [parentIterationLabel(iterationId, slot.currentPosition)]
     })
   })
   return out

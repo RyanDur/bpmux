@@ -18,7 +18,7 @@ fn reorder_story_retired_with_canonical_tool_retired_shape_1403() {
             .call_tool(
                 "reorder_story",
                 serde_json::json!({
-                    "number": 100,
+                    "id": 100,
                     "position": 1,
                     "state": "ready"
                 }),
@@ -59,7 +59,7 @@ fn move_story_with_same_target_state_preserves_reorder_semantic_1403() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": 999_999_999,
+                    "id": 999_999_999,
                     "target_state": "ready",
                     "position": 1,
                     "rationale": "reorder per priority refresh (#1403 retire-replacement)"

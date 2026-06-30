@@ -23,7 +23,7 @@ fn label_story_add_returns_message_naming_label() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] label-add-target",
             "reject if label_story add doesn't fire on the target",
@@ -34,7 +34,7 @@ fn label_story_add_returns_message_naming_label() {
             .call_tool(
                 "label_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "label": "blocked",
                     "operation": "add"
                 }),
@@ -44,7 +44,7 @@ fn label_story_add_returns_message_naming_label() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -64,7 +64,7 @@ fn label_story_remove_returns_message_naming_label() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] label-remove-target",
             "reject if label_story remove doesn't fire",
@@ -75,7 +75,7 @@ fn label_story_remove_returns_message_naming_label() {
             .call_tool(
                 "label_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "label": "blocked",
                     "operation": "remove"
                 }),
@@ -85,7 +85,7 @@ fn label_story_remove_returns_message_naming_label() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -106,7 +106,7 @@ fn label_story_rejects_dev_caller_per_pm_lane_gate() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-cannot-label-target",
             "reject if dev can label a story bypassing pm-lane gate",
@@ -117,7 +117,7 @@ fn label_story_rejects_dev_caller_per_pm_lane_gate() {
             .call_tool(
                 "label_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "label": "blocked",
                     "operation": "add"
                 }),
@@ -143,7 +143,7 @@ fn label_story_rejects_invalid_operation() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] invalid-operation-target",
             "reject if invalid operation is silently accepted",
@@ -154,7 +154,7 @@ fn label_story_rejects_invalid_operation() {
             .call_tool(
                 "label_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "label": "blocked",
                     "operation": "toggle"
                 }),

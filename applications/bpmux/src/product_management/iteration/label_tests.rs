@@ -4,10 +4,10 @@ use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 
-fn seed(number: u64, raw_labels: Vec<String>) -> Story {
+fn seed(id: u64, raw_labels: Vec<String>) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("member-{number}"),
+        StoryId::new(id),
+        format!("member-{id}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
         "pm".to_string(),
@@ -120,11 +120,11 @@ fn compute_insert_position_sorts_input_before_computing() {
     assert_eq!(compute_insert_position(1, &[300, 100, 200]), 150);
 }
 
-fn seed_with_iteration_membership(number: u64, iteration_number: u64, position: u32) -> Story {
-    let mut s = seed(number, vec![]);
+fn seed_with_iteration_membership(id: u64, iteration_id: u64, position: u32) -> Story {
+    let mut s = seed(id, vec![]);
     s.raw_labels
-        .push(format!("parent-iteration-#{iteration_number}.{position}"));
-    s.iteration_membership = Some((IterationId::new(iteration_number), position));
+        .push(format!("parent-iteration-#{iteration_id}.{position}"));
+    s.iteration_membership = Some((IterationId::new(iteration_id), position));
     s
 }
 

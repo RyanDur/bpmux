@@ -16,10 +16,10 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seed_story(number: u64, labels: Vec<String>) -> Story {
+    fn seed_story(id: u64, labels: Vec<String>) -> Story {
         let mut s = Story::new_minimal(
-            StoryId::new(number),
-            format!("story-{number}"),
+            StoryId::new(id),
+            format!("story-{id}"),
             StoryState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "pm".to_string(),
@@ -42,10 +42,10 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
 
     async fn reorder(
         orch: &Arc<dyn RefreshDriver>,
-        number: u64,
+        id: u64,
         position: u64,
     ) -> Result<String, String> {
-        reorder_icebox_story_via_labels(orch, number, position as usize).map(|_| String::new())
+        reorder_icebox_story_via_labels(orch, id, position as usize).map(|_| String::new())
     }
 
     #[tokio::test]

@@ -6,7 +6,7 @@ import type { BoardIterationData } from './selectIterations'
 import { columnFor, type Story, type ColumnState } from './types'
 
 export interface CloseApproachNudge {
-  nextIterationNumber: number
+  nextIterationId: number
   nextIterationName: string
   activeGapLabel: string
 }
@@ -62,7 +62,7 @@ export const deriveCloseApproachNudge = (
   if (unmetCount(readiness) === 0) return null
 
   return {
-    nextIterationNumber: next.id,
+    nextIterationId: next.id,
     nextIterationName: iterationNameFromTitle(next.title),
     activeGapLabel: firstUnmetLabel(readiness) ?? 'not ready'
   }

@@ -46,7 +46,7 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       expect(createResp.status).toBe(200)
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase:
           'Picking up the human-observes-accepted story to verify the accept-transition.',
         falsifier_reframing:
@@ -55,7 +55,7 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       expect(startResp.status).toBe(200)
 
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation:
           'Drove deliver via /api/rpc/deliver_story; queueing accept_story as the gate under test.'
       })
@@ -66,7 +66,7 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       const labelResp = await rpc(
         'label_story',
         {
-          number: 1,
+          id: 1,
           label: 'awaiting team',
           rationale: '#1460 test fixture: acceptor=team for team-verifiable accept'
         },
@@ -74,7 +74,7 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       )
       expect(labelResp.status).toBe(200)
 
-      const acceptResp = await rpc('accept_story', { number: 1, would_file_bug: false }, 'pm')
+      const acceptResp = await rpc('accept_story', { id: 1, would_file_bug: false }, 'pm')
       expect(acceptResp.status).toBe(200)
 
       await win.reload()

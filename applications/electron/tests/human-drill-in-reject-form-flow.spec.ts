@@ -48,14 +48,14 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       await setupCurrentIterationViaRpc(rpc, 1, 'RejectFormGate')
 
       const startResp = await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase: 'Driving the chain so reject form is reachable.',
         falsifier_reframing: 'reject if start_story does not move story to in-progress'
       })
       expect(startResp.status).toBe(200)
 
       const deliverResp = await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation: 'Drove deliver so designer can pass desk-check next.'
       })
       expect(deliverResp.status).toBe(200)
@@ -63,7 +63,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
-        { number: 1, acceptor: 'owner', would_file_bug: false },
+        { id: 1, acceptor: 'owner', would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)
@@ -130,20 +130,16 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       )
       await setupCurrentIterationViaRpc(rpc, 1, 'RejectFormDialog')
       await rpc('start_story', {
-        number: 1,
+        id: 1,
         pickup_paraphrase: 'Driving the chain so reject form is reachable.',
         falsifier_reframing: 'reject if reject-form is not modal-class'
       })
       await rpc('deliver_story', {
-        number: 1,
+        id: 1,
         verified_observation: 'Drove deliver so designer can pass desk-check next.'
       })
       await seedTeamVerdicts(rpc, 1, ['designer'])
-      await rpc(
-        'pass_desk_check',
-        { number: 1, acceptor: 'owner', would_file_bug: false },
-        'designer'
-      )
+      await rpc('pass_desk_check', { id: 1, acceptor: 'owner', would_file_bug: false }, 'designer')
       await win.reload()
       await expect(board.region()).toBeVisible()
 

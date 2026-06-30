@@ -14,10 +14,10 @@ mod canonical_via_gh_1300 {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seed_member(number: u64, state: StoryState, iteration: Option<(&str, u32)>) -> Story {
+    fn seed_member(id: u64, state: StoryState, iteration: Option<(&str, u32)>) -> Story {
         let mut s = Story::new_minimal(
-            StoryId::new(number),
-            format!("[Feature] member-{number}"),
+            StoryId::new(id),
+            format!("[Feature] member-{id}"),
             state,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
@@ -32,9 +32,9 @@ mod canonical_via_gh_1300 {
         s
     }
 
-    fn seed_iteration_issue(number: u64, name: &str) -> Story {
+    fn seed_iteration_issue(id: u64, name: &str) -> Story {
         let mut s = Story::new_minimal(
-            StoryId::new(number),
+            StoryId::new(id),
             format!("Iteration {name}"),
             StoryState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
@@ -123,7 +123,7 @@ mod canonical_via_gh_1300 {
         .await;
         let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
         assert_eq!(blockers.len(), 1, "ready-queue blocker surfaces");
-        assert_eq!(blockers[0].number, 900);
+        assert_eq!(blockers[0].id, 900);
         assert_eq!(blockers[0].state, "ready");
     }
 

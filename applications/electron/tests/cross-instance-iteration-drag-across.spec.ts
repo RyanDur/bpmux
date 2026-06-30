@@ -15,33 +15,33 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
         body: JSON.stringify({
           stories: [
             {
-              number: 9601,
+              id: 9601,
               title: 'Iteration Volans',
               story_type: 'iteration',
               initial_state: 'icebox'
             },
             {
-              number: 9602,
+              id: 9602,
               title: 'Iteration Crater',
               story_type: 'iteration',
               initial_state: 'icebox'
             },
             {
-              number: 9611,
+              id: 9611,
               title: 'volans-member',
               story_type: 'feature',
               initial_state: 'icebox',
               labels: ['parent-iteration-#9601.100']
             },
             {
-              number: 9620,
+              id: 9620,
               title: 'volans-anchor',
               story_type: 'feature',
               initial_state: 'icebox',
               labels: ['parent-iteration-#9601.200']
             },
             {
-              number: 9621,
+              id: 9621,
               title: 'crater-anchor',
               story_type: 'feature',
               initial_state: 'icebox',

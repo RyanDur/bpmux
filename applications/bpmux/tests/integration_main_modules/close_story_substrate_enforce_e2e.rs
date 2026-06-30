@@ -16,7 +16,7 @@ fn dev_firing_close_story_returns_structured_409_with_workflow_role_not_allowed_
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] dev-close-substrate-refusal",
             "reject if dev firing close_story isn't substrate-refused per workflow.toml actor_roles",
@@ -27,7 +27,7 @@ fn dev_firing_close_story_returns_structured_409_with_workflow_role_not_allowed_
             .call_tool(
                 "close_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "superseded by some-coherent-substantive-cite",
                 }),
             )
@@ -65,7 +65,7 @@ fn designer_firing_close_story_returns_structured_409() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] designer-close-substrate-refusal",
             "reject if designer firing close_story isn't substrate-refused per workflow.toml actor_roles",
@@ -76,7 +76,7 @@ fn designer_firing_close_story_returns_structured_409() {
             .call_tool(
                 "close_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "superseded by some-coherent-substantive-cite",
                 }),
             )
@@ -105,7 +105,7 @@ fn pm_firing_close_story_with_short_reason_returns_structured_409_reason_cite_mi
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] short-reason-substrate-refusal",
             "reject if short close_story reason isn't substrate-refused",
@@ -116,7 +116,7 @@ fn pm_firing_close_story_with_short_reason_returns_structured_409_reason_cite_mi
             .call_tool(
                 "close_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "x",
                 }),
             )

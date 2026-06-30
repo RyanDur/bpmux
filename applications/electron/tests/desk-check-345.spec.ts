@@ -49,12 +49,12 @@ const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
   expect(createResp.status).toBe(200)
   const moveResp = await rpc(
     'move_story',
-    { number: 1, target_state: 'ready', rationale: 'desk-check-345 comment fixture' },
+    { id: 1, target_state: 'ready', rationale: 'desk-check-345 comment fixture' },
     'pm'
   )
   expect(moveResp.status).toBe(200)
-  const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck345')
-  await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
+  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck345')
+  await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
   mockGh.on({
     method: 'GET',
     match: /\/repos\/acme\/bpmux\/issues\/1\/comments/,

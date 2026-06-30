@@ -19,7 +19,7 @@ describe('#1297 — iteration container shows members regardless of workflow sta
 
     await seedStories(apiBase, authToken, [
       {
-        number: 9300,
+        id: 9300,
         title: 'Iteration Cassiopeia',
         story_type: 'iteration',
         initial_state: 'icebox',
@@ -27,7 +27,7 @@ describe('#1297 — iteration container shows members regardless of workflow sta
         body: '<!-- bpmux-relationships: {"stories":[9301]} -->'
       },
       {
-        number: 9301,
+        id: 9301,
         title: 'cassiopeia-member-delivered',
         story_type: 'feature',
         initial_state: 'delivered'

@@ -15,7 +15,7 @@ fn pm_firing_deliver_returns_structured_409_with_workflow_role_not_allowed_kind(
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] pm-deliver-substrate-refusal",
             "reject if PM firing deliver_story isn't substrate-refused per workflow.toml actor_roles",
@@ -26,7 +26,7 @@ fn pm_firing_deliver_returns_structured_409_with_workflow_role_not_allowed_kind(
             .call_tool(
                 "deliver_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "verified_observation": "irrelevant — should refuse before observation-check",
                 }),
             )
@@ -63,7 +63,7 @@ fn designer_firing_deliver_returns_structured_409() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] designer-deliver-substrate-refusal",
             "reject if designer firing deliver_story isn't substrate-refused per workflow.toml actor_roles",
@@ -74,7 +74,7 @@ fn designer_firing_deliver_returns_structured_409() {
             .call_tool(
                 "deliver_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "verified_observation": "irrelevant — should refuse before observation-check",
                 }),
             )

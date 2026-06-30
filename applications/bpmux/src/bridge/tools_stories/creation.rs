@@ -60,7 +60,7 @@ pub(crate) async fn handle_create_story(
         ),
         None => super::acceptor_axis::derive_acceptor_label(user_job),
     };
-    let number = create_and_broadcast_story_events(
+    let id = create_and_broadcast_story_events(
         r,
         agent_name,
         title,
@@ -72,9 +72,9 @@ pub(crate) async fn handle_create_story(
     .await?;
     Ok(match parent_epic {
         Some(epic) => {
-            format!("story created: #{number} {title} (under epic {epic})")
+            format!("story created: #{id} {title} (under epic {epic})")
         }
-        None => format!("story created: #{number} {title}"),
+        None => format!("story created: #{id} {title}"),
     })
 }
 
@@ -135,7 +135,7 @@ async fn create_and_broadcast_story_events(
     parent_epic: Option<EpicId>,
     acceptor_label: Option<&'static str>,
 ) -> Result<u64, String> {
-    let number = r
+    let id = r
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
@@ -146,30 +146,30 @@ async fn create_and_broadcast_story_events(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
         meta: meta.clone(),
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         title: title.to_string(),
         body: composed_body,
         initial_state: crate::product_management::story::StoryState::Icebox,
         story_type,
     })
-    .map_err(|e| format!("#{number} created but enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
     if let Some(label) = acceptor_label {
         r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
             meta: meta.clone(),
-            id: StoryId::new(number),
+            id: StoryId::new(id),
             label: label.to_string(),
         })
-        .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} acceptor-label enqueue failed: {e}"))?;
     }
     if let Some(epic_id) = parent_epic {
         r.mutate_sync(
             crate::product_management::board::BoardEvent::ParentEpicSet {
                 meta,
-                id: StoryId::new(number),
+                id: StoryId::new(id),
                 epic_id,
             },
         )
-        .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} parent_epic enqueue failed: {e}"))?;
     }
-    Ok(number)
+    Ok(id)
 }

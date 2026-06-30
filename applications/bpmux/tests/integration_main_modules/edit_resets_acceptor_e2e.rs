@@ -27,12 +27,12 @@ async fn run_create(bpmux: &TestBpmux, role: &str, user_job: &str) -> std::proce
 async fn run_edit_acceptor(
     bpmux: &TestBpmux,
     role: &str,
-    number: u64,
+    id: u64,
     acceptor: &str,
 ) -> std::process::Output {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     tokio::process::Command::new(bin)
-        .args(["edit", &number.to_string(), "--acceptor", acceptor])
+        .args(["edit", &id.to_string(), "--acceptor", acceptor])
         .env("BPMUX_PORT", bpmux.port().to_string())
         .env("BPMUX_ROLE", role)
         .env("BPMUX_AUTH_TOKEN_PATH", bpmux.auth_token_path())
@@ -71,9 +71,9 @@ async fn off_mcp_edit_acceptor_flag_reaches_the_gated_edit_handler() {
         "create completes off MCP; stderr: {}",
         String::from_utf8_lossy(&created.stderr)
     );
-    let number = created_number(&created);
+    let id = created_number(&created);
 
-    let edited = run_edit_acceptor(&bpmux, "pm", number, "owner").await;
+    let edited = run_edit_acceptor(&bpmux, "pm", id, "owner").await;
     assert!(
         edited.status.success(),
         "an acceptor-only edit (no --title/--body) is accepted and reaches the handler; stderr: {}",
@@ -98,9 +98,9 @@ async fn off_mcp_edit_with_an_invalid_acceptor_value_fails_loud() {
     )
     .await;
     assert!(created.status.success(), "create completes off MCP");
-    let number = created_number(&created);
+    let id = created_number(&created);
 
-    let edited = run_edit_acceptor(&bpmux, "pm", number, "onwer").await;
+    let edited = run_edit_acceptor(&bpmux, "pm", id, "onwer").await;
     assert!(
         !edited.status.success(),
         "a typo'd --acceptor must fail loud, not silently leave the acceptor unchanged"

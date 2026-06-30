@@ -11,7 +11,7 @@ const NO_ITERATION_BOARD = {
   fetched_at: '2026-06-16T00:00:00Z',
   stories: [
     {
-      number: 820,
+      id: 820,
       title: 'an iceboxed feature',
       state: 'icebox',
       gh_state: 'open',
@@ -62,7 +62,7 @@ test.describe('#1684 — no active iteration → the board defaults to the roadm
       })
 
       await waitForBoardLoaded(win)
-      const iterationNumber = await seedCurrentIterationViaRpc(rpc, 'Crux1684')
+      const iterationId = await seedCurrentIterationViaRpc(rpc, 'Crux1684')
       await win.reload()
       await waitForBoardLoaded(win)
 
@@ -76,7 +76,7 @@ test.describe('#1684 — no active iteration → the board defaults to the roadm
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`
         },
-        body: JSON.stringify({ iteration_number: iterationNumber })
+        body: JSON.stringify({ iteration_id: iterationId })
       })
       expect(closeRes.ok).toBe(true)
 

@@ -15,26 +15,26 @@ fn accept_story_pm_succeeds() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] accept-target",
             "reject if accept_story doesn't fire signal + state transition + close",
         )
         .await;
 
-        seed_team_verifiable_evidence(&bpmux, target_number).await;
+        seed_team_verifiable_evidence(&bpmux, target_id).await;
 
         let result = pm
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect("accept_story should succeed");
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -55,7 +55,7 @@ fn accept_story_designer_refused_per_workflow_substrate() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] designer-accept-target",
             "reject if designer firing accept_story isn't substrate-refused per #1385 workflow.toml actor_roles",
@@ -65,7 +65,7 @@ fn accept_story_designer_refused_per_workflow_substrate() {
         let err = designer
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"id": target_id, "would_file_bug": false}),
             )
             .await
             .expect_err("designer should be substrate-refused per workflow.toml actor_roles");
@@ -103,7 +103,7 @@ fn accept_story_rejects_unknown_role() {
         let err = unknown
             .call_tool(
                 "accept_story",
-                serde_json::json!({"number": 100, "would_file_bug": false}),
+                serde_json::json!({"id": 100, "would_file_bug": false}),
             )
             .await
             .expect_err("unknown role should be rejected");
@@ -138,7 +138,7 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
 
         pm.call_tool(
             "accept_story",
-            serde_json::json!({"number": 600, "would_file_bug": false}),
+            serde_json::json!({"id": 600, "would_file_bug": false}),
         )
         .await
         .expect("accept_story should succeed against mocked story");
@@ -202,7 +202,7 @@ fn accept_role_survives_ingest_poll_after_acceptor_label_seed_1550() {
 
         pm.call_tool(
             "accept_story",
-            serde_json::json!({"number": 601, "would_file_bug": false}),
+            serde_json::json!({"id": 601, "would_file_bug": false}),
         )
         .await
         .expect(
@@ -227,7 +227,7 @@ fn accept_story_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 

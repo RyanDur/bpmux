@@ -22,28 +22,28 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
 
     await seedStories(apiBase, authToken, [
       {
-        number: 8401,
+        id: 8401,
         title: 'Iteration Tucana',
         story_type: 'iteration',
         initial_state: 'icebox',
         labels: ['iteration-order.50000']
       },
       {
-        number: 8402,
+        id: 8402,
         title: 'Iteration Draco',
         story_type: 'iteration',
         initial_state: 'icebox',
         labels: ['iteration-order.60000']
       },
       {
-        number: 8410,
+        id: 8410,
         title: 'tucana-member',
         story_type: 'feature',
         initial_state: 'icebox',
         labels: ['iteration-Tucana.100']
       },
       {
-        number: 8411,
+        id: 8411,
         title: 'draco-member',
         story_type: 'feature',
         initial_state: 'icebox',

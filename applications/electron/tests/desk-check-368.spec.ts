@@ -29,26 +29,22 @@ const createStory = async (rpc: RpcFn, title: string): Promise<void> => {
 
 const driveToDelivered = async (
   rpc: RpcFn,
-  number: number,
+  id: number,
   acceptor: 'owner' | 'team'
 ): Promise<void> => {
   const startResp = await rpc('start_story', {
-    number,
+    id,
     pickup_paraphrase: 'Driving the chain so the delivered badge is reachable.',
     falsifier_reframing: 'reject if start_story does not move story to in-progress'
   })
   expect(startResp.status).toBe(200)
   const deliverResp = await rpc('deliver_story', {
-    number,
+    id,
     verified_observation: 'Drove deliver so designer can pass desk-check next.'
   })
   expect(deliverResp.status).toBe(200)
-  await seedTeamVerdicts(rpc, number, ['designer'])
-  const passResp = await rpc(
-    'pass_desk_check',
-    { number, acceptor, would_file_bug: false },
-    'designer'
-  )
+  await seedTeamVerdicts(rpc, id, ['designer'])
+  const passResp = await rpc('pass_desk_check', { id, acceptor, would_file_bug: false }, 'designer')
   expect(passResp.status).toBe(200)
 }
 
@@ -59,19 +55,19 @@ const seedFixture = async (result: MockGhLaunchResult): Promise<void> => {
   await createStory(rpc, '[Feature] Rework cycle story')
   await createStory(rpc, '[Feature] Plain ready — no badge')
 
-  const iterNumber = await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck368')
-  await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
-  await addStoryToIterationViaRpc(rpc, 3, iterNumber, 3)
-  await addStoryToIterationViaRpc(rpc, 4, iterNumber, 4)
+  const iterationId = await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck368')
+  await addStoryToIterationViaRpc(rpc, 2, iterationId, 2)
+  await addStoryToIterationViaRpc(rpc, 3, iterationId, 3)
+  await addStoryToIterationViaRpc(rpc, 4, iterationId, 4)
 
   await driveToDelivered(rpc, 1, 'team')
   await driveToDelivered(rpc, 2, 'owner')
   await driveToDelivered(rpc, 3, 'owner')
-  const reworkResp = await rpc('label_story', { number: 3, label: 'desk-check-fail' }, 'pm')
+  const reworkResp = await rpc('label_story', { id: 3, label: 'desk-check-fail' }, 'pm')
   expect(reworkResp.status).toBe(200)
 
   const readyResp = await rpc('start_story', {
-    number: 4,
+    id: 4,
     pickup_paraphrase: 'Leaving #4 in ready so it carries no acceptance badge.',
     falsifier_reframing: 'reject if a ready story renders an acceptance badge'
   })

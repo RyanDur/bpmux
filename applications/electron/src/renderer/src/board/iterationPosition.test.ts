@@ -71,9 +71,9 @@ describe('computeInsertPosition — sparse-numeric position-suffix for iteration
 describe('computeMemberDropMutation — canonical identity add/remove label-pair', () => {
   it('within-iteration reorder produces single-iteration add/remove pair', () => {
     const result = computeMemberDropMutation({
-      draggedIterationNumber: 1464,
+      draggedIterationId: 1464,
       draggedOldPosition: 300,
-      targetIterationNumber: 1464,
+      targetIterationId: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 0,
       targetMembersIncludeDragged: true
@@ -86,9 +86,9 @@ describe('computeMemberDropMutation — canonical identity add/remove label-pair
 
   it('within-iteration drop on own position returns null (no-op)', () => {
     const result = computeMemberDropMutation({
-      draggedIterationNumber: 1464,
+      draggedIterationId: 1464,
       draggedOldPosition: 200,
-      targetIterationNumber: 1464,
+      targetIterationId: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 1,
       targetMembersIncludeDragged: true
@@ -98,9 +98,9 @@ describe('computeMemberDropMutation — canonical identity add/remove label-pair
 
   it('cross-iteration drop retags with the target iteration identity', () => {
     const result = computeMemberDropMutation({
-      draggedIterationNumber: 1464,
+      draggedIterationId: 1464,
       draggedOldPosition: 200,
-      targetIterationNumber: 1491,
+      targetIterationId: 1491,
       targetMemberPositions: [100, 200],
       targetMemberIndex: 0,
       targetMembersIncludeDragged: false
@@ -113,9 +113,9 @@ describe('computeMemberDropMutation — canonical identity add/remove label-pair
 
   it('cross-iteration drop into empty container places at default-first', () => {
     const result = computeMemberDropMutation({
-      draggedIterationNumber: 1464,
+      draggedIterationId: 1464,
       draggedOldPosition: 200,
-      targetIterationNumber: 1491,
+      targetIterationId: 1491,
       targetMemberPositions: [],
       targetMemberIndex: 0,
       targetMembersIncludeDragged: false
@@ -128,9 +128,9 @@ describe('computeMemberDropMutation — canonical identity add/remove label-pair
 
   it('within-iteration drop on last places source AT last (after stepping past last)', () => {
     const result = computeMemberDropMutation({
-      draggedIterationNumber: 1464,
+      draggedIterationId: 1464,
       draggedOldPosition: 100,
-      targetIterationNumber: 1464,
+      targetIterationId: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 2,
       targetMembersIncludeDragged: true
@@ -141,9 +141,9 @@ describe('computeMemberDropMutation — canonical identity add/remove label-pair
 
   it('within-iteration adjacent-downward swap produces non-null mutation between target and next', () => {
     const result = computeMemberDropMutation({
-      draggedIterationNumber: 1464,
+      draggedIterationId: 1464,
       draggedOldPosition: 100,
-      targetIterationNumber: 1464,
+      targetIterationId: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 1,
       targetMembersIncludeDragged: true
@@ -154,9 +154,9 @@ describe('computeMemberDropMutation — canonical identity add/remove label-pair
 
   it('within-iteration adjacent-upward swap places source before target', () => {
     const result = computeMemberDropMutation({
-      draggedIterationNumber: 1464,
+      draggedIterationId: 1464,
       draggedOldPosition: 200,
-      targetIterationNumber: 1464,
+      targetIterationId: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 0,
       targetMembersIncludeDragged: true
@@ -174,25 +174,25 @@ describe('insertPositionWouldCascade + computeMemberRespace — dense-position c
 
   it('computeMemberRespace assigns clean distinct spaced positions, removing each stale one', () => {
     const result = computeMemberRespace(9000, [
-      { storyNumber: 701, currentPosition: 1 },
-      { storyNumber: 703, currentPosition: 3 },
-      { storyNumber: 702, currentPosition: 2 }
+      { storyId: 701, currentPosition: 1 },
+      { storyId: 703, currentPosition: 3 },
+      { storyId: 702, currentPosition: 2 }
     ])
     expect(result).toEqual([
       {
-        storyNumber: 701,
+        storyId: 701,
         position: 100,
         add: ['parent-iteration-#9000.100'],
         remove: ['parent-iteration-#9000.1']
       },
       {
-        storyNumber: 703,
+        storyId: 703,
         position: 200,
         add: ['parent-iteration-#9000.200'],
         remove: ['parent-iteration-#9000.3']
       },
       {
-        storyNumber: 702,
+        storyId: 702,
         position: 300,
         add: ['parent-iteration-#9000.300'],
         remove: ['parent-iteration-#9000.2']

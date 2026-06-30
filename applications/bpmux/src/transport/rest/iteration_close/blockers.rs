@@ -4,7 +4,7 @@ use crate::session;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub(crate) struct IterationCloseBlocker {
-    pub number: u64,
+    pub id: u64,
     pub title: String,
     pub state: String,
 }
@@ -19,7 +19,7 @@ pub(crate) async fn collect_ready_queue_blockers(
             matches!(s.state, crate::product_management::story::StoryState::Ready) && !s.is_closed
         })
         .map(|s| IterationCloseBlocker {
-            number: s.id.value(),
+            id: s.id.value(),
             title: s.title,
             state: "ready".to_string(),
         })
@@ -44,7 +44,7 @@ pub(super) fn broadcast_iteration_close_blocked(
         blockers: blockers
             .iter()
             .map(|b| crate::message::IterationCloseBlockerPayload {
-                number: b.number,
+                id: b.id,
                 title: b.title.clone(),
                 state: b.state.clone(),
             })

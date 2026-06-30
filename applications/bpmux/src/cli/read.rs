@@ -15,11 +15,11 @@ fn board_stories(board: &serde_json::Value) -> Vec<serde_json::Value> {
 }
 
 pub(super) fn story_line(index: usize, story: &serde_json::Value) -> String {
-    let number = story["id"].as_u64().unwrap_or(0);
+    let id = story["id"].as_u64().unwrap_or(0);
     let title = story["title"].as_str().unwrap_or("");
     match story["acceptor"].as_str() {
-        Some(acceptor) => format!("  {index}  #{number}  {title}  awaiting {acceptor}"),
-        None => format!("  {index}  #{number}  {title}"),
+        Some(acceptor) => format!("  {index}  #{id}  {title}  awaiting {acceptor}"),
+        None => format!("  {index}  #{id}  {title}"),
     }
 }
 
@@ -51,23 +51,23 @@ pub(crate) fn run_ready(json: bool, full: bool) -> anyhow::Result<()> {
 }
 
 pub(super) fn render_story(story: &serde_json::Value) -> String {
-    let number = story["id"].as_u64().unwrap_or(0);
+    let id = story["id"].as_u64().unwrap_or(0);
     let title = story["title"].as_str().unwrap_or("");
     let state = story["state"].as_str().unwrap_or("");
     let acceptor = story["acceptor"]
         .as_str()
         .map(|a| format!(" · awaiting {a}"))
         .unwrap_or_default();
-    format!("#{number} {title} · {state}{acceptor}\n  use --full for the body\n")
+    format!("#{id} {title} · {state}{acceptor}\n  use --full for the body\n")
 }
 
-pub(crate) fn run_story(number: u64, json: bool, full: bool) -> anyhow::Result<()> {
+pub(crate) fn run_story(id: u64, json: bool, full: bool) -> anyhow::Result<()> {
     let board = fetch_board()?;
     let Some(story) = board_stories(&board)
         .into_iter()
-        .find(|s| s["id"].as_u64() == Some(number))
+        .find(|s| s["id"].as_u64() == Some(id))
     else {
-        anyhow::bail!("story #{number} not found");
+        anyhow::bail!("story #{id} not found");
     };
     if full {
         println!("{}", story["body"].as_str().unwrap_or(""));
@@ -84,15 +84,15 @@ pub(crate) fn run_story(number: u64, json: bool, full: bool) -> anyhow::Result<(
 pub(super) fn render_board(stories: &[serde_json::Value]) -> String {
     let mut out = format!("board ({}):\n", stories.len());
     for (i, story) in stories.iter().enumerate() {
-        let number = story["id"].as_u64().unwrap_or(0);
+        let id = story["id"].as_u64().unwrap_or(0);
         let title = story["title"].as_str().unwrap_or("");
         let state = story["state"].as_str().unwrap_or("");
         match story["acceptor"].as_str() {
             Some(acceptor) => out.push_str(&format!(
-                "  {}  #{number}  {title}  {state}  awaiting {acceptor}\n",
+                "  {}  #{id}  {title}  {state}  awaiting {acceptor}\n",
                 i + 1
             )),
-            None => out.push_str(&format!("  {}  #{number}  {title}  {state}\n", i + 1)),
+            None => out.push_str(&format!("  {}  #{id}  {title}  {state}\n", i + 1)),
         }
     }
     out

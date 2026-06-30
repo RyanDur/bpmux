@@ -33,9 +33,9 @@ async fn seeded_orchestrator(
     (store, orchestrator)
 }
 
-fn make_story(number: u64, state: StoryState, body: Option<&str>) -> Story {
+fn make_story(id: u64, state: StoryState, body: Option<&str>) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         "title".into(),
         state,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -49,7 +49,7 @@ fn make_story(number: u64, state: StoryState, body: Option<&str>) -> Story {
 
 #[tokio::test]
 async fn handler_requires_board_after_canonical_only_refactor() {
-    let args = serde_json::json!({"number": 443});
+    let args = serde_json::json!({"id": 443});
     let result = handle_get_story(args.as_object().unwrap(), None, None).await;
     assert!(result.is_err());
     assert!(
@@ -61,7 +61,7 @@ async fn handler_requires_board_after_canonical_only_refactor() {
 #[tokio::test]
 async fn handler_errors_when_story_not_in_board() {
     let (store, orch) = seeded_orchestrator(vec![], vec![]).await;
-    let args = serde_json::json!({"number": 9999});
+    let args = serde_json::json!({"id": 9999});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch)).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found in board"));
@@ -85,7 +85,7 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
         },
     ];
     let (store, orch) = seeded_orchestrator(vec![story], vec![(443, gates)]).await;
-    let args = serde_json::json!({"number": 443});
+    let args = serde_json::json!({"id": 443});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -107,7 +107,7 @@ async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
         payload: Some("failed spec".into()),
     }];
     let (store, orch) = seeded_orchestrator(vec![story], vec![(200, gates)]).await;
-    let args = serde_json::json!({"number": 200});
+    let args = serde_json::json!({"id": 200});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -121,7 +121,7 @@ async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
 async fn does_not_enrich_body_for_non_rework_story() {
     let story = make_story(100, StoryState::Ready, Some("original body"));
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
-    let args = serde_json::json!({"number": 100});
+    let args = serde_json::json!({"id": 100});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -160,7 +160,7 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
         },
     ];
     let (store, orch) = seeded_orchestrator(vec![story], vec![(700, gates)]).await;
-    let args = serde_json::json!({"number": 700});
+    let args = serde_json::json!({"id": 700});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -210,7 +210,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
         },
     ];
     let (store, orch) = seeded_orchestrator(vec![story], vec![(701, gates)]).await;
-    let args = serde_json::json!({"number": 701});
+    let args = serde_json::json!({"id": 701});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -226,7 +226,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
 async fn skips_enrichment_when_no_rework_gate_comments() {
     let story = make_story(50, StoryState::Ready, Some("plain body"));
     let (store, orch) = seeded_orchestrator(vec![story], vec![(50, vec![])]).await;
-    let args = serde_json::json!({"number": 50});
+    let args = serde_json::json!({"id": 50});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -240,7 +240,7 @@ async fn output_exposes_workflow_state_and_is_closed_separately() {
     let mut story = make_story(101, StoryState::Accepted, Some("body"));
     story.is_closed = true;
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
-    let args = serde_json::json!({"number": 101});
+    let args = serde_json::json!({"id": 101});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -258,7 +258,7 @@ async fn divergent_case_workflow_ready_but_gh_closed_observable() {
     let mut story = make_story(102, StoryState::Ready, Some("body"));
     story.is_closed = true;
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
-    let args = serde_json::json!({"number": 102});
+    let args = serde_json::json!({"id": 102});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -278,7 +278,7 @@ async fn divergent_case_workflow_accepted_but_gh_open_observable() {
     let mut story = make_story(103, StoryState::Accepted, Some("body"));
     story.is_closed = false;
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
-    let args = serde_json::json!({"number": 103});
+    let args = serde_json::json!({"id": 103});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -301,7 +301,7 @@ async fn surfaces_full_raw_labels_array_not_synthesized_state_label() {
         "desk-check-fail".to_string(),
     ];
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
-    let args = serde_json::json!({"number": 1207});
+    let args = serde_json::json!({"id": 1207});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -338,7 +338,7 @@ async fn empty_raw_labels_returns_empty_labels_array() {
     let mut story = make_story(1208, StoryState::Icebox, Some("body"));
     story.raw_labels = Vec::new();
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
-    let args = serde_json::json!({"number": 1208});
+    let args = serde_json::json!({"id": 1208});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -365,7 +365,7 @@ async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
-    let args = serde_json::json!({"number": 1226});
+    let args = serde_json::json!({"id": 1226});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
         .await
         .expect("should succeed");
@@ -387,7 +387,7 @@ async fn cache_miss_returns_placeholder_when_no_refresh_driver() {
     let story = make_story(1226, StoryState::Ready, None);
     let store = Arc::new(BoardStore::new());
     store.seed_all(vec![story]);
-    let args = serde_json::json!({"number": 1226});
+    let args = serde_json::json!({"id": 1226});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), None)
         .await
         .expect("should succeed");
@@ -419,7 +419,7 @@ async fn cache_hit_does_not_refetch_when_body_already_present() {
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
-    let args = serde_json::json!({"number": 1226});
+    let args = serde_json::json!({"id": 1226});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
         .await
         .expect("should succeed");
@@ -431,9 +431,9 @@ async fn cache_hit_does_not_refetch_when_body_already_present() {
     );
 }
 
-fn make_iteration(number: u64, name: &str, body: &str) -> Story {
+fn make_iteration(id: u64, name: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -445,11 +445,11 @@ fn make_iteration(number: u64, name: &str, body: &str) -> Story {
     s
 }
 
-fn make_iteration_with_members(number: u64, name: &str, body: &str, members: Vec<u64>) -> Story {
+fn make_iteration_with_members(id: u64, name: &str, body: &str, members: Vec<u64>) -> Story {
     use crate::product_management::board::adapters::relationships::{
         IterationRelationships, Relationships,
     };
-    let mut s = make_iteration(number, name, body);
+    let mut s = make_iteration(id, name, body);
     s.body = Some(
         IterationRelationships {
             outcome: None,
@@ -460,9 +460,9 @@ fn make_iteration_with_members(number: u64, name: &str, body: &str, members: Vec
     s
 }
 
-fn make_member(number: u64, title: &str, iteration_number: u64, position: u32) -> Story {
+fn make_member(id: u64, title: &str, iteration_id: u64, position: u32) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         title.into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -470,9 +470,9 @@ fn make_member(number: u64, title: &str, iteration_number: u64, position: u32) -
     );
     s.raw_labels = vec![
         "ready".into(),
-        format!("parent-iteration-#{iteration_number}.{position}"),
+        format!("parent-iteration-#{iteration_id}.{position}"),
     ];
-    s.iteration_membership = Some((IterationId::new(iteration_number), position));
+    s.iteration_membership = Some((IterationId::new(iteration_id), position));
     s
 }
 
@@ -508,7 +508,7 @@ async fn get_story_auto_derives_iteration_members_into_body_1462() {
     let mut all = vec![iteration];
     all.extend(members);
     let (store, orch) = seeded_orchestrator(all, vec![]).await;
-    let args = serde_json::json!({"number": 1397});
+    let args = serde_json::json!({"id": 1397});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -543,7 +543,7 @@ async fn get_story_auto_derives_iteration_members_into_body_1462() {
 async fn get_story_preserves_placeholder_when_iteration_has_no_members_1462() {
     let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
     let (store, orch) = seeded_orchestrator(vec![iteration], vec![]).await;
-    let args = serde_json::json!({"number": 1397});
+    let args = serde_json::json!({"id": 1397});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -563,7 +563,7 @@ async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
         Some("## Iteration Telescopium\n\n## Member stories\n\n_(no members yet)_\n\n## Notes\n"),
     );
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
-    let args = serde_json::json!({"number": 1463});
+    let args = serde_json::json!({"id": 1463});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -588,7 +588,7 @@ async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
     let open_member = make_member(1265, "Still open", 1397, 200);
     let (store, orch) =
         seeded_orchestrator(vec![iteration, closed_member, open_member], vec![]).await;
-    let args = serde_json::json!({"number": 1397});
+    let args = serde_json::json!({"id": 1397});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .expect("should succeed");
@@ -632,7 +632,7 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
         Arc::clone(&adapter),
     ));
 
-    let args = serde_json::json!({"number": 1524});
+    let args = serde_json::json!({"id": 1524});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
         .await
         .expect("should succeed");
@@ -664,7 +664,7 @@ async fn non_rejected_story_carries_no_latest_reject() {
         Arc::clone(&adapter),
     ));
 
-    let args = serde_json::json!({"number": 500});
+    let args = serde_json::json!({"id": 500});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
         .await
         .expect("should succeed");
@@ -690,7 +690,7 @@ async fn latest_reject_survives_an_iteration_move() {
         payload: Some(reason.into()),
     }];
     let (store, orch) = seeded_orchestrator(vec![story], vec![(1524, gates)]).await;
-    let args = serde_json::json!({"number": 1524});
+    let args = serde_json::json!({"id": 1524});
 
     let before = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
@@ -736,7 +736,7 @@ async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
-    let args = serde_json::json!({"number": 442});
+    let args = serde_json::json!({"id": 442});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
         .await
         .expect("handler degrades gracefully when the gate read-through fails");
@@ -784,7 +784,7 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
         Arc::clone(&adapter),
     ));
 
-    let args = serde_json::json!({"number": 1700});
+    let args = serde_json::json!({"id": 1700});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .unwrap();
@@ -839,7 +839,7 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
         Arc::clone(&adapter),
     ));
 
-    let args = serde_json::json!({"number": 1701});
+    let args = serde_json::json!({"id": 1701});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
         .await
         .unwrap();

@@ -4,7 +4,7 @@ pub fn fail_desk_check_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number that failed desk-check"
             },
@@ -13,7 +13,7 @@ pub fn fail_desk_check_tool(description: &'static str) -> Tool {
                 "description": "What failed — surfaced to dev as the workflow signal"
             }
         },
-        "required": ["number", "reason"]
+        "required": ["id", "reason"]
     });
     Tool::new(
         "fail_desk_check",

@@ -18,7 +18,7 @@ fn label_story_rejects_iteration_label_with_tool_retired_kind() {
             .call_tool(
                 "label_story",
                 serde_json::json!({
-                    "number": 100,
+                    "id": 100,
                     "label": "iteration-Telescopium.100",
                     "operation": "add"
                 }),
@@ -55,7 +55,7 @@ fn label_story_accepts_non_iteration_labels_unchanged() {
             .call_tool(
                 "label_story",
                 serde_json::json!({
-                    "number": 100,
+                    "id": 100,
                     "label": "blocked",
                     "operation": "add"
                 }),

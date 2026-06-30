@@ -2,7 +2,7 @@ import { fireEvent, screen, within, type waitForOptions } from '@testing-library
 
 const STORY_NAVIGATE = /^Open story #/
 
-const storyNumberOf = (button: HTMLElement): number =>
+const storyIdOf = (button: HTMLElement): number =>
   Number(/#(\d+)/.exec(button.getAttribute('aria-label') ?? '')?.[1])
 
 const cardOf = (button: HTMLElement): HTMLElement =>
@@ -75,12 +75,10 @@ export const iterationBoard = {
   summary: (container: HTMLElement): HTMLElement =>
     container.querySelector(':scope > summary') as HTMLElement,
   memberOrder: (container: HTMLElement): number[] =>
-    within(container)
-      .getAllByRole('button', { name: STORY_NAVIGATE, hidden: true })
-      .map(storyNumberOf),
+    within(container).getAllByRole('button', { name: STORY_NAVIGATE, hidden: true }).map(storyIdOf),
   closedBadge: (row: HTMLElement): HTMLElement | null => within(row).queryByText('(closed)'),
   iterationOrder: (): number[] =>
     screen
       .getAllByRole('button', { name: /^view iteration details: #/i, hidden: true })
-      .map(storyNumberOf)
+      .map(storyIdOf)
 }

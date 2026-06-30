@@ -21,10 +21,10 @@ fn meta() -> EventMeta {
     }
 }
 
-fn seed_story(number: u64, state: StoryState) -> Story {
+fn seed_story(id: u64, state: StoryState) -> Story {
     Story::new_minimal(
-        StoryId::new(number),
-        format!("title-{number}"),
+        StoryId::new(id),
+        format!("title-{id}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),

@@ -62,7 +62,7 @@ describe('#1704 BoardRoadmapSwitcher — header-as-Board-tab sibling-switcher (d
 })
 
 const NUDGE = {
-  nextIterationNumber: 200,
+  nextIterationId: 200,
   nextIterationName: 'Fornax',
   activeGapLabel: 'designer-review'
 }

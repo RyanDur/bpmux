@@ -12,7 +12,7 @@ mod gate_retire_1348 {
     use std::sync::Arc;
 
     async fn seeded_orchestrator(
-        number: u64,
+        id: u64,
         title: &str,
         state: StoryState,
         story_type: StoryType,
@@ -21,7 +21,7 @@ mod gate_retire_1348 {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let mut seeded = Story::new_minimal(
-            StoryId::new(number),
+            StoryId::new(id),
             title.into(),
             state,
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
@@ -32,7 +32,7 @@ mod gate_retire_1348 {
                 .encode_story_type(story_type),
         );
         adapter.seed_stories(vec![seeded]);
-        adapter.seed_body(number, body.into());
+        adapter.seed_body(id, body.into());
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -62,7 +62,7 @@ mod gate_retire_1348 {
         )
         .await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(9101));
+        args.insert("id".into(), serde_json::json!(9101));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
         let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
@@ -88,7 +88,7 @@ mod gate_retire_1348 {
         )
         .await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(9102));
+        args.insert("id".into(), serde_json::json!(9102));
         args.insert(
             "verified_observation".into(),
             serde_json::json!("drove the user-job end-to-end via real-backend tests"),
@@ -116,7 +116,7 @@ mod gate_retire_1348 {
         )
         .await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(9103));
+        args.insert("id".into(), serde_json::json!(9103));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
         let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
@@ -138,7 +138,7 @@ mod gate_retire_1348 {
         )
         .await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(9104));
+        args.insert("id".into(), serde_json::json!(9104));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
         let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
@@ -164,7 +164,7 @@ mod gate_retire_1348 {
         )
         .await;
         let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(9105));
+        args.insert("id".into(), serde_json::json!(9105));
         args.insert(
             "verified_observation".into(),
             serde_json::json!("drove end-to-end via tests"),

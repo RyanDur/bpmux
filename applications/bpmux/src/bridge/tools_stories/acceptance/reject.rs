@@ -11,10 +11,10 @@ pub(crate) async fn handle_reject_story(
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
@@ -34,7 +34,7 @@ pub(crate) async fn handle_reject_story(
     let r = refresh.ok_or(
         "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
-    let story_opt = r.store().story(StoryId::new(number));
+    let story_opt = r.store().story(StoryId::new(id));
     let class = story_opt
         .as_ref()
         .map(|s| {
@@ -61,18 +61,18 @@ pub(crate) async fn handle_reject_story(
             )
         })?;
     let actor = crate::transport::ws::short_name(agent_name).to_string();
-    reject_via_canonical_store(r, number, actor, reason.clone(), target_state).await?;
-    Ok(format!("#{number} rejected: {reason}"))
+    reject_via_canonical_store(r, id, actor, reason.clone(), target_state).await?;
+    Ok(format!("#{id} rejected: {reason}"))
 }
 
 pub(crate) async fn reject_via_canonical_store(
     refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
-    number: u64,
+    id: u64,
     actor: String,
     reason: String,
     target_state: crate::product_management::story::StoryState,
 ) -> Result<(), String> {
-    let prior = ensure_story_in_canonical_store(refresh, number).await?;
+    let prior = ensure_story_in_canonical_store(refresh, id).await?;
     let was_accepted =
         prior.is_closed || prior.state == crate::product_management::story::StoryState::Accepted;
     let meta = crate::product_management::board::events::EventMeta {
@@ -86,39 +86,39 @@ pub(crate) async fn reject_via_canonical_store(
         crate::product_management::story::StoryState::Delivered => LABEL_DELIVERED,
         _ => LABEL_READY,
     };
-    reap_workflow_labels(refresh.as_ref(), number, &meta, keep_label)?;
+    reap_workflow_labels(refresh.as_ref(), id, &meta, keep_label)?;
     if was_accepted {
         refresh
             .mutate_sync(
                 crate::product_management::board::BoardEvent::StoryReopened {
                     meta: meta.clone(),
-                    id: StoryId::new(number),
+                    id: StoryId::new(id),
                 },
             )
-            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
     }
     refresh
         .mutate_sync(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
-                id: StoryId::new(number),
+                id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::Rejected,
                 payload: Some(reason),
             },
         )
-        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
     refresh
         .mutate_sync(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta,
-                id: StoryId::new(number),
+                id: StoryId::new(id),
                 new_state: target_state,
             },
         )
-        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
     refresh
         .drain_pending()
         .await
-        .map_err(|e| format!("#{number} drain after reject failed: {e}"))?;
+        .map_err(|e| format!("#{id} drain after reject failed: {e}"))?;
     Ok(())
 }

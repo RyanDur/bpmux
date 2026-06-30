@@ -23,8 +23,8 @@ export interface GripDragProps {
 
 export interface UseDragReorderResult<T> {
   orderedItems: T[]
-  draggedNumber: number | null
-  hoveredNumber: number | null
+  draggedId: number | null
+  hoveredId: number | null
   rowProps: (item: T) => RowDragProps
   gripProps: (item: T) => GripDragProps
 }
@@ -33,10 +33,10 @@ export const useDragReorder = <P, T>(
   options: UseDragReorderOptions<P, T>
 ): UseDragReorderResult<T> => {
   const { items, keyOf, payloadKey, buildPayload, onReorder, disabled = false } = options
-  const { draggedNumber, hoveredNumber, startDrag, endDrag, hover, decode, hasType } =
+  const { draggedId, hoveredId, startDrag, endDrag, hover, decode, hasType } =
     useStoryDrag<P>(options)
 
-  const orderedItems = eagerReorder(items, keyOf, draggedNumber, hoveredNumber)
+  const orderedItems = eagerReorder(items, keyOf, draggedId, hoveredId)
 
   const rowProps = (item: T): RowDragProps => ({
     onDragOver: (event) => {
@@ -44,7 +44,7 @@ export const useDragReorder = <P, T>(
       event.preventDefault()
       event.dataTransfer.dropEffect = 'move'
       const key = keyOf(item)
-      if (draggedNumber !== null && draggedNumber !== key) hover(key)
+      if (draggedId !== null && draggedId !== key) hover(key)
     },
     onDrop: (event) => {
       const payload = decode(event)
@@ -52,7 +52,7 @@ export const useDragReorder = <P, T>(
       event.preventDefault()
       if (disabled) return
       const key = keyOf(item)
-      const targetKey = payloadKey(payload) === key && hoveredNumber !== null ? hoveredNumber : key
+      const targetKey = payloadKey(payload) === key && hoveredId !== null ? hoveredId : key
       if (payloadKey(payload) === targetKey) return
       onReorder(payload, targetKey)
       endDrag()
@@ -65,5 +65,5 @@ export const useDragReorder = <P, T>(
     onDragEnd: endDrag
   })
 
-  return { orderedItems, draggedNumber, hoveredNumber, rowProps, gripProps }
+  return { orderedItems, draggedId, hoveredId, rowProps, gripProps }
 }

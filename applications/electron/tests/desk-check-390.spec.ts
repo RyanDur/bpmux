@@ -29,31 +29,27 @@ const createStory = async (rpc: RpcFn, title: string): Promise<void> => {
 
 const driveToDelivered = async (
   rpc: RpcFn,
-  number: number,
+  id: number,
   acceptor: 'owner' | 'team'
 ): Promise<void> => {
   const startResp = await rpc('start_story', {
-    number,
+    id,
     pickup_paraphrase: 'Driving the chain so the delivered badge is reachable.',
     falsifier_reframing: 'reject if start_story does not move story to in-progress'
   })
   expect(startResp.status).toBe(200)
   const deliverResp = await rpc('deliver_story', {
-    number,
+    id,
     verified_observation: 'Drove deliver so designer can pass desk-check next.'
   })
   expect(deliverResp.status).toBe(200)
-  await seedTeamVerdicts(rpc, number, ['designer'])
-  const passResp = await rpc(
-    'pass_desk_check',
-    { number, acceptor, would_file_bug: false },
-    'designer'
-  )
+  await seedTeamVerdicts(rpc, id, ['designer'])
+  const passResp = await rpc('pass_desk_check', { id, acceptor, would_file_bug: false }, 'designer')
   expect(passResp.status).toBe(200)
 }
 
-const addLabel = async (rpc: RpcFn, number: number, label: string): Promise<void> => {
-  const resp = await rpc('label_story', { number, label }, 'pm')
+const addLabel = async (rpc: RpcFn, id: number, label: string): Promise<void> => {
+  const resp = await rpc('label_story', { id, label }, 'pm')
   expect(resp.status).toBe(200)
 }
 
@@ -64,10 +60,10 @@ const seedFixture = async (result: MockGhLaunchResult): Promise<void> => {
   await createStory(rpc, '[Feature] Delivered blocked without blocker reference')
   await createStory(rpc, '[Feature] Delivered unblocked awaiting owner')
 
-  const iterNumber = await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck390')
-  await addStoryToIterationViaRpc(rpc, 2, iterNumber, 2)
-  await addStoryToIterationViaRpc(rpc, 3, iterNumber, 3)
-  await addStoryToIterationViaRpc(rpc, 4, iterNumber, 4)
+  const iterationId = await setupCurrentIterationViaRpc(rpc, 1, 'DeskCheck390')
+  await addStoryToIterationViaRpc(rpc, 2, iterationId, 2)
+  await addStoryToIterationViaRpc(rpc, 3, iterationId, 3)
+  await addStoryToIterationViaRpc(rpc, 4, iterationId, 4)
 
   await driveToDelivered(rpc, 1, 'owner')
   await driveToDelivered(rpc, 2, 'owner')

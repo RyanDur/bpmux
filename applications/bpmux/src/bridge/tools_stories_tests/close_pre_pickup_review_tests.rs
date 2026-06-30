@@ -24,9 +24,9 @@ async fn build_orchestrator(stories: Vec<Story>) -> (Arc<BoardStore>, Arc<dyn Re
     (store, orch)
 }
 
-fn iteration_seed(number: u64, name: &str) -> Story {
+fn iteration_seed(id: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         format!("Iteration {name}"),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -37,9 +37,9 @@ fn iteration_seed(number: u64, name: &str) -> Story {
     s
 }
 
-fn feature_seed(number: u64) -> Story {
+fn feature_seed(id: u64) -> Story {
     Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         "a feature".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
@@ -47,9 +47,9 @@ fn feature_seed(number: u64) -> Story {
     )
 }
 
-fn args(iteration_number: u64) -> serde_json::Map<String, serde_json::Value> {
+fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
     let mut m = serde_json::Map::new();
-    m.insert("iteration_id".into(), serde_json::json!(iteration_number));
+    m.insert("iteration_id".into(), serde_json::json!(iteration_id));
     m
 }
 

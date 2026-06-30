@@ -2,23 +2,23 @@ export type RpcFn = (tool: string, body: unknown, agent?: string) => Promise<Res
 
 export const seedTeamVerdicts = async (
   rpc: RpcFn,
-  storyNumber: number,
+  storyId: number,
   roles: string[]
 ): Promise<void> => {
   for (const role of roles) {
     const resp = await rpc(
       'submit_verdict',
       {
-        story_id: storyNumber,
+        story_id: storyId,
         verdict: 'verified',
-        substrate_grounding: `test-harness: ${role} verdict on #${storyNumber}`
+        substrate_grounding: `test-harness: ${role} verdict on #${storyId}`
       },
       role
     )
     if (resp.status !== 200) {
       const text = await resp.text()
       throw new Error(
-        `seedTeamVerdicts: submit_verdict for role=${role} on #${storyNumber} returned ${resp.status} — ${text}`
+        `seedTeamVerdicts: submit_verdict for role=${role} on #${storyId} returned ${resp.status} — ${text}`
       )
     }
   }

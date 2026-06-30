@@ -63,8 +63,8 @@ impl StoryView {
                     position,
                 }),
             outcome_membership: outcome_membership_from_labels(story.raw_labels()).map(
-                |(outcome_number, position)| OutcomeMembershipView {
-                    outcome_id: OutcomeId::new(outcome_number),
+                |(outcome_id, position)| OutcomeMembershipView {
+                    outcome_id: OutcomeId::new(outcome_id),
                     position,
                 },
             ),

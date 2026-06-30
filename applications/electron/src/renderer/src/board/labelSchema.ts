@@ -13,20 +13,20 @@ export interface IterationLabelParts {
 }
 
 export interface ParentIterationLabelParts {
-  iterationNumber: number
+  iterationId: number
   position: number
 }
 
 export const iterationLabel = (name: string, position: number): string =>
   `${ITERATION_PREFIX}${name}.${position}`
 
-export const parentIterationLabel = (iterationNumber: number, position: number): string =>
-  `${PARENT_ITERATION_PREFIX}${iterationNumber}.${position}`
+export const parentIterationLabel = (iterationId: number, position: number): string =>
+  `${PARENT_ITERATION_PREFIX}${iterationId}.${position}`
 
 export const parseParentIterationLabel = (label: string): ParentIterationLabelParts | null => {
   const match = label.match(PARENT_ITERATION_LABEL_RE)
   if (match === null) return null
-  return { iterationNumber: parseInt(match[1], 10), position: parseInt(match[2], 10) }
+  return { iterationId: parseInt(match[1], 10), position: parseInt(match[2], 10) }
 }
 
 export const unscheduledLabel = (position: number): string =>

@@ -32,7 +32,7 @@ const BoardRoadmapSwitcher = ({
     'board'
   )
   const groupName = useId()
-  const [dismissedNextNumber, setDismissedNextNumber] = useState<number | null>(null)
+  const [dismissedNextId, setDismissedNextId] = useState<number | null>(null)
   return (
     <section className="board-roadmap-switcher tabs">
       <header className="board-roadmap-tabrow">
@@ -84,9 +84,9 @@ const BoardRoadmapSwitcher = ({
             currentIterationName={currentIterationName}
             nextIterationName={nudge.nextIterationName}
             activeGapLabel={nudge.activeGapLabel}
-            dismissed={nudge.nextIterationNumber === dismissedNextNumber}
+            dismissed={nudge.nextIterationId === dismissedNextId}
             onViewRoadmap={() => setActiveId('roadmap')}
-            onDismiss={() => setDismissedNextNumber(nudge.nextIterationNumber)}
+            onDismiss={() => setDismissedNextId(nudge.nextIterationId)}
           />
         )}
         {board}

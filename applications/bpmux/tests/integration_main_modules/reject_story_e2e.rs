@@ -15,7 +15,7 @@ fn reject_story_pm_with_reason_succeeds() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] reject-target",
             "reject if reject_story doesn't fire signal + state transition",
@@ -26,7 +26,7 @@ fn reject_story_pm_with_reason_succeeds() {
             .call_tool(
                 "reject_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "user-story not satisfied; rework needed"
                 }),
             )
@@ -35,7 +35,7 @@ fn reject_story_pm_with_reason_succeeds() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -60,7 +60,7 @@ fn reject_story_designer_refused_per_workflow_substrate() {
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] designer-reject-target",
             "reject if designer firing reject_story isn't substrate-refused per #1389 workflow.toml actor_roles",
@@ -71,7 +71,7 @@ fn reject_story_designer_refused_per_workflow_substrate() {
             .call_tool(
                 "reject_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "reason": "designer-flagged accessibility violation"
                 }),
             )
@@ -108,7 +108,7 @@ fn reject_story_rejects_unknown_role() {
             .call_tool(
                 "reject_story",
                 serde_json::json!({
-                    "number": 100,
+                    "id": 100,
                     "reason": "intern attempted reject"
                 }),
             )
@@ -142,13 +142,13 @@ fn reject_story_view_board_reflects_ready_via_fixture_seed() {
 
         pm.call_tool(
             "reject_story",
-            serde_json::json!({"number": 700, "reason": "user-story not satisfied"}),
+            serde_json::json!({"id": 700, "reason": "user-story not satisfied"}),
         )
         .await
         .expect("reject_story should succeed against seeded story");
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({"number": 700}))
+            .call_tool("get_story", serde_json::json!({"id": 700}))
             .await
             .expect("get_story should succeed");
         let story_text = story
@@ -179,7 +179,7 @@ fn reject_story_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 

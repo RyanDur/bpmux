@@ -4,7 +4,7 @@ pub fn accept_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to accept"
             },
@@ -21,7 +21,7 @@ pub fn accept_story_tool(description: &'static str) -> Tool {
                 "description": "Required when force=true and would_file_bug=true. Explicit justification recorded in gate-comment per `feedback_external_catch_over_self_catch`."
             }
         },
-        "required": ["number", "would_file_bug"]
+        "required": ["id", "would_file_bug"]
     });
     Tool::new(
         "accept_story",

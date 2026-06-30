@@ -20,8 +20,7 @@ const story = (over: Partial<Story>): Story => ({
   ...over
 })
 
-const child = (epicNumber: number, state: StoryState): Story =>
-  story({ parent_epic: epicNumber, state })
+const child = (epicId: number, state: StoryState): Story => story({ parent_epic: epicId, state })
 
 describe('epicSummary', () => {
   test('breakdownFor groups child states (delivered+ready-for-accept, in-progress+needs-fixes, ready+rejected) and scopes to the epic', () => {

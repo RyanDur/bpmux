@@ -53,7 +53,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     sectionStorage.setState({ ...sectionOpen, [id]: next })
   }
   if (iterations.length === 0 && sortedLoose.length === 0) return null
-  const currentIterationNumber = findCurrentIteration(iterations)?.id ?? null
+  const currentIterationId = findCurrentIteration(iterations)?.id ?? null
 
   const activePlannedCount = activePlannedIterations.length
   return (
@@ -92,7 +92,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             <IterationRow
               iteration={it}
               collapse={collapse}
-              currentIterationNumber={currentIterationNumber}
+              currentIterationId={currentIterationId}
               getMembersFor={getMembersFor}
               setPending={setPending}
               onOpen={onOpen}
@@ -129,7 +129,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
               key={it.id}
               iteration={it}
               collapse={collapse}
-              currentIterationNumber={currentIterationNumber}
+              currentIterationId={currentIterationId}
               getMembersFor={getMembersFor}
               setPending={setPending}
               onOpen={onOpen}

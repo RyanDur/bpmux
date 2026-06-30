@@ -24,7 +24,7 @@ fn get_story_returns_full_payload_for_existing_story() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] get-story-target",
             "reject if get_story doesn't return full story payload",
@@ -32,13 +32,13 @@ fn get_story_returns_full_payload_for_existing_story() {
         .await;
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({"number": target_number}))
+            .call_tool("get_story", serde_json::json!({"id": target_id}))
             .await
             .expect("get_story should succeed");
 
         assert_eq!(
-            story["number"].as_u64(),
-            Some(target_number),
+            story["id"].as_u64(),
+            Some(target_id),
             "payload exposes number; got {story:?}"
         );
         assert!(
@@ -87,7 +87,7 @@ fn get_story_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 
@@ -104,7 +104,7 @@ fn get_story_returns_error_for_non_existent_story() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = pm
-            .call_tool("get_story", serde_json::json!({"number": 999999}))
+            .call_tool("get_story", serde_json::json!({"id": 999999}))
             .await
             .expect_err("non-existent story should be rejected");
 
@@ -137,7 +137,7 @@ fn get_story_body_preserves_user_job_and_falsifier_verbatim() {
             .await
             .expect("create_story should succeed");
         let create_msg = result.as_str().unwrap_or("").to_string();
-        let target_number: u64 = create_msg
+        let target_id: u64 = create_msg
             [create_msg.find('#').expect("create message names #N") + 1..]
             .split(|c: char| !c.is_ascii_digit())
             .next()
@@ -145,7 +145,7 @@ fn get_story_body_preserves_user_job_and_falsifier_verbatim() {
             .expect("parse story number");
 
         let story = pm
-            .call_tool("get_story", serde_json::json!({"number": target_number}))
+            .call_tool("get_story", serde_json::json!({"id": target_id}))
             .await
             .expect("get_story should succeed");
 

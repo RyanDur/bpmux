@@ -184,7 +184,7 @@ pub async fn post_test_designate_current_iteration(
 
 #[derive(Debug, Deserialize)]
 pub struct MoveStoryReq {
-    pub number: u64,
+    pub id: u64,
     pub target_state: String,
     pub rationale: String,
     pub position: Option<u64>,
@@ -198,7 +198,7 @@ pub async fn post_test_move_story(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
         let mut args = serde_json::Map::new();
-        put_num(&mut args, "number", req.number);
+        put_num(&mut args, "id", req.id);
         put_str(&mut args, "target_state", req.target_state);
         put_str(&mut args, "rationale", req.rationale);
         if let Some(p) = req.position {
@@ -212,7 +212,7 @@ pub async fn post_test_move_story(
 
 #[derive(Debug, Deserialize)]
 pub struct EditStoryReq {
-    pub number: u64,
+    pub id: u64,
     pub title: Option<String>,
     pub body: Option<String>,
     pub agent: Option<String>,
@@ -225,7 +225,7 @@ pub async fn post_test_edit_story(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
         let mut args = serde_json::Map::new();
-        put_num(&mut args, "number", req.number);
+        put_num(&mut args, "id", req.id);
         if let Some(t) = req.title {
             put_str(&mut args, "title", t);
         }
@@ -240,7 +240,7 @@ pub async fn post_test_edit_story(
 
 #[derive(Debug, Deserialize)]
 pub struct CommentOnStoryReq {
-    pub number: u64,
+    pub id: u64,
     pub body: String,
     pub agent: Option<String>,
 }
@@ -252,7 +252,7 @@ pub async fn post_test_comment_on_story(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
         let mut args = serde_json::Map::new();
-        put_num(&mut args, "number", req.number);
+        put_num(&mut args, "id", req.id);
         put_str(&mut args, "body", req.body);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
         bridge::dispatch_comment_on_story(args, &agent, Some(&refresh)).await
@@ -262,7 +262,7 @@ pub async fn post_test_comment_on_story(
 
 #[derive(Debug, Deserialize)]
 pub struct StartStoryReq {
-    pub number: u64,
+    pub id: u64,
     pub pickup_paraphrase: String,
     pub falsifier_reframing: String,
     pub agent: Option<String>,
@@ -275,7 +275,7 @@ pub async fn post_test_start_story(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
         let mut args = serde_json::Map::new();
-        put_num(&mut args, "number", req.number);
+        put_num(&mut args, "id", req.id);
         put_str(&mut args, "pickup_paraphrase", req.pickup_paraphrase);
         put_str(&mut args, "falsifier_reframing", req.falsifier_reframing);
         let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
@@ -286,7 +286,7 @@ pub async fn post_test_start_story(
 
 #[derive(Debug, Deserialize)]
 pub struct FailDeskCheckReq {
-    pub number: u64,
+    pub id: u64,
     pub reason: String,
     pub agent: Option<String>,
 }
@@ -298,7 +298,7 @@ pub async fn post_test_fail_desk_check(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
         let mut args = serde_json::Map::new();
-        put_num(&mut args, "number", req.number);
+        put_num(&mut args, "id", req.id);
         put_str(&mut args, "reason", req.reason);
         let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
         bridge::dispatch_fail_desk_check(args, &agent, Some(&refresh), &session).await
@@ -308,7 +308,7 @@ pub async fn post_test_fail_desk_check(
 
 #[derive(Debug, Deserialize)]
 pub struct AcceptStoryReq {
-    pub number: u64,
+    pub id: u64,
     pub agent: Option<String>,
 }
 
@@ -319,7 +319,7 @@ pub async fn post_test_accept_story(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
         let mut args = serde_json::Map::new();
-        put_num(&mut args, "number", req.number);
+        put_num(&mut args, "id", req.id);
         let agent = req.agent.unwrap_or_else(|| "owner:test".to_string());
         bridge::dispatch_accept_story(args, &agent, Some(&refresh), &session).await
     })
@@ -328,7 +328,7 @@ pub async fn post_test_accept_story(
 
 #[derive(Debug, Deserialize)]
 pub struct DeliverStoryReq {
-    pub number: u64,
+    pub id: u64,
     pub verified_observation: String,
     pub agent: Option<String>,
 }
@@ -340,7 +340,7 @@ pub async fn post_test_deliver_story(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
         let mut args = serde_json::Map::new();
-        put_num(&mut args, "number", req.number);
+        put_num(&mut args, "id", req.id);
         put_str(&mut args, "verified_observation", req.verified_observation);
         let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
         bridge::dispatch_deliver_story(args, &agent, Some(&refresh), &session).await
@@ -350,7 +350,7 @@ pub async fn post_test_deliver_story(
 
 #[derive(Debug, Deserialize)]
 pub struct CloseStoryReq {
-    pub number: u64,
+    pub id: u64,
     pub reason: String,
     pub agent: Option<String>,
     pub disposition: Option<String>,
@@ -363,7 +363,7 @@ pub async fn post_test_close_story(
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
         let mut args = serde_json::Map::new();
-        put_num(&mut args, "number", req.number);
+        put_num(&mut args, "id", req.id);
         put_str(&mut args, "reason", req.reason);
         if let Some(disposition) = req.disposition {
             put_str(&mut args, "disposition", disposition);

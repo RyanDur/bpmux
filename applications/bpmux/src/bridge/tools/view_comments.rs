@@ -8,14 +8,14 @@ pub(in crate::bridge) async fn handle_view_comments(
     board: Option<&Arc<BoardStore>>,
     _refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let b = board.ok_or("view_comments requires board (canonical-store)")?;
     let story = b
-        .story(StoryId::new(number))
-        .ok_or_else(|| format!("story #{number} not found in board"))?;
+        .story(StoryId::new(id))
+        .ok_or_else(|| format!("story #{id} not found in board"))?;
     let hydrated = story.free_comments.is_some();
     let shaped: Vec<serde_json::Value> = story
         .free_comments

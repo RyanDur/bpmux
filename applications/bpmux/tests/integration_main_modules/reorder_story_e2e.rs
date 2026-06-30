@@ -19,7 +19,7 @@ fn reorder_story_returns_tool_retired_for_any_role() {
                 .call_tool(
                     "reorder_story",
                     serde_json::json!({
-                        "number": 100,
+                        "id": 100,
                         "position": 0,
                         "state": "ready"
                     }),

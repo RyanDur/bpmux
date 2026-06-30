@@ -21,13 +21,13 @@ test.describe('#1297 Scenario 3 — create iteration in one instance is visible 
         body: JSON.stringify({
           stories: [
             {
-              number: 9501,
+              id: 9501,
               title: 'Iteration Pavo',
               story_type: 'iteration',
               initial_state: 'icebox'
             },
             {
-              number: 9502,
+              id: 9502,
               title: 'pavo-member',
               story_type: 'feature',
               initial_state: 'icebox',

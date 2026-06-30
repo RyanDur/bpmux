@@ -75,7 +75,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         agent: 'pm:test'
       })
       expect(createA.ok, JSON.stringify(createA.json)).toBe(true)
-      const numberA = parseCreatedIterationNumber(createA.json.message)
+      const iterationIdA = parseCreatedIterationNumber(createA.json.message)
 
       const createB = await postTest(backendPort, token, 'create_iteration', {
         name: nameB,
@@ -98,7 +98,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       await capture(win, 'lifecycle-01-created')
 
       const designate = await postTest(backendPort, token, 'designate_current_iteration', {
-        iteration_number: numberA,
+        iteration_id: iterationIdA,
         agent: 'pm:test'
       })
       expect(designate.ok, JSON.stringify(designate.json)).toBe(true)
@@ -118,7 +118,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         agent: 'pm:test'
       })
       expect(createX.ok, JSON.stringify(createX.json)).toBe(true)
-      const numberX = parseCreatedStoryNumber(createX.json.message)
+      const storyIdX = parseCreatedStoryNumber(createX.json.message)
 
       const createY = await postTest(backendPort, token, 'create_story', {
         title: `ReorderWalkY-${stamp}`,
@@ -127,17 +127,17 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         agent: 'pm:test'
       })
       expect(createY.ok, JSON.stringify(createY.json)).toBe(true)
-      const numberY = parseCreatedStoryNumber(createY.json.message)
+      const storyIdY = parseCreatedStoryNumber(createY.json.message)
 
       await switchToTab(win, 'Plan')
       await expect
         .poll(() => unscheduledOrder(win), { timeout: 15_000 })
-        .toEqual(expect.arrayContaining([numberX, numberY]))
+        .toEqual(expect.arrayContaining([storyIdX, storyIdY]))
       const orderBefore = await unscheduledOrder(win)
-      expect(orderBefore.indexOf(numberX)).toBeLessThan(orderBefore.indexOf(numberY))
+      expect(orderBefore.indexOf(storyIdX)).toBeLessThan(orderBefore.indexOf(storyIdY))
 
       const reorder = await postTest(backendPort, token, 'move_story', {
-        number: numberY,
+        id: storyIdY,
         target_state: 'icebox',
         position: 1,
         rationale: 'live-walk slice 2/2 reorder-step — promote Y above X in the backlog',
@@ -150,7 +150,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
         .poll(
           async () => {
             const order = await unscheduledOrder(win)
-            return order.indexOf(numberY) < order.indexOf(numberX)
+            return order.indexOf(storyIdY) < order.indexOf(storyIdX)
           },
           { timeout: 15_000 }
         )
@@ -159,7 +159,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
 
       const renameTitle = `Iteration ${nameA}-RENAMED`
       const rename = await postTest(backendPort, token, 'edit_story', {
-        number: numberA,
+        id: iterationIdA,
         title: renameTitle,
         agent: 'pm:test'
       })
@@ -172,7 +172,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       await capture(win, 'lifecycle-04-renamed')
 
       const close = await postTest(backendPort, token, 'close_iteration', {
-        iteration_number: numberA,
+        iteration_id: iterationIdA,
         agent: 'pm:test'
       })
       expect(close.ok, JSON.stringify(close.json)).toBe(true)

@@ -35,7 +35,7 @@ fn view_comments_returns_empty_array_for_uncommented_story() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] view-comments-empty-target",
             "reject if view_comments returns spurious entries on uncommented story",
@@ -43,10 +43,7 @@ fn view_comments_returns_empty_array_for_uncommented_story() {
         .await;
 
         let view = pm
-            .call_tool(
-                "view_comments",
-                serde_json::json!({"number": target_number}),
-            )
+            .call_tool("view_comments", serde_json::json!({"id": target_id}))
             .await
             .expect("view_comments should succeed");
 
@@ -77,7 +74,7 @@ fn view_comments_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 
@@ -94,7 +91,7 @@ fn view_comments_returns_error_for_non_existent_story() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = pm
-            .call_tool("view_comments", serde_json::json!({"number": 999999}))
+            .call_tool("view_comments", serde_json::json!({"id": 999999}))
             .await
             .expect_err("non-existent story should be rejected");
 
@@ -115,7 +112,7 @@ fn view_comments_reflects_single_comment_with_author_and_timestamp() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] view-comments-shape-target",
             "reject if comment payload omits author or timestamp",
@@ -125,16 +122,13 @@ fn view_comments_reflects_single_comment_with_author_and_timestamp() {
         let marker = "VIEW_COMMENTS_SHAPE_MARKER_S1";
         pm.call_tool(
             "comment_on_story",
-            serde_json::json!({"number": target_number, "body": marker}),
+            serde_json::json!({"id": target_id, "body": marker}),
         )
         .await
         .expect("comment_on_story should succeed");
 
         let view = pm
-            .call_tool(
-                "view_comments",
-                serde_json::json!({"number": target_number}),
-            )
+            .call_tool("view_comments", serde_json::json!({"id": target_id}))
             .await
             .expect("view_comments should succeed");
 

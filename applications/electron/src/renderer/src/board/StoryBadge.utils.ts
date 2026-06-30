@@ -12,7 +12,7 @@ const DESK_CHECK_FAIL_LABEL = 'desk-check-fail'
 const BLOCKED_LABEL = 'blocked'
 const BLOCKED_BY_PREFIX = 'blocked-by:'
 
-export const blockerNumberFromLabels = (labels: string[]): number | null => {
+export const blockerIdFromLabels = (labels: string[]): number | null => {
   for (const l of labels) {
     const lower = l.toLowerCase()
     if (lower.startsWith(BLOCKED_BY_PREFIX)) {

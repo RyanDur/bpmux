@@ -19,14 +19,14 @@ describe('#1339 step 2d — dragged member carries data-dragging during drag ges
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7801,
+        id: 7801,
         title: 'Iteration Lyra',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[7811]} -->'
       },
       {
-        number: 7811,
+        id: 7811,
         title: 'lyra-member',
         story_type: 'feature',
         initial_state: 'icebox'

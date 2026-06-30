@@ -24,7 +24,7 @@ fn unset_parent_epic_returns_message_naming_target() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] unset-parent-target",
             "reject if unset_parent_epic doesn't fire ParentEpicUnset event",
@@ -32,16 +32,13 @@ fn unset_parent_epic_returns_message_naming_target() {
         .await;
 
         let result = pm
-            .call_tool(
-                "unset_parent_epic",
-                serde_json::json!({"number": target_number}),
-            )
+            .call_tool("unset_parent_epic", serde_json::json!({"id": target_id}))
             .await
             .expect("unset_parent_epic should succeed");
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
         assert!(
@@ -62,7 +59,7 @@ fn unset_parent_epic_rejects_dev_caller_per_pm_lane_gate() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = dev
-            .call_tool("unset_parent_epic", serde_json::json!({"number": 100}))
+            .call_tool("unset_parent_epic", serde_json::json!({"id": 100}))
             .await
             .expect_err("dev should be rejected by unset_parent_epic pm-lane gate");
 
@@ -89,7 +86,7 @@ fn unset_parent_epic_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 

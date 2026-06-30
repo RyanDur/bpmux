@@ -112,7 +112,7 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                       {description}
                     </p>
                   )}
-                  <MiniBoard epicNumber={epic.id} stories={children} />
+                  <MiniBoard epicId={epic.id} stories={children} />
                   <button
                     type="button"
                     className="board-epic-view-details"

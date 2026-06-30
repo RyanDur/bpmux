@@ -39,12 +39,12 @@ pub(crate) async fn dispatch_deliver_story(
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result = tools_stories::handle_deliver_story(&args, agent_name, refresh).await?;
-    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+    if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         let title = refresh
-            .and_then(|r| r.story(number))
+            .and_then(|r| r.story(id))
             .map(|s| s.title)
-            .unwrap_or_else(|| format!("#{number}"));
-        for msg in tools_stories::build_delivery_signals(number, &title) {
+            .unwrap_or_else(|| format!("#{id}"));
+        for msg in tools_stories::build_delivery_signals(id, &title) {
             broadcast_client_msg_via_session(session, agent_name, msg);
         }
     }
@@ -58,11 +58,11 @@ pub(crate) async fn dispatch_start_story(
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result = tools_stories::handle_start_story(&args, agent_name, refresh).await?;
-    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+    if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         broadcast_client_msg_via_session(
             session,
             agent_name,
-            tools_stories::build_start_signal(number),
+            tools_stories::build_start_signal(id),
         );
     }
     Ok(result)
@@ -76,12 +76,12 @@ pub(crate) async fn dispatch_accept_story(
 ) -> Result<String, String> {
     let result =
         tools_stories::handle_accept_story(&args, agent_name, refresh, Some(session)).await?;
-    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+    if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         let role = tools_stories::role_from_name(agent_name);
         broadcast_client_msg_via_session(
             session,
             agent_name,
-            tools_stories::build_accept_signal(number, role),
+            tools_stories::build_accept_signal(id, role),
         );
     }
     Ok(result)
@@ -94,7 +94,7 @@ pub(crate) async fn dispatch_fail_desk_check(
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result = tools_stories::handle_fail_desk_check(&args, agent_name, refresh).await?;
-    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+    if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         let reason = args
             .get("reason")
             .and_then(|v| v.as_str())
@@ -102,7 +102,7 @@ pub(crate) async fn dispatch_fail_desk_check(
         broadcast_client_msg_via_session(
             session,
             agent_name,
-            tools_stories::build_fail_desk_check_signal(number, reason),
+            tools_stories::build_fail_desk_check_signal(id, reason),
         );
     }
     Ok(result)
@@ -116,13 +116,13 @@ pub(crate) async fn dispatch_pass_desk_check(
 ) -> Result<String, String> {
     let result =
         tools_stories::handle_pass_desk_check(&args, agent_name, refresh, Some(session)).await?;
-    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
-        let story_type = tools_stories::classify_for_pass_desk_check(number, refresh);
+    if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
+        let story_type = tools_stories::classify_for_pass_desk_check(id, refresh);
         let labels = refresh
-            .and_then(|r| r.story(number))
+            .and_then(|r| r.story(id))
             .map(|s| s.raw_labels)
             .unwrap_or_default();
-        for msg in tools_stories::build_pass_desk_check_signals(number, story_type, &labels) {
+        for msg in tools_stories::build_pass_desk_check_signals(id, story_type, &labels) {
             broadcast_client_msg_via_session(session, agent_name, msg);
         }
     }
@@ -136,7 +136,7 @@ pub(crate) async fn dispatch_reject_story(
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result = tools_stories::handle_reject_story(&args, agent_name, refresh).await?;
-    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+    if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         let reason = args
             .get("reason")
             .and_then(|v| v.as_str())
@@ -144,7 +144,7 @@ pub(crate) async fn dispatch_reject_story(
         broadcast_client_msg_via_session(
             session,
             agent_name,
-            tools_stories::build_reject_signal(number, reason),
+            tools_stories::build_reject_signal(id, reason),
         );
     }
     Ok(result)

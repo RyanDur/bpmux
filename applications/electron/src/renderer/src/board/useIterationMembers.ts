@@ -39,12 +39,12 @@ export const useIterationMembers = (
   >({})
 
   const index = useMemo(() => buildMembershipIndex(iterations), [iterations])
-  const storiesByNumber = useMemo(() => {
+  const storiesById = useMemo(() => {
     const map = new Map<number, Story>()
     for (const s of stories) map.set(s.id, s)
     return map
   }, [stories])
-  const iterationsByNumber = useMemo(() => {
+  const iterationsById = useMemo(() => {
     const map = new Map<number, BoardIterationData>()
     for (const it of iterations) map.set(it.id, it)
     return map
@@ -68,10 +68,10 @@ export const useIterationMembers = (
 
   const getMembersFor = useCallback(
     (iterationId: number): IterationMember[] => {
-      const iteration = iterationsByNumber.get(iterationId)
+      const iteration = iterationsById.get(iterationId)
       if (!iteration) return []
       let order = iteration.stories.filter((n) => {
-        const s = storiesByNumber.get(n)
+        const s = storiesById.get(n)
         if (!s || isIterationStory(s)) return false
         const pending = effectivePending[n]
         return !(pending && pending.iterationId !== iterationId)
@@ -79,15 +79,15 @@ export const useIterationMembers = (
       for (const [numStr, pending] of Object.entries(effectivePending)) {
         if (pending.iterationId !== iterationId) continue
         const num = Number(numStr)
-        const s = storiesByNumber.get(num)
+        const s = storiesById.get(num)
         if (!s || isIterationStory(s)) continue
         order = order.filter((x) => x !== num)
         const idx = Math.min(Math.max(pending.position - 1, 0), order.length)
         order.splice(idx, 0, num)
       }
-      return order.map((n, i) => ({ story: storiesByNumber.get(n) as Story, position: i + 1 }))
+      return order.map((n, i) => ({ story: storiesById.get(n) as Story, position: i + 1 }))
     },
-    [iterationsByNumber, storiesByNumber, effectivePending]
+    [iterationsById, storiesById, effectivePending]
   )
 
   const setPending = useCallback((storyId: number, iterationId: number, position: number): void => {

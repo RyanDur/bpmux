@@ -15,9 +15,9 @@ use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-fn seed(number: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
+fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         title.to_string(),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),

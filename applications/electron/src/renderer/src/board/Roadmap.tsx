@@ -65,7 +65,7 @@ const RoadmapOutcomeCard = ({
       data-focused={focused || undefined}
     >
       <header className="roadmap-outcome-head">
-        <DragGrip storyNumber={outcome.id} gripDragProps={gripDragProps} />
+        <DragGrip storyId={outcome.id} gripDragProps={gripDragProps} />
         <h4 className="roadmap-outcome-name">
           <button
             type="button"
@@ -130,9 +130,9 @@ const RoadmapOutcomeCard = ({
 const Roadmap = (): React.JSX.Element => {
   const { bands } = useRoadmap()
   const dispatch = useDispatch()
-  const [focusedNumber, setFocusedNumber] = useState<number | null>(null)
+  const [focusedId, setFocusedId] = useState<number | null>(null)
   const toggle = (outcomeId: number): void =>
-    setFocusedNumber((current) => (current === outcomeId ? null : outcomeId))
+    setFocusedId((current) => (current === outcomeId ? null : outcomeId))
   return (
     <section className="roadmap" data-test="roadmap">
       <p className="roadmap-live" data-test="roadmap-live">
@@ -168,7 +168,7 @@ const Roadmap = (): React.JSX.Element => {
                   <RoadmapOutcomeCard
                     outcome={outcome}
                     horizon={band.horizon}
-                    focused={focusedNumber === outcome.id}
+                    focused={focusedId === outcome.id}
                     onToggle={toggle}
                     gripDragProps={gripDragProps}
                   />

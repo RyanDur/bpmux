@@ -18,9 +18,9 @@ fn meta() -> EventMeta {
     }
 }
 
-fn seed_story(number: u64, title: &str) -> Story {
+fn seed_story(id: u64, title: &str) -> Story {
     Story::new_minimal(
-        StoryId::new(number),
+        StoryId::new(id),
         title.to_string(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -138,11 +138,11 @@ async fn multiple_pushed_events_preserve_order() {
 #[tokio::test]
 async fn create_story_auto_assigns_first_number_when_empty() {
     let adapter = InMemorySourceAdapter::new();
-    let number = adapter
+    let id = adapter
         .create_story("first ever", "body", &[])
         .await
         .unwrap();
-    assert_eq!(number, 1, "first story in empty adapter should be #1");
+    assert_eq!(id, 1, "first story in empty adapter should be #1");
     let stories = adapter.ingest_metadata().await.unwrap();
     assert_eq!(stories.len(), 1);
     assert_eq!(stories[0].id, StoryId::new(1));
@@ -154,11 +154,8 @@ async fn create_story_auto_assigns_first_number_when_empty() {
 async fn create_story_auto_assigns_max_plus_one_when_seeded() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(7, "seed-a"), seed_story(11, "seed-b")]);
-    let number = adapter.create_story("after-seed", "", &[]).await.unwrap();
-    assert_eq!(
-        number, 12,
-        "next number must be (max-existing)+1, not gap-fill"
-    );
+    let id = adapter.create_story("after-seed", "", &[]).await.unwrap();
+    assert_eq!(id, 12, "next number must be (max-existing)+1, not gap-fill");
 }
 
 #[tokio::test]

@@ -26,7 +26,7 @@ fn deliver_story_dev_with_verified_observation_succeeds() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] deliver-target",
             "reject if deliver_story doesn't fire signals + GateCommentAppended",
@@ -37,7 +37,7 @@ fn deliver_story_dev_with_verified_observation_succeeds() {
             .call_tool(
                 "deliver_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "verified_observation": VERIFIED_OBSERVATION
                 }),
             )
@@ -46,7 +46,7 @@ fn deliver_story_dev_with_verified_observation_succeeds() {
 
         let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")),
+            msg.contains(&format!("#{target_id}")),
             "message names target story; got {msg}"
         );
 
@@ -63,7 +63,7 @@ fn deliver_story_rejects_pm_caller_per_dev_lane_gate() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] pm-cannot-deliver-target",
             "reject if pm can deliver bypassing dev-lane gate",
@@ -74,7 +74,7 @@ fn deliver_story_rejects_pm_caller_per_dev_lane_gate() {
             .call_tool(
                 "deliver_story",
                 serde_json::json!({
-                    "number": target_number,
+                    "id": target_id,
                     "verified_observation": VERIFIED_OBSERVATION
                 }),
             )
@@ -99,7 +99,7 @@ fn deliver_story_rejects_missing_verified_observation() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] missing-verified-observation-target",
             "reject if dev can deliver without articulating verified_observation",
@@ -107,10 +107,7 @@ fn deliver_story_rejects_missing_verified_observation() {
         .await;
 
         let err = dev
-            .call_tool(
-                "deliver_story",
-                serde_json::json!({"number": target_number}),
-            )
+            .call_tool("deliver_story", serde_json::json!({"id": target_id}))
             .await
             .expect_err("missing verified_observation should be rejected");
 
@@ -147,7 +144,7 @@ fn deliver_story_view_board_reflects_delivered_state_via_fixture_seed() {
         dev.call_tool(
             "deliver_story",
             serde_json::json!({
-                "number": 300,
+                "id": 300,
                 "verified_observation": VERIFIED_OBSERVATION
             }),
         )
@@ -155,7 +152,7 @@ fn deliver_story_view_board_reflects_delivered_state_via_fixture_seed() {
         .expect("deliver_story should succeed against seeded story");
 
         let story = dev
-            .call_tool("get_story", serde_json::json!({"number": 300}))
+            .call_tool("get_story", serde_json::json!({"id": 300}))
             .await
             .expect("get_story should succeed");
         let story_text = story
@@ -186,7 +183,7 @@ fn deliver_story_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 

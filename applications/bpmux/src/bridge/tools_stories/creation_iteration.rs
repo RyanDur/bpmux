@@ -44,7 +44,7 @@ pub(crate) async fn handle_create_iteration(
     }
     let title = format!("Iteration {name}");
     let body = compose_iteration_body(name);
-    let number = r
+    let id = r
         .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
         .await
         .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
@@ -55,23 +55,23 @@ pub(crate) async fn handle_create_iteration(
     };
     r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
         meta: meta.clone(),
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         title: title.clone(),
         body: body.clone(),
         initial_state: crate::product_management::story::StoryState::Icebox,
         story_type: crate::product_management::story::StoryType::Iteration,
     })
-    .map_err(|e| format!("#{number} iteration created but enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{id} iteration created but enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta: meta.clone(),
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         label: "iteration".to_string(),
     })
-    .map_err(|e| format!("#{number} iteration label enqueue failed: {e}"))?;
+    .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
     let next_order = r
         .iterations()
         .into_iter()
-        .filter(|it| !it.complete && it.id().saved_id() != Some(StoryId::new(number)))
+        .filter(|it| !it.complete && it.id().saved_id() != Some(StoryId::new(id)))
         .filter_map(|it| it.iteration_order)
         .max()
         .map_or(
@@ -80,10 +80,10 @@ pub(crate) async fn handle_create_iteration(
         );
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
-        id: StoryId::new(number),
+        id: StoryId::new(id),
         label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
             .encode_iteration_order(next_order),
     })
-    .map_err(|e| format!("#{number} iteration-order label enqueue failed: {e}"))?;
-    Ok(format!("iteration created: #{number} {title}"))
+    .map_err(|e| format!("#{id} iteration-order label enqueue failed: {e}"))?;
+    Ok(format!("iteration created: #{id} {title}"))
 }

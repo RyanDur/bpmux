@@ -30,7 +30,7 @@ test.describe('#14 — the owner reorders an outcome’s iterations from the dri
         (
           await rpc(
             'map_iteration_to_outcome',
-            { outcome_number: outcome, iteration_number: crux, position: 1 },
+            { outcome_id: outcome, iteration_id: crux, position: 1 },
             'pm'
           )
         ).status
@@ -39,7 +39,7 @@ test.describe('#14 — the owner reorders an outcome’s iterations from the dri
         (
           await rpc(
             'map_iteration_to_outcome',
-            { outcome_number: outcome, iteration_number: lyra, position: 2 },
+            { outcome_id: outcome, iteration_id: lyra, position: 2 },
             'pm'
           )
         ).status

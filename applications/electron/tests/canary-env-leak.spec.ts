@@ -5,7 +5,7 @@ import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 
 interface BoardResponse {
-  stories: Array<{ number: number; title: string }>
+  stories: Array<{ id: number; title: string }>
 }
 
 const uniqueMarker = (axis: string): string =>
@@ -21,7 +21,7 @@ test.describe('#1216 env-leak canary — launchIsolatedElectron isolation', () =
       JSON.stringify({
         stories: [
           {
-            number: 99999,
+            id: 99999,
             title: marker,
             state: 'icebox',
             story_type: 'feature',
@@ -114,7 +114,7 @@ test.describe('#1216 env-leak canary — launchIsolatedElectron isolation', () =
                   ts: '2026-01-01T00:00:00Z',
                   peer_id: 'leak-canary'
                 },
-                number: 99999,
+                id: 99999,
                 body: 'leak-outbox-canary'
               }
             },

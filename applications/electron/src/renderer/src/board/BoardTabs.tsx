@@ -6,7 +6,7 @@ import Roadmap from './Roadmap'
 import Tabs, { type TabDef } from './Tabs'
 import { useTabStorage } from '../lib/useTabStorage'
 import { RENDERER_IDENTITY } from '../transport/session'
-import { epicNumbersInIteration } from './currentIteration'
+import { epicIdsInIteration } from './currentIteration'
 import { deriveNowView } from './deriveNowView'
 import type { BoardIterationData } from './selectIterations'
 import { GROUP_ORDER, isActiveEpic, type Story, type ColumnState, type GroupSpec } from './types'
@@ -32,7 +32,7 @@ interface BoardTabsProps {
   stories: Story[]
   iterations: BoardIterationData[]
   epics: Story[]
-  epicTitleByNumber: Map<number, string>
+  epicTitleById: Map<number, string>
   iterationContainerStories: Story[]
   grouped: Map<ColumnState, Story[]>
   loading: boolean
@@ -42,7 +42,7 @@ interface BoardTabsProps {
   onOpen: (n: number) => void
   onOpenTimeline: (n: number) => void
   onSelect: (n: number) => void
-  onReorder: (state: ColumnState, moved: number, targetNumber: number) => void
+  onReorder: (state: ColumnState, moved: number, targetId: number) => void
   onReorderAnnounce: (text: string) => void
 }
 
@@ -50,7 +50,7 @@ const BoardTabs = ({
   stories,
   iterations,
   epics,
-  epicTitleByNumber,
+  epicTitleById,
   iterationContainerStories,
   grouped,
   loading,
@@ -72,16 +72,16 @@ const BoardTabs = ({
 
   const nowView = useMemo(() => deriveNowView(iterations, stories), [iterations, stories])
   const currentIteration = nowView.kind === 'current' ? nowView.iteration : null
-  const currentIterationEpicNumbers = useMemo(() => {
+  const currentIterationEpicIds = useMemo(() => {
     if (currentIteration === null) return []
-    return epicNumbersInIteration(stories, currentIteration)
+    return epicIdsInIteration(stories, currentIteration)
   }, [stories, currentIteration])
   const currentIterationEpics = useMemo(() => {
     if (currentIteration === null) return []
-    const inIter = new Set(currentIterationEpicNumbers)
+    const inIter = new Set(currentIterationEpicIds)
     return stories.filter((s) => isActiveEpic(s) && inIter.has(s.id))
-  }, [stories, currentIteration, currentIterationEpicNumbers])
-  const currentIterationMemberNumbers = useMemo<Set<number>>(
+  }, [stories, currentIteration, currentIterationEpicIds])
+  const currentIterationMemberIds = useMemo<Set<number>>(
     () => new Set(nowView.kind === 'current' ? nowView.members.map((m) => m.story.id) : []),
     [nowView]
   )
@@ -112,9 +112,9 @@ const BoardTabs = ({
         storiesOverride ??
         (group.state === 'icebox' ? iterationContainerStories : (grouped.get(group.state) ?? []))
       }
-      epicTitleByNumber={epicTitleByNumber}
+      epicTitleById={epicTitleById}
       loading={loading}
-      selectedNumber={effectiveSelected}
+      selectedId={effectiveSelected}
       onOpen={onOpen}
       onOpenTimeline={onOpenTimeline}
       onSelect={onSelect}
@@ -141,7 +141,7 @@ const BoardTabs = ({
           renderGroup(
             group,
             undefined,
-            (grouped.get(group.state) ?? []).filter((s) => currentIterationMemberNumbers.has(s.id))
+            (grouped.get(group.state) ?? []).filter((s) => currentIterationMemberIds.has(s.id))
           )
         )}
       </section>

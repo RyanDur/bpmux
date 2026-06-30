@@ -21,7 +21,7 @@ pub struct SyncStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DroppedEvent {
-    pub story_number: u64,
+    pub story_id: u64,
     pub error: String,
     pub ts: DateTime<Utc>,
 }
@@ -134,10 +134,10 @@ pub(super) fn decrement_pending(status: &Arc<Mutex<SyncStatus>>) {
     });
 }
 
-pub(super) fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_number: u64, error: String) {
+pub(super) fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_id: u64, error: String) {
     with_status_mut(status, |s| {
         s.dropped_events.push(DroppedEvent {
-            story_number,
+            story_id,
             error,
             ts: Utc::now(),
         });

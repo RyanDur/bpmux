@@ -285,7 +285,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(301));
+    args.insert("id".into(), serde_json::json!(301));
     args.insert(
         "reason".into(),
         serde_json::json!("superseded by #999 — won't ship"),

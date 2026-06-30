@@ -13,7 +13,7 @@ import {
 export interface UseBoardDataResult {
   stories: Story[]
   epics: Story[]
-  epicTitleByNumber: Map<number, string>
+  epicTitleById: Map<number, string>
   iterationContainerStories: Story[]
   flatBoardStories: Story[]
   grouped: Map<ColumnState, Story[]>
@@ -28,7 +28,7 @@ export const useBoardData = (
   const stories = useMemo(() => data ?? [], [data])
   const membershipIndex = useMemo(() => buildMembershipIndex(iterations), [iterations])
   const epics = useMemo(() => stories.filter(isActiveEpic), [stories])
-  const epicTitleByNumber = useMemo(() => {
+  const epicTitleById = useMemo(() => {
     const map = new Map<number, string>()
     for (const s of stories) {
       if (storyTypeFromLabels(s.labels) === 'epic') map.set(s.id, s.title)
@@ -88,7 +88,7 @@ export const useBoardData = (
   return {
     stories,
     epics,
-    epicTitleByNumber,
+    epicTitleById,
     iterationContainerStories,
     flatBoardStories,
     grouped,

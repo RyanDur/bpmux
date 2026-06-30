@@ -84,7 +84,7 @@ fn provisioned_agent_receives_live_state_delta_push_not_just_rpc_tools() {
             .call_tool(
                 "move_story",
                 serde_json::json!({
-                    "number": target,
+                    "id": target,
                     "target_state": "ready",
                     "rationale": "fire board_invalidated for the provisioned subscriber"
                 }),

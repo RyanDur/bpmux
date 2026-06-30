@@ -53,7 +53,7 @@ fn set_parent_epic_rejects_non_epic_parent() {
         let err = pm
             .call_tool(
                 "set_parent_epic",
-                serde_json::json!({"number": 20, "epic_id": 10}),
+                serde_json::json!({"id": 20, "epic_id": 10}),
             )
             .await
             .expect_err("non-Epic parent should be rejected");
@@ -75,7 +75,7 @@ fn set_parent_epic_rejects_self_parent() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let target_number = create_target_story(
+        let target_id = create_target_story(
             &pm,
             "[Feature] self-parent-target",
             "reject if a story can be its own parent",
@@ -86,8 +86,8 @@ fn set_parent_epic_rejects_self_parent() {
             .call_tool(
                 "set_parent_epic",
                 serde_json::json!({
-                    "number": target_number,
-                    "epic_id": target_number
+                    "id": target_id,
+                    "epic_id": target_id
                 }),
             )
             .await
@@ -114,7 +114,7 @@ fn set_parent_epic_rejects_dev_caller_per_pm_lane_gate() {
             .call_tool(
                 "set_parent_epic",
                 serde_json::json!({
-                    "number": 100,
+                    "id": 100,
                     "epic_id": 200
                 }),
             )
@@ -139,7 +139,7 @@ fn set_parent_epic_rejects_missing_epic_number() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = pm
-            .call_tool("set_parent_epic", serde_json::json!({"number": 100}))
+            .call_tool("set_parent_epic", serde_json::json!({"id": 100}))
             .await
             .expect_err("missing epic_number should be rejected");
 
@@ -166,7 +166,7 @@ fn set_parent_epic_rejects_missing_number() {
             .expect_err("missing number should be rejected");
 
         assert!(
-            err.contains("number"),
+            err.contains("'id'"),
             "rejection names the missing field; got {err}"
         );
 

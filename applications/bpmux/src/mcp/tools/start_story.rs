@@ -4,7 +4,7 @@ pub fn start_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to mark as started"
             },
@@ -17,7 +17,7 @@ pub fn start_story_tool(description: &'static str) -> Tool {
                 "description": "(REQUIRED, 2026-04-23 retro) Dev's interpretation of the observation-falsifier. Either restates the filing-time falsifier verbatim (if accepted as-is) OR declares a sharpening (if dev sees a tighter falsifier at pickup). Forces dev to engage with the rejection criteria before writing code."
             }
         },
-        "required": ["number", "pickup_paraphrase", "falsifier_reframing"]
+        "required": ["id", "pickup_paraphrase", "falsifier_reframing"]
     });
     Tool::new(
         "start_story",

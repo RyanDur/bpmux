@@ -4,7 +4,7 @@ pub fn reorder_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to reorder"
             },
@@ -17,7 +17,7 @@ pub fn reorder_story_tool(description: &'static str) -> Tool {
                 "description": "Target position (1-indexed). 1 = top of column."
             }
         },
-        "required": ["number", "state", "position"]
+        "required": ["id", "state", "position"]
     });
     Tool::new(
         "reorder_story",

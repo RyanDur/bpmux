@@ -97,7 +97,7 @@ pub fn payload_matches_filter(
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IterationCloseBlockerPayload {
-    pub number: u64,
+    pub id: u64,
     pub title: String,
     pub state: String,
 }

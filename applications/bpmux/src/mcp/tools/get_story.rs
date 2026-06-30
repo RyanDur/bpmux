@@ -4,12 +4,12 @@ pub fn get_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
         "properties": {
-            "number": {
+            "id": {
                 "type": "integer",
                 "description": "Issue number to fetch"
             }
         },
-        "required": ["number"]
+        "required": ["id"]
     });
     Tool::new(
         "get_story",

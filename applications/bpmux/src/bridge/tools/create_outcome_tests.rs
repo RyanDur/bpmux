@@ -21,10 +21,10 @@ async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
     orch
 }
 
-fn typed_seed(number: u64, story_type: StoryType, label: &str) -> Story {
+fn typed_seed(id: u64, story_type: StoryType, label: &str) -> Story {
     let mut s = Story::new_minimal(
-        StoryId::new(number),
-        format!("#{number}"),
+        StoryId::new(id),
+        format!("#{id}"),
         StoryState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),

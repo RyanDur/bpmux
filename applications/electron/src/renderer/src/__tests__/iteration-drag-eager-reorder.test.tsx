@@ -19,26 +19,26 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
 
     await seedStories(apiBase, authToken, [
       {
-        number: 7901,
+        id: 7901,
         title: 'Iteration Orion',
         story_type: 'iteration',
         initial_state: 'icebox',
         body: '<!-- bpmux-relationships: {"stories":[7911,7912,7913]} -->'
       },
       {
-        number: 7911,
+        id: 7911,
         title: 'orion-alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7912,
+        id: 7912,
         title: 'orion-bravo',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        number: 7913,
+        id: 7913,
         title: 'orion-charlie',
         story_type: 'feature',
         initial_state: 'icebox'

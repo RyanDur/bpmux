@@ -39,14 +39,14 @@ pub(crate) async fn handle_pass_desk_check(
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
-    let number = args
-        .get("number")
+    let id = args
+        .get("id")
         .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
+        .ok_or("missing 'id' argument")?;
     let acceptor = parse_acceptor_arg(args)?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
     let r_opt = refresh;
-    let story_opt = r_opt.and_then(|r| r.store().story(StoryId::new(number)));
+    let story_opt = r_opt.and_then(|r| r.store().story(StoryId::new(id)));
     let class = story_opt
         .as_ref()
         .map(|s| crate::workflow::gate_class_from_labels(&s.raw_labels))
@@ -60,7 +60,7 @@ pub(crate) async fn handle_pass_desk_check(
     )
     .map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
-        let evidence = recent_evidence_for_story(s, number)?;
+        let evidence = recent_evidence_for_story(s, id)?;
         crate::workflow::check_evidence_present(
             transition,
             actor_role,
@@ -74,7 +74,7 @@ pub(crate) async fn handle_pass_desk_check(
     crate::workflow::check_ci_green(transition, ci_snapshot.as_ref())
         .map_err(|e| e.as_json_string())?;
     let was_closed = if let Some(r) = refresh {
-        let prior = ensure_story_in_canonical_store(r, number).await?;
+        let prior = ensure_story_in_canonical_store(r, id).await?;
         if let Some(body) = prior.body.as_deref() {
             crate::bridge::atp_substantive_gate::verify_atp_substantive(body)?;
         }
@@ -92,44 +92,44 @@ pub(crate) async fn handle_pass_desk_check(
             r.mutate_sync(
                 crate::product_management::board::BoardEvent::StoryReopened {
                     meta: meta.clone(),
-                    id: StoryId::new(number),
+                    id: StoryId::new(id),
                 },
             )
-            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
-        reap_workflow_labels(r.as_ref(), number, &meta, LABEL_DELIVERED)?;
-        let labels_after_reap = r.story(number).map(|s| s.raw_labels).unwrap_or_default();
+        reap_workflow_labels(r.as_ref(), id, &meta, LABEL_DELIVERED)?;
+        let labels_after_reap = r.story(id).map(|s| s.raw_labels).unwrap_or_default();
         for event in crate::bridge::tools_stories::acceptor_axis::acceptor_label_events(
             acceptor,
             &labels_after_reap,
             &meta,
-            number,
+            id,
         ) {
             r.mutate_sync(event)
-                .map_err(|e| format!("#{number} acceptor-label enqueue failed: {e}"))?;
+                .map_err(|e| format!("#{id} acceptor-label enqueue failed: {e}"))?;
         }
         r.mutate_sync(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),
-                id: StoryId::new(number),
+                id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::PassDeskCheck,
                 payload: bypass.clone().map(format_bypass_payload),
             },
         )
-        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
         r.mutate_sync(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta,
-                id: StoryId::new(number),
+                id: StoryId::new(id),
                 new_state: crate::product_management::story::StoryState::Delivered,
             },
         )
-        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()
             .await
-            .map_err(|e| format!("#{number} drain after pass_desk_check failed: {e}"))?;
+            .map_err(|e| format!("#{id} drain after pass_desk_check failed: {e}"))?;
         return Ok(format!(
-            "#{number} passed desk-check: signal sent, label applied"
+            "#{id} passed desk-check: signal sent, label applied"
         ));
     }
     Err(

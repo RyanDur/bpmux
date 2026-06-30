@@ -28,12 +28,12 @@ const seedReadyMember = async (rpc: RpcFn): Promise<void> => {
   expect(createResp.status).toBe(200)
   const moveResp = await rpc(
     'move_story',
-    { number: 1, target_state: 'ready', rationale: 'desk-check-351 transitions fixture' },
+    { id: 1, target_state: 'ready', rationale: 'desk-check-351 transitions fixture' },
     'pm'
   )
   expect(moveResp.status).toBe(200)
-  const iterNumber = await seedCurrentIterationViaRpc(rpc, 'DeskCheck351')
-  await addStoryToIterationViaRpc(rpc, 1, iterNumber, 1)
+  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck351')
+  await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
 }
 
 test.describe('desk-check #351 high-signal transitions', () => {
