@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test'
 import { launchTwoElectronsSharedBackend } from './helpers/launch'
 import { BoardPage } from './pages/boardPage'
 
-test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member retag visible in both', () => {
-  test('retag member from iteration A to iteration B in instance A propagates to instance B', async () => {
+test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member move visible in both', () => {
+  test('move a member from iteration A to iteration B in one instance propagates to the other', async () => {
     const { win1, win2, apiBase, authToken, cleanup } = await launchTwoElectronsSharedBackend()
     try {
       const seedRes = await fetch(`${apiBase}/api/test/seed_stories`, {
@@ -18,35 +18,19 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
               id: 9601,
               title: 'Iteration Volans',
               story_type: 'iteration',
-              initial_state: 'icebox'
+              initial_state: 'icebox',
+              body: '<!-- bpmux-relationships: {"stories":[9611,9620]} -->'
             },
             {
               id: 9602,
               title: 'Iteration Crater',
               story_type: 'iteration',
-              initial_state: 'icebox'
-            },
-            {
-              id: 9611,
-              title: 'volans-member',
-              story_type: 'feature',
               initial_state: 'icebox',
-              labels: ['parent-iteration-#9601.100']
+              body: '<!-- bpmux-relationships: {"stories":[9621]} -->'
             },
-            {
-              id: 9620,
-              title: 'volans-anchor',
-              story_type: 'feature',
-              initial_state: 'icebox',
-              labels: ['parent-iteration-#9601.200']
-            },
-            {
-              id: 9621,
-              title: 'crater-anchor',
-              story_type: 'feature',
-              initial_state: 'icebox',
-              labels: ['parent-iteration-#9602.100']
-            }
+            { id: 9611, title: 'volans-member', story_type: 'feature', initial_state: 'icebox' },
+            { id: 9620, title: 'volans-anchor', story_type: 'feature', initial_state: 'icebox' },
+            { id: 9621, title: 'crater-anchor', story_type: 'feature', initial_state: 'icebox' }
           ]
         })
       })
@@ -68,18 +52,16 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
       expect(await memberIn(board2, 9601)).toBe(true)
       expect(await memberIn(board2, 9602)).toBe(false)
 
-      const mutateRes = await fetch(`${apiBase}/api/stories/9611/labels`, {
+      const moveRes = await fetch(`${apiBase}/api/rpc/add_story_to_iteration`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`
+          Authorization: `Bearer ${authToken}`,
+          'X-BPMUX-Agent': 'pm'
         },
-        body: JSON.stringify({
-          add: ['parent-iteration-#9602.100'],
-          remove: ['parent-iteration-#9601.100']
-        })
+        body: JSON.stringify({ iteration_id: 9602, story_id: 9611, position: 1 })
       })
-      expect(mutateRes.ok).toBe(true)
+      expect(moveRes.ok, await moveRes.text()).toBe(true)
 
       await expect
         .poll(() => memberIn(board1, 9602), { timeout: 15_000, intervals: [200] })

@@ -3,7 +3,7 @@ import { launchTwoElectronsSharedBackend } from './helpers/launch'
 import { BoardPage } from './pages/boardPage'
 
 test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration order after one reorders', () => {
-  test('drag-reorder in instance A propagates to instance B via WS state-delta', async () => {
+  test('reorder in instance A propagates to instance B via WS state-delta', async () => {
     const { win1, win2, apiBase, authToken, cleanup } = await launchTwoElectronsSharedBackend()
     try {
       const seedRes = await fetch(`${apiBase}/api/test/seed_stories`, {
@@ -18,29 +18,12 @@ test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration o
               id: 9301,
               title: 'Iteration Reticulum',
               story_type: 'iteration',
-              initial_state: 'icebox'
-            },
-            {
-              id: 9311,
-              title: 'reticulum-alpha',
-              story_type: 'feature',
               initial_state: 'icebox',
-              labels: ['parent-iteration-#9301.100']
+              body: '<!-- bpmux-relationships: {"stories":[9311,9312,9313]} -->'
             },
-            {
-              id: 9312,
-              title: 'reticulum-bravo',
-              story_type: 'feature',
-              initial_state: 'icebox',
-              labels: ['parent-iteration-#9301.200']
-            },
-            {
-              id: 9313,
-              title: 'reticulum-charlie',
-              story_type: 'feature',
-              initial_state: 'icebox',
-              labels: ['parent-iteration-#9301.300']
-            }
+            { id: 9311, title: 'reticulum-alpha', story_type: 'feature', initial_state: 'icebox' },
+            { id: 9312, title: 'reticulum-bravo', story_type: 'feature', initial_state: 'icebox' },
+            { id: 9313, title: 'reticulum-charlie', story_type: 'feature', initial_state: 'icebox' }
           ]
         })
       })
@@ -61,18 +44,16 @@ test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration o
       expect(initial1).toEqual([9311, 9312, 9313])
       expect(initial2).toEqual([9311, 9312, 9313])
 
-      const mutateRes = await fetch(`${apiBase}/api/stories/9313/labels`, {
+      const reorderRes = await fetch(`${apiBase}/api/rpc/add_story_to_iteration`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`
+          Authorization: `Bearer ${authToken}`,
+          'X-BPMUX-Agent': 'pm'
         },
-        body: JSON.stringify({
-          add: ['parent-iteration-#9301.50'],
-          remove: ['parent-iteration-#9301.300']
-        })
+        body: JSON.stringify({ iteration_id: 9301, story_id: 9313, position: 1 })
       })
-      expect(mutateRes.ok).toBe(true)
+      expect(reorderRes.ok, await reorderRes.text()).toBe(true)
 
       await expect
         .poll(() => board1.memberOrder(9301), { timeout: 15_000, intervals: [200] })
