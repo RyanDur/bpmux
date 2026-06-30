@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryKey};
+use crate::product_management::story::{Story, StoryKey, StoryType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Content {
@@ -21,6 +21,15 @@ pub enum ProductItem {
 }
 
 impl ProductItem {
+    pub fn from_story(story: &Story) -> ProductItem {
+        match story.story_type() {
+            StoryType::Outcome => ProductItem::Outcome(Outcome::from_story(story)),
+            StoryType::Iteration => ProductItem::Iteration(story.clone()),
+            StoryType::Epic => ProductItem::Epic(story.clone()),
+            StoryType::Story(_) => ProductItem::Story(story.clone()),
+        }
+    }
+
     pub fn id(&self) -> StoryKey {
         match self {
             ProductItem::Story(story)

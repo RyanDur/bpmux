@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::item::ProductItem;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
@@ -27,7 +28,7 @@ struct InnerState {
 }
 
 impl SourceAdapter for InMemorySourceAdapter {
-    async fn ingest_metadata(&self) -> Result<Vec<Story>, SyncError> {
+    async fn ingest_metadata(&self) -> Result<Vec<ProductItem>, SyncError> {
         let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_ingest {
             return Err(SyncError::SourceUnreachable(
@@ -41,7 +42,7 @@ impl SourceAdapter for InMemorySourceAdapter {
                 if let Some(labels) = s.labels.get(&story.id.value()) {
                     story.raw_labels = labels.clone();
                 }
-                story
+                ProductItem::from_story(&story)
             })
             .collect())
     }

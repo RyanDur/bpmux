@@ -2,7 +2,7 @@ use super::SyncOrchestrator;
 use super::status::{record_error, record_ingest_success};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
-use crate::product_management::story::StoryId;
+use crate::product_management::story::{Story, StoryId};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn ingest_once(&self) -> Result<(), SyncError> {
@@ -14,7 +14,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         since: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<(), SyncError> {
         match self.adapter.ingest_metadata_since(since).await {
-            Ok(stories) => {
+            Ok(items) => {
                 let in_flight_label_stories = self.with_pending(|p| {
                     p.iter()
                         .filter(|q| {
@@ -26,15 +26,24 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         .map(|q| q.event.story_id())
                         .collect::<Vec<StoryId>>()
                 });
-                let stories = stories
+                let items = items
                     .into_iter()
-                    .filter(|s| !in_flight_label_stories.contains(&s.id))
+                    .filter(|item| {
+                        item.id()
+                            .saved_id()
+                            .map(|id| !in_flight_label_stories.contains(&id))
+                            .unwrap_or(true)
+                    })
                     .collect::<Vec<_>>();
+                let backing: Vec<Story> = items
+                    .iter()
+                    .filter_map(|i| i.backing_story().cloned())
+                    .collect();
                 let purge =
                     crate::product_management::board::adapters::github::iterations_to_purge_as_retired_empty(
-                        &stories,
+                        &backing,
                     );
-                self.store.seed_all(stories);
+                self.store.seed_items(items);
                 for iteration_id in purge {
                     self.store.remove(StoryId::new(iteration_id.value()));
                 }

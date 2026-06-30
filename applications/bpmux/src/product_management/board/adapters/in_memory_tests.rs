@@ -28,11 +28,21 @@ fn seed_story(id: u64, title: &str) -> Story {
     )
 }
 
+async fn ingest_stories(adapter: &InMemorySourceAdapter) -> Vec<Story> {
+    adapter
+        .ingest_metadata()
+        .await
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.backing_story().cloned())
+        .collect()
+}
+
 #[tokio::test]
 async fn ingest_metadata_returns_seeded_stories() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(1, "first"), seed_story(2, "second")]);
-    let stories = adapter.ingest_metadata().await.unwrap();
+    let stories = ingest_stories(&adapter).await;
     assert_eq!(stories.len(), 2);
     let titles: Vec<&str> = stories.iter().map(|s| s.title.as_str()).collect();
     assert!(titles.contains(&"first"));
@@ -143,7 +153,7 @@ async fn create_story_auto_assigns_first_number_when_empty() {
         .await
         .unwrap();
     assert_eq!(id, 1, "first story in empty adapter should be #1");
-    let stories = adapter.ingest_metadata().await.unwrap();
+    let stories = ingest_stories(&adapter).await;
     assert_eq!(stories.len(), 1);
     assert_eq!(stories[0].id, StoryId::new(1));
     assert_eq!(stories[0].title, "first ever");
@@ -196,7 +206,7 @@ async fn tag_added_surfaces_label_in_ingested_raw_labels() {
         })
         .await
         .unwrap();
-    let stories = adapter.ingest_metadata().await.unwrap();
+    let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert!(
         story
@@ -220,7 +230,7 @@ async fn tag_removed_drops_label_from_ingested_raw_labels() {
         })
         .await
         .unwrap();
-    let stories = adapter.ingest_metadata().await.unwrap();
+    let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert!(
         !story
@@ -243,7 +253,7 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
         })
         .await
         .unwrap();
-    let stories = adapter.ingest_metadata().await.unwrap();
+    let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::parent_epic_from_labels(
@@ -281,7 +291,7 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
         })
         .await
         .unwrap();
-    let stories = adapter.ingest_metadata().await.unwrap();
+    let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::parent_epic_from_labels(
@@ -313,7 +323,7 @@ async fn iteration_membership_set_surfaces_in_ingested_metadata() {
         })
         .await
         .unwrap();
-    let stories = adapter.ingest_metadata().await.unwrap();
+    let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert_eq!(
         crate::product_management::board::adapters::github::iteration_membership_from_labels(
@@ -352,7 +362,7 @@ async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
         })
         .await
         .unwrap();
-    let stories = adapter.ingest_metadata().await.unwrap();
+    let stories = ingest_stories(&adapter).await;
     assert!(
         stories.iter().all(|s| s.id != StoryId::new(999)),
         "events for an unseeded story must no-op, never phantom-create"

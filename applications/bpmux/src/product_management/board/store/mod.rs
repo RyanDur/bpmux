@@ -4,6 +4,7 @@ use tokio::sync::broadcast;
 
 use super::events::BoardEvent;
 use crate::product_management::board::adapters::github::decode_iteration;
+use crate::product_management::board::item::ProductItem;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{Story, StoryId, StoryKey, StoryState};
@@ -59,12 +60,16 @@ impl BoardStore {
             .unwrap_or_else(|e| e.into_inner()) = Some(Box::new(f));
     }
 
-    pub fn seed_all(&self, stories: Vec<Story>) {
-        let changed = !stories.is_empty();
-        self.store.dispatch(BoardAction::Seeded(stories));
+    pub fn seed_items(&self, items: Vec<ProductItem>) {
+        let changed = !items.is_empty();
+        self.store.dispatch(BoardAction::Seeded(items));
         if changed {
             let _ = self.event_tx.send(StoreChange::Resynced);
         }
+    }
+
+    pub fn seed_all(&self, stories: Vec<Story>) {
+        self.seed_items(stories.iter().map(ProductItem::from_story).collect());
     }
 
     pub fn clear(&self) {

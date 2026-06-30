@@ -1,4 +1,4 @@
-use super::{Stories, item_from_story, story_mut};
+use super::{Stories, story_mut};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::item::ProductItem;
 use crate::product_management::outcome::Outcome;
@@ -33,7 +33,7 @@ pub(super) fn apply_story_created(
         tags: Vec::new(),
         ready_order: None,
     };
-    w.insert(StoryKey::Saved(id), item_from_story(&story));
+    w.insert(StoryKey::Saved(id), ProductItem::from_story(&story));
 }
 
 pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: StoryState) {
@@ -122,7 +122,7 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story)
             }
         }
         _ => {
-            w.insert(key, item_from_story(story));
+            w.insert(key, ProductItem::from_story(story));
         }
     }
 }

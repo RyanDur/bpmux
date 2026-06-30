@@ -6,6 +6,7 @@ use crate::product_management::board::adapters::github::{
     filter_retired_empty_iterations,
 };
 use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::item::ProductItem;
 use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story};
 use crate::store::CiPollFetch;
@@ -37,14 +38,14 @@ impl CiPollFetch for GitHubSourceAdapter {
 }
 
 impl SourceAdapter for GitHubSourceAdapter {
-    async fn ingest_metadata(&self) -> Result<Vec<Story>, SyncError> {
+    async fn ingest_metadata(&self) -> Result<Vec<ProductItem>, SyncError> {
         self.ingest_metadata_since(None).await
     }
 
     async fn ingest_metadata_since(
         &self,
         since: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> Result<Vec<Story>, SyncError> {
+    ) -> Result<Vec<ProductItem>, SyncError> {
         let values = self
             .inner
             .fetch_board_stories_since(since)
@@ -67,7 +68,7 @@ impl SourceAdapter for GitHubSourceAdapter {
             "github ingest_metadata_since(since={:?}): received {received} values, decoded {pre_filter} stories, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
             since.map(|s| s.to_rfc3339()),
         ));
-        Ok(out)
+        Ok(out.iter().map(ProductItem::from_story).collect())
     }
 
     async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {
