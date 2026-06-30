@@ -4,7 +4,7 @@ use chrono::{TimeZone, Utc};
 
 use super::events::{BoardEvent, EventMeta, LabelDerivedFields, event_wins};
 use super::peer::PeerId;
-use super::store::BoardStore;
+use super::store::{BoardStore, StoreChange};
 use crate::product_management::board::adapters::github::{
     acceptor_from_labels, iteration_membership_from_labels, parent_epic_from_labels,
     story_type_from_labels_or_title, tags_from_labels,
@@ -439,19 +439,12 @@ async fn subscribe_delivers_applied_events_to_listeners() {
     };
     store.apply(&event);
     let received = rx.recv().await.expect("receive");
-    assert_eq!(received, event);
+    assert_eq!(received, StoreChange::Event(event));
 }
 
 #[tokio::test]
 async fn subscribe_fans_out_to_multiple_listeners() {
     let store = BoardStore::new();
-    let mut a = store.subscribe();
-    let mut b = store.subscribe();
-    let event = BoardEvent::StateTransitioned {
-        meta: meta("dev", 2026, "local"),
-        id: StoryId::new(7),
-        new_state: StoryState::Delivered,
-    };
     store.seed_all(vec![Story::new_minimal(
         StoryId::new(7),
         "t".to_string(),
@@ -459,11 +452,68 @@ async fn subscribe_fans_out_to_multiple_listeners() {
         chrono::Utc::now(),
         "pm".to_string(),
     )]);
+    let mut a = store.subscribe();
+    let mut b = store.subscribe();
+    let event = BoardEvent::StateTransitioned {
+        meta: meta("dev", 2026, "local"),
+        id: StoryId::new(7),
+        new_state: StoryState::Delivered,
+    };
     store.apply(&event);
     let a_event = a.recv().await.expect("a recv");
     let b_event = b.recv().await.expect("b recv");
-    assert_eq!(a_event, event);
-    assert_eq!(b_event, event);
+    assert_eq!(a_event, StoreChange::Event(event.clone()));
+    assert_eq!(b_event, StoreChange::Event(event));
+}
+
+#[tokio::test]
+async fn seeding_changed_stories_notifies_subscribers_so_the_board_rebroadcasts() {
+    let store = BoardStore::new();
+    let mut rx = store.subscribe();
+    store.seed_all(vec![Story::new_minimal(
+        StoryId::new(42),
+        "ingested".to_string(),
+        StoryState::Ready,
+        chrono::Utc::now(),
+        "pm".to_string(),
+    )]);
+    let received = rx.recv().await.expect("receive");
+    assert_eq!(received, StoreChange::Resynced);
+}
+
+#[tokio::test]
+async fn an_empty_seed_changes_nothing_and_stays_quiet() {
+    let store = BoardStore::new();
+    let mut rx = store.subscribe();
+    store.seed_all(vec![]);
+    let event = BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        id: StoryId::new(7),
+        title: "next".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Story(StoryKind::Feature),
+    };
+    store.apply(&event);
+    let received = rx.recv().await.expect("receive");
+    assert_eq!(received, StoreChange::Event(event));
+}
+
+#[tokio::test]
+async fn removing_a_present_story_notifies_but_removing_an_absent_one_stays_quiet() {
+    let store = BoardStore::new();
+    store.seed_all(vec![Story::new_minimal(
+        StoryId::new(5),
+        "t".to_string(),
+        StoryState::Ready,
+        chrono::Utc::now(),
+        "pm".to_string(),
+    )]);
+    let mut rx = store.subscribe();
+    assert!(store.remove(StoryId::new(404)).is_none());
+    store.remove(StoryId::new(5));
+    let received = rx.recv().await.expect("receive");
+    assert_eq!(received, StoreChange::Resynced);
 }
 
 #[tokio::test]

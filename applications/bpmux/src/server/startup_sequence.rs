@@ -58,8 +58,11 @@ pub(super) fn spawn_owner_park_loop(
             tokio::select! {
                 _ = ct.cancelled() => return,
                 received = events.recv() => match received {
-                    Ok(event) => owner_park.on_board_event(&event).await,
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                    Ok(crate::product_management::board::StoreChange::Event(event)) => {
+                        owner_park.on_board_event(&event).await
+                    }
+                    Ok(crate::product_management::board::StoreChange::Resynced)
+                    | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
                         owner_park.recompute_from_snapshot().await;
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => return,

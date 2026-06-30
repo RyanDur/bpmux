@@ -4,7 +4,7 @@ use crate::product_management::board::events::BoardEvent;
 impl BoardStore {
     pub fn apply(&self, event: &BoardEvent) {
         self.store.dispatch(BoardAction::Event(event.clone()));
-        let _ = self.event_tx.send(event.clone());
+        let _ = self.event_tx.send(StoreChange::Event(event.clone()));
         #[cfg(test)]
         {
             let hook = self

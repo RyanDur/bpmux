@@ -3,7 +3,7 @@
 use super::labels::{LabelMutationPayload, post_story_labels};
 use crate::product_management::board::adapters::github::iteration_membership_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{BoardStore, RefreshDriver, StoreChange, SyncOrchestrator};
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use crate::session::Session;
@@ -68,8 +68,10 @@ async fn reordering_a_member_through_the_label_endpoint_never_transiently_orphan
     assert_eq!(response.status(), axum::http::StatusCode::OK);
 
     let mut sequence = Vec::new();
-    while let Ok(event) = emitted.try_recv() {
-        sequence.push(event);
+    while let Ok(change) = emitted.try_recv() {
+        if let StoreChange::Event(event) = change {
+            sequence.push(event);
+        }
     }
 
     let replay = BoardStore::new();

@@ -22,9 +22,15 @@ pub use state::BoardState;
 
 const SUBSCRIBE_BUFFER: usize = 1_000;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StoreChange {
+    Event(BoardEvent),
+    Resynced,
+}
+
 pub struct BoardStore {
     store: Arc<Store<BoardState, BoardAction>>,
-    event_tx: broadcast::Sender<BoardEvent>,
+    event_tx: broadcast::Sender<StoreChange>,
     #[cfg(test)]
     test_post_broadcast_hook: std::sync::Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
 }
@@ -54,11 +60,16 @@ impl BoardStore {
     }
 
     pub fn seed_all(&self, stories: Vec<Story>) {
+        let changed = !stories.is_empty();
         self.store.dispatch(BoardAction::Seeded(stories));
+        if changed {
+            let _ = self.event_tx.send(StoreChange::Resynced);
+        }
     }
 
     pub fn clear(&self) {
         self.store.dispatch(BoardAction::Cleared);
+        let _ = self.event_tx.send(StoreChange::Resynced);
     }
 
     pub fn remove(&self, id: StoryId) -> Option<Story> {
@@ -69,10 +80,13 @@ impl BoardStore {
                 .and_then(|item| item.backing_story().cloned())
         });
         self.store.dispatch(BoardAction::Removed(id));
+        if removed.is_some() {
+            let _ = self.event_tx.send(StoreChange::Resynced);
+        }
         removed
     }
 
-    pub fn subscribe(&self) -> broadcast::Receiver<BoardEvent> {
+    pub fn subscribe(&self) -> broadcast::Receiver<StoreChange> {
         self.event_tx.subscribe()
     }
 

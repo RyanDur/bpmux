@@ -2,9 +2,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use crate::product_management::board::BoardStore;
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::peer::PeerId;
+use crate::product_management::board::{BoardStore, StoreChange};
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::Utc;
 use std::sync::Arc;
@@ -43,9 +43,9 @@ fn assert_state_transition_fires(
         "BoardEvent::StateTransitioned delivered to subscriber after apply (#1282 invariant)",
     );
     match event {
-        BoardEvent::StateTransitioned {
+        StoreChange::Event(BoardEvent::StateTransitioned {
             new_state, id: n, ..
-        } => {
+        }) => {
             assert_eq!(n, StoryId::new(number));
             assert_eq!(new_state, expected_new_state);
         }
@@ -95,7 +95,10 @@ async fn sister_to_1274_state_transition_reaches_cascade_listener() {
         .try_recv()
         .expect("cascade-listener receives StateTransitioned event after apply (#1274 sister)");
     assert!(
-        matches!(event, BoardEvent::StateTransitioned { .. }),
+        matches!(
+            event,
+            StoreChange::Event(BoardEvent::StateTransitioned { .. })
+        ),
         "event delivered to subscriber is the StateTransitioned we sent"
     );
     assert_eq!(
@@ -120,8 +123,14 @@ async fn multiple_subscribers_each_receive_state_transition_event() {
 
     let event_a = rx_a.try_recv().expect("subscriber A receives event");
     let event_b = rx_b.try_recv().expect("subscriber B receives event");
-    assert!(matches!(event_a, BoardEvent::StateTransitioned { .. }));
-    assert!(matches!(event_b, BoardEvent::StateTransitioned { .. }));
+    assert!(matches!(
+        event_a,
+        StoreChange::Event(BoardEvent::StateTransitioned { .. })
+    ));
+    assert!(matches!(
+        event_b,
+        StoreChange::Event(BoardEvent::StateTransitioned { .. })
+    ));
 }
 
 #[tokio::test]

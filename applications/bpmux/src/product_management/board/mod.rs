@@ -34,5 +34,5 @@ pub use orchestrator::{
     SyncStatus, SyncTransition, acknowledge_dropped, default_outbox_path, sync_transition,
 };
 pub use peer::PeerId;
-pub use store::{BoardStore, PersistError};
+pub use store::{BoardStore, PersistError, StoreChange};
 pub use sync::{SourceAdapter, SyncError};

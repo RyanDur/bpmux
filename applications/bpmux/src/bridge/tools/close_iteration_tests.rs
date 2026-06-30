@@ -185,9 +185,10 @@ mod canonical_via_gh_1300 {
         let member_promotion_touch = events.iter().any(|e| {
             matches!(
                 e,
-                crate::product_management::board::BoardEvent::TagAdded { id, .. }
-                    | crate::product_management::board::BoardEvent::StateTransitioned { id, .. }
-                    if *id == StoryId::new(200)
+                crate::product_management::board::StoreChange::Event(
+                    crate::product_management::board::BoardEvent::TagAdded { id, .. }
+                        | crate::product_management::board::BoardEvent::StateTransitioned { id, .. }
+                ) if *id == StoryId::new(200)
             )
         });
         assert!(
@@ -197,7 +198,9 @@ mod canonical_via_gh_1300 {
         assert!(
             events.iter().any(|e| matches!(
                 e,
-                crate::product_management::board::BoardEvent::StoryClosed { .. }
+                crate::product_management::board::StoreChange::Event(
+                    crate::product_management::board::BoardEvent::StoryClosed { .. }
+                )
             )),
             "StoryClosed still fires for the iteration-issue: {events:?}"
         );

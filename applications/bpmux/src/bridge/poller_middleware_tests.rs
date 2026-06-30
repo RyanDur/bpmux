@@ -237,7 +237,8 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     let event = rx.recv().await.expect("event dispatched");
     assert!(matches!(
         event,
-        BoardEvent::BodyFetched { id, .. } if id == StoryId::new(9001)
+        crate::product_management::board::StoreChange::Event(BoardEvent::BodyFetched { id, .. })
+            if id == StoryId::new(9001)
     ));
     assert_eq!(
         store.story(StoryId::new(9001)).unwrap().body.as_deref(),

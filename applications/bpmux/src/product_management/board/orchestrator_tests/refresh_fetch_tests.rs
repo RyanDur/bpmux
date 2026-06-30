@@ -9,7 +9,7 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
+use crate::product_management::board::store::{BoardStore, StoreChange};
 use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
 
 #[tokio::test]
@@ -120,7 +120,9 @@ async fn fetch_body_caches_the_body_on_the_story_and_fires_event() {
         Some("the body text")
     );
     let event = rx.recv().await.unwrap();
-    assert!(matches!(event, BoardEvent::BodyFetched { id, .. } if id == StoryId::new(7)));
+    assert!(
+        matches!(event, StoreChange::Event(BoardEvent::BodyFetched { id, .. }) if id == StoryId::new(7))
+    );
 }
 
 #[tokio::test]
@@ -165,7 +167,7 @@ async fn fetch_free_comments_caches_comments_and_fires_event() {
     let event = rx.recv().await.unwrap();
     assert!(matches!(
         event,
-        BoardEvent::FreeCommentsFetched { id, .. } if id == StoryId::new(9)
+        StoreChange::Event(BoardEvent::FreeCommentsFetched { id, .. }) if id == StoryId::new(9)
     ));
 }
 
@@ -200,7 +202,7 @@ async fn fetch_gate_comments_caches_comments_and_fires_event() {
     let event = rx.recv().await.unwrap();
     assert!(matches!(
         event,
-        BoardEvent::GateCommentsFetched { id, .. } if id == StoryId::new(11)
+        StoreChange::Event(BoardEvent::GateCommentsFetched { id, .. }) if id == StoryId::new(11)
     ));
 }
 
