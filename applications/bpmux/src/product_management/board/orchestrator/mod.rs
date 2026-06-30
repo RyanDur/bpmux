@@ -136,7 +136,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub async fn reconcile_dual_state_labels(&self) -> Result<usize, SyncError> {
-        let stories = self.store.all_stories();
+        let mut stories = self.store.all_stories();
+        stories.extend(self.store.epics());
         let mut repairs = 0usize;
         for story in stories {
             let labels = match self.adapter.fetch_story_labels(story.id.value()).await {

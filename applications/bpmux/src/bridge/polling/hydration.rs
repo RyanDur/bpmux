@@ -65,7 +65,8 @@ pub async fn run_hydration_loop_cancellable(
             }
             continue;
         }
-        let stories = refresh.all_stories();
+        let mut stories = refresh.all_stories();
+        stories.extend(refresh.epics());
         let to_hydrate = select_stories_to_hydrate(&stories, HYDRATION_MAX_PER_TICK);
         let to_revalidate = select_stories_to_revalidate(&stories, HYDRATION_MAX_PER_TICK);
         if to_hydrate.is_empty() && to_revalidate.is_empty() {

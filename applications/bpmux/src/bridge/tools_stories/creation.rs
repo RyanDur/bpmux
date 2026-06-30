@@ -111,19 +111,18 @@ fn validate_parent_epic(
     let Some(epic) = parent_epic else {
         return Ok(());
     };
-    let parent = r.story(epic.value()).ok_or_else(|| {
-        format!(
-            "epic {epic} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
-        )
-    })?;
-    let story_type = parent.story_type();
-    if story_type != crate::product_management::story::StoryType::Epic {
+    if r.epic(epic.value()).is_some() {
+        return Ok(());
+    }
+    if let Some(parent) = r.story(epic.value()) {
         return Err(format!(
             "story {epic} is not an Epic (story_type={:?}); only Epic stories can be parents",
-            story_type
+            parent.story_type()
         ));
     }
-    Ok(())
+    Err(format!(
+        "epic {epic} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
+    ))
 }
 
 async fn create_and_broadcast_story_events(

@@ -32,7 +32,7 @@ fn default_scope_is_unchanged_full_board() {
         story(1, "ready one", StoryState::Ready),
         story(2, "in-progress one", StoryState::InProgress(Stage::Dev)),
     ];
-    let out = build_board_text(&stories, &BoardScope::default());
+    let out = build_board_text(&[], &stories, &BoardScope::default());
     assert!(out.contains("#1 ready one"));
     assert!(out.contains("#2 in-progress one"));
     assert!(out.contains(ColumnBucket::Ready.header()));
@@ -44,7 +44,7 @@ fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
     let mut s = story(77, "acceptor-visible", StoryState::Ready);
     s.raw_labels.push("awaiting owner".to_string());
     s.acceptor = Some(crate::product_management::story::Acceptor::Owner);
-    let out = build_board_text(&[s], &BoardScope::default());
+    let out = build_board_text(&[], &[s], &BoardScope::default());
     assert!(
         out.contains("#77 acceptor-visible · awaiting owner"),
         "the board card surfaces the acceptor (instead of the team reading None) so the acceptor is visible before desk-check; got:\n{out}"
@@ -54,6 +54,7 @@ fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
 #[test]
 fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
     let out = build_board_text(
+        &[],
         &[story(78, "no-acceptor-yet", StoryState::Ready)],
         &BoardScope::default(),
     );
@@ -73,7 +74,7 @@ fn state_scope_renders_only_the_matching_bucket() {
         state: Some(ColumnBucket::Ready),
         ..BoardScope::default()
     };
-    let out = build_board_text(&stories, &scope);
+    let out = build_board_text(&[], &stories, &scope);
     assert!(out.contains("#1 ready one"));
     assert!(!out.contains("#2 in-progress one"));
     assert!(!out.contains(ColumnBucket::InProgress.header()));
@@ -89,7 +90,7 @@ fn iteration_scope_excludes_other_iterations() {
         iteration: Some(1),
         ..BoardScope::default()
     };
-    let out = build_board_text(&stories, &scope);
+    let out = build_board_text(&[], &stories, &scope);
     assert!(out.contains("#10 iter-one story"));
     assert!(!out.contains("#20 iter-two story"));
 }
@@ -104,7 +105,7 @@ fn row_limit_caps_entries_but_count_reflects_full_total() {
         row_limit: Some(3),
         ..BoardScope::default()
     };
-    let out = build_board_text(&stories, &scope);
+    let out = build_board_text(&[], &stories, &scope);
     assert_eq!(out.matches("ready ").count(), 3);
     assert!(out.contains("(10)"));
 }
@@ -124,8 +125,9 @@ fn large_board_scoped_is_ingestible_while_full_is_not() {
                 story(1000 + i, &title, state)
             })
             .collect();
-    let full = build_board_text(&stories, &BoardScope::default());
+    let full = build_board_text(&[], &stories, &BoardScope::default());
     let scoped = build_board_text(
+        &[],
         &stories,
         &BoardScope {
             state: Some(ColumnBucket::Ready),

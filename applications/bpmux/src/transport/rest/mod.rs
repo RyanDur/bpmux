@@ -32,7 +32,9 @@ mod shared_rest_helpers;
 #[cfg(test)]
 mod story_label_reorder;
 
-pub(crate) use board::{board_iterations, board_outcomes, board_roadmap, board_stories};
+pub(crate) use board::{
+    board_epics, board_iterations, board_outcomes, board_roadmap, board_stories,
+};
 pub use board_acceptance::{AcceptPayload, RejectPayload, post_accept_story, post_reject_story};
 pub use board_read::{get_board, get_iterations, get_story};
 pub use board_story_detail::{get_story_comments, get_story_timeline, post_story_comment};
@@ -66,6 +68,7 @@ pub use roster::{
     RosterEntry, get_roster, get_sync_status, post_acknowledge_dropped, post_force_sync,
 };
 pub use search::{SearchParams, search_messages};
+pub(crate) use shared::epics_message;
 pub(crate) use shared::iterations_message;
 pub(crate) use shared::json_headers;
 pub(crate) use shared::outcomes_message;

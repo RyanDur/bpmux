@@ -1,4 +1,6 @@
-use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use super::helpers::{
+    ensure_epic_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
+};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::StoryId;
 
@@ -21,14 +23,7 @@ pub(crate) async fn handle_set_parent_epic(
     }
     let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, id).await?;
-    let parent = ensure_story_in_canonical_store(r, epic_id).await?;
-    let story_type = parent.story_type();
-    if story_type != crate::product_management::story::StoryType::Epic {
-        return Err(format!(
-            "story #{epic_id} is not an Epic (story_type={:?}); only Epic stories can be parents",
-            story_type
-        ));
-    }
+    ensure_epic_in_canonical_store(r, epic_id).await?;
     let meta = crate::product_management::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),

@@ -23,40 +23,35 @@ export interface UseBoardDataResult {
 export const useBoardData = (
   data: Story[] | null,
   iterations: BoardIterationData[],
-  readyOrder?: number[]
+  readyOrder?: number[],
+  wireEpics: Story[] = []
 ): UseBoardDataResult => {
   const stories = useMemo(() => data ?? [], [data])
   const membershipIndex = useMemo(() => buildMembershipIndex(iterations), [iterations])
-  const epics = useMemo(() => stories.filter(isActiveEpic), [stories])
+  const epics = useMemo(() => wireEpics.filter(isActiveEpic), [wireEpics])
   const epicTitleById = useMemo(() => {
     const map = new Map<number, string>()
-    for (const s of stories) {
-      if (storyTypeFromLabels(s.labels) === 'epic') map.set(s.id, s.title)
-    }
+    for (const e of wireEpics) map.set(e.id, e.title)
     return map
-  }, [stories])
-  const nonEpicStories = useMemo(
-    () => stories.filter((s) => storyTypeFromLabels(s.labels) !== 'epic'),
-    [stories]
-  )
+  }, [wireEpics])
   const iterationContainerStories = useMemo(
     () =>
-      nonEpicStories.filter((s) => {
+      stories.filter((s) => {
         if (storyTypeFromLabels(s.labels) === 'iteration') return false
         if (s.state === 'icebox') return true
         if (membershipIndex.has(s.id)) return true
         return false
       }),
-    [nonEpicStories, membershipIndex]
+    [stories, membershipIndex]
   )
   const flatBoardStories = useMemo(
     () =>
-      nonEpicStories.filter((s) => {
+      stories.filter((s) => {
         if (storyTypeFromLabels(s.labels) === 'iteration') return false
         if (s.state === 'icebox') return false
         return true
       }),
-    [nonEpicStories]
+    [stories]
   )
   const grouped = useMemo(() => {
     const byColumn = groupStories(flatBoardStories)

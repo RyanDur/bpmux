@@ -116,6 +116,7 @@ pub(in crate::bridge) async fn handle_get_story(
     }
     let mut story = b
         .story(story_id)
+        .or_else(|| b.epic(story_id))
         .ok_or_else(|| format!("story #{id} not found in board"))?;
     if story.body.is_none()
         && let Some(r) = refresh
@@ -124,6 +125,7 @@ pub(in crate::bridge) async fn handle_get_story(
             Ok(_) => {
                 story = b
                     .story(story_id)
+                    .or_else(|| b.epic(story_id))
                     .ok_or_else(|| format!("story #{id} not found in board after fetch"))?;
             }
             Err(e) => {
@@ -146,6 +148,7 @@ pub(in crate::bridge) async fn handle_get_story(
             Ok(_) => {
                 story = b
                     .story(story_id)
+                    .or_else(|| b.epic(story_id))
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {

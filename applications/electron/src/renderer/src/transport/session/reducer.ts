@@ -13,6 +13,7 @@ export interface SessionSnapshot {
   sessionId: string | null
   mirror: MirrorState
   stories: Story[]
+  epics: Story[]
   boardInvalidateTick: number
   reconnectTick: number
   outcomes: RoadmapOutcomeData[]
@@ -31,6 +32,7 @@ export const emptySnapshot = (url: string | undefined): SessionSnapshot => ({
   sessionId: null,
   mirror: emptyMirrorState(),
   stories: [],
+  epics: [],
   boardInvalidateTick: 0,
   reconnectTick: 0,
   outcomes: [],
@@ -105,6 +107,9 @@ export const sessionReducer = (state: SessionSnapshot, action: SessionAction): S
       }
       if (action.delta.domain === 'stories') {
         next.stories = action.delta.stories
+      }
+      if (action.delta.domain === 'epics') {
+        next.epics = action.delta.epics
       }
       if (action.delta.domain === 'board_invalidated') {
         next.boardInvalidateTick = state.boardInvalidateTick + 1

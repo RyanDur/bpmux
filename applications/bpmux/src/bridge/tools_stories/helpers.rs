@@ -1,7 +1,7 @@
 pub(crate) use super::authorization::{require_purpose, require_purpose_any, role_from_name};
 pub(crate) use super::canonical_store::{
-    ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store,
-    ensure_story_in_canonical_store,
+    ensure_epic_in_canonical_store, ensure_iteration_in_canonical_store,
+    ensure_outcome_in_canonical_store, ensure_story_in_canonical_store,
 };
 use crate::product_management::story::StoryId;
 

@@ -5,7 +5,9 @@ use crate::product_management::story::{StoryId, StoryKey};
 
 pub(super) fn apply_raw_labels(w: &mut Stories, id: StoryId, fields: &LabelDerivedFields) {
     match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
+        Some(ProductItem::Story(story))
+        | Some(ProductItem::Iteration(story))
+        | Some(ProductItem::Epic(story)) => {
             story.acceptor = fields.acceptor;
             story.parent_epic = fields.parent_epic;
             story.iteration_membership = fields.iteration_membership;
@@ -25,7 +27,9 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, id: StoryId, fields: &Labe
         return;
     }
     match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(existing)) | Some(ProductItem::Iteration(existing)) => {
+        Some(ProductItem::Story(existing))
+        | Some(ProductItem::Iteration(existing))
+        | Some(ProductItem::Epic(existing)) => {
             existing.acceptor = fields.acceptor;
             existing.parent_epic = fields.parent_epic;
             existing.iteration_membership = fields.iteration_membership;

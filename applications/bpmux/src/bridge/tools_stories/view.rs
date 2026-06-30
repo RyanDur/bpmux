@@ -45,7 +45,8 @@ pub(crate) async fn handle_view_board(
             .and_then(|v| v.as_u64())
             .map(|n| n as usize),
     };
-    Ok(build_board_text(&stories, &scope))
+    let epics = r.epics();
+    Ok(build_board_text(&epics, &stories, &scope))
 }
 
 fn parse_bucket(s: &str) -> Option<crate::product_management::board::column::ColumnBucket> {
@@ -70,6 +71,7 @@ pub(in crate::bridge) struct BoardScope {
 }
 
 pub(in crate::bridge) fn build_board_text(
+    epics: &[crate::product_management::story::Story],
     stories: &[crate::product_management::story::Story],
     scope: &BoardScope,
 ) -> String {
@@ -108,7 +110,6 @@ pub(in crate::bridge) fn build_board_text(
     let bucket_section = |bucket: ColumnBucket| -> (usize, Vec<String>) {
         let mut entries: Vec<(u64, String)> = stories
             .iter()
-            .filter(|s| s.story_type() != crate::product_management::story::StoryType::Epic)
             .filter(|s| in_scope_iteration(s))
             .filter(|s| column_for(s.state, s.is_closed) == bucket)
             .map(format_entry)
@@ -123,10 +124,7 @@ pub(in crate::bridge) fn build_board_text(
     };
     let mut out = String::new();
     if scope.state.is_none() && scope.iteration.is_none() {
-        let mut epics: Vec<&crate::product_management::story::Story> = stories
-            .iter()
-            .filter(|s| s.story_type() == crate::product_management::story::StoryType::Epic)
-            .collect();
+        let mut epics: Vec<&crate::product_management::story::Story> = epics.iter().collect();
         epics.sort_by_key(|s| s.id);
         if !epics.is_empty() {
             out.push_str(&format!("EPICS ({})\n", epics.len()));

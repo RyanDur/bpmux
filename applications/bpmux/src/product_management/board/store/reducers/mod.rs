@@ -26,7 +26,8 @@ pub(super) fn item_from_story(story: &Story) -> ProductItem {
     match story.story_type() {
         StoryType::Outcome => ProductItem::Outcome(Outcome::from_story(story)),
         StoryType::Iteration => ProductItem::Iteration(story.clone()),
-        StoryType::Story(_) | StoryType::Epic => ProductItem::Story(story.clone()),
+        StoryType::Epic => ProductItem::Epic(story.clone()),
+        StoryType::Story(_) => ProductItem::Story(story.clone()),
     }
 }
 

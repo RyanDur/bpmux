@@ -4,7 +4,7 @@ pub(crate) async fn ensure_story_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     id: u64,
 ) -> Result<crate::product_management::story::Story, String> {
-    if let Some(story) = refresh.story(id) {
+    if let Some(story) = refresh.story(id).or_else(|| refresh.epic(id)) {
         return Ok(story);
     }
     refresh.refresh_story(id).await.map_err(|e| {
@@ -13,12 +13,15 @@ pub(crate) async fn ensure_story_in_canonical_store(
              cannot proceed with mutation against unknown story state"
         )
     })?;
-    refresh.story(id).ok_or_else(|| {
-        format!(
-            "story #{id} not found in canonical store after refresh_story \
+    refresh
+        .story(id)
+        .or_else(|| refresh.epic(id))
+        .ok_or_else(|| {
+            format!(
+                "story #{id} not found in canonical store after refresh_story \
              round-trip; story may not exist at source-of-truth"
-        )
-    })
+            )
+        })
 }
 
 pub(crate) async fn ensure_outcome_in_canonical_store(
@@ -28,7 +31,7 @@ pub(crate) async fn ensure_outcome_in_canonical_store(
     if let Some(outcome) = find_outcome_in_store(refresh, id) {
         return Ok(outcome);
     }
-    if refresh.story(id).is_some() {
+    if refresh.backing_story(id).is_some() {
         return Err(not_an_outcome_message(id));
     }
     refresh.refresh_story(id).await.map_err(|e| {
@@ -40,7 +43,7 @@ pub(crate) async fn ensure_outcome_in_canonical_store(
     if let Some(outcome) = find_outcome_in_store(refresh, id) {
         return Ok(outcome);
     }
-    if refresh.story(id).is_some() {
+    if refresh.backing_story(id).is_some() {
         return Err(not_an_outcome_message(id));
     }
     Err(format!(
@@ -72,7 +75,7 @@ pub(crate) async fn ensure_iteration_in_canonical_store(
     {
         return Ok(iteration);
     }
-    if refresh.story(id).is_some() {
+    if refresh.backing_story(id).is_some() {
         return Err(not_an_iteration_message(id));
     }
     refresh.refresh_story(id).await.map_err(|e| {
@@ -86,7 +89,7 @@ pub(crate) async fn ensure_iteration_in_canonical_store(
     {
         return Ok(iteration);
     }
-    if refresh.story(id).is_some() {
+    if refresh.backing_story(id).is_some() {
         return Err(not_an_iteration_message(id));
     }
     Err(format!(
@@ -99,4 +102,36 @@ fn not_an_iteration_message(id: u64) -> String {
     format!(
         "#{id} is not an Iteration; only iterations carry this operation — iterations: bpmux board"
     )
+}
+
+pub(crate) async fn ensure_epic_in_canonical_store(
+    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    id: u64,
+) -> Result<crate::product_management::story::Story, String> {
+    if let Some(epic) = refresh.epic(id) {
+        return Ok(epic);
+    }
+    if refresh.backing_story(id).is_some() {
+        return Err(not_an_epic_message(id));
+    }
+    refresh.refresh_story(id).await.map_err(|e| {
+        format!(
+            "epic #{id} not in canonical store + refresh_story failed: {e}; \
+             cannot proceed with an epic operation against unknown state"
+        )
+    })?;
+    if let Some(epic) = refresh.epic(id) {
+        return Ok(epic);
+    }
+    if refresh.backing_story(id).is_some() {
+        return Err(not_an_epic_message(id));
+    }
+    Err(format!(
+        "epic #{id} not found in canonical store after refresh_story \
+         round-trip; it may not exist at source-of-truth"
+    ))
+}
+
+fn not_an_epic_message(id: u64) -> String {
+    format!("#{id} is not an Epic (story_type mismatch); only Epic stories can be parents")
 }

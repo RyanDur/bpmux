@@ -153,6 +153,25 @@ impl BoardStore {
         })
     }
 
+    pub fn epics(&self) -> Vec<Story> {
+        self.store.select(|state| {
+            state
+                .stories
+                .values()
+                .filter_map(|item| item.epic_story().cloned())
+                .collect()
+        })
+    }
+
+    pub fn epic(&self, id: StoryId) -> Option<Story> {
+        self.store.select(|state| {
+            state
+                .stories
+                .get(&StoryKey::Saved(id))
+                .and_then(|item| item.epic_story().cloned())
+        })
+    }
+
     pub fn stories_in_state(&self, wanted: StoryState) -> Vec<Story> {
         self.store.select(|state| {
             state

@@ -59,6 +59,15 @@ pub trait RefreshDriver: Send + Sync {
     fn iteration(&self, iteration_id: IterationId) -> Option<Iteration> {
         self.store().iteration(StoryId::new(iteration_id.value()))
     }
+    fn epics(&self) -> Vec<Story> {
+        self.store().epics()
+    }
+    fn epic(&self, id: u64) -> Option<Story> {
+        self.store().epic(StoryId::new(id))
+    }
+    fn backing_story(&self, id: u64) -> Option<Story> {
+        self.store().backing_story(StoryId::new(id))
+    }
     fn store_is_empty(&self) -> bool {
         self.store().is_empty()
     }

@@ -38,9 +38,9 @@ pub(super) fn apply_story_created(
 
 pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: StoryState) {
     match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
-            story.state = new_state
-        }
+        Some(ProductItem::Story(story))
+        | Some(ProductItem::Iteration(story))
+        | Some(ProductItem::Epic(story)) => story.state = new_state,
         Some(ProductItem::Outcome(outcome)) if new_state == StoryState::Retired => {
             *outcome = outcome.retired();
         }
@@ -50,7 +50,9 @@ pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: 
 
 pub(super) fn apply_body_fetched(w: &mut Stories, id: StoryId, body: &str, etag: &Option<String>) {
     match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
+        Some(ProductItem::Story(story))
+        | Some(ProductItem::Iteration(story))
+        | Some(ProductItem::Epic(story)) => {
             story.body = Some(body.to_string());
             story.body_etag = etag.clone();
         }
@@ -61,9 +63,9 @@ pub(super) fn apply_body_fetched(w: &mut Stories, id: StoryId, body: &str, etag:
 
 pub(super) fn apply_title_updated(w: &mut Stories, id: StoryId, title: &str) {
     match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
-            story.title = title.to_string()
-        }
+        Some(ProductItem::Story(story))
+        | Some(ProductItem::Iteration(story))
+        | Some(ProductItem::Epic(story)) => story.title = title.to_string(),
         Some(ProductItem::Outcome(outcome)) => *outcome = outcome.with_title(title),
         None => {}
     }
@@ -71,9 +73,9 @@ pub(super) fn apply_title_updated(w: &mut Stories, id: StoryId, title: &str) {
 
 pub(super) fn apply_body_updated(w: &mut Stories, id: StoryId, body: &str) {
     match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Iteration(story)) => {
-            story.body = Some(body.to_string())
-        }
+        Some(ProductItem::Story(story))
+        | Some(ProductItem::Iteration(story))
+        | Some(ProductItem::Epic(story)) => story.body = Some(body.to_string()),
         Some(ProductItem::Outcome(outcome)) => *outcome = outcome.with_body(body),
         None => {}
     }
@@ -107,7 +109,9 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story)
         return;
     }
     match w.get_mut(&key) {
-        Some(ProductItem::Story(existing)) | Some(ProductItem::Iteration(existing)) => {
+        Some(ProductItem::Story(existing))
+        | Some(ProductItem::Iteration(existing))
+        | Some(ProductItem::Epic(existing)) => {
             existing.title = story.title.clone();
             existing.state = story.state;
             existing.raw_labels = story.raw_labels.clone();

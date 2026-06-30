@@ -109,6 +109,28 @@ describe('stateDeltaDecoder', () => {
     }
   })
 
+  test('decodes an epics delta of board-story-shaped epics on their own channel', () => {
+    const result = stateDeltaDecoder.validate({
+      domain: 'epics',
+      epics: [
+        {
+          id: 1100,
+          title: '[Epic] Visual coherence',
+          state: 'in-progress',
+          labels: ['epic'],
+          assignees: [],
+          created_at: '2026-05-18T00:00:00Z',
+          body: '## User job\n\nSee the epic as a meta-card.\n'
+        }
+      ]
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok' && result.data.domain === 'epics') {
+      expect(result.data.epics[0].id).toBe(1100)
+      expect(result.data.epics[0].state).toBe('in-progress')
+    }
+  })
+
   test('rejects an unknown domain (story_transition is not GUI-consumed)', () => {
     expect(stateDeltaDecoder.validate({ domain: 'story_transition', transition: {} }).type).toBe(
       'error'

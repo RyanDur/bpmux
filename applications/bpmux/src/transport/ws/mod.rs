@@ -109,6 +109,12 @@ async fn run_ws_session(
             &ServerMessage::from(crate::transport::rest::stories_message(stories)),
         )
         .await?;
+        let epics = serde_json::Value::Array(crate::transport::rest::board_epics(refresh));
+        send_json(
+            &mut tx,
+            &ServerMessage::from(crate::transport::rest::epics_message(epics)),
+        )
+        .await?;
         let outcomes = serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
         send_json(
             &mut tx,

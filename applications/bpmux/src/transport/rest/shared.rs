@@ -56,6 +56,25 @@ pub(crate) fn broadcast_stories(
     session.broadcast_ephemeral(&stories_message(stories));
 }
 
+pub(crate) fn epics_message(epics: serde_json::Value) -> crate::message::Message {
+    crate::message::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: crate::message::MessageType::StateDelta,
+        state_delta: Some(crate::message::StateDeltaPayload::Epics { epics }),
+        ..crate::message::Message::default()
+    }
+}
+
+pub(crate) fn broadcast_epics(
+    session: &session::Session,
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) {
+    let epics = serde_json::Value::Array(super::board::board_epics(refresh));
+    session.broadcast_ephemeral(&epics_message(epics));
+}
+
 pub(crate) fn outcomes_message(outcomes: serde_json::Value) -> crate::message::Message {
     crate::message::Message {
         from: "bpmux".to_string(),

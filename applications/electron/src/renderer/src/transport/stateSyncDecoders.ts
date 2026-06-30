@@ -167,6 +167,7 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
   }),
   D.object({ required: { domain: D.literal('board_invalidated'), reason: D.string } }),
   D.object({ required: { domain: D.literal('stories'), stories: D.array(story) } }),
+  D.object({ required: { domain: D.literal('epics'), epics: D.array(story) } }),
   D.object({ required: { domain: D.literal('outcomes'), outcomes: D.array(roadmapOutcome) } }),
   D.object({
     required: { domain: D.literal('iterations'), iterations: D.array(boardIteration) }

@@ -83,6 +83,7 @@ export type StateDeltaPayload =
     }
   | { domain: 'board_invalidated'; reason: string }
   | { domain: 'stories'; stories: Story[] }
+  | { domain: 'epics'; epics: Story[] }
   | { domain: 'outcomes'; outcomes: RoadmapOutcomeData[] }
   | { domain: 'iterations'; iterations: BoardIterationData[] }
   | { domain: 'roadmap'; roadmap: RoadmapCard[] }

@@ -14,6 +14,7 @@ import { useBoardReorder } from './useBoardReorder'
 import { findCurrentIteration } from './currentIteration'
 import { deriveCloseApproachNudge } from './deriveCloseApproachNudge'
 import { useIterations } from './useIterations'
+import { useEpics } from './useEpics'
 import { iterationNameFromTitle } from './labelSchema'
 import { GROUP_ORDER, type Story, type ColumnState } from './types'
 import './Board.css'
@@ -67,8 +68,9 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
     pendingReady !== null && pendingReady.basedOn === currentIterationStories
       ? pendingReady.order
       : (currentIterationStories ?? [])
+  const wireEpics = useEpics()
   const { stories, epics, epicTitleById, iterationContainerStories, grouped, navOrder } =
-    useBoardData(data, iterations, readyOrder)
+    useBoardData(data, iterations, readyOrder, wireEpics)
 
   const currentIterationName =
     currentIteration !== null ? iterationNameFromTitle(currentIteration.title) : null

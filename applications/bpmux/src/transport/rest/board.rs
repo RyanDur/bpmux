@@ -27,6 +27,17 @@ pub(crate) fn board_stories(
     ordered_board_stories(refresh)
 }
 
+pub(crate) fn board_epics(
+    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+) -> Vec<serde_json::Value> {
+    let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+    refresh
+        .epics()
+        .iter()
+        .map(|s| crate::product_management::board::adapters::json::story_to_board_json(&codec, s))
+        .collect()
+}
+
 pub(crate) fn board_iterations(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) -> Vec<serde_json::Value> {

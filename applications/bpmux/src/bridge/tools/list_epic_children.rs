@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::product_management::board::BoardStore;
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{Story, StoryId, StoryType};
+use crate::product_management::story::{Story, StoryId};
 
 pub(in crate::bridge) async fn handle_list_epic_children(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -12,16 +12,9 @@ pub(in crate::bridge) async fn handle_list_epic_children(
         .get("epic_id")
         .and_then(|v| v.as_u64())
         .ok_or_else(|| "list_epic_children: epic_id argument required (u64)".to_string())?;
-    let epic = store
-        .story(StoryId::new(epic_id))
-        .ok_or_else(|| format!("list_epic_children: epic_id {epic_id} not found"))?;
-    let story_type = epic.story_type();
-    if !matches!(story_type, StoryType::Epic) {
-        return Err(format!(
-            "list_epic_children: #{epic_id} is not an Epic (story_type={:?})",
-            story_type
-        ));
-    }
+    store
+        .epic(StoryId::new(epic_id))
+        .ok_or_else(|| format!("list_epic_children: epic_id {epic_id} not found or not an Epic"))?;
     let mut children: Vec<Story> = store
         .all_stories()
         .into_iter()
