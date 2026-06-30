@@ -5,7 +5,7 @@
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::{BoardStore, StoreChange};
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState};
 use chrono::Utc;
 use std::sync::Arc;
 
@@ -62,13 +62,13 @@ fn assert_state_transition_fires(
 async fn start_story_state_transition_dispatches_event() {
     let store = Arc::new(BoardStore::new());
     seed_story_at(&store, 100, StoryState::Ready);
-    assert_state_transition_fires(&store, 100, StoryState::InProgress);
+    assert_state_transition_fires(&store, 100, StoryState::InProgress(Stage::Dev));
 }
 
 #[tokio::test]
 async fn deliver_story_state_transition_dispatches_event() {
     let store = Arc::new(BoardStore::new());
-    seed_story_at(&store, 200, StoryState::InProgress);
+    seed_story_at(&store, 200, StoryState::InProgress(Stage::Dev));
     assert_state_transition_fires(&store, 200, StoryState::Delivered);
 }
 
@@ -118,7 +118,7 @@ async fn multiple_subscribers_each_receive_state_transition_event() {
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(500),
-        new_state: StoryState::InProgress,
+        new_state: StoryState::InProgress(Stage::Dev),
     });
 
     let event_a = rx_a.try_recv().expect("subscriber A receives event");
@@ -150,7 +150,7 @@ async fn broadcast_fires_after_reduce_so_listeners_observe_new_state() {
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(600),
-        new_state: StoryState::InProgress,
+        new_state: StoryState::InProgress(Stage::Dev),
     });
 
     let observed = observed_at_hook
@@ -159,14 +159,14 @@ async fn broadcast_fires_after_reduce_so_listeners_observe_new_state() {
         .expect("hook fired immediately after event_tx.send broadcast the event");
     assert_eq!(
         observed,
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         "the reducer mutated state BEFORE event_tx.send broadcast to listeners, \
          so a listener observes the reduced state per the redux pipeline \
          (dispatch -> middleware -> reducer -> listeners): #1282 listener-after-reducer invariant"
     );
     assert_eq!(
         store.story(StoryId::new(600)).unwrap().state,
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         "store reflects new state after apply returns"
     );
 }

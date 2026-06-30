@@ -8,7 +8,7 @@ use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
+use crate::product_management::story::{Gate, GateComment, Stage, Story, StoryId, StoryState};
 
 async fn seeded_orchestrator(
     mut stories: Vec<Story>,
@@ -99,7 +99,11 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
 
 #[tokio::test]
 async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
-    let story = make_story(200, StoryState::InProgress, Some("original body"));
+    let story = make_story(
+        200,
+        StoryState::InProgress(Stage::Dev),
+        Some("original body"),
+    );
     let gates = vec![GateComment {
         gate: Gate::FailDeskCheck,
         ts: Utc.with_ymd_and_hms(2026, 4, 23, 1, 0, 0).unwrap(),
@@ -176,7 +180,7 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
 
 #[tokio::test]
 async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
-    let story = make_story(701, StoryState::InProgress, Some("clean body"));
+    let story = make_story(701, StoryState::InProgress(Stage::Dev), Some("clean body"));
     let gates = vec![
         GateComment {
             gate: Gate::Pickup,

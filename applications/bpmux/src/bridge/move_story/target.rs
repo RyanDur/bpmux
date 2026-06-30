@@ -1,7 +1,7 @@
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::product_management::story::StoryState;
+use crate::product_management::story::{Stage, StoryState};
 
 const TARGET_STATE_RETIRED: &str = "retired";
 
@@ -13,20 +13,15 @@ pub(super) enum TargetState {
 
 impl TargetState {
     pub(super) fn parse(s: &str) -> Result<Self, String> {
-        match s.to_ascii_lowercase().as_str() {
-            "icebox" => Ok(Self::Workflow(StoryState::Icebox)),
-            "ready" => Ok(Self::Workflow(StoryState::Ready)),
-            "in-progress" | "in_progress" | "in progress" => {
-                Ok(Self::Workflow(StoryState::InProgress))
-            }
-            "desk-check" | "desk_check" | "deskcheck" => Ok(Self::Workflow(StoryState::DeskCheck)),
-            "delivered" => Ok(Self::Workflow(StoryState::Delivered)),
-            "accepted" => Ok(Self::Workflow(StoryState::Accepted)),
-            TARGET_STATE_RETIRED => Ok(Self::Retired),
-            other => Err(format!(
-                "unknown target_state '{other}'. Valid: icebox, ready, in-progress, desk-check, delivered, accepted, retired"
-            )),
+        let normalized = s.to_ascii_lowercase();
+        if normalized == TARGET_STATE_RETIRED {
+            return Ok(Self::Retired);
         }
+        StoryState::parse(&normalized).map(Self::Workflow).ok_or_else(|| {
+            format!(
+                "unknown target_state '{s}'. Valid: icebox, ready, in-progress, desk-check, delivered, accepted, retired"
+            )
+        })
     }
 
     pub(super) fn as_label(self) -> Option<&'static str> {
@@ -89,8 +84,8 @@ pub(super) fn current_state_display(
         Some(s) => match s.state {
             StoryState::Icebox => "icebox",
             StoryState::Ready => "ready",
-            StoryState::InProgress => "in-progress",
-            StoryState::DeskCheck => "desk-check",
+            StoryState::InProgress(Stage::Dev) => "in-progress",
+            StoryState::InProgress(Stage::DeskCheck) => "desk-check",
             StoryState::Delivered => "delivered",
             StoryState::Accepted => "accepted",
             StoryState::Retired => "retired",

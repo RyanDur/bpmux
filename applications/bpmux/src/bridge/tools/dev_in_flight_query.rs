@@ -2,6 +2,7 @@
 
 use super::dev_in_flight::*;
 use crate::product_management::board::BoardStore;
+use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::StoryState;
@@ -35,7 +36,7 @@ async fn returns_true_when_a_story_is_in_progress() {
     let store = Arc::new(BoardStore::new());
     store.seed_all(vec![
         seed(StoryState::Ready, 1),
-        seed(StoryState::InProgress, 2),
+        seed(StoryState::InProgress(Stage::Dev), 2),
         seed(StoryState::Delivered, 3),
     ]);
     let result = handle_dev_in_flight(&store).await.unwrap();
@@ -45,7 +46,7 @@ async fn returns_true_when_a_story_is_in_progress() {
 #[tokio::test]
 async fn response_contains_no_story_identifiers() {
     let store = Arc::new(BoardStore::new());
-    store.seed_all(vec![seed(StoryState::InProgress, 1)]);
+    store.seed_all(vec![seed(StoryState::InProgress(Stage::Dev), 1)]);
     let result = handle_dev_in_flight(&store).await.unwrap();
     assert!(!result.contains("\"id\""));
     assert!(!result.contains("title"));

@@ -160,13 +160,13 @@ fn build_timeline_from_board_sorts_chronologically() {
 #[test]
 fn build_timeline_from_board_renders_full_rework_cycle() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{Gate, GateComment, Story, StoryId, StoryState};
+    use crate::product_management::story::{Gate, GateComment, Stage, Story, StoryId, StoryState};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
         StoryId::new(501),
         "title".into(),
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

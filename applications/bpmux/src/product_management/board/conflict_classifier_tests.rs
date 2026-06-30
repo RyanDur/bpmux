@@ -11,7 +11,7 @@ use crate::product_management::board::orchestrator::{
 };
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -46,7 +46,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     orch.mutate(BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(500),
-        new_state: StoryState::InProgress,
+        new_state: StoryState::InProgress(Stage::Dev),
     })
     .unwrap();
 
@@ -65,7 +65,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     assert!(matches!(
         entry.event,
         BoardEvent::StateTransitioned {
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
             ..
         }
     ));
@@ -148,11 +148,11 @@ async fn outbox_round_trips_new_shape_through_disk() {
 #[test]
 fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
     let pre = seed_story(1, StoryState::Ready);
-    let cur = seed_story(1, StoryState::InProgress);
+    let cur = seed_story(1, StoryState::InProgress(Stage::Dev));
     let event = BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: StoryState::InProgress,
+        new_state: StoryState::InProgress(Stage::Dev),
     };
     assert_eq!(classify_conflict(Some(&pre), &event, Some(&cur)), None);
 }
@@ -178,7 +178,7 @@ async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     orch.mutate_sync(BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(800),
-        new_state: StoryState::InProgress,
+        new_state: StoryState::InProgress(Stage::Dev),
     })
     .unwrap();
 

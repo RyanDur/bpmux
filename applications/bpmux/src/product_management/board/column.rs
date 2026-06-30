@@ -1,4 +1,4 @@
-use crate::product_management::story::StoryState;
+use crate::product_management::story::{Stage, StoryState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColumnBucket {
@@ -32,8 +32,8 @@ pub fn column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
     match state {
         StoryState::Icebox => ColumnBucket::Icebox,
         StoryState::Ready => ColumnBucket::Ready,
-        StoryState::InProgress => ColumnBucket::InProgress,
-        StoryState::DeskCheck => ColumnBucket::DeskCheck,
+        StoryState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
+        StoryState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
         StoryState::Delivered => ColumnBucket::Delivered,
         StoryState::Accepted => ColumnBucket::Accepted,
         StoryState::Retired => ColumnBucket::Retired,

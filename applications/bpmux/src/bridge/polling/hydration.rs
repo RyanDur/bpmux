@@ -12,10 +12,7 @@ pub(crate) fn select_stories_to_hydrate(
         .filter(|s| {
             matches!(
                 s.state,
-                StoryState::Ready
-                    | StoryState::InProgress
-                    | StoryState::DeskCheck
-                    | StoryState::Delivered
+                StoryState::Ready | StoryState::InProgress(_) | StoryState::Delivered
             ) && s.body.is_none()
         })
         .take(limit)
@@ -33,10 +30,7 @@ pub(crate) fn select_stories_to_revalidate(
         .filter(|s| {
             matches!(
                 s.state,
-                StoryState::Ready
-                    | StoryState::InProgress
-                    | StoryState::DeskCheck
-                    | StoryState::Delivered
+                StoryState::Ready | StoryState::InProgress(_) | StoryState::Delivered
             ) && s.body.is_some()
         })
         .take(limit)

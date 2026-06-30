@@ -7,7 +7,9 @@ mod gate_retire_1348 {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
+    use crate::product_management::story::{
+        Stage, Story, StoryId, StoryKind, StoryState, StoryType,
+    };
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -82,7 +84,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9102,
             "[Feature] gherkin-only deliver",
-            StoryState::InProgress,
+            StoryState::InProgress(Stage::Dev),
             StoryType::Story(StoryKind::Feature),
             body,
         )
@@ -158,7 +160,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9105,
             "[Feature] backward-compat ATP deliver",
-            StoryState::InProgress,
+            StoryState::InProgress(Stage::Dev),
             StoryType::Story(StoryKind::Feature),
             &body,
         )

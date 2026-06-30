@@ -140,7 +140,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Stage, Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -149,7 +149,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     let mut seeded = Story::new_minimal(
         StoryId::new(4691),
         "[Bug] cascade-drain-on-fail-desk-check".into(),
-        StoryState::DeskCheck,
+        StoryState::InProgress(Stage::DeskCheck),
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
@@ -172,7 +172,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == StoryState::InProgress
+            BoardEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == StoryState::InProgress(Stage::Dev)
         )),
         "fail_desk_check must drain StateTransitioned(InProgress) to adapter BEFORE returning. Pushed: {pushed:?}"
     );
@@ -295,7 +295,7 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Stage, Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -304,7 +304,7 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     let mut seeded = Story::new_minimal(
         StoryId::new(450),
         "[Chore] label-leak repro".into(),
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );

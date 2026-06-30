@@ -14,7 +14,7 @@ use crate::product_management::board::adapters::relationships::{
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -114,7 +114,7 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
 async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_1762() {
     let refresh = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
-        member_story(710, StoryState::InProgress),
+        member_story(710, StoryState::InProgress(Stage::Dev)),
     ])
     .await;
     let result = handle_remove_iteration_member(

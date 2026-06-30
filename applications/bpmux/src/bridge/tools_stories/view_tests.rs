@@ -3,6 +3,7 @@
 use super::view::*;
 use crate::product_management::board::column::ColumnBucket;
 use crate::product_management::iteration::IterationId;
+use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::StoryState;
@@ -29,7 +30,7 @@ fn in_iteration(mut s: Story, iteration: u64) -> Story {
 fn default_scope_is_unchanged_full_board() {
     let stories = vec![
         story(1, "ready one", StoryState::Ready),
-        story(2, "in-progress one", StoryState::InProgress),
+        story(2, "in-progress one", StoryState::InProgress(Stage::Dev)),
     ];
     let out = build_board_text(&stories, &BoardScope::default());
     assert!(out.contains("#1 ready one"));
@@ -66,7 +67,7 @@ fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
 fn state_scope_renders_only_the_matching_bucket() {
     let stories = vec![
         story(1, "ready one", StoryState::Ready),
-        story(2, "in-progress one", StoryState::InProgress),
+        story(2, "in-progress one", StoryState::InProgress(Stage::Dev)),
     ];
     let scope = BoardScope {
         state: Some(ColumnBucket::Ready),

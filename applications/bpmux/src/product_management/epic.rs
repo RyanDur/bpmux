@@ -1,4 +1,4 @@
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{Stage, Story, StoryState};
 use serde::{Deserialize, Serialize};
 
 entity_id!(EpicId);
@@ -31,10 +31,9 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
             StoryState::Accepted => counts.accepted_count += 1,
             StoryState::Retired => counts.retired_count += 1,
             StoryState::Icebox => counts.icebox_count += 1,
-            StoryState::Ready
-            | StoryState::InProgress
-            | StoryState::DeskCheck
-            | StoryState::Delivered => counts.active_count += 1,
+            StoryState::Ready | StoryState::InProgress(_) | StoryState::Delivered => {
+                counts.active_count += 1
+            }
         }
     }
     counts
@@ -44,14 +43,11 @@ pub fn derive_epic_state(_epic_explicit_state: StoryState, children: &[&Story]) 
     if children.is_empty() || children.iter().all(|c| c.state() == StoryState::Icebox) {
         return StoryState::Icebox;
     }
-    let any_active = children.iter().any(|c| {
-        matches!(
-            c.state(),
-            StoryState::InProgress | StoryState::DeskCheck | StoryState::Delivered
-        )
-    });
+    let any_active = children
+        .iter()
+        .any(|c| matches!(c.state(), StoryState::InProgress(_) | StoryState::Delivered));
     if any_active {
-        return StoryState::InProgress;
+        return StoryState::InProgress(Stage::Dev);
     }
     let non_retired: Vec<&&Story> = children
         .iter()

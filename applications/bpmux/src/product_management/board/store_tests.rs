@@ -12,7 +12,7 @@ use crate::product_management::board::adapters::github::{
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
-    Acceptor, FreeComment, Gate, Story, StoryId, StoryKind, StoryState, StoryType, Tag,
+    Acceptor, FreeComment, Gate, Stage, Story, StoryId, StoryKind, StoryState, StoryType, Tag,
 };
 
 fn meta(actor: &str, ts_year: i32, peer: &str) -> EventMeta {
@@ -182,7 +182,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     let story = Story::new_minimal(
         StoryId::new(77),
         "membered".to_string(),
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -222,7 +222,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     );
     assert_eq!(
         s.state,
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         "LabelsRefreshed is a pure typed assign; workflow state flows via StateTransitioned, not the label echo"
     );
 }
@@ -241,11 +241,11 @@ fn state_transitioned_event_updates_existing_story() {
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta("dev", 2026, "local"),
         id: StoryId::new(1),
-        new_state: StoryState::InProgress,
+        new_state: StoryState::InProgress(Stage::Dev),
     });
     assert_eq!(
         store.story(StoryId::new(1)).unwrap().state,
-        StoryState::InProgress
+        StoryState::InProgress(Stage::Dev)
     );
 }
 
@@ -255,7 +255,7 @@ fn state_transitioned_event_silently_drops_when_story_missing() {
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta("dev", 2026, "local"),
         id: StoryId::new(999),
-        new_state: StoryState::InProgress,
+        new_state: StoryState::InProgress(Stage::Dev),
     });
     assert!(store.story(StoryId::new(999)).is_none());
 }

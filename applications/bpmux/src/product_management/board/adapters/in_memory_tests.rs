@@ -8,7 +8,7 @@ use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{FreeComment, Story, StoryId, StoryState};
+use crate::product_management::story::{FreeComment, Stage, Story, StoryId, StoryState};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -120,7 +120,7 @@ async fn multiple_pushed_events_preserve_order() {
     let e1 = BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: StoryState::InProgress,
+        new_state: StoryState::InProgress(Stage::Dev),
     };
     let e2 = BoardEvent::StateTransitioned {
         meta: meta(),

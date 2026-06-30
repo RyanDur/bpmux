@@ -7,7 +7,7 @@ use super::helpers::{
 };
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
-use crate::product_management::story::{Gate, Story, StoryId, StoryState};
+use crate::product_management::story::{Gate, Stage, Story, StoryId, StoryState};
 
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -86,7 +86,7 @@ pub(crate) async fn handle_start_story(
         r.mutate_sync(BoardEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()
@@ -181,7 +181,7 @@ pub(crate) async fn handle_deliver_story(
         r.mutate_sync(BoardEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
-            new_state: StoryState::DeskCheck,
+            new_state: StoryState::InProgress(Stage::DeskCheck),
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()

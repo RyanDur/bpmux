@@ -186,7 +186,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -195,7 +195,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let seeded = Story::new_minimal(
         StoryId::new(201),
         "t".into(),
-        StoryState::DeskCheck,
+        StoryState::InProgress(Stage::DeskCheck),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -273,7 +273,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -282,7 +282,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     let seeded = Story::new_minimal(
         StoryId::new(202),
         "t".into(),
-        StoryState::DeskCheck,
+        StoryState::InProgress(Stage::DeskCheck),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -301,7 +301,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(StoryId::new(202)).unwrap();
-    assert_eq!(story.state, StoryState::InProgress);
+    assert_eq!(story.state, StoryState::InProgress(Stage::Dev));
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates
@@ -340,7 +340,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         &pushed[2],
         BoardEvent::StateTransitioned {
             id,
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
             ..
         } if *id == StoryId::new(202)
     ));

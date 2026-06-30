@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Stage, Story, StoryId, StoryKind, StoryState, StoryType};
 
 #[tokio::test]
 async fn ingest_once_populates_store_from_adapter() {
@@ -135,7 +135,7 @@ async fn drain_once_handles_multiple_events_in_order() {
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(2),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
     assert_eq!(orchestrator.snapshot_status().pending_events, 2);

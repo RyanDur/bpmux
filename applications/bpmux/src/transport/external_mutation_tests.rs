@@ -148,7 +148,9 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
     let updated = refresh.story(202).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::StoryState::InProgress,
+        crate::product_management::story::StoryState::InProgress(
+            crate::product_management::story::Stage::Dev
+        ),
         "post-refresh, bpmux state reflects externally-added 'in progress' label"
     );
 }
@@ -288,7 +290,9 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
     let initial = refresh.story(606).expect("seeded story");
     assert_eq!(
         initial.state,
-        crate::product_management::story::StoryState::InProgress,
+        crate::product_management::story::StoryState::InProgress(
+            crate::product_management::story::Stage::Dev
+        ),
         "fixture seeds in-progress state"
     );
 

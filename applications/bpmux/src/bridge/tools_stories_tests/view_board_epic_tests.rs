@@ -327,7 +327,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Stage, Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -365,7 +365,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     let mut child_c = Story::new_minimal(
         StoryId::new(703),
         "child c".into(),
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         ts,
         "pm".into(),
     );
@@ -552,7 +552,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Stage, Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -571,7 +571,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     let mut a = Story::new_minimal(
         StoryId::new(731),
         "a".into(),
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         ts,
         "pm".into(),
     );

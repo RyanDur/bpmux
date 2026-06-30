@@ -5,7 +5,7 @@ use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
-    Story, StoryId, StoryState, StoryType, Tag, story_type_from_title,
+    Stage, Story, StoryId, StoryState, StoryType, Tag, story_type_from_title,
 };
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {
@@ -27,8 +27,8 @@ pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     let state_labels = [
         StoryState::Ready.github_label(),
-        StoryState::InProgress.github_label(),
-        StoryState::DeskCheck.github_label(),
+        StoryState::InProgress(Stage::Dev).github_label(),
+        StoryState::InProgress(Stage::DeskCheck).github_label(),
         StoryState::Delivered.github_label(),
         StoryState::Accepted.github_label(),
         "ready for accept",
@@ -138,7 +138,7 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
         return StoryState::Ready;
     }
     if has("needs fixes") {
-        return StoryState::InProgress;
+        return StoryState::InProgress(Stage::Dev);
     }
     if has("ready for accept") {
         return StoryState::Delivered;
@@ -146,11 +146,11 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     if has(StoryState::Delivered.github_label()) {
         return StoryState::Delivered;
     }
-    if has(StoryState::DeskCheck.github_label()) {
-        return StoryState::DeskCheck;
+    if has(StoryState::InProgress(Stage::DeskCheck).github_label()) {
+        return StoryState::InProgress(Stage::DeskCheck);
     }
-    if has(StoryState::InProgress.github_label()) {
-        return StoryState::InProgress;
+    if has(StoryState::InProgress(Stage::Dev).github_label()) {
+        return StoryState::InProgress(Stage::Dev);
     }
     if has(StoryState::Ready.github_label()) {
         return StoryState::Ready;

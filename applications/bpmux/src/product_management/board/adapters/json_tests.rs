@@ -4,7 +4,7 @@ use super::json::story_to_board_json;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Stage, Story, StoryId, StoryKind, StoryState, StoryType};
 
 fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> Story {
     let mut s = Story {
@@ -224,7 +224,7 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
 fn story_to_board_json_rework_comment_clears_after_forward_edge() {
     use crate::product_management::story::{Gate, GateComment};
     let mut s = sample_story(
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         StoryType::Story(StoryKind::Feature),
         false,
     );
@@ -272,8 +272,8 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
     for (state, expected) in &[
         (StoryState::Icebox, "icebox"),
         (StoryState::Ready, "ready"),
-        (StoryState::InProgress, "in-progress"),
-        (StoryState::DeskCheck, "desk-check"),
+        (StoryState::InProgress(Stage::Dev), "in-progress"),
+        (StoryState::InProgress(Stage::DeskCheck), "desk-check"),
         (StoryState::Delivered, "delivered"),
         (StoryState::Accepted, "accepted"),
     ] {

@@ -12,7 +12,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -47,7 +47,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(StoryId::new(203)).unwrap();
-    assert_eq!(story.state, StoryState::InProgress);
+    assert_eq!(story.state, StoryState::InProgress(Stage::Dev));
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates.iter().any(|g| g.gate == Gate::Pickup
@@ -89,7 +89,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         &pushed[2],
         BoardEvent::StateTransitioned {
             id,
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
             ..
         } if *id == StoryId::new(203)
     ));
@@ -102,7 +102,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Gate, Story, StoryState};
+    use crate::product_management::story::{Gate, Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -111,7 +111,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     let mut seeded = Story::new_minimal(
         StoryId::new(204),
         "t".into(),
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -133,7 +133,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(StoryId::new(204)).unwrap();
-    assert_eq!(story.state, StoryState::DeskCheck);
+    assert_eq!(story.state, StoryState::InProgress(Stage::DeskCheck));
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates.iter().any(|g| g.gate == Gate::Delivered
@@ -164,7 +164,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         &pushed[2],
         BoardEvent::StateTransitioned {
             id,
-            new_state: StoryState::DeskCheck,
+            new_state: StoryState::InProgress(Stage::DeskCheck),
             ..
         } if *id == StoryId::new(204)
     ));
@@ -522,7 +522,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -531,7 +531,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     let mut seeded = Story::new_minimal(
         StoryId::new(207),
         "store-titled-207".into(),
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );

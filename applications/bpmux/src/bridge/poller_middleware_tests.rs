@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use crate::bridge::tools::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState};
 
 fn seed_minimal(id: u64, state: StoryState) -> Story {
     Story::new_minimal(
@@ -80,7 +80,7 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    store.seed_all(vec![seed_minimal(8003, StoryState::InProgress)]);
+    store.seed_all(vec![seed_minimal(8003, StoryState::InProgress(Stage::Dev))]);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
@@ -99,7 +99,7 @@ async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
     use crate::bridge::select_stories_to_hydrate;
     let mut active = seed_minimal(100, StoryState::Ready);
     active.body = None;
-    let mut hydrated = seed_minimal(101, StoryState::InProgress);
+    let mut hydrated = seed_minimal(101, StoryState::InProgress(Stage::Dev));
     hydrated.body = Some("already-cached".to_string());
     let mut accepted = seed_minimal(102, StoryState::Accepted);
     accepted.body = None;
@@ -194,7 +194,7 @@ async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
     use crate::product_management::board::events::{BoardEvent, EventMeta};
     use crate::product_management::board::peer::PeerId;
     let store = BoardStore::new();
-    let mut seed = seed_minimal(9200, StoryState::InProgress);
+    let mut seed = seed_minimal(9200, StoryState::InProgress(Stage::Dev));
     seed.raw_labels = vec!["in progress".to_string()];
     store.seed_all(vec![seed.clone()]);
     let mut refreshed = seed;
@@ -252,7 +252,7 @@ async fn select_stories_to_revalidate_picks_already_hydrated_active_stories() {
     let mut active_with_body = seed_minimal(700, StoryState::Ready);
     active_with_body.body = Some("body".to_string());
     active_with_body.body_etag = Some("etag-700".to_string());
-    let mut active_no_body = seed_minimal(701, StoryState::InProgress);
+    let mut active_no_body = seed_minimal(701, StoryState::InProgress(Stage::Dev));
     active_no_body.body = None;
     let mut accepted_with_body = seed_minimal(702, StoryState::Accepted);
     accepted_with_body.body = Some("body".to_string());

@@ -82,7 +82,9 @@ pub(crate) async fn reject_via_canonical_store(
     };
     let keep_label = match target_state {
         crate::product_management::story::StoryState::Ready => LABEL_READY,
-        crate::product_management::story::StoryState::InProgress => LABEL_IN_PROGRESS,
+        crate::product_management::story::StoryState::InProgress(
+            crate::product_management::story::Stage::Dev,
+        ) => LABEL_IN_PROGRESS,
         crate::product_management::story::StoryState::Delivered => LABEL_DELIVERED,
         _ => LABEL_READY,
     };

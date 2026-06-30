@@ -1,4 +1,4 @@
-use super::{Gate, GateComment, StoryState};
+use super::{Gate, GateComment, Stage, StoryState};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -17,10 +17,19 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
         .filter_map(|gc| {
             let (from, to) = match gc.gate {
                 Gate::Filed => return None,
-                Gate::Pickup => (StoryState::Ready, StoryState::InProgress),
-                Gate::Delivered => (StoryState::InProgress, StoryState::DeskCheck),
-                Gate::PassDeskCheck => (StoryState::DeskCheck, StoryState::Delivered),
-                Gate::FailDeskCheck => (StoryState::DeskCheck, StoryState::InProgress),
+                Gate::Pickup => (StoryState::Ready, StoryState::InProgress(Stage::Dev)),
+                Gate::Delivered => (
+                    StoryState::InProgress(Stage::Dev),
+                    StoryState::InProgress(Stage::DeskCheck),
+                ),
+                Gate::PassDeskCheck => (
+                    StoryState::InProgress(Stage::DeskCheck),
+                    StoryState::Delivered,
+                ),
+                Gate::FailDeskCheck => (
+                    StoryState::InProgress(Stage::DeskCheck),
+                    StoryState::InProgress(Stage::Dev),
+                ),
                 Gate::Rejected => (StoryState::Delivered, StoryState::Ready),
                 Gate::Accepted => (StoryState::Delivered, StoryState::Accepted),
             };
@@ -39,8 +48,8 @@ fn state_ordinal(s: StoryState) -> u8 {
     match s {
         StoryState::Icebox => 0,
         StoryState::Ready => 1,
-        StoryState::InProgress => 2,
-        StoryState::DeskCheck => 3,
+        StoryState::InProgress(Stage::Dev) => 2,
+        StoryState::InProgress(Stage::DeskCheck) => 3,
         StoryState::Delivered => 4,
         StoryState::Accepted | StoryState::Retired => 5,
     }

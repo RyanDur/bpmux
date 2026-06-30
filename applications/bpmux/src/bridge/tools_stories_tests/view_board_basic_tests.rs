@@ -122,7 +122,7 @@ async fn view_board_buckets_stories_by_story_state() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -147,7 +147,7 @@ async fn view_board_buckets_stories_by_story_state() {
         Story::new_minimal(
             StoryId::new(103),
             "in-progress-story".into(),
-            StoryState::InProgress,
+            StoryState::InProgress(Stage::Dev),
             ts,
             "dev".into(),
         ),
@@ -201,7 +201,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -211,7 +211,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     let mut closed_in_progress = Story::new_minimal(
         StoryId::new(201),
         "abandoned-mid-flight".into(),
-        StoryState::InProgress,
+        StoryState::InProgress(Stage::Dev),
         ts,
         "pm".into(),
     );

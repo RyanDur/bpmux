@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState, StoryType};
 
 mod codec_injection_substrate {
     use super::*;
@@ -70,7 +70,7 @@ mod codec_injection_substrate {
         Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            StoryState::InProgress,
+            StoryState::InProgress(Stage::Dev),
             Utc.with_ymd_and_hms(2026, 5, 17, 0, 0, 0).unwrap(),
             "pm".to_string(),
         )

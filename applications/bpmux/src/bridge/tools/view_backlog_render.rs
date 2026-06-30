@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::view_backlog::*;
+use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::StoryState;
@@ -43,8 +44,8 @@ fn ready_state_populates_samples() {
 #[test]
 fn in_progress_state_counted_correctly() {
     let stories = vec![
-        story(102, "a", StoryState::InProgress),
-        story(103, "b", StoryState::InProgress),
+        story(102, "a", StoryState::InProgress(Stage::Dev)),
+        story(103, "b", StoryState::InProgress(Stage::Dev)),
     ];
     assert_eq!(build_backlog_summary(&stories)["in_progress_count"], 2);
 }
@@ -53,7 +54,7 @@ fn in_progress_state_counted_correctly() {
 fn delivered_and_desk_check_collapse_into_delivered_count() {
     let stories = vec![
         story(104, "d", StoryState::Delivered),
-        story(105, "dc", StoryState::DeskCheck),
+        story(105, "dc", StoryState::InProgress(Stage::DeskCheck)),
     ];
     assert_eq!(build_backlog_summary(&stories)["delivered_count"], 2);
 }

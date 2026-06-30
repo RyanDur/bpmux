@@ -1,11 +1,16 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Stage {
+    Dev,
+    DeskCheck,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StoryState {
     Icebox,
     Ready,
-    InProgress,
-    DeskCheck,
+    InProgress(Stage),
     Delivered,
     Accepted,
     Retired,
@@ -30,8 +35,8 @@ impl StoryState {
         match self {
             StoryState::Icebox => "icebox",
             StoryState::Ready => "ready",
-            StoryState::InProgress => "in-progress",
-            StoryState::DeskCheck => "desk-check",
+            StoryState::InProgress(Stage::Dev) => "in-progress",
+            StoryState::InProgress(Stage::DeskCheck) => "desk-check",
             StoryState::Delivered => "delivered",
             StoryState::Accepted => "accepted",
             StoryState::Retired => "retired",
@@ -42,8 +47,8 @@ impl StoryState {
         match self {
             StoryState::Icebox => "icebox",
             StoryState::Ready => "ready",
-            StoryState::InProgress => "in progress",
-            StoryState::DeskCheck => "desk-check",
+            StoryState::InProgress(Stage::Dev) => "in progress",
+            StoryState::InProgress(Stage::DeskCheck) => "desk-check",
             StoryState::Delivered => "delivered",
             StoryState::Accepted => "accepted",
             StoryState::Retired => "retired",
@@ -54,8 +59,8 @@ impl StoryState {
         match s {
             "icebox" => Some(StoryState::Icebox),
             "ready" => Some(StoryState::Ready),
-            "in-progress" | "in_progress" => Some(StoryState::InProgress),
-            "desk-check" | "desk_check" => Some(StoryState::DeskCheck),
+            "in-progress" | "in_progress" => Some(StoryState::InProgress(Stage::Dev)),
+            "desk-check" | "desk_check" => Some(StoryState::InProgress(Stage::DeskCheck)),
             "delivered" => Some(StoryState::Delivered),
             "accepted" => Some(StoryState::Accepted),
             "retired" => Some(StoryState::Retired),

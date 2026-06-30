@@ -3,7 +3,7 @@ pub mod key;
 pub mod story_type;
 pub mod transition;
 
-pub use enums::{Acceptor, Gate, Horizon, StoryState, Tag};
+pub use enums::{Acceptor, Gate, Horizon, Stage, StoryState, Tag};
 pub use key::{StoryId, StoryKey};
 pub use story_type::{StoryKind, StoryType, story_type_from_title};
 pub use transition::{

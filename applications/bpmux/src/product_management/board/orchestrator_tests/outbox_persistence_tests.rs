@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState, StoryType};
 use crate::storage::{SqliteStorage, Storage};
 
 mod outbox_persistence {
@@ -48,7 +48,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(10),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         assert!(path.exists(), "outbox file must exist after mutate");
@@ -349,7 +349,7 @@ mod outbox_persistence {
                 .mutate(BoardEvent::StateTransitioned {
                     meta: meta(),
                     id: StoryId::new(n),
-                    new_state: StoryState::InProgress,
+                    new_state: StoryState::InProgress(Stage::Dev),
                 })
                 .unwrap();
         }
@@ -375,7 +375,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(999),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
 
@@ -395,7 +395,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         assert!(
@@ -412,12 +412,12 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         assert_eq!(
             store.story(StoryId::new(777)).map(|s| s.state),
-            Some(StoryState::InProgress),
+            Some(StoryState::InProgress(Stage::Dev)),
             "post-refresh mutate lands"
         );
     }

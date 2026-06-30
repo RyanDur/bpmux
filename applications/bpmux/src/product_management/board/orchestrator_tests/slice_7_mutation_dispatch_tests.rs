@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState, StoryType};
 
 mod slice_7_2_mutation_id_dispatch {
     use super::*;
@@ -33,13 +33,13 @@ mod slice_7_2_mutation_id_dispatch {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(101),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(102),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
 
@@ -67,7 +67,7 @@ mod slice_7_2_mutation_id_dispatch {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(201),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
     }
@@ -84,7 +84,7 @@ mod slice_7_2_mutation_id_dispatch {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(301),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
 
@@ -120,7 +120,7 @@ mod slice_7_3_drain_one_by_id {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(401),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
 
@@ -144,7 +144,7 @@ mod slice_7_3_drain_one_by_id {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(601),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         adapter.set_push_failures(true);
@@ -177,12 +177,12 @@ mod slice_7_3_drain_one_by_id {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(701),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         assert_eq!(
             store.story(StoryId::new(701)).map(|s| s.state),
-            Some(StoryState::InProgress)
+            Some(StoryState::InProgress(Stage::Dev))
         );
 
         let server_view = seed_story(701, StoryState::Accepted);
@@ -207,7 +207,7 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(801),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -238,13 +238,13 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(901),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(902),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
 
@@ -272,7 +272,7 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1001),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
         orch.mutate(BoardEvent::TagAdded {

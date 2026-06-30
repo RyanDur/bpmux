@@ -11,7 +11,9 @@ use crate::product_management::board::adapters::github::{
     warn_on_inconsistent_state_labels,
 };
 use crate::product_management::board::sync::{SyncError, classify_close_error};
-use crate::product_management::story::{Gate, StoryId, StoryKind, StoryState, StoryType, Tag};
+use crate::product_management::story::{
+    Gate, Stage, StoryId, StoryKind, StoryState, StoryType, Tag,
+};
 
 #[test]
 fn is_iteration_position_label_matches_iteration_name_dot_number() {
@@ -126,7 +128,10 @@ fn state_from_labels_rejected_label_projects_to_ready() {
 #[test]
 fn state_from_labels_needs_fixes_label_projects_to_in_progress() {
     let labels = vec!["delivered".to_string(), "needs fixes".to_string()];
-    assert_eq!(state_from_labels(&labels, false), StoryState::InProgress);
+    assert_eq!(
+        state_from_labels(&labels, false),
+        StoryState::InProgress(Stage::Dev)
+    );
 }
 
 #[test]
@@ -144,7 +149,10 @@ fn state_from_labels_delivered_without_accept_labels() {
 #[test]
 fn state_from_labels_in_progress_has_priority_over_ready() {
     let labels = vec!["ready".to_string(), "in progress".to_string()];
-    assert_eq!(state_from_labels(&labels, false), StoryState::InProgress);
+    assert_eq!(
+        state_from_labels(&labels, false),
+        StoryState::InProgress(Stage::Dev)
+    );
 }
 
 #[test]
@@ -173,8 +181,11 @@ fn state_to_label_roundtrips_ready() {
 
 #[test]
 fn state_to_label_roundtrips_in_progress_space() {
-    let labels = vec![state_to_label(StoryState::InProgress).to_string()];
-    assert_eq!(state_from_labels(&labels, false), StoryState::InProgress);
+    let labels = vec![state_to_label(StoryState::InProgress(Stage::Dev)).to_string()];
+    assert_eq!(
+        state_from_labels(&labels, false),
+        StoryState::InProgress(Stage::Dev)
+    );
 }
 
 #[test]
@@ -190,7 +201,7 @@ fn decode_story_metadata_reads_object_label_shape() {
     let story = decode_story_metadata(&json).expect("story");
     assert_eq!(story.id, StoryId::new(451));
     assert_eq!(story.title, "Internal board abstraction");
-    assert_eq!(story.state, StoryState::InProgress);
+    assert_eq!(story.state, StoryState::InProgress(Stage::Dev));
     assert_eq!(story.filed_by, "owner");
     assert!(
         story.body.is_none(),

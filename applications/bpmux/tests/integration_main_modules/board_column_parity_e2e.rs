@@ -18,6 +18,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bpmux::product_management::board::column::{ColumnBucket, column_for};
+use bpmux::product_management::story::Stage;
 use bpmux::product_management::story::StoryState;
 
 /// Truth-table mirror of the renderer's `columnFor` from
@@ -32,8 +33,8 @@ fn renderer_column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
     match state {
         StoryState::Icebox => ColumnBucket::Icebox,
         StoryState::Ready => ColumnBucket::Ready,
-        StoryState::InProgress => ColumnBucket::InProgress,
-        StoryState::DeskCheck => ColumnBucket::DeskCheck,
+        StoryState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
+        StoryState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
         StoryState::Delivered => ColumnBucket::Delivered,
         StoryState::Accepted => ColumnBucket::Accepted,
         StoryState::Retired => ColumnBucket::Retired,
@@ -45,8 +46,8 @@ fn column_for_agrees_across_full_cross_product() {
     let states = [
         StoryState::Icebox,
         StoryState::Ready,
-        StoryState::InProgress,
-        StoryState::DeskCheck,
+        StoryState::InProgress(Stage::Dev),
+        StoryState::InProgress(Stage::DeskCheck),
         StoryState::Delivered,
         StoryState::Accepted,
     ];
@@ -72,8 +73,8 @@ fn closed_non_accepted_stories_project_to_retired() {
     for state in [
         StoryState::Icebox,
         StoryState::Ready,
-        StoryState::InProgress,
-        StoryState::DeskCheck,
+        StoryState::InProgress(Stage::Dev),
+        StoryState::InProgress(Stage::DeskCheck),
         StoryState::Delivered,
     ] {
         assert_eq!(
@@ -101,11 +102,11 @@ fn open_workflow_states_bucket_one_to_one() {
     assert_eq!(column_for(StoryState::Icebox, false), ColumnBucket::Icebox);
     assert_eq!(column_for(StoryState::Ready, false), ColumnBucket::Ready);
     assert_eq!(
-        column_for(StoryState::InProgress, false),
+        column_for(StoryState::InProgress(Stage::Dev), false),
         ColumnBucket::InProgress
     );
     assert_eq!(
-        column_for(StoryState::DeskCheck, false),
+        column_for(StoryState::InProgress(Stage::DeskCheck), false),
         ColumnBucket::DeskCheck
     );
     assert_eq!(

@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::{BoardStore, StoreChange};
-use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState, StoryType};
 
 #[tokio::test]
 async fn refresh_story_pulls_single_story_from_adapter_into_store() {
@@ -84,19 +84,19 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(42),
-            new_state: StoryState::InProgress,
+            new_state: StoryState::InProgress(Stage::Dev),
         })
         .unwrap();
     assert_eq!(
         store.story(StoryId::new(42)).unwrap().state,
-        StoryState::InProgress
+        StoryState::InProgress(Stage::Dev)
     );
     orchestrator.drain_once().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     match &pushed[0] {
         BoardEvent::StateTransitioned { new_state, .. } => {
-            assert_eq!(*new_state, StoryState::InProgress);
+            assert_eq!(*new_state, StoryState::InProgress(Stage::Dev));
         }
         other => panic!("unexpected event: {other:?}"),
     }

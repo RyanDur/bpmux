@@ -1,4 +1,5 @@
 use super::*;
+use crate::product_management::story::Stage;
 
 #[test]
 fn target_state_parses_canonical_spellings() {
@@ -8,7 +9,7 @@ fn target_state_parses_canonical_spellings() {
     );
     assert_eq!(
         TargetState::parse("In-Progress").unwrap(),
-        TargetState::Workflow(StoryState::InProgress)
+        TargetState::Workflow(StoryState::InProgress(Stage::Dev))
     );
     assert_eq!(TargetState::parse("retired").unwrap(), TargetState::Retired);
     assert_eq!(
@@ -24,6 +25,12 @@ fn target_state_parse_unknown_lists_valid_options() {
         err.contains("retired") && err.contains("ready") && err.contains("delivered"),
         "error must enumerate valid options for the agent: got {err}"
     );
+}
+
+#[test]
+fn target_state_rejects_noncanonical_spellings() {
+    assert!(TargetState::parse("in progress").is_err());
+    assert!(TargetState::parse("deskcheck").is_err());
 }
 
 #[test]

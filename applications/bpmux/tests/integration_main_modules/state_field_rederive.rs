@@ -2,6 +2,7 @@
 
 use bpmux::product_management::board::adapters::github::state_from_labels;
 use bpmux::product_management::board::column::{ColumnBucket, column_for};
+use bpmux::product_management::story::Stage;
 use bpmux::product_management::story::StoryState;
 
 #[test]
@@ -28,13 +29,19 @@ fn stacked_accepted_rejected_decodes_accepted() {
 fn stacked_needs_fixes_in_progress_decodes_in_progress() {
     // #1146 slice 3: stale "needs fixes" projects to InProgress.
     let stacked = vec!["in progress".to_string(), "needs fixes".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), StoryState::InProgress);
+    assert_eq!(
+        state_from_labels(&stacked, false),
+        StoryState::InProgress(Stage::Dev)
+    );
 }
 
 #[test]
 fn stacked_ready_in_progress_decodes_in_progress() {
     let stacked = vec!["ready".to_string(), "in progress".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), StoryState::InProgress);
+    assert_eq!(
+        state_from_labels(&stacked, false),
+        StoryState::InProgress(Stage::Dev)
+    );
 }
 
 #[test]
@@ -56,7 +63,7 @@ fn ready_state_buckets_to_ready_column() {
 
 #[test]
 fn in_progress_state_buckets_to_in_progress_column() {
-    let bucket = column_for(StoryState::InProgress, false);
+    let bucket = column_for(StoryState::InProgress(Stage::Dev), false);
     assert_eq!(bucket, ColumnBucket::InProgress);
 }
 

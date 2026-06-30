@@ -5,7 +5,8 @@ use crate::product_management::iteration::section::{
     derive_iteration_member_section, substitute_member_stories_section,
 };
 use crate::product_management::story::{
-    Gate, GateComment, StoryId, StoryState, most_recent_backward_transition, replay_transitions,
+    Gate, GateComment, Stage, StoryId, StoryState, most_recent_backward_transition,
+    replay_transitions,
 };
 
 use super::rework_context::enrich_body;
@@ -14,8 +15,8 @@ fn state_label(state: StoryState) -> &'static str {
     match state {
         StoryState::Icebox => "icebox",
         StoryState::Ready => "ready",
-        StoryState::InProgress => "in progress",
-        StoryState::DeskCheck => "desk-check",
+        StoryState::InProgress(Stage::Dev) => "in progress",
+        StoryState::InProgress(Stage::DeskCheck) => "desk-check",
         StoryState::Delivered => "delivered",
         StoryState::Accepted => "accepted",
         StoryState::Retired => "retired",
@@ -132,8 +133,10 @@ pub(in crate::bridge) async fn handle_get_story(
             }
         }
     }
-    let needs_gates = matches!(story.state, StoryState::Ready | StoryState::InProgress)
-        || story.is_closed
+    let needs_gates = matches!(
+        story.state,
+        StoryState::Ready | StoryState::InProgress(Stage::Dev)
+    ) || story.is_closed
         || matches!(story.state, StoryState::Accepted);
     if needs_gates
         && story.gate_comments.is_none()
