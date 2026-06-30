@@ -13,7 +13,8 @@ mod drain_once;
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn mutate(&self, event: BoardEvent) -> Result<(), SyncError> {
         let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
-        let pre_state = self.store.backing_story(event.story_id());
+        let story_id = event.story_id();
+        let pre_state = self.store.backing_story(story_id);
         self.store.apply(&event);
         let queue_len = self.with_pending_mut(|p| {
             let absorbed = coalesce_iteration_label_events(&*self.codec, p, &event, id, &pre_state);
@@ -28,6 +29,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             let _ = tx.send(crate::store::StoreAction::Sync(
                 crate::store::SyncAction::StartUpdateGithub { mutation_id: id },
             ));
+            if let Some(outcome) = self.store.outcome(story_id) {
+                let _ = tx.send(crate::store::StoreAction::Outcome(
+                    crate::product_management::outcome::OutcomeAction::Upserted(vec![outcome]),
+                ));
+            }
         }
         Ok(())
     }

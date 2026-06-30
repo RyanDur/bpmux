@@ -43,6 +43,15 @@ impl BoardStore {
         })
     }
 
+    pub fn outcome(&self, id: StoryId) -> Option<Outcome> {
+        self.store.select(|state| {
+            state
+                .stories
+                .get(&StoryKey::Saved(id))
+                .and_then(|item| item.as_outcome().cloned())
+        })
+    }
+
     pub fn iterations(&self) -> Vec<Iteration> {
         self.store.select(|state| {
             state
