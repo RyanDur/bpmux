@@ -63,7 +63,7 @@ test.describe('#1158 — offline-first board', () => {
             peer_id: 'local'
           },
           id: 100,
-          new_state: 'InProgress'
+          new_state: 'in-progress'
         }
       },
       {
@@ -74,7 +74,7 @@ test.describe('#1158 — offline-first board', () => {
             peer_id: 'local'
           },
           id: 101,
-          new_state: 'InProgress'
+          new_state: 'in-progress'
         }
       }
     ]
@@ -157,7 +157,7 @@ test.describe('#1158 — offline-first board', () => {
           peer_id: 'local'
         },
         id: 200,
-        new_state: 'Delivered'
+        new_state: 'delivered'
       }
     }
     writeFileSync(outboxPath, JSON.stringify([event]))

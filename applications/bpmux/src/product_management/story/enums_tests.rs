@@ -34,6 +34,33 @@ fn story_state_parse_returns_none_for_unknown() {
 }
 
 #[test]
+fn story_state_serde_round_trips_via_canonical_string() {
+    for state in [
+        StoryState::Icebox,
+        StoryState::Ready,
+        StoryState::InProgress,
+        StoryState::DeskCheck,
+        StoryState::Delivered,
+        StoryState::Accepted,
+        StoryState::Retired,
+    ] {
+        let json = serde_json::to_string(&state).unwrap();
+        assert_eq!(json, format!("\"{}\"", state.as_str()));
+        let back: StoryState = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, state, "serde round-trip for {state:?}");
+    }
+}
+
+#[test]
+fn story_state_serde_emits_canonical_kebab_not_variant_name() {
+    assert_eq!(
+        serde_json::to_string(&StoryState::InProgress).unwrap(),
+        "\"in-progress\""
+    );
+    assert!(serde_json::from_str::<StoryState>("\"InProgress\"").is_err());
+}
+
+#[test]
 fn story_state_delivered_legacy_label_preserved_for_backward_compat() {
     assert_eq!(StoryState::parse("delivered"), Some(StoryState::Delivered));
     assert_eq!(StoryState::Delivered.as_str(), "delivered");

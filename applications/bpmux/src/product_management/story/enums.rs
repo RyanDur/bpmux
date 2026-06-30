@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StoryState {
     Icebox,
     Ready,
@@ -9,6 +9,20 @@ pub enum StoryState {
     Delivered,
     Accepted,
     Retired,
+}
+
+impl Serialize for StoryState {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for StoryState {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        StoryState::parse(&raw)
+            .ok_or_else(|| de::Error::custom(format!("unknown story state: {raw}")))
+    }
 }
 
 impl StoryState {
