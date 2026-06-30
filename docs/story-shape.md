@@ -72,14 +72,36 @@ WHO WALKS, and state it explicitly.
 
 ## 5. Filing-class — Feature / Bug / Chore (ground in the SHAPE of the work, not the title)
 
-- **Feature** (PM-authored): adds NEW capability / visible value to an end-user OR an agent-user.
-- **Bug** (PM-authored): an error in a feature that has ALREADY been delivered AND accepted —
-  it behaves wrong against an agreed requirement. Missing functionality, absent polish, or a
-  change-in-behaviour is NOT a bug → file a Feature/Chore. Verify-against-requirement BEFORE
-  logging (is it actually wrong vs an agreed requirement, or just not-yet-built?). See §5a for
-  the bug-shape + the no-point rule.
-- **Chore** (dev-authored + dev-accepted): maintenance / refactor / tooling / config that
-  PRESERVES behaviour — no new capability, no visible change. A chore MAKES DEVELOPMENT BETTER.
+- **Feature** (PM-authored): adds NEW capability / visible value an end-user OR an agent-user
+  can OBSERVE.
+- **Bug** (PM-authored): a PRODUCTION issue that affects the EXPECTED USER EXPERIENCE — wrong
+  *observable* behaviour in a feature ALREADY delivered AND accepted, measured against an agreed
+  requirement (Ryan-canon 2026-06-22: "bugs are production issues that affect the expected user
+  experience"). The discriminator is **user-experience impact, NOT incident-provenance**: a past
+  outage/incident does not make its internal proper-fix a Bug. Missing functionality, absent
+  polish, a change-in-behaviour, or internal architecture/infra/tooling/storage/test-work with
+  no user-experience change is NOT a bug → file a Feature (new observable value) or a Chore
+  (internal, behaviour-preserving). Verify-against-requirement BEFORE logging (is it actually
+  wrong vs an agreed requirement the USER experiences, or just not-yet-built / internal?). See
+  §5a for the bug-shape + the no-point rule.
+- **Chore** (dev-authored + dev-accepted): maintenance / refactor / tooling / config / storage /
+  test-infra that PRESERVES the user-experience — no new capability, no visible change. A chore
+  MAKES DEVELOPMENT BETTER. (An internal fix prompted by an incident is still a Chore if the user
+  experiences nothing different.)
+
+**The decisive question per type** (type by the SHAPE of the work + user-experience impact —
+NEVER by the title, NEVER by the incident that prompted it):
+
+1. **Does it change what an end-user OR agent-user OBSERVES?** — NO → it's internal → **Chore**
+   (dev-authored + dev-accepted). Stop. Do not call it a Bug because an incident prompted it.
+2. If YES — **is the observable behaviour NEW, or is an ALREADY-accepted feature behaving WRONG
+   vs an agreed requirement?** — NEW value → **Feature** (PM-authored, owner-raised); WRONG
+   behaviour → **Bug** (PM-authored, unpointed, §5a shape).
+
+> **The trap (#1803, 2026-06-22):** the SQLite storage cutover was filed `[Bug]` because it
+> traced to the startup-outage incident. But the user never experiences the storage backend (the
+> symptom was already stop-gapped) → no user-experience impact → it was internal infra (Chore-class /
+> owner-led work), never a Bug. **Incident-provenance is not a type-signal; user-experience impact is.**
 
 Two disguises this canon rejects at FILING-time (catch here, not at pickup):
 
