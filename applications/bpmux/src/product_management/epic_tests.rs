@@ -57,7 +57,6 @@ fn derive_epic_state_returns_in_progress_for_active_child_1450() {
         StoryState::InProgress,
         StoryState::DeskCheck,
         StoryState::Delivered,
-        StoryState::Acceptance,
     ] {
         let kids = [
             epic_child(1, StoryState::Ready),
@@ -183,7 +182,6 @@ fn derive_epic_state_does_not_return_non_epic_states_1450() {
     let kids = [
         epic_child(1, StoryState::DeskCheck),
         epic_child(2, StoryState::Delivered),
-        epic_child(3, StoryState::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let derived = derive_epic_state(StoryState::Icebox, &refs);
@@ -196,12 +194,12 @@ fn derive_epic_state_does_not_return_non_epic_states_1450() {
                 | StoryState::Accepted
                 | StoryState::Retired
         ),
-        "Epic state must be one of {{Icebox, Ready, InProgress, Accepted, Retired}}; never DeskCheck/Delivered/Acceptance; got {derived:?}"
+        "Epic state must be one of {{Icebox, Ready, InProgress, Accepted, Retired}}; never DeskCheck/Delivered; got {derived:?}"
     );
     assert_eq!(
         derived,
         StoryState::InProgress,
-        "DeskCheck/Delivered/Acceptance children roll up to InProgress"
+        "DeskCheck/Delivered children roll up to InProgress"
     );
 }
 
@@ -241,13 +239,12 @@ fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
         epic_child(2, StoryState::InProgress),
         epic_child(3, StoryState::DeskCheck),
         epic_child(4, StoryState::Delivered),
-        epic_child(5, StoryState::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs);
     assert_eq!(
-        counts.active_count, 5,
-        "active-set must include Ready+InProgress+DeskCheck+Delivered+Acceptance (sister to S1 derivation rule 2)"
+        counts.active_count, 4,
+        "active-set must include Ready+InProgress+DeskCheck+Delivered (sister to S1 derivation rule 2)"
     );
     assert_eq!(counts.accepted_count, 0);
     assert_eq!(counts.retired_count, 0);

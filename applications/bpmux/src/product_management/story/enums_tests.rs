@@ -10,7 +10,6 @@ fn story_state_parse_round_trips_via_as_str() {
         StoryState::InProgress,
         StoryState::DeskCheck,
         StoryState::Delivered,
-        StoryState::Acceptance,
         StoryState::Accepted,
     ] {
         let s = state.as_str();
@@ -35,15 +34,6 @@ fn story_state_parse_returns_none_for_unknown() {
 }
 
 #[test]
-fn story_state_acceptance_variant_parses_canonically() {
-    assert_eq!(
-        StoryState::parse("acceptance"),
-        Some(StoryState::Acceptance)
-    );
-    assert_eq!(StoryState::Acceptance.as_str(), "acceptance");
-}
-
-#[test]
 fn story_state_delivered_legacy_label_preserved_for_backward_compat() {
     assert_eq!(StoryState::parse("delivered"), Some(StoryState::Delivered));
     assert_eq!(StoryState::Delivered.as_str(), "delivered");
@@ -56,7 +46,6 @@ fn story_state_github_label_canonical_form_per_variant() {
     assert_eq!(StoryState::InProgress.github_label(), "in progress");
     assert_eq!(StoryState::DeskCheck.github_label(), "desk-check");
     assert_eq!(StoryState::Delivered.github_label(), "delivered");
-    assert_eq!(StoryState::Acceptance.github_label(), "acceptance");
     assert_eq!(StoryState::Accepted.github_label(), "accepted");
     assert_eq!(StoryState::Retired.github_label(), "retired");
 }
@@ -92,7 +81,6 @@ fn story_state_github_label_differs_from_as_str_on_in_progress_and_matches_other
         StoryState::Ready,
         StoryState::DeskCheck,
         StoryState::Delivered,
-        StoryState::Acceptance,
         StoryState::Accepted,
         StoryState::Retired,
     ] {

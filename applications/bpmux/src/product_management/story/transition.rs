@@ -41,7 +41,7 @@ fn state_ordinal(s: StoryState) -> u8 {
         StoryState::Ready => 1,
         StoryState::InProgress => 2,
         StoryState::DeskCheck => 3,
-        StoryState::Delivered | StoryState::Acceptance => 4,
+        StoryState::Delivered => 4,
         StoryState::Accepted | StoryState::Retired => 5,
     }
 }

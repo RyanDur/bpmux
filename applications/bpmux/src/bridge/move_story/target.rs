@@ -92,7 +92,6 @@ pub(super) fn current_state_display(
             StoryState::InProgress => "in-progress",
             StoryState::DeskCheck => "desk-check",
             StoryState::Delivered => "delivered",
-            StoryState::Acceptance => "acceptance",
             StoryState::Accepted => "accepted",
             StoryState::Retired => "retired",
         },

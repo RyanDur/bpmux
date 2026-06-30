@@ -7,7 +7,6 @@ pub enum StoryState {
     InProgress,
     DeskCheck,
     Delivered,
-    Acceptance,
     Accepted,
     Retired,
 }
@@ -20,7 +19,6 @@ impl StoryState {
             StoryState::InProgress => "in-progress",
             StoryState::DeskCheck => "desk-check",
             StoryState::Delivered => "delivered",
-            StoryState::Acceptance => "acceptance",
             StoryState::Accepted => "accepted",
             StoryState::Retired => "retired",
         }
@@ -33,7 +31,6 @@ impl StoryState {
             StoryState::InProgress => "in progress",
             StoryState::DeskCheck => "desk-check",
             StoryState::Delivered => "delivered",
-            StoryState::Acceptance => "acceptance",
             StoryState::Accepted => "accepted",
             StoryState::Retired => "retired",
         }
@@ -46,7 +43,6 @@ impl StoryState {
             "in-progress" | "in_progress" => Some(StoryState::InProgress),
             "desk-check" | "desk_check" => Some(StoryState::DeskCheck),
             "delivered" => Some(StoryState::Delivered),
-            "acceptance" => Some(StoryState::Acceptance),
             "accepted" => Some(StoryState::Accepted),
             "retired" => Some(StoryState::Retired),
             _ => None,

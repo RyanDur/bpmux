@@ -34,8 +34,7 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
             StoryState::Ready
             | StoryState::InProgress
             | StoryState::DeskCheck
-            | StoryState::Delivered
-            | StoryState::Acceptance => counts.active_count += 1,
+            | StoryState::Delivered => counts.active_count += 1,
         }
     }
     counts
@@ -48,10 +47,7 @@ pub fn derive_epic_state(_epic_explicit_state: StoryState, children: &[&Story]) 
     let any_active = children.iter().any(|c| {
         matches!(
             c.state(),
-            StoryState::InProgress
-                | StoryState::DeskCheck
-                | StoryState::Delivered
-                | StoryState::Acceptance
+            StoryState::InProgress | StoryState::DeskCheck | StoryState::Delivered
         )
     });
     if any_active {
