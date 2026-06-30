@@ -74,6 +74,10 @@ pub(in crate::server) fn test_routes(enabled: bool) -> SessionRouter {
             axum::routing::post(transport::test_routes::post_test_close_story),
         )
         .route(
+            "/api/test/close_iteration",
+            axum::routing::post(transport::test_routes::post_test_close_iteration),
+        )
+        .route(
             "/api/test/deliver_story",
             axum::routing::post(transport::test_routes::post_test_deliver_story),
         )

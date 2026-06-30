@@ -375,6 +375,26 @@ pub async fn post_test_close_story(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct CloseIterationReq {
+    pub iteration_id: u64,
+    pub agent: Option<String>,
+}
+
+pub async fn post_test_close_iteration(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
+    Json(req): Json<CloseIterationReq>,
+) -> impl IntoResponse {
+    run_test_route(session, refresh, |refresh, session| async move {
+        let mut args = serde_json::Map::new();
+        put_num(&mut args, "iteration_id", req.iteration_id);
+        let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+        bridge::dispatch_close_iteration(args, &agent, Some(&refresh), &session).await
+    })
+    .await
+}
+
+#[derive(Debug, Deserialize)]
 pub struct FireCiStateReq {
     pub run_id: u64,
     pub head_sha: String,
