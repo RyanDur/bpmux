@@ -30,38 +30,15 @@ pub(crate) fn board_stories(
 pub(crate) fn board_iterations(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    use crate::product_management::iteration::readiness::iteration_readiness;
+    use crate::product_management::board::view_model::IterationView;
     let outcomes = refresh.outcomes();
     let workflow = crate::workflow::current_workflow();
     refresh
         .iterations()
         .iter()
         .map(|iteration| {
-            let id = iteration.id().saved_id().map(|id| id.value()).unwrap_or(0);
-            let position = iteration.builds_outcome().and_then(|outcome_id| {
-                outcomes
-                    .iter()
-                    .find(|o| {
-                        o.id().saved_id().map(|id| {
-                            crate::product_management::outcome::OutcomeId::new(id.value())
-                        }) == Some(outcome_id)
-                    })
-                    .and_then(|o| {
-                        o.position_of(crate::product_management::iteration::IterationId::new(id))
-                    })
-                    .map(|index| index + 1)
-            });
-            serde_json::json!({
-                "id": id,
-                "title": iteration.content.title,
-                "iteration_order": iteration.iteration_order,
-                "is_current": iteration.is_current,
-                "complete": iteration.complete,
-                "builds_outcome": iteration.builds_outcome(),
-                "outcome_position": position,
-                "stories": iteration.stories,
-                "readiness": iteration_readiness(iteration, workflow),
-            })
+            serde_json::to_value(IterationView::project(iteration, &outcomes, workflow))
+                .unwrap_or_default()
         })
         .collect()
 }
@@ -78,9 +55,7 @@ pub(crate) fn board_roadmap(
 pub(crate) fn board_outcomes(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    use crate::product_management::iteration::readiness::{
-        building_iterations, iteration_readiness, outcome_readiness,
-    };
+    use crate::product_management::board::view_model::OutcomeView;
     let all_iterations = refresh.iterations();
     let workflow = crate::workflow::current_workflow();
     refresh
@@ -88,28 +63,8 @@ pub(crate) fn board_outcomes(
         .iter()
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
-            let id = outcome.id().saved_id().map(|id| id.value()).unwrap_or(0);
-            let iterations: Vec<serde_json::Value> = building_iterations(outcome, &all_iterations)
-                .iter()
-                .enumerate()
-                .map(|(index, iteration)| {
-                    serde_json::json!({
-                        "id": iteration.id().saved_id().map(|id| id.value()).unwrap_or(0),
-                        "name": iteration.content.title,
-                        "position": index as u32 + 1,
-                        "readiness": iteration_readiness(iteration, workflow),
-                    })
-                })
-                .collect();
-            serde_json::json!({
-                "id": id,
-                "title": outcome.content.title,
-                "body": outcome.content.body.clone().unwrap_or_default(),
-                "horizon": outcome.horizon().map(|horizon| horizon.as_str()),
-                "horizon_order": outcome.horizon_order(),
-                "outcome_readiness": outcome_readiness(outcome, &all_iterations, workflow),
-                "iterations": iterations,
-            })
+            serde_json::to_value(OutcomeView::project(outcome, &all_iterations, workflow))
+                .unwrap_or_default()
         })
         .collect()
 }
