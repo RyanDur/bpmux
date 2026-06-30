@@ -7,7 +7,6 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -47,40 +46,7 @@ pub(crate) async fn handle_add_story_to_iteration(
     }
     let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, story_id).await?;
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
-    for other in r.iterations() {
-        let Some(other_number) = other.id().saved_id().map(|id| id.value()) else {
-            continue;
-        };
-        if other_number == iteration_id || !other.stories.contains(&StoryId::new(story_id)) {
-            continue;
-        }
-        let mut other_rel = other
-            .content
-            .body
-            .as_deref()
-            .and_then(IterationRelationships::read_from_body)
-            .unwrap_or_default();
-        other_rel.stories.retain(|n| *n != StoryId::new(story_id));
-        let other_body =
-            other_rel.write_into_body(other.content.body.as_deref().unwrap_or_default());
-        r.update_body(other_number, other_body)
-            .await
-            .map_err(|e| format!("#{other_number} membership-replace clear failed: {e}"))?;
-    }
-    let mut rel = iteration
-        .content
-        .body
-        .as_deref()
-        .and_then(IterationRelationships::read_from_body)
-        .unwrap_or_default();
-    rel.stories.retain(|n| *n != StoryId::new(story_id));
-    let insert_index = (position.max(1) as usize - 1).min(rel.stories.len());
-    rel.stories.insert(insert_index, StoryId::new(story_id));
-    let body = rel.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
-    r.update_body(iteration_id, body)
-        .await
-        .map_err(|e| format!("#{iteration_id} add-member body update failed: {e}"))?;
+    super::iteration_members::set_member_position(r, iteration_id, story_id, position).await?;
     Ok(format!(
         "#{story_id} added to iteration #{iteration_id} at position {position}"
     ))

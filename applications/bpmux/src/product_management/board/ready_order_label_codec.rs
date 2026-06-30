@@ -2,24 +2,10 @@
 
 use super::ready_order_label::*;
 
-fn ready_json(id: u64, membership: Option<(u64, u32)>) -> serde_json::Value {
+fn ready_json(id: u64) -> serde_json::Value {
     serde_json::json!({
         "id": id,
         "state": "ready",
-        "iteration_membership": membership.map(|(it, pos)| serde_json::json!({
-            "iteration_id": it,
-            "position": pos,
-        })),
-        "is_current": false,
-    })
-}
-
-fn current_iteration_json(id: u64) -> serde_json::Value {
-    serde_json::json!({
-        "id": id,
-        "state": "icebox",
-        "iteration_membership": serde_json::Value::Null,
-        "is_current": true,
     })
 }
 
@@ -32,49 +18,42 @@ fn ready_numbers_in_order(sorted: &[serde_json::Value]) -> Vec<u64> {
 }
 
 #[test]
-fn ready_stories_sort_by_current_iteration_membership_position() {
-    let stories = vec![
-        current_iteration_json(7000),
-        ready_json(5001, Some((7000, 300))),
-        ready_json(5002, Some((7000, 100))),
-        ready_json(5003, Some((7000, 200))),
-    ];
-    let sorted = sort_board_ready_by_membership(stories);
+fn ready_stories_sort_by_current_iteration_stories_order() {
+    let stories = vec![ready_json(5001), ready_json(5002), ready_json(5003)];
+    let current_order = [5002, 5003, 5001];
+    let sorted = sort_board_ready_by_membership(stories, &current_order);
     assert_eq!(
         ready_numbers_in_order(&sorted),
         vec![5002, 5003, 5001],
-        "ready stories must order by current-iteration membership-position (100,200,300)"
+        "ready stories order by their index in the current iteration's stories list"
     );
 }
 
 #[test]
 fn loose_ready_non_members_sort_after_members_by_issue_number() {
     let stories = vec![
-        current_iteration_json(7000),
-        ready_json(5050, None),
-        ready_json(5001, Some((7000, 200))),
-        ready_json(5040, None),
-        ready_json(5002, Some((7000, 100))),
+        ready_json(5050),
+        ready_json(5001),
+        ready_json(5040),
+        ready_json(5002),
     ];
-    let sorted = sort_board_ready_by_membership(stories);
+    let current_order = [5002, 5001];
+    let sorted = sort_board_ready_by_membership(stories, &current_order);
     assert_eq!(
         ready_numbers_in_order(&sorted),
         vec![5002, 5001, 5040, 5050],
-        "current-iteration members first by position, then loose-ready by issue-number"
+        "current-iteration members first by stories-order, then loose-ready by issue-number"
     );
 }
 
 #[test]
-fn membership_for_a_different_iteration_is_treated_as_loose() {
-    let stories = vec![
-        current_iteration_json(7000),
-        ready_json(5001, Some((9999, 100))),
-        ready_json(5002, Some((7000, 100))),
-    ];
-    let sorted = sort_board_ready_by_membership(stories);
+fn a_story_not_in_the_current_iteration_is_loose() {
+    let stories = vec![ready_json(5001), ready_json(5002)];
+    let current_order = [5002];
+    let sorted = sort_board_ready_by_membership(stories, &current_order);
     assert_eq!(
         ready_numbers_in_order(&sorted),
         vec![5002, 5001],
-        "a story member of a non-current iteration is loose (sorts after current members)"
+        "a story not in the current iteration's stories list is loose (sorts after members)"
     );
 }

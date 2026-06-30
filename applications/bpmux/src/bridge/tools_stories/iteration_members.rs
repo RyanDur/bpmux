@@ -47,6 +47,32 @@ async fn rewrite_members(
         .map_err(|e| format!("#{id} iteration-member body update failed: {e}"))
 }
 
+pub(crate) async fn set_member_position(
+    r: &Arc<dyn RefreshDriver>,
+    iteration_id: u64,
+    story_id: u64,
+    position: u32,
+) -> Result<(), String> {
+    let target = StoryId::new(story_id);
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    for other in r.iterations() {
+        let Some(other_id) = other.id().saved_id().map(|id| id.value()) else {
+            continue;
+        };
+        if other_id == iteration_id || !other.stories.contains(&target) {
+            continue;
+        }
+        let mut other_stories = other.stories.clone();
+        other_stories.retain(|n| *n != target);
+        rewrite_members(r, &other, other_stories).await?;
+    }
+    let mut stories = iteration.stories.clone();
+    stories.retain(|n| *n != target);
+    let insert_index = (position.max(1) as usize - 1).min(stories.len());
+    stories.insert(insert_index, target);
+    rewrite_members(r, &iteration, stories).await
+}
+
 pub(crate) async fn handle_remove_iteration_member(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

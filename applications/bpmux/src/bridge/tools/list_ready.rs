@@ -1,19 +1,29 @@
 use std::sync::Arc;
 
 use crate::product_management::board::BoardStore;
-use crate::product_management::iteration::label::current_iteration_id;
-use crate::product_management::story::StoryState;
+use crate::product_management::story::{Story, StoryState};
 
 pub(in crate::bridge) async fn handle_list_ready(
     store: &Arc<BoardStore>,
 ) -> Result<String, String> {
-    let current = current_iteration_id(&store.iterations());
-    let mut ready_stories = store.stories_in_state(StoryState::Ready);
-    ready_stories.sort_by_cached_key(|s| match (current, s.iteration_membership()) {
-        (Some(ci), Some((it, pos))) if it == ci => (0u8, pos, s.id),
-        _ => (1u8, u32::MAX, s.id),
-    });
-    let queue: Vec<serde_json::Value> = ready_stories
+    let current_order = store
+        .iterations()
+        .iter()
+        .find(|iteration| iteration.is_current)
+        .map(|iteration| iteration.stories.clone())
+        .unwrap_or_default();
+    let ready = store.stories_in_state(StoryState::Ready);
+    let mut queue: Vec<&Story> = current_order
+        .iter()
+        .filter_map(|id| ready.iter().find(|s| s.id == *id))
+        .collect();
+    let mut loose: Vec<&Story> = ready
+        .iter()
+        .filter(|s| !current_order.contains(&s.id))
+        .collect();
+    loose.sort_by_key(|s| s.id);
+    queue.extend(loose);
+    let rows: Vec<serde_json::Value> = queue
         .iter()
         .enumerate()
         .map(|(idx, s)| {
@@ -24,5 +34,5 @@ pub(in crate::bridge) async fn handle_list_ready(
             })
         })
         .collect();
-    serde_json::to_string_pretty(&queue).map_err(|e| format!("serialize: {e}"))
+    serde_json::to_string_pretty(&rows).map_err(|e| format!("serialize: {e}"))
 }

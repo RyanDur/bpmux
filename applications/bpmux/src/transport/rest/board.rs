@@ -9,7 +9,16 @@ pub(crate) fn ordered_board_stories(
         .iter()
         .map(|s| crate::product_management::board::adapters::json::story_to_board_json(&codec, s))
         .collect();
-    crate::product_management::board::ready_order_label::sort_board_ready_by_membership(items)
+    let current_order: Vec<u64> = refresh
+        .iterations()
+        .iter()
+        .find(|iteration| iteration.is_current)
+        .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
+        .unwrap_or_default();
+    crate::product_management::board::ready_order_label::sort_board_ready_by_membership(
+        items,
+        &current_order,
+    )
 }
 
 pub(crate) fn board_stories(

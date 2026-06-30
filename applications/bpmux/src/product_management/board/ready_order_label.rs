@@ -1,13 +1,9 @@
 use crate::product_management::story::StoryState;
 
-pub fn sort_board_ready_by_membership(stories: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
-    let current = stories.iter().find_map(|s| {
-        if s.get("is_current").and_then(|v| v.as_bool()) == Some(true) {
-            s.get("id").and_then(|v| v.as_u64())
-        } else {
-            None
-        }
-    });
+pub fn sort_board_ready_by_membership(
+    stories: Vec<serde_json::Value>,
+    current_order: &[u64],
+) -> Vec<serde_json::Value> {
     let mut by_state: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
     for s in stories {
         let state = s
@@ -24,24 +20,12 @@ pub fn sort_board_ready_by_membership(stories: Vec<serde_json::Value>) -> Vec<se
         if StoryState::parse(state) == Some(StoryState::Ready) {
             list.sort_by_cached_key(|s| {
                 let number = s.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
-                match membership_position_for_current(s, current) {
-                    Some(pos) => (0u8, pos, number),
-                    None => (1u8, u32::MAX, number),
+                match current_order.iter().position(|&id| id == number) {
+                    Some(idx) => (0u8, idx, number),
+                    None => (1u8, usize::MAX, number),
                 }
             });
         }
     }
     by_state.into_iter().flat_map(|(_, list)| list).collect()
-}
-
-fn membership_position_for_current(s: &serde_json::Value, current: Option<u64>) -> Option<u32> {
-    let current = current?;
-    let membership = s.get("iteration_membership")?;
-    if membership.is_null() {
-        return None;
-    }
-    if membership.get("iteration_id")?.as_u64()? != current {
-        return None;
-    }
-    membership.get("position")?.as_u64().map(|p| p as u32)
 }

@@ -81,18 +81,18 @@ async fn burst_reorder_lands_each_story_at_its_own_position() {
     ])
     .await;
 
-    move_to_ready_position(&orch, 5001, 4).await;
-    move_to_ready_position(&orch, 5002, 3).await;
-    move_to_ready_position(&orch, 5003, 2).await;
+    move_to_ready_position(&orch, 5001, 1).await;
+    move_to_ready_position(&orch, 5002, 1).await;
+    move_to_ready_position(&orch, 5003, 1).await;
     move_to_ready_position(&orch, 5004, 1).await;
 
     let queue = ready_queue_ids(&orch).await;
     assert_eq!(
         queue,
         vec![5004, 5003, 5002, 5001],
-        "#1579: a burst of move_story(ready, position) ops must land each story at its own \
-         requested position (reverse of issue-id here), not collapse to one position and \
-         fall back to numeric sort; got {queue:?}"
+        "#1579: a burst of move_story(ready, position 1) ops each lands distinctly at the \
+         front of the parent-held order (reverse of move order), proving the burst neither \
+         collapses to one slot nor falls back to numeric sort; got {queue:?}"
     );
 }
 

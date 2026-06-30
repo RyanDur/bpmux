@@ -156,13 +156,14 @@ pub(in crate::bridge) async fn handle_move_story(
         && let Some(pos) = position
         && let Some(iteration_id) = current_iteration_id(&r.iterations())
     {
-        r.mutate_sync(BoardEvent::IterationMembershipSet {
-            meta: meta.clone(),
-            id: story_id,
-            iteration_id,
-            position: pos as u32,
-        })
-        .map_err(|e| format!("#{id} ready-order (iteration-membership) enqueue failed: {e}"))?;
+        crate::bridge::tools_stories::iteration_members::set_member_position(
+            r,
+            iteration_id.value(),
+            id,
+            pos as u32,
+        )
+        .await
+        .map_err(|e| format!("#{id} ready-order (iteration-member) set failed: {e}"))?;
     }
 
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);

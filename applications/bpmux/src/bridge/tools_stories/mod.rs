@@ -12,7 +12,7 @@ mod creation_outcome;
 mod edit_outcome;
 mod event_meta;
 pub(crate) mod helpers;
-mod iteration_members;
+pub(crate) mod iteration_members;
 mod iteration_reorg;
 mod metadata;
 mod metadata_epic;

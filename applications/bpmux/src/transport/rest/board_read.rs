@@ -48,6 +48,7 @@ pub async fn get_board(
             let ordered =
                 crate::product_management::board::ready_order_label::sort_board_ready_by_membership(
                     stories,
+                    &[],
                 );
             let body = serde_json::json!({
                 "stories": ordered,
