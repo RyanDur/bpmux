@@ -6,7 +6,6 @@ pub(super) fn apply_raw_labels(w: &mut Stories, id: StoryId, fields: &LabelDeriv
     if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.iteration_membership = fields.iteration_membership;
         story.tags = fields.tags.clone();
-        story.ready_order = fields.ready_order;
         story.raw_labels = fields.raw_labels.clone();
     }
 }

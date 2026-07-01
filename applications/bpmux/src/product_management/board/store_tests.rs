@@ -149,7 +149,7 @@ fn tag_added_blocked_label_decodes_into_the_stored_tags_field() {
 }
 
 #[test]
-fn tag_added_ready_order_label_decodes_into_the_stored_ready_order_field() {
+fn labels_refreshed_assigns_the_ready_order_field_from_adapter_decoded_fields() {
     let store = BoardStore::new();
     store.apply(&StoryEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
@@ -164,15 +164,19 @@ fn tag_added_ready_order_label_decodes_into_the_stored_ready_order_field() {
         None,
         "a freshly created story has no ready-order yet"
     );
-    store.apply(&StoryEvent::TagAdded {
+    store.apply(&StoryEvent::LabelsRefreshed {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(18),
-        label: "ready-order.3".to_string(),
+        fields: LabelDerivedFields {
+            raw_labels: vec!["ready-order.3".to_string()],
+            ready_order: Some(3),
+            ..Default::default()
+        },
     });
     assert_eq!(
         store.story(StoryId::new(18)).unwrap().ready_order(),
         Some(3),
-        "the codec decodes the ready-order label into the stored field on the label-add event"
+        "the adapter-decoded ready-order lands in the typed field via the LabelsRefreshed resync; apply_raw_labels no longer re-derives it from raw_labels"
     );
 }
 
