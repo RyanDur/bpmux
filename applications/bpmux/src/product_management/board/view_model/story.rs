@@ -1,14 +1,8 @@
 use serde::Serialize;
 
-use crate::product_management::board::adapters::github::{
-    horizon_from_labels, is_current_from_labels, iteration_dev_ok_by_from_labels,
-    iteration_order_from_labels, iteration_review_closers_from_labels,
-    outcome_membership_from_labels,
-};
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{
     Story, Tag, most_recent_backward_transition, replay_transitions,
 };
@@ -16,12 +10,6 @@ use crate::product_management::story::{
 #[derive(Debug, Clone, Serialize)]
 pub struct IterationMembershipView {
     pub iteration_id: IterationId,
-    pub position: u32,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct OutcomeMembershipView {
-    pub outcome_id: OutcomeId,
     pub position: u32,
 }
 
@@ -34,12 +22,6 @@ pub struct StoryView {
     pub labels: Vec<String>,
     pub parent_epic: Option<EpicId>,
     pub iteration_membership: Option<IterationMembershipView>,
-    pub outcome_membership: Option<OutcomeMembershipView>,
-    pub iteration_order: Option<u32>,
-    pub iteration_review_closed_by: Vec<String>,
-    pub iteration_dev_ok_by: Vec<String>,
-    pub horizon: Option<&'static str>,
-    pub is_current: bool,
     pub acceptor: Option<&'static str>,
     pub assignees: Vec<String>,
     pub created_at: String,
@@ -62,17 +44,6 @@ impl StoryView {
                     iteration_id,
                     position,
                 }),
-            outcome_membership: outcome_membership_from_labels(story.raw_labels()).map(
-                |(outcome_id, position)| OutcomeMembershipView {
-                    outcome_id: OutcomeId::new(outcome_id),
-                    position,
-                },
-            ),
-            iteration_order: iteration_order_from_labels(story.raw_labels()),
-            iteration_review_closed_by: iteration_review_closers_from_labels(story.raw_labels()),
-            iteration_dev_ok_by: iteration_dev_ok_by_from_labels(story.raw_labels()),
-            horizon: horizon_from_labels(story.raw_labels()).map(|h| h.as_str()),
-            is_current: is_current_from_labels(story.raw_labels()),
             acceptor: story.acceptor().map(|a| a.as_str()),
             assignees: Vec::new(),
             created_at: story.filed_at().to_rfc3339(),

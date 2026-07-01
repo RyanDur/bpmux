@@ -3,7 +3,6 @@
 use super::view_model::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 
@@ -46,16 +45,6 @@ fn project_translates_iteration_membership_into_a_typed_subview() {
         .expect("iteration membership present");
     assert_eq!(m.iteration_id, IterationId::new(200));
     assert_eq!(m.position, 150);
-}
-
-#[test]
-fn project_translates_outcome_membership_into_a_typed_subview() {
-    let mut s = story(11, "mapped", BoardState::Ready);
-    s.raw_labels.push("parent-outcome-#700.2".to_string());
-    let view = StoryView::project(&GhLabelCodec, &s);
-    let m = view.outcome_membership.expect("outcome membership present");
-    assert_eq!(m.outcome_id, OutcomeId::new(700));
-    assert_eq!(m.position, 2);
 }
 
 #[test]

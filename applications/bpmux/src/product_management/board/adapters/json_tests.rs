@@ -48,12 +48,6 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
         "labels",
         "parent_epic",
         "iteration_membership",
-        "outcome_membership",
-        "iteration_order",
-        "iteration_review_closed_by",
-        "iteration_dev_ok_by",
-        "horizon",
-        "is_current",
         "acceptor",
         "assignees",
         "created_at",
@@ -65,7 +59,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
             "wire-format must include `{required}` (drift catches #451-class regression); keys present: {keys:?}"
         );
     }
-    assert_eq!(obj.len(), 18, "no spurious keys; keys present: {keys:?}");
+    assert_eq!(obj.len(), 12, "no spurious keys; keys present: {keys:?}");
 }
 
 #[test]
@@ -90,29 +84,6 @@ fn story_to_board_json_iteration_membership_object_when_set_1492() {
         .expect("iteration_membership object when Some");
     assert_eq!(membership["iteration_id"].as_u64(), Some(1464));
     assert_eq!(membership["position"].as_u64(), Some(100));
-}
-
-#[test]
-fn story_to_board_json_iteration_order_null_when_none_1735() {
-    let s = sample_story(BoardState::Icebox, StoryKind::Feature, false);
-    let json = story_to_board_json(&GhLabelCodec, &s);
-    assert!(
-        json["iteration_order"].is_null(),
-        "iteration_order emits JSON null when no iteration-order label is present; got: {}",
-        json["iteration_order"]
-    );
-}
-
-#[test]
-fn story_to_board_json_iteration_order_number_when_set_1735() {
-    let mut s = sample_story(BoardState::Icebox, StoryKind::Feature, false);
-    s.raw_labels = vec![GhLabelCodec.encode_iteration_order(200)];
-    let json = story_to_board_json(&GhLabelCodec, &s);
-    assert_eq!(
-        json["iteration_order"].as_u64(),
-        Some(200),
-        "iteration_order serializes as the canonical position when set"
-    );
 }
 
 #[test]
