@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{BoardAction, BoardState};
+use super::action::StoryAction;
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::story::{Story, StoryId, StoryKey};
 
@@ -18,30 +18,30 @@ use lifecycle::{
     apply_story_created, apply_story_refreshed, apply_story_reopened, apply_title_updated,
 };
 
-pub(super) type Stories = HashMap<StoryKey, Story>;
+pub(crate) type Stories = HashMap<StoryKey, Story>;
 
 pub(super) fn story_mut(w: &mut Stories, id: StoryId) -> Option<&mut Story> {
     w.get_mut(&StoryKey::Saved(id))
 }
 
-pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
-    let mut stories = state.stories.clone();
+pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
+    let mut stories = state.clone();
     match action {
-        BoardAction::Event(event) => apply_event(&mut stories, event),
-        BoardAction::RawLabelsAssigned { id, fields } => {
+        StoryAction::Event(event) => apply_event(&mut stories, event),
+        StoryAction::RawLabelsAssigned { id, fields } => {
             apply_raw_labels(&mut stories, *id, fields)
         }
-        BoardAction::Seeded(incoming) => {
+        StoryAction::Seeded(incoming) => {
             for item in incoming {
                 stories.insert(item.key(), item.clone());
             }
         }
-        BoardAction::Removed(id) => {
+        StoryAction::Removed(id) => {
             stories.remove(&StoryKey::Saved(*id));
         }
-        BoardAction::Cleared => stories.clear(),
+        StoryAction::Cleared => stories.clear(),
     }
-    BoardState { stories }
+    stories
 }
 
 fn apply_event(w: &mut Stories, event: &BoardEvent) {

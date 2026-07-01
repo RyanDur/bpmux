@@ -1,5 +1,5 @@
+use super::action::StoryAction;
 use super::reducers::Stories;
-use super::{BoardAction, BoardState};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::project_labels;
 use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};
@@ -7,15 +7,15 @@ use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::StoryKey;
 use crate::store::kernel::Middleware;
 
-pub(super) struct BoardLabelMiddleware;
+pub(crate) struct StoryLabelMiddleware;
 
-impl Middleware<BoardState, BoardAction> for BoardLabelMiddleware {
-    fn transform(&self, state: &BoardState, action: BoardAction) -> BoardAction {
-        let BoardAction::Event(event) = &action else {
+impl Middleware<Stories, StoryAction> for StoryLabelMiddleware {
+    fn transform(&self, state: &Stories, action: StoryAction) -> StoryAction {
+        let StoryAction::Event(event) = &action else {
             return action;
         };
-        match project_label_delta(&state.stories, event) {
-            Some(fields) => BoardAction::RawLabelsAssigned {
+        match project_label_delta(state, event) {
+            Some(fields) => StoryAction::RawLabelsAssigned {
                 id: event.story_id(),
                 fields,
             },

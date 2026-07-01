@@ -3,20 +3,15 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use super::events::BoardEvent;
+use crate::product_management::story::slice::{Stories, StoryAction, StoryLabelMiddleware, reduce};
 use crate::product_management::story::{Story, StoryId, StoryKey};
 use crate::store::kernel::Store;
 
-mod action;
 mod apply;
-mod middleware;
 mod persist_error;
 mod read;
-mod reducers;
-mod state;
 
-pub use action::BoardAction;
 pub use persist_error::PersistError;
-pub use state::BoardState;
 
 const SUBSCRIBE_BUFFER: usize = 1_000;
 
@@ -27,7 +22,7 @@ pub enum StoreChange {
 }
 
 pub struct BoardStore {
-    store: Arc<Store<BoardState, BoardAction>>,
+    store: Arc<Store<Stories, StoryAction>>,
     event_tx: broadcast::Sender<StoreChange>,
     #[cfg(test)]
     test_post_broadcast_hook: std::sync::Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
@@ -35,8 +30,8 @@ pub struct BoardStore {
 
 impl BoardStore {
     pub fn new() -> Self {
-        let store = Store::new(BoardState::default(), Box::new(reducers::reduce));
-        store.add_middleware(Arc::new(middleware::BoardLabelMiddleware));
+        let store = Store::new(Stories::default(), Box::new(reduce));
+        store.add_middleware(Arc::new(StoryLabelMiddleware));
         let (event_tx, _rx) = broadcast::channel(SUBSCRIBE_BUFFER);
         Self {
             store,
@@ -59,7 +54,7 @@ impl BoardStore {
 
     pub fn seed_items(&self, items: Vec<Story>) {
         let changed = !items.is_empty();
-        self.store.dispatch(BoardAction::Seeded(items));
+        self.store.dispatch(StoryAction::Seeded(items));
         if changed {
             let _ = self.event_tx.send(StoreChange::Resynced);
         }
@@ -70,15 +65,15 @@ impl BoardStore {
     }
 
     pub fn clear(&self) {
-        self.store.dispatch(BoardAction::Cleared);
+        self.store.dispatch(StoryAction::Cleared);
         let _ = self.event_tx.send(StoreChange::Resynced);
     }
 
     pub fn remove(&self, id: StoryId) -> Option<Story> {
         let removed = self
             .store
-            .select(|state| state.stories.get(&StoryKey::Saved(id)).cloned());
-        self.store.dispatch(BoardAction::Removed(id));
+            .select(|state| state.get(&StoryKey::Saved(id)).cloned());
+        self.store.dispatch(StoryAction::Removed(id));
         if removed.is_some() {
             let _ = self.event_tx.send(StoreChange::Resynced);
         }

@@ -1,5 +1,6 @@
 pub mod enums;
 pub mod key;
+pub(crate) mod slice;
 pub mod story_type;
 pub mod transition;
 
