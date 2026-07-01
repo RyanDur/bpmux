@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::product_management::epic::{self, EpicAction, EpicState};
 use crate::product_management::iteration::{self, IterationAction, IterationState};
 use crate::product_management::outcome::{self, OutcomeAction, OutcomeState};
+use crate::product_management::story::slice::{self, Stories, StoryAction};
 use crate::store::ci::{self, CiAction, CiState};
 use crate::store::reactions::{self, ReactionsAction, ReactionsState};
 use crate::store::roster::{self, RosterAction, RosterState};
@@ -19,6 +20,7 @@ pub struct AppState {
     pub outcomes: Arc<OutcomeState>,
     pub iterations: Arc<IterationState>,
     pub epics: Arc<EpicState>,
+    pub stories: Arc<Stories>,
 }
 
 #[derive(Clone)]
@@ -30,6 +32,7 @@ pub enum AppAction {
     Outcome(OutcomeAction),
     Iteration(IterationAction),
     Epic(EpicAction),
+    Story(StoryAction),
 }
 
 impl From<RosterAction> for AppAction {
@@ -71,6 +74,12 @@ impl From<IterationAction> for AppAction {
 impl From<EpicAction> for AppAction {
     fn from(action: EpicAction) -> Self {
         Self::Epic(action)
+    }
+}
+
+impl From<StoryAction> for AppAction {
+    fn from(action: StoryAction) -> Self {
+        Self::Story(action)
     }
 }
 
@@ -119,6 +128,10 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
+        AppAction::Story(action) => AppState {
+            stories: Arc::new(slice::reduce(&state.stories, action)),
+            ..state.clone()
+        },
     }
 }
 
@@ -140,6 +153,7 @@ pub(super) fn validate_and_log(action: &AppAction) {
         AppAction::Outcome(_) => "Outcome",
         AppAction::Iteration(_) => "Iteration",
         AppAction::Epic(_) => "Epic",
+        AppAction::Story(_) => "Story",
     };
     crate::diag::log_diag(&format!("store: dispatch {label}"));
 }
