@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::product_management::board::{BoardEvent, BoardStore};
+use crate::product_management::board::{BoardStore, StoryEvent};
 use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::label::current_iteration_id;
 use crate::product_management::story::{Acceptor, BoardState, Story};
@@ -61,9 +61,9 @@ impl OwnerParkBroadcaster {
         Self { store, board_store }
     }
 
-    fn delivering_role(event: &BoardEvent) -> Option<String> {
+    fn delivering_role(event: &StoryEvent) -> Option<String> {
         match event {
-            BoardEvent::StateTransitioned {
+            StoryEvent::StateTransitioned {
                 meta,
                 new_state: BoardState::Delivered,
                 ..
@@ -87,7 +87,7 @@ impl OwnerParkBroadcaster {
         }
     }
 
-    pub async fn on_board_event(&self, event: &BoardEvent) {
+    pub async fn on_board_event(&self, event: &StoryEvent) {
         let delivering = Self::delivering_role(event);
         self.dispatch_changes(delivering.as_deref()).await;
     }

@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::{BoardStore, StoreChange};
@@ -81,7 +81,7 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
         BoardState::Ready
     );
     orchestrator
-        .mutate(BoardEvent::StateTransitioned {
+        .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(42),
             new_state: BoardState::InProgress(Stage::Dev),
@@ -95,7 +95,7 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     match &pushed[0] {
-        BoardEvent::StateTransitioned { new_state, .. } => {
+        StoryEvent::StateTransitioned { new_state, .. } => {
             assert_eq!(*new_state, BoardState::InProgress(Stage::Dev));
         }
         other => panic!("unexpected event: {other:?}"),
@@ -121,7 +121,7 @@ async fn fetch_body_caches_the_body_on_the_story_and_fires_event() {
     );
     let event = rx.recv().await.unwrap();
     assert!(
-        matches!(event, StoreChange::Event(BoardEvent::BodyFetched { id, .. }) if id == StoryId::new(7))
+        matches!(event, StoreChange::Event(StoryEvent::BodyFetched { id, .. }) if id == StoryId::new(7))
     );
 }
 
@@ -167,7 +167,7 @@ async fn fetch_free_comments_caches_comments_and_fires_event() {
     let event = rx.recv().await.unwrap();
     assert!(matches!(
         event,
-        StoreChange::Event(BoardEvent::FreeCommentsFetched { id, .. }) if id == StoryId::new(9)
+        StoreChange::Event(StoryEvent::FreeCommentsFetched { id, .. }) if id == StoryId::new(9)
     ));
 }
 
@@ -202,7 +202,7 @@ async fn fetch_gate_comments_caches_comments_and_fires_event() {
     let event = rx.recv().await.unwrap();
     assert!(matches!(
         event,
-        StoreChange::Event(BoardEvent::GateCommentsFetched { id, .. }) if id == StoryId::new(11)
+        StoreChange::Event(StoryEvent::GateCommentsFetched { id, .. }) if id == StoryId::new(11)
     ));
 }
 

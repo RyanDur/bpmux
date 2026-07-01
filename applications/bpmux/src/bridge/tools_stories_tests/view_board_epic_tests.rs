@@ -26,9 +26,9 @@ fn bind_epics(
 
 #[tokio::test]
 async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
@@ -78,7 +78,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::ParentEpicSet {
+        StoryEvent::ParentEpicSet {
             id,
             epic_id,
             ..
@@ -165,9 +165,9 @@ async fn set_parent_epic_rejects_non_epic_parent() {
 
 #[tokio::test]
 async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
@@ -210,7 +210,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::ParentEpicUnset { id, .. } if *id == StoryId::new(301)
+        StoryEvent::ParentEpicUnset { id, .. } if *id == StoryId::new(301)
     ));
 }
 
@@ -240,9 +240,9 @@ async fn set_parent_epic_rejects_self_parent() {
 
 #[tokio::test]
 async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
@@ -286,10 +286,10 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 2, "StoryCreated + ParentEpicSet both drain");
     let pushed = adapter.pushed_events();
-    assert!(matches!(pushed[0], BoardEvent::StoryCreated { .. }));
+    assert!(matches!(pushed[0], StoryEvent::StoryCreated { .. }));
     assert!(matches!(
         pushed[1],
-        BoardEvent::ParentEpicSet {
+        StoryEvent::ParentEpicSet {
             epic_id,
             ..
         } if epic_id == EpicId::new(500)

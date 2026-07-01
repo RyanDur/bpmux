@@ -67,7 +67,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
     };
     if let Some((_, current_label)) = current_iteration {
         refresh
-            .mutate_sync(crate::product_management::board::BoardEvent::TagRemoved {
+            .mutate_sync(crate::product_management::board::StoryEvent::TagRemoved {
                 meta: meta(),
                 id: target_id,
                 label: current_label,
@@ -75,7 +75,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
             .map_err(|e| format!("TagRemoved #{id}: {e}"))?;
     }
     refresh
-        .mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+        .mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
             meta: meta(),
             id: target_id,
             label: new_label,

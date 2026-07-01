@@ -1,4 +1,4 @@
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError, is_permanent_push_failure};
 
 use super::super::{
@@ -38,7 +38,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 )
             ) && kind.is_none()
             {
-                self.store.apply(&BoardEvent::ConflictResolved {
+                self.store.apply(&StoryEvent::ConflictResolved {
                     meta: cache_fill_meta(),
                     id: event.story_id(),
                     origin: ConflictResolveOrigin::DrainAutoReclassify,
@@ -75,7 +75,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                                 | ConflictKind::External
                         )
                     ) {
-                        self.store.apply(&BoardEvent::ConflictDetected {
+                        self.store.apply(&StoryEvent::ConflictDetected {
                             meta: cache_fill_meta(),
                             id: event.story_id(),
                             kind: divergent,

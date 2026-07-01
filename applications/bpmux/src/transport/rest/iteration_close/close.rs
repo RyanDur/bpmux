@@ -152,14 +152,14 @@ pub(crate) async fn close_iteration_canonical(
     };
     refresh
         .mutate_sync(
-            crate::product_management::board::BoardEvent::CurrentIterationCleared {
+            crate::product_management::board::StoryEvent::CurrentIterationCleared {
                 meta: meta(),
                 id: crate::product_management::story::StoryId::new(iteration_id),
             },
         )
         .map_err(|e| format!("#{iteration_id} current-designation-clear enqueue failed: {e}"))?;
     refresh
-        .mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
+        .mutate_sync(crate::product_management::board::StoryEvent::StoryClosed {
             meta: meta(),
             id: crate::product_management::story::StoryId::new(iteration_id),
             reason: Some("iteration-close (terminal; promote-on-close retired #1556)".to_string()),

@@ -122,8 +122,8 @@ fn state_transitioned(
     id: u64,
     actor: &str,
     new_state: crate::product_management::story::BoardState,
-) -> crate::product_management::board::BoardEvent {
-    crate::product_management::board::BoardEvent::StateTransitioned {
+) -> crate::product_management::board::StoryEvent {
+    crate::product_management::board::StoryEvent::StateTransitioned {
         meta: crate::product_management::board::events::EventMeta {
             actor: actor.to_string(),
             ts: chrono::Utc::now(),

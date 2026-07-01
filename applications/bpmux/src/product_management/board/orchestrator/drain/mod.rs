@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 
 use super::{
@@ -11,7 +11,7 @@ mod drain_by_id;
 mod drain_once;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
-    pub fn mutate(&self, event: BoardEvent) -> Result<(), SyncError> {
+    pub fn mutate(&self, event: StoryEvent) -> Result<(), SyncError> {
         let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
         let story_id = event.story_id();
         let pre_state = self.store.backing_story(story_id);

@@ -82,9 +82,9 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
 
 #[tokio::test]
 async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
@@ -119,14 +119,14 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
     let pushed = adapter.pushed_events();
     assert!(
         pushed.iter().any(
-            |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(4690))
+            |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(4690))
         ),
         "reject_story must drain StoryReopened to adapter BEFORE returning (#469 cascade-fix). Without internal drain, the GH-side reopen does not propagate until next handler triggers drain. Pushed: {pushed:?}"
     );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(4690) && label == "accepted"
+            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(4690) && label == "accepted"
         )),
         "reject_story must drain TagRemoved(accepted) to adapter BEFORE returning. Pushed: {pushed:?}"
     );
@@ -134,9 +134,9 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
 
 #[tokio::test]
 async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_return() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story};
@@ -171,7 +171,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == BoardState::InProgress(Stage::Dev)
+            StoryEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == BoardState::InProgress(Stage::Dev)
         )),
         "fail_desk_check must drain StateTransitioned(InProgress) to adapter BEFORE returning. Pushed: {pushed:?}"
     );
@@ -179,9 +179,9 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
 
 #[tokio::test]
 async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
@@ -218,7 +218,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
     let tag_removed_accepted = pushed.iter().any(|e| {
         matches!(
             e,
-            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(469) && label == "accepted"
+            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(469) && label == "accepted"
         )
     });
     assert!(
@@ -228,7 +228,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
 
     let story_reopened = pushed
         .iter()
-        .any(|e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(469)));
+        .any(|e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(469)));
     assert!(
         story_reopened,
         "reject_story on previously-Accepted must emit StoryReopened: {pushed:?}"
@@ -244,9 +244,9 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
 
 #[tokio::test]
 async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
@@ -281,7 +281,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     let pushed = adapter.pushed_events();
     let any_reopen = pushed
         .iter()
-        .any(|e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(470)));
+        .any(|e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(470)));
     assert!(
         !any_reopen,
         "reject on non-Accepted must NOT emit StoryReopened: {pushed:?}"

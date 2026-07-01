@@ -6,7 +6,7 @@ use std::sync::atomic::AtomicU64;
 
 use chrono::Utc;
 
-use super::events::BoardEvent;
+use super::events::StoryEvent;
 use super::store::{BoardStore, PersistError};
 use super::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story};
@@ -152,7 +152,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     ts: Utc::now(),
                     peer_id: super::peer::PeerId::local(),
                 };
-                self.mutate(BoardEvent::TagRemoved {
+                self.mutate(StoryEvent::TagRemoved {
                     meta,
                     id: story.id,
                     label: stale_label,

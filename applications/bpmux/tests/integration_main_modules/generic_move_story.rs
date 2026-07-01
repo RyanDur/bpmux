@@ -18,10 +18,10 @@
 
 use std::sync::Arc;
 
-use bpmux::product_management::board::BoardEvent;
 use bpmux::product_management::board::BoardStore;
 use bpmux::product_management::board::PeerId;
 use bpmux::product_management::board::RefreshDriver;
+use bpmux::product_management::board::StoryEvent;
 use bpmux::product_management::board::SyncOrchestrator;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::board::events::EventMeta;
@@ -68,7 +68,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         "rejected",
         "accepted",
     ] {
-        orch.mutate_sync(BoardEvent::TagRemoved {
+        orch.mutate_sync(StoryEvent::TagRemoved {
             meta: meta.clone(),
             id: StoryId::new(909),
             label: stale.to_string(),
@@ -84,7 +84,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     let pushed = adapter.pushed_events();
     let strip_count = pushed
         .iter()
-        .filter(|e| matches!(e, BoardEvent::TagRemoved { id, .. } if *id == StoryId::new(909)))
+        .filter(|e| matches!(e, StoryEvent::TagRemoved { id, .. } if *id == StoryId::new(909)))
         .count();
     assert_eq!(strip_count, 8);
 

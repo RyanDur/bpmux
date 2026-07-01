@@ -228,8 +228,8 @@ mod canonical_via_gh_1300 {
             matches!(
                 e,
                 crate::product_management::board::StoreChange::Event(
-                    crate::product_management::board::BoardEvent::TagAdded { id, .. }
-                        | crate::product_management::board::BoardEvent::StateTransitioned { id, .. }
+                    crate::product_management::board::StoryEvent::TagAdded { id, .. }
+                        | crate::product_management::board::StoryEvent::StateTransitioned { id, .. }
                 ) if *id == StoryId::new(200)
             )
         });
@@ -241,7 +241,7 @@ mod canonical_via_gh_1300 {
             events.iter().any(|e| matches!(
                 e,
                 crate::product_management::board::StoreChange::Event(
-                    crate::product_management::board::BoardEvent::StoryClosed { .. }
+                    crate::product_management::board::StoryEvent::StoryClosed { .. }
                 )
             )),
             "StoryClosed still fires for the iteration-issue: {events:?}"

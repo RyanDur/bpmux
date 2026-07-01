@@ -34,7 +34,7 @@ pub(crate) async fn handle_designate_current_iteration(
         .collect();
     for it in &prior {
         r.mutate_sync(
-            crate::product_management::board::BoardEvent::CurrentIterationCleared {
+            crate::product_management::board::StoryEvent::CurrentIterationCleared {
                 meta: meta(),
                 id: StoryId::new(it.id.value()),
             },
@@ -47,7 +47,7 @@ pub(crate) async fn handle_designate_current_iteration(
         })?;
     }
     r.mutate_sync(
-        crate::product_management::board::BoardEvent::CurrentIterationDesignated {
+        crate::product_management::board::StoryEvent::CurrentIterationDesignated {
             meta: meta(),
             id: StoryId::new(iteration_id),
         },
@@ -95,7 +95,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
         meta,
         id: StoryId::new(iteration_id),
         label,
@@ -144,7 +144,7 @@ pub(crate) async fn handle_dev_ok_iteration(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
         meta,
         id: StoryId::new(iteration_id),
         label,

@@ -52,7 +52,7 @@ pub(crate) fn reap_workflow_labels(
         .unwrap_or_default();
     for stale in stale_workflow_labels(&current, keep) {
         refresh
-            .mutate_sync(crate::product_management::board::BoardEvent::TagRemoved {
+            .mutate_sync(crate::product_management::board::StoryEvent::TagRemoved {
                 meta: meta.clone(),
                 id: StoryId::new(number),
                 label: stale.to_string(),

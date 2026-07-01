@@ -3,7 +3,7 @@
 use chrono::{TimeZone, Utc};
 
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::epic::EpicId;
@@ -90,7 +90,7 @@ async fn fetch_free_comments_returns_seeded() {
 #[tokio::test]
 async fn push_event_records_the_event() {
     let adapter = InMemorySourceAdapter::new();
-    let event = BoardEvent::StateTransitioned {
+    let event = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(10),
         new_state: BoardState::Delivered,
@@ -105,7 +105,7 @@ async fn push_event_records_the_event() {
 async fn push_event_errs_when_configured_to_fail() {
     let adapter = InMemorySourceAdapter::new();
     adapter.set_push_failures(true);
-    let event = BoardEvent::StateTransitioned {
+    let event = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(10),
         new_state: BoardState::Delivered,
@@ -121,12 +121,12 @@ async fn push_event_errs_when_configured_to_fail() {
 #[tokio::test]
 async fn multiple_pushed_events_preserve_order() {
     let adapter = InMemorySourceAdapter::new();
-    let e1 = BoardEvent::StateTransitioned {
+    let e1 = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
         new_state: BoardState::InProgress(Stage::Dev),
     };
-    let e2 = BoardEvent::StateTransitioned {
+    let e2 = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(2),
         new_state: BoardState::Delivered,
@@ -173,7 +173,7 @@ async fn create_story_propagates_failure_when_push_failures_set() {
 #[tokio::test]
 async fn push_event_accepts_story_created_variant() {
     let adapter = InMemorySourceAdapter::new();
-    let event = BoardEvent::StoryCreated {
+    let event = StoryEvent::StoryCreated {
         meta: meta(),
         id: StoryId::new(99),
         title: "t".to_string(),
@@ -191,7 +191,7 @@ async fn tag_added_surfaces_label_in_ingested_raw_labels() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
     adapter
-        .push_event(&BoardEvent::TagAdded {
+        .push_event(&StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(42),
             label: "iteration-Unscheduled.300".to_string(),
@@ -215,7 +215,7 @@ async fn tag_removed_drops_label_from_ingested_raw_labels() {
     adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
     adapter.seed_labels(42, vec!["iteration-Unscheduled.300".to_string()]);
     adapter
-        .push_event(&BoardEvent::TagRemoved {
+        .push_event(&StoryEvent::TagRemoved {
             meta: meta(),
             id: StoryId::new(42),
             label: "iteration-Unscheduled.300".to_string(),
@@ -238,7 +238,7 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(42, "child")]);
     adapter
-        .push_event(&BoardEvent::ParentEpicSet {
+        .push_event(&StoryEvent::ParentEpicSet {
             meta: meta(),
             id: StoryId::new(42),
             epic_id: EpicId::new(7),
@@ -269,7 +269,7 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(42, "child")]);
     adapter
-        .push_event(&BoardEvent::ParentEpicSet {
+        .push_event(&StoryEvent::ParentEpicSet {
             meta: meta(),
             id: StoryId::new(42),
             epic_id: EpicId::new(7),
@@ -277,7 +277,7 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
         .await
         .unwrap();
     adapter
-        .push_event(&BoardEvent::ParentEpicUnset {
+        .push_event(&StoryEvent::ParentEpicUnset {
             meta: meta(),
             id: StoryId::new(42),
         })
@@ -307,7 +307,7 @@ async fn iteration_membership_set_surfaces_in_ingested_metadata() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(42, "member")]);
     adapter
-        .push_event(&BoardEvent::IterationMembershipSet {
+        .push_event(&StoryEvent::IterationMembershipSet {
             meta: meta(),
             id: StoryId::new(42),
             iteration_id: IterationId::new(1300),
@@ -338,7 +338,7 @@ async fn iteration_membership_set_surfaces_in_ingested_metadata() {
 async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
     let adapter = InMemorySourceAdapter::new();
     adapter
-        .push_event(&BoardEvent::IterationMembershipSet {
+        .push_event(&StoryEvent::IterationMembershipSet {
             meta: meta(),
             id: StoryId::new(999),
             iteration_id: IterationId::new(1),
@@ -347,7 +347,7 @@ async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
         .await
         .unwrap();
     adapter
-        .push_event(&BoardEvent::ParentEpicSet {
+        .push_event(&StoryEvent::ParentEpicSet {
             meta: meta(),
             id: StoryId::new(999),
             epic_id: EpicId::new(1),

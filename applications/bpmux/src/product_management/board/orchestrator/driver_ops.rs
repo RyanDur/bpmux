@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
@@ -26,7 +26,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(self.ingest_once_since(since))
     }
 
-    fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError> {
+    fn mutate_sync(&self, event: StoryEvent) -> Result<(), SyncError> {
         self.mutate(event)
     }
 
@@ -140,7 +140,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         let store = Arc::clone(&self.store);
         Box::pin(async move {
             adapter.update_body(number, &body).await?;
-            store.apply(&BoardEvent::BodyUpdated {
+            store.apply(&StoryEvent::BodyUpdated {
                 meta: cache_fill_meta(),
                 id: StoryId::new(number),
                 body,
@@ -154,7 +154,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         let store = Arc::clone(&self.store);
         Box::pin(async move {
             adapter.update_title(number, &title).await?;
-            store.apply(&BoardEvent::TitleUpdated {
+            store.apply(&StoryEvent::TitleUpdated {
                 meta: cache_fill_meta(),
                 id: StoryId::new(number),
                 title,

@@ -58,14 +58,14 @@ pub(crate) async fn handle_close_story(
         };
         reap_workflow_labels(r.as_ref(), id, &meta, KEEP_NONE)?;
         if disposition == "retire" || disposition == "wontfix" {
-            r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+            r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 label: "retired".to_string(),
             })
             .map_err(|e| format!("#{id} retired-tag enqueue failed: {e}"))?;
             r.mutate_sync(
-                crate::product_management::board::BoardEvent::StateTransitioned {
+                crate::product_management::board::StoryEvent::StateTransitioned {
                     meta: meta.clone(),
                     id: StoryId::new(id),
                     new_state: crate::product_management::story::BoardState::Retired,
@@ -73,7 +73,7 @@ pub(crate) async fn handle_close_story(
             )
             .map_err(|e| format!("#{id} retired-state enqueue failed: {e}"))?;
         }
-        r.mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
+        r.mutate_sync(crate::product_management::board::StoryEvent::StoryClosed {
             meta,
             id: StoryId::new(id),
             reason: Some(reason.to_string()),

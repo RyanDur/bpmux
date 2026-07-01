@@ -6,7 +6,7 @@ use super::helpers::{
     require_nonempty_string, role_from_name,
 };
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
+use crate::product_management::board::{PeerId, RefreshDriver, StoryEvent};
 use crate::product_management::story::{BoardState, Gate, Stage, Story, StoryId};
 
 pub(crate) async fn handle_start_story(
@@ -69,21 +69,21 @@ pub(crate) async fn handle_start_story(
             peer_id: PeerId::local(),
         };
         if was_closed {
-            r.mutate_sync(BoardEvent::StoryReopened {
+            r.mutate_sync(StoryEvent::StoryReopened {
                 meta: meta.clone(),
                 id: StoryId::new(id),
             })
             .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), id, &meta, LABEL_IN_PROGRESS)?;
-        r.mutate_sync(BoardEvent::GateCommentAppended {
+        r.mutate_sync(StoryEvent::GateCommentAppended {
             meta: meta.clone(),
             id: StoryId::new(id),
             gate: Gate::Pickup,
             payload: Some(pickup_payload.clone()),
         })
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
-        r.mutate_sync(BoardEvent::StateTransitioned {
+        r.mutate_sync(StoryEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
             new_state: BoardState::InProgress(Stage::Dev),
@@ -164,21 +164,21 @@ pub(crate) async fn handle_deliver_story(
             peer_id: PeerId::local(),
         };
         if was_closed {
-            r.mutate_sync(BoardEvent::StoryReopened {
+            r.mutate_sync(StoryEvent::StoryReopened {
                 meta: meta.clone(),
                 id: StoryId::new(id),
             })
             .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), id, &meta, "desk-check")?;
-        r.mutate_sync(BoardEvent::GateCommentAppended {
+        r.mutate_sync(StoryEvent::GateCommentAppended {
             meta: meta.clone(),
             id: StoryId::new(id),
             gate: Gate::Delivered,
             payload: Some(verified_observation.to_string()),
         })
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
-        r.mutate_sync(BoardEvent::StateTransitioned {
+        r.mutate_sync(StoryEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
             new_state: BoardState::InProgress(Stage::DeskCheck),

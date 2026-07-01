@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{Ingested, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
@@ -21,7 +21,7 @@ struct InnerState {
     labels: HashMap<u64, Vec<String>>,
     free_comments: HashMap<u64, Vec<FreeComment>>,
     gate_comments: HashMap<u64, Vec<GateComment>>,
-    pushed_events: Vec<BoardEvent>,
+    pushed_events: Vec<StoryEvent>,
     failures_on_push: bool,
     permanent_push_failures: bool,
     failures_on_ingest: bool,
@@ -118,7 +118,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         Ok(s.gate_comments.get(&number).cloned().unwrap_or_default())
     }
 
-    async fn push_event(&self, event: &BoardEvent) -> Result<Option<BoardEvent>, SyncError> {
+    async fn push_event(&self, event: &StoryEvent) -> Result<Option<StoryEvent>, SyncError> {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.permanent_push_failures {
             return Err(SyncError::ValidationRejected(

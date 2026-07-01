@@ -258,7 +258,7 @@ mod ingest_poll_loop_tests {
 
     use crate::bridge::run_ingest_poll_loop;
     use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::events::BoardEvent;
+    use crate::product_management::board::events::StoryEvent;
     use crate::product_management::board::orchestrator::{BoxedFuture, SyncStatus};
     use crate::product_management::board::sync::SyncError;
 
@@ -329,7 +329,7 @@ mod ingest_poll_loop_tests {
                 .push(since);
             self.refresh_all()
         }
-        fn mutate_sync(&self, _e: BoardEvent) -> Result<(), SyncError> {
+        fn mutate_sync(&self, _e: StoryEvent) -> Result<(), SyncError> {
             Ok(())
         }
         fn drain_one_by_id(

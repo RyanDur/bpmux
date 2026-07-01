@@ -1,7 +1,7 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
+use crate::product_management::board::{PeerId, RefreshDriver, StoryEvent};
 use crate::product_management::outcome::{Outcome, OutcomeAction};
 use crate::product_management::story::{Horizon, StoryId};
 use std::sync::Arc;
@@ -116,14 +116,14 @@ fn push_band_change(
         stale.push(codec.encode_horizon_order(order));
     }
     for label in stale {
-        r.mutate_sync(BoardEvent::TagRemoved {
+        r.mutate_sync(StoryEvent::TagRemoved {
             meta: meta(),
             id: StoryId::new(id),
             label,
         })
         .map_err(|e| format!("#{id} band-change label removal failed: {e}"))?;
     }
-    r.mutate_sync(BoardEvent::TagAdded {
+    r.mutate_sync(StoryEvent::TagAdded {
         meta: meta(),
         id: StoryId::new(id),
         label: target_label,
@@ -177,14 +177,14 @@ fn reorder_within_band(
             continue;
         }
         if let Some(order) = member.horizon_order() {
-            r.mutate_sync(BoardEvent::TagRemoved {
+            r.mutate_sync(StoryEvent::TagRemoved {
                 meta: meta(),
                 id: StoryId::new(*id),
                 label: codec.encode_horizon_order(order),
             })
             .map_err(|e| format!("#{id} prior-position removal failed: {e}"))?;
         }
-        r.mutate_sync(BoardEvent::TagAdded {
+        r.mutate_sync(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(*id),
             label: codec.encode_horizon_order(new_position),

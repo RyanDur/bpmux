@@ -718,12 +718,12 @@ async fn latest_reject_survives_an_iteration_move() {
     );
 
     let meta = crate::product_management::board::orchestrator::cache_fill_meta();
-    store.apply(&crate::product_management::board::BoardEvent::TagAdded {
+    store.apply(&crate::product_management::board::StoryEvent::TagAdded {
         meta: meta.clone(),
         id: StoryId::new(1524),
         label: "parent-iteration-#1656.1".to_string(),
     });
-    store.apply(&crate::product_management::board::BoardEvent::TagRemoved {
+    store.apply(&crate::product_management::board::StoryEvent::TagRemoved {
         meta,
         id: StoryId::new(1524),
         label: "parent-iteration-#1655.1".to_string(),

@@ -60,7 +60,7 @@ pub(crate) async fn handle_edit_story(
             peer_id: crate::product_management::board::PeerId::local(),
         };
         r.mutate_sync(
-            crate::product_management::board::BoardEvent::AcceptorAssigned {
+            crate::product_management::board::StoryEvent::AcceptorAssigned {
                 meta,
                 id: crate::product_management::story::StoryId::new(id),
                 acceptor,

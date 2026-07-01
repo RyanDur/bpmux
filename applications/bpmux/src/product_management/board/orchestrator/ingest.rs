@@ -1,6 +1,6 @@
 use super::SyncOrchestrator;
 use super::status::{record_error, record_ingest_success};
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::StoryId;
 
@@ -26,7 +26,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         .filter(|q| {
                             matches!(
                                 q.event,
-                                BoardEvent::TagAdded { .. } | BoardEvent::TagRemoved { .. }
+                                StoryEvent::TagAdded { .. } | StoryEvent::TagRemoved { .. }
                             )
                         })
                         .map(|q| q.event.story_id())

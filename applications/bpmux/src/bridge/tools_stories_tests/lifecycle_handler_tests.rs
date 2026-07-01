@@ -11,9 +11,9 @@ fn td() -> crate::store::Dispatch {
 
 #[tokio::test]
 async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Gate, Stage, Story};
@@ -74,7 +74,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     );
     let reap_count = pushed
         .iter()
-        .filter(|e| matches!(e, BoardEvent::TagRemoved { id, .. } if *id == StoryId::new(203)))
+        .filter(|e| matches!(e, StoryEvent::TagRemoved { id, .. } if *id == StoryId::new(203)))
         .count();
     assert_eq!(
         reap_count, 1,
@@ -82,7 +82,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     );
     assert!(matches!(
         &pushed[1],
-        BoardEvent::GateCommentAppended {
+        StoryEvent::GateCommentAppended {
             id,
             gate: Gate::Pickup,
             payload: Some(p),
@@ -91,7 +91,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     ));
     assert!(matches!(
         &pushed[2],
-        BoardEvent::StateTransitioned {
+        StoryEvent::StateTransitioned {
             id,
             new_state: BoardState::InProgress(Stage::Dev),
             ..
@@ -101,9 +101,9 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 
 #[tokio::test]
 async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_state_events() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Gate, Stage, Story};
@@ -149,7 +149,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     assert_eq!(pushed.len(), 3, "3 events expected post-#1156: {pushed:?}");
     let reap_count = pushed
         .iter()
-        .filter(|e| matches!(e, BoardEvent::TagRemoved { id, .. } if *id == StoryId::new(204)))
+        .filter(|e| matches!(e, StoryEvent::TagRemoved { id, .. } if *id == StoryId::new(204)))
         .count();
     assert_eq!(
         reap_count, 1,
@@ -157,7 +157,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     );
     assert!(matches!(
         &pushed[1],
-        BoardEvent::GateCommentAppended {
+        StoryEvent::GateCommentAppended {
             id,
             gate: Gate::Delivered,
             payload: Some(p),
@@ -166,7 +166,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     ));
     assert!(matches!(
         &pushed[2],
-        BoardEvent::StateTransitioned {
+        StoryEvent::StateTransitioned {
             id,
             new_state: BoardState::InProgress(Stage::DeskCheck),
             ..
@@ -176,9 +176,9 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
 
 #[tokio::test]
 async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Gate, Story};
@@ -222,7 +222,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
-            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(205) => {
+            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(205) => {
                 Some(label.as_str())
             }
             _ => None,
@@ -235,7 +235,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     );
     assert!(matches!(
         &pushed[1],
-        BoardEvent::GateCommentAppended {
+        StoryEvent::GateCommentAppended {
             id,
             gate: Gate::Accepted,
             payload: None,
@@ -244,7 +244,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     ));
     assert!(matches!(
         &pushed[2],
-        BoardEvent::StateTransitioned {
+        StoryEvent::StateTransitioned {
             id,
             new_state: BoardState::Accepted,
             ..
@@ -252,7 +252,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     ));
     assert!(matches!(
         &pushed[3],
-        BoardEvent::StoryClosed {
+        StoryEvent::StoryClosed {
             id,
             reason: None,
             ..
@@ -269,9 +269,9 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
 
 #[tokio::test]
 async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
@@ -318,28 +318,28 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(5070) && label == "delivered"
+            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(5070) && label == "delivered"
         )),
         "must reap 'delivered' label (post-slice-5b: pass_desk_check sets this)"
     );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(5070) && label == "ready for accept"
+            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(5070) && label == "ready for accept"
         )),
         "must reap 'ready for accept' label (legacy back-compat for pre-slice-5b stories)"
     );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(5070) && label == "desk-check"
+            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(5070) && label == "desk-check"
         )),
         "must reap 'desk-check' label (#507 fix: covers DeskCheck pre-state class post-slice-5b)"
     );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::StateTransitioned {
+            StoryEvent::StateTransitioned {
                 id,
                 new_state: BoardState::Accepted,
                 ..
@@ -351,9 +351,9 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
 
 #[tokio::test]
 async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_events() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Gate, Story};
@@ -401,7 +401,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
-            BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(206) => {
+            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(206) => {
                 Some(label.as_str())
             }
             _ => None,
@@ -414,7 +414,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     );
     assert!(matches!(
         &pushed[1],
-        BoardEvent::GateCommentAppended {
+        StoryEvent::GateCommentAppended {
             id,
             gate: Gate::Rejected,
             payload: Some(p),
@@ -423,7 +423,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     ));
     assert!(matches!(
         &pushed[2],
-        BoardEvent::StateTransitioned {
+        StoryEvent::StateTransitioned {
             id,
             new_state: BoardState::Ready,
             ..
@@ -433,9 +433,9 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
 
 #[tokio::test]
 async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story, StoryKind};
@@ -503,7 +503,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     assert_eq!(pushed.len(), 2);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::StoryCreated {
+        StoryEvent::StoryCreated {
             id,
             initial_state: BoardState::Icebox,
             story_type: StoryKind::Bug,
@@ -513,7 +513,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     assert!(
         matches!(
             &pushed[1],
-            BoardEvent::AcceptorAssigned { id, acceptor, .. } if *id == StoryId::new(51) && *acceptor == crate::product_management::story::Acceptor::Team
+            StoryEvent::AcceptorAssigned { id, acceptor, .. } if *id == StoryId::new(51) && *acceptor == crate::product_management::story::Acceptor::Team
         ),
         "the 'As an agent (pm or dev)' multi-role use-axis derives the team acceptor, assigned at create (#1787); got {:?}",
         &pushed[1]

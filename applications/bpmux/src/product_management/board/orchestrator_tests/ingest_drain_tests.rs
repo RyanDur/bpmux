@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
@@ -47,7 +47,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator
-        .mutate(BoardEvent::StoryCreated {
+        .mutate(StoryEvent::StoryCreated {
             meta: meta(),
             id: StoryId::new(100),
             title: "test".to_string(),
@@ -72,7 +72,7 @@ async fn drain_once_pushes_pending_events_to_adapter() {
     store.seed_all(vec![seed_story(1, BoardState::Ready)]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator
-        .mutate(BoardEvent::StateTransitioned {
+        .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
             new_state: BoardState::Delivered,
@@ -92,7 +92,7 @@ async fn drain_once_requeues_event_on_adapter_failure() {
     store.seed_all(vec![seed_story(1, BoardState::Ready)]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator
-        .mutate(BoardEvent::StateTransitioned {
+        .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
             new_state: BoardState::Delivered,
@@ -125,14 +125,14 @@ async fn drain_once_handles_multiple_events_in_order() {
     ]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator
-        .mutate(BoardEvent::StateTransitioned {
+        .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
             new_state: BoardState::Delivered,
         })
         .unwrap();
     orchestrator
-        .mutate(BoardEvent::StateTransitioned {
+        .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(2),
             new_state: BoardState::InProgress(Stage::Dev),
@@ -169,14 +169,14 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     );
 
     orchestrator
-        .mutate(BoardEvent::TagAdded {
+        .mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(1687),
             label: "parent-iteration-#1655.106".to_string(),
         })
         .unwrap();
     orchestrator
-        .mutate(BoardEvent::TagRemoved {
+        .mutate(StoryEvent::TagRemoved {
             meta: meta(),
             id: StoryId::new(1687),
             label: "parent-iteration-#1655.125".to_string(),

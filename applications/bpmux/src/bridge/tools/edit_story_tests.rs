@@ -116,7 +116,7 @@ async fn edit_story_with_both_title_and_body_updates_both() {
 
 #[tokio::test]
 async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
-    use crate::product_management::board::BoardEvent;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::events::EventMeta;
     use crate::product_management::story::Acceptor;
 
@@ -127,7 +127,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         peer_id: crate::product_management::board::PeerId::local(),
     };
     refresh
-        .mutate_sync(BoardEvent::AcceptorAssigned {
+        .mutate_sync(StoryEvent::AcceptorAssigned {
             meta,
             id: StoryId::new(1234),
             acceptor: Acceptor::Dev,

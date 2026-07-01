@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;

@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
@@ -45,7 +45,7 @@ mod outbox_persistence {
             path.clone(),
         )
         .unwrap();
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(10),
             new_state: BoardState::InProgress(Stage::Dev),
@@ -70,7 +70,7 @@ mod outbox_persistence {
             path.clone(),
         )
         .unwrap();
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(20),
             new_state: BoardState::Delivered,
@@ -97,7 +97,7 @@ mod outbox_persistence {
             Arc::clone(&storage),
         )
         .unwrap();
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(90),
             new_state: BoardState::Delivered,
@@ -130,7 +130,7 @@ mod outbox_persistence {
             path.clone(),
         )
         .unwrap();
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(30),
             new_state: BoardState::Delivered,
@@ -157,7 +157,7 @@ mod outbox_persistence {
         )
         .unwrap();
         orch_a
-            .mutate(BoardEvent::StateTransitioned {
+            .mutate(StoryEvent::StateTransitioned {
                 meta: meta(),
                 id: StoryId::new(40),
                 new_state: BoardState::Delivered,
@@ -191,7 +191,7 @@ mod outbox_persistence {
             path.clone(),
         )
         .unwrap();
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(60),
             new_state: BoardState::Delivered,
@@ -200,7 +200,7 @@ mod outbox_persistence {
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_once().await;
         let bytes = std::fs::read(&path).unwrap();
-        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        let events: Vec<StoryEvent> = serde_json::from_slice(&bytes).unwrap();
         assert!(
             events.is_empty(),
             "permanent failure drops event from outbox"
@@ -221,7 +221,7 @@ mod outbox_persistence {
             path.clone(),
         )
         .unwrap();
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(65),
             new_state: BoardState::Delivered,
@@ -248,7 +248,7 @@ mod outbox_persistence {
             path.clone(),
         )
         .unwrap();
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(66),
             new_state: BoardState::Delivered,
@@ -279,7 +279,7 @@ mod outbox_persistence {
         )
         .unwrap();
         for n in [70u64, 71] {
-            orch.mutate(BoardEvent::StateTransitioned {
+            orch.mutate(StoryEvent::StateTransitioned {
                 meta: meta(),
                 id: StoryId::new(n),
                 new_state: BoardState::Delivered,
@@ -289,7 +289,7 @@ mod outbox_persistence {
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_once().await;
         let bytes = std::fs::read(&path).unwrap();
-        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        let events: Vec<StoryEvent> = serde_json::from_slice(&bytes).unwrap();
         assert!(
             events.is_empty(),
             "drain continues past each permanent failure"
@@ -309,7 +309,7 @@ mod outbox_persistence {
             path.clone(),
         )
         .unwrap();
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(80),
             new_state: BoardState::Delivered,
@@ -346,7 +346,7 @@ mod outbox_persistence {
         .unwrap();
         for n in [50u64, 51, 52] {
             orch_a
-                .mutate(BoardEvent::StateTransitioned {
+                .mutate(StoryEvent::StateTransitioned {
                     meta: meta(),
                     id: StoryId::new(n),
                     new_state: BoardState::InProgress(Stage::Dev),
@@ -372,7 +372,7 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(999),
             new_state: BoardState::InProgress(Stage::Dev),
@@ -392,7 +392,7 @@ mod outbox_persistence {
         adapter.seed_stories(vec![seed_story(777, BoardState::Ready)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
             new_state: BoardState::InProgress(Stage::Dev),
@@ -409,7 +409,7 @@ mod outbox_persistence {
             "refresh_story populates the store from adapter"
         );
 
-        orch.mutate(BoardEvent::StateTransitioned {
+        orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
             new_state: BoardState::InProgress(Stage::Dev),

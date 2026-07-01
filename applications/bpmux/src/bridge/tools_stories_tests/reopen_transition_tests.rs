@@ -8,9 +8,9 @@ use crate::transport::protocol::ClientMessage;
 mod reopen_on_state_transition_tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story, StoryId};
@@ -61,7 +61,7 @@ mod reopen_on_state_transition_tests {
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
-                |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(7110))
+                |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7110))
             ),
             "start_story on closed-state must emit StoryReopened: {pushed:?}"
         );
@@ -83,7 +83,7 @@ mod reopen_on_state_transition_tests {
         let pushed = adapter.pushed_events();
         assert!(
             !pushed.iter().any(
-                |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(7111))
+                |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7111))
             ),
             "start_story on open story must NOT emit StoryReopened: {pushed:?}"
         );
@@ -104,7 +104,7 @@ mod reopen_on_state_transition_tests {
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
-                |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(7120))
+                |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7120))
             ),
             "deliver_story on closed-state must emit StoryReopened: {pushed:?}"
         );
@@ -124,7 +124,7 @@ mod reopen_on_state_transition_tests {
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
-                |e| matches!(e, BoardEvent::StoryReopened { id, .. } if *id == StoryId::new(7130))
+                |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7130))
             ),
             "pass_desk_check on closed-state must emit StoryReopened: {pushed:?}"
         );

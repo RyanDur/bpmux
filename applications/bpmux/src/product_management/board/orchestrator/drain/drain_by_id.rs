@@ -1,4 +1,4 @@
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, is_permanent_push_failure};
 
 use super::super::{
@@ -37,7 +37,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 self.remove_pending_by_id(id);
                 self.persist_outbox();
                 decrement_pending(&self.status);
-                self.store.apply(&BoardEvent::ConflictDetected {
+                self.store.apply(&StoryEvent::ConflictDetected {
                     meta: cache_fill_meta(),
                     id: event.story_id(),
                     kind: divergent,

@@ -92,7 +92,7 @@ pub(crate) async fn reject_via_canonical_store(
     if was_accepted {
         refresh
             .mutate_sync(
-                crate::product_management::board::BoardEvent::StoryReopened {
+                crate::product_management::board::StoryEvent::StoryReopened {
                     meta: meta.clone(),
                     id: StoryId::new(id),
                 },
@@ -101,7 +101,7 @@ pub(crate) async fn reject_via_canonical_store(
     }
     refresh
         .mutate_sync(
-            crate::product_management::board::BoardEvent::GateCommentAppended {
+            crate::product_management::board::StoryEvent::GateCommentAppended {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::Rejected,
@@ -111,7 +111,7 @@ pub(crate) async fn reject_via_canonical_store(
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
     refresh
         .mutate_sync(
-            crate::product_management::board::BoardEvent::StateTransitioned {
+            crate::product_management::board::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
                 new_state: target_state,

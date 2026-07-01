@@ -31,7 +31,7 @@ pub struct LabelDerivedFields {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BoardEvent {
+pub enum StoryEvent {
     StoryCreated {
         meta: EventMeta,
         id: StoryId,
@@ -156,62 +156,62 @@ pub enum BoardEvent {
     },
 }
 
-impl BoardEvent {
+impl StoryEvent {
     pub fn meta(&self) -> &EventMeta {
         match self {
-            BoardEvent::StoryCreated { meta, .. }
-            | BoardEvent::StateTransitioned { meta, .. }
-            | BoardEvent::GateCommentAppended { meta, .. }
-            | BoardEvent::FreeCommentAppended { meta, .. }
-            | BoardEvent::BodyFetched { meta, .. }
-            | BoardEvent::FreeCommentsFetched { meta, .. }
-            | BoardEvent::GateCommentsFetched { meta, .. }
-            | BoardEvent::TagAdded { meta, .. }
-            | BoardEvent::TagRemoved { meta, .. }
-            | BoardEvent::StoryClosed { meta, .. }
-            | BoardEvent::StoryReopened { meta, .. }
-            | BoardEvent::AcceptorAssigned { meta, .. }
-            | BoardEvent::ParentEpicSet { meta, .. }
-            | BoardEvent::ParentEpicUnset { meta, .. }
-            | BoardEvent::IterationMembershipSet { meta, .. }
-            | BoardEvent::IterationMembershipCleared { meta, .. }
-            | BoardEvent::CurrentIterationDesignated { meta, .. }
-            | BoardEvent::CurrentIterationCleared { meta, .. }
-            | BoardEvent::StoryRefreshed { meta, .. }
-            | BoardEvent::LabelsRefreshed { meta, .. }
-            | BoardEvent::TitleUpdated { meta, .. }
-            | BoardEvent::BodyUpdated { meta, .. }
-            | BoardEvent::ConflictDetected { meta, .. }
-            | BoardEvent::ConflictResolved { meta, .. } => meta,
+            StoryEvent::StoryCreated { meta, .. }
+            | StoryEvent::StateTransitioned { meta, .. }
+            | StoryEvent::GateCommentAppended { meta, .. }
+            | StoryEvent::FreeCommentAppended { meta, .. }
+            | StoryEvent::BodyFetched { meta, .. }
+            | StoryEvent::FreeCommentsFetched { meta, .. }
+            | StoryEvent::GateCommentsFetched { meta, .. }
+            | StoryEvent::TagAdded { meta, .. }
+            | StoryEvent::TagRemoved { meta, .. }
+            | StoryEvent::StoryClosed { meta, .. }
+            | StoryEvent::StoryReopened { meta, .. }
+            | StoryEvent::AcceptorAssigned { meta, .. }
+            | StoryEvent::ParentEpicSet { meta, .. }
+            | StoryEvent::ParentEpicUnset { meta, .. }
+            | StoryEvent::IterationMembershipSet { meta, .. }
+            | StoryEvent::IterationMembershipCleared { meta, .. }
+            | StoryEvent::CurrentIterationDesignated { meta, .. }
+            | StoryEvent::CurrentIterationCleared { meta, .. }
+            | StoryEvent::StoryRefreshed { meta, .. }
+            | StoryEvent::LabelsRefreshed { meta, .. }
+            | StoryEvent::TitleUpdated { meta, .. }
+            | StoryEvent::BodyUpdated { meta, .. }
+            | StoryEvent::ConflictDetected { meta, .. }
+            | StoryEvent::ConflictResolved { meta, .. } => meta,
         }
     }
 
     pub fn story_id(&self) -> StoryId {
         match self {
-            BoardEvent::StoryCreated { id, .. }
-            | BoardEvent::StateTransitioned { id, .. }
-            | BoardEvent::GateCommentAppended { id, .. }
-            | BoardEvent::FreeCommentAppended { id, .. }
-            | BoardEvent::BodyFetched { id, .. }
-            | BoardEvent::FreeCommentsFetched { id, .. }
-            | BoardEvent::GateCommentsFetched { id, .. }
-            | BoardEvent::TagAdded { id, .. }
-            | BoardEvent::TagRemoved { id, .. }
-            | BoardEvent::StoryClosed { id, .. }
-            | BoardEvent::StoryReopened { id, .. }
-            | BoardEvent::AcceptorAssigned { id, .. }
-            | BoardEvent::ParentEpicSet { id, .. }
-            | BoardEvent::ParentEpicUnset { id, .. }
-            | BoardEvent::IterationMembershipSet { id, .. }
-            | BoardEvent::IterationMembershipCleared { id, .. }
-            | BoardEvent::CurrentIterationDesignated { id, .. }
-            | BoardEvent::CurrentIterationCleared { id, .. }
-            | BoardEvent::StoryRefreshed { id, .. }
-            | BoardEvent::LabelsRefreshed { id, .. }
-            | BoardEvent::TitleUpdated { id, .. }
-            | BoardEvent::BodyUpdated { id, .. }
-            | BoardEvent::ConflictDetected { id, .. }
-            | BoardEvent::ConflictResolved { id, .. } => *id,
+            StoryEvent::StoryCreated { id, .. }
+            | StoryEvent::StateTransitioned { id, .. }
+            | StoryEvent::GateCommentAppended { id, .. }
+            | StoryEvent::FreeCommentAppended { id, .. }
+            | StoryEvent::BodyFetched { id, .. }
+            | StoryEvent::FreeCommentsFetched { id, .. }
+            | StoryEvent::GateCommentsFetched { id, .. }
+            | StoryEvent::TagAdded { id, .. }
+            | StoryEvent::TagRemoved { id, .. }
+            | StoryEvent::StoryClosed { id, .. }
+            | StoryEvent::StoryReopened { id, .. }
+            | StoryEvent::AcceptorAssigned { id, .. }
+            | StoryEvent::ParentEpicSet { id, .. }
+            | StoryEvent::ParentEpicUnset { id, .. }
+            | StoryEvent::IterationMembershipSet { id, .. }
+            | StoryEvent::IterationMembershipCleared { id, .. }
+            | StoryEvent::CurrentIterationDesignated { id, .. }
+            | StoryEvent::CurrentIterationCleared { id, .. }
+            | StoryEvent::StoryRefreshed { id, .. }
+            | StoryEvent::LabelsRefreshed { id, .. }
+            | StoryEvent::TitleUpdated { id, .. }
+            | StoryEvent::BodyUpdated { id, .. }
+            | StoryEvent::ConflictDetected { id, .. }
+            | StoryEvent::ConflictResolved { id, .. } => *id,
         }
     }
 }

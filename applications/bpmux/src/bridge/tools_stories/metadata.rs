@@ -55,7 +55,7 @@ pub(crate) async fn handle_label_story(
         };
         let (event, ok_msg) = match operation {
             "add" => (
-                crate::product_management::board::BoardEvent::TagAdded {
+                crate::product_management::board::StoryEvent::TagAdded {
                     meta,
                     id: StoryId::new(id),
                     label: label.to_string(),
@@ -63,7 +63,7 @@ pub(crate) async fn handle_label_story(
                 format!("#{id} labeled '{label}'"),
             ),
             "remove" => (
-                crate::product_management::board::BoardEvent::TagRemoved {
+                crate::product_management::board::StoryEvent::TagRemoved {
                     meta,
                     id: StoryId::new(id),
                     label: label.to_string(),
@@ -119,7 +119,7 @@ pub(crate) async fn handle_comment_on_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
-        let event = crate::product_management::board::BoardEvent::FreeCommentAppended {
+        let event = crate::product_management::board::StoryEvent::FreeCommentAppended {
             meta: crate::product_management::board::events::EventMeta {
                 actor: crate::transport::ws::short_name(agent_name).to_string(),
                 ts: chrono::Utc::now(),

@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::bridge::tools_stories::{KEEP_NONE, reap_workflow_labels};
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
+use crate::product_management::board::{PeerId, RefreshDriver, StoryEvent};
 use crate::product_management::iteration::label::current_iteration_id;
 use crate::product_management::story::{BoardState, StoryId};
 
@@ -68,7 +68,7 @@ pub(in crate::bridge) async fn handle_move_story(
     let story_id = StoryId::new(id);
 
     if was_closed && !target.closes_issue() {
-        r.mutate_sync(BoardEvent::StoryReopened {
+        r.mutate_sync(StoryEvent::StoryReopened {
             meta: meta.clone(),
             id: story_id,
         })
@@ -88,7 +88,7 @@ pub(in crate::bridge) async fn handle_move_story(
             .map(|s| s.state() == target_state)
             .unwrap_or(false);
         if !already_labeled {
-            r.mutate_sync(BoardEvent::TagAdded {
+            r.mutate_sync(StoryEvent::TagAdded {
                 meta: meta.clone(),
                 id: story_id,
                 label: label.to_string(),
@@ -99,14 +99,14 @@ pub(in crate::bridge) async fn handle_move_story(
 
     match target {
         TargetState::Workflow(state) => {
-            r.mutate_sync(BoardEvent::StateTransitioned {
+            r.mutate_sync(StoryEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: story_id,
                 new_state: state,
             })
             .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
             if matches!(state, BoardState::Accepted) && !was_closed {
-                r.mutate_sync(BoardEvent::StoryClosed {
+                r.mutate_sync(StoryEvent::StoryClosed {
                     meta: meta.clone(),
                     id: story_id,
                     reason: Some(rationale.clone()),
@@ -115,7 +115,7 @@ pub(in crate::bridge) async fn handle_move_story(
             }
         }
         TargetState::Retired => {
-            r.mutate_sync(BoardEvent::StoryClosed {
+            r.mutate_sync(StoryEvent::StoryClosed {
                 meta: meta.clone(),
                 id: story_id,
                 reason: Some(format!("retired: {rationale}")),
@@ -126,7 +126,7 @@ pub(in crate::bridge) async fn handle_move_story(
                 .map(|s| s.state() == BoardState::Retired)
                 .unwrap_or(false);
             if !already_retired {
-                r.mutate_sync(BoardEvent::TagAdded {
+                r.mutate_sync(StoryEvent::TagAdded {
                     meta: meta.clone(),
                     id: story_id,
                     label: "retired".to_string(),
@@ -157,7 +157,7 @@ pub(in crate::bridge) async fn handle_move_story(
     }
 
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
-    r.mutate_sync(BoardEvent::FreeCommentAppended {
+    r.mutate_sync(StoryEvent::FreeCommentAppended {
         meta,
         id: story_id,
         body,

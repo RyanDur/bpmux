@@ -4,7 +4,7 @@
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::decode_story_metadata;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::board::{BoardEvent, PeerId, events::EventMeta};
+use crate::product_management::board::{PeerId, StoryEvent, events::EventMeta};
 use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
 use chrono::{TimeZone, Utc};
 use serde_json::json;
@@ -75,7 +75,7 @@ fn iteration_label_decoder_does_not_populate_a_story_field() {
 #[test]
 fn create_story_event_does_not_seed_iteration_membership() {
     let store = BoardStore::new();
-    store.apply(&BoardEvent::StoryCreated {
+    store.apply(&StoryEvent::StoryCreated {
         meta: meta(),
         id: StoryId::new(200),
         title: "freshly-created".to_string(),

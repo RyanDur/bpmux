@@ -1,5 +1,5 @@
 use super::InMemorySourceAdapter;
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment, Story};
 
 impl InMemorySourceAdapter {
@@ -45,7 +45,7 @@ impl InMemorySourceAdapter {
         s.gate_comments.insert(number, comments);
     }
 
-    pub fn pushed_events(&self) -> Vec<BoardEvent> {
+    pub fn pushed_events(&self) -> Vec<StoryEvent> {
         self.state
             .lock()
             .unwrap_or_else(|e| e.into_inner())

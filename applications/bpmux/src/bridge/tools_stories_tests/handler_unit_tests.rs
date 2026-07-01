@@ -133,7 +133,7 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
 async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::board::{
-        BoardEvent, BoardStore, RefreshDriver, SyncOrchestrator,
+        BoardStore, RefreshDriver, StoryEvent, SyncOrchestrator,
     };
     use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
@@ -173,7 +173,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     let gate_event = pushed
         .iter()
         .find_map(|e| match e {
-            BoardEvent::GateCommentAppended { id, payload, .. } if *id == StoryId::new(777) => {
+            StoryEvent::GateCommentAppended { id, payload, .. } if *id == StoryId::new(777) => {
                 Some(payload.clone())
             }
             _ => None,

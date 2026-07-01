@@ -2,7 +2,7 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::{BoardStore, StoreChange};
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
@@ -34,16 +34,16 @@ fn assert_state_transition_fires(
     expected_new_state: BoardState,
 ) {
     let mut rx = store.subscribe();
-    store.apply(&BoardEvent::StateTransitioned {
+    store.apply(&StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(number),
         new_state: expected_new_state,
     });
     let event = rx.try_recv().expect(
-        "BoardEvent::StateTransitioned delivered to subscriber after apply (#1282 invariant)",
+        "StoryEvent::StateTransitioned delivered to subscriber after apply (#1282 invariant)",
     );
     match event {
-        StoreChange::Event(BoardEvent::StateTransitioned {
+        StoreChange::Event(StoryEvent::StateTransitioned {
             new_state, id: n, ..
         }) => {
             assert_eq!(n, StoryId::new(number));
@@ -85,7 +85,7 @@ async fn sister_to_1274_state_transition_reaches_cascade_listener() {
     seed_story_at(&store, 400, BoardState::Delivered);
     let mut rx = store.subscribe();
 
-    store.apply(&BoardEvent::StateTransitioned {
+    store.apply(&StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(400),
         new_state: BoardState::Accepted,
@@ -97,7 +97,7 @@ async fn sister_to_1274_state_transition_reaches_cascade_listener() {
     assert!(
         matches!(
             event,
-            StoreChange::Event(BoardEvent::StateTransitioned { .. })
+            StoreChange::Event(StoryEvent::StateTransitioned { .. })
         ),
         "event delivered to subscriber is the StateTransitioned we sent"
     );
@@ -115,7 +115,7 @@ async fn multiple_subscribers_each_receive_state_transition_event() {
     let mut rx_a = store.subscribe();
     let mut rx_b = store.subscribe();
 
-    store.apply(&BoardEvent::StateTransitioned {
+    store.apply(&StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(500),
         new_state: BoardState::InProgress(Stage::Dev),
@@ -125,11 +125,11 @@ async fn multiple_subscribers_each_receive_state_transition_event() {
     let event_b = rx_b.try_recv().expect("subscriber B receives event");
     assert!(matches!(
         event_a,
-        StoreChange::Event(BoardEvent::StateTransitioned { .. })
+        StoreChange::Event(StoryEvent::StateTransitioned { .. })
     ));
     assert!(matches!(
         event_b,
-        StoreChange::Event(BoardEvent::StateTransitioned { .. })
+        StoreChange::Event(StoryEvent::StateTransitioned { .. })
     ));
 }
 
@@ -147,7 +147,7 @@ async fn broadcast_fires_after_reduce_so_listeners_observe_new_state() {
         *observed_clone.lock().unwrap_or_else(|e| e.into_inner()) = state;
     });
 
-    store.apply(&BoardEvent::StateTransitioned {
+    store.apply(&StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(600),
         new_state: BoardState::InProgress(Stage::Dev),

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::action::StoryAction;
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::story::{Story, StoryId, StoryKey};
 
 mod comments;
@@ -45,10 +45,10 @@ pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
     stories
 }
 
-fn apply_event(w: &mut Stories, event: &BoardEvent) {
+fn apply_event(w: &mut Stories, event: &StoryEvent) {
     let id = event.story_id();
     match event {
-        BoardEvent::StoryCreated {
+        StoryEvent::StoryCreated {
             meta,
             id: n,
             title,
@@ -56,40 +56,40 @@ fn apply_event(w: &mut Stories, event: &BoardEvent) {
             initial_state,
             story_type,
         } => apply_story_created(w, *n, meta, title, body, *initial_state, *story_type),
-        BoardEvent::StateTransitioned { new_state, .. } => {
+        StoryEvent::StateTransitioned { new_state, .. } => {
             apply_state_transitioned(w, id, *new_state)
         }
-        BoardEvent::GateCommentAppended {
+        StoryEvent::GateCommentAppended {
             meta,
             gate,
             payload,
             ..
         } => apply_gate_comment_appended(w, id, meta, *gate, payload.clone()),
-        BoardEvent::FreeCommentAppended { meta, body, .. } => {
+        StoryEvent::FreeCommentAppended { meta, body, .. } => {
             apply_free_comment_appended(w, id, meta, body)
         }
-        BoardEvent::BodyFetched { body, etag, .. } => apply_body_fetched(w, id, body, etag),
-        BoardEvent::FreeCommentsFetched { comments, .. } => {
+        StoryEvent::BodyFetched { body, etag, .. } => apply_body_fetched(w, id, body, etag),
+        StoryEvent::FreeCommentsFetched { comments, .. } => {
             apply_free_comments_fetched(w, id, comments)
         }
-        BoardEvent::GateCommentsFetched { comments, .. } => {
+        StoryEvent::GateCommentsFetched { comments, .. } => {
             apply_gate_comments_fetched(w, id, comments)
         }
-        BoardEvent::StoryClosed { .. } => apply_story_closed(w, id),
-        BoardEvent::StoryReopened { .. } => apply_story_reopened(w, id),
-        BoardEvent::AcceptorAssigned { acceptor, .. } => apply_acceptor_assigned(w, id, *acceptor),
-        BoardEvent::ParentEpicSet { epic_id, .. } => apply_parent_epic_set(w, id, *epic_id),
-        BoardEvent::ParentEpicUnset { .. } => apply_parent_epic_unset(w, id),
-        BoardEvent::TagAdded { .. }
-        | BoardEvent::TagRemoved { .. }
-        | BoardEvent::IterationMembershipSet { .. }
-        | BoardEvent::IterationMembershipCleared { .. }
-        | BoardEvent::CurrentIterationDesignated { .. }
-        | BoardEvent::CurrentIterationCleared { .. } => {}
-        BoardEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, id, story),
-        BoardEvent::TitleUpdated { title, .. } => apply_title_updated(w, id, title),
-        BoardEvent::BodyUpdated { body, .. } => apply_body_updated(w, id, body),
-        BoardEvent::LabelsRefreshed { fields, .. } => apply_labels_refreshed(w, id, fields),
-        BoardEvent::ConflictDetected { .. } | BoardEvent::ConflictResolved { .. } => {}
+        StoryEvent::StoryClosed { .. } => apply_story_closed(w, id),
+        StoryEvent::StoryReopened { .. } => apply_story_reopened(w, id),
+        StoryEvent::AcceptorAssigned { acceptor, .. } => apply_acceptor_assigned(w, id, *acceptor),
+        StoryEvent::ParentEpicSet { epic_id, .. } => apply_parent_epic_set(w, id, *epic_id),
+        StoryEvent::ParentEpicUnset { .. } => apply_parent_epic_unset(w, id),
+        StoryEvent::TagAdded { .. }
+        | StoryEvent::TagRemoved { .. }
+        | StoryEvent::IterationMembershipSet { .. }
+        | StoryEvent::IterationMembershipCleared { .. }
+        | StoryEvent::CurrentIterationDesignated { .. }
+        | StoryEvent::CurrentIterationCleared { .. } => {}
+        StoryEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, id, story),
+        StoryEvent::TitleUpdated { title, .. } => apply_title_updated(w, id, title),
+        StoryEvent::BodyUpdated { body, .. } => apply_body_updated(w, id, body),
+        StoryEvent::LabelsRefreshed { fields, .. } => apply_labels_refreshed(w, id, fields),
+        StoryEvent::ConflictDetected { .. } | StoryEvent::ConflictResolved { .. } => {}
     }
 }

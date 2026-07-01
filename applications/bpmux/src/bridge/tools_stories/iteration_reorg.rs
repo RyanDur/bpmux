@@ -1,7 +1,7 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_iteration_in_canonical_store, require_purpose};
-use crate::product_management::board::BoardEvent;
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::StoryEvent;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::StoryId;
@@ -70,14 +70,14 @@ fn renumber_iteration_order(
             continue;
         }
         if let Some(old_position) = iteration.iteration_order {
-            r.mutate_sync(BoardEvent::TagRemoved {
+            r.mutate_sync(StoryEvent::TagRemoved {
                 meta: meta_for(agent_name),
                 id: StoryId::new(*number),
                 label: GhLabelCodec.encode_iteration_order(old_position),
             })
             .map_err(|e| format!("#{number} iteration-order clear enqueue failed: {e}"))?;
         }
-        r.mutate_sync(BoardEvent::TagAdded {
+        r.mutate_sync(StoryEvent::TagAdded {
             meta: meta_for(agent_name),
             id: StoryId::new(*number),
             label: GhLabelCodec.encode_iteration_order(new_position),

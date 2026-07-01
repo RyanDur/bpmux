@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SyncError};
 use crate::product_management::epic::{Epic, EpicId};
@@ -20,7 +20,7 @@ pub trait RefreshDriver: Send + Sync {
     ) -> BoxedFuture<'_, Result<(), SyncError>> {
         self.refresh_all()
     }
-    fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
+    fn mutate_sync(&self, event: StoryEvent) -> Result<(), SyncError>;
     fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome>;
     fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()>;
     fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64>;

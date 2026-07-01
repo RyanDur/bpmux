@@ -1,6 +1,6 @@
 use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::SyncError;
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
@@ -9,7 +9,7 @@ pub(in crate::integrations::github) async fn push_parent_epic_set(
     inner: &OctocrabStoryTracker,
     number: u64,
     epic_id: EpicId,
-) -> Result<Option<BoardEvent>, SyncError> {
+) -> Result<Option<StoryEvent>, SyncError> {
     let label = format!("parent-epic-#{}", epic_id.value());
     let labels = inner
         .add_label(number, &label)
@@ -21,7 +21,7 @@ pub(in crate::integrations::github) async fn push_parent_epic_set(
 pub(in crate::integrations::github) async fn push_parent_epic_unset(
     inner: &OctocrabStoryTracker,
     number: u64,
-) -> Result<Option<BoardEvent>, SyncError> {
+) -> Result<Option<StoryEvent>, SyncError> {
     let current = inner.get_story_labels(number).await;
     let mut last_response: Option<Vec<String>> = None;
     for l in current.iter().filter(|l| l.starts_with("parent-epic-#")) {
@@ -39,7 +39,7 @@ pub(in crate::integrations::github) async fn push_iteration_membership_set(
     number: u64,
     iteration_id: IterationId,
     position: u32,
-) -> Result<Option<BoardEvent>, SyncError> {
+) -> Result<Option<StoryEvent>, SyncError> {
     let current = inner.get_story_labels(number).await;
     for l in current
         .iter()
@@ -61,7 +61,7 @@ pub(in crate::integrations::github) async fn push_iteration_membership_set(
 pub(in crate::integrations::github) async fn push_iteration_membership_cleared(
     inner: &OctocrabStoryTracker,
     number: u64,
-) -> Result<Option<BoardEvent>, SyncError> {
+) -> Result<Option<StoryEvent>, SyncError> {
     let current = inner.get_story_labels(number).await;
     let mut last_response: Option<Vec<String>> = None;
     for l in current
@@ -80,7 +80,7 @@ pub(in crate::integrations::github) async fn push_iteration_membership_cleared(
 pub(in crate::integrations::github) async fn push_current_iteration_designated(
     inner: &OctocrabStoryTracker,
     number: u64,
-) -> Result<Option<BoardEvent>, SyncError> {
+) -> Result<Option<StoryEvent>, SyncError> {
     let labels = inner
         .add_label(
             number,
@@ -94,7 +94,7 @@ pub(in crate::integrations::github) async fn push_current_iteration_designated(
 pub(in crate::integrations::github) async fn push_current_iteration_cleared(
     inner: &OctocrabStoryTracker,
     number: u64,
-) -> Result<Option<BoardEvent>, SyncError> {
+) -> Result<Option<StoryEvent>, SyncError> {
     let labels = inner
         .remove_label(
             number,

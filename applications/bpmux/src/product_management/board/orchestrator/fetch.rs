@@ -1,7 +1,7 @@
 use super::status::{record_error, record_ingest_success};
 use super::types::cache_fill_meta;
 use super::{FreeComment, GateComment, SyncOrchestrator};
-use crate::product_management::board::events::BoardEvent;
+use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 use crate::product_management::story::StoryId;
 
@@ -9,7 +9,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_body(&self, number: u64) -> Result<String, SyncError> {
         match self.adapter.fetch_story_body(number).await {
             Ok(body) => {
-                let event = BoardEvent::BodyFetched {
+                let event = StoryEvent::BodyFetched {
                     meta: cache_fill_meta(),
                     id: StoryId::new(number),
                     body: body.clone(),
@@ -41,7 +41,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 Ok(ConditionalBody::NotModified)
             }
             Ok(ConditionalBody::Modified { body, etag }) => {
-                let event = BoardEvent::BodyFetched {
+                let event = StoryEvent::BodyFetched {
                     meta: cache_fill_meta(),
                     id: StoryId::new(number),
                     body: body.clone(),
@@ -64,7 +64,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_free_comments(&self, number: u64) -> Result<Vec<FreeComment>, SyncError> {
         match self.adapter.fetch_free_comments(number).await {
             Ok(comments) => {
-                let event = BoardEvent::FreeCommentsFetched {
+                let event = StoryEvent::FreeCommentsFetched {
                     meta: cache_fill_meta(),
                     id: StoryId::new(number),
                     comments: comments.clone(),
@@ -83,7 +83,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_gate_comments(&self, number: u64) -> Result<Vec<GateComment>, SyncError> {
         match self.adapter.fetch_gate_comments(number).await {
             Ok(comments) => {
-                let event = BoardEvent::GateCommentsFetched {
+                let event = StoryEvent::GateCommentsFetched {
                     meta: cache_fill_meta(),
                     id: StoryId::new(number),
                     comments: comments.clone(),

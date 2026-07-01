@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
@@ -24,7 +24,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
     ));
     orchestrator.refresh_all().await.unwrap();
     orchestrator
-        .mutate_sync(BoardEvent::StateTransitioned {
+        .mutate_sync(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
             new_state: BoardState::Delivered,
@@ -61,7 +61,7 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        BoardEvent::TagRemoved { id, label, .. } if *id == StoryId::new(450) && label == "in progress"
+        StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(450) && label == "in progress"
     ));
 }
 

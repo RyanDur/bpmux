@@ -259,9 +259,9 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
 
 #[tokio::test]
 async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
-    use crate::product_management::board::BoardEvent;
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
@@ -316,7 +316,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::StoryClosed {
+            StoryEvent::StoryClosed {
                 id,
                 reason: Some(r),
                 ..
@@ -327,14 +327,14 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::TagAdded { id, label, .. } if *id == StoryId::new(301) && label == "retired"
+            StoryEvent::TagAdded { id, label, .. } if *id == StoryId::new(301) && label == "retired"
         )),
         "TagAdded 'retired' event must fire for retire-class reason"
     );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::StateTransitioned { id, new_state, .. }
+            StoryEvent::StateTransitioned { id, new_state, .. }
                 if *id == StoryId::new(301)
                     && *new_state == crate::product_management::story::BoardState::Retired
         )),

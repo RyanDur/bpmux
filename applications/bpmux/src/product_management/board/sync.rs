@@ -1,4 +1,4 @@
-use super::events::BoardEvent;
+use super::events::StoryEvent;
 use crate::product_management::epic::Epic;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
@@ -113,8 +113,8 @@ pub trait SourceAdapter: Send + Sync {
 
     fn push_event(
         &self,
-        event: &BoardEvent,
-    ) -> impl std::future::Future<Output = Result<Option<BoardEvent>, SyncError>> + Send;
+        event: &StoryEvent,
+    ) -> impl std::future::Future<Output = Result<Option<StoryEvent>, SyncError>> + Send;
 
     fn create_story(
         &self,

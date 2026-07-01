@@ -42,7 +42,7 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
         id: 1,
         pickup_paraphrase: 'Picking up the canonical-mutation accept-button regression.',
         falsifier_reframing:
-          'reject if accept-button click does not mutate canonical store BoardEvent::StateTransitioned + StoryClosed.'
+          'reject if accept-button click does not mutate canonical store StoryEvent::StateTransitioned + StoryClosed.'
       })
       expect(startResp.status).toBe(200)
 

@@ -4,7 +4,7 @@ use std::pin::Pin;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::sync::SyncError;
 use crate::product_management::story::Story;
@@ -36,7 +36,7 @@ pub enum DrainOneOutcome {
 pub struct QueuedEvent {
     #[serde(default)]
     pub id: MutationId,
-    pub event: BoardEvent,
+    pub event: StoryEvent,
     #[serde(default)]
     pub pre_state: Option<Story>,
     #[serde(default)]
@@ -44,7 +44,7 @@ pub struct QueuedEvent {
 }
 
 impl QueuedEvent {
-    pub fn new(event: BoardEvent, pre_state: Option<Story>) -> Self {
+    pub fn new(event: StoryEvent, pre_state: Option<Story>) -> Self {
         Self {
             id: MutationId::default(),
             event,
@@ -53,7 +53,7 @@ impl QueuedEvent {
         }
     }
 
-    pub fn new_with_id(id: MutationId, event: BoardEvent, pre_state: Option<Story>) -> Self {
+    pub fn new_with_id(id: MutationId, event: StoryEvent, pre_state: Option<Story>) -> Self {
         Self {
             id,
             event,
@@ -62,7 +62,7 @@ impl QueuedEvent {
         }
     }
 
-    pub fn from_legacy(event: BoardEvent) -> Self {
+    pub fn from_legacy(event: StoryEvent) -> Self {
         Self {
             id: MutationId::default(),
             event,

@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
@@ -81,8 +81,8 @@ mod codec_injection_substrate {
             .iter()
             .map(|q| {
                 let (k, l) = match &q.event {
-                    BoardEvent::TagAdded { label, .. } => ("A", label.clone()),
-                    BoardEvent::TagRemoved { label, .. } => ("R", label.clone()),
+                    StoryEvent::TagAdded { label, .. } => ("A", label.clone()),
+                    StoryEvent::TagRemoved { label, .. } => ("R", label.clone()),
                     _ => ("?", String::new()),
                 };
                 (k.to_string(), l)
@@ -98,13 +98,13 @@ mod codec_injection_substrate {
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter))
             .with_codec(Arc::new(StubLabelCodec));
 
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(8801),
             label: "STUB|Andromeda:100".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(8801),
             label: "STUB|Andromeda:200".to_string(),
@@ -127,13 +127,13 @@ mod codec_injection_substrate {
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter))
             .with_codec(Arc::new(StubLabelCodec));
 
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(8802),
             label: "STUB|Andromeda:100".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(8802),
             label: "STUB|Pegasus:50".to_string(),

@@ -52,7 +52,7 @@ pub async fn post_story_labels(
             LabelOp::Add(label) => {
                 let descriptor = format!("TagAdded {label} on #{id}");
                 (
-                    crate::product_management::board::BoardEvent::TagAdded {
+                    crate::product_management::board::StoryEvent::TagAdded {
                         meta,
                         id: crate::product_management::story::StoryId::new(id),
                         label,
@@ -63,7 +63,7 @@ pub async fn post_story_labels(
             LabelOp::Remove(label) => {
                 let descriptor = format!("TagRemoved {label} on #{id}");
                 (
-                    crate::product_management::board::BoardEvent::TagRemoved {
+                    crate::product_management::board::StoryEvent::TagRemoved {
                         meta,
                         id: crate::product_management::story::StoryId::new(id),
                         label,

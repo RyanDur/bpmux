@@ -119,7 +119,7 @@ pub(crate) async fn accept_via_canonical_store(
     reap_workflow_labels(refresh.as_ref(), id, &meta, "accepted")?;
     refresh
         .mutate_sync(
-            crate::product_management::board::BoardEvent::GateCommentAppended {
+            crate::product_management::board::StoryEvent::GateCommentAppended {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::Accepted,
@@ -129,7 +129,7 @@ pub(crate) async fn accept_via_canonical_store(
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
     refresh
         .mutate_sync(
-            crate::product_management::board::BoardEvent::StateTransitioned {
+            crate::product_management::board::StoryEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 new_state: crate::product_management::story::BoardState::Accepted,
@@ -137,7 +137,7 @@ pub(crate) async fn accept_via_canonical_store(
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
     refresh
-        .mutate_sync(crate::product_management::board::BoardEvent::StoryClosed {
+        .mutate_sync(crate::product_management::board::StoryEvent::StoryClosed {
             meta,
             id: StoryId::new(id),
             reason: None,

@@ -30,7 +30,7 @@ pub(crate) async fn handle_set_parent_epic(
         peer_id: crate::product_management::board::PeerId::local(),
     };
     r.mutate_sync(
-        crate::product_management::board::BoardEvent::ParentEpicSet {
+        crate::product_management::board::StoryEvent::ParentEpicSet {
             meta,
             id: StoryId::new(id),
             epic_id: EpicId::new(epic_id),
@@ -58,7 +58,7 @@ pub(crate) async fn handle_unset_parent_epic(
         peer_id: crate::product_management::board::PeerId::local(),
     };
     r.mutate_sync(
-        crate::product_management::board::BoardEvent::ParentEpicUnset {
+        crate::product_management::board::StoryEvent::ParentEpicUnset {
             meta,
             id: StoryId::new(id),
         },

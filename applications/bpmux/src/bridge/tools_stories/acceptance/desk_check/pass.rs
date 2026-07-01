@@ -89,7 +89,7 @@ pub(crate) async fn handle_pass_desk_check(
         };
         if was_closed {
             r.mutate_sync(
-                crate::product_management::board::BoardEvent::StoryReopened {
+                crate::product_management::board::StoryEvent::StoryReopened {
                     meta: meta.clone(),
                     id: StoryId::new(id),
                 },
@@ -98,7 +98,7 @@ pub(crate) async fn handle_pass_desk_check(
         }
         reap_workflow_labels(r.as_ref(), id, &meta, LABEL_DELIVERED)?;
         r.mutate_sync(
-            crate::product_management::board::BoardEvent::AcceptorAssigned {
+            crate::product_management::board::StoryEvent::AcceptorAssigned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 acceptor,
@@ -106,7 +106,7 @@ pub(crate) async fn handle_pass_desk_check(
         )
         .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
         r.mutate_sync(
-            crate::product_management::board::BoardEvent::GateCommentAppended {
+            crate::product_management::board::StoryEvent::GateCommentAppended {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::PassDeskCheck,
@@ -115,7 +115,7 @@ pub(crate) async fn handle_pass_desk_check(
         )
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
         r.mutate_sync(
-            crate::product_management::board::BoardEvent::StateTransitioned {
+            crate::product_management::board::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
                 new_state: crate::product_management::story::BoardState::Delivered,

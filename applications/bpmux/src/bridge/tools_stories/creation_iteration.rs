@@ -60,13 +60,13 @@ pub(crate) async fn handle_create_iteration(
         ts: filed_at,
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
         meta: meta.clone(),
         id: StoryId::new(id),
         label: "iteration".to_string(),
     })
     .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
-    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
         meta,
         id: StoryId::new(id),
         label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec

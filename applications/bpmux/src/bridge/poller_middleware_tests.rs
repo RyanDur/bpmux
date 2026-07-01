@@ -147,10 +147,10 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 
 #[tokio::test]
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
-    use crate::product_management::board::events::BoardEvent;
+    use crate::product_management::board::events::StoryEvent;
     let store = BoardStore::new();
     store.seed_all(vec![seed_minimal(9000, BoardState::Ready)]);
-    store.apply(&BoardEvent::BodyFetched {
+    store.apply(&StoryEvent::BodyFetched {
         meta: crate::product_management::board::orchestrator::cache_fill_meta(),
         id: StoryId::new(9000),
         body: "hydrated body content".to_string(),
@@ -163,7 +163,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 
 #[tokio::test]
 async fn local_body_mutate_invalidates_prior_etag() {
-    use crate::product_management::board::events::{BoardEvent, EventMeta};
+    use crate::product_management::board::events::{EventMeta, StoryEvent};
     use crate::product_management::board::peer::PeerId;
     let store = BoardStore::new();
     let mut seed = seed_minimal(9100, BoardState::Ready);
@@ -172,7 +172,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
     store.seed_all(vec![seed.clone()]);
     let mut updated = seed;
     updated.body = Some("v2".to_string());
-    store.apply(&BoardEvent::StoryRefreshed {
+    store.apply(&StoryEvent::StoryRefreshed {
         meta: EventMeta {
             actor: "test".to_string(),
             ts: Utc::now(),
@@ -191,7 +191,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
 
 #[tokio::test]
 async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
-    use crate::product_management::board::events::{BoardEvent, EventMeta};
+    use crate::product_management::board::events::{EventMeta, StoryEvent};
     use crate::product_management::board::peer::PeerId;
     let store = BoardStore::new();
     let mut seed = seed_minimal(9200, BoardState::InProgress(Stage::Dev));
@@ -199,7 +199,7 @@ async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
     store.seed_all(vec![seed.clone()]);
     let mut refreshed = seed;
     refreshed.raw_labels = vec!["in progress".to_string(), "iteration-order.300".to_string()];
-    store.apply(&BoardEvent::StoryRefreshed {
+    store.apply(&StoryEvent::StoryRefreshed {
         meta: EventMeta {
             actor: "test".to_string(),
             ts: Utc::now(),
@@ -220,7 +220,7 @@ async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
 
 #[tokio::test]
 async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
-    use crate::product_management::board::events::BoardEvent;
+    use crate::product_management::board::events::StoryEvent;
     use crate::product_management::board::sync::ConditionalBody;
     use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
     let store = Arc::new(BoardStore::new());
@@ -237,7 +237,7 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     let event = rx.recv().await.expect("event dispatched");
     assert!(matches!(
         event,
-        crate::product_management::board::StoreChange::Event(BoardEvent::BodyFetched { id, .. })
+        crate::product_management::board::StoreChange::Event(StoryEvent::BodyFetched { id, .. })
             if id == StoryId::new(9001)
     ));
     assert_eq!(

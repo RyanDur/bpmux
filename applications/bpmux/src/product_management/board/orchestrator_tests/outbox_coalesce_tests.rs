@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
@@ -15,10 +15,10 @@ use crate::product_management::story::{BoardState, Story, StoryId};
 mod outbox_coalesce_1339_step_2e {
     use super::*;
 
-    fn extract_label(event: &BoardEvent) -> Option<(&'static str, &str)> {
+    fn extract_label(event: &StoryEvent) -> Option<(&'static str, &str)> {
         match event {
-            BoardEvent::TagAdded { label, .. } => Some(("A", label.as_str())),
-            BoardEvent::TagRemoved { label, .. } => Some(("R", label.as_str())),
+            StoryEvent::TagAdded { label, .. } => Some(("A", label.as_str())),
+            StoryEvent::TagRemoved { label, .. } => Some(("R", label.as_str())),
             _ => None,
         }
     }
@@ -39,37 +39,37 @@ mod outbox_coalesce_1339_step_2e {
         store.seed_all(vec![seed]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7011),
             label: "iteration-Pegasus.150".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagRemoved {
+        orch.mutate(StoryEvent::TagRemoved {
             meta: meta(),
             id: StoryId::new(7011),
             label: "iteration-Pegasus.300".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7011),
             label: "iteration-Pegasus.75".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagRemoved {
+        orch.mutate(StoryEvent::TagRemoved {
             meta: meta(),
             id: StoryId::new(7011),
             label: "iteration-Pegasus.150".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7011),
             label: "iteration-Pegasus.50".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagRemoved {
+        orch.mutate(StoryEvent::TagRemoved {
             meta: meta(),
             id: StoryId::new(7011),
             label: "iteration-Pegasus.75".to_string(),
@@ -94,19 +94,19 @@ mod outbox_coalesce_1339_step_2e {
         store.seed_all(vec![seed_story(7012, BoardState::Icebox)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7012),
             label: "iteration-Pegasus.100".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7012),
             label: "iteration-order.50".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7012),
             label: "iteration-Pegasus.50".to_string(),
@@ -134,19 +134,19 @@ mod outbox_coalesce_1339_step_2e {
         ]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7013),
             label: "iteration-Pegasus.100".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7014),
             label: "iteration-Pegasus.100".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7013),
             label: "iteration-Pegasus.50".to_string(),
@@ -157,7 +157,7 @@ mod outbox_coalesce_1339_step_2e {
         let by_story: Vec<(u64, String)> = pending
             .iter()
             .filter_map(|q| match &q.event {
-                BoardEvent::TagAdded { id, label, .. } => Some((id.value(), label.clone())),
+                StoryEvent::TagAdded { id, label, .. } => Some((id.value(), label.clone())),
                 _ => None,
             })
             .collect();
@@ -178,19 +178,19 @@ mod outbox_coalesce_1339_step_2e {
         store.seed_all(vec![seed_story(7015, BoardState::Ready)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7015),
             label: "blocked".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagRemoved {
+        orch.mutate(StoryEvent::TagRemoved {
             meta: meta(),
             id: StoryId::new(7015),
             label: "ready".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7015),
             label: "in progress".to_string(),
@@ -212,19 +212,19 @@ mod outbox_coalesce_1339_step_2e {
         store.seed_all(vec![seed_story(7016, BoardState::Icebox)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7016),
             label: "iteration-Pegasus.200".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7016),
             label: "iteration-Pegasus.150".to_string(),
         })
         .unwrap();
-        orch.mutate(BoardEvent::TagAdded {
+        orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(7016),
             label: "iteration-Pegasus.100".to_string(),

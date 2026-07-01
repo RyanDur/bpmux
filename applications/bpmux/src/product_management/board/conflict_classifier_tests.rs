@@ -5,7 +5,7 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{BoardEvent, EventMeta};
+use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::{
     ConflictKind, QueuedEvent, SyncOrchestrator, classify_conflict, load_outbox_from_disk,
 };
@@ -43,7 +43,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
             .unwrap();
     orch.refresh_all().await.unwrap();
 
-    orch.mutate(BoardEvent::StateTransitioned {
+    orch.mutate(StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(500),
         new_state: BoardState::InProgress(Stage::Dev),
@@ -64,7 +64,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     );
     assert!(matches!(
         entry.event,
-        BoardEvent::StateTransitioned {
+        StoryEvent::StateTransitioned {
             new_state: BoardState::InProgress(Stage::Dev),
             ..
         }
@@ -81,7 +81,7 @@ async fn mutate_pre_state_none_when_story_not_in_store_at_queue_time() {
         SyncOrchestrator::with_outbox_path(Arc::clone(&store), Arc::clone(&adapter), path.clone())
             .unwrap();
 
-    orch.mutate(BoardEvent::TagAdded {
+    orch.mutate(StoryEvent::TagAdded {
         meta: meta(),
         id: StoryId::new(999),
         label: "blocked".to_string(),
@@ -100,7 +100,7 @@ async fn mutate_pre_state_none_when_story_not_in_store_at_queue_time() {
 async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("legacy-outbox.json");
-    let legacy_event = BoardEvent::TagAdded {
+    let legacy_event = StoryEvent::TagAdded {
         meta: meta(),
         id: StoryId::new(42),
         label: "ready".to_string(),
@@ -113,7 +113,7 @@ async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
     let entry = entries.front().unwrap();
     assert!(matches!(
         entry.event,
-        BoardEvent::TagAdded { id, .. } if id == StoryId::new(42)
+        StoryEvent::TagAdded { id, .. } if id == StoryId::new(42)
     ));
     assert!(
         entry.pre_state.is_none(),
@@ -127,7 +127,7 @@ async fn outbox_round_trips_new_shape_through_disk() {
     let path = dir.path().join("new-outbox.json");
     let pre = seed_story(7, BoardState::Delivered);
     let queued = QueuedEvent::new(
-        BoardEvent::StateTransitioned {
+        StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(7),
             new_state: BoardState::Accepted,
@@ -149,7 +149,7 @@ async fn outbox_round_trips_new_shape_through_disk() {
 fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
     let pre = seed_story(1, BoardState::Ready);
     let cur = seed_story(1, BoardState::InProgress(Stage::Dev));
-    let event = BoardEvent::StateTransitioned {
+    let event = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
         new_state: BoardState::InProgress(Stage::Dev),
@@ -175,7 +175,7 @@ async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     );
     orch.refresh_all().await.unwrap();
 
-    orch.mutate_sync(BoardEvent::StateTransitioned {
+    orch.mutate_sync(StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(800),
         new_state: BoardState::InProgress(Stage::Dev),

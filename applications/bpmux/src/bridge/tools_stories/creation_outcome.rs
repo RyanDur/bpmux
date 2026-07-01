@@ -56,7 +56,7 @@ pub(crate) async fn handle_create_outcome(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
         meta,
         id: StoryId::new(id),
         label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec

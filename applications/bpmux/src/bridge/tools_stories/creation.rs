@@ -152,7 +152,7 @@ async fn create_and_broadcast_story_events(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
+    r.mutate_sync(crate::product_management::board::StoryEvent::StoryCreated {
         meta: meta.clone(),
         id: StoryId::new(id),
         title: title.to_string(),
@@ -163,7 +163,7 @@ async fn create_and_broadcast_story_events(
     .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
     if let Some(acceptor) = acceptor {
         r.mutate_sync(
-            crate::product_management::board::BoardEvent::AcceptorAssigned {
+            crate::product_management::board::StoryEvent::AcceptorAssigned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 acceptor,
@@ -173,7 +173,7 @@ async fn create_and_broadcast_story_events(
     }
     if let Some(epic_id) = parent_epic {
         r.mutate_sync(
-            crate::product_management::board::BoardEvent::ParentEpicSet {
+            crate::product_management::board::StoryEvent::ParentEpicSet {
                 meta,
                 id: StoryId::new(id),
                 epic_id,

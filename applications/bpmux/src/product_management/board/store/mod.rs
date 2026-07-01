@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::broadcast;
 
-use super::events::BoardEvent;
+use super::events::StoryEvent;
 use crate::product_management::story::slice::{Stories, StoryAction, StoryLabelMiddleware, reduce};
 use crate::product_management::story::{Story, StoryId, StoryKey};
 use crate::store::kernel::Store;
@@ -17,7 +17,7 @@ const SUBSCRIBE_BUFFER: usize = 1_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StoreChange {
-    Event(BoardEvent),
+    Event(StoryEvent),
     Resynced,
 }
 

@@ -1,9 +1,9 @@
-use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};
+use crate::product_management::board::events::{LabelDerivedFields, StoryEvent};
 use crate::product_management::story::{Story, StoryId};
 
 #[derive(Clone)]
 pub enum StoryAction {
-    Event(BoardEvent),
+    Event(StoryEvent),
     RawLabelsAssigned {
         id: StoryId,
         fields: LabelDerivedFields,

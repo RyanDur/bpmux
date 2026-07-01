@@ -1,7 +1,7 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{BoardEvent, PeerId};
+use crate::product_management::board::{PeerId, StoryEvent};
 use crate::product_management::story::StoryId;
 use std::sync::Arc;
 
@@ -30,20 +30,20 @@ pub(crate) async fn handle_retire_outcome(
         ts: chrono::Utc::now(),
         peer_id: PeerId::local(),
     };
-    r.mutate_sync(BoardEvent::StateTransitioned {
+    r.mutate_sync(StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(outcome_id),
         new_state: crate::product_management::story::BoardState::Retired,
     })
     .map_err(|e| format!("#{outcome_id} retire state-transition failed: {e}"))?;
-    r.mutate_sync(BoardEvent::StoryClosed {
+    r.mutate_sync(StoryEvent::StoryClosed {
         meta: meta(),
         id: StoryId::new(outcome_id),
         reason: Some(format!("retired: {reason}")),
     })
     .map_err(|e| format!("#{outcome_id} retire enqueue failed: {e}"))?;
     if !outcome.is_retired() {
-        r.mutate_sync(BoardEvent::TagAdded {
+        r.mutate_sync(StoryEvent::TagAdded {
             meta: meta(),
             id: StoryId::new(outcome_id),
             label: "retired".to_string(),
