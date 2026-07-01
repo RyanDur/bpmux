@@ -118,6 +118,38 @@ fn ready_story(id: u64, iteration: u64, position: u32) -> crate::product_managem
     story
 }
 
+fn current_iteration(
+    id: u64,
+    story_ids: &[u64],
+) -> crate::product_management::iteration::Iteration {
+    crate::product_management::iteration::Iteration {
+        id: crate::product_management::iteration::IterationId::new(id),
+        title: String::new(),
+        body: None,
+        filed_at: chrono::Utc::now(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: story_ids
+            .iter()
+            .map(|n| crate::product_management::story::StoryId::new(*n))
+            .collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    }
+}
+
+async fn seed_current_iteration(orch: &Arc<crate::store::Store>, id: u64, story_ids: &[u64]) {
+    orch.dispatch(crate::store::AppAction::Iteration(
+        crate::product_management::iteration::IterationAction::Upserted(vec![current_iteration(
+            id, story_ids,
+        )]),
+    ))
+    .await;
+}
+
 fn state_transitioned(
     id: u64,
     actor: &str,
@@ -234,6 +266,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     ));
     orch.add_roster_listener(Arc::new(RosterSessionBroadcaster::new(session.clone())));
     seed_dev_online(&orch).await;
+    seed_current_iteration(&orch, 800, &[901]).await;
 
     let store = Arc::new(BoardStore::new());
     store.seed_all(vec![owner_parked_story(900)]);

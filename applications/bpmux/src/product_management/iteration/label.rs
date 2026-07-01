@@ -1,6 +1,5 @@
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::Story;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IterationLabelParts {
@@ -51,17 +50,4 @@ pub fn current_iteration_id(iterations: &[super::Iteration]) -> Option<Iteration
         .iter()
         .find(|iteration| !iteration.complete && iteration.is_current)
         .map(|iteration| iteration.id)
-}
-
-pub fn members_of_iteration(stories: &[Story], iteration_id: IterationId) -> Vec<u64> {
-    let mut members: Vec<(u64, u32)> = stories
-        .iter()
-        .filter(|s| !s.is_closed)
-        .filter_map(|s| match s.iteration_membership() {
-            Some((it, pos)) if it == iteration_id => Some((s.id.value(), pos)),
-            _ => None,
-        })
-        .collect();
-    members.sort_by_key(|(_, pos)| *pos);
-    members.into_iter().map(|(n, _)| n).collect()
 }

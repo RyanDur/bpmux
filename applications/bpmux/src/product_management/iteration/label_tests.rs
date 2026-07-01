@@ -1,20 +1,7 @@
 use super::label::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::iteration::{Iteration, IterationId};
 use chrono::{TimeZone, Utc};
-
-fn seed(id: u64, raw_labels: Vec<String>) -> Story {
-    let mut s = Story::new_minimal(
-        StoryId::new(id),
-        format!("member-{id}"),
-        BoardState::Icebox,
-        Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
-        "pm".to_string(),
-    );
-    s.raw_labels = raw_labels;
-    s
-}
 
 #[test]
 fn name_strips_iteration_prefix() {
@@ -120,116 +107,32 @@ fn compute_insert_position_sorts_input_before_computing() {
     assert_eq!(compute_insert_position(1, &[300, 100, 200]), 150);
 }
 
-fn seed_with_iteration_membership(id: u64, iteration_id: u64, position: u32) -> Story {
-    let mut s = seed(id, vec![]);
-    s.raw_labels
-        .push(format!("parent-iteration-#{iteration_id}.{position}"));
-    s.iteration_membership = Some((IterationId::new(iteration_id), position));
-    s
+fn iteration(id: u64, is_current: bool, complete: bool) -> Iteration {
+    Iteration {
+        id: IterationId::new(id),
+        title: String::new(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: vec![],
+        review_closers: vec![],
+        dev_ok_by: vec![],
+        is_current,
+        complete,
+    }
 }
 
 #[test]
-fn members_of_iteration_attributes_by_canonical_identity_1553() {
-    let stories = vec![
-        seed_with_iteration_membership(2001, 1397, 100),
-        seed_with_iteration_membership(2002, 1397, 200),
+fn current_iteration_id_picks_the_open_current_and_ignores_complete_ones() {
+    let iterations = vec![
+        iteration(800, true, true),
+        iteration(801, true, false),
+        iteration(802, false, false),
     ];
     assert_eq!(
-        members_of_iteration(&stories, IterationId::new(1397)),
-        vec![2001, 2002]
-    );
-}
-
-#[test]
-fn members_of_iteration_no_longer_attributes_legacy_name_label_1553() {
-    let stories = vec![
-        seed(2001, vec!["iteration-Telescopium.100".to_string()]),
-        seed(2002, vec!["iteration-Telescopium.200".to_string()]),
-    ];
-    assert!(
-        members_of_iteration(&stories, IterationId::new(1397)).is_empty(),
-        "legacy name labels are retired; attribution is identity-only"
-    );
-}
-
-#[test]
-fn members_of_iteration_returns_only_canonical_members_dropping_legacy_only_1553() {
-    let stories = vec![
-        seed_with_iteration_membership(2001, 1397, 100),
-        seed(2002, vec!["iteration-Telescopium.200".to_string()]),
-        seed_with_iteration_membership(2003, 1397, 300),
-    ];
-    assert_eq!(
-        members_of_iteration(&stories, IterationId::new(1397)),
-        vec![2001, 2003],
-        "a legacy-only member drops; only identity-attributed members remain"
-    );
-}
-
-#[test]
-fn members_of_iteration_ignores_legacy_label_when_canonical_present_1553() {
-    let mut s = seed(2001, vec!["iteration-Telescopium.999".to_string()]);
-    s.raw_labels.push("parent-iteration-#1397.100".to_string());
-    s.iteration_membership = Some((IterationId::new(1397), 100));
-    let stories = vec![s];
-    assert_eq!(
-        members_of_iteration(&stories, IterationId::new(1397)),
-        vec![2001]
-    );
-}
-
-#[test]
-fn members_of_iteration_skips_closed_stories_1399() {
-    let mut closed = seed_with_iteration_membership(2001, 1397, 100);
-    closed.is_closed = true;
-    let stories = vec![closed, seed_with_iteration_membership(2002, 1397, 200)];
-    assert_eq!(
-        members_of_iteration(&stories, IterationId::new(1397)),
-        vec![2002]
-    );
-}
-
-#[test]
-fn members_of_iteration_does_not_match_different_iteration_number_1399() {
-    let stories = vec![
-        seed_with_iteration_membership(2001, 1397, 100),
-        seed_with_iteration_membership(2002, 1398, 200),
-    ];
-    assert_eq!(
-        members_of_iteration(&stories, IterationId::new(1397)),
-        vec![2001]
-    );
-}
-
-#[test]
-fn members_of_iteration_sorts_canonical_members_by_position_ascending_1553() {
-    let stories = vec![
-        seed_with_iteration_membership(2001, 1397, 300),
-        seed_with_iteration_membership(2002, 1397, 100),
-        seed_with_iteration_membership(2003, 1397, 200),
-    ];
-    assert_eq!(
-        members_of_iteration(&stories, IterationId::new(1397)),
-        vec![2002, 2003, 2001]
-    );
-}
-
-#[test]
-fn members_of_iteration_does_not_inherit_legacy_same_named_iteration_1553() {
-    let legacy_only = seed(2001, vec!["iteration-Carina.100".to_string()]);
-    let stories = vec![legacy_only];
-    assert!(
-        members_of_iteration(&stories, IterationId::new(2000)).is_empty(),
-        "a new iteration must not claim a story by a retired same-named iteration's name"
-    );
-}
-
-#[test]
-fn members_of_iteration_attributes_by_identity_across_rename_1553() {
-    let stories = vec![seed_with_iteration_membership(2001, 2000, 1)];
-    assert_eq!(
-        members_of_iteration(&stories, IterationId::new(2000)),
-        vec![2001],
-        "canonical identity attribution is name-independent; survives a rename"
+        current_iteration_id(&iterations),
+        Some(IterationId::new(801))
     );
 }

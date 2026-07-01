@@ -9,14 +9,15 @@ use crate::store::{Presence, RosterAction};
 
 fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
     let current = current_iteration_id(iterations);
-    !stories.iter().any(|s| {
-        s.state == BoardState::Ready
-            && match (current, s.iteration_membership()) {
-                (Some(ci), Some((it, _))) => it == ci,
-                (None, _) => true,
-                _ => false,
-            }
-    })
+    let in_current_iteration = |s: &Story| match current {
+        Some(ci) => iterations
+            .iter()
+            .any(|it| it.id == ci && it.stories.contains(&s.id)),
+        None => true,
+    };
+    !stories
+        .iter()
+        .any(|s| s.state == BoardState::Ready && in_current_iteration(s))
 }
 
 fn any_owner_parked_delivery(stories: &[Story]) -> bool {

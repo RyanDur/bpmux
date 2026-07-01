@@ -46,7 +46,8 @@ pub(crate) async fn handle_view_board(
             .map(|n| n as usize),
     };
     let epics = r.epics();
-    Ok(build_board_text(&epics, &stories, &scope))
+    let iterations = r.iterations();
+    Ok(build_board_text(&epics, &stories, &iterations, &scope))
 }
 
 fn parse_bucket(s: &str) -> Option<crate::product_management::board::column::ColumnBucket> {
@@ -73,6 +74,7 @@ pub(in crate::bridge) struct BoardScope {
 pub(in crate::bridge) fn build_board_text(
     epics: &[crate::product_management::epic::Epic],
     stories: &[crate::product_management::story::Story],
+    iterations: &[crate::product_management::iteration::Iteration],
     scope: &BoardScope,
 ) -> String {
     let format_entry = |s: &crate::product_management::story::Story| -> (u64, String) {
@@ -101,8 +103,10 @@ pub(in crate::bridge) fn build_board_text(
     let in_scope_iteration = |s: &crate::product_management::story::Story| -> bool {
         match scope.iteration {
             Some(n) => {
-                s.iteration_membership().map(|(it, _)| it)
-                    == Some(crate::product_management::iteration::IterationId::new(n))
+                let target = crate::product_management::iteration::IterationId::new(n);
+                iterations
+                    .iter()
+                    .any(|it| it.id == target && it.stories.contains(&s.id))
             }
             None => true,
         }
