@@ -117,7 +117,7 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
     assert_eq!(
         store.story(StoryId::new(12)).unwrap().parent_epic(),
         Some(EpicId::new(300)),
-        "the codec decodes the parent-epic label into the stored field on the ParentEpicSet event"
+        "the ParentEpicSet event sets the typed parent_epic field directly"
     );
 }
 
@@ -860,8 +860,8 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
         epic_id: EpicId::new(50),
     });
     assert_eq!(
-        parent_epic_from_labels(&store.story(StoryId::new(100)).unwrap().raw_labels),
-        Some(50)
+        store.story(StoryId::new(100)).unwrap().parent_epic(),
+        Some(EpicId::new(50))
     );
 }
 
@@ -885,10 +885,7 @@ fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(101),
     });
-    assert_eq!(
-        parent_epic_from_labels(&store.story(StoryId::new(101)).unwrap().raw_labels),
-        None
-    );
+    assert_eq!(store.story(StoryId::new(101)).unwrap().parent_epic(), None);
 }
 
 #[test]

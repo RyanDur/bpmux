@@ -3,7 +3,6 @@ use super::reducers::Stories;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::project_labels;
 use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};
-use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::story::StoryKey;
 use crate::store::kernel::Middleware;
 
@@ -67,17 +66,6 @@ fn project_label_delta(stories: &Stories, event: &BoardEvent) -> Option<LabelDer
         BoardEvent::IterationMembershipCleared { id, .. } => {
             let mut labels = stories.get(&StoryKey::Saved(*id))?.raw_labels().to_vec();
             labels.retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
-            labels
-        }
-        BoardEvent::ParentEpicSet { id, epic_id, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*id))?.raw_labels().to_vec();
-            labels.retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
-            labels.push(GhLabelCodec.encode_parent_epic(epic_id.value()));
-            labels
-        }
-        BoardEvent::ParentEpicUnset { id, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*id))?.raw_labels().to_vec();
-            labels.retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
             labels
         }
         _ => return None,

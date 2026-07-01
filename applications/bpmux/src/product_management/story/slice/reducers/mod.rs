@@ -14,8 +14,9 @@ use comments::{
 };
 use labels::{apply_labels_refreshed, apply_raw_labels};
 use lifecycle::{
-    apply_body_fetched, apply_body_updated, apply_state_transitioned, apply_story_closed,
-    apply_story_created, apply_story_refreshed, apply_story_reopened, apply_title_updated,
+    apply_body_fetched, apply_body_updated, apply_parent_epic_set, apply_parent_epic_unset,
+    apply_state_transitioned, apply_story_closed, apply_story_created, apply_story_refreshed,
+    apply_story_reopened, apply_title_updated,
 };
 
 pub(crate) type Stories = HashMap<StoryKey, Story>;
@@ -76,10 +77,10 @@ fn apply_event(w: &mut Stories, event: &BoardEvent) {
         }
         BoardEvent::StoryClosed { .. } => apply_story_closed(w, id),
         BoardEvent::StoryReopened { .. } => apply_story_reopened(w, id),
+        BoardEvent::ParentEpicSet { epic_id, .. } => apply_parent_epic_set(w, id, *epic_id),
+        BoardEvent::ParentEpicUnset { .. } => apply_parent_epic_unset(w, id),
         BoardEvent::TagAdded { .. }
         | BoardEvent::TagRemoved { .. }
-        | BoardEvent::ParentEpicSet { .. }
-        | BoardEvent::ParentEpicUnset { .. }
         | BoardEvent::IterationMembershipSet { .. }
         | BoardEvent::IterationMembershipCleared { .. }
         | BoardEvent::CurrentIterationDesignated { .. }

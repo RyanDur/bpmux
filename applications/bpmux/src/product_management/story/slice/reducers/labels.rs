@@ -5,7 +5,6 @@ use crate::product_management::story::{StoryId, StoryKey};
 pub(super) fn apply_raw_labels(w: &mut Stories, id: StoryId, fields: &LabelDerivedFields) {
     if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.acceptor = fields.acceptor;
-        story.parent_epic = fields.parent_epic;
         story.iteration_membership = fields.iteration_membership;
         story.tags = fields.tags.clone();
         story.ready_order = fields.ready_order;

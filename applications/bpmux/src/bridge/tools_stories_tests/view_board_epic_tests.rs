@@ -67,12 +67,9 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(StoryId::new(300)).unwrap();
     assert_eq!(
-        crate::product_management::board::adapters::github::parent_epic_from_labels(
-            &story.raw_labels
-        ),
-        Some(457)
+        store.story(StoryId::new(300)).unwrap().parent_epic(),
+        Some(EpicId::new(457))
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -187,25 +184,25 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
         "pm".into(),
     );
     seeded.raw_labels.push("parent-epic-#457".to_string());
+    seeded.parent_epic = Some(EpicId::new(457));
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
     orchestrator.refresh_all().await.unwrap();
+    assert_eq!(
+        store.story(StoryId::new(301)).unwrap().parent_epic(),
+        Some(EpicId::new(457)),
+        "precondition: the seeded parent-epic decodes to the typed field on ingest"
+    );
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(301));
     let result = handle_unset_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(StoryId::new(301)).unwrap();
-    assert_eq!(
-        crate::product_management::board::adapters::github::parent_epic_from_labels(
-            &story.raw_labels
-        ),
-        None
-    );
+    assert_eq!(store.story(StoryId::new(301)).unwrap().parent_epic(), None);
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 1);
