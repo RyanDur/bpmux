@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::product_management::iteration::{Iteration, IterationId};
+use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
 use crate::workflow::config::WorkflowConfig;
 
@@ -42,13 +42,7 @@ pub fn building_iterations(outcome: &Outcome, iterations: &[Iteration]) -> Vec<I
         .filter_map(|iteration_id| {
             iterations
                 .iter()
-                .find(|iteration| {
-                    iteration
-                        .id()
-                        .saved_id()
-                        .map(|id| IterationId::new(id.value()))
-                        == Some(*iteration_id)
-                })
+                .find(|iteration| iteration.id == *iteration_id)
                 .cloned()
         })
         .collect()
@@ -83,7 +77,6 @@ pub fn iteration_readiness(iteration: &Iteration, workflow: &WorkflowConfig) -> 
 
 fn drafted(iteration: &Iteration) -> bool {
     iteration
-        .content
         .body
         .as_deref()
         .is_some_and(|b| !b.trim().is_empty())

@@ -24,6 +24,7 @@ pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(dispatch): axum::Extension<crate::store::Dispatch>,
     body: Option<axum::Json<CloseIterationRequest>>,
 ) -> impl IntoResponse {
     let iter_n = match body.and_then(|b| b.0.iteration_id) {
@@ -36,13 +37,14 @@ pub async fn post_close_iteration(
             );
         }
     };
-    post_close_iteration_canonical(session, tracker, orchestrator, iter_n).await
+    post_close_iteration_canonical(session, tracker, orchestrator, dispatch, iter_n).await
 }
 
 async fn post_close_iteration_canonical(
     session: Arc<session::Session>,
     tracker: TrackerHandle,
     orchestrator: crate::server::OrchestratorHandle,
+    dispatch: crate::store::Dispatch,
     iteration_id: u64,
 ) -> (
     StatusCode,
@@ -96,7 +98,7 @@ async fn post_close_iteration_canonical(
         broadcast_iteration_close_blocked(&session, &ready_queue_blockers);
         return (StatusCode::CONFLICT, json_headers(), body);
     }
-    if let Err(close_err) = close_iteration_canonical(refresh, iteration_id).await {
+    if let Err(close_err) = close_iteration_canonical(refresh, &dispatch, iteration_id).await {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             json_headers(),
@@ -140,6 +142,7 @@ async fn post_close_iteration_canonical(
 
 pub(crate) async fn close_iteration_canonical(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    dispatch: &crate::store::Dispatch,
     iteration_id: u64,
 ) -> Result<(), String> {
     let meta = || crate::product_management::board::events::EventMeta {
@@ -162,5 +165,18 @@ pub(crate) async fn close_iteration_canonical(
             reason: Some("iteration-close (terminal; promote-on-close retired #1556)".to_string()),
         })
         .map_err(|e| format!("#{iteration_id} iteration-close enqueue failed: {e}"))?;
+    if let Some(iteration) = refresh.iteration(
+        crate::product_management::iteration::IterationId::new(iteration_id),
+    ) {
+        dispatch.dispatch(crate::store::AppAction::Iteration(
+            crate::product_management::iteration::IterationAction::Upserted(vec![
+                crate::product_management::iteration::Iteration {
+                    complete: true,
+                    is_current: false,
+                    ..iteration
+                },
+            ]),
+        ));
+    }
     Ok(())
 }

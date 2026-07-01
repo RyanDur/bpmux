@@ -15,6 +15,7 @@ pub(crate) mod helpers;
 pub(crate) mod iteration_members;
 mod iteration_reorg;
 mod metadata;
+mod metadata_edit;
 mod metadata_epic;
 mod metadata_iteration;
 mod metadata_iteration_readiness;
@@ -50,7 +51,8 @@ pub(crate) use helpers::{
 };
 pub(crate) use iteration_members::{handle_move_iteration_member, handle_remove_iteration_member};
 pub(crate) use iteration_reorg::{handle_rename_iteration, handle_reorder_iteration};
-pub(crate) use metadata::{handle_comment_on_story, handle_edit_story, handle_label_story};
+pub(crate) use metadata::{handle_comment_on_story, handle_label_story};
+pub(crate) use metadata_edit::handle_edit_story;
 pub(crate) use metadata_epic::{handle_set_parent_epic, handle_unset_parent_epic};
 pub(crate) use metadata_iteration::{
     handle_add_story_to_iteration, handle_map_iteration_to_outcome,

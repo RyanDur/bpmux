@@ -1,12 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::decode_iteration;
+use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
+use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{Story, StoryId, StoryKey, StoryState};
+use crate::product_management::story::{Story, StoryId, StoryState};
 
 fn iteration_story(labels: Vec<String>, body: Option<String>, closed: bool) -> Story {
     let mut story = Story::new_minimal(
@@ -30,7 +31,7 @@ fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
         stories: vec![StoryId::new(101), StoryId::new(102)],
     }
     .write_into_body("## Iteration Crux\n");
-    let iteration = decode_iteration(&iteration_story(
+    let iteration = decode_iteration_from_story(&iteration_story(
         vec![
             codec.encode_iteration_review_closed("designer"),
             codec.encode_iteration_dev_ok("dev"),
@@ -39,8 +40,8 @@ fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
         Some(body),
         false,
     ));
-    assert_eq!(iteration.id(), StoryKey::Saved(StoryId::new(710)));
-    assert_eq!(iteration.content.title, "Iteration Crux");
+    assert_eq!(iteration.id, IterationId::new(710));
+    assert_eq!(iteration.title, "Iteration Crux");
     assert_eq!(iteration.outcome, Some(OutcomeId::new(900)));
     assert_eq!(iteration.builds_outcome(), Some(OutcomeId::new(900)));
     assert_eq!(
@@ -55,7 +56,7 @@ fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
 
 #[test]
 fn decode_leaves_an_unannotated_iteration_empty_and_reads_closed_as_complete() {
-    let iteration = decode_iteration(&iteration_story(vec![], None, true));
+    let iteration = decode_iteration_from_story(&iteration_story(vec![], None, true));
     assert_eq!(iteration.outcome, None);
     assert_eq!(iteration.builds_outcome(), None);
     assert!(iteration.stories.is_empty());

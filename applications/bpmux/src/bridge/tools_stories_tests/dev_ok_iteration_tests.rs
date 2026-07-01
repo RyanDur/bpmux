@@ -1,27 +1,59 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use crate::product_management::board::BoardStore;
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::SyncOrchestrator;
-use crate::product_management::board::adapters::github::decode_iteration;
+use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::{
+    BoardStore, IterationReader, RefreshDriver, SyncOrchestrator,
+};
 use crate::product_management::iteration::readiness::iteration_readiness;
+use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::store::{AppAction, Dispatch};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedReceiver;
 
-async fn build_orchestrator(stories: Vec<Story>) -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
+struct SeededIterations(Vec<Iteration>);
+impl IterationReader for SeededIterations {
+    fn iterations(&self) -> Vec<Iteration> {
+        self.0.clone()
+    }
+}
+
+fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
+    (Dispatch::new(tx), rx)
+}
+
+fn iteration_upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Iteration> {
+    let mut found = Vec::new();
+    while let Ok(action) = rx.try_recv() {
+        if let AppAction::Iteration(IterationAction::Upserted(iterations)) = action {
+            found = iterations;
+        }
+    }
+    found
+}
+
+async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    adapter.seed_stories(stories.clone());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
-    (store, orch)
+    let iterations: Vec<Iteration> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
+        .collect();
+    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
+    orch
 }
 
 fn iteration_seed(id: u64, name: &str) -> Story {
@@ -33,7 +65,6 @@ fn iteration_seed(id: u64, name: &str) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec!["iteration".into(), "ready".into()];
-    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 
@@ -55,26 +86,31 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 
 #[tokio::test]
 async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
-    let (store, orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    handle_dev_ok_iteration(&args(1552), "dev:claude-code", Some(&orch))
+    let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let (dispatch, mut rx) = dispatch_channel();
+    handle_dev_ok_iteration(&args(1552), "dev:claude-code", Some(&orch), &dispatch)
         .await
         .expect("a configured iteration-builder can record dev-OK");
-    let iteration = store.iteration(StoryId::new(1552)).unwrap();
+    let iterations = iteration_upserted(&mut rx);
+    let iteration = iterations
+        .iter()
+        .find(|it| it.id == IterationId::new(1552))
+        .expect("the iteration is in the optimistic dispatch");
     assert_eq!(
         iteration.dev_ok_by,
         vec!["dev".to_string()],
         "the dev-OK is recorded as a board-event re-derived into the approver-set"
     );
     assert!(
-        iteration_readiness(&iteration, &bundled_default()).dev_ok,
+        iteration_readiness(iteration, &bundled_default()).dev_ok,
         "dev OKing the iteration at IPM FLIPS the derived dev-OK readiness-check"
     );
 }
 
 #[tokio::test]
 async fn no_dev_ok_on_record_means_not_ready_1736() {
-    let (store, _orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    let iteration = store.iteration(StoryId::new(1552)).unwrap();
+    let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let iteration = orch.iteration(IterationId::new(1552)).unwrap();
     assert!(
         !iteration_readiness(&iteration, &bundled_default()).dev_ok,
         "no dev-OK on record → the check is unmet (no false-positive)"
@@ -83,8 +119,9 @@ async fn no_dev_ok_on_record_means_not_ready_1736() {
 
 #[tokio::test]
 async fn non_builder_role_is_refused_1736() {
-    let (_store, orch) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    let err = handle_dev_ok_iteration(&args(1552), "pm:claude-code", Some(&orch))
+    let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let (dispatch, _rx) = dispatch_channel();
+    let err = handle_dev_ok_iteration(&args(1552), "pm:claude-code", Some(&orch), &dispatch)
         .await
         .expect_err("pm is not a configured iteration-builder");
     assert!(
@@ -95,8 +132,9 @@ async fn non_builder_role_is_refused_1736() {
 
 #[tokio::test]
 async fn non_iteration_story_is_refused_1736() {
-    let (_store, orch) = build_orchestrator(vec![feature_seed(1552)]).await;
-    let err = handle_dev_ok_iteration(&args(1552), "dev:claude-code", Some(&orch))
+    let orch = build_orchestrator(vec![feature_seed(1552)]).await;
+    let (dispatch, _rx) = dispatch_channel();
+    let err = handle_dev_ok_iteration(&args(1552), "dev:claude-code", Some(&orch), &dispatch)
         .await
         .expect_err("only an Iteration can be dev-OK'd");
     assert!(

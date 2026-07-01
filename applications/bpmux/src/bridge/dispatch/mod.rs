@@ -1,16 +1,19 @@
 mod iteration;
+mod outcome;
 mod story;
 mod transition;
 mod view;
 
 pub(crate) use iteration::{
     dispatch_add_story_to_iteration, dispatch_close_iteration, dispatch_close_pre_pickup_review,
-    dispatch_create_iteration, dispatch_create_outcome, dispatch_designate_current_iteration,
-    dispatch_dev_ok_iteration, dispatch_edit_outcome, dispatch_map_iteration_to_outcome,
+    dispatch_create_iteration, dispatch_designate_current_iteration, dispatch_dev_ok_iteration,
     dispatch_move_iteration_member, dispatch_remove_iteration_member, dispatch_rename_iteration,
-    dispatch_reorder_iteration, dispatch_reorder_outcome_iteration, dispatch_reprioritize_outcome,
-    dispatch_retire_outcome, dispatch_set_parent_epic, dispatch_unmap_outcome_iteration,
-    dispatch_unset_parent_epic,
+    dispatch_reorder_iteration, dispatch_set_parent_epic, dispatch_unset_parent_epic,
+};
+pub(crate) use outcome::{
+    dispatch_create_outcome, dispatch_edit_outcome, dispatch_map_iteration_to_outcome,
+    dispatch_reorder_outcome_iteration, dispatch_reprioritize_outcome, dispatch_retire_outcome,
+    dispatch_unmap_outcome_iteration,
 };
 pub(crate) use story::{
     dispatch_close_story, dispatch_comment_on_story, dispatch_create_story, dispatch_edit_story,

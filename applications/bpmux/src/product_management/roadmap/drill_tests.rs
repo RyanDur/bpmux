@@ -8,7 +8,7 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
 
@@ -28,7 +28,6 @@ fn iteration(id: u64, outcome_id: u64) -> Story {
         }
         .write_into_body("## composed"),
     );
-    s.story_type = StoryType::Iteration;
     s
 }
 
@@ -54,8 +53,12 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
 fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iteration::Iteration> {
     stories
         .iter()
-        .filter(|s| s.story_type() == StoryType::Iteration)
-        .map(crate::product_management::board::adapters::github::decode_iteration)
+        .filter(|s| {
+            s.raw_labels()
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(crate::product_management::board::adapters::github::decode_iteration_from_story)
         .collect()
 }
 

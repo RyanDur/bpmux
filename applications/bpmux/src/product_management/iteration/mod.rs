@@ -2,15 +2,23 @@ pub mod label;
 pub mod readiness;
 pub mod section;
 
-use crate::product_management::board::item::Content;
+mod slice;
+pub use slice::{IterationAction, IterationState, all, reduce};
+
+use chrono::{DateTime, Utc};
+
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{StoryId, StoryKey};
+use crate::product_management::story::StoryId;
 
 entity_id!(IterationId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Iteration {
-    pub content: Content,
+    pub id: IterationId,
+    pub title: String,
+    pub body: Option<String>,
+    pub filed_at: DateTime<Utc>,
+    pub filed_by: String,
     pub outcome: Option<OutcomeId>,
     pub iteration_order: Option<u32>,
     pub stories: Vec<StoryId>,
@@ -21,10 +29,6 @@ pub struct Iteration {
 }
 
 impl Iteration {
-    pub fn id(&self) -> StoryKey {
-        self.content.id
-    }
-
     pub fn builds_outcome(&self) -> Option<OutcomeId> {
         self.outcome
     }

@@ -37,8 +37,8 @@ impl OutcomeView {
             .iter()
             .enumerate()
             .map(|(index, iteration)| BuildingIterationView {
-                id: iteration.id().saved_id().map(|id| id.value()).unwrap_or(0),
-                name: iteration.content.title.clone(),
+                id: iteration.id.value(),
+                name: iteration.title.clone(),
                 position: index as u32 + 1,
                 readiness: iteration_readiness(iteration, workflow),
             })

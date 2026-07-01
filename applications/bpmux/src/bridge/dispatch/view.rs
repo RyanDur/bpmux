@@ -50,7 +50,8 @@ pub(crate) async fn dispatch_list_ready(
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let store = require_store(refresh, "list_ready")?;
-    tools::handle_list_ready(&store).await
+    let iterations = refresh.map(|r| r.iterations()).unwrap_or_default();
+    tools::handle_list_ready(&store, &iterations).await
 }
 
 pub(crate) async fn dispatch_list_epic_children(

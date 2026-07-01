@@ -2,13 +2,14 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
-use crate::product_management::board::OutcomeReader;
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
+use crate::product_management::board::adapters::github::{
+    decode_iteration_from_story, decode_outcome_from_story,
+};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::iteration::IterationId;
+use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
+use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use crate::product_management::story::{Horizon, Story, StoryId, StoryState, StoryType};
 use crate::store::{AppAction, Dispatch};
@@ -20,6 +21,13 @@ use tokio::sync::mpsc::UnboundedReceiver;
 struct SeededOutcomes(Vec<Outcome>);
 impl OutcomeReader for SeededOutcomes {
     fn outcomes(&self) -> Vec<Outcome> {
+        self.0.clone()
+    }
+}
+
+struct SeededIterations(Vec<Iteration>);
+impl IterationReader for SeededIterations {
+    fn iterations(&self) -> Vec<Iteration> {
         self.0.clone()
     }
 }
@@ -37,6 +45,18 @@ fn upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Outcome> {
         }
     }
     found
+}
+
+fn seed_iteration(id: u64) -> Story {
+    let mut s = Story::new_minimal(
+        StoryId::new(id),
+        format!("Iteration #{id}"),
+        StoryState::Icebox,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    s.raw_labels = vec!["iteration".to_string()];
+    s
 }
 
 async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
@@ -92,6 +112,16 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         .map(decode_outcome_from_story)
         .collect();
     orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
+    let iterations: Vec<Iteration> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
+        .collect();
+    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
     orch
 }
 
@@ -178,11 +208,7 @@ async fn create_outcome_rejects_invalid_horizon_1738() {
 
 #[tokio::test]
 async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
-    let refresh = build_refresh(vec![
-        seed_outcome(700),
-        typed_seed(710, StoryType::Iteration, "iteration"),
-    ])
-    .await;
+    let refresh = build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_map_iteration_to_outcome(
         &map_args(700, 710, 1),
@@ -192,7 +218,15 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
     )
     .await
     .expect("pm maps the iteration to the outcome");
-    let outcomes = upserted(&mut rx);
+    let mut outcomes = Vec::new();
+    let mut iterations = Vec::new();
+    while let Ok(action) = rx.try_recv() {
+        match action {
+            AppAction::Outcome(OutcomeAction::Upserted(o)) => outcomes = o,
+            AppAction::Iteration(IterationAction::Upserted(i)) => iterations = i,
+            _ => {}
+        }
+    }
     let outcome = outcomes
         .iter()
         .find(|outcome| outcome.id == OutcomeId::new(700))
@@ -202,11 +236,12 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
         vec![IterationId::new(710)],
         "the outcome holds its ordered iteration list (parent-holds-order)"
     );
+    let iteration = iterations
+        .iter()
+        .find(|it| it.id == IterationId::new(710))
+        .expect("iteration present in the optimistic dispatch");
     assert_eq!(
-        refresh
-            .iteration(IterationId::new(710))
-            .expect("iteration present")
-            .builds_outcome(),
+        iteration.builds_outcome(),
         Some(OutcomeId::new(700)),
         "and the iteration carries the back-FK to the outcome it builds — the drill-mapping"
     );
@@ -214,11 +249,7 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
 
 #[tokio::test]
 async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused_1738() {
-    let refresh = build_refresh(vec![
-        seed_outcome(700),
-        typed_seed(710, StoryType::Iteration, "iteration"),
-    ])
-    .await;
+    let refresh = build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_map_iteration_to_outcome(
         &map_args(700, 710, 1),
@@ -235,7 +266,7 @@ async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused_1738() {
 async fn map_rejects_non_outcome_target_1738() {
     let refresh = build_refresh(vec![
         typed_seed(700, StoryType::Epic, "epic"),
-        typed_seed(710, StoryType::Iteration, "iteration"),
+        seed_iteration(710),
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();

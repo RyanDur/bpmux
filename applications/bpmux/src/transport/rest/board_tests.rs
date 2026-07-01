@@ -2,22 +2,23 @@
 #![allow(clippy::expect_used)]
 
 use super::board::{board_iterations, board_roadmap};
-use crate::product_management::board::OutcomeReader;
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
+use crate::product_management::board::adapters::github::{
+    decode_iteration_from_story, decode_outcome_from_story,
+};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::iteration::IterationId;
+use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
+fn iteration_seed(id: u64, title: &str) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
@@ -25,12 +26,7 @@ fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = labels.iter().map(ToString::to_string).collect();
-    s.raw_labels.push(
-        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .encode_story_type(story_type),
-    );
-    s.story_type = story_type;
+    s.raw_labels = vec!["iteration".to_string()];
     s
 }
 
@@ -53,6 +49,13 @@ impl OutcomeReader for SeededOutcomes {
     }
 }
 
+struct SeededIterations(Vec<Iteration>);
+impl IterationReader for SeededIterations {
+    fn iterations(&self) -> Vec<Iteration> {
+        self.0.clone()
+    }
+}
+
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -69,6 +72,16 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         .map(decode_outcome_from_story)
         .collect();
     orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
+    let iterations: Vec<Iteration> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
+        .collect();
+    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
     orch
 }
 
@@ -104,7 +117,7 @@ async fn board_roadmap_serves_flat_priority_cards_carrying_the_enriched_state() 
 
 #[tokio::test]
 async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() {
-    let mut iteration = seed(810, "Iteration", StoryType::Iteration, &[]);
+    let mut iteration = iteration_seed(810, "Iteration");
     iteration.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(700)),

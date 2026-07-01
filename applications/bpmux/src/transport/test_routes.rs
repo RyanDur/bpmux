@@ -126,13 +126,14 @@ pub struct CreateIterationReq {
 pub async fn post_test_create_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<CreateIterationReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
         let mut args = serde_json::Map::new();
         put_str(&mut args, "name", req.name);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_create_iteration(args, &agent, Some(&refresh)).await
+        bridge::dispatch_create_iteration(args, &agent, Some(&refresh), &dispatcher).await
     })
     .await
 }
@@ -146,6 +147,7 @@ pub struct DesignateCurrentIterationReq {
 pub async fn post_test_designate_current_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<DesignateCurrentIterationReq>,
 ) -> impl IntoResponse {
     let Some(refresh) = refresh else {
@@ -158,7 +160,9 @@ pub async fn post_test_designate_current_iteration(
     );
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_designate_current_iteration(args, &agent, Some(refresh_ref)).await {
+    match bridge::dispatch_designate_current_iteration(args, &agent, Some(refresh_ref), &dispatcher)
+        .await
+    {
         Ok(message) => {
             if let Err(e) = refresh.drain_pending().await {
                 return (
@@ -194,6 +198,7 @@ pub struct MoveStoryReq {
 pub async fn post_test_move_story(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<MoveStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -205,7 +210,7 @@ pub async fn post_test_move_story(
             put_num(&mut args, "position", p);
         }
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_move_story(args, &agent, Some(&refresh)).await
+        bridge::dispatch_move_story(args, &agent, Some(&refresh), &dispatcher).await
     })
     .await
 }
@@ -221,6 +226,7 @@ pub struct EditStoryReq {
 pub async fn post_test_edit_story(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<EditStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -233,7 +239,7 @@ pub async fn post_test_edit_story(
             put_str(&mut args, "body", b);
         }
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_edit_story(args, &agent, Some(&refresh)).await
+        bridge::dispatch_edit_story(args, &agent, Some(&refresh), &dispatcher).await
     })
     .await
 }
@@ -383,13 +389,14 @@ pub struct CloseIterationReq {
 pub async fn post_test_close_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<CloseIterationReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, session| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "iteration_id", req.iteration_id);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_close_iteration(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_close_iteration(args, &agent, Some(&refresh), &session, &dispatcher).await
     })
     .await
 }

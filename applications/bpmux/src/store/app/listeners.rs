@@ -94,6 +94,36 @@ impl Listener<AppState, AppAction> for OutcomeBroadcast {
         let refresh = Arc::clone(&self.refresh);
         Box::pin(async move {
             crate::transport::rest::shared::broadcast_outcomes(&session, &refresh);
+            crate::transport::rest::shared::broadcast_roadmap(&session, &refresh);
+        })
+    }
+}
+
+pub struct IterationBroadcast {
+    session: Arc<crate::session::Session>,
+    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+}
+
+impl IterationBroadcast {
+    pub fn new(
+        session: Arc<crate::session::Session>,
+        refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    ) -> Self {
+        Self { session, refresh }
+    }
+}
+
+impl Listener<AppState, AppAction> for IterationBroadcast {
+    fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
+        if Arc::ptr_eq(&reaction.previous.iterations, &reaction.current.iterations) {
+            return Box::pin(async {});
+        }
+        let session = Arc::clone(&self.session);
+        let refresh = Arc::clone(&self.refresh);
+        Box::pin(async move {
+            crate::transport::rest::shared::broadcast_iterations(&session, &refresh);
+            crate::transport::rest::shared::broadcast_outcomes(&session, &refresh);
+            crate::transport::rest::shared::broadcast_roadmap(&session, &refresh);
         })
     }
 }

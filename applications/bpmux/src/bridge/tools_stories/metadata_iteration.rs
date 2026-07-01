@@ -12,6 +12,7 @@ pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -46,7 +47,8 @@ pub(crate) async fn handle_add_story_to_iteration(
     }
     let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, story_id).await?;
-    super::iteration_members::set_member_position(r, iteration_id, story_id, position).await?;
+    super::iteration_members::set_member_position(r, dispatch, iteration_id, story_id, position)
+        .await?;
     Ok(format!(
         "#{story_id} added to iteration #{iteration_id} at position {position}"
     ))
@@ -97,17 +99,24 @@ pub(crate) async fn handle_map_iteration_to_outcome(
     ));
 
     let mut child = iteration
-        .content
         .body
         .as_deref()
         .and_then(IterationRelationships::read_from_body)
         .unwrap_or_default();
     child.outcome = Some(OutcomeId::new(outcome_id));
-    let iteration_body =
-        child.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
-    r.update_body(iteration_id, iteration_body)
+    let iteration_body = child.write_into_body(iteration.body.as_deref().unwrap_or_default());
+    r.update_body(iteration_id, iteration_body.clone())
         .await
         .map_err(|e| format!("#{iteration_id} outcome-FK-set body update failed: {e}"))?;
+    dispatch.dispatch(crate::store::AppAction::Iteration(
+        crate::product_management::iteration::IterationAction::Upserted(vec![
+            crate::product_management::iteration::Iteration {
+                outcome: Some(OutcomeId::new(outcome_id)),
+                body: Some(iteration_body),
+                ..iteration
+            },
+        ]),
+    ));
 
     Ok(format!(
         "iteration #{iteration_id} maps to outcome #{outcome_id} at position {position}"

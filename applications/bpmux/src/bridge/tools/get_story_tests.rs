@@ -5,10 +5,20 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::get_story::handle_get_story;
+use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::iteration::IterationId;
+use crate::product_management::board::{
+    BoardStore, IterationReader, RefreshDriver, SyncOrchestrator,
+};
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::{Gate, GateComment, Stage, Story, StoryId, StoryState};
+
+struct SeededIterations(Vec<Iteration>);
+impl IterationReader for SeededIterations {
+    fn iterations(&self) -> Vec<Iteration> {
+        self.0.clone()
+    }
+}
 
 async fn seeded_orchestrator(
     mut stories: Vec<Story>,
@@ -25,11 +35,21 @@ async fn seeded_orchestrator(
     for (n, gs) in &gates {
         adapter.seed_gate_comments(*n, gs.clone());
     }
-    store.seed_all(stories);
+    store.seed_all(stories.clone());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
+    let iterations: Vec<Iteration> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
+        .collect();
+    orchestrator.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
     (store, orchestrator)
 }
 
@@ -445,7 +465,6 @@ fn make_iteration(id: u64, name: &str, body: &str) -> Story {
     );
     s.raw_labels.push("iteration".to_string());
     s.body = Some(body.to_string());
-    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

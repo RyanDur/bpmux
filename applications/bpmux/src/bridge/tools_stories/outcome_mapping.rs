@@ -62,17 +62,24 @@ pub(crate) async fn handle_unmap_outcome_iteration(
 
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let mut child = iteration
-        .content
         .body
         .as_deref()
         .and_then(IterationRelationships::read_from_body)
         .unwrap_or_default();
     child.outcome = None;
-    let iteration_body =
-        child.write_into_body(iteration.content.body.as_deref().unwrap_or_default());
-    r.update_body(iteration_id, iteration_body)
+    let iteration_body = child.write_into_body(iteration.body.as_deref().unwrap_or_default());
+    r.update_body(iteration_id, iteration_body.clone())
         .await
         .map_err(|e| format!("#{iteration_id} outcome-FK-clear body update failed: {e}"))?;
+    dispatch.dispatch(crate::store::AppAction::Iteration(
+        crate::product_management::iteration::IterationAction::Upserted(vec![
+            crate::product_management::iteration::Iteration {
+                outcome: None,
+                body: Some(iteration_body),
+                ..iteration
+            },
+        ]),
+    ));
 
     Ok(format!(
         "iteration #{iteration_id} unmapped from outcome #{outcome_id}; the iteration itself is untouched"

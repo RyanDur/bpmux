@@ -138,6 +138,7 @@ pub struct SeedStoriesBody {
 pub async fn post_seed_stories(
     State(session): State<Arc<session::Session>>,
     axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(body): Json<SeedStoriesBody>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {
@@ -160,10 +161,10 @@ pub async fn post_seed_stories(
             "accepted" => crate::product_management::story::StoryState::Accepted,
             _ => crate::product_management::story::StoryState::Icebox,
         };
+        let is_iteration_seed = s.story_type.as_str() == "iteration";
         let story_type = {
             use crate::product_management::story::{StoryKind, StoryType};
             match s.story_type.as_str() {
-                "iteration" => StoryType::Iteration,
                 "epic" => StoryType::Epic,
                 "bug" => StoryType::Story(StoryKind::Bug),
                 "chore" => StoryType::Story(StoryKind::Chore),
@@ -195,12 +196,17 @@ pub async fn post_seed_stories(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::PeerId::local(),
         };
+        let type_label = if is_iteration_seed {
+            "iteration".to_string()
+        } else {
+            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                .encode_story_type(story_type)
+        };
         if let Err(e) =
             refresh.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
                 meta: type_label_meta,
                 id: crate::product_management::story::StoryId::new(s.id),
-                label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-                    .encode_story_type(story_type),
+                label: type_label,
             })
         {
             return (
@@ -245,6 +251,15 @@ pub async fn post_seed_stories(
                     format!("seed_stories: StoryClosed #{} failed: {e}", s.id),
                 );
             }
+        }
+        if is_iteration_seed && let Some(story) = refresh.backing_story(s.id) {
+            dispatcher.dispatch(crate::store::AppAction::Iteration(
+                crate::product_management::iteration::IterationAction::Upserted(vec![
+                    crate::product_management::board::adapters::github::decode_iteration_from_story(
+                        &story,
+                    ),
+                ]),
+            ));
         }
     }
     let invalidate_delta = crate::message::Message {

@@ -11,6 +11,7 @@ pub(crate) async fn handle_reorder_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "reorder iterations")?;
     let iteration_id = args
@@ -26,7 +27,7 @@ pub(crate) async fn handle_reorder_iteration(
     let r = refresh.ok_or("reorder_iteration requires refresh (RefreshDriver)")?;
     ensure_iteration_in_canonical_store(r, iteration_id).await?;
 
-    let band_size = renumber_iteration_order(r, agent_name, iteration_id, position)?;
+    let band_size = renumber_iteration_order(r, dispatch, agent_name, iteration_id, position)?;
     Ok(format!(
         "iteration #{iteration_id} reordered to planning position {position} of {band_size}"
     ))
@@ -34,6 +35,7 @@ pub(crate) async fn handle_reorder_iteration(
 
 fn renumber_iteration_order(
     r: &Arc<dyn RefreshDriver>,
+    dispatch: &crate::store::Dispatch,
     agent_name: &str,
     moved: u64,
     requested_position: u32,
@@ -43,28 +45,24 @@ fn renumber_iteration_order(
         .into_iter()
         .filter(|iteration| !iteration.complete)
         .collect();
-    actives.sort_by_key(|iteration| {
-        (
-            iteration.iteration_order.unwrap_or(u32::MAX),
-            iteration.id().saved_id().map(|id| id.value()).unwrap_or(0),
-        )
-    });
+    actives.sort_by_key(|iteration| (iteration.iteration_order.unwrap_or(u32::MAX), iteration.id));
 
     let band_size = actives.len() as u32;
     let clamped = requested_position.clamp(1, band_size.max(1));
     let mut sequence: Vec<u64> = actives
         .iter()
-        .filter_map(|iteration| iteration.id().saved_id().map(|id| id.value()))
+        .map(|iteration| iteration.id.value())
         .filter(|number| *number != moved)
         .collect();
     let insert_index = (clamped as usize - 1).min(sequence.len());
     sequence.insert(insert_index, moved);
 
+    let mut updates: Vec<Iteration> = Vec::new();
     for (index, number) in sequence.iter().enumerate() {
         let new_position = (index + 1) as u32;
         let Some(iteration) = actives
             .iter()
-            .find(|iteration| iteration.id().saved_id().map(|id| id.value()) == Some(*number))
+            .find(|iteration| iteration.id.value() == *number)
         else {
             continue;
         };
@@ -85,6 +83,15 @@ fn renumber_iteration_order(
             label: GhLabelCodec.encode_iteration_order(new_position),
         })
         .map_err(|e| format!("#{number} iteration-order set enqueue failed: {e}"))?;
+        updates.push(Iteration {
+            iteration_order: Some(new_position),
+            ..iteration.clone()
+        });
+    }
+    if !updates.is_empty() {
+        dispatch.dispatch(crate::store::AppAction::Iteration(
+            crate::product_management::iteration::IterationAction::Upserted(updates),
+        ));
     }
     Ok(band_size)
 }
@@ -93,6 +100,7 @@ pub(crate) async fn handle_rename_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "edit an iteration name")?;
     let iteration_id = args
@@ -106,9 +114,16 @@ pub(crate) async fn handle_rename_iteration(
         .ok_or("iteration rename needs --name <N>")?;
 
     let r = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
-    ensure_iteration_in_canonical_store(r, iteration_id).await?;
-    r.update_title(iteration_id, format!("Iteration {name}"))
+    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    let title = format!("Iteration {name}");
+    r.update_title(iteration_id, title.clone())
         .await
         .map_err(|e| format!("#{iteration_id} name update failed: {e}"))?;
+    dispatch.dispatch(crate::store::AppAction::Iteration(
+        crate::product_management::iteration::IterationAction::Upserted(vec![Iteration {
+            title,
+            ..iteration
+        }]),
+    ));
     Ok(format!("iteration #{iteration_id} renamed to {name}"))
 }

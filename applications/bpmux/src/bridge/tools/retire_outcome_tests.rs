@@ -2,16 +2,17 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::handle_retire_outcome;
-use crate::product_management::board::OutcomeReader;
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
+use crate::product_management::board::adapters::github::{
+    decode_iteration_from_story, decode_outcome_from_story,
+};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::iteration::IterationId;
+use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
 use crate::store::{AppAction, Dispatch};
@@ -23,6 +24,13 @@ use tokio::sync::mpsc::UnboundedReceiver;
 struct SeededOutcomes(Vec<Outcome>);
 impl OutcomeReader for SeededOutcomes {
     fn outcomes(&self) -> Vec<Outcome> {
+        self.0.clone()
+    }
+}
+
+struct SeededIterations(Vec<Iteration>);
+impl IterationReader for SeededIterations {
+    fn iterations(&self) -> Vec<Iteration> {
         self.0.clone()
     }
 }
@@ -72,7 +80,14 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
 }
 
 fn iteration_in_outcome(id: u64, outcome: u64) -> Story {
-    let mut s = seed(id, &format!("Iteration #{id}"), StoryType::Iteration, &[]);
+    let mut s = Story::new_minimal(
+        StoryId::new(id),
+        format!("Iteration #{id}"),
+        StoryState::Icebox,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    s.raw_labels = vec!["iteration".to_string()];
     s.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(outcome)),
@@ -111,6 +126,16 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         .map(decode_outcome_from_story)
         .collect();
     orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
+    let iterations: Vec<Iteration> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
+        .collect();
+    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
     orch
 }
 

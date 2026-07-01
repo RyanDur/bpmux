@@ -9,9 +9,15 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
+
+fn dispatch() -> Dispatch {
+    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
+    Dispatch::new(tx)
+}
 
 fn seed_story(id: u64, title: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
@@ -51,7 +57,7 @@ async fn edit_story_title_only_updates_title_preserves_body() {
         "id": 1234,
         "title": "[Feature] corrected title"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
+    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh), &dispatch())
         .await
         .expect("edit_story with title-only succeeds");
     assert!(result.contains("title"), "result mentions title: {result}");
@@ -76,7 +82,7 @@ async fn edit_story_body_only_updates_body_preserves_title() {
         "id": 1234,
         "body": "## What\n\nnew body content"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
+    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh), &dispatch())
         .await
         .expect("edit_story with body-only succeeds");
     assert!(result.contains("body"), "result mentions body: {result}");
@@ -97,7 +103,7 @@ async fn edit_story_with_both_title_and_body_updates_both() {
         "title": "new title",
         "body": "new body"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
+    let result = handle_edit_story(&args, "pm:claude-code", Some(&refresh), &dispatch())
         .await
         .expect("edit_story with both succeeds");
     assert!(
@@ -136,7 +142,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
     );
 
     let args = args_obj(json!({ "id": 1234, "acceptor": "owner" }));
-    handle_edit_story(&args, "pm:claude-code", Some(&refresh))
+    handle_edit_story(&args, "pm:claude-code", Some(&refresh), &dispatch())
         .await
         .expect("edit_story with acceptor-only succeeds");
 
@@ -157,7 +163,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
 async fn edit_story_with_neither_field_rejects() {
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let args = args_obj(json!({ "id": 1234 }));
-    let err = handle_edit_story(&args, "pm:claude-code", Some(&refresh))
+    let err = handle_edit_story(&args, "pm:claude-code", Some(&refresh), &dispatch())
         .await
         .expect_err("edit_story with neither body, title, nor acceptor rejected");
     assert!(
@@ -173,7 +179,7 @@ async fn edit_story_rejects_non_pm_role() {
         "id": 1234,
         "title": "new title"
     }));
-    let err = handle_edit_story(&args, "dev:claude-code", Some(&refresh))
+    let err = handle_edit_story(&args, "dev:claude-code", Some(&refresh), &dispatch())
         .await
         .expect_err("dev role rejected from PM-only tool");
     assert!(

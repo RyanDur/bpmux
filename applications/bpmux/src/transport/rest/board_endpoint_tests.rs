@@ -1,15 +1,17 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::board::{board_iterations, board_outcomes, ordered_board_stories};
-use crate::product_management::board::OutcomeReader;
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
+use crate::product_management::board::adapters::github::{
+    decode_iteration_from_story, decode_outcome_from_story,
+};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::board::{BoardStore, SyncOrchestrator};
-use crate::product_management::iteration::IterationId;
+use crate::product_management::board::{
+    BoardStore, IterationReader, OutcomeReader, RefreshDriver, SyncOrchestrator,
+};
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
@@ -18,6 +20,13 @@ use std::sync::Arc;
 struct SeededOutcomes(Vec<crate::product_management::outcome::Outcome>);
 impl OutcomeReader for SeededOutcomes {
     fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
+        self.0.clone()
+    }
+}
+
+struct SeededIterations(Vec<Iteration>);
+impl IterationReader for SeededIterations {
+    fn iterations(&self) -> Vec<Iteration> {
         self.0.clone()
     }
 }
@@ -38,6 +47,16 @@ async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         .map(decode_outcome_from_story)
         .collect();
     orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
+    let iterations: Vec<Iteration> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
+        .collect();
+    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
     orch
 }
 
@@ -56,7 +75,6 @@ fn iteration(id: u64) -> Story {
         "iteration-review-closed.designer".into(),
         "iteration-dev-ok.dev".into(),
     ];
-    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

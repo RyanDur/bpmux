@@ -9,6 +9,7 @@ use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 use crate::product_management::iteration::label::current_iteration_id;
 use crate::product_management::story::{StoryId, StoryState};
 
+mod authorization;
 mod target;
 
 use target::{
@@ -19,6 +20,7 @@ pub(in crate::bridge) async fn handle_move_story(
     args: &Map<String, Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let id = args
         .get("id")
@@ -36,20 +38,7 @@ pub(in crate::bridge) async fn handle_move_story(
         "rationale is required (#1188 falsifier-b — every move must surface an audit-trail reason)",
     )?;
 
-    let actor_role = crate::transport::ws::short_name(agent_name);
-    let workflow = crate::workflow::current_workflow();
-    let transition = crate::workflow::resolve_transition(
-        workflow,
-        "move-with-position",
-        crate::workflow::GateClass::None,
-    )
-    .map_err(|e| e.as_json_string())?;
-    crate::workflow::enforce_role_allowed(
-        transition,
-        actor_role,
-        workflow.owner_role_id().unwrap_or(""),
-    )
-    .map_err(|e| e.as_json_string())?;
+    authorization::enforce_move_authorization(agent_name)?;
 
     if position.is_some() {
         let allows_position = matches!(
@@ -158,6 +147,7 @@ pub(in crate::bridge) async fn handle_move_story(
     {
         crate::bridge::tools_stories::iteration_members::set_member_position(
             r,
+            dispatch,
             iteration_id.value(),
             id,
             pos as u32,

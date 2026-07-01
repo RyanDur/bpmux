@@ -152,9 +152,7 @@ pub fn gate_class_from_labels_and_story_type(
     }
     use crate::product_management::story::{StoryKind, StoryType};
     match story_type {
-        StoryType::Story(StoryKind::Feature) | StoryType::Epic | StoryType::Iteration => {
-            GateClass::OwnerWalk
-        }
+        StoryType::Story(StoryKind::Feature) | StoryType::Epic => GateClass::OwnerWalk,
         StoryType::Story(StoryKind::Bug) => GateClass::TeamVerifiable,
         StoryType::Story(StoryKind::Chore) => GateClass::DevVerifiable,
     }

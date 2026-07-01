@@ -13,8 +13,13 @@ pub trait OutcomeReader: Send + Sync {
     fn outcomes(&self) -> Vec<Outcome>;
 }
 
+pub trait IterationReader: Send + Sync {
+    fn iterations(&self) -> Vec<Iteration>;
+}
+
 pub trait RefreshDriver: Send + Sync {
     fn bind_outcome_reader(&self, _reader: Arc<dyn OutcomeReader>) {}
+    fn bind_iteration_reader(&self, _reader: Arc<dyn IterationReader>) {}
     fn refresh_story(&self, id: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn refresh_all_since(
@@ -59,10 +64,12 @@ pub trait RefreshDriver: Send + Sync {
         Vec::new()
     }
     fn iterations(&self) -> Vec<Iteration> {
-        self.store().iterations()
+        Vec::new()
     }
     fn iteration(&self, iteration_id: IterationId) -> Option<Iteration> {
-        self.store().iteration(StoryId::new(iteration_id.value()))
+        self.iterations()
+            .into_iter()
+            .find(|iteration| iteration.id == iteration_id)
     }
     fn epics(&self) -> Vec<Story> {
         self.store().epics()

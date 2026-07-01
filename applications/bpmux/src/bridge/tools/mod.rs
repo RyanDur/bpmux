@@ -37,6 +37,7 @@ mod get_identity;
 mod get_story;
 #[cfg(test)]
 mod get_story_tests;
+mod get_story_view;
 mod get_sync_status;
 #[cfg(test)]
 mod get_sync_status_tests;

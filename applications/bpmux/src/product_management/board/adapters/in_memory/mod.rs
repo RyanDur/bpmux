@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::events::BoardEvent;
-use crate::product_management::board::item::ProductItem;
 use crate::product_management::board::sync::{Ingested, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
+mod ingest;
 mod mutation;
 mod seed;
 
@@ -36,23 +35,14 @@ impl SourceAdapter for InMemorySourceAdapter {
                 "in-memory test failure".into(),
             ));
         }
-        let mut items = Vec::new();
-        let mut outcomes = Vec::new();
-        for mut story in s.stories.values().cloned() {
-            if let Some(labels) = s.labels.get(&story.id.value()) {
-                story.raw_labels = labels.clone();
-            }
-            if story
-                .raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("outcome"))
-            {
-                outcomes.push(decode_outcome_from_story(&story));
-            } else {
-                items.push(ProductItem::from_story(&story));
-            }
-        }
-        Ok(Ingested { items, outcomes })
+        let (items, outcomes, mut iterations) =
+            ingest::classify_ingested(s.stories.values().cloned(), &s.labels);
+        iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
+        Ok(Ingested {
+            items,
+            outcomes,
+            iterations,
+        })
     }
 
     async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {

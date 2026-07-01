@@ -2,8 +2,7 @@ use crate::bridge::tracker::{
     ConditionalIssue, ConditionalRunEntry, OctocrabStoryTracker, StoryTracker,
 };
 use crate::product_management::board::adapters::github::{
-    decode_free_comment, decode_gate_comments, decode_outcome, decode_story_metadata,
-    filter_retired_empty_iterations, is_outcome_issue,
+    decode_free_comment, decode_gate_comments, decode_story_metadata,
 };
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::item::ProductItem;
@@ -12,6 +11,7 @@ use crate::product_management::story::{FreeComment, GateComment, Story};
 use crate::store::CiPollFetch;
 
 mod delegates;
+mod ingest;
 mod mutation;
 mod mutation_events;
 
@@ -52,32 +52,20 @@ impl SourceAdapter for GitHubSourceAdapter {
             .await
             .map_err(SyncError::Other)?;
         let received = values.len();
-        let mut stories = Vec::with_capacity(received);
-        let mut outcomes = Vec::new();
-        let mut dropped = 0usize;
-        for v in values.iter() {
-            if is_outcome_issue(v) {
-                match decode_outcome(v) {
-                    Some(outcome) => outcomes.push(outcome),
-                    None => dropped += 1,
-                }
-            } else if let Some(story) = decode_story_metadata(v) {
-                stories.push(story);
-            } else {
-                dropped += 1;
-            }
-        }
-        let pre_filter = stories.len();
-        stories = filter_retired_empty_iterations(stories);
-        let filtered_out = pre_filter - stories.len();
+        let (stories, outcomes, mut iterations, dropped) = ingest::classify_ingested(&values);
+        let pre_filter = iterations.len();
+        iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
+        let filtered_out = pre_filter - iterations.len();
         crate::diag::log_diag(&format!(
-            "github ingest_metadata_since(since={:?}): received {received} values, decoded {pre_filter} stories + {} outcomes, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
+            "github ingest_metadata_since(since={:?}): received {received} values, decoded {} stories + {} outcomes + {pre_filter} iterations, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
             since.map(|s| s.to_rfc3339()),
+            stories.len(),
             outcomes.len(),
         ));
         Ok(Ingested {
             items: stories.iter().map(ProductItem::from_story).collect(),
             outcomes,
+            iterations,
         })
     }
 

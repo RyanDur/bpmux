@@ -89,8 +89,13 @@ pub(super) async fn handle_reorder_iteration(
         serde_json::json!(iteration_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
-    if let Err(e) =
-        crate::bridge::dispatch_reorder_iteration(args, identity, ctx.orchestrator.as_ref()).await
+    if let Err(e) = crate::bridge::dispatch_reorder_iteration(
+        args,
+        identity,
+        ctx.orchestrator.as_ref(),
+        ctx.dispatch,
+    )
+    .await
     {
         send_json(
             tx,
@@ -118,9 +123,13 @@ pub(super) async fn handle_add_story_to_iteration(
     );
     args.insert("story_id".to_string(), serde_json::json!(story_id));
     args.insert("position".to_string(), serde_json::json!(position));
-    if let Err(e) =
-        crate::bridge::dispatch_add_story_to_iteration(args, identity, ctx.orchestrator.as_ref())
-            .await
+    if let Err(e) = crate::bridge::dispatch_add_story_to_iteration(
+        args,
+        identity,
+        ctx.orchestrator.as_ref(),
+        ctx.dispatch,
+    )
+    .await
     {
         send_json(
             tx,

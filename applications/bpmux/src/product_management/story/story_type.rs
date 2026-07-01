@@ -12,7 +12,6 @@ pub enum StoryKind {
 pub enum StoryType {
     Story(StoryKind),
     Epic,
-    Iteration,
 }
 
 impl Default for StoryType {
@@ -25,7 +24,7 @@ impl StoryType {
     pub fn kind(self) -> Option<StoryKind> {
         match self {
             StoryType::Story(kind) => Some(kind),
-            StoryType::Epic | StoryType::Iteration => None,
+            StoryType::Epic => None,
         }
     }
 
@@ -35,7 +34,6 @@ impl StoryType {
             StoryType::Story(StoryKind::Bug) => "bug",
             StoryType::Story(StoryKind::Chore) => "chore",
             StoryType::Epic => "epic",
-            StoryType::Iteration => "iteration",
         }
     }
 
@@ -45,7 +43,6 @@ impl StoryType {
             StoryType::Story(StoryKind::Bug) => "Bug",
             StoryType::Story(StoryKind::Chore) => "Chore",
             StoryType::Epic => "Epic",
-            StoryType::Iteration => "Iteration",
         }
     }
 
@@ -55,7 +52,6 @@ impl StoryType {
             "Bug" => Some(StoryType::Story(StoryKind::Bug)),
             "Chore" => Some(StoryType::Story(StoryKind::Chore)),
             "Epic" => Some(StoryType::Epic),
-            "Iteration" => Some(StoryType::Iteration),
             _ => None,
         }
     }
@@ -79,9 +75,6 @@ pub fn story_type_from_title(title: &str) -> StoryType {
     let lower = title.to_lowercase();
     if lower.starts_with("[epic") {
         return StoryType::Epic;
-    }
-    if lower.starts_with("[iteration") {
-        return StoryType::Iteration;
     }
     StoryType::Story(story_kind_from_title(&lower))
 }

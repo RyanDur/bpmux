@@ -132,8 +132,8 @@ pub fn derive_outcome_drill_in(
                 _ => checks_of(&r),
             };
             DrillIteration {
-                id: IterationId::new(it.id().saved_id().map(|id| id.value()).unwrap_or(0)),
-                name: it.content.title.clone(),
+                id: it.id,
+                name: it.title.clone(),
                 order: index as u32 + 1,
                 state,
                 gap_count,
@@ -146,10 +146,10 @@ pub fn derive_outcome_drill_in(
         let next = &building[ni];
         let next_r = iteration_readiness(next, workflow);
         ConveneBanner {
-            next_iteration_name: next.content.title.clone(),
+            next_iteration_name: next.title.clone(),
             next_gap_count: next_r.unmet_count(),
             active_gap_label: first_unmet_label(&next_r),
-            then_iteration_name: building.get(ni + 1).map(|it| it.content.title.clone()),
+            then_iteration_name: building.get(ni + 1).map(|it| it.title.clone()),
         }
     });
 

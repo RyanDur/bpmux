@@ -6,17 +6,9 @@ pub(crate) async fn dispatch_create_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
-) -> Result<String, String> {
-    tools_stories::handle_create_iteration(&args, agent_name, refresh).await
-}
-
-pub(crate) async fn dispatch_create_outcome(
-    args: serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_create_outcome(&args, agent_name, refresh, dispatch).await
+    tools_stories::handle_create_iteration(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_close_iteration(
@@ -24,6 +16,7 @@ pub(crate) async fn dispatch_close_iteration(
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     tools_stories::helpers::require_purpose(agent_name, &["pm"], "close iteration")?;
     let r = refresh.ok_or("close_iteration requires refresh (RefreshDriver)")?;
@@ -55,7 +48,8 @@ pub(crate) async fn dispatch_close_iteration(
                 .to_string(),
         );
     }
-    crate::transport::rest::iteration_close::close_iteration_canonical(r, iteration_id).await?;
+    crate::transport::rest::iteration_close::close_iteration_canonical(r, dispatch, iteration_id)
+        .await?;
     crate::transport::rest::shared::broadcast_board_invalidate(session);
     Ok(format!("iteration #{iteration_id} closed"))
 }
@@ -80,116 +74,70 @@ pub(crate) async fn dispatch_add_story_to_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_add_story_to_iteration(&args, agent_name, refresh).await
+    tools_stories::handle_add_story_to_iteration(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_designate_current_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_designate_current_iteration(&args, agent_name, refresh).await
+    tools_stories::handle_designate_current_iteration(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_close_pre_pickup_review(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_close_pre_pickup_review(&args, agent_name, refresh).await
+    tools_stories::handle_close_pre_pickup_review(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_dev_ok_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
-) -> Result<String, String> {
-    tools_stories::handle_dev_ok_iteration(&args, agent_name, refresh).await
-}
-
-pub(crate) async fn dispatch_map_iteration_to_outcome(
-    args: serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_map_iteration_to_outcome(&args, agent_name, refresh, dispatch).await
-}
-
-pub(crate) async fn dispatch_reprioritize_outcome(
-    args: serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
-    dispatch: &crate::store::Dispatch,
-) -> Result<String, String> {
-    tools_stories::handle_reprioritize_outcome(&args, agent_name, refresh, dispatch).await
-}
-
-pub(crate) async fn dispatch_edit_outcome(
-    args: serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
-    dispatch: &crate::store::Dispatch,
-) -> Result<String, String> {
-    tools_stories::handle_edit_outcome(&args, agent_name, refresh, dispatch).await
-}
-
-pub(crate) async fn dispatch_retire_outcome(
-    args: serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
-    dispatch: &crate::store::Dispatch,
-) -> Result<String, String> {
-    tools_stories::handle_retire_outcome(&args, agent_name, refresh, dispatch).await
+    tools_stories::handle_dev_ok_iteration(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_remove_iteration_member(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_remove_iteration_member(&args, agent_name, refresh).await
+    tools_stories::handle_remove_iteration_member(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_move_iteration_member(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_move_iteration_member(&args, agent_name, refresh).await
+    tools_stories::handle_move_iteration_member(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_rename_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
-) -> Result<String, String> {
-    tools_stories::handle_rename_iteration(&args, agent_name, refresh).await
-}
-
-pub(crate) async fn dispatch_unmap_outcome_iteration(
-    args: serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_unmap_outcome_iteration(&args, agent_name, refresh, dispatch).await
-}
-
-pub(crate) async fn dispatch_reorder_outcome_iteration(
-    args: serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
-    dispatch: &crate::store::Dispatch,
-) -> Result<String, String> {
-    tools_stories::handle_reorder_outcome_iteration(&args, agent_name, refresh, dispatch).await
+    tools_stories::handle_rename_iteration(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_reorder_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_reorder_iteration(&args, agent_name, refresh).await
+    tools_stories::handle_reorder_iteration(&args, agent_name, refresh, dispatch).await
 }

@@ -35,6 +35,7 @@ fn reorder_label_ops(payload: &LabelMutationPayload) -> Vec<LabelOp> {
 pub async fn post_story_labels(
     State(session): State<Arc<session::Session>>,
     axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     axum::extract::Path(id): axum::extract::Path<u64>,
     Json(payload): Json<LabelMutationPayload>,
 ) -> impl IntoResponse {
@@ -78,6 +79,19 @@ pub async fn post_story_labels(
                 err_body(&format!("{descriptor}: {e}")),
             );
         }
+    }
+    if refresh
+        .iteration(crate::product_management::iteration::IterationId::new(id))
+        .is_some()
+        && let Some(story) = refresh.story(id)
+    {
+        dispatcher.dispatch(crate::store::AppAction::Iteration(
+            crate::product_management::iteration::IterationAction::Upserted(vec![
+                crate::product_management::board::adapters::github::decode_iteration_from_story(
+                    &story,
+                ),
+            ]),
+        ));
     }
     broadcast_board_invalidate(&session);
     broadcast_stories(&session, &refresh);

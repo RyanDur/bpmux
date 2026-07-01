@@ -21,7 +21,7 @@ pub struct IterationView {
 
 impl IterationView {
     pub fn project(iteration: &Iteration, outcomes: &[Outcome], workflow: &WorkflowConfig) -> Self {
-        let id = iteration.id().saved_id().map(|id| id.value()).unwrap_or(0);
+        let id = iteration.id.value();
         let outcome_position = iteration.builds_outcome().and_then(|outcome_id| {
             outcomes
                 .iter()
@@ -31,7 +31,7 @@ impl IterationView {
         });
         Self {
             id,
-            title: iteration.content.title.clone(),
+            title: iteration.title.clone(),
             iteration_order: iteration.iteration_order,
             is_current: iteration.is_current,
             complete: iteration.complete,

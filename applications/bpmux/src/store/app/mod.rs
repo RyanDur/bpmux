@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::product_management::iteration::{self, IterationAction, IterationState};
 use crate::product_management::outcome::{self, OutcomeAction, OutcomeState};
 use crate::store::ci::{self, CiAction, CiState};
 use crate::store::reactions::{self, ReactionsAction, ReactionsState};
@@ -15,6 +16,7 @@ pub struct AppState {
     pub reactions: Arc<ReactionsState>,
     pub ci: Arc<CiState>,
     pub outcomes: Arc<OutcomeState>,
+    pub iterations: Arc<IterationState>,
 }
 
 #[derive(Clone)]
@@ -24,6 +26,7 @@ pub enum AppAction {
     Ci(CiAction),
     Sync(SyncAction),
     Outcome(OutcomeAction),
+    Iteration(IterationAction),
 }
 
 impl From<RosterAction> for AppAction {
@@ -53,6 +56,12 @@ impl From<SyncAction> for AppAction {
 impl From<OutcomeAction> for AppAction {
     fn from(action: OutcomeAction) -> Self {
         Self::Outcome(action)
+    }
+}
+
+impl From<IterationAction> for AppAction {
+    fn from(action: IterationAction) -> Self {
+        Self::Iteration(action)
     }
 }
 
@@ -87,6 +96,13 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
+        AppAction::Iteration(action) => match iteration::reduce(&state.iterations, action) {
+            Some(iterations) => AppState {
+                iterations: Arc::new(iterations),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
     }
 }
 
@@ -106,6 +122,7 @@ pub(super) fn validate_and_log(action: &AppAction) {
         AppAction::Reactions(_) => "Reactions",
         AppAction::Roster(_) => "Roster",
         AppAction::Outcome(_) => "Outcome",
+        AppAction::Iteration(_) => "Iteration",
     };
     crate::diag::log_diag(&format!("store: dispatch {label}"));
 }

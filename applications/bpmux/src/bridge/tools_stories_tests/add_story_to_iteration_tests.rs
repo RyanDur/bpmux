@@ -1,28 +1,69 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use crate::product_management::board::BoardStore;
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::SyncOrchestrator;
+use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
-use crate::product_management::iteration::IterationId;
+use crate::product_management::board::{
+    BoardStore, IterationReader, RefreshDriver, SyncOrchestrator,
+};
+use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedReceiver;
 
-async fn build_orchestrator(stories: Vec<Story>) -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
+struct SeededIterations(Vec<Iteration>);
+impl IterationReader for SeededIterations {
+    fn iterations(&self) -> Vec<Iteration> {
+        self.0.clone()
+    }
+}
+
+fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
+    (Dispatch::new(tx), rx)
+}
+
+fn upserted_iterations(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Iteration> {
+    let mut found = Vec::new();
+    while let Ok(action) = rx.try_recv() {
+        if let AppAction::Iteration(IterationAction::Upserted(iterations)) = action {
+            found.extend(iterations);
+        }
+    }
+    found
+}
+
+fn stories_of(iterations: &[Iteration], id: u64) -> Vec<StoryId> {
+    iterations
+        .iter()
+        .rev()
+        .find(|it| it.id == IterationId::new(id))
+        .map(|it| it.stories.clone())
+        .unwrap_or_else(|| panic!("iteration #{id} present in the optimistic dispatch"))
+}
+
+async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    adapter.seed_stories(stories.clone());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
-    (store, orch)
+    let iterations: Vec<Iteration> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
+        .collect();
+    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
+    orch
 }
 
 fn iteration_seed(id: u64, name: &str) -> Story {
@@ -34,7 +75,6 @@ fn iteration_seed(id: u64, name: &str) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec!["iteration".into(), "ready".into()];
-    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 
@@ -62,21 +102,25 @@ fn args(
 
 #[tokio::test]
 async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
-    let (_store, orch) = build_orchestrator(vec![
+    let orch = build_orchestrator(vec![
         iteration_seed(1397, "Telescopium"),
         member_seed(1500, "child story"),
     ])
     .await;
-    let result =
-        handle_add_story_to_iteration(&args(1397, 1500, 100), "pm:claude-code", Some(&orch)).await;
+    let (dispatch, mut rx) = dispatch_channel();
+    let result = handle_add_story_to_iteration(
+        &args(1397, 1500, 100),
+        "pm:claude-code",
+        Some(&orch),
+        &dispatch,
+    )
+    .await;
     assert!(
         result.is_ok(),
         "PM add_story_to_iteration must succeed: {result:?}"
     );
     assert_eq!(
-        orch.iteration(IterationId::new(1397))
-            .expect("iteration present")
-            .stories,
+        stories_of(&upserted_iterations(&mut rx), 1397),
         vec![StoryId::new(1500)],
         "the member is recorded in the iteration's ordered stories (parent-holds-order)"
     );
@@ -84,7 +128,7 @@ async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
 
 #[tokio::test]
 async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed_1399() {
-    let (_store, orch) = build_orchestrator(vec![
+    let orch = build_orchestrator(vec![
         iteration_seed(1397, "Telescopium"),
         member_seed(1500, "x"),
     ])
@@ -94,8 +138,10 @@ async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed_1399() {
         "dev:claude-code",
         "intern:claude-code",
     ] {
+        let (dispatch, _rx) = dispatch_channel();
         let result =
-            handle_add_story_to_iteration(&args(1397, 1500, 100), caller, Some(&orch)).await;
+            handle_add_story_to_iteration(&args(1397, 1500, 100), caller, Some(&orch), &dispatch)
+                .await;
         let err = result.expect_err(&format!("{caller} must be substrate-refused"));
         assert!(
             err.contains("workflow-role-not-allowed"),
@@ -119,13 +165,19 @@ async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed_1399() {
 
 #[tokio::test]
 async fn owner_bypasses_add_story_to_iteration_via_superset_1548() {
-    let (_store, orch) = build_orchestrator(vec![
+    let orch = build_orchestrator(vec![
         iteration_seed(1397, "Telescopium"),
         member_seed(1500, "child story"),
     ])
     .await;
-    let result =
-        handle_add_story_to_iteration(&args(1397, 1500, 100), "owner:human", Some(&orch)).await;
+    let (dispatch, _rx) = dispatch_channel();
+    let result = handle_add_story_to_iteration(
+        &args(1397, 1500, 100),
+        "owner:human",
+        Some(&orch),
+        &dispatch,
+    )
+    .await;
     assert!(
         result.is_ok(),
         "owner (owner) bypasses the pm-only add-to-iteration role-guard via the #1548 superset: {result:?}"
@@ -134,13 +186,19 @@ async fn owner_bypasses_add_story_to_iteration_via_superset_1548() {
 
 #[tokio::test]
 async fn parent_must_be_iteration_storytype_rejects_non_iteration_1399() {
-    let (_store, orch) = build_orchestrator(vec![
+    let orch = build_orchestrator(vec![
         member_seed(2000, "not an iteration"),
         member_seed(1500, "child"),
     ])
     .await;
-    let result =
-        handle_add_story_to_iteration(&args(2000, 1500, 100), "pm:claude-code", Some(&orch)).await;
+    let (dispatch, _rx) = dispatch_channel();
+    let result = handle_add_story_to_iteration(
+        &args(2000, 1500, 100),
+        "pm:claude-code",
+        Some(&orch),
+        &dispatch,
+    )
+    .await;
     let err = result.expect_err("non-Iteration parent must be rejected");
     assert!(
         err.contains("not an Iteration"),
@@ -150,9 +208,15 @@ async fn parent_must_be_iteration_storytype_rejects_non_iteration_1399() {
 
 #[tokio::test]
 async fn self_add_rejected_1399() {
-    let (_store, orch) = build_orchestrator(vec![iteration_seed(1397, "Telescopium")]).await;
-    let result =
-        handle_add_story_to_iteration(&args(1397, 1397, 100), "pm:claude-code", Some(&orch)).await;
+    let orch = build_orchestrator(vec![iteration_seed(1397, "Telescopium")]).await;
+    let (dispatch, _rx) = dispatch_channel();
+    let result = handle_add_story_to_iteration(
+        &args(1397, 1397, 100),
+        "pm:claude-code",
+        Some(&orch),
+        &dispatch,
+    )
+    .await;
     let err = result.expect_err("self-add must be rejected");
     assert!(
         err.contains("cannot be added to itself"),
@@ -162,10 +226,11 @@ async fn self_add_rejected_1399() {
 
 #[tokio::test]
 async fn missing_iteration_id_rejected_1399() {
+    let (dispatch, _rx) = dispatch_channel();
     let mut m = serde_json::Map::new();
     m.insert("story_id".into(), serde_json::json!(1500));
     m.insert("position".into(), serde_json::json!(100));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
+    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None, &dispatch).await;
     let err = result.expect_err("missing iteration_id must be rejected");
     assert!(
         err.contains("iteration_id"),
@@ -175,10 +240,11 @@ async fn missing_iteration_id_rejected_1399() {
 
 #[tokio::test]
 async fn missing_story_id_rejected_1399() {
+    let (dispatch, _rx) = dispatch_channel();
     let mut m = serde_json::Map::new();
     m.insert("iteration_id".into(), serde_json::json!(1397));
     m.insert("position".into(), serde_json::json!(100));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
+    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None, &dispatch).await;
     let err = result.expect_err("missing story_id must be rejected");
     assert!(
         err.contains("story_id"),
@@ -188,10 +254,11 @@ async fn missing_story_id_rejected_1399() {
 
 #[tokio::test]
 async fn missing_position_rejected_1399() {
+    let (dispatch, _rx) = dispatch_channel();
     let mut m = serde_json::Map::new();
     m.insert("iteration_id".into(), serde_json::json!(1397));
     m.insert("story_id".into(), serde_json::json!(1500));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None).await;
+    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None, &dispatch).await;
     let err = result.expect_err("missing position must be rejected");
     assert!(
         err.contains("position"),
@@ -201,24 +268,22 @@ async fn missing_position_rejected_1399() {
 
 #[tokio::test]
 async fn add_records_the_member_in_the_iterations_ordered_stories_1399() {
-    let store = Arc::new(BoardStore::new());
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    let iteration = iteration_seed(1397, "Telescopium");
-    let member = member_seed(1500, "child");
-    adapter.seed_stories(vec![iteration, member]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.refresh_all().await.unwrap();
-    handle_add_story_to_iteration(&args(1397, 1500, 250), "pm:claude-code", Some(&orch))
-        .await
-        .unwrap();
+    let orch = build_orchestrator(vec![
+        iteration_seed(1397, "Telescopium"),
+        member_seed(1500, "child"),
+    ])
+    .await;
+    let (dispatch, mut rx) = dispatch_channel();
+    handle_add_story_to_iteration(
+        &args(1397, 1500, 250),
+        "pm:claude-code",
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .unwrap();
     assert_eq!(
-        store
-            .iteration(StoryId::new(1397))
-            .expect("iteration present")
-            .stories,
+        stories_of(&upserted_iterations(&mut rx), 1397),
         vec![StoryId::new(1500)],
         "the member is recorded in the iteration's ordered stories (the parent holds the order)"
     );
@@ -226,8 +291,6 @@ async fn add_records_the_member_in_the_iterations_ordered_stories_1399() {
 
 #[tokio::test]
 async fn replace_semantic_overwrites_existing_membership_1399() {
-    let store = Arc::new(BoardStore::new());
-    let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut it1 = iteration_seed(1397, "Telescopium");
     it1.body = Some(
         IterationRelationships {
@@ -238,29 +301,24 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
     );
     let it2 = iteration_seed(1396, "Sextans");
     let member = member_seed(1500, "moving target");
-    adapter.seed_stories(vec![it1, it2, member]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.refresh_all().await.unwrap();
-    handle_add_story_to_iteration(&args(1396, 1500, 300), "pm:claude-code", Some(&orch))
-        .await
-        .unwrap();
+    let orch = build_orchestrator(vec![it1, it2, member]).await;
+    let (dispatch, mut rx) = dispatch_channel();
+    handle_add_story_to_iteration(
+        &args(1396, 1500, 300),
+        "pm:claude-code",
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .unwrap();
+    let dispatched = upserted_iterations(&mut rx);
     assert_eq!(
-        store
-            .iteration(StoryId::new(1396))
-            .expect("target iteration")
-            .stories,
+        stories_of(&dispatched, 1396),
         vec![StoryId::new(1500)],
         "the member is recorded in the new iteration"
     );
     assert!(
-        store
-            .iteration(StoryId::new(1397))
-            .expect("prior iteration")
-            .stories
-            .is_empty(),
+        stories_of(&dispatched, 1397).is_empty(),
         "single-iteration-membership invariant: the story is cleared from the prior iteration"
     );
 }

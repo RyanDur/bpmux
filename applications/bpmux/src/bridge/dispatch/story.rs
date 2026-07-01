@@ -46,16 +46,18 @@ pub(crate) async fn dispatch_move_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    move_story::handle_move_story(&args, agent_name, refresh).await
+    move_story::handle_move_story(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_edit_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_edit_story(&args, agent_name, refresh).await
+    tools_stories::handle_edit_story(&args, agent_name, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_submit_verdict(

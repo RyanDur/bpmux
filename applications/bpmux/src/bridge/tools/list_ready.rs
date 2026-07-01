@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use crate::product_management::board::BoardStore;
+use crate::product_management::iteration::Iteration;
 use crate::product_management::story::{Story, StoryState};
 
 pub(in crate::bridge) async fn handle_list_ready(
     store: &Arc<BoardStore>,
+    iterations: &[Iteration],
 ) -> Result<String, String> {
-    let current_order = store
-        .iterations()
+    let current_order = iterations
         .iter()
         .find(|iteration| iteration.is_current)
         .map(|iteration| iteration.stories.clone())

@@ -3,27 +3,31 @@
 use super::readiness::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::{
-    decode_iteration, decode_outcome_from_story,
+    decode_iteration_from_story, decode_outcome_from_story,
 };
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use crate::workflow::bundled_default::bundled_default;
 use crate::workflow::config::WorkflowConfig;
 use chrono::Utc;
 
 fn readiness(it: &Story, workflow: &WorkflowConfig) -> IterationReadiness {
-    iteration_readiness(&decode_iteration(it), workflow)
+    iteration_readiness(&decode_iteration_from_story(it), workflow)
 }
 
 fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iteration::Iteration> {
     stories
         .iter()
-        .filter(|s| s.story_type() == StoryType::Iteration)
-        .map(decode_iteration)
+        .filter(|s| {
+            s.raw_labels()
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
         .collect()
 }
 
@@ -37,7 +41,6 @@ fn iteration(id: u64) -> Story {
     );
     s.raw_labels.push("iteration".to_string());
     s.body = Some("## Iteration overview\n\ncomposed".to_string());
-    s.story_type = crate::product_management::story::StoryType::Iteration;
     s
 }
 

@@ -104,15 +104,6 @@ mod gate_class_from_labels_and_story_type_tests_1460 {
     }
 
     #[test]
-    fn falls_back_to_story_type_iteration_owner_walk() {
-        let labels: Vec<String> = vec![];
-        assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryType::Iteration),
-            GateClass::OwnerWalk
-        );
-    }
-
-    #[test]
     fn legacy_gate_label_still_honored_when_no_awaiting_label() {
         let labels = vec![lbl("gate:owner-walk")];
         assert_eq!(

@@ -1,10 +1,12 @@
 use super::helpers::{compose_iteration_body, require_nonempty_string, role_from_name};
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_create_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let workflow = crate::workflow::current_workflow();
     let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
@@ -25,59 +27,45 @@ pub(crate) async fn handle_create_iteration(
     )?;
     let r = refresh
         .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
-    let existing_open_iteration = r.iterations().into_iter().find(|it| {
-        !it.complete
-            && it
-                .content
-                .title
-                .eq_ignore_ascii_case(&format!("Iteration {name}"))
-    });
+    let existing_open_iteration = r
+        .iterations()
+        .into_iter()
+        .find(|it| !it.complete && it.title.eq_ignore_ascii_case(&format!("Iteration {name}")));
     if let Some(existing) = existing_open_iteration {
         return Err(format!(
             "iteration named '{name}' already open as #{n}; close it first or pick a different name (#1281 sister-discipline: duplicate-collision rejected at create-time)",
-            n = existing
-                .id()
-                .saved_id()
-                .map(|id| id.value())
-                .unwrap_or_default()
+            n = existing.id.value()
         ));
     }
     let title = format!("Iteration {name}");
     let body = compose_iteration_body(name);
-    let id = r
-        .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
-        .await
-        .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
-    let meta = crate::product_management::board::events::EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
-    };
-    r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
-        meta: meta.clone(),
-        id: StoryId::new(id),
-        title: title.clone(),
-        body: body.clone(),
-        initial_state: crate::product_management::story::StoryState::Icebox,
-        story_type: crate::product_management::story::StoryType::Iteration,
-    })
-    .map_err(|e| format!("#{id} iteration created but enqueue failed: {e}"))?;
-    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
-        meta: meta.clone(),
-        id: StoryId::new(id),
-        label: "iteration".to_string(),
-    })
-    .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
     let next_order = r
         .iterations()
         .into_iter()
-        .filter(|it| !it.complete && it.id().saved_id() != Some(StoryId::new(id)))
+        .filter(|it| !it.complete)
         .filter_map(|it| it.iteration_order)
         .max()
         .map_or(
             crate::product_management::iteration::label::DEFAULT_FIRST_POSITION,
             |m| m + crate::product_management::iteration::label::DEFAULT_STEP,
         );
+    let id = r
+        .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
+        .await
+        .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
+    let filed_by = crate::transport::ws::short_name(agent_name).to_string();
+    let filed_at = chrono::Utc::now();
+    let meta = crate::product_management::board::events::EventMeta {
+        actor: filed_by.clone(),
+        ts: filed_at,
+        peer_id: crate::product_management::board::PeerId::local(),
+    };
+    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
+        meta: meta.clone(),
+        id: StoryId::new(id),
+        label: "iteration".to_string(),
+    })
+    .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
         id: StoryId::new(id),
@@ -85,5 +73,21 @@ pub(crate) async fn handle_create_iteration(
             .encode_iteration_order(next_order),
     })
     .map_err(|e| format!("#{id} iteration-order label enqueue failed: {e}"))?;
+    dispatch.dispatch(crate::store::AppAction::Iteration(
+        crate::product_management::iteration::IterationAction::Upserted(vec![Iteration {
+            id: IterationId::new(id),
+            title: title.clone(),
+            body: Some(body),
+            filed_at,
+            filed_by,
+            outcome: None,
+            iteration_order: Some(next_order),
+            stories: Vec::new(),
+            review_closers: Vec::new(),
+            dev_ok_by: Vec::new(),
+            is_current: false,
+            complete: false,
+        }]),
+    ));
     Ok(format!("iteration created: #{id} {title}"))
 }

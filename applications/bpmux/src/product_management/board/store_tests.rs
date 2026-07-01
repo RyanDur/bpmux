@@ -6,8 +6,8 @@ use super::events::{BoardEvent, EventMeta, LabelDerivedFields, event_wins};
 use super::peer::PeerId;
 use super::store::{BoardStore, StoreChange};
 use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, iteration_membership_from_labels, parent_epic_from_labels,
-    story_type_from_labels_or_title, tags_from_labels,
+    acceptor_from_labels, decode_iteration_from_story, iteration_membership_from_labels,
+    parent_epic_from_labels, story_type_from_labels_or_title, tags_from_labels,
 };
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
@@ -598,60 +598,41 @@ fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
     );
 }
 
-#[test]
-fn iteration_accessor_returns_the_typed_iteration_for_an_iteration_issue() {
-    let store = BoardStore::new();
+fn iteration_at(store: &BoardStore, id: u64) -> crate::product_management::iteration::Iteration {
+    decode_iteration_from_story(
+        &store
+            .backing_story(StoryId::new(id))
+            .expect("iteration issue present in the store"),
+    )
+}
+
+fn seed_iteration_issue(store: &BoardStore, id: u64) {
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1400),
+        id: StoryId::new(id),
         title: "Iteration Vela".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Iteration,
+        story_type: StoryType::default(),
     });
-    store.apply(&BoardEvent::StoryCreated {
+    store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
-        id: StoryId::new(42),
-        title: "A regular story".to_string(),
-        body: "b".to_string(),
-        initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        id: StoryId::new(id),
+        label: "iteration".to_string(),
     });
-    assert_eq!(
-        store
-            .iteration(StoryId::new(1400))
-            .map(|it| it.id().saved_id()),
-        Some(Some(StoryId::new(1400))),
-        "iteration(n) returns the typed Iteration for an iteration issue"
-    );
-    assert!(
-        store.iteration(StoryId::new(42)).is_none(),
-        "iteration(n) returns None for a non-iteration issue"
-    );
-    assert!(
-        store.iteration(StoryId::new(9999)).is_none(),
-        "iteration(n) returns None for an absent issue"
-    );
 }
 
 #[test]
 fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703() {
     let store = BoardStore::new();
-    store.apply(&BoardEvent::StoryCreated {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        title: "Iteration Vela".to_string(),
-        body: "b".to_string(),
-        initial_state: StoryState::Ready,
-        story_type: StoryType::Iteration,
-    });
+    seed_iteration_issue(&store, 1);
     store.apply(&BoardEvent::TagAdded {
         meta: meta("designer", 2026, "local"),
         id: StoryId::new(1),
         label: "iteration-review-closed.designer".to_string(),
     });
     assert_eq!(
-        store.iteration(StoryId::new(1)).unwrap().review_closers,
+        iteration_at(&store, 1).review_closers,
         vec!["designer".to_string()],
         "the review-close label add re-derives the closer-set from the recorded act"
     );
@@ -661,11 +642,7 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
         label: "iteration-review-closed.designer".to_string(),
     });
     assert!(
-        store
-            .iteration(StoryId::new(1))
-            .unwrap()
-            .review_closers
-            .is_empty(),
+        iteration_at(&store, 1).review_closers.is_empty(),
         "removing the review-close label clears the closer — derived, never stale"
     );
 }
@@ -673,21 +650,14 @@ fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703(
 #[test]
 fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
     let store = BoardStore::new();
-    store.apply(&BoardEvent::StoryCreated {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        title: "Iteration Vela".to_string(),
-        body: "b".to_string(),
-        initial_state: StoryState::Ready,
-        story_type: StoryType::Iteration,
-    });
+    seed_iteration_issue(&store, 1);
     store.apply(&BoardEvent::TagAdded {
         meta: meta("dev", 2026, "local"),
         id: StoryId::new(1),
         label: "iteration-dev-ok.dev".to_string(),
     });
     assert_eq!(
-        store.iteration(StoryId::new(1)).unwrap().dev_ok_by,
+        iteration_at(&store, 1).dev_ok_by,
         vec!["dev".to_string()],
         "the dev-OK label add re-derives the approver-set from the recorded act"
     );
@@ -697,11 +667,7 @@ fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
         label: "iteration-dev-ok.dev".to_string(),
     });
     assert!(
-        store
-            .iteration(StoryId::new(1))
-            .unwrap()
-            .dev_ok_by
-            .is_empty(),
+        iteration_at(&store, 1).dev_ok_by.is_empty(),
         "removing the dev-OK label clears the approver — derived, never stale"
     );
 }

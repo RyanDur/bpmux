@@ -30,9 +30,9 @@ mod velocity_tests;
 
 pub use events::BoardEvent;
 pub use orchestrator::{
-    DrainOneOutcome, MutationId, OutcomeReader, QueuedEvent, RaceWindowBarrier, RefreshDriver,
-    SyncOrchestrator, SyncStatus, SyncTransition, acknowledge_dropped, default_outbox_path,
-    sync_transition,
+    DrainOneOutcome, IterationReader, MutationId, OutcomeReader, QueuedEvent, RaceWindowBarrier,
+    RefreshDriver, SyncOrchestrator, SyncStatus, SyncTransition, acknowledge_dropped,
+    default_outbox_path, sync_transition,
 };
 pub use peer::PeerId;
 pub use store::{BoardStore, PersistError, StoreChange};

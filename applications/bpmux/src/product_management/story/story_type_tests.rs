@@ -6,10 +6,6 @@ use super::story_type::{StoryKind, StoryType, story_type_from_title};
 fn story_type_from_title_reads_bpmux_title_conventions() {
     assert_eq!(story_type_from_title("[Epic] foo"), StoryType::Epic);
     assert_eq!(
-        story_type_from_title("[Iteration] Aquila"),
-        StoryType::Iteration
-    );
-    assert_eq!(
         story_type_from_title("[Bug] broken"),
         StoryType::Story(StoryKind::Bug)
     );
@@ -54,7 +50,6 @@ fn story_type_serde_representation_is_flat_and_stable_for_the_outbox() {
         (StoryType::Story(StoryKind::Bug), "\"Bug\""),
         (StoryType::Story(StoryKind::Chore), "\"Chore\""),
         (StoryType::Epic, "\"Epic\""),
-        (StoryType::Iteration, "\"Iteration\""),
     ] {
         assert_eq!(
             serde_json::to_string(&story_type).unwrap(),

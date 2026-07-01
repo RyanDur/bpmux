@@ -3,7 +3,12 @@
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
 use crate::product_management::story::StoryType;
+use crate::store::Dispatch;
 use crate::transport::protocol::ClientMessage;
+
+fn no_dispatch() -> Dispatch {
+    Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
+}
 
 #[test]
 fn role_from_name_extracts_short_role() {
@@ -220,7 +225,7 @@ fn move_args(
 async fn move_story_bare_column_move_is_pm_only_1548() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", None);
-        let err = crate::bridge::move_story::handle_move_story(&args, caller, None)
+        let err = crate::bridge::move_story::handle_move_story(&args, caller, None, &no_dispatch())
             .await
             .expect_err(&format!("{caller}: bare column-move must be role-rejected"));
         assert!(
@@ -234,7 +239,7 @@ async fn move_story_bare_column_move_is_pm_only_1548() {
 async fn move_story_positioned_move_is_pm_only_1548() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", Some(1));
-        let err = crate::bridge::move_story::handle_move_story(&args, caller, None)
+        let err = crate::bridge::move_story::handle_move_story(&args, caller, None, &no_dispatch())
             .await
             .expect_err(&format!("{caller}: positioned move must be role-rejected"));
         assert!(
@@ -248,9 +253,14 @@ async fn move_story_positioned_move_is_pm_only_1548() {
 async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
     for position in [None, Some(1)] {
         let args = move_args(42, "ready", position);
-        let err = crate::bridge::move_story::handle_move_story(&args, "pm:claude-code", None)
-            .await
-            .expect_err("pm passes the role-gate then hits refresh-absent");
+        let err = crate::bridge::move_story::handle_move_story(
+            &args,
+            "pm:claude-code",
+            None,
+            &no_dispatch(),
+        )
+        .await
+        .expect_err("pm passes the role-gate then hits refresh-absent");
         assert!(
             !err.contains("workflow-role-not-allowed"),
             "pm must NOT be role-rejected (position={position:?}); got {err}"

@@ -50,12 +50,7 @@ pub fn current_iteration_id(iterations: &[super::Iteration]) -> Option<Iteration
     iterations
         .iter()
         .find(|iteration| !iteration.complete && iteration.is_current)
-        .and_then(|iteration| {
-            iteration
-                .id()
-                .saved_id()
-                .map(|id| IterationId::new(id.value()))
-        })
+        .map(|iteration| iteration.id)
 }
 
 pub fn members_of_iteration(stories: &[Story], iteration_id: IterationId) -> Vec<u64> {

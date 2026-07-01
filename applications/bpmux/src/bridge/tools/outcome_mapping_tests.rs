@@ -4,9 +4,9 @@
 use crate::bridge::tools_stories::{
     handle_reorder_outcome_iteration, handle_unmap_outcome_iteration,
 };
-use crate::product_management::board::OutcomeReader;
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
+use crate::product_management::board::adapters::github::{
+    decode_iteration_from_story, decode_outcome_from_story,
+};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
@@ -14,9 +14,10 @@ use crate::product_management::board::adapters::relationships::{
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::SourceAdapter;
-use crate::product_management::iteration::IterationId;
+use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryState};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -29,9 +30,47 @@ impl OutcomeReader for SeededOutcomes {
     }
 }
 
+struct SeededIterations(Vec<Iteration>);
+impl IterationReader for SeededIterations {
+    fn iterations(&self) -> Vec<Iteration> {
+        self.0.clone()
+    }
+}
+
+fn iteration_reader_from(stories: &[Story]) -> Arc<dyn IterationReader> {
+    let iterations: Vec<Iteration> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        })
+        .map(decode_iteration_from_story)
+        .collect();
+    Arc::new(SeededIterations(iterations))
+}
+
 fn dispatch() -> Dispatch {
     let (tx, _rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
     Dispatch::new(tx)
+}
+
+fn dispatch_channel() -> (Dispatch, tokio::sync::mpsc::UnboundedReceiver<AppAction>) {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
+    (Dispatch::new(tx), rx)
+}
+
+fn iteration_upserted(rx: &mut tokio::sync::mpsc::UnboundedReceiver<AppAction>) -> Vec<Iteration> {
+    let mut found = Vec::new();
+    while let Ok(action) = rx.try_recv() {
+        if let AppAction::Iteration(
+            crate::product_management::iteration::IterationAction::Upserted(iterations),
+        ) = action
+        {
+            found.extend(iterations);
+        }
+    }
+    found
 }
 
 fn outcome(id: u64, iterations: Vec<u64>) -> Story {
@@ -62,7 +101,6 @@ fn iteration_for(id: u64, outcome_id: u64) -> Story {
         "pm".into(),
     );
     s.raw_labels.push("iteration".to_string());
-    s.story_type = StoryType::Iteration;
     s.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(outcome_id)),
@@ -91,6 +129,7 @@ async fn build_refresh(
         .map(decode_outcome_from_story)
         .collect();
     orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
+    orch.bind_iteration_reader(iteration_reader_from(&stories));
     (orch, adapter)
 }
 
@@ -178,16 +217,14 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
 async fn unmap_leaves_the_iteration_itself_untouched_1763() {
     let (refresh, _adapter) =
         build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
-    handle_unmap_outcome_iteration(
-        &args(700, 710),
-        "pm:claude-code",
-        Some(&refresh),
-        &dispatch(),
-    )
-    .await
-    .expect("pm unmaps");
-    let iteration = refresh
-        .iteration(IterationId::new(710))
+    let (dispatch, mut rx) = dispatch_channel();
+    handle_unmap_outcome_iteration(&args(700, 710), "pm:claude-code", Some(&refresh), &dispatch)
+        .await
+        .expect("pm unmaps");
+    let dispatched = iteration_upserted(&mut rx);
+    let iteration = dispatched
+        .iter()
+        .find(|it| it.id == IterationId::new(710))
         .expect("the iteration itself still exists — unmap removes only the relation");
     assert_eq!(
         iteration.builds_outcome(),
