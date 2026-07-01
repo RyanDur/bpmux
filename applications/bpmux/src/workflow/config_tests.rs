@@ -1,113 +1,74 @@
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
-mod gate_class_from_labels_and_story_type_tests_1460 {
-    use crate::product_management::story::StoryKind;
+mod gate_class_from_acceptor_and_story_type_tests_1460 {
+    use crate::product_management::story::{Acceptor, StoryKind};
     use crate::workflow::config::*;
 
-    fn lbl(s: &str) -> String {
-        s.to_string()
-    }
-
     #[test]
-    fn label_first_priority_awaiting_owner_returns_owner_walk() {
-        let labels = vec![lbl("awaiting owner"), lbl("Feature")];
+    fn acceptor_owner_returns_owner_walk() {
         assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Feature),
+            gate_class_from_acceptor_and_story_type(Some(Acceptor::Owner), StoryKind::Feature),
             GateClass::OwnerWalk
         );
     }
 
     #[test]
-    fn label_first_priority_awaiting_team_returns_team_verifiable() {
-        let labels = vec![lbl("awaiting team"), lbl("Feature")];
+    fn acceptor_team_returns_team_verifiable() {
         assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Feature),
+            gate_class_from_acceptor_and_story_type(Some(Acceptor::Team), StoryKind::Feature),
             GateClass::TeamVerifiable
         );
     }
 
     #[test]
-    fn case_insensitive_label_match() {
-        let labels = vec![lbl("Awaiting Team")];
+    fn acceptor_dev_returns_dev_verifiable() {
         assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Feature),
-            GateClass::TeamVerifiable
+            gate_class_from_acceptor_and_story_type(Some(Acceptor::Dev), StoryKind::Chore),
+            GateClass::DevVerifiable
         );
-        let labels = vec![lbl("AWAITING OWNER")];
+    }
+
+    #[test]
+    fn acceptor_overrides_story_type() {
         assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Chore),
-            GateClass::OwnerWalk
+            gate_class_from_acceptor_and_story_type(Some(Acceptor::Dev), StoryKind::Feature),
+            GateClass::DevVerifiable
         );
     }
 
     #[test]
     fn falls_back_to_story_type_feature_owner_walk() {
-        let labels: Vec<String> = vec![];
         assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Feature),
+            gate_class_from_acceptor_and_story_type(None, StoryKind::Feature),
             GateClass::OwnerWalk
         );
     }
 
     #[test]
     fn falls_back_to_story_type_bug_team_verifiable() {
-        let labels: Vec<String> = vec![];
         assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Bug),
+            gate_class_from_acceptor_and_story_type(None, StoryKind::Bug),
             GateClass::TeamVerifiable
         );
     }
 
     #[test]
     fn falls_back_to_story_type_chore_dev_verifiable() {
-        let labels: Vec<String> = vec![];
         assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Chore),
+            gate_class_from_acceptor_and_story_type(None, StoryKind::Chore),
             GateClass::DevVerifiable
         );
     }
 
     #[test]
-    fn label_first_priority_awaiting_dev_returns_dev_verifiable() {
-        let labels = vec![lbl("awaiting dev"), lbl("Chore")];
-        assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Chore),
-            GateClass::DevVerifiable
-        );
+    fn acceptor_only_none_defaults_team_verifiable() {
+        assert_eq!(gate_class_from_acceptor(None), GateClass::TeamVerifiable);
     }
 
     #[test]
-    fn awaiting_dev_label_overrides_feature_story_type() {
-        let labels = vec![lbl("awaiting dev")];
+    fn acceptor_only_owner_returns_owner_walk() {
         assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Feature),
-            GateClass::DevVerifiable
-        );
-    }
-
-    #[test]
-    fn legacy_gate_dev_verifiable_label_honored() {
-        let labels = vec![lbl("gate:dev-verifiable")];
-        assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Feature),
-            GateClass::DevVerifiable
-        );
-    }
-
-    #[test]
-    fn legacy_gate_label_still_honored_when_no_awaiting_label() {
-        let labels = vec![lbl("gate:owner-walk")];
-        assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Bug),
-            GateClass::OwnerWalk
-        );
-    }
-
-    #[test]
-    fn awaiting_label_wins_over_legacy_gate_label() {
-        let labels = vec![lbl("gate:team-verifiable"), lbl("awaiting owner")];
-        assert_eq!(
-            gate_class_from_labels_and_story_type(&labels, StoryKind::Bug),
+            gate_class_from_acceptor(Some(Acceptor::Owner)),
             GateClass::OwnerWalk
         );
     }

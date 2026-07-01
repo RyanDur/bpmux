@@ -49,6 +49,7 @@ mod verdict_substrate_integration_1407 {
             "dev".to_string(),
         );
         story.raw_labels = vec!["delivered".to_string(), "awaiting team".to_string()];
+        story.acceptor = Some(crate::product_management::story::Acceptor::Team);
         story
     }
 

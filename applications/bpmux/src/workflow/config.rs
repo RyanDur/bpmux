@@ -102,58 +102,33 @@ impl WorkflowConfig {
     }
 }
 
-pub fn gate_class_from_labels(labels: &[String]) -> GateClass {
-    for l in labels {
-        let lower = l.to_ascii_lowercase();
-        if lower == "awaiting team" {
-            return GateClass::TeamVerifiable;
-        }
-        if lower == "awaiting owner" {
-            return GateClass::OwnerWalk;
-        }
-        if lower == "awaiting dev" {
-            return GateClass::DevVerifiable;
-        }
+fn gate_class_for_acceptor(acceptor: crate::product_management::story::Acceptor) -> GateClass {
+    use crate::product_management::story::Acceptor;
+    match acceptor {
+        Acceptor::Team => GateClass::TeamVerifiable,
+        Acceptor::Owner => GateClass::OwnerWalk,
+        Acceptor::Dev => GateClass::DevVerifiable,
     }
-    for l in labels {
-        match l.as_str() {
-            "gate:owner-walk" => return GateClass::OwnerWalk,
-            "gate:team-verifiable" => return GateClass::TeamVerifiable,
-            "gate:dev-verifiable" => return GateClass::DevVerifiable,
-            _ => {}
-        }
-    }
-    GateClass::TeamVerifiable
 }
 
-pub fn gate_class_from_labels_and_story_type(
-    labels: &[String],
+pub fn gate_class_from_acceptor(
+    acceptor: Option<crate::product_management::story::Acceptor>,
+) -> GateClass {
+    acceptor
+        .map(gate_class_for_acceptor)
+        .unwrap_or(GateClass::TeamVerifiable)
+}
+
+pub fn gate_class_from_acceptor_and_story_type(
+    acceptor: Option<crate::product_management::story::Acceptor>,
     story_type: crate::product_management::story::StoryKind,
 ) -> GateClass {
-    for l in labels {
-        let lower = l.to_ascii_lowercase();
-        if lower == "awaiting team" {
-            return GateClass::TeamVerifiable;
-        }
-        if lower == "awaiting owner" {
-            return GateClass::OwnerWalk;
-        }
-        if lower == "awaiting dev" {
-            return GateClass::DevVerifiable;
-        }
-    }
-    for l in labels {
-        match l.as_str() {
-            "gate:owner-walk" => return GateClass::OwnerWalk,
-            "gate:team-verifiable" => return GateClass::TeamVerifiable,
-            "gate:dev-verifiable" => return GateClass::DevVerifiable,
-            _ => {}
-        }
-    }
     use crate::product_management::story::StoryKind;
-    match story_type {
-        StoryKind::Feature => GateClass::OwnerWalk,
-        StoryKind::Bug => GateClass::TeamVerifiable,
-        StoryKind::Chore => GateClass::DevVerifiable,
-    }
+    acceptor
+        .map(gate_class_for_acceptor)
+        .unwrap_or_else(|| match story_type {
+            StoryKind::Feature => GateClass::OwnerWalk,
+            StoryKind::Bug => GateClass::TeamVerifiable,
+            StoryKind::Chore => GateClass::DevVerifiable,
+        })
 }

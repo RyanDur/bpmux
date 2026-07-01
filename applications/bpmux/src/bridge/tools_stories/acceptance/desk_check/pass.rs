@@ -49,7 +49,7 @@ pub(crate) async fn handle_pass_desk_check(
     let story_opt = r_opt.and_then(|r| r.story(id));
     let class = story_opt
         .as_ref()
-        .map(|s| crate::workflow::gate_class_from_labels(&s.raw_labels))
+        .map(|s| crate::workflow::gate_class_from_acceptor(s.acceptor()))
         .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
     let transition = crate::workflow::resolve_transition(workflow, "pass-desk-check", class)
         .map_err(|e| e.as_json_string())?;

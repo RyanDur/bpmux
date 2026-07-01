@@ -14,8 +14,8 @@ mod loader_tests;
 mod verdict_persistence;
 
 pub use config::{
-    GateClass, Role, Section, State, Transition, WorkflowConfig, gate_class_from_labels,
-    gate_class_from_labels_and_story_type,
+    GateClass, Role, Section, State, Transition, WorkflowConfig, gate_class_from_acceptor,
+    gate_class_from_acceptor_and_story_type,
 };
 pub use gate::{
     CiSnapshot, EvidenceMessage, GateError, PriorFire, VerdictState, check_ci_green,
