@@ -9,6 +9,7 @@ pub(crate) async fn handle_retire_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "retire an outcome")?;
     let outcome_id = args
@@ -50,6 +51,10 @@ pub(crate) async fn handle_retire_outcome(
         .map_err(|e| format!("#{outcome_id} retire-tag enqueue failed: {e}"))?;
     }
 
+    dispatch.dispatch(crate::store::AppAction::Outcome(
+        crate::product_management::outcome::OutcomeAction::Upserted(vec![outcome.retired()]),
+    ));
+
     let orphaned = outcome.iterations.len();
     let mapping_note = match orphaned {
         0 => String::new(),
@@ -57,6 +62,6 @@ pub(crate) async fn handle_retire_outcome(
     };
     Ok(format!(
         "#{outcome_id} {} retired (reason: {reason}){mapping_note}; it no longer appears in bpmux roadmap",
-        outcome.content.title
+        outcome.title
     ))
 }

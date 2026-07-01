@@ -22,6 +22,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             ),
             next_mutation_id: AtomicU64::new(1),
             action_tx: None,
+            outcome_reader: std::sync::OnceLock::new(),
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             ci_state_store: None,
             race_window_barrier: None,
@@ -71,6 +72,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             ),
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
+            outcome_reader: std::sync::OnceLock::new(),
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             ci_state_store: None,
             race_window_barrier: None,
@@ -99,6 +101,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             ),
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
+            outcome_reader: std::sync::OnceLock::new(),
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             ci_state_store: None,
             race_window_barrier: None,
@@ -107,7 +110,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     pub fn with_action_tx(
         mut self,
-        tx: tokio::sync::mpsc::UnboundedSender<crate::store::StoreAction>,
+        tx: tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>,
     ) -> Self {
         self.action_tx = Some(tx);
         self

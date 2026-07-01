@@ -159,16 +159,16 @@ fn assert_metadata_axis_complete(decoded: &Story) {
 fn decode_story_metadata_decodes_story_type_from_label_into_the_domain_field() {
     let json = serde_json::json!({
         "number": 700,
-        "title": "north-star without a type prefix in the title",
+        "title": "an epic without a type prefix in the title",
         "state": "open",
-        "labels": [{"name": "outcome"}],
+        "labels": [{"name": "epic"}],
         "created_at": "2026-05-15T01:00:00+00:00",
         "user": {"login": "pm"},
     });
     let decoded = decode_story_metadata(&json).expect("decode");
     assert_eq!(
         decoded.story_type(),
-        crate::product_management::story::StoryType::Outcome,
+        crate::product_management::story::StoryType::Epic,
         "the codec decodes the type label into the stored story_type at ingest, not from the title"
     );
 }

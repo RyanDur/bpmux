@@ -1,7 +1,6 @@
 use super::BoardStore;
 use crate::product_management::board::adapters::github::decode_iteration;
 use crate::product_management::iteration::Iteration;
-use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{Story, StoryId, StoryKey, StoryState};
 
 impl BoardStore {
@@ -30,25 +29,6 @@ impl BoardStore {
                 .values()
                 .filter_map(|item| item.as_story().cloned())
                 .collect()
-        })
-    }
-
-    pub fn outcomes(&self) -> Vec<Outcome> {
-        self.store.select(|state| {
-            state
-                .stories
-                .values()
-                .filter_map(|item| item.as_outcome().cloned())
-                .collect()
-        })
-    }
-
-    pub fn outcome(&self, id: StoryId) -> Option<Outcome> {
-        self.store.select(|state| {
-            state
-                .stories
-                .get(&StoryKey::Saved(id))
-                .and_then(|item| item.as_outcome().cloned())
         })
     }
 

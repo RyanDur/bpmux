@@ -1,13 +1,10 @@
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::{
-    horizon_from_labels, horizon_order_from_labels,
-};
+use chrono::{DateTime, Utc};
+
 use crate::product_management::board::adapters::relationships::{
     OutcomeRelationships, Relationships,
 };
-use crate::product_management::board::item::Content;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{Horizon, Story, StoryKey, StoryState};
+use crate::product_management::story::Horizon;
 
 entity_id!(OutcomeId);
 
@@ -30,44 +27,16 @@ pub enum OutcomeLifecycle {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Outcome {
-    pub content: Content,
+    pub id: OutcomeId,
+    pub title: String,
+    pub body: Option<String>,
+    pub filed_at: DateTime<Utc>,
+    pub filed_by: String,
     pub lifecycle: OutcomeLifecycle,
     pub iterations: Vec<IterationId>,
 }
 
 impl Outcome {
-    pub fn from_story(story: &Story) -> Self {
-        let content = Content {
-            id: story.key(),
-            title: story.title().to_string(),
-            body: story.body().map(str::to_string),
-            filed_at: story.filed_at(),
-            filed_by: story.filed_by().to_string(),
-        };
-        let lifecycle = if story.state() == StoryState::Retired {
-            OutcomeLifecycle::Retired
-        } else {
-            OutcomeLifecycle::Active {
-                horizon: horizon_from_labels(story.raw_labels()),
-                horizon_order: horizon_order_from_labels(story.raw_labels()),
-            }
-        };
-        let iterations = story
-            .body()
-            .and_then(OutcomeRelationships::read_from_body)
-            .unwrap_or_default()
-            .iterations;
-        Outcome {
-            content,
-            lifecycle,
-            iterations,
-        }
-    }
-
-    pub fn id(&self) -> StoryKey {
-        self.content.id
-    }
-
     pub fn position_of(&self, iteration_id: IterationId) -> Option<u32> {
         self.iterations
             .iter()
@@ -95,65 +64,39 @@ impl Outcome {
 
     pub fn retired(&self) -> Outcome {
         Outcome {
-            content: self.content.clone(),
             lifecycle: OutcomeLifecycle::Retired,
-            iterations: self.iterations.clone(),
+            ..self.clone()
         }
     }
 
-    pub fn with_horizon_labels(&self, labels: &[String]) -> Outcome {
+    pub fn with_horizon(&self, horizon: Option<Horizon>, horizon_order: Option<u32>) -> Outcome {
         let lifecycle = match self.lifecycle {
             OutcomeLifecycle::Active { .. } => OutcomeLifecycle::Active {
-                horizon: horizon_from_labels(labels),
-                horizon_order: horizon_order_from_labels(labels),
+                horizon,
+                horizon_order,
             },
             OutcomeLifecycle::Retired => OutcomeLifecycle::Retired,
         };
         Outcome {
-            content: self.content.clone(),
             lifecycle,
-            iterations: self.iterations.clone(),
+            ..self.clone()
         }
     }
 
     pub fn with_body(&self, body: &str) -> Outcome {
         Outcome {
-            content: Content {
-                body: Some(body.to_string()),
-                ..self.content.clone()
-            },
-            lifecycle: self.lifecycle.clone(),
+            body: Some(body.to_string()),
             iterations: OutcomeRelationships::read_from_body(body)
                 .unwrap_or_default()
                 .iterations,
+            ..self.clone()
         }
     }
 
     pub fn with_title(&self, title: &str) -> Outcome {
         Outcome {
-            content: Content {
-                title: title.to_string(),
-                ..self.content.clone()
-            },
-            lifecycle: self.lifecycle.clone(),
-            iterations: self.iterations.clone(),
+            title: title.to_string(),
+            ..self.clone()
         }
-    }
-
-    pub fn encoded_labels(&self) -> Vec<String> {
-        let mut labels = Vec::new();
-        if let OutcomeLifecycle::Active {
-            horizon,
-            horizon_order,
-        } = self.lifecycle
-        {
-            if let Some(horizon) = horizon {
-                labels.push(GhLabelCodec.encode_horizon(horizon));
-            }
-            if let Some(order) = horizon_order {
-                labels.push(GhLabelCodec.encode_horizon_order(order));
-            }
-        }
-        labels
     }
 }

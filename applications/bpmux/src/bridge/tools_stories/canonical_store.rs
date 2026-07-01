@@ -1,5 +1,3 @@
-use crate::product_management::story::StoryId;
-
 pub(crate) async fn ensure_story_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     id: u64,
@@ -59,7 +57,7 @@ fn find_outcome_in_store(
     refresh
         .outcomes()
         .into_iter()
-        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(id)))
+        .find(|outcome| outcome.id == crate::product_management::outcome::OutcomeId::new(id))
 }
 
 fn not_an_outcome_message(id: u64) -> String {

@@ -2,12 +2,12 @@ use crate::bridge::tracker::{
     ConditionalIssue, ConditionalRunEntry, OctocrabStoryTracker, StoryTracker,
 };
 use crate::product_management::board::adapters::github::{
-    decode_free_comment, decode_gate_comments, decode_story_metadata,
-    filter_retired_empty_iterations,
+    decode_free_comment, decode_gate_comments, decode_outcome, decode_story_metadata,
+    filter_retired_empty_iterations, is_outcome_issue,
 };
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::item::ProductItem;
-use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
+use crate::product_management::board::sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story};
 use crate::store::CiPollFetch;
 
@@ -38,37 +38,47 @@ impl CiPollFetch for GitHubSourceAdapter {
 }
 
 impl SourceAdapter for GitHubSourceAdapter {
-    async fn ingest_metadata(&self) -> Result<Vec<ProductItem>, SyncError> {
+    async fn ingest_metadata(&self) -> Result<Ingested, SyncError> {
         self.ingest_metadata_since(None).await
     }
 
     async fn ingest_metadata_since(
         &self,
         since: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> Result<Vec<ProductItem>, SyncError> {
+    ) -> Result<Ingested, SyncError> {
         let values = self
             .inner
             .fetch_board_stories_since(since)
             .await
             .map_err(SyncError::Other)?;
         let received = values.len();
-        let mut out = Vec::with_capacity(received);
+        let mut stories = Vec::with_capacity(received);
+        let mut outcomes = Vec::new();
         let mut dropped = 0usize;
         for v in values.iter() {
-            if let Some(story) = decode_story_metadata(v) {
-                out.push(story);
+            if is_outcome_issue(v) {
+                match decode_outcome(v) {
+                    Some(outcome) => outcomes.push(outcome),
+                    None => dropped += 1,
+                }
+            } else if let Some(story) = decode_story_metadata(v) {
+                stories.push(story);
             } else {
                 dropped += 1;
             }
         }
-        let pre_filter = out.len();
-        out = filter_retired_empty_iterations(out);
-        let filtered_out = pre_filter - out.len();
+        let pre_filter = stories.len();
+        stories = filter_retired_empty_iterations(stories);
+        let filtered_out = pre_filter - stories.len();
         crate::diag::log_diag(&format!(
-            "github ingest_metadata_since(since={:?}): received {received} values, decoded {pre_filter} stories, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
+            "github ingest_metadata_since(since={:?}): received {received} values, decoded {pre_filter} stories + {} outcomes, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
             since.map(|s| s.to_rfc3339()),
+            outcomes.len(),
         ));
-        Ok(out.iter().map(ProductItem::from_story).collect())
+        Ok(Ingested {
+            items: stories.iter().map(ProductItem::from_story).collect(),
+            outcomes,
+        })
     }
 
     async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {

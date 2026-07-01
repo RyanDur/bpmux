@@ -2,6 +2,7 @@
 
 use super::drill::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
@@ -47,8 +48,7 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
         }
         .write_into_body("## Outcome\n"),
     );
-    s.story_type = StoryType::Outcome;
-    Outcome::from_story(&s)
+    decode_outcome_from_story(&s)
 }
 
 fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iteration::Iteration> {

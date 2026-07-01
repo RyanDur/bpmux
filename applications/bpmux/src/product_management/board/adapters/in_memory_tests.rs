@@ -33,6 +33,7 @@ async fn ingest_stories(adapter: &InMemorySourceAdapter) -> Vec<Story> {
         .ingest_metadata()
         .await
         .unwrap()
+        .items
         .iter()
         .filter_map(|item| item.backing_story().cloned())
         .collect()

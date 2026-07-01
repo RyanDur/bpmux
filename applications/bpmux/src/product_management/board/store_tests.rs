@@ -707,49 +707,6 @@ fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
 }
 
 #[test]
-fn tag_added_horizon_label_rederives_horizon_then_removal_clears_it_1738() {
-    let store = BoardStore::new();
-    store.apply(&BoardEvent::StoryCreated {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        title: "An outcome".to_string(),
-        body: "b".to_string(),
-        initial_state: StoryState::Icebox,
-        story_type: StoryType::Outcome,
-    });
-    store.apply(&BoardEvent::TagAdded {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "horizon.next".to_string(),
-    });
-    assert_eq!(
-        store
-            .outcomes()
-            .iter()
-            .find(|o| o.id().saved_id() == Some(StoryId::new(1)))
-            .unwrap()
-            .horizon(),
-        Some(crate::product_management::story::Horizon::Next),
-        "the horizon label add re-derives the typed horizon"
-    );
-    store.apply(&BoardEvent::TagRemoved {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "horizon.next".to_string(),
-    });
-    assert!(
-        store
-            .outcomes()
-            .iter()
-            .find(|o| o.id().saved_id() == Some(StoryId::new(1)))
-            .unwrap()
-            .horizon()
-            .is_none(),
-        "removing the horizon label clears it — derived, never stale"
-    );
-}
-
-#[test]
 fn tag_added_unknown_label_is_dropped() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {

@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::item::ProductItem;
-use crate::product_management::board::sync::{SourceAdapter, SyncError};
+use crate::product_management::board::sync::{Ingested, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
 mod mutation;
@@ -28,23 +29,30 @@ struct InnerState {
 }
 
 impl SourceAdapter for InMemorySourceAdapter {
-    async fn ingest_metadata(&self) -> Result<Vec<ProductItem>, SyncError> {
+    async fn ingest_metadata(&self) -> Result<Ingested, SyncError> {
         let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_ingest {
             return Err(SyncError::SourceUnreachable(
                 "in-memory test failure".into(),
             ));
         }
-        Ok(s.stories
-            .values()
-            .cloned()
-            .map(|mut story| {
-                if let Some(labels) = s.labels.get(&story.id.value()) {
-                    story.raw_labels = labels.clone();
-                }
-                ProductItem::from_story(&story)
-            })
-            .collect())
+        let mut items = Vec::new();
+        let mut outcomes = Vec::new();
+        for mut story in s.stories.values().cloned() {
+            if let Some(labels) = s.labels.get(&story.id.value()) {
+                story.raw_labels = labels.clone();
+            }
+            if story
+                .raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("outcome"))
+            {
+                outcomes.push(decode_outcome_from_story(&story));
+            } else {
+                items.push(ProductItem::from_story(&story));
+            }
+        }
+        Ok(Ingested { items, outcomes })
     }
 
     async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {

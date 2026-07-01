@@ -4,8 +4,8 @@ use crate::product_management::board::{BoardEvent, BoardStore};
 use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::label::current_iteration_id;
 use crate::product_management::story::{Acceptor, Story, StoryState};
+use crate::store::{AppAction, RosterMember, Store};
 use crate::store::{Presence, RosterAction};
-use crate::store::{RosterMember, Store, StoreAction};
 
 fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
     let current = current_iteration_id(iterations);
@@ -79,7 +79,7 @@ impl OwnerParkBroadcaster {
         let changes = owner_park_presence(&stories, &iterations, &roster, delivering);
         for (routing_id, presence) in changes {
             self.store
-                .dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+                .dispatch(AppAction::Roster(RosterAction::RosterPresenceChanged {
                     routing_id,
                     presence,
                 }))

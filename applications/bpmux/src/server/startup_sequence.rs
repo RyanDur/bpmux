@@ -99,18 +99,18 @@ pub(super) fn spawn_board_broadcast_loop(
 
 pub(super) async fn start_polling(store: &Arc<Store>, has_refresh: bool) {
     store
-        .dispatch(crate::store::StoreAction::Ci(
+        .dispatch(crate::store::AppAction::Ci(
             crate::store::CiAction::StartPolling,
         ))
         .await;
     if has_refresh {
         store
-            .dispatch(crate::store::StoreAction::Sync(
+            .dispatch(crate::store::AppAction::Sync(
                 crate::store::SyncAction::StartIngestPolling,
             ))
             .await;
         store
-            .dispatch(crate::store::StoreAction::Sync(
+            .dispatch(crate::store::AppAction::Sync(
                 crate::store::SyncAction::StartHydrationPolling,
             ))
             .await;

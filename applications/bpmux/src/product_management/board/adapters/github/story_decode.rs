@@ -97,7 +97,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     Some(story)
 }
 
-fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
+pub(super) fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
     let Some(labels) = v.get("labels").and_then(|x| x.as_array()) else {
         return Vec::new();
     };

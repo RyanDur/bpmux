@@ -31,11 +31,13 @@ mod stores_tests;
 #[cfg(test)]
 mod test_support;
 
-pub use action::{PollKind, StoreAction};
+pub use action::PollKind;
+pub use app::AppAction;
 pub use ci::{
     BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSessionBroadcaster, CiSnapshot,
     CiStateStoreWriter,
 };
+pub use dispatch::Dispatch;
 pub use owner_park::{OwnerParkBroadcaster, owner_park_presence};
 pub use reactions::{
     AggregatedReaction, ReactionsAction, ReactionsBroadcastListener, ReactionsSessionBroadcaster,
@@ -135,6 +137,11 @@ impl Store {
             self.parent_ct.clone(),
         ));
         self.app_store.add_listener(sync_poll.clone());
+        self.app_store
+            .add_listener(Arc::new(app::OutcomeBroadcast::new(
+                self.session.clone(),
+                refresh.clone(),
+            )));
         let github_drain = Arc::new(sync::GithubDrain::new(refresh, self.parent_ct.clone()));
         self.app_store.add_listener(github_drain.clone());
         self.sync_poll = Some(sync_poll);
@@ -152,7 +159,7 @@ impl Store {
 
     pub fn spawn_action_drainer(
         self: &Arc<Self>,
-        mut rx: tokio::sync::mpsc::UnboundedReceiver<StoreAction>,
+        mut rx: tokio::sync::mpsc::UnboundedReceiver<AppAction>,
     ) -> tokio::task::JoinHandle<()> {
         let this = Arc::clone(self);
         let parent_ct = self.parent_ct.clone();

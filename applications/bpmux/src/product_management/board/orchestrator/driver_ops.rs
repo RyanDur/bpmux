@@ -30,6 +30,17 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.mutate(event)
     }
 
+    fn bind_outcome_reader(&self, reader: Arc<dyn super::OutcomeReader>) {
+        let _ = self.outcome_reader.set(reader);
+    }
+
+    fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
+        self.outcome_reader
+            .get()
+            .map(|reader| reader.outcomes())
+            .unwrap_or_default()
+    }
+
     fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome> {
         Box::pin(self.drain_one_by_id(id))
     }

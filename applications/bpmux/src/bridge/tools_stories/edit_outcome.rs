@@ -6,6 +6,7 @@ pub(crate) async fn handle_edit_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "edit an outcome")?;
     let outcome_id = args
@@ -19,20 +20,25 @@ pub(crate) async fn handle_edit_outcome(
     }
 
     let r = refresh.ok_or("edit_outcome requires refresh (RefreshDriver)")?;
-    ensure_outcome_in_canonical_store(r, outcome_id).await?;
+    let mut outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
 
     let mut updated: Vec<&str> = Vec::new();
     if let Some(t) = title {
         r.update_title(outcome_id, t.to_string())
             .await
             .map_err(|e| format!("#{outcome_id} title update failed: {e}"))?;
+        outcome = outcome.with_title(t);
         updated.push("title");
     }
     if let Some(b) = body {
         r.update_body(outcome_id, b.to_string())
             .await
             .map_err(|e| format!("#{outcome_id} why update failed: {e}"))?;
+        outcome = outcome.with_body(b);
         updated.push("why");
     }
+    dispatch.dispatch(crate::store::AppAction::Outcome(
+        crate::product_management::outcome::OutcomeAction::Upserted(vec![outcome]),
+    ));
     Ok(format!("#{outcome_id} {} updated", updated.join(" + ")))
 }

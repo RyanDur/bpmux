@@ -2,14 +2,41 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::handle_edit_outcome;
+use crate::product_management::board::OutcomeReader;
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
+use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
+use crate::product_management::story::{Horizon, Story, StoryId, StoryKind, StoryState, StoryType};
+use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedReceiver;
+
+struct SeededOutcomes(Vec<Outcome>);
+impl OutcomeReader for SeededOutcomes {
+    fn outcomes(&self) -> Vec<Outcome> {
+        self.0.clone()
+    }
+}
+
+fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
+    (Dispatch::new(tx), rx)
+}
+
+fn upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Outcome> {
+    let mut found = Vec::new();
+    while let Ok(action) = rx.try_recv() {
+        if let AppAction::Outcome(OutcomeAction::Upserted(outcomes)) = action {
+            found = outcomes;
+        }
+    }
+    found
+}
 
 fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
@@ -28,12 +55,34 @@ fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     s
 }
 
+fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
+    let mut s = Story::new_minimal(
+        StoryId::new(id),
+        title.to_string(),
+        StoryState::Icebox,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    s.raw_labels = labels.iter().map(ToString::to_string).collect();
+    s
+}
+
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
+    adapter.seed_stories(stories.clone());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
+    let seeded: Vec<Outcome> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("outcome"))
+        })
+        .map(decode_outcome_from_story)
+        .collect();
+    orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
     orch
 }
 
@@ -49,77 +98,72 @@ fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Va
     m
 }
 
-fn roadmap_name(refresh: &Arc<dyn RefreshDriver>, id: u64) -> Option<String> {
-    crate::view::roadmap::roadmap_cards(refresh)
-        .into_iter()
-        .find(|c| c.id.value() == id)
-        .map(|c| c.name)
-}
-
 #[tokio::test]
 async fn editing_an_outcome_title_reflects_as_its_roadmap_name_1760() {
-    let refresh = build_refresh(vec![seed(
+    let refresh = build_refresh(vec![seed_outcome(
         700,
         "Stale headline why",
-        StoryType::Outcome,
         &["outcome", "horizon.now"],
     )])
     .await;
+    let (dispatch, mut rx) = dispatch_channel();
     handle_edit_outcome(
         &args(700, Some("Agents reason from the shared substrate"), None),
         "pm:claude-code",
         Some(&refresh),
+        &dispatch,
     )
     .await
     .expect("pm edits the outcome title");
+    let outcomes = upserted(&mut rx);
+    let outcome = outcomes
+        .iter()
+        .find(|o| o.id == OutcomeId::new(700))
+        .expect("the edit dispatches the updated outcome optimistically");
     assert_eq!(
-        roadmap_name(&refresh, 700).as_deref(),
-        Some("Agents reason from the shared substrate"),
-        "the title edit reflects as the roadmap name (read<->write through the same derive bpmux roadmap serves) — and the outcome stays in its Now band"
+        outcome.title, "Agents reason from the shared substrate",
+        "the title edit is the roadmap name (read<->write through the same outcome the bpmux roadmap serves)"
+    );
+    assert_eq!(
+        outcome.horizon(),
+        Some(Horizon::Now),
+        "and the outcome stays in its Now band"
     );
 }
 
 #[tokio::test]
 async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read_1760() {
-    let refresh = build_refresh(vec![seed(
-        700,
-        "X",
-        StoryType::Outcome,
-        &["outcome", "horizon.now"],
-    )])
-    .await;
+    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (dispatch, mut rx) = dispatch_channel();
     handle_edit_outcome(
         &args(700, None, Some("**Benefit:** agents plan from one substrate, no drift")),
         "pm:claude-code",
         Some(&refresh),
+        &dispatch,
     )
     .await
     .expect("pm edits the outcome why with a plain why-body — no ATP gate, since an outcome is not acceptance-test-bearing");
-    let outcomes = refresh.outcomes();
+    let outcomes = upserted(&mut rx);
     let outcome = outcomes
         .iter()
-        .find(|o| o.id().saved_id() == Some(StoryId::new(700)))
+        .find(|o| o.id == OutcomeId::new(700))
         .expect("present");
     assert_eq!(
-        outcome.content.body.as_deref(),
+        outcome.body.as_deref(),
         Some("**Benefit:** agents plan from one substrate, no drift"),
-        "the why persists as the disclosure-detail (reflected via the outcome, not the token-frugal roadmap view)"
+        "the why persists as the disclosure-detail (reflected via the optimistic outcome dispatch)"
     );
 }
 
 #[tokio::test]
 async fn edit_outcome_is_pm_lane_non_pm_refused_1760() {
-    let refresh = build_refresh(vec![seed(
-        700,
-        "X",
-        StoryType::Outcome,
-        &["outcome", "horizon.now"],
-    )])
-    .await;
+    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (dispatch, _rx) = dispatch_channel();
     let err = handle_edit_outcome(
         &args(700, Some("Y"), None),
         "dev:claude-code",
         Some(&refresh),
+        &dispatch,
     )
     .await
     .expect_err("dev cannot edit an outcome (pm-lane)");
@@ -135,10 +179,12 @@ async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
         &["enhancement"],
     )])
     .await;
+    let (dispatch, _rx) = dispatch_channel();
     let err = handle_edit_outcome(
         &args(700, Some("Y"), None),
         "pm:claude-code",
         Some(&refresh),
+        &dispatch,
     )
     .await
     .expect_err("outcome edit aimed at a non-outcome is refused");
@@ -150,16 +196,16 @@ async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
 
 #[tokio::test]
 async fn edit_outcome_with_no_change_is_rejected_1760() {
-    let refresh = build_refresh(vec![seed(
-        700,
-        "X",
-        StoryType::Outcome,
-        &["outcome", "horizon.now"],
-    )])
-    .await;
-    let err = handle_edit_outcome(&args(700, None, None), "pm:claude-code", Some(&refresh))
-        .await
-        .expect_err("editing with neither --title nor --body is a no-op request");
+    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (dispatch, _rx) = dispatch_channel();
+    let err = handle_edit_outcome(
+        &args(700, None, None),
+        "pm:claude-code",
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect_err("editing with neither --title nor --body is a no-op request");
     assert!(
         err.contains("--title") && err.contains("--body"),
         "the error names the fix: {err}"

@@ -44,9 +44,9 @@ impl OutcomeView {
             })
             .collect();
         Self {
-            id: outcome.id().saved_id().map(|id| id.value()).unwrap_or(0),
-            title: outcome.content.title.clone(),
-            body: outcome.content.body.clone().unwrap_or_default(),
+            id: outcome.id.value(),
+            title: outcome.title.clone(),
+            body: outcome.body.clone().unwrap_or_default(),
             horizon: outcome.horizon().map(|horizon| horizon.as_str()),
             horizon_order: outcome.horizon_order(),
             outcome_readiness: outcome_readiness(outcome, all_iterations, workflow),

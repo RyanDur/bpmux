@@ -28,6 +28,7 @@ pub(crate) async fn handle_unmap_outcome_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "unmap an iteration from an outcome")?;
     let outcome_id = args
@@ -43,7 +44,6 @@ pub(crate) async fn handle_unmap_outcome_iteration(
     let outcome = verify_iteration_mapped(r, outcome_id, iteration_id).await?;
 
     let mut parent = outcome
-        .content
         .body
         .as_deref()
         .and_then(OutcomeRelationships::read_from_body)
@@ -51,10 +51,14 @@ pub(crate) async fn handle_unmap_outcome_iteration(
     parent
         .iterations
         .retain(|id| *id != IterationId::new(iteration_id));
-    let outcome_body = parent.write_into_body(outcome.content.body.as_deref().unwrap_or_default());
+    let outcome_body = parent.write_into_body(outcome.body.as_deref().unwrap_or_default());
+    let optimistic = outcome.with_body(&outcome_body);
     r.update_body(outcome_id, outcome_body)
         .await
         .map_err(|e| format!("#{outcome_id} iteration-unmap body update failed: {e}"))?;
+    dispatch.dispatch(crate::store::AppAction::Outcome(
+        crate::product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
+    ));
 
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let mut child = iteration
@@ -101,7 +105,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
     let band_size = reorder_iterations_within_outcome(
         r,
         outcome_id,
-        outcome.content.body.as_deref(),
+        outcome.body.as_deref(),
         iteration_id,
         position,
     )

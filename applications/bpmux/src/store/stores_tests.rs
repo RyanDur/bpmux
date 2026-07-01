@@ -9,8 +9,8 @@ use tokio_util::sync::CancellationToken;
 
 use super::test_support::eventually;
 use super::{
-    AggregatedReaction, Presence, ReactionsAction, ReactionsBroadcastListener, RosterAction,
-    RosterBroadcastListener, RosterMember, RosterRole, Store, StoreAction,
+    AggregatedReaction, AppAction, Presence, ReactionsAction, ReactionsBroadcastListener,
+    RosterAction, RosterBroadcastListener, RosterMember, RosterRole, Store,
 };
 use crate::message::Message;
 use crate::session::Session;
@@ -61,7 +61,7 @@ async fn a_reactions_change_does_not_broadcast_roster() {
     let roster_rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(roster_rec.clone());
 
-    orch.dispatch(StoreAction::Reactions(ReactionsAction::ReactionToggled {
+    orch.dispatch(AppAction::Reactions(ReactionsAction::ReactionToggled {
         channel: "broadcast".to_string(),
         message_key: "k1".to_string(),
         emoji: "👍".to_string(),
@@ -82,7 +82,7 @@ async fn reactions_action_drives_reducer_and_fires_listener() {
     let rec = Arc::new(RecReactions::default());
     orch.add_reactions_listener(rec.clone());
 
-    orch.dispatch(StoreAction::Reactions(ReactionsAction::ReactionToggled {
+    orch.dispatch(AppAction::Reactions(ReactionsAction::ReactionToggled {
         channel: "broadcast".to_string(),
         message_key: "k1".to_string(),
         emoji: "👍".to_string(),
@@ -111,7 +111,7 @@ async fn reactions_toggle_off_clears_and_fires_listener() {
     let rec = Arc::new(RecReactions::default());
     orch.add_reactions_listener(rec.clone());
 
-    let toggle = StoreAction::Reactions(ReactionsAction::ReactionToggled {
+    let toggle = AppAction::Reactions(ReactionsAction::ReactionToggled {
         channel: "broadcast".to_string(),
         message_key: "k1".to_string(),
         emoji: "👍".to_string(),
@@ -134,7 +134,7 @@ async fn reactions_toggle_off_clears_and_fires_listener() {
 async fn reactions_aggregates_count_per_emoji_not_raw_events() {
     let orch = fresh_orch();
     let toggle_user = |user: &str| {
-        StoreAction::Reactions(ReactionsAction::ReactionToggled {
+        AppAction::Reactions(ReactionsAction::ReactionToggled {
             channel: "broadcast".to_string(),
             message_key: "k1".to_string(),
             emoji: "👍".to_string(),
@@ -157,7 +157,7 @@ async fn roster_member_upserted_fires_listener() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-owner".to_string(),
         name: "owner".to_string(),
         identity: "owner:electron".to_string(),
@@ -181,7 +181,7 @@ async fn roster_member_upserted_fires_listener() {
 async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_place_no_dup() {
     let orch = fresh_orch();
 
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-1".to_string(),
         name: "bpmux-designer".to_string(),
         identity: "bpmux-designer".to_string(),
@@ -189,7 +189,7 @@ async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_pla
         presence: Presence::Online,
     }))
     .await;
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-1".to_string(),
         name: "designer".to_string(),
         identity: "designer".to_string(),
@@ -215,7 +215,7 @@ async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_pla
 async fn roster_two_agents_sharing_a_display_are_two_rows_keyed_by_routing_id() {
     let orch = fresh_orch();
     for routing_id in ["sess-a", "sess-b"] {
-        orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
             routing_id: routing_id.to_string(),
             name: "dev".to_string(),
             identity: "dev".to_string(),
@@ -237,7 +237,7 @@ async fn roster_two_agents_sharing_a_display_are_two_rows_keyed_by_routing_id() 
 async fn roster_presence_change_targets_the_row_by_routing_id_not_a_shared_display() {
     let orch = fresh_orch();
     for routing_id in ["sess-a", "sess-b"] {
-        orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+        orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
             routing_id: routing_id.to_string(),
             name: "dev".to_string(),
             identity: "dev".to_string(),
@@ -246,7 +246,7 @@ async fn roster_presence_change_targets_the_row_by_routing_id_not_a_shared_displ
         }))
         .await;
     }
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterPresenceChanged {
         routing_id: "sess-a".to_string(),
         presence: Presence::Busy,
     }))
@@ -278,7 +278,7 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
         name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),
@@ -286,12 +286,12 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
         presence: Presence::Online,
     }))
     .await;
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterPresenceChanged {
         routing_id: "sess-dev".to_string(),
         presence: Presence::Online,
     }))
     .await;
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterPresenceChanged {
         routing_id: "sess-dev".to_string(),
         presence: Presence::Busy,
     }))
@@ -449,7 +449,7 @@ async fn roster_remove_fires_listener_when_member_existed() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-designer".to_string(),
         name: "designer".to_string(),
         identity: "designer:claude-code".to_string(),
@@ -457,11 +457,11 @@ async fn roster_remove_fires_listener_when_member_existed() {
         presence: Presence::Online,
     }))
     .await;
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberRemoved {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberRemoved {
         routing_id: "sess-designer".to_string(),
     }))
     .await;
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberRemoved {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberRemoved {
         routing_id: "sess-designer".to_string(),
     }))
     .await;
@@ -480,7 +480,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
     let rec = Arc::new(RecRoster::default());
     orch.add_roster_listener(rec.clone());
 
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
         name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),
@@ -488,7 +488,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
         presence: Presence::Online,
     }))
     .await;
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterPresenceChanged {
+    orch.dispatch(AppAction::Roster(RosterAction::RosterPresenceChanged {
         routing_id: "sess-dev".to_string(),
         presence: Presence::Blocked,
     }))

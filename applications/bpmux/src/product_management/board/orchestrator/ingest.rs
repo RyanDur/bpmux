@@ -14,7 +14,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         since: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<(), SyncError> {
         match self.adapter.ingest_metadata_since(since).await {
-            Ok(items) => {
+            Ok(ingested) => {
+                let crate::product_management::board::sync::Ingested { items, outcomes } = ingested;
                 let in_flight_label_stories = self.with_pending(|p| {
                     p.iter()
                         .filter(|q| {
@@ -35,6 +36,14 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                             .unwrap_or(true)
                     })
                     .collect::<Vec<_>>();
+                let fresh_outcomes = outcomes
+                    .into_iter()
+                    .filter(|outcome| {
+                        !in_flight_label_stories
+                            .iter()
+                            .any(|id| id.value() == outcome.id.value())
+                    })
+                    .collect::<Vec<_>>();
                 let backing: Vec<Story> = items
                     .iter()
                     .filter_map(|i| i.backing_story().cloned())
@@ -43,13 +52,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     crate::product_management::board::adapters::github::iterations_to_purge_as_retired_empty(
                         &backing,
                     );
-                if let Some(tx) = &self.action_tx {
-                    let outcomes = items
-                        .iter()
-                        .filter_map(|item| item.as_outcome().cloned())
-                        .collect::<Vec<_>>();
-                    let _ = tx.send(crate::store::StoreAction::Outcome(
-                        crate::product_management::outcome::OutcomeAction::Seeded(outcomes),
+                if let Some(tx) = &self.action_tx
+                    && !fresh_outcomes.is_empty()
+                {
+                    let _ = tx.send(crate::store::AppAction::Outcome(
+                        crate::product_management::outcome::OutcomeAction::Upserted(fresh_outcomes),
                     ));
                 }
                 self.store.seed_items(items);

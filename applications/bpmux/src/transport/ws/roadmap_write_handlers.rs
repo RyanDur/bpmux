@@ -20,9 +20,13 @@ pub(super) async fn handle_set_outcome_horizon(
         serde_json::json!(outcome_id.value()),
     );
     args.insert("to".to_string(), serde_json::json!(horizon));
-    if let Err(e) =
-        crate::bridge::dispatch_reprioritize_outcome(args, identity, ctx.orchestrator.as_ref())
-            .await
+    if let Err(e) = crate::bridge::dispatch_reprioritize_outcome(
+        args,
+        identity,
+        ctx.orchestrator.as_ref(),
+        ctx.dispatch,
+    )
+    .await
     {
         send_json(
             tx,
@@ -138,9 +142,13 @@ pub(super) async fn handle_reprioritize_outcome(
         serde_json::json!(outcome_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
-    if let Err(e) =
-        crate::bridge::dispatch_reprioritize_outcome(args, identity, ctx.orchestrator.as_ref())
-            .await
+    if let Err(e) = crate::bridge::dispatch_reprioritize_outcome(
+        args,
+        identity,
+        ctx.orchestrator.as_ref(),
+        ctx.dispatch,
+    )
+    .await
     {
         send_json(
             tx,

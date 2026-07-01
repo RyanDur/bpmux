@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{Outcome, OutcomeAction, OutcomeState, all, reduce};
+use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 
@@ -12,7 +13,7 @@ fn outcome(id: u64, title: &str) -> Outcome {
         Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    Outcome::from_story(&story)
+    decode_outcome_from_story(&story)
 }
 
 #[test]
@@ -23,7 +24,7 @@ fn seeded_replaces_the_outcome_collection() {
     )
     .expect("seeding into empty state changes it");
     assert_eq!(all(&next).len(), 1);
-    assert_eq!(all(&next)[0].content.title, "now thing");
+    assert_eq!(all(&next)[0].title, "now thing");
 }
 
 #[test]
@@ -44,9 +45,8 @@ fn upsert_replaces_a_matching_outcome_and_appends_a_new_one() {
     );
     assert_eq!(
         all.iter()
-            .find(|o| o.id() == outcome(700, "x").id())
+            .find(|o| o.id == outcome(700, "x").id)
             .unwrap()
-            .content
             .title,
         "after"
     );

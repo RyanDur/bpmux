@@ -26,8 +26,7 @@ pub async fn run_server(
     let tracker: transport::rest::TrackerHandle =
         crate::integrations::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
 
-    let (action_tx, action_rx) =
-        tokio::sync::mpsc::unbounded_channel::<crate::store::StoreAction>();
+    let (action_tx, action_rx) = tokio::sync::mpsc::unbounded_channel::<crate::store::AppAction>();
 
     let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
     let race_window_barrier = race_window_barrier_from_env();
@@ -94,6 +93,9 @@ pub async fn run_server(
         );
     }
     let store = std::sync::Arc::new(store_inner);
+    if let Some(refresh) = orchestrator.as_ref() {
+        refresh.bind_outcome_reader(store.outcome_reader());
+    }
     store.spawn_action_drainer(action_rx);
     wire_store_listeners(&store, &session, &ci_state_store);
     wire_startup_roster(&store, &session, &pty_registry, &routing_store).await;
@@ -116,6 +118,7 @@ pub async fn run_server(
         electron_capture_lock,
         orchestrator,
         store,
+        dispatch: crate::store::Dispatch::new(action_tx),
         pty_registry,
         routing_store,
         commitment_store,

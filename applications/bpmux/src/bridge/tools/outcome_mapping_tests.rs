@@ -4,19 +4,35 @@
 use crate::bridge::tools_stories::{
     handle_reorder_outcome_iteration, handle_unmap_outcome_iteration,
 };
+use crate::product_management::board::OutcomeReader;
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
+use crate::product_management::board::sync::SourceAdapter;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::OutcomeId;
+use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{Story, StoryId, StoryState, StoryType};
+use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
+
+struct SeededOutcomes(Vec<Outcome>);
+impl OutcomeReader for SeededOutcomes {
+    fn outcomes(&self) -> Vec<Outcome> {
+        self.0.clone()
+    }
+}
+
+fn dispatch() -> Dispatch {
+    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
+    Dispatch::new(tx)
+}
 
 fn outcome(id: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
@@ -27,7 +43,6 @@ fn outcome(id: u64, iterations: Vec<u64>) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
-    s.story_type = StoryType::Outcome;
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
@@ -58,13 +73,25 @@ fn iteration_for(id: u64, outcome_id: u64) -> Story {
     s
 }
 
-async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(
+    stories: Vec<Story>,
+) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
+    adapter.seed_stories(stories.clone());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, Arc::clone(&adapter)));
     orch.refresh_all().await.unwrap();
-    orch
+    let seeded: Vec<Outcome> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("outcome"))
+        })
+        .map(decode_outcome_from_story)
+        .collect();
+    orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
+    (orch, adapter)
 }
 
 fn args(outcome: u64, iteration: u64) -> Map<String, Value> {
@@ -74,24 +101,33 @@ fn args(outcome: u64, iteration: u64) -> Map<String, Value> {
         .unwrap()
 }
 
-fn outcome_iterations(refresh: &Arc<dyn RefreshDriver>, id: u64) -> Vec<u64> {
-    refresh
-        .outcomes()
+async fn reingested_outcome(adapter: &Arc<InMemorySourceAdapter>, id: u64) -> Outcome {
+    adapter
+        .ingest_metadata()
+        .await
+        .unwrap()
+        .outcomes
         .into_iter()
-        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(id)))
-        .map(|outcome| outcome.iterations.iter().map(|i| i.value()).collect())
-        .unwrap_or_default()
+        .find(|outcome| outcome.id == OutcomeId::new(id))
+        .expect("the outcome re-decodes from the persisted substrate")
 }
 
-fn drill_iteration_ids(refresh: &Arc<dyn RefreshDriver>, id: u64) -> Vec<u64> {
+async fn outcome_iterations(adapter: &Arc<InMemorySourceAdapter>, id: u64) -> Vec<u64> {
+    reingested_outcome(adapter, id)
+        .await
+        .iterations
+        .iter()
+        .map(|i| i.value())
+        .collect()
+}
+
+async fn drill_iteration_ids(
+    refresh: &Arc<dyn RefreshDriver>,
+    adapter: &Arc<InMemorySourceAdapter>,
+    id: u64,
+) -> Vec<u64> {
     let workflow = crate::workflow::current_workflow();
-    let Some(outcome) = refresh
-        .outcomes()
-        .into_iter()
-        .find(|outcome| outcome.id().saved_id() == Some(StoryId::new(id)))
-    else {
-        return vec![];
-    };
+    let outcome = reingested_outcome(adapter, id).await;
     crate::product_management::roadmap::drill::derive_outcome_drill_in(
         &outcome,
         &refresh.iterations(),
@@ -105,29 +141,34 @@ fn drill_iteration_ids(refresh: &Arc<dyn RefreshDriver>, id: u64) -> Vec<u64> {
 
 #[tokio::test]
 async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
-    let refresh = build_refresh(vec![
+    let (refresh, adapter) = build_refresh(vec![
         outcome(700, vec![710, 720]),
         iteration_for(710, 700),
         iteration_for(720, 700),
     ])
     .await;
     assert_eq!(
-        drill_iteration_ids(&refresh, 700),
+        drill_iteration_ids(&refresh, &adapter, 700).await,
         vec![710, 720],
         "both iterations build the outcome before unmap"
     );
 
-    handle_unmap_outcome_iteration(&args(700, 710), "pm:claude-code", Some(&refresh))
-        .await
-        .expect("pm unmaps the iteration from the outcome");
+    handle_unmap_outcome_iteration(
+        &args(700, 710),
+        "pm:claude-code",
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect("pm unmaps the iteration from the outcome");
 
     assert_eq!(
-        outcome_iterations(&refresh, 700),
+        outcome_iterations(&adapter, 700).await,
         vec![720],
         "the parent's ordered iteration list drops the unmapped iteration"
     );
     assert_eq!(
-        drill_iteration_ids(&refresh, 700),
+        drill_iteration_ids(&refresh, &adapter, 700).await,
         vec![720],
         "the unmapped iteration drops from the outcome's drill (read<->write over the real derive)"
     );
@@ -135,10 +176,16 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
 
 #[tokio::test]
 async fn unmap_leaves_the_iteration_itself_untouched_1763() {
-    let refresh = build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
-    handle_unmap_outcome_iteration(&args(700, 710), "pm:claude-code", Some(&refresh))
-        .await
-        .expect("pm unmaps");
+    let (refresh, _adapter) =
+        build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
+    handle_unmap_outcome_iteration(
+        &args(700, 710),
+        "pm:claude-code",
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect("pm unmaps");
     let iteration = refresh
         .iteration(IterationId::new(710))
         .expect("the iteration itself still exists — unmap removes only the relation");
@@ -155,14 +202,14 @@ async fn unmap_leaves_the_iteration_itself_untouched_1763() {
 
 #[tokio::test]
 async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
-    let refresh = build_refresh(vec![
+    let (refresh, adapter) = build_refresh(vec![
         outcome(700, vec![710, 720]),
         iteration_for(710, 700),
         iteration_for(720, 700),
     ])
     .await;
     assert_eq!(
-        drill_iteration_ids(&refresh, 700),
+        drill_iteration_ids(&refresh, &adapter, 700).await,
         vec![710, 720],
         "before: 710 leads 720"
     );
@@ -174,12 +221,12 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         .await
         .expect("pm reorders the iteration");
     assert_eq!(
-        outcome_iterations(&refresh, 700),
+        outcome_iterations(&adapter, 700).await,
         vec![720, 710],
         "moving 710 to the end clamps to the band size and lands it last — the parent holds the new order in one write"
     );
     assert_eq!(
-        drill_iteration_ids(&refresh, 700),
+        drill_iteration_ids(&refresh, &adapter, 700).await,
         vec![720, 710],
         "the outcome's drill reflects the new priority-order — 710 moved behind 720"
     );
@@ -187,19 +234,31 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
 
 #[tokio::test]
 async fn unmap_is_pm_lane_non_pm_refused_1763() {
-    let refresh = build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
-    let err = handle_unmap_outcome_iteration(&args(700, 710), "dev:claude-code", Some(&refresh))
-        .await
-        .expect_err("dev cannot unmap (pm-lane)");
+    let (refresh, _adapter) =
+        build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
+    let err = handle_unmap_outcome_iteration(
+        &args(700, 710),
+        "dev:claude-code",
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect_err("dev cannot unmap (pm-lane)");
     assert!(err.contains("pm"), "the refusal names the pm-lane: {err}");
 }
 
 #[tokio::test]
 async fn unmap_rejects_an_unmapped_iteration_1763() {
-    let refresh = build_refresh(vec![outcome(700, vec![]), iteration_for(710, 999)]).await;
-    let err = handle_unmap_outcome_iteration(&args(700, 710), "pm:claude-code", Some(&refresh))
-        .await
-        .expect_err("an iteration not mapped to the outcome cannot be unmapped from it");
+    let (refresh, _adapter) =
+        build_refresh(vec![outcome(700, vec![]), iteration_for(710, 999)]).await;
+    let err = handle_unmap_outcome_iteration(
+        &args(700, 710),
+        "pm:claude-code",
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect_err("an iteration not mapped to the outcome cannot be unmapped from it");
     assert!(
         err.contains("not mapped"),
         "the error explains it's not mapped: {err}"
@@ -216,10 +275,15 @@ async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary_1763() {
         "pm".into(),
     );
     feature.raw_labels.push("feature".to_string());
-    let refresh = build_refresh(vec![feature, iteration_for(710, 700)]).await;
-    let err = handle_unmap_outcome_iteration(&args(700, 710), "pm:claude-code", Some(&refresh))
-        .await
-        .expect_err("a non-outcome target is refused");
+    let (refresh, _adapter) = build_refresh(vec![feature, iteration_for(710, 700)]).await;
+    let err = handle_unmap_outcome_iteration(
+        &args(700, 710),
+        "pm:claude-code",
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect_err("a non-outcome target is refused");
     assert!(
         err.contains("not an Outcome"),
         "the error teaches the boundary: {err}"

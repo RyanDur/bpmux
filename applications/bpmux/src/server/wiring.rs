@@ -21,6 +21,7 @@ pub(super) struct RouterDeps {
     pub electron_capture_lock: Arc<tokio::sync::Mutex<()>>,
     pub orchestrator: OrchestratorHandle,
     pub store: Arc<Store>,
+    pub dispatch: crate::store::Dispatch,
     pub pty_registry: Arc<LivePtyRegistry>,
     pub routing_store: Arc<RoutingStore>,
     pub commitment_store: Arc<CommitmentStore>,
@@ -38,6 +39,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         electron_capture_lock,
         orchestrator,
         store,
+        dispatch,
         pty_registry,
         routing_store,
         commitment_store,
@@ -102,6 +104,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(electron_capture_lock))
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(store))
+        .layer(axum::Extension(dispatch))
         .layer(axum::Extension(pty_registry))
         .layer(axum::Extension(routing_store))
         .layer(axum::Extension(commitment_store))

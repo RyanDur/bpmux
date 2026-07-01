@@ -1,7 +1,6 @@
 use super::{Stories, story_mut};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::item::ProductItem;
-use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{Story, StoryId, StoryKey, StoryState, StoryType};
 
 #[allow(clippy::too_many_arguments)]
@@ -41,10 +40,7 @@ pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: 
         Some(ProductItem::Story(story))
         | Some(ProductItem::Iteration(story))
         | Some(ProductItem::Epic(story)) => story.state = new_state,
-        Some(ProductItem::Outcome(outcome)) if new_state == StoryState::Retired => {
-            *outcome = outcome.retired();
-        }
-        _ => {}
+        None => {}
     }
 }
 
@@ -56,7 +52,6 @@ pub(super) fn apply_body_fetched(w: &mut Stories, id: StoryId, body: &str, etag:
             story.body = Some(body.to_string());
             story.body_etag = etag.clone();
         }
-        Some(ProductItem::Outcome(outcome)) => *outcome = outcome.with_body(body),
         None => {}
     }
 }
@@ -66,7 +61,6 @@ pub(super) fn apply_title_updated(w: &mut Stories, id: StoryId, title: &str) {
         Some(ProductItem::Story(story))
         | Some(ProductItem::Iteration(story))
         | Some(ProductItem::Epic(story)) => story.title = title.to_string(),
-        Some(ProductItem::Outcome(outcome)) => *outcome = outcome.with_title(title),
         None => {}
     }
 }
@@ -76,7 +70,6 @@ pub(super) fn apply_body_updated(w: &mut Stories, id: StoryId, body: &str) {
         Some(ProductItem::Story(story))
         | Some(ProductItem::Iteration(story))
         | Some(ProductItem::Epic(story)) => story.body = Some(body.to_string()),
-        Some(ProductItem::Outcome(outcome)) => *outcome = outcome.with_body(body),
         None => {}
     }
 }
@@ -95,19 +88,6 @@ pub(super) fn apply_story_reopened(w: &mut Stories, id: StoryId) {
 
 pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story) {
     let key = StoryKey::Saved(id);
-    if story.story_type() == StoryType::Outcome {
-        let existing_body = w
-            .get(&key)
-            .and_then(ProductItem::as_outcome)
-            .and_then(|outcome| outcome.content.body.clone());
-        let base = Outcome::from_story(story);
-        let rebuilt = match (&base.content.body, existing_body) {
-            (None, Some(body)) => base.with_body(&body),
-            _ => base,
-        };
-        w.insert(key, ProductItem::Outcome(rebuilt));
-        return;
-    }
     match w.get_mut(&key) {
         Some(ProductItem::Story(existing))
         | Some(ProductItem::Iteration(existing))

@@ -62,7 +62,7 @@ pub async fn apply_reaction_toggle(
     crate::reactions::save(&session.dir, &reactions_store)
         .map_err(|e| format!("save reactions: {e}"))?;
     store
-        .dispatch(crate::store::StoreAction::Reactions(
+        .dispatch(crate::store::AppAction::Reactions(
             crate::store::ReactionsAction::ReactionToggled {
                 channel: body.channel.clone(),
                 message_key: body.message_key.clone(),

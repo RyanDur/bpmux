@@ -13,7 +13,6 @@ pub enum StoryType {
     Story(StoryKind),
     Epic,
     Iteration,
-    Outcome,
 }
 
 impl Default for StoryType {
@@ -26,7 +25,7 @@ impl StoryType {
     pub fn kind(self) -> Option<StoryKind> {
         match self {
             StoryType::Story(kind) => Some(kind),
-            StoryType::Epic | StoryType::Iteration | StoryType::Outcome => None,
+            StoryType::Epic | StoryType::Iteration => None,
         }
     }
 
@@ -37,7 +36,6 @@ impl StoryType {
             StoryType::Story(StoryKind::Chore) => "chore",
             StoryType::Epic => "epic",
             StoryType::Iteration => "iteration",
-            StoryType::Outcome => "outcome",
         }
     }
 
@@ -48,7 +46,6 @@ impl StoryType {
             StoryType::Story(StoryKind::Chore) => "Chore",
             StoryType::Epic => "Epic",
             StoryType::Iteration => "Iteration",
-            StoryType::Outcome => "Outcome",
         }
     }
 
@@ -59,7 +56,6 @@ impl StoryType {
             "Chore" => Some(StoryType::Story(StoryKind::Chore)),
             "Epic" => Some(StoryType::Epic),
             "Iteration" => Some(StoryType::Iteration),
-            "Outcome" => Some(StoryType::Outcome),
             _ => None,
         }
     }
@@ -86,9 +82,6 @@ pub fn story_type_from_title(title: &str) -> StoryType {
     }
     if lower.starts_with("[iteration") {
         return StoryType::Iteration;
-    }
-    if lower.starts_with("[outcome") {
-        return StoryType::Outcome;
     }
     StoryType::Story(story_kind_from_title(&lower))
 }

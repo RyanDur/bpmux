@@ -7,7 +7,6 @@ mod outbox_persistence_tests;
 mod reconcile_drain_via_refresh_tests;
 mod refresh_fetch_tests;
 mod slice_7_mutation_dispatch_tests;
-mod slice_8_outcome_dual_write_tests;
 mod staleness_tests;
 
 use chrono::{TimeZone, Utc};

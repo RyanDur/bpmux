@@ -105,6 +105,9 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
     ));
     let auth_state = AuthState::new(token.clone());
 
+    let (action_tx, _action_rx) = tokio::sync::mpsc::unbounded_channel::<bpmux::store::AppAction>();
+    let dispatch = bpmux::store::Dispatch::new(action_tx);
+
     let gated = axum::Router::new()
         .route("/api/rpc/{tool}", axum::routing::post(post_rpc_tool))
         .layer(axum::middleware::from_fn_with_state(auth_state, gate));
@@ -112,7 +115,8 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
     let app = axum::Router::new()
         .merge(gated)
         .with_state(Arc::clone(&session))
-        .layer(Extension(test_refresh));
+        .layer(Extension(test_refresh))
+        .layer(Extension(dispatch));
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let port = listener.local_addr().expect("addr").port();

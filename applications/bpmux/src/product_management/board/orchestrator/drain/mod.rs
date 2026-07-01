@@ -26,14 +26,9 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.persist_outbox();
         set_pending_events(&self.status, queue_len);
         if let Some(tx) = &self.action_tx {
-            let _ = tx.send(crate::store::StoreAction::Sync(
+            let _ = tx.send(crate::store::AppAction::Sync(
                 crate::store::SyncAction::StartUpdateGithub { mutation_id: id },
             ));
-            if let Some(outcome) = self.store.outcome(story_id) {
-                let _ = tx.send(crate::store::StoreAction::Outcome(
-                    crate::product_management::outcome::OutcomeAction::Upserted(vec![outcome]),
-                ));
-            }
         }
         Ok(())
     }

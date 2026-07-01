@@ -15,7 +15,7 @@ use crate::product_management::story::{Stage, Story, StoryId, StoryState, StoryT
 mod slice_7_2_mutation_id_dispatch {
     use super::*;
     use crate::product_management::board::MutationId;
-    use crate::store::{StoreAction, SyncAction};
+    use crate::store::{AppAction, SyncAction};
 
     #[tokio::test]
     async fn mutate_dispatches_start_update_github_with_unique_id() {
@@ -25,7 +25,7 @@ mod slice_7_2_mutation_id_dispatch {
             seed_story(102, StoryState::Ready),
         ]);
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StoreAction>();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
         let orch =
             SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
 
@@ -45,12 +45,12 @@ mod slice_7_2_mutation_id_dispatch {
         let action_a = rx.try_recv().expect("first dispatch");
         let action_b = rx.try_recv().expect("second dispatch");
         let id_a = match action_a {
-            StoreAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
-            other => panic!("expected StartUpdateGithub, got {other:?}"),
+            AppAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
+            _ => panic!("expected AppAction::Sync(StartUpdateGithub)"),
         };
         let id_b = match action_b {
-            StoreAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
-            other => panic!("expected StartUpdateGithub, got {other:?}"),
+            AppAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
+            _ => panic!("expected AppAction::Sync(StartUpdateGithub)"),
         };
         assert_ne!(id_a, id_b, "consecutive mutates allocate distinct ids");
         assert!(id_a.0 >= 1 && id_b.0 >= 1, "ids start at 1, not 0");
@@ -76,7 +76,7 @@ mod slice_7_2_mutation_id_dispatch {
         let store = Arc::new(BoardStore::new());
         store.seed_all(vec![seed_story(301, StoryState::Ready)]);
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StoreAction>();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
         let orch =
             SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
         orch.mutate(BoardEvent::StateTransitioned {
@@ -88,8 +88,8 @@ mod slice_7_2_mutation_id_dispatch {
 
         let action = rx.try_recv().expect("dispatch fires");
         let dispatched_id = match action {
-            StoreAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
-            other => panic!("expected StartUpdateGithub, got {other:?}"),
+            AppAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
+            _ => panic!("expected AppAction::Sync(StartUpdateGithub)"),
         };
         let pending = orch.snapshot_pending_for_test();
         let queued_id = pending.front().map(|q| q.id).expect("one queued event");

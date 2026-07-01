@@ -281,7 +281,7 @@ pub async fn post_seed_roster(
             .to_string();
         let role = crate::transport::ws::role_from_short_name(&name);
         store
-            .dispatch(crate::store::StoreAction::Roster(
+            .dispatch(crate::store::AppAction::Roster(
                 crate::store::RosterAction::RosterMemberUpserted {
                     routing_id: identity.clone(),
                     name,

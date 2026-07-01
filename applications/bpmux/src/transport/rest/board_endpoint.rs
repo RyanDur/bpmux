@@ -1,7 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::board::{board_iterations, board_outcomes, ordered_board_stories};
+use crate::product_management::board::OutcomeReader;
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
@@ -13,12 +15,29 @@ use crate::product_management::story::{Story, StoryId, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
+struct SeededOutcomes(Vec<crate::product_management::outcome::Outcome>);
+impl OutcomeReader for SeededOutcomes {
+    fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
+        self.0.clone()
+    }
+}
+
 async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
+    adapter.seed_stories(stories.clone());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
+    let seeded: Vec<_> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("outcome"))
+        })
+        .map(decode_outcome_from_story)
+        .collect();
+    orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
     orch
 }
 
@@ -77,7 +96,6 @@ fn outcome(id: u64, iterations: Vec<u64>) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
-    s.story_type = crate::product_management::story::StoryType::Outcome;
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,

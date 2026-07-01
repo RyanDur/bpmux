@@ -1,18 +1,27 @@
 use std::sync::Arc;
 
-use super::action::validate_and_log;
-use crate::store::{PollKind, Store, StoreAction};
+use super::app::{AppAction, validate_and_log};
+use crate::store::{PollKind, Store};
+
+#[derive(Clone)]
+pub struct Dispatch {
+    tx: tokio::sync::mpsc::UnboundedSender<AppAction>,
+}
+
+impl Dispatch {
+    pub fn new(tx: tokio::sync::mpsc::UnboundedSender<AppAction>) -> Self {
+        Self { tx }
+    }
+
+    pub fn dispatch(&self, action: AppAction) {
+        let _ = self.tx.send(action);
+    }
+}
 
 impl Store {
-    pub async fn dispatch(self: &Arc<Self>, action: StoreAction) {
+    pub async fn dispatch(self: &Arc<Self>, action: AppAction) {
         validate_and_log(&action);
-        match action {
-            StoreAction::Ci(a) => self.app_store.dispatch(a),
-            StoreAction::Sync(a) => self.app_store.dispatch(a),
-            StoreAction::Reactions(a) => self.app_store.dispatch(a),
-            StoreAction::Roster(a) => self.app_store.dispatch(a),
-            StoreAction::Outcome(a) => self.app_store.dispatch(a),
-        }
+        self.app_store.dispatch(action);
     }
 
     pub async fn is_running(&self, kind: PollKind) -> bool {

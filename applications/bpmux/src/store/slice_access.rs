@@ -1,11 +1,38 @@
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
+use super::app::{AppAction, AppState};
+use super::kernel;
 use super::{
     AggregatedReaction, CiBroadcastListener, CiSnapshot, ReactionsBroadcastListener,
     RosterBroadcastListener, RosterMember, Store, ci, reactions, roster,
 };
+use crate::product_management::board::OutcomeReader;
+use crate::product_management::outcome::{self, Outcome};
+
+struct AppOutcomeReader {
+    app: Weak<kernel::Store<AppState, AppAction>>,
+}
+
+impl OutcomeReader for AppOutcomeReader {
+    fn outcomes(&self) -> Vec<Outcome> {
+        self.app
+            .upgrade()
+            .map(|app| app.select(|state| outcome::all(&state.outcomes)))
+            .unwrap_or_default()
+    }
+}
 
 impl Store {
+    pub fn outcome_reader(&self) -> Arc<dyn OutcomeReader> {
+        Arc::new(AppOutcomeReader {
+            app: Arc::downgrade(&self.app_store),
+        })
+    }
+
+    pub fn outcomes(&self) -> Vec<Outcome> {
+        self.app_store.select(|state| outcome::all(&state.outcomes))
+    }
+
     pub fn ci_snapshot(&self) -> Option<CiSnapshot> {
         self.app_store.select(|state| ci::snapshot(&state.ci))
     }

@@ -2,7 +2,9 @@
 #![allow(clippy::expect_used)]
 
 use super::board::{board_iterations, board_roadmap};
+use crate::product_management::board::OutcomeReader;
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
@@ -32,30 +34,49 @@ fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
     s
 }
 
+fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
+    let mut s = Story::new_minimal(
+        StoryId::new(id),
+        title.to_string(),
+        StoryState::Icebox,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    s.raw_labels = labels.iter().map(ToString::to_string).collect();
+    s
+}
+
+struct SeededOutcomes(Vec<crate::product_management::outcome::Outcome>);
+impl OutcomeReader for SeededOutcomes {
+    fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
+        self.0.clone()
+    }
+}
+
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
+    adapter.seed_stories(stories.clone());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
+    let seeded: Vec<_> = stories
+        .iter()
+        .filter(|s| {
+            s.raw_labels
+                .iter()
+                .any(|l| l.eq_ignore_ascii_case("outcome"))
+        })
+        .map(decode_outcome_from_story)
+        .collect();
+    orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
     orch
 }
 
 #[tokio::test]
 async fn board_roadmap_serves_flat_priority_cards_carrying_the_enriched_state() {
     let refresh = build_refresh(vec![
-        seed(
-            710,
-            "Later thing",
-            StoryType::Outcome,
-            &["outcome", "horizon.later"],
-        ),
-        seed(
-            700,
-            "Now thing",
-            StoryType::Outcome,
-            &["outcome", "horizon.now"],
-        ),
+        seed_outcome(710, "Later thing", &["outcome", "horizon.later"]),
+        seed_outcome(700, "Now thing", &["outcome", "horizon.now"]),
     ])
     .await;
 
@@ -91,12 +112,7 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
         }
         .write_into_body("## composed"),
     );
-    let mut outcome = seed(
-        700,
-        "Outcome",
-        StoryType::Outcome,
-        &["outcome", "horizon.now"],
-    );
+    let mut outcome = seed_outcome(700, "Outcome", &["outcome", "horizon.now"]);
     outcome.body = Some(
         OutcomeRelationships {
             roadmap: None,

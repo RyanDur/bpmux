@@ -10,7 +10,7 @@ use tokio_util::sync::CancellationToken;
 use crate::message::Message;
 use crate::session::Session;
 use crate::store::test_support::eventually;
-use crate::store::{Store, StoreAction, SyncAction};
+use crate::store::{AppAction, Store, SyncAction};
 use crate::transport::ci_state_store::CiStateStore;
 
 fn refresh_for_tests() -> Arc<dyn crate::product_management::board::RefreshDriver> {
@@ -42,7 +42,7 @@ async fn start_update_github_tracks_then_clears_when_drain_finds_nothing() {
     );
 
     let mutation_id = crate::product_management::board::MutationId::default();
-    orch.dispatch(StoreAction::Sync(SyncAction::StartUpdateGithub {
+    orch.dispatch(AppAction::Sync(SyncAction::StartUpdateGithub {
         mutation_id,
     }))
     .await;

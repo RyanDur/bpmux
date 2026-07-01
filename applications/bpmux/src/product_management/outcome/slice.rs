@@ -25,10 +25,7 @@ pub fn reduce(state: &OutcomeState, action: &OutcomeAction) -> Option<OutcomeSta
         OutcomeAction::Upserted(incoming) => {
             let mut outcomes = state.outcomes.clone();
             for item in incoming {
-                match outcomes
-                    .iter()
-                    .position(|existing| existing.id() == item.id())
-                {
+                match outcomes.iter().position(|existing| existing.id == item.id) {
                     Some(index) => outcomes[index] = item.clone(),
                     None => outcomes.push(item.clone()),
                 }

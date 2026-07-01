@@ -30,6 +30,7 @@ async fn dispatch(
     agent: &str,
     args: serde_json::Map<String, Value>,
     session: &Arc<session::Session>,
+    dispatcher: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let refresh_ref: Option<&Arc<dyn RefreshDriver>> = Some(refresh);
     match tool {
@@ -46,7 +47,9 @@ async fn dispatch(
         "close_story" => bridge::dispatch_close_story(args, agent, refresh_ref).await,
         "create_story" => bridge::dispatch_create_story(args, agent, refresh_ref).await,
         "create_iteration" => bridge::dispatch_create_iteration(args, agent, refresh_ref).await,
-        "create_outcome" => bridge::dispatch_create_outcome(args, agent, refresh_ref).await,
+        "create_outcome" => {
+            bridge::dispatch_create_outcome(args, agent, refresh_ref, dispatcher).await
+        }
         "close_iteration" => {
             bridge::dispatch_close_iteration(args, agent, refresh_ref, session).await
         }
@@ -65,13 +68,15 @@ async fn dispatch(
         }
         "dev_ok_iteration" => bridge::dispatch_dev_ok_iteration(args, agent, refresh_ref).await,
         "map_iteration_to_outcome" => {
-            bridge::dispatch_map_iteration_to_outcome(args, agent, refresh_ref).await
+            bridge::dispatch_map_iteration_to_outcome(args, agent, refresh_ref, dispatcher).await
         }
         "reprioritize_outcome" => {
-            bridge::dispatch_reprioritize_outcome(args, agent, refresh_ref).await
+            bridge::dispatch_reprioritize_outcome(args, agent, refresh_ref, dispatcher).await
         }
-        "edit_outcome" => bridge::dispatch_edit_outcome(args, agent, refresh_ref).await,
-        "retire_outcome" => bridge::dispatch_retire_outcome(args, agent, refresh_ref).await,
+        "edit_outcome" => bridge::dispatch_edit_outcome(args, agent, refresh_ref, dispatcher).await,
+        "retire_outcome" => {
+            bridge::dispatch_retire_outcome(args, agent, refresh_ref, dispatcher).await
+        }
         "remove_iteration_member" => {
             bridge::dispatch_remove_iteration_member(args, agent, refresh_ref).await
         }
@@ -80,7 +85,7 @@ async fn dispatch(
         }
         "rename_iteration" => bridge::dispatch_rename_iteration(args, agent, refresh_ref).await,
         "unmap_outcome_iteration" => {
-            bridge::dispatch_unmap_outcome_iteration(args, agent, refresh_ref).await
+            bridge::dispatch_unmap_outcome_iteration(args, agent, refresh_ref, dispatcher).await
         }
         "reorder_outcome_iteration" => {
             bridge::dispatch_reorder_outcome_iteration(args, agent, refresh_ref).await
@@ -116,6 +121,7 @@ async fn dispatch(
 pub async fn post_rpc_tool(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     headers: HeaderMap,
     Path(tool): Path<String>,
     Json(body): Json<Value>,
@@ -162,7 +168,7 @@ pub async fn post_rpc_tool(
     let prior_state = transition_id
         .filter(|_| !is_read_only_tool(&tool))
         .and_then(|id| story_state_label(&refresh, id));
-    match dispatch(&refresh, &tool, &agent, args, &session).await {
+    match dispatch(&refresh, &tool, &agent, args, &session, &dispatcher).await {
         Ok(message) => {
             if tool == "view_backlog" {
                 fire_view_backlog_marker(&session);

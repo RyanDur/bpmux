@@ -5,6 +5,7 @@ pub(crate) async fn handle_create_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let workflow = crate::workflow::current_workflow();
     let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
@@ -55,21 +56,6 @@ pub(crate) async fn handle_create_outcome(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::BoardEvent::StoryCreated {
-        meta: meta.clone(),
-        id: StoryId::new(id),
-        title: title.clone(),
-        body,
-        initial_state: crate::product_management::story::StoryState::Icebox,
-        story_type: crate::product_management::story::StoryType::Outcome,
-    })
-    .map_err(|e| format!("#{id} outcome created but enqueue failed: {e}"))?;
-    r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
-        meta: meta.clone(),
-        id: StoryId::new(id),
-        label: "outcome".to_string(),
-    })
-    .map_err(|e| format!("#{id} outcome label enqueue failed: {e}"))?;
     r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
         meta,
         id: StoryId::new(id),
@@ -77,6 +63,22 @@ pub(crate) async fn handle_create_outcome(
             .encode_horizon(horizon),
     })
     .map_err(|e| format!("#{id} outcome horizon label enqueue failed: {e}"))?;
+    dispatch.dispatch(crate::store::AppAction::Outcome(
+        crate::product_management::outcome::OutcomeAction::Upserted(vec![
+            crate::product_management::outcome::Outcome {
+                id: crate::product_management::outcome::OutcomeId::new(id),
+                title: title.clone(),
+                body: Some(body),
+                filed_at: chrono::Utc::now(),
+                filed_by: crate::transport::ws::short_name(agent_name).to_string(),
+                lifecycle: crate::product_management::outcome::OutcomeLifecycle::Active {
+                    horizon: Some(horizon),
+                    horizon_order: None,
+                },
+                iterations: Vec::new(),
+            },
+        ]),
+    ));
     Ok(format!(
         "outcome created: #{id} {title} (horizon {})",
         horizon.as_str()

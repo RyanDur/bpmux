@@ -25,9 +25,7 @@ impl IterationView {
         let outcome_position = iteration.builds_outcome().and_then(|outcome_id| {
             outcomes
                 .iter()
-                .find(|o| {
-                    o.id().saved_id().map(|id| OutcomeId::new(id.value())) == Some(outcome_id)
-                })
+                .find(|o| o.id == outcome_id)
                 .and_then(|o| o.position_of(IterationId::new(id)))
                 .map(|index| index + 1)
         });

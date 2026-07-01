@@ -9,7 +9,12 @@ use crate::product_management::story::{FreeComment, GateComment, Story, StoryId}
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
 
+pub trait OutcomeReader: Send + Sync {
+    fn outcomes(&self) -> Vec<Outcome>;
+}
+
 pub trait RefreshDriver: Send + Sync {
+    fn bind_outcome_reader(&self, _reader: Arc<dyn OutcomeReader>) {}
     fn refresh_story(&self, id: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn refresh_all_since(
@@ -51,7 +56,7 @@ pub trait RefreshDriver: Send + Sync {
     fn story(&self, id: u64) -> Option<Story>;
     fn all_stories(&self) -> Vec<Story>;
     fn outcomes(&self) -> Vec<Outcome> {
-        self.store().outcomes()
+        Vec::new()
     }
     fn iterations(&self) -> Vec<Iteration> {
         self.store().iterations()

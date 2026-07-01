@@ -159,8 +159,8 @@ async fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<Ros
 }
 
 async fn seed_dev_online(orch: &Arc<crate::store::Store>) {
-    use crate::store::{RosterAction, StoreAction};
-    orch.dispatch(StoreAction::Roster(RosterAction::RosterMemberUpserted {
+    use crate::store::{AppAction, RosterAction};
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
         name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),

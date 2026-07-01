@@ -1,6 +1,13 @@
 use super::events::BoardEvent;
 use super::item::ProductItem;
+use crate::product_management::outcome::Outcome;
 use crate::product_management::story::Story;
+
+#[derive(Debug, Clone, Default)]
+pub struct Ingested {
+    pub items: Vec<ProductItem>,
+    pub outcomes: Vec<Outcome>,
+}
 
 #[derive(Debug, Clone)]
 pub enum SyncError {
@@ -51,12 +58,12 @@ pub fn is_permanent_push_failure(err: &SyncError) -> bool {
 pub trait SourceAdapter: Send + Sync {
     fn ingest_metadata(
         &self,
-    ) -> impl std::future::Future<Output = Result<Vec<ProductItem>, SyncError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Ingested, SyncError>> + Send;
 
     fn ingest_metadata_since(
         &self,
         _since: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> impl std::future::Future<Output = Result<Vec<ProductItem>, SyncError>> + Send {
+    ) -> impl std::future::Future<Output = Result<Ingested, SyncError>> + Send {
         self.ingest_metadata()
     }
 

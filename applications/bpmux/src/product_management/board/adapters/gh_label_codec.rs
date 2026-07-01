@@ -165,7 +165,6 @@ impl GhLabelCodec {
             "chore" => Some(StoryType::Story(StoryKind::Chore)),
             "epic" => Some(StoryType::Epic),
             "iteration" => Some(StoryType::Iteration),
-            "outcome" => Some(StoryType::Outcome),
             _ => None,
         }
     }

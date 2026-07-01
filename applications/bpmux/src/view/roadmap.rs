@@ -87,13 +87,13 @@ fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> 
         .iter()
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
-            let id = OutcomeId::new(outcome.id().saved_id().map(|id| id.value()).unwrap_or(0));
+            let id = outcome.id;
             let building = building_iterations(outcome, &all_iterations);
             let done = !building.is_empty() && building.iter().all(|iteration| iteration.complete);
             RoadmapOutcomeInput {
                 id,
-                title: outcome.content.title.clone(),
-                body: outcome.content.body.clone().unwrap_or_default(),
+                title: outcome.title.clone(),
+                body: outcome.body.clone().unwrap_or_default(),
                 horizon: outcome.horizon(),
                 horizon_order: outcome.horizon_order(),
                 done,

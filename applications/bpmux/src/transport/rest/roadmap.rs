@@ -33,7 +33,7 @@ pub async fn get_roadmap(
             let outcome = refresh
                 .outcomes()
                 .into_iter()
-                .find(|outcome| outcome.id().saved_id().map(|id| id.value()) == Some(number));
+                .find(|outcome| outcome.id.value() == number);
             let drill = outcome
                 .as_ref()
                 .map(|outcome| {
@@ -47,7 +47,7 @@ pub async fn get_roadmap(
                     iterations: Vec::new(),
                     convene: None,
                 });
-            let outcome_name = outcome.map(|outcome| outcome.content.title.clone());
+            let outcome_name = outcome.map(|outcome| outcome.title.clone());
             serde_json::json!({
                 "drill": drill,
                 "outcome_id": number,

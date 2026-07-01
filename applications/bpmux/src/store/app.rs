@@ -88,6 +88,26 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
     }
 }
 
+pub(super) fn validate_and_log(action: &AppAction) {
+    let label = match action {
+        AppAction::Ci(CiAction::StartPolling) => "Ci.StartPolling",
+        AppAction::Ci(CiAction::StopPolling) => "Ci.StopPolling",
+        AppAction::Ci(CiAction::Updated(_)) => "Ci.Updated",
+        AppAction::Sync(SyncAction::StartIngestPolling) => "Sync.StartIngestPolling",
+        AppAction::Sync(SyncAction::StopIngestPolling) => "Sync.StopIngestPolling",
+        AppAction::Sync(SyncAction::StartHydrationPolling) => "Sync.StartHydrationPolling",
+        AppAction::Sync(SyncAction::StopHydrationPolling) => "Sync.StopHydrationPolling",
+        AppAction::Sync(SyncAction::StartUpdateGithub { .. }) => "Sync.StartUpdateGithub",
+        AppAction::Sync(SyncAction::StopUpdateGithub { .. }) => "Sync.StopUpdateGithub",
+        AppAction::Sync(SyncAction::MutationConfirmed { .. }) => "Sync.MutationConfirmed",
+        AppAction::Sync(SyncAction::MutationRolledBack { .. }) => "Sync.MutationRolledBack",
+        AppAction::Reactions(_) => "Reactions",
+        AppAction::Roster(_) => "Roster",
+        AppAction::Outcome(_) => "Outcome",
+    };
+    crate::diag::log_diag(&format!("store: dispatch {label}"));
+}
+
 pub type RosterListeners = Arc<Mutex<Vec<Arc<dyn RosterBroadcastListener>>>>;
 pub type ReactionsListeners = Arc<Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>>;
 pub type CiListeners = Arc<Mutex<Vec<Arc<dyn CiBroadcastListener>>>>;
@@ -149,6 +169,33 @@ impl Listener<AppState, AppAction> for ReactionsBroadcast {
             for listener in listeners {
                 listener.on_changed(&channel, &aggregated);
             }
+        })
+    }
+}
+
+pub struct OutcomeBroadcast {
+    session: Arc<crate::session::Session>,
+    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+}
+
+impl OutcomeBroadcast {
+    pub fn new(
+        session: Arc<crate::session::Session>,
+        refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    ) -> Self {
+        Self { session, refresh }
+    }
+}
+
+impl Listener<AppState, AppAction> for OutcomeBroadcast {
+    fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
+        if Arc::ptr_eq(&reaction.previous.outcomes, &reaction.current.outcomes) {
+            return Box::pin(async {});
+        }
+        let session = Arc::clone(&self.session);
+        let refresh = Arc::clone(&self.refresh);
+        Box::pin(async move {
+            crate::transport::rest::shared::broadcast_outcomes(&session, &refresh);
         })
     }
 }

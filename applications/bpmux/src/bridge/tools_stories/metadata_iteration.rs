@@ -56,6 +56,7 @@ pub(crate) async fn handle_map_iteration_to_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "map an iteration to an outcome")?;
     let outcome_id = args
@@ -75,7 +76,6 @@ pub(crate) async fn handle_map_iteration_to_outcome(
     let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
 
     let mut parent = outcome
-        .content
         .body
         .as_deref()
         .and_then(OutcomeRelationships::read_from_body)
@@ -87,10 +87,14 @@ pub(crate) async fn handle_map_iteration_to_outcome(
     parent
         .iterations
         .insert(insert_index, IterationId::new(iteration_id));
-    let outcome_body = parent.write_into_body(outcome.content.body.as_deref().unwrap_or_default());
+    let outcome_body = parent.write_into_body(outcome.body.as_deref().unwrap_or_default());
+    let optimistic = outcome.with_body(&outcome_body);
     r.update_body(outcome_id, outcome_body)
         .await
         .map_err(|e| format!("#{outcome_id} iteration-map body update failed: {e}"))?;
+    dispatch.dispatch(crate::store::AppAction::Outcome(
+        crate::product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
+    ));
 
     let mut child = iteration
         .content

@@ -37,16 +37,19 @@ const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3
 struct WsDeps {
     session: Arc<session::Session>,
     store: Arc<crate::store::Store>,
+    dispatch: crate::store::Dispatch,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
     routing: Arc<crate::routing::RoutingStore>,
     tracker: crate::transport::rest::TrackerHandle,
     orchestrator: crate::server::OrchestratorHandle,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(session): State<Arc<session::Session>>,
     axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
+    axum::Extension(dispatch): axum::Extension<crate::store::Dispatch>,
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
     axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
     axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
@@ -55,6 +58,7 @@ pub async fn ws_handler(
     let deps = WsDeps {
         session,
         store,
+        dispatch,
         pty_registry,
         routing,
         tracker,
@@ -78,6 +82,7 @@ async fn run_ws_session(
     let WsDeps {
         session,
         store,
+        dispatch,
         pty_registry,
         routing,
         tracker,
@@ -231,6 +236,7 @@ async fn run_ws_session(
                             let client_ctx = client::ClientCtx {
                                 session: &session,
                                 store: &store,
+                                dispatch: &dispatch,
                                 pty_registry: &pty_registry,
                                 pty_tx: &pty_tx,
                                 tracker: &tracker,

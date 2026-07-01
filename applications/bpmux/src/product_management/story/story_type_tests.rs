@@ -9,7 +9,6 @@ fn story_type_from_title_reads_bpmux_title_conventions() {
         story_type_from_title("[Iteration] Aquila"),
         StoryType::Iteration
     );
-    assert_eq!(story_type_from_title("[Outcome] reach"), StoryType::Outcome);
     assert_eq!(
         story_type_from_title("[Bug] broken"),
         StoryType::Story(StoryKind::Bug)
@@ -56,7 +55,6 @@ fn story_type_serde_representation_is_flat_and_stable_for_the_outbox() {
         (StoryType::Story(StoryKind::Chore), "\"Chore\""),
         (StoryType::Epic, "\"Epic\""),
         (StoryType::Iteration, "\"Iteration\""),
-        (StoryType::Outcome, "\"Outcome\""),
     ] {
         assert_eq!(
             serde_json::to_string(&story_type).unwrap(),
