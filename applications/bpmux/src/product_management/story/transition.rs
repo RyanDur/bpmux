@@ -1,11 +1,11 @@
-use super::{Gate, GateComment, Stage, StoryState};
+use super::{BoardState, Gate, GateComment, Stage};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StateTransition {
-    pub from: StoryState,
-    pub to: StoryState,
+    pub from: BoardState,
+    pub to: BoardState,
     pub ts: DateTime<Utc>,
     pub actor: String,
     pub comment: Option<String>,
@@ -17,21 +17,21 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
         .filter_map(|gc| {
             let (from, to) = match gc.gate {
                 Gate::Filed => return None,
-                Gate::Pickup => (StoryState::Ready, StoryState::InProgress(Stage::Dev)),
+                Gate::Pickup => (BoardState::Ready, BoardState::InProgress(Stage::Dev)),
                 Gate::Delivered => (
-                    StoryState::InProgress(Stage::Dev),
-                    StoryState::InProgress(Stage::DeskCheck),
+                    BoardState::InProgress(Stage::Dev),
+                    BoardState::InProgress(Stage::DeskCheck),
                 ),
                 Gate::PassDeskCheck => (
-                    StoryState::InProgress(Stage::DeskCheck),
-                    StoryState::Delivered,
+                    BoardState::InProgress(Stage::DeskCheck),
+                    BoardState::Delivered,
                 ),
                 Gate::FailDeskCheck => (
-                    StoryState::InProgress(Stage::DeskCheck),
-                    StoryState::InProgress(Stage::Dev),
+                    BoardState::InProgress(Stage::DeskCheck),
+                    BoardState::InProgress(Stage::Dev),
                 ),
-                Gate::Rejected => (StoryState::Delivered, StoryState::Ready),
-                Gate::Accepted => (StoryState::Delivered, StoryState::Accepted),
+                Gate::Rejected => (BoardState::Delivered, BoardState::Ready),
+                Gate::Accepted => (BoardState::Delivered, BoardState::Accepted),
             };
             Some(StateTransition {
                 from,
@@ -44,14 +44,14 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
         .collect()
 }
 
-fn state_ordinal(s: StoryState) -> u8 {
+fn state_ordinal(s: BoardState) -> u8 {
     match s {
-        StoryState::Icebox => 0,
-        StoryState::Ready => 1,
-        StoryState::InProgress(Stage::Dev) => 2,
-        StoryState::InProgress(Stage::DeskCheck) => 3,
-        StoryState::Delivered => 4,
-        StoryState::Accepted | StoryState::Retired => 5,
+        BoardState::Icebox => 0,
+        BoardState::Ready => 1,
+        BoardState::InProgress(Stage::Dev) => 2,
+        BoardState::InProgress(Stage::DeskCheck) => 3,
+        BoardState::Delivered => 4,
+        BoardState::Accepted | BoardState::Retired => 5,
     }
 }
 

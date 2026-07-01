@@ -3,11 +3,11 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-fn seed_story_with_labels(id: u64, state: StoryState, labels: Vec<String>) -> Story {
+fn seed_story_with_labels(id: u64, state: BoardState, labels: Vec<String>) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
@@ -34,15 +34,15 @@ async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 #[tokio::test]
 async fn moving_loose_icebox_story_into_position_lands_in_unscheduled() {
     let orch = build_orchestrator(vec![
-        seed_story_with_labels(3100, StoryState::Icebox, vec!["icebox".into()]),
+        seed_story_with_labels(3100, BoardState::Icebox, vec!["icebox".into()]),
         seed_story_with_labels(
             3101,
-            StoryState::Icebox,
+            BoardState::Icebox,
             vec!["iteration-Unscheduled.100".into()],
         ),
         seed_story_with_labels(
             3102,
-            StoryState::Icebox,
+            BoardState::Icebox,
             vec!["iteration-Unscheduled.200".into()],
         ),
     ])
@@ -60,7 +60,7 @@ async fn moving_loose_icebox_story_into_position_lands_in_unscheduled() {
 async fn move_into_icebox_preserves_iteration_membership_when_story_already_in_named_container() {
     let orch = build_orchestrator(vec![seed_story_with_labels(
         3200,
-        StoryState::Ready,
+        BoardState::Ready,
         vec!["iteration-Pegasus.100".into(), "ready".into()],
     )])
     .await;

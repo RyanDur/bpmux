@@ -1,14 +1,14 @@
 use super::label::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 
 fn seed(id: u64, raw_labels: Vec<String>) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("member-{id}"),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

@@ -5,7 +5,7 @@ use crate::product_management::board::adapters::github::iteration_membership_fro
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, StoreChange, SyncOrchestrator};
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::session::Session;
 use axum::Json;
 use axum::extract::{Path, State};
@@ -17,7 +17,7 @@ fn membered_member(id: u64, label: &str) -> Story {
     let mut story = Story::new_minimal(
         StoryId::new(id),
         "reorder fixture".to_string(),
-        StoryState::Ready,
+        BoardState::Ready,
         chrono::Utc::now(),
         "tester".to_string(),
     );

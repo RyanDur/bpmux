@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::product_management::board::{BoardStore, RefreshDriver};
 use crate::product_management::story::{
-    Gate, GateComment, Stage, StoryId, StoryState, most_recent_backward_transition,
+    BoardState, Gate, GateComment, Stage, StoryId, most_recent_backward_transition,
     replay_transitions,
 };
 
@@ -11,15 +11,15 @@ use super::get_story_view::{
 };
 use super::rework_context::enrich_body;
 
-fn state_label(state: StoryState) -> &'static str {
+fn state_label(state: BoardState) -> &'static str {
     match state {
-        StoryState::Icebox => "icebox",
-        StoryState::Ready => "ready",
-        StoryState::InProgress(Stage::Dev) => "in progress",
-        StoryState::InProgress(Stage::DeskCheck) => "desk-check",
-        StoryState::Delivered => "delivered",
-        StoryState::Accepted => "accepted",
-        StoryState::Retired => "retired",
+        BoardState::Icebox => "icebox",
+        BoardState::Ready => "ready",
+        BoardState::InProgress(Stage::Dev) => "in progress",
+        BoardState::InProgress(Stage::DeskCheck) => "desk-check",
+        BoardState::Delivered => "delivered",
+        BoardState::Accepted => "accepted",
+        BoardState::Retired => "retired",
     }
 }
 
@@ -99,9 +99,9 @@ pub(in crate::bridge) async fn handle_get_story(
     }
     let needs_gates = matches!(
         story.state,
-        StoryState::Ready | StoryState::InProgress(Stage::Dev)
+        BoardState::Ready | BoardState::InProgress(Stage::Dev)
     ) || story.is_closed
-        || matches!(story.state, StoryState::Accepted);
+        || matches!(story.state, BoardState::Accepted);
     if needs_gates
         && story.gate_comments.is_none()
         && let Some(r) = refresh

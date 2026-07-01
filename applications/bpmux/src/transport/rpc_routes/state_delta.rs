@@ -5,7 +5,7 @@ use chrono::Utc;
 use crate::message::{Message, MessageType};
 use crate::message::{StateDeltaPayload, StoryTransitionWire};
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{BoardState, Story};
 use crate::session;
 
 pub(crate) fn fire_view_backlog_marker(session: &Arc<session::Session>) {
@@ -50,9 +50,9 @@ fn effective_state_label(story: &Story) -> &'static str {
             .iter()
             .any(|l| l.eq_ignore_ascii_case("retired"))
         {
-            return StoryState::Retired.as_str();
+            return BoardState::Retired.as_str();
         }
-        return StoryState::Accepted.as_str();
+        return BoardState::Accepted.as_str();
     }
     story.state.as_str()
 }

@@ -13,7 +13,7 @@ use crate::product_management::board::{
 };
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -64,7 +64,7 @@ fn iteration(id: u64) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "Iteration Vela".to_string(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -82,7 +82,7 @@ fn member(id: u64, iteration_id: u64, position: u32) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("member #{id}"),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -109,7 +109,7 @@ fn outcome(id: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "An outcome".to_string(),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

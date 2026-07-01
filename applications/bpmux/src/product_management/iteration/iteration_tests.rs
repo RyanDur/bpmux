@@ -7,13 +7,13 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 
 fn iteration_story(labels: Vec<String>, body: Option<String>, closed: bool) -> Story {
     let mut story = Story::new_minimal(
         StoryId::new(710),
         "Iteration Crux".to_string(),
-        StoryState::Ready,
+        BoardState::Ready,
         chrono::Utc::now(),
         "pm".to_string(),
     );

@@ -13,7 +13,7 @@ use chrono::{TimeZone, Utc};
 
 use super::events::EventMeta;
 use super::peer::PeerId;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 
 pub(super) fn meta() -> EventMeta {
     EventMeta {
@@ -23,7 +23,7 @@ pub(super) fn meta() -> EventMeta {
     }
 }
 
-pub(super) fn seed_story(id: u64, state: StoryState) -> Story {
+pub(super) fn seed_story(id: u64, state: BoardState) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("title-{id}"),

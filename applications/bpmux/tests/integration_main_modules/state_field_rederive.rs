@@ -2,8 +2,8 @@
 
 use bpmux::product_management::board::adapters::github::state_from_labels;
 use bpmux::product_management::board::column::{ColumnBucket, column_for};
+use bpmux::product_management::story::BoardState;
 use bpmux::product_management::story::Stage;
-use bpmux::product_management::story::StoryState;
 
 #[test]
 fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_ready() {
@@ -16,13 +16,13 @@ fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_ready() {
         "needs fixes".to_string(),
         "rejected".to_string(),
     ];
-    assert_eq!(state_from_labels(&stacked, false), StoryState::Ready);
+    assert_eq!(state_from_labels(&stacked, false), BoardState::Ready);
 }
 
 #[test]
 fn stacked_accepted_rejected_decodes_accepted() {
     let stacked = vec!["accepted".to_string(), "rejected".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), StoryState::Accepted);
+    assert_eq!(state_from_labels(&stacked, false), BoardState::Accepted);
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn stacked_needs_fixes_in_progress_decodes_in_progress() {
     let stacked = vec!["in progress".to_string(), "needs fixes".to_string()];
     assert_eq!(
         state_from_labels(&stacked, false),
-        StoryState::InProgress(Stage::Dev)
+        BoardState::InProgress(Stage::Dev)
     );
 }
 
@@ -40,7 +40,7 @@ fn stacked_ready_in_progress_decodes_in_progress() {
     let stacked = vec!["ready".to_string(), "in progress".to_string()];
     assert_eq!(
         state_from_labels(&stacked, false),
-        StoryState::InProgress(Stage::Dev)
+        BoardState::InProgress(Stage::Dev)
     );
 }
 
@@ -49,7 +49,7 @@ fn stacked_delivered_ready_for_accept_decodes_to_delivered() {
     // #1146 slice 3: stale "ready for accept" projects to Delivered
     // (was display-equivalent to Delivered pre-collapse).
     let stacked = vec!["delivered".to_string(), "ready for accept".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), StoryState::Delivered);
+    assert_eq!(state_from_labels(&stacked, false), BoardState::Delivered);
 }
 
 #[test]
@@ -57,13 +57,13 @@ fn ready_state_buckets_to_ready_column() {
     // #1146 slice 3: post-collapse, stale rejected labels project to
     // Ready at parse-time, so the bucketing test now operates on the
     // surviving Ready state.
-    let bucket = column_for(StoryState::Ready, false);
+    let bucket = column_for(BoardState::Ready, false);
     assert_eq!(bucket, ColumnBucket::Ready);
 }
 
 #[test]
 fn in_progress_state_buckets_to_in_progress_column() {
-    let bucket = column_for(StoryState::InProgress(Stage::Dev), false);
+    let bucket = column_for(BoardState::InProgress(Stage::Dev), false);
     assert_eq!(bucket, ColumnBucket::InProgress);
 }
 
@@ -72,7 +72,7 @@ fn closed_ready_buckets_to_retired_column() {
     // #1146 slice 3: closed stories from any non-Accepted state project
     // to Retired. The pre-collapse Rejected variant becomes Ready at
     // parse-time and then Retired at column-projection when closed.
-    let bucket = column_for(StoryState::Ready, true);
+    let bucket = column_for(BoardState::Ready, true);
     assert_eq!(
         bucket,
         ColumnBucket::Retired,
@@ -82,12 +82,12 @@ fn closed_ready_buckets_to_retired_column() {
 
 #[test]
 fn empty_labels_open_decodes_icebox() {
-    assert_eq!(state_from_labels(&[], false), StoryState::Icebox);
+    assert_eq!(state_from_labels(&[], false), BoardState::Icebox);
 }
 
 #[test]
 fn empty_labels_closed_decodes_accepted() {
-    assert_eq!(state_from_labels(&[], true), StoryState::Accepted);
+    assert_eq!(state_from_labels(&[], true), BoardState::Accepted);
 }
 
 #[test]
@@ -95,5 +95,5 @@ fn case_insensitive_label_matching() {
     // #1146 slice 3: stale "REJECTED" label projects to Ready
     // (post-collapse semantics; case-insensitivity preserved).
     let stacked = vec!["REJECTED".to_string(), "Ready For Accept".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), StoryState::Ready);
+    assert_eq!(state_from_labels(&stacked, false), BoardState::Ready);
 }

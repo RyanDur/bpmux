@@ -3,13 +3,13 @@
 use super::view::*;
 use crate::product_management::board::column::ColumnBucket;
 use crate::product_management::iteration::IterationId;
+use crate::product_management::story::BoardState;
 use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
-use crate::product_management::story::StoryState;
 use chrono::{TimeZone, Utc};
 
-fn story(num: u64, title: &str, state: StoryState) -> Story {
+fn story(num: u64, title: &str, state: BoardState) -> Story {
     Story::new_minimal(
         StoryId::new(num),
         title.to_string(),
@@ -29,8 +29,8 @@ fn in_iteration(mut s: Story, iteration: u64) -> Story {
 #[test]
 fn default_scope_is_unchanged_full_board() {
     let stories = vec![
-        story(1, "ready one", StoryState::Ready),
-        story(2, "in-progress one", StoryState::InProgress(Stage::Dev)),
+        story(1, "ready one", BoardState::Ready),
+        story(2, "in-progress one", BoardState::InProgress(Stage::Dev)),
     ];
     let out = build_board_text(&[], &stories, &BoardScope::default());
     assert!(out.contains("#1 ready one"));
@@ -41,7 +41,7 @@ fn default_scope_is_unchanged_full_board() {
 
 #[test]
 fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
-    let mut s = story(77, "acceptor-visible", StoryState::Ready);
+    let mut s = story(77, "acceptor-visible", BoardState::Ready);
     s.raw_labels.push("awaiting owner".to_string());
     s.acceptor = Some(crate::product_management::story::Acceptor::Owner);
     let out = build_board_text(&[], &[s], &BoardScope::default());
@@ -55,7 +55,7 @@ fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
 fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
     let out = build_board_text(
         &[],
-        &[story(78, "no-acceptor-yet", StoryState::Ready)],
+        &[story(78, "no-acceptor-yet", BoardState::Ready)],
         &BoardScope::default(),
     );
     assert!(
@@ -67,8 +67,8 @@ fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
 #[test]
 fn state_scope_renders_only_the_matching_bucket() {
     let stories = vec![
-        story(1, "ready one", StoryState::Ready),
-        story(2, "in-progress one", StoryState::InProgress(Stage::Dev)),
+        story(1, "ready one", BoardState::Ready),
+        story(2, "in-progress one", BoardState::InProgress(Stage::Dev)),
     ];
     let scope = BoardScope {
         state: Some(ColumnBucket::Ready),
@@ -83,8 +83,8 @@ fn state_scope_renders_only_the_matching_bucket() {
 #[test]
 fn iteration_scope_excludes_other_iterations() {
     let stories = vec![
-        in_iteration(story(10, "iter-one story", StoryState::Ready), 1),
-        in_iteration(story(20, "iter-two story", StoryState::Ready), 2),
+        in_iteration(story(10, "iter-one story", BoardState::Ready), 1),
+        in_iteration(story(20, "iter-two story", BoardState::Ready), 2),
     ];
     let scope = BoardScope {
         iteration: Some(1),
@@ -98,7 +98,7 @@ fn iteration_scope_excludes_other_iterations() {
 #[test]
 fn row_limit_caps_entries_but_count_reflects_full_total() {
     let stories: Vec<Story> = (0..10)
-        .map(|i| story(100 + i, &format!("ready {i}"), StoryState::Ready))
+        .map(|i| story(100 + i, &format!("ready {i}"), BoardState::Ready))
         .collect();
     let scope = BoardScope {
         state: Some(ColumnBucket::Ready),
@@ -118,9 +118,9 @@ fn large_board_scoped_is_ingestible_while_full_is_not() {
                     "story {i} with a sufficiently long descriptive title to inflate the full board payload"
                 );
                 let state = if i % 2 == 0 {
-                    StoryState::Ready
+                    BoardState::Ready
                 } else {
-                    StoryState::Accepted
+                    BoardState::Accepted
                 };
                 story(1000 + i, &title, state)
             })

@@ -17,7 +17,7 @@ use crate::product_management::board::sync::SourceAdapter;
 use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -77,7 +77,7 @@ fn outcome(id: u64, iterations: Vec<u64>) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Outcome #{id}"),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -96,7 +96,7 @@ fn iteration_for(id: u64, outcome_id: u64) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -307,7 +307,7 @@ async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary_1763() {
     let mut feature = Story::new_minimal(
         StoryId::new(700),
         "[Feature] plain".into(),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

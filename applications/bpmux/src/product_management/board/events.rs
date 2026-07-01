@@ -5,7 +5,7 @@ use super::peer::PeerId;
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
-    Acceptor, FreeComment, Gate, GateComment, Story, StoryId, StoryKind, StoryState, Tag,
+    Acceptor, BoardState, FreeComment, Gate, GateComment, Story, StoryId, StoryKind, Tag,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -37,13 +37,13 @@ pub enum BoardEvent {
         id: StoryId,
         title: String,
         body: String,
-        initial_state: StoryState,
+        initial_state: BoardState,
         story_type: StoryKind,
     },
     StateTransitioned {
         meta: EventMeta,
         id: StoryId,
-        new_state: StoryState,
+        new_state: BoardState,
     },
     TagAdded {
         meta: EventMeta,

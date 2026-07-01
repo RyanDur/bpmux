@@ -5,7 +5,7 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -19,7 +19,7 @@ async fn build_orchestrator() -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
     let story = Story::new_minimal(
         StoryId::new(200),
         "t".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

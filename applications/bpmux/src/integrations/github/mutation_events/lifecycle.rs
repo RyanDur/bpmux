@@ -3,12 +3,12 @@ use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::product_management::board::adapters::github::{decode_story_metadata, state_to_label};
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::SyncError;
-use crate::product_management::story::{StoryId, StoryState};
+use crate::product_management::story::{BoardState, StoryId};
 
 pub(in crate::integrations::github) async fn push_state_transitioned(
     inner: &OctocrabStoryTracker,
     number: u64,
-    new_state: StoryState,
+    new_state: BoardState,
 ) -> Result<Option<BoardEvent>, SyncError> {
     let label = state_to_label(new_state);
     let labels = inner

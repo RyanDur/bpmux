@@ -11,7 +11,7 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryId, StoryState};
+    use crate::product_management::story::{BoardState, Story, StoryId};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -19,7 +19,7 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
         let mut s = Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            StoryState::Icebox,
+            BoardState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );

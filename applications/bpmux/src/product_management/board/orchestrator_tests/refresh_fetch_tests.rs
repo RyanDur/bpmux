@@ -10,13 +10,13 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::{BoardStore, StoreChange};
-use crate::product_management::story::{Stage, Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 
 #[tokio::test]
 async fn refresh_story_pulls_single_story_from_adapter_into_store() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(42, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(42, BoardState::Ready)]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     assert!(
         store.story(StoryId::new(42)).is_none(),
@@ -26,7 +26,7 @@ async fn refresh_story_pulls_single_story_from_adapter_into_store() {
     assert!(result.is_some());
     assert_eq!(
         store.story(StoryId::new(42)).unwrap().state,
-        StoryState::Ready
+        BoardState::Ready
     );
     assert!(orchestrator.snapshot_status().last_ingest_at.is_some());
 }
@@ -45,7 +45,7 @@ async fn refresh_story_returns_none_when_story_missing_at_source() {
 async fn refresh_story_fails_fast_when_source_unreachable() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(1, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(1, BoardState::Ready)]);
     adapter.set_ingest_failures(true);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     let result = orchestrator.refresh_story(1).await;
@@ -61,8 +61,8 @@ async fn refresh_all_is_alias_for_ingest_once() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![
-        seed_story(1, StoryState::Ready),
-        seed_story(2, StoryState::Delivered),
+        seed_story(1, BoardState::Ready),
+        seed_story(2, BoardState::Delivered),
     ]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.refresh_all().await.unwrap();
@@ -73,30 +73,30 @@ async fn refresh_all_is_alias_for_ingest_once() {
 async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(42, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(42, BoardState::Ready)]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(
         store.story(StoryId::new(42)).unwrap().state,
-        StoryState::Ready
+        BoardState::Ready
     );
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(42),
-            new_state: StoryState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev),
         })
         .unwrap();
     assert_eq!(
         store.story(StoryId::new(42)).unwrap().state,
-        StoryState::InProgress(Stage::Dev)
+        BoardState::InProgress(Stage::Dev)
     );
     orchestrator.drain_once().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     match &pushed[0] {
         BoardEvent::StateTransitioned { new_state, .. } => {
-            assert_eq!(*new_state, StoryState::InProgress(Stage::Dev));
+            assert_eq!(*new_state, BoardState::InProgress(Stage::Dev));
         }
         other => panic!("unexpected event: {other:?}"),
     }
@@ -106,7 +106,7 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
 async fn fetch_body_caches_the_body_on_the_story_and_fires_event() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(7, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(7, BoardState::Ready)]);
     adapter.seed_body(7, "the body text".into());
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.ingest_once().await.unwrap();
@@ -129,7 +129,7 @@ async fn fetch_body_caches_the_body_on_the_story_and_fires_event() {
 async fn fetch_body_records_error_when_source_fails() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(7, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(7, BoardState::Ready)]);
     adapter.set_ingest_failures(true);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     let err = orchestrator.fetch_body(7).await.unwrap_err();
@@ -146,7 +146,7 @@ async fn fetch_free_comments_caches_comments_and_fires_event() {
     use crate::product_management::story::FreeComment;
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(9, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(9, BoardState::Ready)]);
     let seeded = vec![FreeComment {
         body: "hi".into(),
         author: "owner".into(),
@@ -176,7 +176,7 @@ async fn fetch_gate_comments_caches_comments_and_fires_event() {
     use crate::product_management::story::{Gate, GateComment};
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(11, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(11, BoardState::Ready)]);
     let seeded = vec![GateComment {
         gate: Gate::Pickup,
         ts: Utc.with_ymd_and_hms(2026, 4, 20, 10, 0, 0).unwrap(),
@@ -210,7 +210,7 @@ async fn fetch_gate_comments_caches_comments_and_fires_event() {
 async fn fetch_gate_comments_records_error_when_source_fails() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(11, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(11, BoardState::Ready)]);
     adapter.set_ingest_failures(true);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     let err = orchestrator.fetch_gate_comments(11).await.unwrap_err();

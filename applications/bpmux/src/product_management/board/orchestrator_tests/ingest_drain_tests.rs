@@ -10,15 +10,15 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Stage, Story, StoryId, StoryKind, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
 
 #[tokio::test]
 async fn ingest_once_populates_store_from_adapter() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![
-        seed_story(1, StoryState::Ready),
-        seed_story(2, StoryState::Delivered),
+        seed_story(1, BoardState::Ready),
+        seed_story(2, BoardState::Delivered),
     ]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator.ingest_once().await.unwrap();
@@ -52,7 +52,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
             id: StoryId::new(100),
             title: "test".to_string(),
             body: "b".to_string(),
-            initial_state: StoryState::Ready,
+            initial_state: BoardState::Ready,
             story_type: StoryKind::Feature,
         })
         .unwrap();
@@ -69,13 +69,13 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
 async fn drain_once_pushes_pending_events_to_adapter() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    store.seed_all(vec![seed_story(1, StoryState::Ready)]);
+    store.seed_all(vec![seed_story(1, BoardState::Ready)]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
     let drained = orchestrator.drain_once().await.unwrap();
@@ -89,13 +89,13 @@ async fn drain_once_pushes_pending_events_to_adapter() {
 async fn drain_once_requeues_event_on_adapter_failure() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    store.seed_all(vec![seed_story(1, StoryState::Ready)]);
+    store.seed_all(vec![seed_story(1, BoardState::Ready)]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
     adapter.set_push_failures(true);
@@ -120,22 +120,22 @@ async fn drain_once_handles_multiple_events_in_order() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     store.seed_all(vec![
-        seed_story(1, StoryState::Ready),
-        seed_story(2, StoryState::Ready),
+        seed_story(1, BoardState::Ready),
+        seed_story(2, BoardState::Ready),
     ]);
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
     orchestrator
         .mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(2),
-            new_state: StoryState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev),
         })
         .unwrap();
     assert_eq!(orchestrator.snapshot_status().pending_events, 2);
@@ -151,7 +151,7 @@ async fn drain_once_handles_multiple_events_in_order() {
 async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = seed_story(1687, StoryState::Ready);
+    let mut seeded = seed_story(1687, BoardState::Ready);
     seeded.raw_labels = vec!["parent-iteration-#1655.125".to_string()];
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(1687, vec!["parent-iteration-#1655.125".to_string()]);

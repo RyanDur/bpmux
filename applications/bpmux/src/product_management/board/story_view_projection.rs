@@ -4,10 +4,10 @@ use super::view_model::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 
-fn story(id: u64, title: &str, state: StoryState) -> Story {
+fn story(id: u64, title: &str, state: BoardState) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
@@ -19,7 +19,7 @@ fn story(id: u64, title: &str, state: StoryState) -> Story {
 
 #[test]
 fn project_mirrors_core_identity_fields() {
-    let s = story(42, "[Feature] do the thing", StoryState::Ready);
+    let s = story(42, "[Feature] do the thing", BoardState::Ready);
     let view = StoryView::project(&GhLabelCodec, &s);
     assert_eq!(view.id, 42);
     assert_eq!(view.title, "[Feature] do the thing");
@@ -29,7 +29,7 @@ fn project_mirrors_core_identity_fields() {
 
 #[test]
 fn project_marks_a_closed_story_gh_state_closed() {
-    let mut s = story(7, "done", StoryState::Accepted);
+    let mut s = story(7, "done", BoardState::Accepted);
     s.is_closed = true;
     let view = StoryView::project(&GhLabelCodec, &s);
     assert_eq!(view.gh_state, "closed");
@@ -37,7 +37,7 @@ fn project_marks_a_closed_story_gh_state_closed() {
 
 #[test]
 fn project_translates_iteration_membership_into_a_typed_subview() {
-    let mut s = story(10, "member", StoryState::Ready);
+    let mut s = story(10, "member", BoardState::Ready);
     s.raw_labels.push("parent-iteration-#200.150".to_string());
     s.iteration_membership = Some((IterationId::new(200), 150));
     let view = StoryView::project(&GhLabelCodec, &s);
@@ -50,7 +50,7 @@ fn project_translates_iteration_membership_into_a_typed_subview() {
 
 #[test]
 fn project_translates_outcome_membership_into_a_typed_subview() {
-    let mut s = story(11, "mapped", StoryState::Ready);
+    let mut s = story(11, "mapped", BoardState::Ready);
     s.raw_labels.push("parent-outcome-#700.2".to_string());
     let view = StoryView::project(&GhLabelCodec, &s);
     let m = view.outcome_membership.expect("outcome membership present");
@@ -60,7 +60,7 @@ fn project_translates_outcome_membership_into_a_typed_subview() {
 
 #[test]
 fn project_leads_the_wire_labels_with_the_derived_type_label() {
-    let s = story(20, "[Bug] broken thing", StoryState::Icebox);
+    let s = story(20, "[Bug] broken thing", BoardState::Icebox);
     let view = StoryView::project(&GhLabelCodec, &s);
     assert_eq!(
         view.labels.first().map(String::as_str),
@@ -71,7 +71,7 @@ fn project_leads_the_wire_labels_with_the_derived_type_label() {
 
 #[test]
 fn story_view_serializes_to_the_renderer_wire_shape() {
-    let s = story(5, "wire", StoryState::Ready);
+    let s = story(5, "wire", BoardState::Ready);
     let view = StoryView::project(&GhLabelCodec, &s);
     let json = serde_json::to_value(&view).expect("StoryView serializes");
     assert_eq!(json["id"], 5);

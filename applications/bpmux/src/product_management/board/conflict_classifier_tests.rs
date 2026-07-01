@@ -11,7 +11,7 @@ use crate::product_management::board::orchestrator::{
 };
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Stage, Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -21,7 +21,7 @@ fn meta() -> EventMeta {
     }
 }
 
-fn seed_story(id: u64, state: StoryState) -> Story {
+fn seed_story(id: u64, state: BoardState) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("title-{id}"),
@@ -35,7 +35,7 @@ fn seed_story(id: u64, state: StoryState) -> Story {
 async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(500, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(500, BoardState::Ready)]);
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("outbox.json");
     let orch =
@@ -46,7 +46,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     orch.mutate(BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(500),
-        new_state: StoryState::InProgress(Stage::Dev),
+        new_state: BoardState::InProgress(Stage::Dev),
     })
     .unwrap();
 
@@ -59,13 +59,13 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
         .expect("pre_state captured at queue-time");
     assert_eq!(
         pre.state,
-        StoryState::Ready,
+        BoardState::Ready,
         "pre_state must reflect the pre-mutation state, not post"
     );
     assert!(matches!(
         entry.event,
         BoardEvent::StateTransitioned {
-            new_state: StoryState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev),
             ..
         }
     ));
@@ -125,12 +125,12 @@ async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
 async fn outbox_round_trips_new_shape_through_disk() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("new-outbox.json");
-    let pre = seed_story(7, StoryState::Delivered);
+    let pre = seed_story(7, BoardState::Delivered);
     let queued = QueuedEvent::new(
         BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(7),
-            new_state: StoryState::Accepted,
+            new_state: BoardState::Accepted,
         },
         Some(pre.clone()),
     );
@@ -142,17 +142,17 @@ async fn outbox_round_trips_new_shape_through_disk() {
     let entry = entries.front().unwrap();
     let restored_pre = entry.pre_state.as_ref().unwrap();
     assert_eq!(restored_pre.id, pre.id);
-    assert_eq!(restored_pre.state, StoryState::Delivered);
+    assert_eq!(restored_pre.state, BoardState::Delivered);
 }
 
 #[test]
 fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
-    let pre = seed_story(1, StoryState::Ready);
-    let cur = seed_story(1, StoryState::InProgress(Stage::Dev));
+    let pre = seed_story(1, BoardState::Ready);
+    let cur = seed_story(1, BoardState::InProgress(Stage::Dev));
     let event = BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: StoryState::InProgress(Stage::Dev),
+        new_state: BoardState::InProgress(Stage::Dev),
     };
     assert_eq!(classify_conflict(Some(&pre), &event, Some(&cur)), None);
 }
@@ -169,7 +169,7 @@ fn conflict_kind_serde_round_trip() {
 async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(800, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(800, BoardState::Ready)]);
     let orch: Arc<dyn crate::product_management::board::RefreshDriver> = Arc::new(
         SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)),
     );
@@ -178,7 +178,7 @@ async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     orch.mutate_sync(BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(800),
-        new_state: StoryState::InProgress(Stage::Dev),
+        new_state: BoardState::InProgress(Stage::Dev),
     })
     .unwrap();
 

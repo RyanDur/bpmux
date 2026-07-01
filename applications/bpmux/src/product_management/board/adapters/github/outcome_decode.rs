@@ -5,7 +5,7 @@ use crate::product_management::board::adapters::relationships::{
     OutcomeRelationships, Relationships,
 };
 use crate::product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{BoardState, Story};
 
 pub fn is_outcome_issue(v: &serde_json::Value) -> bool {
     extract_label_names(v)
@@ -50,7 +50,7 @@ pub fn decode_outcome(v: &serde_json::Value) -> Option<Outcome> {
 }
 
 pub fn decode_outcome_from_story(story: &Story) -> Outcome {
-    let retired = story.state() == StoryState::Retired;
+    let retired = story.state() == BoardState::Retired;
     assemble_outcome(
         OutcomeId::new(story.id.value()),
         story.title().to_string(),

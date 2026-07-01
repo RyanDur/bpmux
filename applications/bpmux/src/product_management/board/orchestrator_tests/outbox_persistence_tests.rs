@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Stage, Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::storage::{SqliteStorage, Storage};
 
 mod outbox_persistence {
@@ -38,7 +38,7 @@ mod outbox_persistence {
         let path = outbox_path(&dir);
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(10, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(10, BoardState::Ready)]);
         let orch = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -48,7 +48,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(10),
-            new_state: StoryState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev),
         })
         .unwrap();
         assert!(path.exists(), "outbox file must exist after mutate");
@@ -63,7 +63,7 @@ mod outbox_persistence {
         let path = outbox_path(&dir);
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(20, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(20, BoardState::Ready)]);
         let orch = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -73,7 +73,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(20),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
         let drained = orch.drain_once().await.unwrap();
@@ -90,7 +90,7 @@ mod outbox_persistence {
             Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap());
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(90, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(90, BoardState::Ready)]);
         let orch = SyncOrchestrator::with_storage(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -100,7 +100,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(90),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
         assert_eq!(
@@ -123,7 +123,7 @@ mod outbox_persistence {
         let path = outbox_path(&dir);
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(30, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(30, BoardState::Ready)]);
         let orch = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -133,7 +133,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(30),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
         adapter.set_push_failures(true);
@@ -149,7 +149,7 @@ mod outbox_persistence {
         let path = outbox_path(&dir);
         let store_a = Arc::new(BoardStore::new());
         let adapter_a = Arc::new(InMemorySourceAdapter::new());
-        store_a.seed_all(vec![seed_story(40, StoryState::Ready)]);
+        store_a.seed_all(vec![seed_story(40, BoardState::Ready)]);
         let orch_a = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store_a),
             Arc::clone(&adapter_a),
@@ -160,7 +160,7 @@ mod outbox_persistence {
             .mutate(BoardEvent::StateTransitioned {
                 meta: meta(),
                 id: StoryId::new(40),
-                new_state: StoryState::Delivered,
+                new_state: BoardState::Delivered,
             })
             .unwrap();
         drop(orch_a);
@@ -184,7 +184,7 @@ mod outbox_persistence {
         let path = outbox_path(&dir);
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(60, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(60, BoardState::Ready)]);
         let orch = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -194,7 +194,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(60),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -214,7 +214,7 @@ mod outbox_persistence {
         let path = outbox_path(&dir);
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(65, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(65, BoardState::Ready)]);
         let orch = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -224,7 +224,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(65),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -241,7 +241,7 @@ mod outbox_persistence {
         let path = outbox_path(&dir);
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(66, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(66, BoardState::Ready)]);
         let orch = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -251,7 +251,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(66),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -269,8 +269,8 @@ mod outbox_persistence {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         store.seed_all(vec![
-            seed_story(70, StoryState::Ready),
-            seed_story(71, StoryState::Ready),
+            seed_story(70, BoardState::Ready),
+            seed_story(71, BoardState::Ready),
         ]);
         let orch = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store),
@@ -282,7 +282,7 @@ mod outbox_persistence {
             orch.mutate(BoardEvent::StateTransitioned {
                 meta: meta(),
                 id: StoryId::new(n),
-                new_state: StoryState::Delivered,
+                new_state: BoardState::Delivered,
             })
             .unwrap();
         }
@@ -302,7 +302,7 @@ mod outbox_persistence {
         let path = outbox_path(&dir);
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(80, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(80, BoardState::Ready)]);
         let orch = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store),
             Arc::clone(&adapter),
@@ -312,7 +312,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(80),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
         adapter.set_push_failures(true);
@@ -334,9 +334,9 @@ mod outbox_persistence {
         let store_a = Arc::new(BoardStore::new());
         let adapter_a = Arc::new(InMemorySourceAdapter::new());
         store_a.seed_all(vec![
-            seed_story(50, StoryState::Ready),
-            seed_story(51, StoryState::Ready),
-            seed_story(52, StoryState::Ready),
+            seed_story(50, BoardState::Ready),
+            seed_story(51, BoardState::Ready),
+            seed_story(52, BoardState::Ready),
         ]);
         let orch_a = SyncOrchestrator::with_outbox_path(
             Arc::clone(&store_a),
@@ -349,7 +349,7 @@ mod outbox_persistence {
                 .mutate(BoardEvent::StateTransitioned {
                     meta: meta(),
                     id: StoryId::new(n),
-                    new_state: StoryState::InProgress(Stage::Dev),
+                    new_state: BoardState::InProgress(Stage::Dev),
                 })
                 .unwrap();
         }
@@ -375,7 +375,7 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(999),
-            new_state: StoryState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev),
         })
         .unwrap();
 
@@ -389,13 +389,13 @@ mod outbox_persistence {
     async fn refresh_story_populates_store_so_subsequent_mutate_lands() {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seed_story(777, StoryState::Ready)]);
+        adapter.seed_stories(vec![seed_story(777, BoardState::Ready)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
-            new_state: StoryState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev),
         })
         .unwrap();
         assert!(
@@ -412,12 +412,12 @@ mod outbox_persistence {
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
-            new_state: StoryState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev),
         })
         .unwrap();
         assert_eq!(
             store.story(StoryId::new(777)).map(|s| s.state),
-            Some(StoryState::InProgress(Stage::Dev)),
+            Some(BoardState::InProgress(Stage::Dev)),
             "post-refresh mutate lands"
         );
     }

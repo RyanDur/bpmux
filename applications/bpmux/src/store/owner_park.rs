@@ -3,14 +3,14 @@ use std::sync::Arc;
 use crate::product_management::board::{BoardEvent, BoardStore};
 use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::label::current_iteration_id;
-use crate::product_management::story::{Acceptor, Story, StoryState};
+use crate::product_management::story::{Acceptor, BoardState, Story};
 use crate::store::{AppAction, RosterMember, Store};
 use crate::store::{Presence, RosterAction};
 
 fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
     let current = current_iteration_id(iterations);
     !stories.iter().any(|s| {
-        s.state == StoryState::Ready
+        s.state == BoardState::Ready
             && match (current, s.iteration_membership()) {
                 (Some(ci), Some((it, _))) => it == ci,
                 (None, _) => true,
@@ -22,7 +22,7 @@ fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
 fn any_owner_parked_delivery(stories: &[Story]) -> bool {
     stories
         .iter()
-        .any(|s| s.state == StoryState::Delivered && s.acceptor() == Some(Acceptor::Owner))
+        .any(|s| s.state == BoardState::Delivered && s.acceptor() == Some(Acceptor::Owner))
 }
 
 pub fn owner_park_presence(
@@ -65,7 +65,7 @@ impl OwnerParkBroadcaster {
         match event {
             BoardEvent::StateTransitioned {
                 meta,
-                new_state: StoryState::Delivered,
+                new_state: BoardState::Delivered,
                 ..
             } => Some(crate::transport::ws::short_name(&meta.actor).to_string()),
             _ => None,

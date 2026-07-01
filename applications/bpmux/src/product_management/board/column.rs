@@ -1,4 +1,4 @@
-use crate::product_management::story::{Stage, StoryState};
+use crate::product_management::story::{BoardState, Stage};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColumnBucket {
@@ -25,17 +25,17 @@ impl ColumnBucket {
     }
 }
 
-pub fn column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
-    if is_closed && state != StoryState::Accepted && state != StoryState::Retired {
+pub fn column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
+    if is_closed && state != BoardState::Accepted && state != BoardState::Retired {
         return ColumnBucket::Retired;
     }
     match state {
-        StoryState::Icebox => ColumnBucket::Icebox,
-        StoryState::Ready => ColumnBucket::Ready,
-        StoryState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
-        StoryState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
-        StoryState::Delivered => ColumnBucket::Delivered,
-        StoryState::Accepted => ColumnBucket::Accepted,
-        StoryState::Retired => ColumnBucket::Retired,
+        BoardState::Icebox => ColumnBucket::Icebox,
+        BoardState::Ready => ColumnBucket::Ready,
+        BoardState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
+        BoardState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
+        BoardState::Delivered => ColumnBucket::Delivered,
+        BoardState::Accepted => ColumnBucket::Accepted,
+        BoardState::Retired => ColumnBucket::Retired,
     }
 }

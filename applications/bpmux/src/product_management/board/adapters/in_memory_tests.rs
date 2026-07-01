@@ -8,7 +8,7 @@ use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
-use crate::product_management::story::{FreeComment, Stage, Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, FreeComment, Stage, Story, StoryId};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -22,7 +22,7 @@ fn seed_story(id: u64, title: &str) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -93,7 +93,7 @@ async fn push_event_records_the_event() {
     let event = BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(10),
-        new_state: StoryState::Delivered,
+        new_state: BoardState::Delivered,
     };
     adapter.push_event(&event).await.unwrap();
     let pushed = adapter.pushed_events();
@@ -108,7 +108,7 @@ async fn push_event_errs_when_configured_to_fail() {
     let event = BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(10),
-        new_state: StoryState::Delivered,
+        new_state: BoardState::Delivered,
     };
     let result = adapter.push_event(&event).await;
     assert!(matches!(result, Err(SyncError::SourceUnreachable(_))));
@@ -124,12 +124,12 @@ async fn multiple_pushed_events_preserve_order() {
     let e1 = BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: StoryState::InProgress(Stage::Dev),
+        new_state: BoardState::InProgress(Stage::Dev),
     };
     let e2 = BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(2),
-        new_state: StoryState::Delivered,
+        new_state: BoardState::Delivered,
     };
     adapter.push_event(&e1).await.unwrap();
     adapter.push_event(&e2).await.unwrap();
@@ -178,7 +178,7 @@ async fn push_event_accepts_story_created_variant() {
         id: StoryId::new(99),
         title: "t".to_string(),
         body: "b".to_string(),
-        initial_state: StoryState::Icebox,
+        initial_state: BoardState::Icebox,
         story_type: crate::product_management::story::StoryKind::Feature,
     };
     adapter.push_event(&event).await.unwrap();

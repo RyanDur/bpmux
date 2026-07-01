@@ -13,7 +13,7 @@ mod verdict_substrate_integration_1407 {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryId, StoryState};
+    use crate::product_management::story::{BoardState, Story, StoryId};
     use crate::session::Session;
     use crate::workflow::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};
@@ -44,7 +44,7 @@ mod verdict_substrate_integration_1407 {
         let mut story = Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            StoryState::Delivered,
+            BoardState::Delivered,
             Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
             "dev".to_string(),
         );

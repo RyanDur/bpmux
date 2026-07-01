@@ -1,4 +1,4 @@
-use crate::product_management::story::{Stage, Story, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +11,7 @@ pub struct Epic {
     pub body: Option<String>,
     pub filed_at: DateTime<Utc>,
     pub filed_by: String,
-    pub state: StoryState,
+    pub state: BoardState,
     pub is_closed: bool,
 }
 
@@ -83,10 +83,10 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
     };
     for child in children {
         match child.state() {
-            StoryState::Accepted => counts.accepted_count += 1,
-            StoryState::Retired => counts.retired_count += 1,
-            StoryState::Icebox => counts.icebox_count += 1,
-            StoryState::Ready | StoryState::InProgress(_) | StoryState::Delivered => {
+            BoardState::Accepted => counts.accepted_count += 1,
+            BoardState::Retired => counts.retired_count += 1,
+            BoardState::Icebox => counts.icebox_count += 1,
+            BoardState::Ready | BoardState::InProgress(_) | BoardState::Delivered => {
                 counts.active_count += 1
             }
         }
@@ -94,31 +94,31 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
     counts
 }
 
-pub fn derive_epic_state(_epic_explicit_state: StoryState, children: &[&Story]) -> StoryState {
-    if children.is_empty() || children.iter().all(|c| c.state() == StoryState::Icebox) {
-        return StoryState::Icebox;
+pub fn derive_epic_state(_epic_explicit_state: BoardState, children: &[&Story]) -> BoardState {
+    if children.is_empty() || children.iter().all(|c| c.state() == BoardState::Icebox) {
+        return BoardState::Icebox;
     }
     let any_active = children
         .iter()
-        .any(|c| matches!(c.state(), StoryState::InProgress(_) | StoryState::Delivered));
+        .any(|c| matches!(c.state(), BoardState::InProgress(_) | BoardState::Delivered));
     if any_active {
-        return StoryState::InProgress(Stage::Dev);
+        return BoardState::InProgress(Stage::Dev);
     }
     let non_retired: Vec<&&Story> = children
         .iter()
-        .filter(|c| c.state() != StoryState::Retired)
+        .filter(|c| c.state() != BoardState::Retired)
         .collect();
     if non_retired.is_empty() {
-        return StoryState::Retired;
+        return BoardState::Retired;
     }
     if non_retired
         .iter()
-        .all(|c| c.state() == StoryState::Accepted)
+        .all(|c| c.state() == BoardState::Accepted)
     {
-        return StoryState::Accepted;
+        return BoardState::Accepted;
     }
-    if children.iter().any(|c| c.state() == StoryState::Ready) {
-        return StoryState::Ready;
+    if children.iter().any(|c| c.state() == BoardState::Ready) {
+        return BoardState::Ready;
     }
-    StoryState::Icebox
+    BoardState::Icebox
 }

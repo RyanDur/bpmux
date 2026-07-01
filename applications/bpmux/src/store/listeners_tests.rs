@@ -90,11 +90,11 @@ async fn reactions_listener_emits_typed_state_delta() {
 }
 
 fn owner_parked_story(id: u64) -> crate::product_management::story::Story {
-    use crate::product_management::story::{StoryId, StoryState};
+    use crate::product_management::story::{BoardState, StoryId};
     let mut story = crate::product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("story {id}"),
-        StoryState::Delivered,
+        BoardState::Delivered,
         chrono::Utc::now(),
         "dev".to_string(),
     );
@@ -104,11 +104,11 @@ fn owner_parked_story(id: u64) -> crate::product_management::story::Story {
 }
 
 fn ready_story(id: u64, iteration: u64, position: u32) -> crate::product_management::story::Story {
-    use crate::product_management::story::{StoryId, StoryState};
+    use crate::product_management::story::{BoardState, StoryId};
     let mut story = crate::product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("ready {id}"),
-        StoryState::Ready,
+        BoardState::Ready,
         chrono::Utc::now(),
         "pm".to_string(),
     );
@@ -121,7 +121,7 @@ fn ready_story(id: u64, iteration: u64, position: u32) -> crate::product_managem
 fn state_transitioned(
     id: u64,
     actor: &str,
-    new_state: crate::product_management::story::StoryState,
+    new_state: crate::product_management::story::BoardState,
 ) -> crate::product_management::board::BoardEvent {
     crate::product_management::board::BoardEvent::StateTransitioned {
         meta: crate::product_management::board::events::EventMeta {
@@ -173,7 +173,7 @@ async fn seed_dev_online(orch: &Arc<crate::store::Store>) {
 #[tokio::test]
 async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
     use crate::product_management::board::BoardStore;
-    use crate::product_management::story::StoryState;
+    use crate::product_management::story::BoardState;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
@@ -198,7 +198,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
 
     let broadcaster = OwnerParkBroadcaster::new(orch.clone(), store.clone());
     broadcaster
-        .on_board_event(&state_transitioned(900, "dev", StoryState::Delivered))
+        .on_board_event(&state_transitioned(900, "dev", BoardState::Delivered))
         .await;
 
     let members = drain_roster_presence(&mut rx).await;
@@ -216,7 +216,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
 #[tokio::test]
 async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     use crate::product_management::board::BoardStore;
-    use crate::product_management::story::StoryState;
+    use crate::product_management::story::BoardState;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
@@ -239,7 +239,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     store.seed_all(vec![owner_parked_story(900)]);
     let broadcaster = OwnerParkBroadcaster::new(orch.clone(), store.clone());
     broadcaster
-        .on_board_event(&state_transitioned(900, "dev", StoryState::Delivered))
+        .on_board_event(&state_transitioned(900, "dev", BoardState::Delivered))
         .await;
     assert_eq!(
         orch.roster_members()
@@ -253,7 +253,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
 
     store.seed_all(vec![owner_parked_story(900), ready_story(901, 800, 1)]);
     broadcaster
-        .on_board_event(&state_transitioned(901, "pm", StoryState::Ready))
+        .on_board_event(&state_transitioned(901, "pm", BoardState::Ready))
         .await;
 
     let dev_presence = orch

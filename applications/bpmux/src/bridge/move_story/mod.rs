@@ -7,7 +7,7 @@ use crate::bridge::tools_stories::{KEEP_NONE, reap_workflow_labels};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{BoardEvent, PeerId, RefreshDriver};
 use crate::product_management::iteration::label::current_iteration_id;
-use crate::product_management::story::{StoryId, StoryState};
+use crate::product_management::story::{BoardState, StoryId};
 
 mod authorization;
 mod target;
@@ -43,7 +43,7 @@ pub(in crate::bridge) async fn handle_move_story(
     if position.is_some() {
         let allows_position = matches!(
             target,
-            TargetState::Workflow(StoryState::Ready) | TargetState::Workflow(StoryState::Icebox)
+            TargetState::Workflow(BoardState::Ready) | TargetState::Workflow(BoardState::Icebox)
         );
         if !allows_position {
             return Err(format!(
@@ -101,7 +101,7 @@ pub(in crate::bridge) async fn handle_move_story(
                 new_state: state,
             })
             .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-            if matches!(state, StoryState::Accepted) && !was_closed {
+            if matches!(state, BoardState::Accepted) && !was_closed {
                 r.mutate_sync(BoardEvent::StoryClosed {
                     meta: meta.clone(),
                     id: story_id,
@@ -136,8 +136,8 @@ pub(in crate::bridge) async fn handle_move_story(
         }
     }
 
-    let target_is_icebox = matches!(target, TargetState::Workflow(StoryState::Icebox));
-    let target_is_ready = matches!(target, TargetState::Workflow(StoryState::Ready));
+    let target_is_icebox = matches!(target, TargetState::Workflow(BoardState::Icebox));
+    let target_is_ready = matches!(target, TargetState::Workflow(BoardState::Ready));
     if target_is_icebox && let Some(pos) = position {
         crate::bridge::tools_stories::reorder_icebox_story_via_labels(r, id, pos)?;
     }

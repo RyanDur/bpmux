@@ -1,6 +1,6 @@
 use super::{Stories, story_mut};
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::story::{Story, StoryId, StoryKey, StoryKind, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId, StoryKey, StoryKind};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn apply_story_created(
@@ -9,7 +9,7 @@ pub(super) fn apply_story_created(
     meta: &EventMeta,
     title: &str,
     body: &str,
-    initial_state: StoryState,
+    initial_state: BoardState,
     story_type: StoryKind,
 ) {
     let story = Story {
@@ -34,7 +34,7 @@ pub(super) fn apply_story_created(
     w.insert(StoryKey::Saved(id), story);
 }
 
-pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: StoryState) {
+pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: BoardState) {
     if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.state = new_state;
     }

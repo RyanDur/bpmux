@@ -13,11 +13,11 @@ mod reopen_on_state_transition_tests {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, StoryId, StoryState};
+    use crate::product_management::story::{BoardState, Stage, Story, StoryId};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seeded_closed_chore(id: u64, state: StoryState) -> Story {
+    fn seeded_closed_chore(id: u64, state: BoardState) -> Story {
         let mut s = Story::new_minimal(
             StoryId::new(id),
             "t".into(),
@@ -49,7 +49,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn start_story_reopens_when_prior_is_closed_true() {
-        let seeded = seeded_closed_chore(7110, StoryState::Ready);
+        let seeded = seeded_closed_chore(7110, BoardState::Ready);
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7110));
@@ -69,7 +69,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn start_story_does_not_reopen_when_prior_is_closed_false() {
-        let mut seeded = seeded_closed_chore(7111, StoryState::Ready);
+        let mut seeded = seeded_closed_chore(7111, BoardState::Ready);
         seeded.is_closed = false;
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
@@ -91,7 +91,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn deliver_story_reopens_when_prior_is_closed_true() {
-        let seeded = seeded_closed_chore(7120, StoryState::InProgress(Stage::Dev));
+        let seeded = seeded_closed_chore(7120, BoardState::InProgress(Stage::Dev));
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7120));
@@ -112,7 +112,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn pass_desk_check_reopens_when_prior_is_closed_true() {
-        let seeded = seeded_closed_chore(7130, StoryState::InProgress(Stage::DeskCheck));
+        let seeded = seeded_closed_chore(7130, BoardState::InProgress(Stage::DeskCheck));
         let (_store, orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7130));

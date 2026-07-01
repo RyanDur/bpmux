@@ -7,9 +7,9 @@ use chrono::{TimeZone, Utc};
 use crate::bridge::tools::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::story::{Stage, Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 
-fn seed_minimal(id: u64, state: StoryState) -> Story {
+fn seed_minimal(id: u64, state: BoardState) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("[Feature] target-{id}"),
@@ -24,7 +24,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    store.seed_all(vec![seed_minimal(8001, StoryState::Ready)]);
+    store.seed_all(vec![seed_minimal(8001, BoardState::Ready)]);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
@@ -53,7 +53,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
 async fn get_story_serves_cached_body_from_canonical_store() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut story = seed_minimal(8002, StoryState::Ready);
+    let mut story = seed_minimal(8002, BoardState::Ready);
     story.body = Some("# real body\n\ncached body content from prior hydrate".to_string());
     store.seed_all(vec![story]);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
@@ -80,7 +80,7 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    store.seed_all(vec![seed_minimal(8003, StoryState::InProgress(Stage::Dev))]);
+    store.seed_all(vec![seed_minimal(8003, BoardState::InProgress(Stage::Dev))]);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
@@ -97,15 +97,15 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
 #[tokio::test]
 async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
     use crate::bridge::select_stories_to_hydrate;
-    let mut active = seed_minimal(100, StoryState::Ready);
+    let mut active = seed_minimal(100, BoardState::Ready);
     active.body = None;
-    let mut hydrated = seed_minimal(101, StoryState::InProgress(Stage::Dev));
+    let mut hydrated = seed_minimal(101, BoardState::InProgress(Stage::Dev));
     hydrated.body = Some("already-cached".to_string());
-    let mut accepted = seed_minimal(102, StoryState::Accepted);
+    let mut accepted = seed_minimal(102, BoardState::Accepted);
     accepted.body = None;
-    let mut icebox = seed_minimal(103, StoryState::Icebox);
+    let mut icebox = seed_minimal(103, BoardState::Icebox);
     icebox.body = None;
-    let mut delivered = seed_minimal(104, StoryState::Delivered);
+    let mut delivered = seed_minimal(104, BoardState::Delivered);
     delivered.body = None;
     let stories = vec![active, hydrated, accepted, icebox, delivered];
     let picks = select_stories_to_hydrate(&stories, 10);
@@ -127,7 +127,7 @@ async fn select_stories_to_hydrate_caps_at_limit() {
     use crate::bridge::select_stories_to_hydrate;
     let stories: Vec<Story> = (0..10)
         .map(|i| {
-            let mut s = seed_minimal(200 + i, StoryState::Ready);
+            let mut s = seed_minimal(200 + i, BoardState::Ready);
             s.body = None;
             s
         })
@@ -139,7 +139,7 @@ async fn select_stories_to_hydrate_caps_at_limit() {
 #[tokio::test]
 async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
     use crate::bridge::select_stories_to_hydrate;
-    let mut s = seed_minimal(300, StoryState::Ready);
+    let mut s = seed_minimal(300, BoardState::Ready);
     s.body = Some("already".to_string());
     let picks = select_stories_to_hydrate(&[s], 5);
     assert!(picks.is_empty(), "no missing-body stories = empty picks");
@@ -149,7 +149,7 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     use crate::product_management::board::events::BoardEvent;
     let store = BoardStore::new();
-    store.seed_all(vec![seed_minimal(9000, StoryState::Ready)]);
+    store.seed_all(vec![seed_minimal(9000, BoardState::Ready)]);
     store.apply(&BoardEvent::BodyFetched {
         meta: crate::product_management::board::orchestrator::cache_fill_meta(),
         id: StoryId::new(9000),
@@ -166,7 +166,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
     use crate::product_management::board::events::{BoardEvent, EventMeta};
     use crate::product_management::board::peer::PeerId;
     let store = BoardStore::new();
-    let mut seed = seed_minimal(9100, StoryState::Ready);
+    let mut seed = seed_minimal(9100, BoardState::Ready);
     seed.body = Some("v1".to_string());
     seed.body_etag = Some("W/\"etag-v1\"".to_string());
     store.seed_all(vec![seed.clone()]);
@@ -194,7 +194,7 @@ async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
     use crate::product_management::board::events::{BoardEvent, EventMeta};
     use crate::product_management::board::peer::PeerId;
     let store = BoardStore::new();
-    let mut seed = seed_minimal(9200, StoryState::InProgress(Stage::Dev));
+    let mut seed = seed_minimal(9200, BoardState::InProgress(Stage::Dev));
     seed.raw_labels = vec!["in progress".to_string()];
     store.seed_all(vec![seed.clone()]);
     let mut refreshed = seed;
@@ -225,7 +225,7 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_minimal(9001, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_minimal(9001, BoardState::Ready)]);
     adapter.seed_body(9001, "real body".into());
     let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
     orch.ingest_once().await.unwrap();
@@ -249,14 +249,14 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
 #[tokio::test]
 async fn select_stories_to_revalidate_picks_already_hydrated_active_stories() {
     use crate::bridge::select_stories_to_revalidate;
-    let mut active_with_body = seed_minimal(700, StoryState::Ready);
+    let mut active_with_body = seed_minimal(700, BoardState::Ready);
     active_with_body.body = Some("body".to_string());
     active_with_body.body_etag = Some("etag-700".to_string());
-    let mut active_no_body = seed_minimal(701, StoryState::InProgress(Stage::Dev));
+    let mut active_no_body = seed_minimal(701, BoardState::InProgress(Stage::Dev));
     active_no_body.body = None;
-    let mut accepted_with_body = seed_minimal(702, StoryState::Accepted);
+    let mut accepted_with_body = seed_minimal(702, BoardState::Accepted);
     accepted_with_body.body = Some("body".to_string());
-    let mut icebox_with_body = seed_minimal(703, StoryState::Icebox);
+    let mut icebox_with_body = seed_minimal(703, BoardState::Icebox);
     icebox_with_body.body = Some("body".to_string());
     let stories = vec![
         active_with_body,
@@ -290,7 +290,7 @@ async fn select_stories_to_revalidate_caps_at_limit() {
     use crate::bridge::select_stories_to_revalidate;
     let stories: Vec<Story> = (0..10)
         .map(|i| {
-            let mut s = seed_minimal(800 + i, StoryState::Ready);
+            let mut s = seed_minimal(800 + i, BoardState::Ready);
             s.body = Some("body".to_string());
             s
         })
@@ -303,7 +303,7 @@ async fn select_stories_to_revalidate_caps_at_limit() {
 async fn get_story_returns_gate_comments_hydrated_flag_in_response() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    store.seed_all(vec![seed_minimal(8004, StoryState::Ready)]);
+    store.seed_all(vec![seed_minimal(8004, BoardState::Ready)]);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),

@@ -223,7 +223,7 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
 #[tokio::test]
 async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryId, StoryState};
+    use crate::product_management::story::{BoardState, Story, StoryId};
     use chrono::{TimeZone, Utc};
 
     let store = Arc::new(BoardStore::new());
@@ -232,7 +232,7 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(5050),
         "post-restart-rest-recovery".into(),
-        StoryState::Accepted,
+        BoardState::Accepted,
         ts,
         "dev".into(),
     )]);

@@ -7,7 +7,7 @@ use crate::product_management::board::{
     BoardStore, IterationReader, RefreshDriver, SyncOrchestrator,
 };
 use crate::product_management::iteration::{Iteration, IterationAction};
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use std::sync::{Arc, Mutex};
@@ -39,7 +39,7 @@ fn ready_story(id: u64) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -49,7 +49,7 @@ fn current_iteration_story(id: u64) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

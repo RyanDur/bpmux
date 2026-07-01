@@ -1,13 +1,13 @@
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::product_management::story::{Stage, StoryState};
+use crate::product_management::story::{BoardState, Stage};
 
 const TARGET_STATE_RETIRED: &str = "retired";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum TargetState {
-    Workflow(StoryState),
+    Workflow(BoardState),
     Retired,
 }
 
@@ -17,7 +17,7 @@ impl TargetState {
         if normalized == TARGET_STATE_RETIRED {
             return Ok(Self::Retired);
         }
-        StoryState::parse(&normalized).map(Self::Workflow).ok_or_else(|| {
+        BoardState::parse(&normalized).map(Self::Workflow).ok_or_else(|| {
             format!(
                 "unknown target_state '{s}'. Valid: icebox, ready, in-progress, desk-check, delivered, accepted, retired"
             )
@@ -26,20 +26,20 @@ impl TargetState {
 
     pub(super) fn as_label(self) -> Option<&'static str> {
         match self {
-            Self::Workflow(StoryState::Icebox) => None,
+            Self::Workflow(BoardState::Icebox) => None,
             Self::Workflow(state) => Some(state.github_label()),
-            Self::Retired => Some(StoryState::Retired.github_label()),
+            Self::Retired => Some(BoardState::Retired.github_label()),
         }
     }
 
     pub(super) fn closes_issue(self) -> bool {
-        matches!(self, Self::Retired | Self::Workflow(StoryState::Accepted))
+        matches!(self, Self::Retired | Self::Workflow(BoardState::Accepted))
     }
 
     pub(super) fn as_display(self) -> &'static str {
         match self {
             Self::Workflow(state) => state.as_str(),
-            Self::Retired => StoryState::Retired.as_str(),
+            Self::Retired => BoardState::Retired.as_str(),
         }
     }
 }
@@ -82,13 +82,13 @@ pub(super) fn current_state_display(
     match story {
         Some(s) if s.is_closed => "retired-or-accepted",
         Some(s) => match s.state {
-            StoryState::Icebox => "icebox",
-            StoryState::Ready => "ready",
-            StoryState::InProgress(Stage::Dev) => "in-progress",
-            StoryState::InProgress(Stage::DeskCheck) => "desk-check",
-            StoryState::Delivered => "delivered",
-            StoryState::Accepted => "accepted",
-            StoryState::Retired => "retired",
+            BoardState::Icebox => "icebox",
+            BoardState::Ready => "ready",
+            BoardState::InProgress(Stage::Dev) => "in-progress",
+            BoardState::InProgress(Stage::DeskCheck) => "desk-check",
+            BoardState::Delivered => "delivered",
+            BoardState::Accepted => "accepted",
+            BoardState::Retired => "retired",
         },
         None => "unknown",
     }

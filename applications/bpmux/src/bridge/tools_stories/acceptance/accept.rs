@@ -132,7 +132,7 @@ pub(crate) async fn accept_via_canonical_store(
             crate::product_management::board::BoardEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
-                new_state: crate::product_management::story::StoryState::Accepted,
+                new_state: crate::product_management::story::BoardState::Accepted,
             },
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;

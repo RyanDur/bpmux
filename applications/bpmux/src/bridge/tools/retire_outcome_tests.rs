@@ -14,7 +14,7 @@ use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
-use crate::product_management::story::{Story, StoryId, StoryKind, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -54,7 +54,7 @@ fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -71,7 +71,7 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -83,7 +83,7 @@ fn iteration_in_outcome(id: u64, outcome: u64) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

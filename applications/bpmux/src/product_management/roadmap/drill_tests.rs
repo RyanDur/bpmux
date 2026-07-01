@@ -8,7 +8,7 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
 
@@ -16,7 +16,7 @@ fn iteration(id: u64, outcome_id: u64) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Crux-{id}"),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc::now(),
         "pm".to_string(),
     );
@@ -35,7 +35,7 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Outcome #{id}"),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc::now(),
         "pm".to_string(),
     );

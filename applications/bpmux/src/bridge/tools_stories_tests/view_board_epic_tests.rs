@@ -38,7 +38,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -47,14 +47,14 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     let child = Story::new_minimal(
         StoryId::new(300),
         "child".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
     let mut epic = Story::new_minimal(
         StoryId::new(457),
         "epic story".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -102,7 +102,7 @@ async fn set_parent_epic_rejects_non_existent_epic() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -111,7 +111,7 @@ async fn set_parent_epic_rejects_non_existent_epic() {
     let child = Story::new_minimal(
         StoryId::new(310),
         "orphan".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -136,7 +136,7 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -145,14 +145,14 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     let child = Story::new_minimal(
         StoryId::new(311),
         "child".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
     let mut not_epic = Story::new_minimal(
         StoryId::new(458),
         "ordinary feature".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -180,7 +180,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -189,7 +189,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     let mut seeded = Story::new_minimal(
         StoryId::new(301),
         "child".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -255,7 +255,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -264,7 +264,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     let mut epic = Story::new_minimal(
         StoryId::new(500),
         "epic story".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -312,7 +312,7 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -321,7 +321,7 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     let mut not_epic = Story::new_minimal(
         StoryId::new(501),
         "not epic".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -354,7 +354,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, StoryState};
+    use crate::product_management::story::{BoardState, Stage, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -364,7 +364,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     let mut epic = Story::new_minimal(
         StoryId::new(700),
         "umbrella story".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         ts,
         "pm".into(),
     );
@@ -372,7 +372,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     let mut child_a = Story::new_minimal(
         StoryId::new(701),
         "child a".into(),
-        StoryState::Accepted,
+        BoardState::Accepted,
         ts,
         "pm".into(),
     );
@@ -382,7 +382,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     let mut child_b = Story::new_minimal(
         StoryId::new(702),
         "child b".into(),
-        StoryState::Delivered,
+        BoardState::Delivered,
         ts,
         "pm".into(),
     );
@@ -391,7 +391,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     let mut child_c = Story::new_minimal(
         StoryId::new(703),
         "child c".into(),
-        StoryState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev),
         ts,
         "pm".into(),
     );
@@ -434,7 +434,7 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -443,7 +443,7 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
     let plain = Story::new_minimal(
         StoryId::new(800),
         "plain feature".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -468,7 +468,7 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -478,7 +478,7 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
     let mut epic = Story::new_minimal(
         StoryId::new(710),
         "another umbrella".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         ts,
         "pm".into(),
     );
@@ -526,7 +526,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -536,7 +536,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     let mut epic = Story::new_minimal(
         StoryId::new(720),
         "delivered umbrella".into(),
-        StoryState::Ready,
+        BoardState::Ready,
         ts,
         "pm".into(),
     );
@@ -544,7 +544,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     let mut a = Story::new_minimal(
         StoryId::new(721),
         "a".into(),
-        StoryState::Delivered,
+        BoardState::Delivered,
         ts,
         "pm".into(),
     );
@@ -553,7 +553,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     let mut b = Story::new_minimal(
         StoryId::new(722),
         "b".into(),
-        StoryState::Delivered,
+        BoardState::Delivered,
         ts,
         "pm".into(),
     );
@@ -582,7 +582,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, StoryState};
+    use crate::product_management::story::{BoardState, Stage, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -592,7 +592,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     let mut epic = Story::new_minimal(
         StoryId::new(730),
         "owner-accepted umbrella".into(),
-        StoryState::Accepted,
+        BoardState::Accepted,
         ts,
         "pm".into(),
     );
@@ -600,7 +600,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     let mut a = Story::new_minimal(
         StoryId::new(731),
         "a".into(),
-        StoryState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev),
         ts,
         "pm".into(),
     );

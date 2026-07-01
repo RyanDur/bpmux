@@ -11,7 +11,7 @@ use crate::product_management::board::{
     BoardStore, IterationReader, RefreshDriver, SyncOrchestrator,
 };
 use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::{Gate, GateComment, Stage, Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Gate, GateComment, Stage, Story, StoryId};
 
 struct SeededIterations(Vec<Iteration>);
 impl IterationReader for SeededIterations {
@@ -53,7 +53,7 @@ async fn seeded_orchestrator(
     (store, orchestrator)
 }
 
-fn make_story(id: u64, state: StoryState, body: Option<&str>) -> Story {
+fn make_story(id: u64, state: BoardState, body: Option<&str>) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "title".into(),
@@ -89,7 +89,7 @@ async fn handler_errors_when_story_not_in_board() {
 
 #[tokio::test]
 async fn enriches_body_for_rejected_story_via_typed_gates() {
-    let story = make_story(443, StoryState::Ready, Some("original story body text"));
+    let story = make_story(443, BoardState::Ready, Some("original story body text"));
     let gates = vec![
         GateComment {
             gate: Gate::Delivered,
@@ -121,7 +121,7 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
 async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
     let story = make_story(
         200,
-        StoryState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev),
         Some("original body"),
     );
     let gates = vec![GateComment {
@@ -143,7 +143,7 @@ async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
 
 #[tokio::test]
 async fn does_not_enrich_body_for_non_rework_story() {
-    let story = make_story(100, StoryState::Ready, Some("original body"));
+    let story = make_story(100, BoardState::Ready, Some("original body"));
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
     let args = serde_json::json!({"id": 100});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
@@ -156,7 +156,7 @@ async fn does_not_enrich_body_for_non_rework_story() {
 
 #[tokio::test]
 async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
-    let story = make_story(700, StoryState::Ready, Some("original body"));
+    let story = make_story(700, BoardState::Ready, Some("original body"));
     let gates = vec![
         GateComment {
             gate: Gate::Pickup,
@@ -200,7 +200,7 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
 
 #[tokio::test]
 async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
-    let story = make_story(701, StoryState::InProgress(Stage::Dev), Some("clean body"));
+    let story = make_story(701, BoardState::InProgress(Stage::Dev), Some("clean body"));
     let gates = vec![
         GateComment {
             gate: Gate::Pickup,
@@ -248,7 +248,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
 
 #[tokio::test]
 async fn skips_enrichment_when_no_rework_gate_comments() {
-    let story = make_story(50, StoryState::Ready, Some("plain body"));
+    let story = make_story(50, BoardState::Ready, Some("plain body"));
     let (store, orch) = seeded_orchestrator(vec![story], vec![(50, vec![])]).await;
     let args = serde_json::json!({"id": 50});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
@@ -261,7 +261,7 @@ async fn skips_enrichment_when_no_rework_gate_comments() {
 
 #[tokio::test]
 async fn output_exposes_workflow_state_and_is_closed_separately() {
-    let mut story = make_story(101, StoryState::Accepted, Some("body"));
+    let mut story = make_story(101, BoardState::Accepted, Some("body"));
     story.is_closed = true;
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
     let args = serde_json::json!({"id": 101});
@@ -279,7 +279,7 @@ async fn output_exposes_workflow_state_and_is_closed_separately() {
 
 #[tokio::test]
 async fn divergent_case_workflow_ready_but_gh_closed_observable() {
-    let mut story = make_story(102, StoryState::Ready, Some("body"));
+    let mut story = make_story(102, BoardState::Ready, Some("body"));
     story.is_closed = true;
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
     let args = serde_json::json!({"id": 102});
@@ -299,7 +299,7 @@ async fn divergent_case_workflow_ready_but_gh_closed_observable() {
 
 #[tokio::test]
 async fn divergent_case_workflow_accepted_but_gh_open_observable() {
-    let mut story = make_story(103, StoryState::Accepted, Some("body"));
+    let mut story = make_story(103, BoardState::Accepted, Some("body"));
     story.is_closed = false;
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
     let args = serde_json::json!({"id": 103});
@@ -316,7 +316,7 @@ async fn divergent_case_workflow_accepted_but_gh_open_observable() {
 
 #[tokio::test]
 async fn surfaces_full_raw_labels_array_not_synthesized_state_label() {
-    let mut story = make_story(1207, StoryState::Ready, Some("body"));
+    let mut story = make_story(1207, BoardState::Ready, Some("body"));
     story.raw_labels = vec![
         "bug".to_string(),
         "ready".to_string(),
@@ -359,7 +359,7 @@ async fn surfaces_full_raw_labels_array_not_synthesized_state_label() {
 
 #[tokio::test]
 async fn empty_raw_labels_returns_empty_labels_array() {
-    let mut story = make_story(1208, StoryState::Icebox, Some("body"));
+    let mut story = make_story(1208, BoardState::Icebox, Some("body"));
     story.raw_labels = Vec::new();
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
     let args = serde_json::json!({"id": 1208});
@@ -376,7 +376,7 @@ async fn empty_raw_labels_returns_empty_labels_array() {
 
 #[tokio::test]
 async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
-    let story = make_story(1226, StoryState::Ready, None);
+    let story = make_story(1226, BoardState::Ready, None);
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story.clone()]);
@@ -408,7 +408,7 @@ async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
 
 #[tokio::test]
 async fn cache_miss_returns_placeholder_when_no_refresh_driver() {
-    let story = make_story(1226, StoryState::Ready, None);
+    let story = make_story(1226, BoardState::Ready, None);
     let store = Arc::new(BoardStore::new());
     store.seed_all(vec![story]);
     let args = serde_json::json!({"id": 1226});
@@ -430,7 +430,7 @@ async fn cache_miss_returns_placeholder_when_no_refresh_driver() {
 
 #[tokio::test]
 async fn cache_hit_does_not_refetch_when_body_already_present() {
-    let story = make_story(1226, StoryState::Ready, Some("already-cached body"));
+    let story = make_story(1226, BoardState::Ready, Some("already-cached body"));
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story.clone()]);
@@ -459,7 +459,7 @@ fn make_iteration(id: u64, name: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -487,7 +487,7 @@ fn make_member(id: u64, title: &str, iteration_id: u64, position: u32) -> Story 
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -582,7 +582,7 @@ async fn get_story_preserves_placeholder_when_iteration_has_no_members_1462() {
 async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
     let story = make_story(
         1463,
-        StoryState::Accepted,
+        BoardState::Accepted,
         Some("## Iteration Telescopium\n\n## Member stories\n\n_(no members yet)_\n\n## Notes\n"),
     );
     let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
@@ -629,7 +629,7 @@ async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
 
 #[tokio::test]
 async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
-    let story = make_story(1524, StoryState::Ready, Some("base story body"));
+    let story = make_story(1524, BoardState::Ready, Some("base story body"));
     let reason = "drag srt does not persist and does not have the same drag css as the iteration";
     let gates = vec![
         GateComment {
@@ -677,7 +677,7 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
 
 #[tokio::test]
 async fn non_rejected_story_carries_no_latest_reject() {
-    let story = make_story(500, StoryState::Ready, Some("body"));
+    let story = make_story(500, BoardState::Ready, Some("body"));
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story.clone()]);
@@ -704,7 +704,7 @@ async fn non_rejected_story_carries_no_latest_reject() {
 
 #[tokio::test]
 async fn latest_reject_survives_an_iteration_move() {
-    let story = make_story(1524, StoryState::Ready, Some("base body"));
+    let story = make_story(1524, BoardState::Ready, Some("base body"));
     let reason = "drag srt does not persist and does not have the same drag css as the iteration";
     let gates = vec![GateComment {
         gate: Gate::Rejected,
@@ -750,7 +750,7 @@ async fn latest_reject_survives_an_iteration_move() {
 
 #[tokio::test]
 async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
-    let story = make_story(442, StoryState::Ready, Some("body"));
+    let story = make_story(442, BoardState::Ready, Some("body"));
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
@@ -780,7 +780,7 @@ async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
 
 #[tokio::test]
 async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
-    let mut story = make_story(1700, StoryState::Accepted, Some("body"));
+    let mut story = make_story(1700, BoardState::Accepted, Some("body"));
     story.is_closed = true;
     let reason = "carried reject — the active rework";
     let gates = vec![
@@ -824,7 +824,7 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
 
 #[tokio::test]
 async fn re_accepted_after_reject_workflow_state_stays_accepted() {
-    let mut story = make_story(1701, StoryState::Accepted, Some("body"));
+    let mut story = make_story(1701, BoardState::Accepted, Some("body"));
     story.is_closed = true;
     let gates = vec![
         GateComment {

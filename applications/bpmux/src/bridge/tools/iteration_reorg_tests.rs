@@ -16,7 +16,7 @@ use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::{IterationReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
-use crate::product_management::story::{Stage, Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -57,7 +57,7 @@ fn iteration(id: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -90,7 +90,7 @@ fn iteration_with_members(id: u64, name: &str, members: Vec<u64>) -> Story {
     s
 }
 
-fn member_story(id: u64, state: StoryState) -> Story {
+fn member_story(id: u64, state: BoardState) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("[Feature] member-{id}"),
@@ -135,7 +135,7 @@ fn remove_args(iteration: u64, story: u64, reason: Option<&str>) -> Map<String, 
 async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() {
     let refresh = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
-        member_story(710, StoryState::Ready),
+        member_story(710, BoardState::Ready),
     ])
     .await;
     let (dispatch, mut rx) = dispatch_channel();
@@ -163,7 +163,7 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
 async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_1762() {
     let refresh = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
-        member_story(710, StoryState::InProgress(Stage::Dev)),
+        member_story(710, BoardState::InProgress(Stage::Dev)),
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();
@@ -185,7 +185,7 @@ async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_176
 async fn remove_member_with_no_reason_is_rejected_1762() {
     let refresh = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
-        member_story(710, StoryState::Ready),
+        member_story(710, BoardState::Ready),
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();
@@ -215,7 +215,7 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
 async fn remove_member_is_pm_lane_non_pm_refused_1762() {
     let refresh = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
-        member_story(710, StoryState::Ready),
+        member_story(710, BoardState::Ready),
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();
@@ -234,7 +234,7 @@ async fn remove_member_is_pm_lane_non_pm_refused_1762() {
 async fn remove_member_rejects_a_non_member_1762() {
     let refresh = build_refresh(vec![
         iteration(1700, "Circinus"),
-        member_story(710, StoryState::Ready),
+        member_story(710, BoardState::Ready),
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();
@@ -256,8 +256,8 @@ async fn remove_member_rejects_a_non_member_1762() {
 async fn move_member_reorders_within_the_iteration_1762() {
     let refresh = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710, 720]),
-        member_story(710, StoryState::Ready),
-        member_story(720, StoryState::Ready),
+        member_story(710, BoardState::Ready),
+        member_story(720, BoardState::Ready),
     ])
     .await;
     let (dispatch, mut rx) = dispatch_channel();
@@ -375,7 +375,7 @@ async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
     let mut feature = Story::new_minimal(
         StoryId::new(700),
         "[Feature] plain".into(),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

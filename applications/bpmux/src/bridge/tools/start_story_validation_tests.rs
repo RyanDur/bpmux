@@ -7,14 +7,14 @@ mod gate_retire_1348 {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, StoryId, StoryKind, StoryState};
+    use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
     async fn seeded_orchestrator(
         id: u64,
         title: &str,
-        state: StoryState,
+        state: BoardState,
         story_type: StoryKind,
         body: &str,
     ) -> Arc<dyn RefreshDriver> {
@@ -56,7 +56,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9101,
             "[Feature] gherkin-only body",
-            StoryState::Ready,
+            BoardState::Ready,
             StoryKind::Feature,
             body,
         )
@@ -82,7 +82,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9102,
             "[Feature] gherkin-only deliver",
-            StoryState::InProgress(Stage::Dev),
+            BoardState::InProgress(Stage::Dev),
             StoryKind::Feature,
             body,
         )
@@ -110,7 +110,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9103,
             "[Bug] gherkin-only body",
-            StoryState::Ready,
+            BoardState::Ready,
             StoryKind::Bug,
             body,
         )
@@ -132,7 +132,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9104,
             "[Feature] backward-compat ATP path",
-            StoryState::Ready,
+            BoardState::Ready,
             StoryKind::Feature,
             &body,
         )
@@ -158,7 +158,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9105,
             "[Feature] backward-compat ATP deliver",
-            StoryState::InProgress(Stage::Dev),
+            BoardState::InProgress(Stage::Dev),
             StoryKind::Feature,
             &body,
         )

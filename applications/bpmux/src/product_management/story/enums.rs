@@ -7,7 +7,7 @@ pub enum Stage {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum StoryState {
+pub enum BoardState {
     Icebox,
     Ready,
     InProgress(Stage),
@@ -16,54 +16,54 @@ pub enum StoryState {
     Retired,
 }
 
-impl Serialize for StoryState {
+impl Serialize for BoardState {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de> Deserialize<'de> for StoryState {
+impl<'de> Deserialize<'de> for BoardState {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = String::deserialize(deserializer)?;
-        StoryState::parse(&raw)
+        BoardState::parse(&raw)
             .ok_or_else(|| de::Error::custom(format!("unknown story state: {raw}")))
     }
 }
 
-impl StoryState {
+impl BoardState {
     pub fn as_str(self) -> &'static str {
         match self {
-            StoryState::Icebox => "icebox",
-            StoryState::Ready => "ready",
-            StoryState::InProgress(Stage::Dev) => "in-progress",
-            StoryState::InProgress(Stage::DeskCheck) => "desk-check",
-            StoryState::Delivered => "delivered",
-            StoryState::Accepted => "accepted",
-            StoryState::Retired => "retired",
+            BoardState::Icebox => "icebox",
+            BoardState::Ready => "ready",
+            BoardState::InProgress(Stage::Dev) => "in-progress",
+            BoardState::InProgress(Stage::DeskCheck) => "desk-check",
+            BoardState::Delivered => "delivered",
+            BoardState::Accepted => "accepted",
+            BoardState::Retired => "retired",
         }
     }
 
     pub fn github_label(self) -> &'static str {
         match self {
-            StoryState::Icebox => "icebox",
-            StoryState::Ready => "ready",
-            StoryState::InProgress(Stage::Dev) => "in progress",
-            StoryState::InProgress(Stage::DeskCheck) => "desk-check",
-            StoryState::Delivered => "delivered",
-            StoryState::Accepted => "accepted",
-            StoryState::Retired => "retired",
+            BoardState::Icebox => "icebox",
+            BoardState::Ready => "ready",
+            BoardState::InProgress(Stage::Dev) => "in progress",
+            BoardState::InProgress(Stage::DeskCheck) => "desk-check",
+            BoardState::Delivered => "delivered",
+            BoardState::Accepted => "accepted",
+            BoardState::Retired => "retired",
         }
     }
 
     pub fn parse(s: &str) -> Option<Self> {
         match s {
-            "icebox" => Some(StoryState::Icebox),
-            "ready" => Some(StoryState::Ready),
-            "in-progress" | "in_progress" => Some(StoryState::InProgress(Stage::Dev)),
-            "desk-check" | "desk_check" => Some(StoryState::InProgress(Stage::DeskCheck)),
-            "delivered" => Some(StoryState::Delivered),
-            "accepted" => Some(StoryState::Accepted),
-            "retired" => Some(StoryState::Retired),
+            "icebox" => Some(BoardState::Icebox),
+            "ready" => Some(BoardState::Ready),
+            "in-progress" | "in_progress" => Some(BoardState::InProgress(Stage::Dev)),
+            "desk-check" | "desk_check" => Some(BoardState::InProgress(Stage::DeskCheck)),
+            "delivered" => Some(BoardState::Delivered),
+            "accepted" => Some(BoardState::Accepted),
+            "retired" => Some(BoardState::Retired),
             _ => None,
         }
     }

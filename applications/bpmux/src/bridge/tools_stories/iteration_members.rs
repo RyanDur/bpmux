@@ -6,7 +6,7 @@ use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use std::sync::Arc;
 
 async fn member_of(
@@ -104,7 +104,7 @@ pub(crate) async fn handle_remove_iteration_member(
     rewrite_members(r, dispatch, &iteration, stories).await?;
 
     let state_flag = match story.state {
-        StoryState::Icebox | StoryState::Ready => String::new(),
+        BoardState::Icebox | BoardState::Ready => String::new(),
         other => format!(" (was: {})", other.as_str()),
     };
     Ok(format!(

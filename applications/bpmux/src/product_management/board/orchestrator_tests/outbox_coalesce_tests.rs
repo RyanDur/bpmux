@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 
 mod outbox_coalesce_1339_step_2e {
     use super::*;
@@ -34,7 +34,7 @@ mod outbox_coalesce_1339_step_2e {
     async fn rapid_drag_sequence_coalesces_to_first_remove_plus_last_add_per_class() {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let mut seed = seed_story(7011, StoryState::Icebox);
+        let mut seed = seed_story(7011, BoardState::Icebox);
         seed.raw_labels = vec!["iteration-Pegasus.300".to_string()];
         store.seed_all(vec![seed]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
@@ -91,7 +91,7 @@ mod outbox_coalesce_1339_step_2e {
     async fn coalesce_per_class_keeps_distinct_iteration_namespaces_apart() {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(7012, StoryState::Icebox)]);
+        store.seed_all(vec![seed_story(7012, BoardState::Icebox)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
         orch.mutate(BoardEvent::TagAdded {
@@ -129,8 +129,8 @@ mod outbox_coalesce_1339_step_2e {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         store.seed_all(vec![
-            seed_story(7013, StoryState::Icebox),
-            seed_story(7014, StoryState::Icebox),
+            seed_story(7013, BoardState::Icebox),
+            seed_story(7014, BoardState::Icebox),
         ]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
@@ -175,7 +175,7 @@ mod outbox_coalesce_1339_step_2e {
     async fn coalesce_does_not_touch_non_iteration_labels() {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(7015, StoryState::Ready)]);
+        store.seed_all(vec![seed_story(7015, BoardState::Ready)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
         orch.mutate(BoardEvent::TagAdded {
@@ -209,7 +209,7 @@ mod outbox_coalesce_1339_step_2e {
     async fn coalesce_handles_add_only_sequence_keeping_last_add() {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(7016, StoryState::Icebox)]);
+        store.seed_all(vec![seed_story(7016, BoardState::Icebox)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
         orch.mutate(BoardEvent::TagAdded {

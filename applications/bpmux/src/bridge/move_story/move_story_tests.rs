@@ -5,16 +5,16 @@ use crate::product_management::story::Stage;
 fn target_state_parses_canonical_spellings() {
     assert_eq!(
         TargetState::parse("ready").unwrap(),
-        TargetState::Workflow(StoryState::Ready)
+        TargetState::Workflow(BoardState::Ready)
     );
     assert_eq!(
         TargetState::parse("In-Progress").unwrap(),
-        TargetState::Workflow(StoryState::InProgress(Stage::Dev))
+        TargetState::Workflow(BoardState::InProgress(Stage::Dev))
     );
     assert_eq!(TargetState::parse("retired").unwrap(), TargetState::Retired);
     assert_eq!(
         TargetState::parse("Accepted").unwrap(),
-        TargetState::Workflow(StoryState::Accepted)
+        TargetState::Workflow(BoardState::Accepted)
     );
 }
 
@@ -36,10 +36,10 @@ fn target_state_rejects_noncanonical_spellings() {
 #[test]
 fn closes_issue_is_true_only_for_terminal_states() {
     assert!(TargetState::Retired.closes_issue());
-    assert!(TargetState::Workflow(StoryState::Accepted).closes_issue());
-    assert!(!TargetState::Workflow(StoryState::Delivered).closes_issue());
-    assert!(!TargetState::Workflow(StoryState::Ready).closes_issue());
-    assert!(!TargetState::Workflow(StoryState::Icebox).closes_issue());
+    assert!(TargetState::Workflow(BoardState::Accepted).closes_issue());
+    assert!(!TargetState::Workflow(BoardState::Delivered).closes_issue());
+    assert!(!TargetState::Workflow(BoardState::Ready).closes_issue());
+    assert!(!TargetState::Workflow(BoardState::Icebox).closes_issue());
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn audit_comment_body_includes_actor_transition_position_rationale() {
     let body = audit_comment_body(
         "dev",
         "delivered",
-        TargetState::Workflow(StoryState::Ready),
+        TargetState::Workflow(BoardState::Ready),
         Some(3),
         "rework after desk-check",
     );
@@ -111,7 +111,7 @@ fn audit_comment_body_omits_position_segment_when_none() {
     let body = audit_comment_body(
         "pm",
         "icebox",
-        TargetState::Workflow(StoryState::Ready),
+        TargetState::Workflow(BoardState::Ready),
         None,
         "next-iteration promote",
     );

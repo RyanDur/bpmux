@@ -10,7 +10,7 @@ use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::{IterationReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationAction};
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -43,7 +43,7 @@ fn seed_iteration_story(id: u64, name: &str, is_closed: bool) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

@@ -18,7 +18,7 @@ async fn view_board_auto_reingests_when_store_is_empty() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -28,7 +28,7 @@ async fn view_board_auto_reingests_when_store_is_empty() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(505),
         "post-restart-recovery".into(),
-        StoryState::Accepted,
+        BoardState::Accepted,
         ts,
         "dev".into(),
     )]);
@@ -122,7 +122,7 @@ async fn view_board_buckets_stories_by_story_state() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, StoryState};
+    use crate::product_management::story::{BoardState, Stage, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -133,35 +133,35 @@ async fn view_board_buckets_stories_by_story_state() {
         Story::new_minimal(
             StoryId::new(101),
             "icebox-story".into(),
-            StoryState::Icebox,
+            BoardState::Icebox,
             ts,
             "pm".into(),
         ),
         Story::new_minimal(
             StoryId::new(102),
             "ready-story".into(),
-            StoryState::Ready,
+            BoardState::Ready,
             ts,
             "pm".into(),
         ),
         Story::new_minimal(
             StoryId::new(103),
             "in-progress-story".into(),
-            StoryState::InProgress(Stage::Dev),
+            BoardState::InProgress(Stage::Dev),
             ts,
             "dev".into(),
         ),
         Story::new_minimal(
             StoryId::new(104),
             "delivered-story".into(),
-            StoryState::Delivered,
+            BoardState::Delivered,
             ts,
             "dev".into(),
         ),
         Story::new_minimal(
             StoryId::new(108),
             "accepted-story".into(),
-            StoryState::Accepted,
+            BoardState::Accepted,
             ts,
             "owner".into(),
         ),
@@ -201,7 +201,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, StoryState};
+    use crate::product_management::story::{BoardState, Stage, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -211,7 +211,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     let mut closed_in_progress = Story::new_minimal(
         StoryId::new(201),
         "abandoned-mid-flight".into(),
-        StoryState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev),
         ts,
         "pm".into(),
     );
@@ -219,7 +219,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     let mut accepted_closed = Story::new_minimal(
         StoryId::new(202),
         "accepted-closed".into(),
-        StoryState::Accepted,
+        BoardState::Accepted,
         ts,
         "pm".into(),
     );
@@ -264,7 +264,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState};
+    use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -273,7 +273,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let seeded = Story::new_minimal(
         StoryId::new(301),
         "won't fix story".into(),
-        StoryState::Delivered,
+        BoardState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -298,7 +298,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     assert!(story.is_closed, "is_closed flag must be set");
     assert_eq!(
         story.state,
-        StoryState::Retired,
+        BoardState::Retired,
         "#1570: disposition=retire transitions state to Retired"
     );
 
@@ -336,7 +336,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
             e,
             BoardEvent::StateTransitioned { id, new_state, .. }
                 if *id == StoryId::new(301)
-                    && *new_state == crate::product_management::story::StoryState::Retired
+                    && *new_state == crate::product_management::story::BoardState::Retired
         )),
         "StateTransitioned → Retired must fire for retire-class reason"
     );

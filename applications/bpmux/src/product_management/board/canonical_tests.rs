@@ -5,7 +5,7 @@ use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::decode_story_metadata;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::{BoardEvent, PeerId, events::EventMeta};
-use crate::product_management::story::{Story, StoryId, StoryKind, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
@@ -22,7 +22,7 @@ fn story_struct_has_no_iteration_id_field_in_board_json_projection() {
     let story = Story::new_minimal(
         StoryId::new(100),
         "carrier-test".to_string(),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -80,7 +80,7 @@ fn create_story_event_does_not_seed_iteration_membership() {
         id: StoryId::new(200),
         title: "freshly-created".to_string(),
         body: "no membership at filing-time".to_string(),
-        initial_state: StoryState::Icebox,
+        initial_state: BoardState::Icebox,
         story_type: StoryKind::Feature,
     });
     let s = store.story(StoryId::new(200)).expect("story present");

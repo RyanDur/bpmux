@@ -1,5 +1,5 @@
 use super::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryKey, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId, StoryKey};
 
 impl BoardStore {
     pub fn story(&self, id: StoryId) -> Option<Story> {
@@ -16,7 +16,7 @@ impl BoardStore {
         self.store.select(|state| state.values().cloned().collect())
     }
 
-    pub fn stories_in_state(&self, wanted: StoryState) -> Vec<Story> {
+    pub fn stories_in_state(&self, wanted: BoardState) -> Vec<Story> {
         self.store.select(|state| {
             state
                 .values()

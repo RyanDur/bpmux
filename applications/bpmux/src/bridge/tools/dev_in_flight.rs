@@ -3,7 +3,7 @@ use std::sync::Arc;
 use serde::Serialize;
 
 use crate::product_management::board::BoardStore;
-use crate::product_management::story::{Stage, StoryState};
+use crate::product_management::story::{BoardState, Stage};
 
 #[derive(Serialize)]
 struct DevInFlight {
@@ -14,7 +14,7 @@ pub(in crate::bridge) async fn handle_dev_in_flight(
     store: &Arc<BoardStore>,
 ) -> Result<String, String> {
     let in_flight = !store
-        .stories_in_state(StoryState::InProgress(Stage::Dev))
+        .stories_in_state(BoardState::InProgress(Stage::Dev))
         .is_empty();
     let response = DevInFlight {
         dev_in_flight: in_flight,

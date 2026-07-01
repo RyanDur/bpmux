@@ -120,7 +120,7 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
     let initial = refresh.story(202).expect("seeded story");
     assert_eq!(
         initial.state,
-        crate::product_management::story::StoryState::Icebox,
+        crate::product_management::story::BoardState::Icebox,
         "no state-bearing label → Icebox"
     );
 
@@ -148,7 +148,7 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
     let updated = refresh.story(202).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::StoryState::InProgress(
+        crate::product_management::story::BoardState::InProgress(
             crate::product_management::story::Stage::Dev
         ),
         "post-refresh, bpmux state reflects externally-added 'in progress' label"
@@ -290,7 +290,7 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
     let initial = refresh.story(606).expect("seeded story");
     assert_eq!(
         initial.state,
-        crate::product_management::story::StoryState::InProgress(
+        crate::product_management::story::BoardState::InProgress(
             crate::product_management::story::Stage::Dev
         ),
         "fixture seeds in-progress state"
@@ -312,7 +312,7 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
     let updated = refresh.story(606).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::StoryState::Icebox,
+        crate::product_management::story::BoardState::Icebox,
         "post-refresh, bpmux state clears back to Icebox after externally-removed label"
     );
 }
@@ -420,7 +420,7 @@ async fn external_close_propagates_to_bpmux_accepted_state_after_refresh() {
     );
     assert_eq!(
         updated.state,
-        crate::product_management::story::StoryState::Accepted,
+        crate::product_management::story::BoardState::Accepted,
         "is_closed forces Accepted state per state_from_labels"
     );
 }

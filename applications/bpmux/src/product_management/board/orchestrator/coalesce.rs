@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::product_management::board::events::BoardEvent;
-use crate::product_management::story::{Stage, Story, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story};
 
 use super::{MutationId, QueuedEvent};
 
@@ -92,15 +92,15 @@ pub(super) fn coalesce_iteration_label_events(
 
 pub(super) fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Vec<String> {
     let expected = match story.state {
-        StoryState::Icebox => "",
+        BoardState::Icebox => "",
         other => other.github_label(),
     };
     let canonical_state_labels = [
-        StoryState::Ready.github_label(),
-        StoryState::InProgress(Stage::Dev).github_label(),
-        StoryState::InProgress(Stage::DeskCheck).github_label(),
-        StoryState::Delivered.github_label(),
-        StoryState::Accepted.github_label(),
+        BoardState::Ready.github_label(),
+        BoardState::InProgress(Stage::Dev).github_label(),
+        BoardState::InProgress(Stage::DeskCheck).github_label(),
+        BoardState::Delivered.github_label(),
+        BoardState::Accepted.github_label(),
     ];
     let legacy_state_labels = ["ready for accept", "needs fixes", "rejected"];
     raw_labels

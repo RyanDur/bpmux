@@ -6,13 +6,13 @@ pub(crate) fn select_stories_to_hydrate(
     stories: &[crate::product_management::story::Story],
     limit: usize,
 ) -> Vec<u64> {
-    use crate::product_management::story::StoryState;
+    use crate::product_management::story::BoardState;
     stories
         .iter()
         .filter(|s| {
             matches!(
                 s.state,
-                StoryState::Ready | StoryState::InProgress(_) | StoryState::Delivered
+                BoardState::Ready | BoardState::InProgress(_) | BoardState::Delivered
             ) && s.body.is_none()
         })
         .take(limit)
@@ -24,13 +24,13 @@ pub(crate) fn select_stories_to_revalidate(
     stories: &[crate::product_management::story::Story],
     limit: usize,
 ) -> Vec<(u64, Option<String>)> {
-    use crate::product_management::story::StoryState;
+    use crate::product_management::story::BoardState;
     stories
         .iter()
         .filter(|s| {
             matches!(
                 s.state,
-                StoryState::Ready | StoryState::InProgress(_) | StoryState::Delivered
+                BoardState::Ready | BoardState::InProgress(_) | BoardState::Delivered
             ) && s.body.is_some()
         })
         .take(limit)

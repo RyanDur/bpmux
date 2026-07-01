@@ -10,7 +10,7 @@ use crate::product_management::board::{
     BoardStore, IterationReader, RefreshDriver, SyncOrchestrator,
 };
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -70,7 +70,7 @@ fn iteration_seed(id: u64, name: &str) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -82,7 +82,7 @@ fn member_seed(id: u64, title: &str) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.into(),
-        StoryState::Ready,
+        BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     )

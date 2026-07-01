@@ -5,7 +5,7 @@ use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
-    Stage, Story, StoryId, StoryKind, StoryState, Tag, story_type_from_title,
+    BoardState, Stage, Story, StoryId, StoryKind, Tag, story_type_from_title,
 };
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryKind {
@@ -26,11 +26,11 @@ pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     let state_labels = [
-        StoryState::Ready.github_label(),
-        StoryState::InProgress(Stage::Dev).github_label(),
-        StoryState::InProgress(Stage::DeskCheck).github_label(),
-        StoryState::Delivered.github_label(),
-        StoryState::Accepted.github_label(),
+        BoardState::Ready.github_label(),
+        BoardState::InProgress(Stage::Dev).github_label(),
+        BoardState::InProgress(Stage::DeskCheck).github_label(),
+        BoardState::Delivered.github_label(),
+        BoardState::Accepted.github_label(),
         "ready for accept",
         "needs fixes",
         "rejected",
@@ -122,42 +122,42 @@ pub fn tags_from_labels(labels: &[String]) -> Vec<Tag> {
     out
 }
 
-pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
+pub fn state_from_labels(labels: &[String], is_closed: bool) -> BoardState {
     let has = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
     warn_on_inconsistent_state_labels(labels);
-    if has(StoryState::Accepted.github_label()) {
-        return StoryState::Accepted;
+    if has(BoardState::Accepted.github_label()) {
+        return BoardState::Accepted;
     }
-    if has(StoryState::Retired.github_label()) {
-        return StoryState::Retired;
+    if has(BoardState::Retired.github_label()) {
+        return BoardState::Retired;
     }
     if is_closed {
-        return StoryState::Accepted;
+        return BoardState::Accepted;
     }
     if has("rejected") {
-        return StoryState::Ready;
+        return BoardState::Ready;
     }
     if has("needs fixes") {
-        return StoryState::InProgress(Stage::Dev);
+        return BoardState::InProgress(Stage::Dev);
     }
     if has("ready for accept") {
-        return StoryState::Delivered;
+        return BoardState::Delivered;
     }
-    if has(StoryState::Delivered.github_label()) {
-        return StoryState::Delivered;
+    if has(BoardState::Delivered.github_label()) {
+        return BoardState::Delivered;
     }
-    if has(StoryState::InProgress(Stage::DeskCheck).github_label()) {
-        return StoryState::InProgress(Stage::DeskCheck);
+    if has(BoardState::InProgress(Stage::DeskCheck).github_label()) {
+        return BoardState::InProgress(Stage::DeskCheck);
     }
-    if has(StoryState::InProgress(Stage::Dev).github_label()) {
-        return StoryState::InProgress(Stage::Dev);
+    if has(BoardState::InProgress(Stage::Dev).github_label()) {
+        return BoardState::InProgress(Stage::Dev);
     }
-    if has(StoryState::Ready.github_label()) {
-        return StoryState::Ready;
+    if has(BoardState::Ready.github_label()) {
+        return BoardState::Ready;
     }
-    StoryState::Icebox
+    BoardState::Icebox
 }
 
-pub fn state_to_label(state: StoryState) -> &'static str {
+pub fn state_to_label(state: BoardState) -> &'static str {
     state.github_label()
 }

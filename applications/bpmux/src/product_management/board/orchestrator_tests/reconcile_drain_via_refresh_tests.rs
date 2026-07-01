@@ -10,14 +10,14 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::story::{Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Story, StoryId};
 
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
     use crate::product_management::board::RefreshDriver;
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(1, StoryState::Ready)]);
+    adapter.seed_stories(vec![seed_story(1, BoardState::Ready)]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
@@ -27,7 +27,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
         .mutate_sync(BoardEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: StoryState::Delivered,
+            new_state: BoardState::Delivered,
         })
         .unwrap();
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -39,7 +39,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
 async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_label() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut delivered = seed_story(450, StoryState::Delivered);
+    let mut delivered = seed_story(450, BoardState::Delivered);
     delivered.raw_labels.push("bug".to_string());
     adapter.seed_stories(vec![delivered]);
     adapter.seed_labels(
@@ -69,7 +69,7 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
 async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(451, StoryState::Delivered)]);
+    adapter.seed_stories(vec![seed_story(451, BoardState::Delivered)]);
     adapter.seed_labels(451, vec!["delivered".to_string(), "feature".to_string()]);
     let orch = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),

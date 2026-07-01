@@ -18,38 +18,38 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bpmux::product_management::board::column::{ColumnBucket, column_for};
+use bpmux::product_management::story::BoardState;
 use bpmux::product_management::story::Stage;
-use bpmux::product_management::story::StoryState;
 
 /// Truth-table mirror of the renderer's `columnFor` from
 /// `applications/electron/src/renderer/src/board/types.ts`.
 ///
 /// Encoded by hand from the TS source so this test catches drift on
 /// either side. Update both when the projection legitimately changes.
-fn renderer_column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
-    if is_closed && state != StoryState::Accepted && state != StoryState::Retired {
+fn renderer_column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
+    if is_closed && state != BoardState::Accepted && state != BoardState::Retired {
         return ColumnBucket::Retired;
     }
     match state {
-        StoryState::Icebox => ColumnBucket::Icebox,
-        StoryState::Ready => ColumnBucket::Ready,
-        StoryState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
-        StoryState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
-        StoryState::Delivered => ColumnBucket::Delivered,
-        StoryState::Accepted => ColumnBucket::Accepted,
-        StoryState::Retired => ColumnBucket::Retired,
+        BoardState::Icebox => ColumnBucket::Icebox,
+        BoardState::Ready => ColumnBucket::Ready,
+        BoardState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
+        BoardState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
+        BoardState::Delivered => ColumnBucket::Delivered,
+        BoardState::Accepted => ColumnBucket::Accepted,
+        BoardState::Retired => ColumnBucket::Retired,
     }
 }
 
 #[test]
 fn column_for_agrees_across_full_cross_product() {
     let states = [
-        StoryState::Icebox,
-        StoryState::Ready,
-        StoryState::InProgress(Stage::Dev),
-        StoryState::InProgress(Stage::DeskCheck),
-        StoryState::Delivered,
-        StoryState::Accepted,
+        BoardState::Icebox,
+        BoardState::Ready,
+        BoardState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::DeskCheck),
+        BoardState::Delivered,
+        BoardState::Accepted,
     ];
     for state in states {
         for is_closed in [false, true] {
@@ -71,11 +71,11 @@ fn closed_non_accepted_stories_project_to_retired() {
     // narrative. Closed + Accepted stays in Accepted (user-story
     // satisfied + closed = legitimate completion).
     for state in [
-        StoryState::Icebox,
-        StoryState::Ready,
-        StoryState::InProgress(Stage::Dev),
-        StoryState::InProgress(Stage::DeskCheck),
-        StoryState::Delivered,
+        BoardState::Icebox,
+        BoardState::Ready,
+        BoardState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::DeskCheck),
+        BoardState::Delivered,
     ] {
         assert_eq!(
             column_for(state, true),
@@ -88,7 +88,7 @@ fn closed_non_accepted_stories_project_to_retired() {
 #[test]
 fn closed_accepted_stays_accepted() {
     assert_eq!(
-        column_for(StoryState::Accepted, true),
+        column_for(BoardState::Accepted, true),
         ColumnBucket::Accepted,
         "closed + Accepted stays in ACCEPTED (user-story satisfied + closed = success-narrative)"
     );
@@ -99,22 +99,22 @@ fn open_workflow_states_bucket_one_to_one() {
     // #1146 slice 3: post-collapse, the 6 enum states map 1:1 to
     // their display columns. Rework lives in transition history,
     // not in separate Rejected/NeedsFixes/ReadyForAccept variants.
-    assert_eq!(column_for(StoryState::Icebox, false), ColumnBucket::Icebox);
-    assert_eq!(column_for(StoryState::Ready, false), ColumnBucket::Ready);
+    assert_eq!(column_for(BoardState::Icebox, false), ColumnBucket::Icebox);
+    assert_eq!(column_for(BoardState::Ready, false), ColumnBucket::Ready);
     assert_eq!(
-        column_for(StoryState::InProgress(Stage::Dev), false),
+        column_for(BoardState::InProgress(Stage::Dev), false),
         ColumnBucket::InProgress
     );
     assert_eq!(
-        column_for(StoryState::InProgress(Stage::DeskCheck), false),
+        column_for(BoardState::InProgress(Stage::DeskCheck), false),
         ColumnBucket::DeskCheck
     );
     assert_eq!(
-        column_for(StoryState::Delivered, false),
+        column_for(BoardState::Delivered, false),
         ColumnBucket::Delivered
     );
     assert_eq!(
-        column_for(StoryState::Accepted, false),
+        column_for(BoardState::Accepted, false),
         ColumnBucket::Accepted
     );
 }

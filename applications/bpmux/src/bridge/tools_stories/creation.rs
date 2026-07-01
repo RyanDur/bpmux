@@ -159,7 +159,7 @@ async fn create_and_broadcast_story_events(
         id: StoryId::new(id),
         title: title.to_string(),
         body: composed_body,
-        initial_state: crate::product_management::story::StoryState::Icebox,
+        initial_state: crate::product_management::story::BoardState::Icebox,
         story_type,
     })
     .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;

@@ -5,7 +5,7 @@ use crate::product_management::story::StoryId;
 
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
 
-fn label_for_state(state: crate::product_management::story::StoryState) -> &'static str {
+fn label_for_state(state: crate::product_management::story::BoardState) -> &'static str {
     state.github_label()
 }
 
@@ -43,7 +43,7 @@ pub(crate) async fn handle_fail_desk_check(
     }
     let was_accepted = prior
         .as_ref()
-        .map(|s| s.is_closed || s.state == crate::product_management::story::StoryState::Accepted)
+        .map(|s| s.is_closed || s.state == crate::product_management::story::BoardState::Accepted)
         .unwrap_or(false);
     let reason = args
         .get("reason")
@@ -60,10 +60,10 @@ pub(crate) async fn handle_fail_desk_check(
         });
         return Err(err.to_string());
     }
-    let target_state = crate::product_management::story::StoryState::parse(transition.to.as_str())
+    let target_state = crate::product_management::story::BoardState::parse(transition.to.as_str())
         .ok_or_else(|| {
             format!(
-                "workflow.toml fail-desk-check transition.to='{}' is not a recognized StoryState",
+                "workflow.toml fail-desk-check transition.to='{}' is not a recognized BoardState",
                 transition.to
             )
         })?;

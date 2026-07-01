@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::product_management::board::BoardStore;
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{Story, StoryState};
+use crate::product_management::story::{BoardState, Story};
 
 pub(in crate::bridge) async fn handle_list_ready(
     store: &Arc<BoardStore>,
@@ -13,7 +13,7 @@ pub(in crate::bridge) async fn handle_list_ready(
         .find(|iteration| iteration.is_current)
         .map(|iteration| iteration.stories.clone())
         .unwrap_or_default();
-    let ready = store.stories_in_state(StoryState::Ready);
+    let ready = store.stories_in_state(BoardState::Ready);
     let mut queue: Vec<&Story> = current_order
         .iter()
         .filter_map(|id| ready.iter().find(|s| s.id == *id))

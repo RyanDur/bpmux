@@ -4,7 +4,7 @@ pub(crate) mod slice;
 pub mod story_type;
 pub mod transition;
 
-pub use enums::{Acceptor, Gate, Horizon, Stage, StoryState, Tag};
+pub use enums::{Acceptor, BoardState, Gate, Horizon, Stage, Tag};
 pub use key::{StoryId, StoryKey};
 pub use story_type::{StoryKind, story_type_from_title};
 pub use transition::{
@@ -42,7 +42,7 @@ pub struct FreeComment {
 pub struct Story {
     pub id: StoryId,
     pub title: String,
-    pub state: StoryState,
+    pub state: BoardState,
     pub filed_at: DateTime<Utc>,
     pub filed_by: String,
     pub body: Option<String>,
@@ -70,12 +70,12 @@ impl Story {
     pub fn new_minimal(
         id: StoryId,
         title: String,
-        state: StoryState,
+        state: BoardState,
         filed_at: DateTime<Utc>,
         filed_by: String,
     ) -> Self {
         let raw_labels = match state {
-            StoryState::Icebox => Vec::new(),
+            BoardState::Icebox => Vec::new(),
             other => vec![other.github_label().to_string()],
         };
         let story_type = story_type::story_type_from_title(&title);
@@ -108,7 +108,7 @@ impl Story {
         &self.title
     }
 
-    pub fn state(&self) -> StoryState {
+    pub fn state(&self) -> BoardState {
         self.state
     }
 

@@ -5,7 +5,7 @@
 use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::{BoardStore, StoreChange};
-use crate::product_management::story::{Stage, Story, StoryId, StoryState};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use chrono::Utc;
 use std::sync::Arc;
 
@@ -17,7 +17,7 @@ fn meta() -> EventMeta {
     }
 }
 
-fn seed_story_at(store: &BoardStore, number: u64, state: StoryState) {
+fn seed_story_at(store: &BoardStore, number: u64, state: BoardState) {
     let story = Story::new_minimal(
         StoryId::new(number),
         format!("[Feature] story {number}"),
@@ -31,7 +31,7 @@ fn seed_story_at(store: &BoardStore, number: u64, state: StoryState) {
 fn assert_state_transition_fires(
     store: &Arc<BoardStore>,
     number: u64,
-    expected_new_state: StoryState,
+    expected_new_state: BoardState,
 ) {
     let mut rx = store.subscribe();
     store.apply(&BoardEvent::StateTransitioned {
@@ -61,34 +61,34 @@ fn assert_state_transition_fires(
 #[tokio::test]
 async fn start_story_state_transition_dispatches_event() {
     let store = Arc::new(BoardStore::new());
-    seed_story_at(&store, 100, StoryState::Ready);
-    assert_state_transition_fires(&store, 100, StoryState::InProgress(Stage::Dev));
+    seed_story_at(&store, 100, BoardState::Ready);
+    assert_state_transition_fires(&store, 100, BoardState::InProgress(Stage::Dev));
 }
 
 #[tokio::test]
 async fn deliver_story_state_transition_dispatches_event() {
     let store = Arc::new(BoardStore::new());
-    seed_story_at(&store, 200, StoryState::InProgress(Stage::Dev));
-    assert_state_transition_fires(&store, 200, StoryState::Delivered);
+    seed_story_at(&store, 200, BoardState::InProgress(Stage::Dev));
+    assert_state_transition_fires(&store, 200, BoardState::Delivered);
 }
 
 #[tokio::test]
 async fn accept_story_state_transition_dispatches_event() {
     let store = Arc::new(BoardStore::new());
-    seed_story_at(&store, 300, StoryState::Delivered);
-    assert_state_transition_fires(&store, 300, StoryState::Accepted);
+    seed_story_at(&store, 300, BoardState::Delivered);
+    assert_state_transition_fires(&store, 300, BoardState::Accepted);
 }
 
 #[tokio::test]
 async fn sister_to_1274_state_transition_reaches_cascade_listener() {
     let store = Arc::new(BoardStore::new());
-    seed_story_at(&store, 400, StoryState::Delivered);
+    seed_story_at(&store, 400, BoardState::Delivered);
     let mut rx = store.subscribe();
 
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(400),
-        new_state: StoryState::Accepted,
+        new_state: BoardState::Accepted,
     });
 
     let event = rx
@@ -103,7 +103,7 @@ async fn sister_to_1274_state_transition_reaches_cascade_listener() {
     );
     assert_eq!(
         store.story(StoryId::new(400)).unwrap().state,
-        StoryState::Accepted,
+        BoardState::Accepted,
         "store reflects the transition after apply completes"
     );
 }
@@ -111,14 +111,14 @@ async fn sister_to_1274_state_transition_reaches_cascade_listener() {
 #[tokio::test]
 async fn multiple_subscribers_each_receive_state_transition_event() {
     let store = Arc::new(BoardStore::new());
-    seed_story_at(&store, 500, StoryState::Ready);
+    seed_story_at(&store, 500, BoardState::Ready);
     let mut rx_a = store.subscribe();
     let mut rx_b = store.subscribe();
 
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(500),
-        new_state: StoryState::InProgress(Stage::Dev),
+        new_state: BoardState::InProgress(Stage::Dev),
     });
 
     let event_a = rx_a.try_recv().expect("subscriber A receives event");
@@ -136,9 +136,9 @@ async fn multiple_subscribers_each_receive_state_transition_event() {
 #[tokio::test]
 async fn broadcast_fires_after_reduce_so_listeners_observe_new_state() {
     let store = Arc::new(BoardStore::new());
-    seed_story_at(&store, 600, StoryState::Ready);
+    seed_story_at(&store, 600, BoardState::Ready);
 
-    let observed_at_hook: Arc<std::sync::Mutex<Option<StoryState>>> =
+    let observed_at_hook: Arc<std::sync::Mutex<Option<BoardState>>> =
         Arc::new(std::sync::Mutex::new(None));
     let observed_clone = Arc::clone(&observed_at_hook);
     let store_for_hook = Arc::clone(&store);
@@ -150,7 +150,7 @@ async fn broadcast_fires_after_reduce_so_listeners_observe_new_state() {
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(600),
-        new_state: StoryState::InProgress(Stage::Dev),
+        new_state: BoardState::InProgress(Stage::Dev),
     });
 
     let observed = observed_at_hook
@@ -159,14 +159,14 @@ async fn broadcast_fires_after_reduce_so_listeners_observe_new_state() {
         .expect("hook fired immediately after event_tx.send broadcast the event");
     assert_eq!(
         observed,
-        StoryState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev),
         "the reducer mutated state BEFORE event_tx.send broadcast to listeners, \
          so a listener observes the reduced state per the redux pipeline \
          (dispatch -> middleware -> reducer -> listeners): #1282 listener-after-reducer invariant"
     );
     assert_eq!(
         store.story(StoryId::new(600)).unwrap().state,
-        StoryState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev),
         "store reflects new state after apply returns"
     );
 }

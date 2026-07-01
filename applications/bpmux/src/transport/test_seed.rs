@@ -149,17 +149,17 @@ pub async fn post_seed_stories(
     };
     for s in &body.stories {
         let initial_state = match s.initial_state.as_str() {
-            "icebox" => crate::product_management::story::StoryState::Icebox,
-            "ready" => crate::product_management::story::StoryState::Ready,
-            "in-progress" => crate::product_management::story::StoryState::InProgress(
+            "icebox" => crate::product_management::story::BoardState::Icebox,
+            "ready" => crate::product_management::story::BoardState::Ready,
+            "in-progress" => crate::product_management::story::BoardState::InProgress(
                 crate::product_management::story::Stage::Dev,
             ),
-            "desk-check" => crate::product_management::story::StoryState::InProgress(
+            "desk-check" => crate::product_management::story::BoardState::InProgress(
                 crate::product_management::story::Stage::DeskCheck,
             ),
-            "delivered" => crate::product_management::story::StoryState::Delivered,
-            "accepted" => crate::product_management::story::StoryState::Accepted,
-            _ => crate::product_management::story::StoryState::Icebox,
+            "delivered" => crate::product_management::story::BoardState::Delivered,
+            "accepted" => crate::product_management::story::BoardState::Accepted,
+            _ => crate::product_management::story::BoardState::Icebox,
         };
         let is_iteration_seed = s.story_type.as_str() == "iteration";
         let is_epic_seed = s.story_type.as_str() == "epic";

@@ -9,7 +9,7 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
-use crate::product_management::story::{Horizon, Story, StoryId, StoryKind, StoryState};
+use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -42,7 +42,7 @@ fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -59,7 +59,7 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        StoryState::Icebox,
+        BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
