@@ -79,24 +79,20 @@ pub(crate) fn classify_for_pass_desk_check(
 
 pub(crate) fn addressee_for_pass_desk_check(
     story_type: crate::product_management::story::StoryKind,
-    labels: &[String],
+    acceptor: Option<crate::product_management::story::Acceptor>,
 ) -> &'static str {
     let workflow = crate::workflow::current_workflow();
     let owner = || workflow.owner_role_id().unwrap_or("owner");
     let team = || workflow.role_id_for_purpose("pm").unwrap_or("pm");
 
-    let has_label = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
-    if has_label("awaiting team") {
-        return team();
-    }
-    if has_label("awaiting owner") {
-        return owner();
-    }
-
-    use crate::product_management::story::StoryKind;
-    match story_type {
-        StoryKind::Feature => owner(),
-        StoryKind::Bug | StoryKind::Chore => team(),
+    use crate::product_management::story::{Acceptor, StoryKind};
+    match acceptor {
+        Some(Acceptor::Team) => team(),
+        Some(Acceptor::Owner) => owner(),
+        _ => match story_type {
+            StoryKind::Feature => owner(),
+            StoryKind::Bug | StoryKind::Chore => team(),
+        },
     }
 }
 
@@ -122,9 +118,9 @@ pub(crate) fn build_pass_desk_check_pm_present_signal(id: u64) -> ClientMessage 
 pub(crate) fn build_pass_desk_check_signals(
     id: u64,
     story_type: crate::product_management::story::StoryKind,
-    labels: &[String],
+    acceptor: Option<crate::product_management::story::Acceptor>,
 ) -> Vec<ClientMessage> {
-    let primary = addressee_for_pass_desk_check(story_type, labels);
+    let primary = addressee_for_pass_desk_check(story_type, acceptor);
     let owner = crate::workflow::current_workflow()
         .owner_role_id()
         .unwrap_or("owner");

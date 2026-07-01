@@ -2,6 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
+use crate::product_management::story::Acceptor;
 use crate::product_management::story::StoryKind;
 use crate::product_management::story::story_type_from_title;
 use crate::transport::protocol::ClientMessage;
@@ -124,7 +125,7 @@ fn reject_signal_includes_reason() {
 
 #[test]
 fn pass_desk_check_signal_addresses_owner_for_feature_label() {
-    let addressee = addressee_for_pass_desk_check(StoryKind::Feature, &[]);
+    let addressee = addressee_for_pass_desk_check(StoryKind::Feature, None);
     if let ClientMessage::Send {
         to, addressee: a, ..
     } = build_pass_desk_check_signal(203, addressee)
@@ -138,7 +139,7 @@ fn pass_desk_check_signal_addresses_owner_for_feature_label() {
 
 #[test]
 fn pass_desk_check_signal_addresses_pm_for_chore_label() {
-    let addressee = addressee_for_pass_desk_check(StoryKind::Chore, &[]);
+    let addressee = addressee_for_pass_desk_check(StoryKind::Chore, None);
     if let ClientMessage::Send {
         to, addressee: a, ..
     } = build_pass_desk_check_signal(203, addressee)
@@ -152,68 +153,58 @@ fn pass_desk_check_signal_addresses_pm_for_chore_label() {
 
 #[test]
 fn pass_desk_check_signal_addresses_pm_for_bug_label() {
-    let addressee = addressee_for_pass_desk_check(StoryKind::Bug, &[]);
+    let addressee = addressee_for_pass_desk_check(StoryKind::Bug, None);
     assert_eq!(addressee, "pm");
 }
 
 #[test]
 fn pass_desk_check_signal_falls_back_to_title_prefix() {
     let addressee =
-        addressee_for_pass_desk_check(story_type_from_title("[Chore] split app_state"), &[]);
+        addressee_for_pass_desk_check(story_type_from_title("[Chore] split app_state"), None);
     assert_eq!(addressee, "pm");
-    let addressee = addressee_for_pass_desk_check(story_type_from_title("[Feature] new view"), &[]);
+    let addressee =
+        addressee_for_pass_desk_check(story_type_from_title("[Feature] new view"), None);
     assert_eq!(addressee, "owner");
 }
 
 #[test]
 fn pass_desk_check_signal_defaults_owner_on_empty() {
-    let addressee = addressee_for_pass_desk_check(story_type_from_title(""), &[]);
+    let addressee = addressee_for_pass_desk_check(story_type_from_title(""), None);
     assert_eq!(addressee, "owner");
-    let addressee = addressee_for_pass_desk_check(story_type_from_title("unlabeled story"), &[]);
+    let addressee = addressee_for_pass_desk_check(story_type_from_title("unlabeled story"), None);
     assert_eq!(addressee, "owner");
 }
 
 #[test]
-fn pass_desk_check_signal_acceptor_label_overrides_title_prefix_team() {
-    let labels = vec!["awaiting team".to_string()];
+fn pass_desk_check_signal_team_acceptor_overrides_title_prefix() {
     assert_eq!(
-        addressee_for_pass_desk_check(StoryKind::Feature, &labels),
+        addressee_for_pass_desk_check(StoryKind::Feature, Some(Acceptor::Team)),
         "pm",
-        "awaiting team label routes Feature to pm regardless of title-prefix"
+        "team acceptor routes Feature to pm regardless of title-prefix"
     );
     assert_eq!(
-        addressee_for_pass_desk_check(StoryKind::Bug, &labels),
+        addressee_for_pass_desk_check(StoryKind::Bug, Some(Acceptor::Team)),
         "pm",
-        "awaiting team label routes any story kind to pm"
+        "team acceptor routes any story kind to pm"
     );
 }
 
 #[test]
-fn pass_desk_check_signal_acceptor_label_overrides_title_prefix_owner() {
-    let labels = vec!["awaiting owner".to_string()];
+fn pass_desk_check_signal_owner_acceptor_overrides_title_prefix() {
     assert_eq!(
-        addressee_for_pass_desk_check(StoryKind::Bug, &labels),
+        addressee_for_pass_desk_check(StoryKind::Bug, Some(Acceptor::Owner)),
         "owner",
-        "awaiting owner label routes Bug to owner regardless of title-prefix"
+        "owner acceptor routes Bug to owner regardless of title-prefix"
     );
     assert_eq!(
-        addressee_for_pass_desk_check(StoryKind::Chore, &labels),
+        addressee_for_pass_desk_check(StoryKind::Chore, Some(Acceptor::Owner)),
         "owner"
     );
 }
 
 #[test]
-fn pass_desk_check_signal_acceptor_label_case_insensitive() {
-    let labels = vec!["Awaiting Team".to_string()];
-    assert_eq!(
-        addressee_for_pass_desk_check(StoryKind::Feature, &labels),
-        "pm"
-    );
-}
-
-#[test]
 fn pass_desk_check_signal_does_not_target_dev() {
-    let addressee = addressee_for_pass_desk_check(story_type_from_title(""), &[]);
+    let addressee = addressee_for_pass_desk_check(story_type_from_title(""), None);
     if let ClientMessage::Send { to, .. } = build_pass_desk_check_signal(203, addressee) {
         let recipients = to.as_ref().unwrap();
         assert!(
@@ -239,7 +230,7 @@ fn pass_desk_check_signal_announces_ready_for_acceptance() {
 
 #[test]
 fn pass_desk_check_signals_emits_two_for_feature() {
-    let signals = build_pass_desk_check_signals(210, StoryKind::Feature, &[]);
+    let signals = build_pass_desk_check_signals(210, StoryKind::Feature, None);
     assert_eq!(signals.len(), 2, "feature PASS should emit two signals");
     let addressees: Vec<Option<String>> = signals
         .iter()
@@ -260,7 +251,7 @@ fn pass_desk_check_signals_emits_two_for_feature() {
 
 #[test]
 fn pass_desk_check_signals_emits_one_for_infra() {
-    let signals = build_pass_desk_check_signals(253, StoryKind::Chore, &[]);
+    let signals = build_pass_desk_check_signals(253, StoryKind::Chore, None);
     assert_eq!(signals.len(), 1, "infra PASS should emit one signal");
     if let ClientMessage::Send { addressee, .. } = &signals[0] {
         assert_eq!(addressee.as_deref(), Some("pm"));
@@ -271,7 +262,7 @@ fn pass_desk_check_signals_emits_one_for_infra() {
 
 #[test]
 fn pass_desk_check_signals_ambiguous_routes_to_owner_and_pm() {
-    let signals = build_pass_desk_check_signals(999, story_type_from_title(""), &[]);
+    let signals = build_pass_desk_check_signals(999, story_type_from_title(""), None);
     assert_eq!(signals.len(), 2);
 }
 

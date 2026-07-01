@@ -118,11 +118,8 @@ pub(crate) async fn dispatch_pass_desk_check(
         tools_stories::handle_pass_desk_check(&args, agent_name, refresh, Some(session)).await?;
     if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         let story_type = tools_stories::classify_for_pass_desk_check(id, refresh);
-        let labels = refresh
-            .and_then(|r| r.story(id))
-            .map(|s| s.raw_labels)
-            .unwrap_or_default();
-        for msg in tools_stories::build_pass_desk_check_signals(id, story_type, &labels) {
+        let acceptor = refresh.and_then(|r| r.story(id)).and_then(|s| s.acceptor());
+        for msg in tools_stories::build_pass_desk_check_signals(id, story_type, acceptor) {
             broadcast_client_msg_via_session(session, agent_name, msg);
         }
     }
