@@ -83,6 +83,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "reorder an outcome's iterations")?;
     let outcome_id = args
@@ -102,7 +103,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
     let r = refresh.ok_or("reorder_outcome_iteration requires refresh (RefreshDriver)")?;
     let outcome = verify_iteration_mapped(r, outcome_id, iteration_id).await?;
 
-    let band_size = reorder_iterations_within_outcome(
+    let (band_size, new_body) = reorder_iterations_within_outcome(
         r,
         outcome_id,
         outcome.body.as_deref(),
@@ -110,6 +111,11 @@ pub(crate) async fn handle_reorder_outcome_iteration(
         position,
     )
     .await?;
+    dispatch.dispatch(crate::store::AppAction::Outcome(
+        crate::product_management::outcome::OutcomeAction::Upserted(vec![
+            outcome.with_body(&new_body),
+        ]),
+    ));
     Ok(format!(
         "iteration #{iteration_id} reordered to priority {position} of {band_size} in outcome #{outcome_id}"
     ))
@@ -121,7 +127,7 @@ async fn reorder_iterations_within_outcome(
     outcome_body: Option<&str>,
     iteration_id: u64,
     requested_position: u32,
-) -> Result<u32, String> {
+) -> Result<(u32, String), String> {
     let mut parent = outcome_body
         .and_then(OutcomeRelationships::read_from_body)
         .unwrap_or_default();
@@ -137,8 +143,8 @@ async fn reorder_iterations_within_outcome(
         .insert(insert_index, IterationId::new(iteration_id));
 
     let body = parent.write_into_body(outcome_body.unwrap_or_default());
-    r.update_body(outcome_id, body)
+    r.update_body(outcome_id, body.clone())
         .await
         .map_err(|e| format!("#{outcome_id} outcome-reorder body update failed: {e}"))?;
-    Ok(band_size)
+    Ok((band_size, body))
 }

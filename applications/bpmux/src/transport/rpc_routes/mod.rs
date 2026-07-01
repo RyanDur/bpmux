@@ -88,7 +88,7 @@ async fn dispatch(
             bridge::dispatch_unmap_outcome_iteration(args, agent, refresh_ref, dispatcher).await
         }
         "reorder_outcome_iteration" => {
-            bridge::dispatch_reorder_outcome_iteration(args, agent, refresh_ref).await
+            bridge::dispatch_reorder_outcome_iteration(args, agent, refresh_ref, dispatcher).await
         }
         "reorder_story" => bridge::dispatch_reorder_story(args, agent, refresh_ref).await,
         "move_story" => bridge::dispatch_move_story(args, agent, refresh_ref).await,

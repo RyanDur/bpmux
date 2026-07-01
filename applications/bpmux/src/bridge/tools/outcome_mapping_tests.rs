@@ -217,7 +217,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_reorder_outcome_iteration(&reorder, "pm:claude-code", Some(&refresh))
+    handle_reorder_outcome_iteration(&reorder, "pm:claude-code", Some(&refresh), &dispatch())
         .await
         .expect("pm reorders the iteration");
     assert_eq!(

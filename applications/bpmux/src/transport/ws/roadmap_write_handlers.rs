@@ -57,9 +57,13 @@ pub(super) async fn handle_reorder_outcome_iteration(
         serde_json::json!(iteration_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
-    if let Err(e) =
-        crate::bridge::dispatch_reorder_outcome_iteration(args, identity, ctx.orchestrator.as_ref())
-            .await
+    if let Err(e) = crate::bridge::dispatch_reorder_outcome_iteration(
+        args,
+        identity,
+        ctx.orchestrator.as_ref(),
+        ctx.dispatch,
+    )
+    .await
     {
         send_json(
             tx,
