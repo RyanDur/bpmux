@@ -22,7 +22,7 @@ mod wait;
 mod wake;
 
 #[cfg(test)]
-mod board_endpoint;
+mod board_endpoint_tests;
 #[cfg(test)]
 mod board_tests;
 #[cfg(test)]
