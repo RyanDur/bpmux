@@ -97,8 +97,9 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
 
     let story = store.story(StoryId::new(200)).unwrap();
     assert_eq!(
-        crate::product_management::board::adapters::github::tags_from_labels(&story.raw_labels),
-        vec![Tag::Blocked]
+        story.tags(),
+        [Tag::Blocked],
+        "the blocked label decodes to a typed Tag on the story field, not a raw label round-trip"
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -110,7 +111,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        StoryEvent::TagAdded { id, label, .. } if *id == StoryId::new(200) && label == "blocked"
+        StoryEvent::TagSet { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::Blocked
     ));
 }
 
@@ -121,7 +122,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{BoardState, Story, Tag};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -162,9 +163,8 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 
     let story = store.story(StoryId::new(200)).unwrap();
     assert!(
-        crate::product_management::board::adapters::github::tags_from_labels(&story.raw_labels)
-            .is_empty(),
-        "tags should be empty after remove"
+        story.tags().is_empty(),
+        "tags should be empty after the typed unset"
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -176,11 +176,11 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     assert_eq!(pushed.len(), 2);
     assert!(matches!(
         &pushed[0],
-        StoryEvent::TagAdded { id, label, .. } if *id == StoryId::new(200) && label == "blocked"
+        StoryEvent::TagSet { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::Blocked
     ));
     assert!(matches!(
         &pushed[1],
-        StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(200) && label == "blocked"
+        StoryEvent::TagUnset { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::Blocked
     ));
 }
 

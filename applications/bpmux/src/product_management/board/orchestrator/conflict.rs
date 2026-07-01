@@ -19,6 +19,8 @@ pub fn classify_conflict(
     match event {
         StoryEvent::TagAdded { .. }
         | StoryEvent::TagRemoved { .. }
+        | StoryEvent::TagSet { .. }
+        | StoryEvent::TagUnset { .. }
         | StoryEvent::StateTransitioned { .. }
         | StoryEvent::StoryClosed { .. }
         | StoryEvent::StoryReopened { .. }

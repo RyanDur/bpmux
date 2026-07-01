@@ -1,7 +1,9 @@
 use super::{Stories, story_mut};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{Acceptor, BoardState, Story, StoryId, StoryKey, StoryKind};
+use crate::product_management::story::{
+    Acceptor, BoardState, Story, StoryId, StoryKey, StoryKind, Tag,
+};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn apply_story_created(
@@ -87,6 +89,20 @@ pub(super) fn apply_parent_epic_set(w: &mut Stories, id: StoryId, epic_id: EpicI
 pub(super) fn apply_parent_epic_unset(w: &mut Stories, id: StoryId) {
     if let Some(story) = story_mut(w, id) {
         story.parent_epic = None;
+    }
+}
+
+pub(super) fn apply_tag_set(w: &mut Stories, id: StoryId, tag: Tag) {
+    if let Some(story) = story_mut(w, id)
+        && !story.tags.contains(&tag)
+    {
+        story.tags.push(tag);
+    }
+}
+
+pub(super) fn apply_tag_unset(w: &mut Stories, id: StoryId, tag: Tag) {
+    if let Some(story) = story_mut(w, id) {
+        story.tags.retain(|t| *t != tag);
     }
 }
 

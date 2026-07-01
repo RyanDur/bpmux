@@ -53,20 +53,36 @@ pub(crate) async fn handle_label_story(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::PeerId::local(),
         };
+        let tag = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            .decode_tag(label);
         let (event, ok_msg) = match operation {
             "add" => (
-                crate::product_management::board::StoryEvent::TagAdded {
-                    meta,
-                    id: StoryId::new(id),
-                    label: label.to_string(),
+                match tag {
+                    Some(tag) => crate::product_management::board::StoryEvent::TagSet {
+                        meta,
+                        id: StoryId::new(id),
+                        tag,
+                    },
+                    None => crate::product_management::board::StoryEvent::TagAdded {
+                        meta,
+                        id: StoryId::new(id),
+                        label: label.to_string(),
+                    },
                 },
                 format!("#{id} labeled '{label}'"),
             ),
             "remove" => (
-                crate::product_management::board::StoryEvent::TagRemoved {
-                    meta,
-                    id: StoryId::new(id),
-                    label: label.to_string(),
+                match tag {
+                    Some(tag) => crate::product_management::board::StoryEvent::TagUnset {
+                        meta,
+                        id: StoryId::new(id),
+                        tag,
+                    },
+                    None => crate::product_management::board::StoryEvent::TagRemoved {
+                        meta,
+                        id: StoryId::new(id),
+                        label: label.to_string(),
+                    },
                 },
                 format!("#{id} unlabeled '{label}'"),
             ),

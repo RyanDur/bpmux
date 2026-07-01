@@ -166,6 +166,22 @@ impl GhLabelCodec {
         }
     }
 
+    pub fn decode_tag(&self, label: &str) -> Option<crate::product_management::story::Tag> {
+        use crate::product_management::story::Tag;
+        if label.eq_ignore_ascii_case(BLOCKED_LABEL) {
+            Some(Tag::Blocked)
+        } else {
+            None
+        }
+    }
+
+    pub fn encode_tag(&self, tag: crate::product_management::story::Tag) -> &'static str {
+        use crate::product_management::story::Tag;
+        match tag {
+            Tag::Blocked => BLOCKED_LABEL,
+        }
+    }
+
     pub fn decode_story_type(
         &self,
         label: &str,
@@ -188,6 +204,7 @@ impl GhLabelCodec {
 }
 
 pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";
+pub const BLOCKED_LABEL: &str = "blocked";
 pub const ACCEPTOR_TEAM_LABEL: &str = "awaiting team";
 pub const ACCEPTOR_OWNER_LABEL: &str = "awaiting owner";
 pub const ACCEPTOR_DEV_LABEL: &str = "awaiting dev";

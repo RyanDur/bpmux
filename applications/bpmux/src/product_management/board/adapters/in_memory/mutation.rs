@@ -34,26 +34,29 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
             if !labels.iter().any(|l| l.eq_ignore_ascii_case(label)) {
                 labels.push(label.clone());
             }
-            if label.eq_ignore_ascii_case("blocked")
-                && let Some(story) = s.stories.get_mut(&id.value())
-                && !story
-                    .raw_labels
-                    .iter()
-                    .any(|l| l.eq_ignore_ascii_case("blocked"))
-            {
-                story.raw_labels.push("blocked".to_string());
-            }
         }
         StoryEvent::TagRemoved { id, label, .. } => {
             if let Some(labels) = s.labels.get_mut(&id.value()) {
                 labels.retain(|l| !l.eq_ignore_ascii_case(label));
             }
-            if label.eq_ignore_ascii_case("blocked")
-                && let Some(story) = s.stories.get_mut(&id.value())
-            {
-                story
+        }
+        StoryEvent::TagSet { id, tag, .. } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            let label = GhLabelCodec.encode_tag(*tag);
+            if let Some(story) = s.stories.get_mut(&id.value())
+                && !story
                     .raw_labels
-                    .retain(|l| !l.eq_ignore_ascii_case("blocked"));
+                    .iter()
+                    .any(|l| l.eq_ignore_ascii_case(label))
+            {
+                story.raw_labels.push(label.to_string());
+            }
+        }
+        StoryEvent::TagUnset { id, tag, .. } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            let label = GhLabelCodec.encode_tag(*tag);
+            if let Some(story) = s.stories.get_mut(&id.value()) {
+                story.raw_labels.retain(|l| !l.eq_ignore_ascii_case(label));
             }
         }
         StoryEvent::StoryClosed { id, .. } => {

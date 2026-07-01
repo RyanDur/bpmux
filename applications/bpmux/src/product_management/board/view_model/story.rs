@@ -1,10 +1,11 @@
 use serde::Serialize;
 
+use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
-    Story, Tag, most_recent_backward_transition, replay_transitions,
+    Story, most_recent_backward_transition, replay_transitions,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -62,9 +63,7 @@ fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     let mut labels: Vec<String> = Vec::new();
     labels.push(story.story_type().as_label().to_string());
     for tag in story.tags() {
-        match tag {
-            Tag::Blocked => labels.push("blocked".to_string()),
-        }
+        labels.push(GhLabelCodec.encode_tag(*tag).to_string());
     }
     if let Some(epic) = story.parent_epic() {
         labels.push(codec.encode_parent_epic(epic.value()));

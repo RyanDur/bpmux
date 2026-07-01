@@ -1,4 +1,5 @@
 use crate::bridge::tracker::OctocrabStoryTracker;
+use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::SyncError;
 
@@ -35,6 +36,12 @@ pub(super) async fn apply_push_event(
         StoryEvent::TagAdded { id, label, .. } => push_tag_added(inner, id.value(), label).await,
         StoryEvent::TagRemoved { id, label, .. } => {
             push_tag_removed(inner, id.value(), label).await
+        }
+        StoryEvent::TagSet { id, tag, .. } => {
+            push_tag_added(inner, id.value(), GhLabelCodec.encode_tag(*tag)).await
+        }
+        StoryEvent::TagUnset { id, tag, .. } => {
+            push_tag_removed(inner, id.value(), GhLabelCodec.encode_tag(*tag)).await
         }
         StoryEvent::AcceptorAssigned { id, acceptor, .. } => {
             push_acceptor_assigned(inner, id.value(), *acceptor).await

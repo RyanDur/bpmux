@@ -113,10 +113,13 @@ pub(super) fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
 }
 
 pub fn tags_from_labels(labels: &[String]) -> Vec<Tag> {
+    use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
     let mut out = Vec::new();
     for l in labels {
-        if l.eq_ignore_ascii_case("blocked") && !out.contains(&Tag::Blocked) {
-            out.push(Tag::Blocked);
+        if let Some(tag) = GhLabelCodec.decode_tag(l)
+            && !out.contains(&tag)
+        {
+            out.push(tag);
         }
     }
     out

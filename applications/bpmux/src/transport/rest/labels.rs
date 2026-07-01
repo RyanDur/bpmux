@@ -48,28 +48,40 @@ pub async fn post_story_labels(
     };
     for op in reorder_label_ops(&payload) {
         let meta = crate::product_management::board::orchestrator::cache_fill_meta();
+        let story_id = crate::product_management::story::StoryId::new(id);
+        let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
         let (event, descriptor) = match op {
             LabelOp::Add(label) => {
                 let descriptor = format!("TagAdded {label} on #{id}");
-                (
-                    crate::product_management::board::StoryEvent::TagAdded {
+                let event = match codec.decode_tag(&label) {
+                    Some(tag) => crate::product_management::board::StoryEvent::TagSet {
                         meta,
-                        id: crate::product_management::story::StoryId::new(id),
+                        id: story_id,
+                        tag,
+                    },
+                    None => crate::product_management::board::StoryEvent::TagAdded {
+                        meta,
+                        id: story_id,
                         label,
                     },
-                    descriptor,
-                )
+                };
+                (event, descriptor)
             }
             LabelOp::Remove(label) => {
                 let descriptor = format!("TagRemoved {label} on #{id}");
-                (
-                    crate::product_management::board::StoryEvent::TagRemoved {
+                let event = match codec.decode_tag(&label) {
+                    Some(tag) => crate::product_management::board::StoryEvent::TagUnset {
                         meta,
-                        id: crate::product_management::story::StoryId::new(id),
+                        id: story_id,
+                        tag,
+                    },
+                    None => crate::product_management::board::StoryEvent::TagRemoved {
+                        meta,
+                        id: story_id,
                         label,
                     },
-                    descriptor,
-                )
+                };
+                (event, descriptor)
             }
         };
         if let Err(e) = refresh.mutate_sync(event) {

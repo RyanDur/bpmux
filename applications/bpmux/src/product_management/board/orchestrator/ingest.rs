@@ -26,7 +26,10 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         .filter(|q| {
                             matches!(
                                 q.event,
-                                StoryEvent::TagAdded { .. } | StoryEvent::TagRemoved { .. }
+                                StoryEvent::TagAdded { .. }
+                                    | StoryEvent::TagRemoved { .. }
+                                    | StoryEvent::TagSet { .. }
+                                    | StoryEvent::TagUnset { .. }
                             )
                         })
                         .map(|q| q.event.story_id())

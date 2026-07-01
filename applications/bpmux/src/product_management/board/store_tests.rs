@@ -122,7 +122,7 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
 }
 
 #[test]
-fn tag_added_blocked_label_decodes_into_the_stored_tags_field() {
+fn tag_set_event_sets_the_typed_tags_field_directly() {
     let store = BoardStore::new();
     store.apply(&StoryEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
@@ -136,15 +136,34 @@ fn tag_added_blocked_label_decodes_into_the_stored_tags_field() {
         store.story(StoryId::new(15)).unwrap().tags().is_empty(),
         "a freshly created story carries no tags yet"
     );
-    store.apply(&StoryEvent::TagAdded {
+    store.apply(&StoryEvent::TagSet {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(15),
-        label: "blocked".to_string(),
+        tag: Tag::Blocked,
     });
     assert_eq!(
         store.story(StoryId::new(15)).unwrap().tags(),
         [Tag::Blocked],
-        "the codec decodes the blocked label into the stored tags field on the label-add event"
+        "the TagSet event assigns the typed tag directly, not via a label round-trip"
+    );
+    store.apply(&StoryEvent::TagSet {
+        meta: meta("pm", 2026, "local"),
+        id: StoryId::new(15),
+        tag: Tag::Blocked,
+    });
+    assert_eq!(
+        store.story(StoryId::new(15)).unwrap().tags(),
+        [Tag::Blocked],
+        "TagSet is idempotent — re-setting the same tag does not duplicate it"
+    );
+    store.apply(&StoryEvent::TagUnset {
+        meta: meta("pm", 2026, "local"),
+        id: StoryId::new(15),
+        tag: Tag::Blocked,
+    });
+    assert!(
+        store.story(StoryId::new(15)).unwrap().tags().is_empty(),
+        "the TagUnset event clears the typed tag directly"
     );
 }
 
@@ -548,28 +567,6 @@ async fn apply_succeeds_when_no_subscribers_are_attached() {
 }
 
 #[test]
-fn tag_added_event_appends_to_story_tags() {
-    let store = BoardStore::new();
-    store.apply(&StoryEvent::StoryCreated {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        title: "t".to_string(),
-        body: "b".to_string(),
-        initial_state: BoardState::Ready,
-        story_type: StoryKind::Feature,
-    });
-    store.apply(&StoryEvent::TagAdded {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "blocked".to_string(),
-    });
-    assert_eq!(
-        tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
-        vec![Tag::Blocked]
-    );
-}
-
-#[test]
 fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
     let store = BoardStore::new();
     store.apply(&StoryEvent::StoryCreated {
@@ -696,7 +693,7 @@ fn tag_added_unknown_label_is_dropped() {
 }
 
 #[test]
-fn tag_added_is_idempotent() {
+fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     let store = BoardStore::new();
     store.apply(&StoryEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
@@ -706,61 +703,15 @@ fn tag_added_is_idempotent() {
         initial_state: BoardState::Ready,
         story_type: StoryKind::Feature,
     });
-    store.apply(&StoryEvent::TagAdded {
+    store.apply(&StoryEvent::TagSet {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(1),
-        label: "blocked".to_string(),
+        tag: Tag::Blocked,
     });
     store.apply(&StoryEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(1),
-        label: "blocked".to_string(),
-    });
-    assert_eq!(
-        tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
-        vec![Tag::Blocked]
-    );
-}
-
-#[test]
-fn tag_removed_event_strips_tag() {
-    let store = BoardStore::new();
-    store.apply(&StoryEvent::StoryCreated {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        title: "t".to_string(),
-        body: "b".to_string(),
-        initial_state: BoardState::Ready,
-        story_type: StoryKind::Feature,
-    });
-    store.apply(&StoryEvent::TagAdded {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "blocked".to_string(),
-    });
-    store.apply(&StoryEvent::TagRemoved {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "blocked".to_string(),
-    });
-    assert!(tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels).is_empty());
-}
-
-#[test]
-fn tag_removed_unknown_label_is_noop() {
-    let store = BoardStore::new();
-    store.apply(&StoryEvent::StoryCreated {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        title: "t".to_string(),
-        body: "b".to_string(),
-        initial_state: BoardState::Ready,
-        story_type: StoryKind::Feature,
-    });
-    store.apply(&StoryEvent::TagAdded {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "blocked".to_string(),
+        label: "high-priority".to_string(),
     });
     store.apply(&StoryEvent::TagRemoved {
         meta: meta("pm", 2026, "local"),
@@ -768,8 +719,9 @@ fn tag_removed_unknown_label_is_noop() {
         label: "high-priority".to_string(),
     });
     assert_eq!(
-        tags_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
-        vec![Tag::Blocked]
+        store.story(StoryId::new(1)).unwrap().tags(),
+        [Tag::Blocked],
+        "a generic raw-label add/remove must not re-project (clobber) the typed tags field"
     );
 }
 

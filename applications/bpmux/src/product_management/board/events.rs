@@ -55,6 +55,16 @@ pub enum StoryEvent {
         id: StoryId,
         label: String,
     },
+    TagSet {
+        meta: EventMeta,
+        id: StoryId,
+        tag: Tag,
+    },
+    TagUnset {
+        meta: EventMeta,
+        id: StoryId,
+        tag: Tag,
+    },
     GateCommentAppended {
         meta: EventMeta,
         id: StoryId,
@@ -168,6 +178,8 @@ impl StoryEvent {
             | StoryEvent::GateCommentsFetched { meta, .. }
             | StoryEvent::TagAdded { meta, .. }
             | StoryEvent::TagRemoved { meta, .. }
+            | StoryEvent::TagSet { meta, .. }
+            | StoryEvent::TagUnset { meta, .. }
             | StoryEvent::StoryClosed { meta, .. }
             | StoryEvent::StoryReopened { meta, .. }
             | StoryEvent::AcceptorAssigned { meta, .. }
@@ -197,6 +209,8 @@ impl StoryEvent {
             | StoryEvent::GateCommentsFetched { id, .. }
             | StoryEvent::TagAdded { id, .. }
             | StoryEvent::TagRemoved { id, .. }
+            | StoryEvent::TagSet { id, .. }
+            | StoryEvent::TagUnset { id, .. }
             | StoryEvent::StoryClosed { id, .. }
             | StoryEvent::StoryReopened { id, .. }
             | StoryEvent::AcceptorAssigned { id, .. }
