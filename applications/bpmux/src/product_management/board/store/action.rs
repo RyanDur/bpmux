@@ -1,6 +1,5 @@
 use crate::product_management::board::events::{BoardEvent, LabelDerivedFields};
-use crate::product_management::board::item::ProductItem;
-use crate::product_management::story::StoryId;
+use crate::product_management::story::{Story, StoryId};
 
 #[derive(Clone)]
 pub enum BoardAction {
@@ -9,7 +8,7 @@ pub enum BoardAction {
         id: StoryId,
         fields: LabelDerivedFields,
     },
-    Seeded(Vec<ProductItem>),
+    Seeded(Vec<Story>),
     Removed(StoryId),
     Cleared,
 }

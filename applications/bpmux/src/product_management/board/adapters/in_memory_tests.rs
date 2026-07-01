@@ -29,14 +29,7 @@ fn seed_story(id: u64, title: &str) -> Story {
 }
 
 async fn ingest_stories(adapter: &InMemorySourceAdapter) -> Vec<Story> {
-    adapter
-        .ingest_metadata()
-        .await
-        .unwrap()
-        .items
-        .iter()
-        .filter_map(|item| item.backing_story().cloned())
-        .collect()
+    adapter.ingest_metadata().await.unwrap().items
 }
 
 #[tokio::test]

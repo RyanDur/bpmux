@@ -1,7 +1,6 @@
 pub mod adapters;
 pub mod column;
 pub mod events;
-pub mod item;
 pub mod label_codec;
 pub mod orchestrator;
 pub mod peer;

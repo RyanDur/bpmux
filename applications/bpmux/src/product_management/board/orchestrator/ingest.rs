@@ -37,7 +37,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 let items = items
                     .into_iter()
                     .filter(|item| {
-                        item.id()
+                        item.key()
                             .saved_id()
                             .map(|id| not_in_flight(id.value()))
                             .unwrap_or(true)

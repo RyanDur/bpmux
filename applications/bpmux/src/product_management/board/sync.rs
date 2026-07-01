@@ -1,5 +1,4 @@
 use super::events::BoardEvent;
-use super::item::ProductItem;
 use crate::product_management::epic::Epic;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
@@ -7,7 +6,7 @@ use crate::product_management::story::Story;
 
 #[derive(Debug, Clone, Default)]
 pub struct Ingested {
-    pub items: Vec<ProductItem>,
+    pub items: Vec<Story>,
     pub outcomes: Vec<Outcome>,
     pub iterations: Vec<Iteration>,
     pub epics: Vec<Epic>,

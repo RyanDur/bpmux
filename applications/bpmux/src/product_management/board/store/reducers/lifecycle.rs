@@ -1,6 +1,5 @@
 use super::{Stories, story_mut};
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::item::ProductItem;
 use crate::product_management::story::{Story, StoryId, StoryKey, StoryState, StoryType};
 
 #[allow(clippy::too_many_arguments)]
@@ -32,30 +31,30 @@ pub(super) fn apply_story_created(
         tags: Vec::new(),
         ready_order: None,
     };
-    w.insert(StoryKey::Saved(id), ProductItem::from_story(&story));
+    w.insert(StoryKey::Saved(id), story);
 }
 
 pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: StoryState) {
-    if let Some(ProductItem::Story(story)) = w.get_mut(&StoryKey::Saved(id)) {
+    if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.state = new_state;
     }
 }
 
 pub(super) fn apply_body_fetched(w: &mut Stories, id: StoryId, body: &str, etag: &Option<String>) {
-    if let Some(ProductItem::Story(story)) = w.get_mut(&StoryKey::Saved(id)) {
+    if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.body = Some(body.to_string());
         story.body_etag = etag.clone();
     }
 }
 
 pub(super) fn apply_title_updated(w: &mut Stories, id: StoryId, title: &str) {
-    if let Some(ProductItem::Story(story)) = w.get_mut(&StoryKey::Saved(id)) {
+    if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.title = title.to_string();
     }
 }
 
 pub(super) fn apply_body_updated(w: &mut Stories, id: StoryId, body: &str) {
-    if let Some(ProductItem::Story(story)) = w.get_mut(&StoryKey::Saved(id)) {
+    if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.body = Some(body.to_string());
     }
 }
@@ -75,7 +74,7 @@ pub(super) fn apply_story_reopened(w: &mut Stories, id: StoryId) {
 pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story) {
     let key = StoryKey::Saved(id);
     match w.get_mut(&key) {
-        Some(ProductItem::Story(existing)) => {
+        Some(existing) => {
             existing.title = story.title.clone();
             existing.state = story.state;
             existing.raw_labels = story.raw_labels.clone();
@@ -85,8 +84,8 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story)
                 existing.body_etag = None;
             }
         }
-        _ => {
-            w.insert(key, ProductItem::from_story(story));
+        None => {
+            w.insert(key, story.clone());
         }
     }
 }

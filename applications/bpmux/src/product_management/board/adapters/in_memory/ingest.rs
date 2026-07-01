@@ -3,14 +3,13 @@ use std::collections::HashMap;
 use crate::product_management::board::adapters::github::{
     decode_epic_from_story, decode_iteration_from_story, decode_outcome_from_story, is_epic_story,
 };
-use crate::product_management::board::item::ProductItem;
 use crate::product_management::epic::Epic;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::Story;
 
 pub(super) struct Classified {
-    pub items: Vec<ProductItem>,
+    pub items: Vec<Story>,
     pub outcomes: Vec<Outcome>,
     pub iterations: Vec<Iteration>,
     pub epics: Vec<Epic>,
@@ -43,7 +42,7 @@ pub(super) fn classify_ingested(
         } else if is_epic_story(&story) {
             c.epics.push(decode_epic_from_story(&story));
         } else {
-            c.items.push(ProductItem::from_story(&story));
+            c.items.push(story);
         }
     }
     c

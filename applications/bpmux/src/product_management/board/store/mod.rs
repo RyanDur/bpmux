@@ -3,7 +3,6 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use super::events::BoardEvent;
-use crate::product_management::board::item::ProductItem;
 use crate::product_management::story::{Story, StoryId, StoryKey};
 use crate::store::kernel::Store;
 
@@ -58,7 +57,7 @@ impl BoardStore {
             .unwrap_or_else(|e| e.into_inner()) = Some(Box::new(f));
     }
 
-    pub fn seed_items(&self, items: Vec<ProductItem>) {
+    pub fn seed_items(&self, items: Vec<Story>) {
         let changed = !items.is_empty();
         self.store.dispatch(BoardAction::Seeded(items));
         if changed {
@@ -67,7 +66,7 @@ impl BoardStore {
     }
 
     pub fn seed_all(&self, stories: Vec<Story>) {
-        self.seed_items(stories.iter().map(ProductItem::from_story).collect());
+        self.seed_items(stories);
     }
 
     pub fn clear(&self) {
@@ -76,12 +75,9 @@ impl BoardStore {
     }
 
     pub fn remove(&self, id: StoryId) -> Option<Story> {
-        let removed = self.store.select(|state| {
-            state
-                .stories
-                .get(&StoryKey::Saved(id))
-                .and_then(|item| item.backing_story().cloned())
-        });
+        let removed = self
+            .store
+            .select(|state| state.stories.get(&StoryKey::Saved(id)).cloned());
         self.store.dispatch(BoardAction::Removed(id));
         if removed.is_some() {
             let _ = self.event_tx.send(StoreChange::Resynced);

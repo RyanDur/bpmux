@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use super::{BoardAction, BoardState};
 use crate::product_management::board::events::BoardEvent;
-use crate::product_management::board::item::ProductItem;
 use crate::product_management::story::{Story, StoryId, StoryKey};
 
 mod comments;
@@ -19,11 +18,10 @@ use lifecycle::{
     apply_story_created, apply_story_refreshed, apply_story_reopened, apply_title_updated,
 };
 
-pub(super) type Stories = HashMap<StoryKey, ProductItem>;
+pub(super) type Stories = HashMap<StoryKey, Story>;
 
 pub(super) fn story_mut(w: &mut Stories, id: StoryId) -> Option<&mut Story> {
     w.get_mut(&StoryKey::Saved(id))
-        .and_then(ProductItem::backing_story_mut)
 }
 
 pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
@@ -35,7 +33,7 @@ pub fn reduce(state: &BoardState, action: &BoardAction) -> BoardState {
         }
         BoardAction::Seeded(incoming) => {
             for item in incoming {
-                stories.insert(item.id(), item.clone());
+                stories.insert(item.key(), item.clone());
             }
         }
         BoardAction::Removed(id) => {

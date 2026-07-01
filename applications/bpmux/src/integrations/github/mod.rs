@@ -5,7 +5,6 @@ use crate::product_management::board::adapters::github::{
     decode_free_comment, decode_gate_comments, decode_story_metadata,
 };
 use crate::product_management::board::events::BoardEvent;
-use crate::product_management::board::item::ProductItem;
 use crate::product_management::board::sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story};
 use crate::store::CiPollFetch;
@@ -70,7 +69,7 @@ impl SourceAdapter for GitHubSourceAdapter {
             epics.len(),
         ));
         Ok(Ingested {
-            items: stories.iter().map(ProductItem::from_story).collect(),
+            items: stories,
             outcomes,
             iterations,
             epics,
