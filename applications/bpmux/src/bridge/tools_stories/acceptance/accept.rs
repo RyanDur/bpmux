@@ -25,7 +25,7 @@ pub(crate) async fn handle_accept_story(
         "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
     r.test_race_window_rendezvous().await;
-    let story_opt = r.store().story(StoryId::new(id));
+    let story_opt = r.story(id);
     let class = story_opt
         .as_ref()
         .map(|s| {

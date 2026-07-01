@@ -46,7 +46,7 @@ pub(crate) async fn handle_pass_desk_check(
     let acceptor = parse_acceptor_arg(args)?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
     let r_opt = refresh;
-    let story_opt = r_opt.and_then(|r| r.store().story(StoryId::new(id)));
+    let story_opt = r_opt.and_then(|r| r.story(id));
     let class = story_opt
         .as_ref()
         .map(|s| crate::workflow::gate_class_from_labels(&s.raw_labels))

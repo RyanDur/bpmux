@@ -20,7 +20,7 @@ fn resolve_accept_window_secs(
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
     story_id: StoryId,
 ) -> Option<u64> {
-    let story = refresh?.store().story(story_id)?;
+    let story = refresh?.story(story_id.value())?;
     let class = crate::workflow::gate_class_from_labels_and_story_type(
         &story.raw_labels,
         story.story_type(),

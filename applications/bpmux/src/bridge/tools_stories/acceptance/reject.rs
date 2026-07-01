@@ -34,7 +34,7 @@ pub(crate) async fn handle_reject_story(
     let r = refresh.ok_or(
         "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
-    let story_opt = r.store().story(StoryId::new(id));
+    let story_opt = r.story(id);
     let class = story_opt
         .as_ref()
         .map(|s| {
