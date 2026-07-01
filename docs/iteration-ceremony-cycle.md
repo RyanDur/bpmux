@@ -114,13 +114,23 @@ Per `feedback_three_iteration_planning_horizon`:
 
 ### Iteration-shape canon
 
-- **Theme-coherence at iteration-axis** (per `feedback_iteration_sizing_theme_coherence_over_count`):
-  one iteration = one theme (or 2-3 highly-related themes)
-- **Size-target**: 4-12 stories per iteration as default
-- **Canon-absorption tunable**: when team is absorbing new META-CANONs, shrink
-  iteration size to 4-8; grow when steady-state
-- **Theme-coherence ≠ Epic-monogamy** (Ryan 2026-05-18 03:12 UTC): iterations
-  CAN host stories from multiple Epics when work-shape supports
+- **Composition = PARALLELIZABILITY, not theme** (Ryan 2026-06-21 "iteration
+  theme is not a thing"; per `run-ipm-planning` — supersedes the older
+  theme-coherence framing): an iteration is a sized-batch of PARALLELIZABLE,
+  mutually-INDEPENDENT stories — no story depends on a sibling in the same
+  iteration (deps -> a PRIOR iteration, which drives iteration-SEQUENCE). THEME
+  lives at the OUTCOME + EPIC, never the iteration.
+- **Naming** (Ryan 2026-07-01): each iteration = a DISTINCT, UNUSED
+  constellation — a PURE LABEL, NOT a theme, NEVER counted (no roman-numerals).
+  Pick a new constellation not already used; content lives in the stories +
+  epic titles, order in position + deps. (Written down here because it drifted
+  into counting when it was never documented.)
+- **Size-target**: 4-12 stories default; planned iterations 3-5 (per
+  `feedback_planned_iterations_three_to_five_stories`)
+- **Canon-absorption tunable**: when absorbing new META-CANONs, shrink to 4-8;
+  grow at steady-state
+- **Multiple Epics OK** (Ryan 2026-05-18): iterations CAN host stories from
+  multiple Epics when parallelizability supports
 
 ### Three-section board skeleton (canonical-invariant per #1384)
 
