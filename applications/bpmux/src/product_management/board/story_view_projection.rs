@@ -60,11 +60,11 @@ fn project_translates_outcome_membership_into_a_typed_subview() {
 
 #[test]
 fn project_leads_the_wire_labels_with_the_derived_type_label() {
-    let s = story(20, "[Epic] umbrella", StoryState::Icebox);
+    let s = story(20, "[Bug] broken thing", StoryState::Icebox);
     let view = StoryView::project(&GhLabelCodec, &s);
     assert_eq!(
         view.labels.first().map(String::as_str),
-        Some("epic"),
+        Some("bug"),
         "the type label leads the wire labels (derived from title when no label present)"
     );
 }

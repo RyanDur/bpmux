@@ -28,7 +28,7 @@ pub(super) async fn dispatch(
         "accept_story" => bridge::dispatch_accept_story(args, agent, refresh_ref, session).await,
         "reject_story" => bridge::dispatch_reject_story(args, agent, refresh_ref, session).await,
         "close_story" => bridge::dispatch_close_story(args, agent, refresh_ref).await,
-        "create_story" => bridge::dispatch_create_story(args, agent, refresh_ref).await,
+        "create_story" => bridge::dispatch_create_story(args, agent, refresh_ref, dispatcher).await,
         "create_iteration" => {
             bridge::dispatch_create_iteration(args, agent, refresh_ref, dispatcher).await
         }
@@ -39,7 +39,7 @@ pub(super) async fn dispatch(
             bridge::dispatch_close_iteration(args, agent, refresh_ref, session, dispatcher).await
         }
         "comment_on_story" => bridge::dispatch_comment_on_story(args, agent, refresh_ref).await,
-        "label_story" => bridge::dispatch_label_story(args, agent, refresh_ref).await,
+        "label_story" => bridge::dispatch_label_story(args, agent, refresh_ref, dispatcher).await,
         "set_parent_epic" => bridge::dispatch_set_parent_epic(args, agent, refresh_ref).await,
         "unset_parent_epic" => bridge::dispatch_unset_parent_epic(args, agent, refresh_ref).await,
         "add_story_to_iteration" => {

@@ -128,6 +128,33 @@ impl Listener<AppState, AppAction> for IterationBroadcast {
     }
 }
 
+pub struct EpicBroadcast {
+    session: Arc<crate::session::Session>,
+    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+}
+
+impl EpicBroadcast {
+    pub fn new(
+        session: Arc<crate::session::Session>,
+        refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    ) -> Self {
+        Self { session, refresh }
+    }
+}
+
+impl Listener<AppState, AppAction> for EpicBroadcast {
+    fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
+        if Arc::ptr_eq(&reaction.previous.epics, &reaction.current.epics) {
+            return Box::pin(async {});
+        }
+        let session = Arc::clone(&self.session);
+        let refresh = Arc::clone(&self.refresh);
+        Box::pin(async move {
+            crate::transport::rest::shared::broadcast_epics(&session, &refresh);
+        })
+    }
+}
+
 pub struct CiBroadcast {
     listeners: CiListeners,
 }

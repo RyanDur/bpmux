@@ -182,8 +182,9 @@ fn pass_desk_check_signal_acceptor_label_overrides_title_prefix_team() {
         "awaiting team label routes Feature to pm regardless of title-prefix"
     );
     assert_eq!(
-        addressee_for_pass_desk_check(StoryType::Epic, &labels),
-        "pm"
+        addressee_for_pass_desk_check(StoryType::Story(StoryKind::Bug), &labels),
+        "pm",
+        "awaiting team label routes any story kind to pm"
     );
 }
 

@@ -22,7 +22,7 @@ pub fn create_story_tool(description: &'static str) -> Tool {
             },
             "parent_epic": {
                 "type": "integer",
-                "description": "OPTIONAL: issue number of the Epic this story belongs to. If set, the new story is grouped under that Epic at filing time (no separate set_parent_epic call needed). Parent must exist and be StoryType::Epic; otherwise the create fires with a structured error. Leave unset for standalone stories."
+                "description": "OPTIONAL: issue number of the Epic this story belongs to. If set, the new story is grouped under that Epic at filing time (no separate set_parent_epic call needed). Parent must exist and be an Epic; otherwise the create fires with a structured error. Leave unset for standalone stories."
             },
             "acceptance_test_path": {
                 "type": "string",

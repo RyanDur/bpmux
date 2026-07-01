@@ -30,11 +30,28 @@ pub(crate) fn board_stories(
 pub(crate) fn board_epics(
     refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+    let stories = refresh.all_stories();
     refresh
         .epics()
         .iter()
-        .map(|s| crate::product_management::board::adapters::json::story_to_board_json(&codec, s))
+        .map(|epic| {
+            let children: Vec<&crate::product_management::story::Story> = stories
+                .iter()
+                .filter(|s| s.parent_epic() == Some(epic.id))
+                .collect();
+            let derived = crate::product_management::epic::derive_epic_state(epic.state, &children);
+            serde_json::json!({
+                "id": epic.id.value(),
+                "title": epic.title,
+                "state": derived.as_str(),
+                "gh_state": if epic.is_closed { "closed" } else { "open" },
+                "labels": ["epic"],
+                "assignees": [],
+                "created_at": epic.filed_at.to_rfc3339(),
+                "body": epic.body.clone().unwrap_or_default(),
+                "parent_epic": serde_json::Value::Null,
+            })
+        })
         .collect()
 }
 

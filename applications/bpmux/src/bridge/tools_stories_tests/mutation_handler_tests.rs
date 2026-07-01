@@ -5,6 +5,10 @@ use super::test_ci_state_store_green;
 use crate::product_management::story::{StoryId, StoryType};
 use crate::transport::protocol::ClientMessage;
 
+fn td() -> crate::store::Dispatch {
+    crate::store::Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
+}
+
 #[tokio::test]
 async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     use crate::product_management::board::BoardEvent;
@@ -88,7 +92,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     args.insert("id".into(), serde_json::json!(200));
     args.insert("label".into(), serde_json::json!("blocked"));
     args.insert("operation".into(), serde_json::json!("add"));
-    let result = handle_label_story(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_label_story(&args, "pm:claude-code", Some(&orchestrator), &td()).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(StoryId::new(200)).unwrap();
@@ -141,7 +145,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     add_args.insert("id".into(), serde_json::json!(200));
     add_args.insert("label".into(), serde_json::json!("blocked"));
     add_args.insert("operation".into(), serde_json::json!("add"));
-    handle_label_story(&add_args, "pm:claude-code", Some(&orchestrator))
+    handle_label_story(&add_args, "pm:claude-code", Some(&orchestrator), &td())
         .await
         .unwrap();
 
@@ -149,7 +153,8 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     remove_args.insert("id".into(), serde_json::json!(200));
     remove_args.insert("label".into(), serde_json::json!("blocked"));
     remove_args.insert("operation".into(), serde_json::json!("remove"));
-    let result = handle_label_story(&remove_args, "pm:claude-code", Some(&orchestrator)).await;
+    let result =
+        handle_label_story(&remove_args, "pm:claude-code", Some(&orchestrator), &td()).await;
     assert!(
         result.is_ok(),
         "migrated remove path should succeed: {result:?}"

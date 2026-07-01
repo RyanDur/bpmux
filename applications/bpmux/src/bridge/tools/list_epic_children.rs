@@ -1,21 +1,21 @@
 use std::sync::Arc;
 
-use crate::product_management::board::BoardStore;
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{Story, StoryId};
+use crate::product_management::story::Story;
 
 pub(in crate::bridge) async fn handle_list_epic_children(
     args: &serde_json::Map<String, serde_json::Value>,
-    store: &Arc<BoardStore>,
+    refresh: &Arc<dyn RefreshDriver>,
 ) -> Result<String, String> {
     let epic_id = args
         .get("epic_id")
         .and_then(|v| v.as_u64())
         .ok_or_else(|| "list_epic_children: epic_id argument required (u64)".to_string())?;
-    store
-        .epic(StoryId::new(epic_id))
+    refresh
+        .epic(EpicId::new(epic_id))
         .ok_or_else(|| format!("list_epic_children: epic_id {epic_id} not found or not an Epic"))?;
-    let mut children: Vec<Story> = store
+    let mut children: Vec<Story> = refresh
         .all_stories()
         .into_iter()
         .filter(|s| s.parent_epic() == Some(EpicId::new(epic_id)))

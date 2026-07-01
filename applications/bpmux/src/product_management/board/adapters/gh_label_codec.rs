@@ -163,7 +163,6 @@ impl GhLabelCodec {
             "feature" => Some(StoryType::Story(StoryKind::Feature)),
             "bug" => Some(StoryType::Story(StoryKind::Bug)),
             "chore" => Some(StoryType::Story(StoryKind::Chore)),
-            "epic" => Some(StoryType::Epic),
             _ => None,
         }
     }

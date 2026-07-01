@@ -2,7 +2,7 @@ pub(crate) async fn ensure_story_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     id: u64,
 ) -> Result<crate::product_management::story::Story, String> {
-    if let Some(story) = refresh.story(id).or_else(|| refresh.epic(id)) {
+    if let Some(story) = refresh.story(id) {
         return Ok(story);
     }
     refresh.refresh_story(id).await.map_err(|e| {
@@ -11,15 +11,12 @@ pub(crate) async fn ensure_story_in_canonical_store(
              cannot proceed with mutation against unknown story state"
         )
     })?;
-    refresh
-        .story(id)
-        .or_else(|| refresh.epic(id))
-        .ok_or_else(|| {
-            format!(
-                "story #{id} not found in canonical store after refresh_story \
+    refresh.story(id).ok_or_else(|| {
+        format!(
+            "story #{id} not found in canonical store after refresh_story \
              round-trip; story may not exist at source-of-truth"
-            )
-        })
+        )
+    })
 }
 
 pub(crate) async fn ensure_outcome_in_canonical_store(
@@ -105,8 +102,9 @@ fn not_an_iteration_message(id: u64) -> String {
 pub(crate) async fn ensure_epic_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
     id: u64,
-) -> Result<crate::product_management::story::Story, String> {
-    if let Some(epic) = refresh.epic(id) {
+) -> Result<crate::product_management::epic::Epic, String> {
+    let epic_id = crate::product_management::epic::EpicId::new(id);
+    if let Some(epic) = refresh.epic(epic_id) {
         return Ok(epic);
     }
     if refresh.backing_story(id).is_some() {
@@ -118,7 +116,7 @@ pub(crate) async fn ensure_epic_in_canonical_store(
              cannot proceed with an epic operation against unknown state"
         )
     })?;
-    if let Some(epic) = refresh.epic(id) {
+    if let Some(epic) = refresh.epic(epic_id) {
         return Ok(epic);
     }
     if refresh.backing_story(id).is_some() {

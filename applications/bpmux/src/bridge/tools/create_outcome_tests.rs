@@ -11,7 +11,7 @@ use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
-use crate::product_management::story::{Horizon, Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Horizon, Story, StoryId, StoryKind, StoryState, StoryType};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -265,7 +265,7 @@ async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused_1738() {
 #[tokio::test]
 async fn map_rejects_non_outcome_target_1738() {
     let refresh = build_refresh(vec![
-        typed_seed(700, StoryType::Epic, "epic"),
+        typed_seed(700, StoryType::Story(StoryKind::Feature), "feature"),
         seed_iteration(710),
     ])
     .await;
@@ -277,7 +277,7 @@ async fn map_rejects_non_outcome_target_1738() {
         &dispatch,
     )
     .await
-    .expect_err("an epic is not an outcome — iterations map only to outcomes");
+    .expect_err("a feature is not an outcome — iterations map only to outcomes");
     assert!(
         err.contains("not an Outcome"),
         "refusal explains the target must be an Outcome: {err}"

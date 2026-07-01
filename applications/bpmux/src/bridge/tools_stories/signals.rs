@@ -95,7 +95,7 @@ pub(crate) fn addressee_for_pass_desk_check(
 
     use crate::product_management::story::{StoryKind, StoryType};
     match story_type {
-        StoryType::Story(StoryKind::Feature) | StoryType::Epic => owner(),
+        StoryType::Story(StoryKind::Feature) => owner(),
         StoryType::Story(StoryKind::Bug) | StoryType::Story(StoryKind::Chore) => team(),
     }
 }

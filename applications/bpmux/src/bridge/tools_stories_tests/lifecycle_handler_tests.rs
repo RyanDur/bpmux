@@ -5,6 +5,10 @@ use super::test_ci_state_store_green;
 use crate::product_management::story::{StoryId, StoryKind, StoryType};
 use crate::transport::protocol::ClientMessage;
 
+fn td() -> crate::store::Dispatch {
+    crate::store::Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
+}
+
 #[tokio::test]
 async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     use crate::product_management::board::BoardEvent;
@@ -468,7 +472,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     );
     args.insert("body".into(), serde_json::json!("author note"));
 
-    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator), &td()).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
     let response = result.unwrap();
     assert!(

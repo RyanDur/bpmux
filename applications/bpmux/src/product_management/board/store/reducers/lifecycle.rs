@@ -36,37 +36,27 @@ pub(super) fn apply_story_created(
 }
 
 pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: StoryState) {
-    match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Epic(story)) => story.state = new_state,
-        None => {}
+    if let Some(ProductItem::Story(story)) = w.get_mut(&StoryKey::Saved(id)) {
+        story.state = new_state;
     }
 }
 
 pub(super) fn apply_body_fetched(w: &mut Stories, id: StoryId, body: &str, etag: &Option<String>) {
-    match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Epic(story)) => {
-            story.body = Some(body.to_string());
-            story.body_etag = etag.clone();
-        }
-        None => {}
+    if let Some(ProductItem::Story(story)) = w.get_mut(&StoryKey::Saved(id)) {
+        story.body = Some(body.to_string());
+        story.body_etag = etag.clone();
     }
 }
 
 pub(super) fn apply_title_updated(w: &mut Stories, id: StoryId, title: &str) {
-    match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Epic(story)) => {
-            story.title = title.to_string()
-        }
-        None => {}
+    if let Some(ProductItem::Story(story)) = w.get_mut(&StoryKey::Saved(id)) {
+        story.title = title.to_string();
     }
 }
 
 pub(super) fn apply_body_updated(w: &mut Stories, id: StoryId, body: &str) {
-    match w.get_mut(&StoryKey::Saved(id)) {
-        Some(ProductItem::Story(story)) | Some(ProductItem::Epic(story)) => {
-            story.body = Some(body.to_string())
-        }
-        None => {}
+    if let Some(ProductItem::Story(story)) = w.get_mut(&StoryKey::Saved(id)) {
+        story.body = Some(body.to_string());
     }
 }
 
@@ -85,7 +75,7 @@ pub(super) fn apply_story_reopened(w: &mut Stories, id: StoryId) {
 pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story) {
     let key = StoryKey::Saved(id);
     match w.get_mut(&key) {
-        Some(ProductItem::Story(existing)) | Some(ProductItem::Epic(existing)) => {
+        Some(ProductItem::Story(existing)) => {
             existing.title = story.title.clone();
             existing.state = story.state;
             existing.raw_labels = story.raw_labels.clone();

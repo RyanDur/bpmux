@@ -5,10 +5,10 @@ use chrono::{TimeZone, Utc};
 use crate::product_management::board::adapters::github::is_iteration_position_label_for_test as is_iteration_position_label;
 use crate::product_management::board::adapters::github::is_position_label_for_test as is_position_label;
 use crate::product_management::board::adapters::github::{
-    classify_gate, decode_gate_comments, decode_story_metadata, iteration_membership_from_labels,
-    iteration_order_from_labels, parent_epic_from_labels, state_from_labels, state_to_label,
-    story_type_from_labels, story_type_from_labels_or_title, tags_from_labels,
-    warn_on_inconsistent_state_labels,
+    classify_gate, decode_gate_comments, decode_story_metadata, is_epic_issue, is_epic_story,
+    iteration_membership_from_labels, iteration_order_from_labels, parent_epic_from_labels,
+    state_from_labels, state_to_label, story_type_from_labels, story_type_from_labels_or_title,
+    tags_from_labels, warn_on_inconsistent_state_labels,
 };
 use crate::product_management::board::sync::{SyncError, classify_close_error};
 use crate::product_management::story::{
@@ -462,24 +462,34 @@ fn story_type_label_matching_is_case_insensitive() {
 }
 
 #[test]
-fn story_type_decodes_epic_from_title_prefix() {
-    assert_eq!(
-        story_type_from_labels_or_title(&[], "[Epic] foo"),
-        StoryType::Epic
-    );
-    assert_eq!(
-        story_type_from_labels_or_title(&[], "[epic] lowercase"),
-        StoryType::Epic
-    );
+fn epic_recognized_from_title_prefix() {
+    let upper = decode_story_metadata(&serde_json::json!({
+        "number": 1,
+        "title": "[Epic] foo",
+        "gh_state": "open",
+        "labels": [],
+        "created_at": "2026-05-15T01:00:00+00:00",
+        "user": { "login": "pm" },
+    }))
+    .expect("issue JSON must decode");
+    assert!(is_epic_story(&upper));
+    assert!(is_epic_issue(
+        &serde_json::json!({ "title": "[epic] lowercase" })
+    ));
 }
 
 #[test]
-fn story_type_decodes_epic_from_label() {
-    let labels = vec!["epic".to_string()];
-    assert_eq!(
-        story_type_from_labels_or_title(&labels, "[Feature] mismatched"),
-        StoryType::Epic
-    );
+fn epic_recognized_from_label() {
+    let story = decode_story_metadata(&serde_json::json!({
+        "number": 2,
+        "title": "[Feature] mismatched",
+        "gh_state": "open",
+        "labels": [{ "name": "epic" }],
+        "created_at": "2026-05-15T01:00:00+00:00",
+        "user": { "login": "pm" },
+    }))
+    .expect("issue JSON must decode");
+    assert!(is_epic_story(&story));
 }
 
 #[test]

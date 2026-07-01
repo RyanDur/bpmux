@@ -35,13 +35,18 @@ impl SourceAdapter for InMemorySourceAdapter {
                 "in-memory test failure".into(),
             ));
         }
-        let (items, outcomes, mut iterations) =
-            ingest::classify_ingested(s.stories.values().cloned(), &s.labels);
+        let ingest::Classified {
+            items,
+            outcomes,
+            mut iterations,
+            epics,
+        } = ingest::classify_ingested(s.stories.values().cloned(), &s.labels);
         iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
         Ok(Ingested {
             items,
             outcomes,
             iterations,
+            epics,
         })
     }
 

@@ -52,20 +52,28 @@ impl SourceAdapter for GitHubSourceAdapter {
             .await
             .map_err(SyncError::Other)?;
         let received = values.len();
-        let (stories, outcomes, mut iterations, dropped) = ingest::classify_ingested(&values);
+        let ingest::Classified {
+            stories,
+            outcomes,
+            mut iterations,
+            epics,
+            dropped,
+        } = ingest::classify_ingested(&values);
         let pre_filter = iterations.len();
         iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
         let filtered_out = pre_filter - iterations.len();
         crate::diag::log_diag(&format!(
-            "github ingest_metadata_since(since={:?}): received {received} values, decoded {} stories + {} outcomes + {pre_filter} iterations, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
+            "github ingest_metadata_since(since={:?}): received {received} values, decoded {} stories + {} outcomes + {pre_filter} iterations + {} epics, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
             since.map(|s| s.to_rfc3339()),
             stories.len(),
             outcomes.len(),
+            epics.len(),
         ));
         Ok(Ingested {
             items: stories.iter().map(ProductItem::from_story).collect(),
             outcomes,
             iterations,
+            epics,
         })
     }
 

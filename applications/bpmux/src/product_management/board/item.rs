@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::product_management::story::{Story, StoryKey, StoryType};
+use crate::product_management::story::{Story, StoryKey};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Content {
@@ -14,59 +14,46 @@ pub struct Content {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProductItem {
     Story(Story),
-    Epic(Story),
 }
 
 impl ProductItem {
     pub fn from_story(story: &Story) -> ProductItem {
-        match story.story_type() {
-            StoryType::Epic => ProductItem::Epic(story.clone()),
-            StoryType::Story(_) => ProductItem::Story(story.clone()),
-        }
+        ProductItem::Story(story.clone())
     }
 
     pub fn id(&self) -> StoryKey {
         match self {
-            ProductItem::Story(story) | ProductItem::Epic(story) => story.key(),
+            ProductItem::Story(story) => story.key(),
         }
     }
 
     pub fn as_story(&self) -> Option<&Story> {
         match self {
             ProductItem::Story(story) => Some(story),
-            ProductItem::Epic(_) => None,
         }
     }
 
     pub fn as_story_mut(&mut self) -> Option<&mut Story> {
         match self {
             ProductItem::Story(story) => Some(story),
-            ProductItem::Epic(_) => None,
-        }
-    }
-
-    pub fn epic_story(&self) -> Option<&Story> {
-        match self {
-            ProductItem::Epic(story) => Some(story),
-            ProductItem::Story(_) => None,
         }
     }
 
     pub fn backing_story(&self) -> Option<&Story> {
         match self {
-            ProductItem::Story(story) | ProductItem::Epic(story) => Some(story),
+            ProductItem::Story(story) => Some(story),
         }
     }
 
     pub fn backing_story_mut(&mut self) -> Option<&mut Story> {
         match self {
-            ProductItem::Story(story) | ProductItem::Epic(story) => Some(story),
+            ProductItem::Story(story) => Some(story),
         }
     }
 
     pub fn current_labels(&self) -> Vec<String> {
         match self {
-            ProductItem::Story(story) | ProductItem::Epic(story) => story.raw_labels().to_vec(),
+            ProductItem::Story(story) => story.raw_labels().to_vec(),
         }
     }
 }

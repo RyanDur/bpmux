@@ -332,7 +332,6 @@ fn story_to_board_json_labels_include_story_type() {
         (StoryType::Story(StoryKind::Feature), "feature"),
         (StoryType::Story(StoryKind::Bug), "bug"),
         (StoryType::Story(StoryKind::Chore), "chore"),
-        (StoryType::Epic, "epic"),
     ] {
         let s = sample_story(StoryState::Icebox, *story_type, false);
         let json = story_to_board_json(&GhLabelCodec, &s);

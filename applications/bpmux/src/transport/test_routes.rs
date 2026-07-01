@@ -90,6 +90,7 @@ pub struct CreateStoryReq {
 pub async fn post_test_create_story(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
+    axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<CreateStoryReq>,
 ) -> impl IntoResponse {
     run_test_route(session, refresh, |refresh, _session| async move {
@@ -112,7 +113,7 @@ pub async fn post_test_create_story(
             .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml").to_string());
         put_str(&mut args, "acceptance_test_path", path);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_create_story(args, &agent, Some(&refresh)).await
+        bridge::dispatch_create_story(args, &agent, Some(&refresh), &dispatcher).await
     })
     .await
 }

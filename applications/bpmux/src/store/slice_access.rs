@@ -6,7 +6,8 @@ use super::{
     AggregatedReaction, CiBroadcastListener, CiSnapshot, ReactionsBroadcastListener,
     RosterBroadcastListener, RosterMember, Store, ci, reactions, roster,
 };
-use crate::product_management::board::{IterationReader, OutcomeReader};
+use crate::product_management::board::{EpicReader, IterationReader, OutcomeReader};
+use crate::product_management::epic::{self, Epic};
 use crate::product_management::iteration::{self, Iteration};
 use crate::product_management::outcome::{self, Outcome};
 
@@ -36,6 +37,19 @@ impl IterationReader for AppIterationReader {
     }
 }
 
+struct AppEpicReader {
+    app: Weak<kernel::Store<AppState, AppAction>>,
+}
+
+impl EpicReader for AppEpicReader {
+    fn epics(&self) -> Vec<Epic> {
+        self.app
+            .upgrade()
+            .map(|app| app.select(|state| epic::all(&state.epics)))
+            .unwrap_or_default()
+    }
+}
+
 impl Store {
     pub fn outcome_reader(&self) -> Arc<dyn OutcomeReader> {
         Arc::new(AppOutcomeReader {
@@ -49,6 +63,12 @@ impl Store {
         })
     }
 
+    pub fn epic_reader(&self) -> Arc<dyn EpicReader> {
+        Arc::new(AppEpicReader {
+            app: Arc::downgrade(&self.app_store),
+        })
+    }
+
     pub fn outcomes(&self) -> Vec<Outcome> {
         self.app_store.select(|state| outcome::all(&state.outcomes))
     }
@@ -56,6 +76,10 @@ impl Store {
     pub fn iterations(&self) -> Vec<Iteration> {
         self.app_store
             .select(|state| iteration::all(&state.iterations))
+    }
+
+    pub fn epics(&self) -> Vec<Epic> {
+        self.app_store.select(|state| epic::all(&state.epics))
     }
 
     pub fn ci_snapshot(&self) -> Option<CiSnapshot> {

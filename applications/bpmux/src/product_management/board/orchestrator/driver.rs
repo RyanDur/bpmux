@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SyncError};
+use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
@@ -17,9 +18,14 @@ pub trait IterationReader: Send + Sync {
     fn iterations(&self) -> Vec<Iteration>;
 }
 
+pub trait EpicReader: Send + Sync {
+    fn epics(&self) -> Vec<Epic>;
+}
+
 pub trait RefreshDriver: Send + Sync {
     fn bind_outcome_reader(&self, _reader: Arc<dyn OutcomeReader>) {}
     fn bind_iteration_reader(&self, _reader: Arc<dyn IterationReader>) {}
+    fn bind_epic_reader(&self, _reader: Arc<dyn EpicReader>) {}
     fn refresh_story(&self, id: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn refresh_all_since(
@@ -71,11 +77,11 @@ pub trait RefreshDriver: Send + Sync {
             .into_iter()
             .find(|iteration| iteration.id == iteration_id)
     }
-    fn epics(&self) -> Vec<Story> {
-        self.store().epics()
+    fn epics(&self) -> Vec<Epic> {
+        Vec::new()
     }
-    fn epic(&self, id: u64) -> Option<Story> {
-        self.store().epic(StoryId::new(id))
+    fn epic(&self, epic_id: EpicId) -> Option<Epic> {
+        self.epics().into_iter().find(|epic| epic.id == epic_id)
     }
     fn backing_story(&self, id: u64) -> Option<Story> {
         self.store().backing_story(StoryId::new(id))

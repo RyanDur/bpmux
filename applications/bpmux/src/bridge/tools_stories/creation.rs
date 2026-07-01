@@ -6,6 +6,7 @@ pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let title = args
         .get("title")
@@ -70,6 +71,16 @@ pub(crate) async fn handle_create_story(
         acceptor_label,
     )
     .await?;
+    if let Some(story) = r.story(id)
+        && crate::product_management::board::adapters::github::is_epic_story(&story)
+    {
+        dispatch.dispatch(crate::store::AppAction::Epic(
+            crate::product_management::epic::EpicAction::Upserted(vec![
+                crate::product_management::board::adapters::github::decode_epic_from_story(&story),
+            ]),
+        ));
+        r.store().remove(StoryId::new(id));
+    }
     Ok(match parent_epic {
         Some(epic) => {
             format!("story created: #{id} {title} (under epic {epic})")
@@ -111,7 +122,7 @@ fn validate_parent_epic(
     let Some(epic) = parent_epic else {
         return Ok(());
     };
-    if r.epic(epic.value()).is_some() {
+    if r.epic(epic).is_some() {
         return Ok(());
     }
     if let Some(parent) = r.story(epic.value()) {

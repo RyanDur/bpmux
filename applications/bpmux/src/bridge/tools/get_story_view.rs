@@ -50,3 +50,34 @@ pub(super) async fn render_iteration_detail(
     });
     serde_json::to_string_pretty(&out).map_err(|e| format!("serialize iteration: {e}"))
 }
+
+pub(super) async fn render_epic_detail(
+    refresh: Option<&Arc<dyn RefreshDriver>>,
+    epic: &crate::product_management::epic::Epic,
+) -> Result<String, String> {
+    let id = epic.id.value();
+    let mut body = epic.body.clone();
+    if body.is_none()
+        && let Some(r) = refresh
+        && r.fetch_body(id).await.is_ok()
+    {
+        body = r
+            .epic(crate::product_management::epic::EpicId::new(id))
+            .and_then(|e| e.body);
+    }
+    let body_hydrated = body.is_some();
+    let body_out = body.unwrap_or_else(|| NOT_HYDRATED_PLACEHOLDER.to_string());
+    let out = serde_json::json!({
+        "id": id,
+        "title": epic.title,
+        "body": body_out,
+        "workflow_state": epic.state.as_str(),
+        "is_closed": epic.is_closed,
+        "labels": [{ "name": "epic" }],
+        "parent_epic": serde_json::Value::Null,
+        "body_hydrated": body_hydrated,
+        "gate_comments_hydrated": false,
+        "latest_reject": serde_json::Value::Null,
+    });
+    serde_json::to_string_pretty(&out).map_err(|e| format!("serialize epic: {e}"))
+}

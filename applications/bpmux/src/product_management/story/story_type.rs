@@ -11,7 +11,6 @@ pub enum StoryKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StoryType {
     Story(StoryKind),
-    Epic,
 }
 
 impl Default for StoryType {
@@ -24,7 +23,6 @@ impl StoryType {
     pub fn kind(self) -> Option<StoryKind> {
         match self {
             StoryType::Story(kind) => Some(kind),
-            StoryType::Epic => None,
         }
     }
 
@@ -33,7 +31,6 @@ impl StoryType {
             StoryType::Story(StoryKind::Feature) => "feature",
             StoryType::Story(StoryKind::Bug) => "bug",
             StoryType::Story(StoryKind::Chore) => "chore",
-            StoryType::Epic => "epic",
         }
     }
 
@@ -42,7 +39,6 @@ impl StoryType {
             StoryType::Story(StoryKind::Feature) => "Feature",
             StoryType::Story(StoryKind::Bug) => "Bug",
             StoryType::Story(StoryKind::Chore) => "Chore",
-            StoryType::Epic => "Epic",
         }
     }
 
@@ -51,7 +47,6 @@ impl StoryType {
             "Feature" => Some(StoryType::Story(StoryKind::Feature)),
             "Bug" => Some(StoryType::Story(StoryKind::Bug)),
             "Chore" => Some(StoryType::Story(StoryKind::Chore)),
-            "Epic" => Some(StoryType::Epic),
             _ => None,
         }
     }
@@ -73,9 +68,6 @@ impl<'de> Deserialize<'de> for StoryType {
 
 pub fn story_type_from_title(title: &str) -> StoryType {
     let lower = title.to_lowercase();
-    if lower.starts_with("[epic") {
-        return StoryType::Epic;
-    }
     StoryType::Story(story_kind_from_title(&lower))
 }
 

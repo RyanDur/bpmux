@@ -4,7 +4,10 @@ use super::story_type::{StoryKind, StoryType, story_type_from_title};
 
 #[test]
 fn story_type_from_title_reads_bpmux_title_conventions() {
-    assert_eq!(story_type_from_title("[Epic] foo"), StoryType::Epic);
+    assert_eq!(
+        story_type_from_title("[Epic] foo"),
+        StoryType::Story(StoryKind::Feature)
+    );
     assert_eq!(
         story_type_from_title("[Bug] broken"),
         StoryType::Story(StoryKind::Bug)
@@ -49,7 +52,6 @@ fn story_type_serde_representation_is_flat_and_stable_for_the_outbox() {
         (StoryType::Story(StoryKind::Feature), "\"Feature\""),
         (StoryType::Story(StoryKind::Bug), "\"Bug\""),
         (StoryType::Story(StoryKind::Chore), "\"Chore\""),
-        (StoryType::Epic, "\"Epic\""),
     ] {
         assert_eq!(
             serde_json::to_string(&story_type).unwrap(),

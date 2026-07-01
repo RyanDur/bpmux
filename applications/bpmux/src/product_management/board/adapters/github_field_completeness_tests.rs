@@ -156,7 +156,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
 }
 
 #[test]
-fn decode_story_metadata_decodes_story_type_from_label_into_the_domain_field() {
+fn epic_issue_recognized_by_label_at_ingest_not_by_story_type() {
     let json = serde_json::json!({
         "number": 700,
         "title": "an epic without a type prefix in the title",
@@ -165,11 +165,9 @@ fn decode_story_metadata_decodes_story_type_from_label_into_the_domain_field() {
         "created_at": "2026-05-15T01:00:00+00:00",
         "user": {"login": "pm"},
     });
-    let decoded = decode_story_metadata(&json).expect("decode");
-    assert_eq!(
-        decoded.story_type(),
-        crate::product_management::story::StoryType::Epic,
-        "the codec decodes the type label into the stored story_type at ingest, not from the title"
+    assert!(
+        crate::product_management::board::adapters::github::is_epic_issue(&json),
+        "the epic label routes the issue to the epic aggregate at ingest, not to a story_type"
     );
 }
 

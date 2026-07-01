@@ -31,25 +31,27 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     }
 
     fn bind_outcome_reader(&self, reader: Arc<dyn super::OutcomeReader>) {
-        let _ = self.outcome_reader.set(reader);
+        self.set_outcome_reader(reader);
     }
 
     fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
-        self.outcome_reader
-            .get()
-            .map(|reader| reader.outcomes())
-            .unwrap_or_default()
+        self.read_outcomes()
     }
 
     fn bind_iteration_reader(&self, reader: Arc<dyn super::IterationReader>) {
-        let _ = self.iteration_reader.set(reader);
+        self.set_iteration_reader(reader);
     }
 
     fn iterations(&self) -> Vec<crate::product_management::iteration::Iteration> {
-        self.iteration_reader
-            .get()
-            .map(|reader| reader.iterations())
-            .unwrap_or_default()
+        self.read_iterations()
+    }
+
+    fn bind_epic_reader(&self, reader: Arc<dyn super::EpicReader>) {
+        self.set_epic_reader(reader);
+    }
+
+    fn epics(&self) -> Vec<crate::product_management::epic::Epic> {
+        self.read_epics()
     }
 
     fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome> {

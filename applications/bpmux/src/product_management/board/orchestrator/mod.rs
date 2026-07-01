@@ -20,6 +20,7 @@ mod fetch;
 mod ingest;
 mod outbox;
 mod race_window;
+mod slice_readers;
 mod status;
 mod types;
 
@@ -51,6 +52,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
     pub(super) outcome_reader: std::sync::OnceLock<Arc<dyn OutcomeReader>>,
     pub(super) iteration_reader: std::sync::OnceLock<Arc<dyn IterationReader>>,
+    pub(super) epic_reader: std::sync::OnceLock<Arc<dyn EpicReader>>,
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
     pub(super) ci_state_store: Option<crate::transport::ci_state_store::CiStateStore>,
@@ -138,8 +140,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub async fn reconcile_dual_state_labels(&self) -> Result<usize, SyncError> {
-        let mut stories = self.store.all_stories();
-        stories.extend(self.store.epics());
+        let stories = self.store.all_stories();
         let mut repairs = 0usize;
         for story in stories {
             let labels = match self.adapter.fetch_story_labels(story.id.value()).await {

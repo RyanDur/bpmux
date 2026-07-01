@@ -58,8 +58,8 @@ pub(crate) async fn dispatch_list_epic_children(
     args: serde_json::Map<String, serde_json::Value>,
     refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let store = require_store(refresh, "list_epic_children")?;
-    tools::handle_list_epic_children(&args, &store).await
+    let r = refresh.ok_or("list_epic_children requires canonical store")?;
+    tools::handle_list_epic_children(&args, r).await
 }
 
 pub(crate) async fn dispatch_dev_in_flight(

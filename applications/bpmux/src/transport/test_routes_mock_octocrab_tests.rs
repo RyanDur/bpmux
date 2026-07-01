@@ -50,7 +50,10 @@ async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn Re
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_session())
         .layer(axum::Extension(orchestrator))
-        .layer(axum::Extension(none_tracker));
+        .layer(axum::Extension(none_tracker))
+        .layer(axum::Extension(crate::store::Dispatch::new(
+            tokio::sync::mpsc::unbounded_channel().0,
+        )));
     (router, orch)
 }
 

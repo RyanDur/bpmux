@@ -19,6 +19,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     items,
                     outcomes,
                     iterations,
+                    epics,
                 } = ingested;
                 let in_flight_label_stories = self.with_pending(|p| {
                     p.iter()
@@ -50,6 +51,10 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     .into_iter()
                     .filter(|iteration| not_in_flight(iteration.id.value()))
                     .collect::<Vec<_>>();
+                let fresh_epics = epics
+                    .into_iter()
+                    .filter(|epic| not_in_flight(epic.id.value()))
+                    .collect::<Vec<_>>();
                 if let Some(tx) = &self.action_tx {
                     if !fresh_outcomes.is_empty() {
                         let _ = tx.send(crate::store::AppAction::Outcome(
@@ -63,6 +68,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                             crate::product_management::iteration::IterationAction::Upserted(
                                 fresh_iterations,
                             ),
+                        ));
+                    }
+                    if !fresh_epics.is_empty() {
+                        let _ = tx.send(crate::store::AppAction::Epic(
+                            crate::product_management::epic::EpicAction::Upserted(fresh_epics),
                         ));
                     }
                 }

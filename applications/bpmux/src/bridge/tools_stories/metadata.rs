@@ -28,6 +28,7 @@ pub(crate) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "label")?;
     let id = args
@@ -80,6 +81,18 @@ pub(crate) async fn handle_label_story(
         r.drain_pending()
             .await
             .map_err(|e| format!("#{id} label push failed: {e}"))?;
+        if r.epic(crate::product_management::epic::EpicId::new(id))
+            .is_some()
+            && let Some(story) = r.story(id)
+        {
+            dispatch.dispatch(crate::store::AppAction::Epic(
+                crate::product_management::epic::EpicAction::Upserted(vec![
+                    crate::product_management::board::adapters::github::decode_epic_from_story(
+                        &story,
+                    ),
+                ]),
+            ));
+        }
         return Ok(ok_msg);
     }
     Err(

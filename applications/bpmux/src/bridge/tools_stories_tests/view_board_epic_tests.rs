@@ -2,9 +2,34 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::{StoryId, StoryType};
+use crate::product_management::board::EpicReader;
+use crate::product_management::board::adapters::github::{decode_epic_from_story, is_epic_story};
+use crate::product_management::epic::{Epic, EpicId};
+use crate::product_management::story::{Story, StoryId, StoryType};
 use crate::transport::protocol::ClientMessage;
+
+fn td() -> crate::store::Dispatch {
+    crate::store::Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
+}
+
+struct SeededEpics(Vec<Epic>);
+impl EpicReader for SeededEpics {
+    fn epics(&self) -> Vec<Epic> {
+        self.0.clone()
+    }
+}
+
+fn bind_epics(
+    orch: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    seeded: &[Story],
+) {
+    let epics: Vec<Epic> = seeded
+        .iter()
+        .filter(|s| is_epic_story(s))
+        .map(decode_epic_from_story)
+        .collect();
+    orch.bind_epic_reader(std::sync::Arc::new(SeededEpics(epics)));
+}
 
 #[tokio::test]
 async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
@@ -34,13 +59,14 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
-    epic.story_type = StoryType::Epic;
-    adapter.seed_stories(vec![child, epic]);
+    let seeded = vec![child, epic];
+    adapter.seed_stories(seeded.clone());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
     orchestrator.refresh_all().await.unwrap();
+    bind_epics(&orchestrator, &seeded);
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(300));
@@ -243,13 +269,14 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
-    epic.story_type = StoryType::Epic;
-    adapter.seed_stories(vec![epic]);
+    let seeded = vec![epic];
+    adapter.seed_stories(seeded.clone());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
     orchestrator.refresh_all().await.unwrap();
+    bind_epics(&orchestrator, &seeded);
 
     let mut args = serde_json::Map::new();
     args.insert("title".into(), serde_json::json!("child of epic"));
@@ -259,7 +286,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
         serde_json::json!("would reject if X"),
     );
     args.insert("parent_epic".into(), serde_json::json!(500));
-    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator), &td()).await;
     assert!(
         result.is_ok(),
         "create-with-parent should succeed: {result:?}"
@@ -314,7 +341,7 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
         serde_json::json!("would reject if X"),
     );
     args.insert("parent_epic".into(), serde_json::json!(501));
-    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator), &td()).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not an Epic"));
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -342,7 +369,6 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
-    epic.story_type = StoryType::Epic;
     let mut child_a = Story::new_minimal(
         StoryId::new(701),
         "child a".into(),
@@ -371,12 +397,14 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     );
     child_c.raw_labels.push("parent-epic-#700".to_string());
     child_c.parent_epic = Some(EpicId::new(700));
-    adapter.seed_stories(vec![epic, child_a, child_b, child_c]);
+    let seeded = vec![epic, child_a, child_b, child_c];
+    adapter.seed_stories(seeded.clone());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
     orch.refresh_all().await.unwrap();
+    bind_epics(&orch, &seeded);
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
         .unwrap();
@@ -455,13 +483,14 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
-    epic.story_type = StoryType::Epic;
-    adapter.seed_stories(vec![epic]);
+    let seeded = vec![epic];
+    adapter.seed_stories(seeded.clone());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
     orch.refresh_all().await.unwrap();
+    bind_epics(&orch, &seeded);
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
         .unwrap();
@@ -512,7 +541,6 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
-    epic.story_type = StoryType::Epic;
     let mut a = Story::new_minimal(
         StoryId::new(721),
         "a".into(),
@@ -531,12 +559,14 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     );
     b.raw_labels.push("parent-epic-#720".to_string());
     b.parent_epic = Some(EpicId::new(720));
-    adapter.seed_stories(vec![epic, a, b]);
+    let seeded = vec![epic, a, b];
+    adapter.seed_stories(seeded.clone());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
     orch.refresh_all().await.unwrap();
+    bind_epics(&orch, &seeded);
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
         .unwrap();
@@ -567,7 +597,6 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
         "pm".into(),
     );
     epic.raw_labels.push("epic".to_string());
-    epic.story_type = StoryType::Epic;
     let mut a = Story::new_minimal(
         StoryId::new(731),
         "a".into(),
@@ -577,17 +606,63 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     );
     a.raw_labels.push("parent-epic-#730".to_string());
     a.parent_epic = Some(EpicId::new(730));
-    adapter.seed_stories(vec![epic, a]);
+    let seeded = vec![epic, a];
+    adapter.seed_stories(seeded.clone());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
     orch.refresh_all().await.unwrap();
+    bind_epics(&orch, &seeded);
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
         .unwrap();
     assert!(
         out.contains("#730 [in-progress] owner-accepted umbrella"),
         "Post-#1450: explicit_state ignored — substrate IS source-of-truth (META-CANON #1); active child wins; got: {out}"
+    );
+}
+
+#[tokio::test]
+async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_story_lanes() {
+    use crate::product_management::board::BoardStore;
+    use crate::product_management::board::RefreshDriver;
+    use crate::product_management::board::SyncOrchestrator;
+    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::epic::EpicAction;
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<crate::store::AppAction>();
+    let dispatch = crate::store::Dispatch::new(tx);
+    let mut args = serde_json::Map::new();
+    args.insert("title".into(), serde_json::json!("[Epic] umbrella"));
+    args.insert("user_job".into(), serde_json::json!("user job here"));
+    args.insert(
+        "observation_falsifier".into(),
+        serde_json::json!("would reject if X"),
+    );
+    let result = handle_create_story(&args, "pm:claude-code", Some(&orch), &dispatch).await;
+    assert!(result.is_ok(), "epic create should succeed: {result:?}");
+
+    let epic_id = match rx.try_recv() {
+        Ok(crate::store::AppAction::Epic(EpicAction::Upserted(epics))) => {
+            assert_eq!(epics.len(), 1, "one epic upserted");
+            assert_eq!(epics[0].title, "[Epic] umbrella");
+            epics[0].id.value()
+        }
+        Ok(_) => panic!("expected an EpicAction::Upserted dispatch, got a different action"),
+        Err(_) => panic!("expected an EpicAction::Upserted dispatch, got none"),
+    };
+    assert!(
+        orch.all_stories().iter().all(|s| s.id.value() != epic_id),
+        "a created epic lives only in the epic slice — it must not linger in the story store / state-lanes"
     );
 }

@@ -6,7 +6,9 @@ use crate::product_management::story::{
     replay_transitions,
 };
 
-use super::get_story_view::{NOT_HYDRATED_PLACEHOLDER, render_iteration_detail};
+use super::get_story_view::{
+    NOT_HYDRATED_PLACEHOLDER, render_epic_detail, render_iteration_detail,
+};
 use super::rework_context::enrich_body;
 
 fn state_label(state: StoryState) -> &'static str {
@@ -71,9 +73,13 @@ pub(in crate::bridge) async fn handle_get_story(
     {
         return render_iteration_detail(b, refresh, &iteration).await;
     }
+    if let Some(r) = refresh
+        && let Some(epic) = r.epic(crate::product_management::epic::EpicId::new(id))
+    {
+        return render_epic_detail(refresh, &epic).await;
+    }
     let mut story = b
         .story(story_id)
-        .or_else(|| b.epic(story_id))
         .ok_or_else(|| format!("story #{id} not found in board"))?;
     if story.body.is_none()
         && let Some(r) = refresh
@@ -82,7 +88,6 @@ pub(in crate::bridge) async fn handle_get_story(
             Ok(_) => {
                 story = b
                     .story(story_id)
-                    .or_else(|| b.epic(story_id))
                     .ok_or_else(|| format!("story #{id} not found in board after fetch"))?;
             }
             Err(e) => {
@@ -105,7 +110,6 @@ pub(in crate::bridge) async fn handle_get_story(
             Ok(_) => {
                 story = b
                     .story(story_id)
-                    .or_else(|| b.epic(story_id))
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {

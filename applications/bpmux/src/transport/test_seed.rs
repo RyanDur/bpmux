@@ -162,10 +162,10 @@ pub async fn post_seed_stories(
             _ => crate::product_management::story::StoryState::Icebox,
         };
         let is_iteration_seed = s.story_type.as_str() == "iteration";
+        let is_epic_seed = s.story_type.as_str() == "epic";
         let story_type = {
             use crate::product_management::story::{StoryKind, StoryType};
             match s.story_type.as_str() {
-                "epic" => StoryType::Epic,
                 "bug" => StoryType::Story(StoryKind::Bug),
                 "chore" => StoryType::Story(StoryKind::Chore),
                 _ => StoryType::Story(StoryKind::Feature),
@@ -198,6 +198,8 @@ pub async fn post_seed_stories(
         };
         let type_label = if is_iteration_seed {
             "iteration".to_string()
+        } else if is_epic_seed {
+            "epic".to_string()
         } else {
             crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
                 .encode_story_type(story_type)
@@ -256,6 +258,15 @@ pub async fn post_seed_stories(
             dispatcher.dispatch(crate::store::AppAction::Iteration(
                 crate::product_management::iteration::IterationAction::Upserted(vec![
                     crate::product_management::board::adapters::github::decode_iteration_from_story(
+                        &story,
+                    ),
+                ]),
+            ));
+        }
+        if is_epic_seed && let Some(story) = refresh.backing_story(s.id) {
+            dispatcher.dispatch(crate::store::AppAction::Epic(
+                crate::product_management::epic::EpicAction::Upserted(vec![
+                    crate::product_management::board::adapters::github::decode_epic_from_story(
                         &story,
                     ),
                 ]),
