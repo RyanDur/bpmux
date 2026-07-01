@@ -79,9 +79,13 @@ pub(in crate::bridge) async fn handle_move_story(
     reap_workflow_labels(r.as_ref(), id, &meta, keep_label)?;
 
     if let Some(label) = target.as_label() {
+        let target_state = match target {
+            TargetState::Workflow(state) => state,
+            TargetState::Retired => BoardState::Retired,
+        };
         let already_labeled = prior
             .as_ref()
-            .map(|s| s.raw_labels.iter().any(|l| l == label))
+            .map(|s| s.state() == target_state)
             .unwrap_or(false);
         if !already_labeled {
             r.mutate_sync(BoardEvent::TagAdded {
@@ -119,11 +123,7 @@ pub(in crate::bridge) async fn handle_move_story(
             .map_err(|e| format!("#{id} retire enqueue failed: {e}"))?;
             let already_retired = prior
                 .as_ref()
-                .map(|s| {
-                    s.raw_labels
-                        .iter()
-                        .any(|l| l.eq_ignore_ascii_case("retired"))
-                })
+                .map(|s| s.state() == BoardState::Retired)
                 .unwrap_or(false);
             if !already_retired {
                 r.mutate_sync(BoardEvent::TagAdded {

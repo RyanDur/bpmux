@@ -45,16 +45,12 @@ pub(crate) fn fire_stories(session: &Arc<session::Session>, refresh: &Arc<dyn Re
 
 fn effective_state_label(story: &Story) -> &'static str {
     if story.is_closed {
-        if story
-            .raw_labels
-            .iter()
-            .any(|l| l.eq_ignore_ascii_case("retired"))
-        {
+        if story.state() == BoardState::Retired {
             return BoardState::Retired.as_str();
         }
         return BoardState::Accepted.as_str();
     }
-    story.state.as_str()
+    story.state().as_str()
 }
 
 pub(crate) fn story_state_label(
