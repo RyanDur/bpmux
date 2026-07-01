@@ -1,6 +1,6 @@
 use super::{Stories, story_mut};
 use crate::product_management::board::events::EventMeta;
-use crate::product_management::story::{Story, StoryId, StoryKey, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKey, StoryKind, StoryState};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn apply_story_created(
@@ -10,7 +10,7 @@ pub(super) fn apply_story_created(
     title: &str,
     body: &str,
     initial_state: StoryState,
-    story_type: StoryType,
+    story_type: StoryKind,
 ) {
     let story = Story {
         id,

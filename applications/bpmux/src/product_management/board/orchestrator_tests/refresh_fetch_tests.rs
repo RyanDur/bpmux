@@ -10,7 +10,7 @@ use crate::product_management::board::events::{BoardEvent, EventMeta};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::store::{BoardStore, StoreChange};
-use crate::product_management::story::{Stage, Story, StoryId, StoryState, StoryType};
+use crate::product_management::story::{Stage, Story, StoryId, StoryState};
 
 #[tokio::test]
 async fn refresh_story_pulls_single_story_from_adapter_into_store() {

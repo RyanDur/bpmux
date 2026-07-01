@@ -8,67 +8,19 @@ pub enum StoryKind {
     Chore,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum StoryType {
-    Story(StoryKind),
-}
-
-impl Default for StoryType {
-    fn default() -> Self {
-        StoryType::Story(StoryKind::Feature)
-    }
-}
-
-impl StoryType {
-    pub fn kind(self) -> Option<StoryKind> {
-        match self {
-            StoryType::Story(kind) => Some(kind),
-        }
-    }
-
+impl StoryKind {
     pub fn as_label(self) -> &'static str {
         match self {
-            StoryType::Story(StoryKind::Feature) => "feature",
-            StoryType::Story(StoryKind::Bug) => "bug",
-            StoryType::Story(StoryKind::Chore) => "chore",
-        }
-    }
-
-    fn as_serde_str(self) -> &'static str {
-        match self {
-            StoryType::Story(StoryKind::Feature) => "Feature",
-            StoryType::Story(StoryKind::Bug) => "Bug",
-            StoryType::Story(StoryKind::Chore) => "Chore",
-        }
-    }
-
-    fn from_serde_str(raw: &str) -> Option<Self> {
-        match raw {
-            "Feature" => Some(StoryType::Story(StoryKind::Feature)),
-            "Bug" => Some(StoryType::Story(StoryKind::Bug)),
-            "Chore" => Some(StoryType::Story(StoryKind::Chore)),
-            _ => None,
+            StoryKind::Feature => "feature",
+            StoryKind::Bug => "bug",
+            StoryKind::Chore => "chore",
         }
     }
 }
 
-impl Serialize for StoryType {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(self.as_serde_str())
-    }
-}
-
-impl<'de> Deserialize<'de> for StoryType {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let raw = String::deserialize(deserializer)?;
-        StoryType::from_serde_str(&raw)
-            .ok_or_else(|| serde::de::Error::custom(format!("unknown StoryType: {raw}")))
-    }
-}
-
-pub fn story_type_from_title(title: &str) -> StoryType {
+pub fn story_type_from_title(title: &str) -> StoryKind {
     let lower = title.to_lowercase();
-    StoryType::Story(story_kind_from_title(&lower))
+    story_kind_from_title(&lower)
 }
 
 fn story_kind_from_title(lower: &str) -> StoryKind {

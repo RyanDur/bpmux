@@ -5,7 +5,7 @@ use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::decode_story_metadata;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::{BoardEvent, PeerId, events::EventMeta};
-use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKind, StoryState};
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
@@ -81,7 +81,7 @@ fn create_story_event_does_not_seed_iteration_membership() {
         title: "freshly-created".to_string(),
         body: "no membership at filing-time".to_string(),
         initial_state: StoryState::Icebox,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     let s = store.story(StoryId::new(200)).expect("story present");
     let json =

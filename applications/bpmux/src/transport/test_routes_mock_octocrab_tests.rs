@@ -246,9 +246,7 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
     assert!(
         matches!(
             refresh.story(99).map(|s| s.story_type()),
-            Some(crate::product_management::story::StoryType::Story(
-                crate::product_management::story::StoryKind::Feature
-            ))
+            Some(crate::product_management::story::StoryKind::Feature)
         ),
         "fixture must seed #99 as a non-Epic (Feature) in the canonical store: create_story \
          reads its parent from the store, so without the seed the not-an-Epic rejection would \

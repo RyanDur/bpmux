@@ -179,9 +179,7 @@ async fn push_event_accepts_story_created_variant() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Icebox,
-        story_type: crate::product_management::story::StoryType::Story(
-            crate::product_management::story::StoryKind::Feature,
-        ),
+        story_type: crate::product_management::story::StoryKind::Feature,
     };
     adapter.push_event(&event).await.unwrap();
     let pushed = adapter.pushed_events();

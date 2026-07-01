@@ -5,7 +5,7 @@ use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Stage, Story, StoryId, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Stage, Story, StoryId, StoryKind, StoryState};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -21,7 +21,7 @@ async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     orch
 }
 
-fn make_story(id: u64, story_type: StoryType) -> Story {
+fn make_story(id: u64, story_type: StoryKind) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
@@ -39,22 +39,19 @@ fn make_story(id: u64, story_type: StoryType) -> Story {
 
 #[tokio::test]
 async fn refreshed_path_classifies_feature_via_typed_story_type() {
-    let orch =
-        orchestrator_with_seed(vec![make_story(901, StoryType::Story(StoryKind::Feature))]).await;
+    let orch = orchestrator_with_seed(vec![make_story(901, StoryKind::Feature)]).await;
     assert!(is_feature_for_velocity(901, Some(&orch)));
 }
 
 #[tokio::test]
 async fn refreshed_path_rejects_bug_via_typed_story_type() {
-    let orch =
-        orchestrator_with_seed(vec![make_story(902, StoryType::Story(StoryKind::Bug))]).await;
+    let orch = orchestrator_with_seed(vec![make_story(902, StoryKind::Bug)]).await;
     assert!(!is_feature_for_velocity(902, Some(&orch)));
 }
 
 #[tokio::test]
 async fn refreshed_path_rejects_chore_via_typed_story_type() {
-    let orch =
-        orchestrator_with_seed(vec![make_story(903, StoryType::Story(StoryKind::Chore))]).await;
+    let orch = orchestrator_with_seed(vec![make_story(903, StoryKind::Chore)]).await;
     assert!(!is_feature_for_velocity(903, Some(&orch)));
 }
 

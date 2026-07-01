@@ -12,7 +12,7 @@ use crate::product_management::board::adapters::github::{
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
-    Acceptor, FreeComment, Gate, Stage, Story, StoryId, StoryKind, StoryState, StoryType, Tag,
+    Acceptor, FreeComment, Gate, Stage, Story, StoryId, StoryKind, StoryState, Tag,
 };
 
 fn meta(actor: &str, ts_year: i32, peer: &str) -> EventMeta {
@@ -55,7 +55,7 @@ fn story_created_event_populates_store() {
         title: "new story".to_string(),
         body: "body text".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     };
     store.apply(&event);
     let story = store.story(StoryId::new(500)).expect("story exists");
@@ -74,7 +74,7 @@ fn tag_added_acceptor_label_decodes_into_the_stored_acceptor_field() {
         title: "needs an acceptor".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Delivered,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     assert_eq!(
         store.story(StoryId::new(8)).unwrap().acceptor(),
@@ -102,7 +102,7 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
         title: "child story".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Icebox,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     assert_eq!(
         store.story(StoryId::new(12)).unwrap().parent_epic(),
@@ -130,7 +130,7 @@ fn tag_added_blocked_label_decodes_into_the_stored_tags_field() {
         title: "blockable".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Delivered,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     assert!(
         store.story(StoryId::new(15)).unwrap().tags().is_empty(),
@@ -157,7 +157,7 @@ fn tag_added_ready_order_label_decodes_into_the_stored_ready_order_field() {
         title: "orderable".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     assert_eq!(
         store.story(StoryId::new(18)).unwrap().ready_order(),
@@ -236,7 +236,7 @@ fn state_transitioned_event_updates_existing_story() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta("dev", 2026, "local"),
@@ -269,7 +269,7 @@ fn gate_comment_appended_event_accumulates() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::GateCommentAppended {
         meta: meta("dev", 2026, "local"),
@@ -299,7 +299,7 @@ fn free_comment_appended_event_accumulates() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::FreeCommentAppended {
         meta: meta("designer", 2026, "local"),
@@ -435,7 +435,7 @@ async fn subscribe_delivers_applied_events_to_listeners() {
         title: "sub".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     };
     store.apply(&event);
     let received = rx.recv().await.expect("receive");
@@ -492,7 +492,7 @@ async fn an_empty_seed_changes_nothing_and_stays_quiet() {
         title: "next".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     };
     store.apply(&event);
     let received = rx.recv().await.expect("receive");
@@ -537,7 +537,7 @@ async fn apply_succeeds_when_no_subscribers_are_attached() {
         title: "no-subs".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     };
     store.apply(&event);
     assert!(store.story(StoryId::new(99)).is_some());
@@ -552,7 +552,7 @@ fn tag_added_event_appends_to_story_tags() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -574,7 +574,7 @@ fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Delivered,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("designer", 2026, "local"),
@@ -613,7 +613,7 @@ fn seed_iteration_issue(store: &BoardStore, id: u64) {
         title: "Iteration Vela".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::default(),
+        story_type: StoryKind::default(),
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -681,7 +681,7 @@ fn tag_added_unknown_label_is_dropped() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -700,7 +700,7 @@ fn tag_added_is_idempotent() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -727,7 +727,7 @@ fn tag_removed_event_strips_tag() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -751,7 +751,7 @@ fn tag_removed_unknown_label_is_noop() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -778,7 +778,7 @@ fn tag_added_parent_iteration_label_rederives_iteration_membership_1553() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -800,7 +800,7 @@ fn tag_removed_parent_iteration_label_clears_iteration_membership_1553() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -827,7 +827,7 @@ fn story_created_event_carries_story_type() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Bug),
+        story_type: StoryKind::Bug,
     });
     store.apply(&BoardEvent::TagAdded {
         meta: meta("pm", 2026, "local"),
@@ -839,7 +839,7 @@ fn story_created_event_carries_story_type() {
             &store.story(StoryId::new(1)).unwrap().raw_labels,
             &store.story(StoryId::new(1)).unwrap().title
         ),
-        StoryType::Story(StoryKind::Bug)
+        StoryKind::Bug
     );
 }
 
@@ -852,7 +852,7 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
         title: "child".to_string(),
         body: "".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),
@@ -874,7 +874,7 @@ fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
         title: "child".to_string(),
         body: "".to_string(),
         initial_state: StoryState::Ready,
-        story_type: StoryType::Story(StoryKind::Feature),
+        story_type: StoryKind::Feature,
     });
     store.apply(&BoardEvent::ParentEpicSet {
         meta: meta("pm", 2026, "local"),

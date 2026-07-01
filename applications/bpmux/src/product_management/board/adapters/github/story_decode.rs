@@ -5,10 +5,10 @@ use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::epic::EpicId;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
-    Stage, Story, StoryId, StoryState, StoryType, Tag, story_type_from_title,
+    Stage, Story, StoryId, StoryKind, StoryState, Tag, story_type_from_title,
 };
 
-pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {
+pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryKind {
     story_type_from_labels(labels).unwrap_or_else(|| story_type_from_title(title))
 }
 

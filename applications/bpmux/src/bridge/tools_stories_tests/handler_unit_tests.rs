@@ -3,7 +3,6 @@
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
 use crate::product_management::story::StoryId;
-use crate::product_management::story::StoryType;
 use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]

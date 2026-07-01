@@ -77,7 +77,7 @@ pub(in crate::bridge) fn is_feature_for_velocity(
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
 ) -> bool {
     refresh.and_then(|r| r.story(n)).is_some_and(|s| {
-        use crate::product_management::story::{StoryKind, StoryType};
-        matches!(s.story_type(), StoryType::Story(StoryKind::Feature))
+        use crate::product_management::story::StoryKind;
+        matches!(s.story_type(), StoryKind::Feature)
     })
 }

@@ -14,7 +14,7 @@ use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
-use crate::product_management::story::{Story, StoryId, StoryKind, StoryState, StoryType};
+use crate::product_management::story::{Story, StoryId, StoryKind, StoryState};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
@@ -50,7 +50,7 @@ fn upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Outcome> {
     found
 }
 
-fn seed(id: u64, title: &str, story_type: StoryType, labels: &[&str]) -> Story {
+fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
@@ -281,7 +281,7 @@ async fn retire_aimed_at_a_non_outcome_teaches_the_boundary_1761() {
     let refresh = build_refresh(vec![seed(
         700,
         "A story",
-        StoryType::Story(StoryKind::Feature),
+        StoryKind::Feature,
         &["enhancement"],
     )])
     .await;

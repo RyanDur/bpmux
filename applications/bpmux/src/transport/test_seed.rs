@@ -164,11 +164,11 @@ pub async fn post_seed_stories(
         let is_iteration_seed = s.story_type.as_str() == "iteration";
         let is_epic_seed = s.story_type.as_str() == "epic";
         let story_type = {
-            use crate::product_management::story::{StoryKind, StoryType};
+            use crate::product_management::story::StoryKind;
             match s.story_type.as_str() {
-                "bug" => StoryType::Story(StoryKind::Bug),
-                "chore" => StoryType::Story(StoryKind::Chore),
-                _ => StoryType::Story(StoryKind::Feature),
+                "bug" => StoryKind::Bug,
+                "chore" => StoryKind::Chore,
+                _ => StoryKind::Feature,
             }
         };
         let meta = crate::product_management::board::events::EventMeta {

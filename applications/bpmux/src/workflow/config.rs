@@ -128,7 +128,7 @@ pub fn gate_class_from_labels(labels: &[String]) -> GateClass {
 
 pub fn gate_class_from_labels_and_story_type(
     labels: &[String],
-    story_type: crate::product_management::story::StoryType,
+    story_type: crate::product_management::story::StoryKind,
 ) -> GateClass {
     for l in labels {
         let lower = l.to_ascii_lowercase();
@@ -150,10 +150,10 @@ pub fn gate_class_from_labels_and_story_type(
             _ => {}
         }
     }
-    use crate::product_management::story::{StoryKind, StoryType};
+    use crate::product_management::story::StoryKind;
     match story_type {
-        StoryType::Story(StoryKind::Feature) => GateClass::OwnerWalk,
-        StoryType::Story(StoryKind::Bug) => GateClass::TeamVerifiable,
-        StoryType::Story(StoryKind::Chore) => GateClass::DevVerifiable,
+        StoryKind::Feature => GateClass::OwnerWalk,
+        StoryKind::Bug => GateClass::TeamVerifiable,
+        StoryKind::Chore => GateClass::DevVerifiable,
     }
 }

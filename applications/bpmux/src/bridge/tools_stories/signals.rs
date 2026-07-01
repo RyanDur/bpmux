@@ -70,7 +70,7 @@ pub(crate) fn build_reject_signal(id: u64, reason: &str) -> ClientMessage {
 pub(crate) fn classify_for_pass_desk_check(
     id: u64,
     refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
-) -> crate::product_management::story::StoryType {
+) -> crate::product_management::story::StoryKind {
     refresh
         .and_then(|r| r.story(id))
         .map(|s| s.story_type())
@@ -78,7 +78,7 @@ pub(crate) fn classify_for_pass_desk_check(
 }
 
 pub(crate) fn addressee_for_pass_desk_check(
-    story_type: crate::product_management::story::StoryType,
+    story_type: crate::product_management::story::StoryKind,
     labels: &[String],
 ) -> &'static str {
     let workflow = crate::workflow::current_workflow();
@@ -93,10 +93,10 @@ pub(crate) fn addressee_for_pass_desk_check(
         return owner();
     }
 
-    use crate::product_management::story::{StoryKind, StoryType};
+    use crate::product_management::story::StoryKind;
     match story_type {
-        StoryType::Story(StoryKind::Feature) => owner(),
-        StoryType::Story(StoryKind::Bug) | StoryType::Story(StoryKind::Chore) => team(),
+        StoryKind::Feature => owner(),
+        StoryKind::Bug | StoryKind::Chore => team(),
     }
 }
 
@@ -121,7 +121,7 @@ pub(crate) fn build_pass_desk_check_pm_present_signal(id: u64) -> ClientMessage 
 
 pub(crate) fn build_pass_desk_check_signals(
     id: u64,
-    story_type: crate::product_management::story::StoryType,
+    story_type: crate::product_management::story::StoryKind,
     labels: &[String],
 ) -> Vec<ClientMessage> {
     let primary = addressee_for_pass_desk_check(story_type, labels);

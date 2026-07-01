@@ -5,7 +5,7 @@ pub mod transition;
 
 pub use enums::{Acceptor, Gate, Horizon, Stage, StoryState, Tag};
 pub use key::{StoryId, StoryKey};
-pub use story_type::{StoryKind, StoryType, story_type_from_title};
+pub use story_type::{StoryKind, story_type_from_title};
 pub use transition::{
     StateTransition, is_backward, most_recent_backward_transition, replay_transitions,
 };
@@ -52,7 +52,7 @@ pub struct Story {
     #[serde(default)]
     pub body_etag: Option<String>,
     #[serde(default)]
-    pub story_type: StoryType,
+    pub story_type: StoryKind,
     #[serde(default)]
     pub acceptor: Option<Acceptor>,
     #[serde(default)]
@@ -111,12 +111,8 @@ impl Story {
         self.state
     }
 
-    pub fn story_type(&self) -> StoryType {
+    pub fn story_type(&self) -> StoryKind {
         self.story_type
-    }
-
-    pub fn kind(&self) -> Option<StoryKind> {
-        self.story_type.kind()
     }
 
     pub fn acceptor(&self) -> Option<Acceptor> {

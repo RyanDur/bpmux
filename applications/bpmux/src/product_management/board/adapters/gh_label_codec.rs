@@ -157,19 +157,19 @@ impl GhLabelCodec {
     pub fn decode_story_type(
         &self,
         label: &str,
-    ) -> Option<crate::product_management::story::StoryType> {
-        use crate::product_management::story::{StoryKind, StoryType};
+    ) -> Option<crate::product_management::story::StoryKind> {
+        use crate::product_management::story::StoryKind;
         match label.to_ascii_lowercase().as_str() {
-            "feature" => Some(StoryType::Story(StoryKind::Feature)),
-            "bug" => Some(StoryType::Story(StoryKind::Bug)),
-            "chore" => Some(StoryType::Story(StoryKind::Chore)),
+            "feature" => Some(StoryKind::Feature),
+            "bug" => Some(StoryKind::Bug),
+            "chore" => Some(StoryKind::Chore),
             _ => None,
         }
     }
 
     pub fn encode_story_type(
         &self,
-        story_type: crate::product_management::story::StoryType,
+        story_type: crate::product_management::story::StoryKind,
     ) -> String {
         story_type.as_label().to_string()
     }

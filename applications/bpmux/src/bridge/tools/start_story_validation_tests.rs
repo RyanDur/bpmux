@@ -7,9 +7,7 @@ mod gate_retire_1348 {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{
-        Stage, Story, StoryId, StoryKind, StoryState, StoryType,
-    };
+    use crate::product_management::story::{Stage, Story, StoryId, StoryKind, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -17,7 +15,7 @@ mod gate_retire_1348 {
         id: u64,
         title: &str,
         state: StoryState,
-        story_type: StoryType,
+        story_type: StoryKind,
         body: &str,
     ) -> Arc<dyn RefreshDriver> {
         let store = Arc::new(BoardStore::new());
@@ -59,7 +57,7 @@ mod gate_retire_1348 {
             9101,
             "[Feature] gherkin-only body",
             StoryState::Ready,
-            StoryType::Story(StoryKind::Feature),
+            StoryKind::Feature,
             body,
         )
         .await;
@@ -85,7 +83,7 @@ mod gate_retire_1348 {
             9102,
             "[Feature] gherkin-only deliver",
             StoryState::InProgress(Stage::Dev),
-            StoryType::Story(StoryKind::Feature),
+            StoryKind::Feature,
             body,
         )
         .await;
@@ -113,7 +111,7 @@ mod gate_retire_1348 {
             9103,
             "[Bug] gherkin-only body",
             StoryState::Ready,
-            StoryType::Story(StoryKind::Bug),
+            StoryKind::Bug,
             body,
         )
         .await;
@@ -135,7 +133,7 @@ mod gate_retire_1348 {
             9104,
             "[Feature] backward-compat ATP path",
             StoryState::Ready,
-            StoryType::Story(StoryKind::Feature),
+            StoryKind::Feature,
             &body,
         )
         .await;
@@ -161,7 +159,7 @@ mod gate_retire_1348 {
             9105,
             "[Feature] backward-compat ATP deliver",
             StoryState::InProgress(Stage::Dev),
-            StoryType::Story(StoryKind::Feature),
+            StoryKind::Feature,
             &body,
         )
         .await;

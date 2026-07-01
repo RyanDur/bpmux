@@ -11,9 +11,7 @@ use crate::product_management::board::adapters::github::{
     tags_from_labels, warn_on_inconsistent_state_labels,
 };
 use crate::product_management::board::sync::{SyncError, classify_close_error};
-use crate::product_management::story::{
-    Gate, Stage, StoryId, StoryKind, StoryState, StoryType, Tag,
-};
+use crate::product_management::story::{Gate, Stage, StoryId, StoryKind, StoryState, Tag};
 
 #[test]
 fn is_iteration_position_label_matches_iteration_name_dot_number() {
@@ -432,7 +430,7 @@ fn story_type_label_takes_precedence_over_title() {
     let labels = vec!["bug".to_string()];
     assert_eq!(
         story_type_from_labels_or_title(&labels, "[Feature] something"),
-        StoryType::Story(StoryKind::Bug)
+        StoryKind::Bug
     );
 }
 
@@ -440,15 +438,15 @@ fn story_type_label_takes_precedence_over_title() {
 fn story_type_falls_back_to_title_prefix_when_no_label() {
     assert_eq!(
         story_type_from_labels_or_title(&[], "[Chore] cleanup"),
-        StoryType::Story(StoryKind::Chore)
+        StoryKind::Chore
     );
     assert_eq!(
         story_type_from_labels_or_title(&[], "[Bug] broken"),
-        StoryType::Story(StoryKind::Bug)
+        StoryKind::Bug
     );
     assert_eq!(
         story_type_from_labels_or_title(&[], "just a title"),
-        StoryType::Story(StoryKind::Feature)
+        StoryKind::Feature
     );
 }
 
@@ -457,7 +455,7 @@ fn story_type_label_matching_is_case_insensitive() {
     let labels = vec!["CHORE".to_string()];
     assert_eq!(
         story_type_from_labels_or_title(&labels, "anything"),
-        StoryType::Story(StoryKind::Chore)
+        StoryKind::Chore
     );
 }
 
@@ -496,7 +494,7 @@ fn epic_recognized_from_label() {
 fn story_type_from_labels_is_some_only_for_a_type_label() {
     assert_eq!(
         story_type_from_labels(&["CHORE".to_string()]),
-        Some(StoryType::Story(StoryKind::Chore))
+        Some(StoryKind::Chore)
     );
     assert_eq!(story_type_from_labels(&["ready".to_string()]), None);
     assert_eq!(story_type_from_labels(&[]), None);
@@ -533,7 +531,7 @@ fn decode_story_metadata_populates_story_type_and_tags_from_labels() {
     let story = decode_story_metadata(&v).unwrap();
     assert_eq!(
         story_type_from_labels_or_title(&story.raw_labels, &story.title),
-        StoryType::Story(StoryKind::Bug)
+        StoryKind::Bug
     );
     assert_eq!(tags_from_labels(&story.raw_labels), vec![Tag::Blocked]);
 }

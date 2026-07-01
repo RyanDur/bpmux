@@ -5,7 +5,7 @@ use super::test_ci_state_store_green;
 use crate::product_management::board::EpicReader;
 use crate::product_management::board::adapters::github::{decode_epic_from_story, is_epic_story};
 use crate::product_management::epic::{Epic, EpicId};
-use crate::product_management::story::{Story, StoryId, StoryType};
+use crate::product_management::story::{Story, StoryId};
 use crate::transport::protocol::ClientMessage;
 
 fn td() -> crate::store::Dispatch {
@@ -38,7 +38,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -136,7 +136,7 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -255,7 +255,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -312,7 +312,7 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -354,7 +354,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, StoryState, StoryType};
+    use crate::product_management::story::{Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -468,7 +468,7 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -526,7 +526,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryState, StoryType};
+    use crate::product_management::story::{Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -582,7 +582,7 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, StoryState, StoryType};
+    use crate::product_management::story::{Stage, Story, StoryState};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

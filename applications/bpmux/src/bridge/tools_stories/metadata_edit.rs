@@ -34,7 +34,7 @@ pub(crate) async fn handle_edit_story(
         && iteration.is_none()
     {
         let story = ensure_story_in_canonical_store(r, id).await?;
-        if story.kind() != Some(crate::product_management::story::StoryKind::Chore) {
+        if story.story_type() != crate::product_management::story::StoryKind::Chore {
             crate::bridge::atp_substantive_gate::verify_atp_pre_filing(b, None)
                 .map_err(|e| e.as_json_string())?;
         }

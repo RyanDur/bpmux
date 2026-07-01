@@ -36,7 +36,7 @@ pub(crate) async fn handle_create_story(
         acceptance_test_path,
         author_body,
     );
-    if story_type.kind() != Some(crate::product_management::story::StoryKind::Chore) {
+    if story_type != crate::product_management::story::StoryKind::Chore {
         crate::bridge::atp_substantive_gate::verify_atp_pre_filing(
             &composed_body,
             acceptance_test_path,
@@ -91,7 +91,7 @@ pub(crate) async fn handle_create_story(
 
 fn validate_actor_role_can_create(
     agent_name: &str,
-    story_type: crate::product_management::story::StoryType,
+    story_type: crate::product_management::story::StoryKind,
 ) -> Result<(), String> {
     let workflow = crate::workflow::current_workflow();
     let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
@@ -103,7 +103,7 @@ fn validate_actor_role_can_create(
     {
         return Ok(());
     }
-    let is_chore = story_type.kind() == Some(crate::product_management::story::StoryKind::Chore);
+    let is_chore = story_type == crate::product_management::story::StoryKind::Chore;
     if actor_role != pm && !(actor_role == dev && is_chore) {
         return Err(
             "create_story is pm-lane (dev may author [Chore]-class stories per chore-ownership \
@@ -141,7 +141,7 @@ async fn create_and_broadcast_story_events(
     agent_name: &str,
     title: &str,
     composed_body: String,
-    story_type: crate::product_management::story::StoryType,
+    story_type: crate::product_management::story::StoryKind,
     parent_epic: Option<EpicId>,
     acceptor_label: Option<&'static str>,
 ) -> Result<u64, String> {
