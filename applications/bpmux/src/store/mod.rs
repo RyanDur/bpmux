@@ -17,6 +17,7 @@ mod action;
 mod app;
 mod dispatch;
 mod owner_park;
+mod select;
 mod slice_access;
 mod snapshot;
 
@@ -46,6 +47,9 @@ pub use roster::{
     Presence, RosterAction, RosterBroadcastListener, RosterMember, RosterRole,
     RosterSessionBroadcaster,
 };
+#[cfg(test)]
+pub(crate) use select::SeededStore;
+pub use select::Select;
 pub use sync::SyncAction;
 
 pub(crate) fn broadcast_state_delta(

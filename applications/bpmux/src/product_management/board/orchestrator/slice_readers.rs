@@ -1,42 +1,32 @@
-use std::sync::Arc;
-
-use super::{EpicReader, IterationReader, OutcomeReader, SyncOrchestrator};
+use super::SyncOrchestrator;
 use crate::product_management::board::sync::SourceAdapter;
-use crate::product_management::epic::Epic;
-use crate::product_management::iteration::Iteration;
-use crate::product_management::outcome::Outcome;
+use crate::product_management::epic::{self, Epic};
+use crate::product_management::iteration::{self, Iteration};
+use crate::product_management::outcome::{self, Outcome};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
-    pub(super) fn set_outcome_reader(&self, reader: Arc<dyn OutcomeReader>) {
-        let _ = self.outcome_reader.set(reader);
+    pub(super) fn set_select(&self, select: crate::store::Select) {
+        let _ = self.select.set(select);
     }
 
     pub(super) fn read_outcomes(&self) -> Vec<Outcome> {
-        self.outcome_reader
+        self.select
             .get()
-            .map(|reader| reader.outcomes())
+            .map(|s| s.select(|state| outcome::all(&state.outcomes)))
             .unwrap_or_default()
-    }
-
-    pub(super) fn set_iteration_reader(&self, reader: Arc<dyn IterationReader>) {
-        let _ = self.iteration_reader.set(reader);
     }
 
     pub(super) fn read_iterations(&self) -> Vec<Iteration> {
-        self.iteration_reader
+        self.select
             .get()
-            .map(|reader| reader.iterations())
+            .map(|s| s.select(|state| iteration::all(&state.iterations)))
             .unwrap_or_default()
     }
 
-    pub(super) fn set_epic_reader(&self, reader: Arc<dyn EpicReader>) {
-        let _ = self.epic_reader.set(reader);
-    }
-
     pub(super) fn read_epics(&self) -> Vec<Epic> {
-        self.epic_reader
+        self.select
             .get()
-            .map(|reader| reader.epics())
+            .map(|s| s.select(|state| epic::all(&state.epics)))
             .unwrap_or_default()
     }
 }

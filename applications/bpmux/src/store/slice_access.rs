@@ -1,72 +1,16 @@
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
-use super::app::{AppAction, AppState};
-use super::kernel;
 use super::{
     AggregatedReaction, CiBroadcastListener, CiSnapshot, ReactionsBroadcastListener,
-    RosterBroadcastListener, RosterMember, Store, ci, reactions, roster,
+    RosterBroadcastListener, RosterMember, Select, Store, ci, reactions, roster,
 };
-use crate::product_management::board::{EpicReader, IterationReader, OutcomeReader};
 use crate::product_management::epic::{self, Epic};
 use crate::product_management::iteration::{self, Iteration};
 use crate::product_management::outcome::{self, Outcome};
 
-struct AppOutcomeReader {
-    app: Weak<kernel::Store<AppState, AppAction>>,
-}
-
-impl OutcomeReader for AppOutcomeReader {
-    fn outcomes(&self) -> Vec<Outcome> {
-        self.app
-            .upgrade()
-            .map(|app| app.select(|state| outcome::all(&state.outcomes)))
-            .unwrap_or_default()
-    }
-}
-
-struct AppIterationReader {
-    app: Weak<kernel::Store<AppState, AppAction>>,
-}
-
-impl IterationReader for AppIterationReader {
-    fn iterations(&self) -> Vec<Iteration> {
-        self.app
-            .upgrade()
-            .map(|app| app.select(|state| iteration::all(&state.iterations)))
-            .unwrap_or_default()
-    }
-}
-
-struct AppEpicReader {
-    app: Weak<kernel::Store<AppState, AppAction>>,
-}
-
-impl EpicReader for AppEpicReader {
-    fn epics(&self) -> Vec<Epic> {
-        self.app
-            .upgrade()
-            .map(|app| app.select(|state| epic::all(&state.epics)))
-            .unwrap_or_default()
-    }
-}
-
 impl Store {
-    pub fn outcome_reader(&self) -> Arc<dyn OutcomeReader> {
-        Arc::new(AppOutcomeReader {
-            app: Arc::downgrade(&self.app_store),
-        })
-    }
-
-    pub fn iteration_reader(&self) -> Arc<dyn IterationReader> {
-        Arc::new(AppIterationReader {
-            app: Arc::downgrade(&self.app_store),
-        })
-    }
-
-    pub fn epic_reader(&self) -> Arc<dyn EpicReader> {
-        Arc::new(AppEpicReader {
-            app: Arc::downgrade(&self.app_store),
-        })
+    pub fn selector(&self) -> Select {
+        Select::new(Arc::downgrade(&self.app_store))
     }
 
     pub fn outcomes(&self) -> Vec<Outcome> {

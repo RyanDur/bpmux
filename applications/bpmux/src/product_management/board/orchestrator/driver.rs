@@ -10,22 +10,8 @@ use crate::product_management::story::{FreeComment, GateComment, Story, StoryId}
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
 
-pub trait OutcomeReader: Send + Sync {
-    fn outcomes(&self) -> Vec<Outcome>;
-}
-
-pub trait IterationReader: Send + Sync {
-    fn iterations(&self) -> Vec<Iteration>;
-}
-
-pub trait EpicReader: Send + Sync {
-    fn epics(&self) -> Vec<Epic>;
-}
-
 pub trait RefreshDriver: Send + Sync {
-    fn bind_outcome_reader(&self, _reader: Arc<dyn OutcomeReader>) {}
-    fn bind_iteration_reader(&self, _reader: Arc<dyn IterationReader>) {}
-    fn bind_epic_reader(&self, _reader: Arc<dyn EpicReader>) {}
+    fn bind_select(&self, _select: crate::store::Select) {}
     fn refresh_story(&self, id: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn refresh_all_since(

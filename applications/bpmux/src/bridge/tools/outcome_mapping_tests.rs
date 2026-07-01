@@ -4,6 +4,7 @@
 use crate::bridge::tools_stories::{
     handle_reorder_outcome_iteration, handle_unmap_outcome_iteration,
 };
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::{
     decode_iteration_from_story, decode_outcome_from_story,
 };
@@ -14,31 +15,16 @@ use crate::product_management::board::adapters::relationships::{
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::SourceAdapter;
-use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{BoardState, Story, StoryId};
-use crate::store::{AppAction, Dispatch};
+use crate::store::{AppAction, Dispatch, Select};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-struct SeededOutcomes(Vec<Outcome>);
-impl OutcomeReader for SeededOutcomes {
-    fn outcomes(&self) -> Vec<Outcome> {
-        self.0.clone()
-    }
-}
-
-struct SeededIterations(Vec<Iteration>);
-impl IterationReader for SeededIterations {
-    fn iterations(&self) -> Vec<Iteration> {
-        self.0.clone()
-    }
-}
-
-fn iteration_reader_from(stories: &[Story]) -> Arc<dyn IterationReader> {
-    let iterations: Vec<Iteration> = stories
+fn iterations_from(stories: &[Story]) -> Vec<Iteration> {
+    stories
         .iter()
         .filter(|s| {
             s.raw_labels
@@ -46,8 +32,7 @@ fn iteration_reader_from(stories: &[Story]) -> Arc<dyn IterationReader> {
                 .any(|l| l.eq_ignore_ascii_case("iteration"))
         })
         .map(decode_iteration_from_story)
-        .collect();
-    Arc::new(SeededIterations(iterations))
+        .collect()
 }
 
 fn dispatch() -> Dispatch {
@@ -128,8 +113,7 @@ async fn build_refresh(
         })
         .map(decode_outcome_from_story)
         .collect();
-    orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
-    orch.bind_iteration_reader(iteration_reader_from(&stories));
+    orch.bind_select(Select::seeded(seeded, iterations_from(&stories), vec![]));
     (orch, adapter)
 }
 

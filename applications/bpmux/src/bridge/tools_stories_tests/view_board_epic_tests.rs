@@ -2,21 +2,14 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::board::EpicReader;
 use crate::product_management::board::adapters::github::{decode_epic_from_story, is_epic_story};
 use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::story::{Story, StoryId};
+use crate::store::Select;
 use crate::transport::protocol::ClientMessage;
 
 fn td() -> crate::store::Dispatch {
     crate::store::Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
-}
-
-struct SeededEpics(Vec<Epic>);
-impl EpicReader for SeededEpics {
-    fn epics(&self) -> Vec<Epic> {
-        self.0.clone()
-    }
 }
 
 fn bind_epics(
@@ -28,7 +21,7 @@ fn bind_epics(
         .filter(|s| is_epic_story(s))
         .map(decode_epic_from_story)
         .collect();
-    orch.bind_epic_reader(std::sync::Arc::new(SeededEpics(epics)));
+    orch.bind_select(Select::seeded(vec![], vec![], epics));
 }
 
 #[tokio::test]

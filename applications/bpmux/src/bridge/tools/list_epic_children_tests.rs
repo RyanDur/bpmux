@@ -6,18 +6,12 @@ use crate::product_management::board::adapters::github::{
     decode_epic_from_story, decode_story_metadata, is_epic_story,
 };
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, EpicReader, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::product_management::epic::Epic;
 use crate::product_management::story::{BoardState, Story, StoryKind};
+use crate::store::Select;
 use serde_json::json;
 use std::sync::Arc;
-
-struct SeededEpics(Vec<Epic>);
-impl EpicReader for SeededEpics {
-    fn epics(&self) -> Vec<Epic> {
-        self.0.clone()
-    }
-}
 
 fn decoded(number: u64, title: &str, labels: &[&str]) -> Story {
     let label_json: Vec<serde_json::Value> = labels.iter().map(|n| json!({ "name": n })).collect();
@@ -61,7 +55,7 @@ async fn store_with(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         .filter(|s| is_epic_story(s))
         .map(decode_epic_from_story)
         .collect();
-    orch.bind_epic_reader(Arc::new(SeededEpics(epics)));
+    orch.bind_select(Select::seeded(vec![], vec![], epics));
     orch
 }
 

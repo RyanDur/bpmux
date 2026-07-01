@@ -6,6 +6,7 @@ use crate::bridge::tools_stories::{
     handle_move_iteration_member, handle_remove_iteration_member, handle_rename_iteration,
     handle_reorder_iteration,
 };
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -14,21 +15,13 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::board::{IterationReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
-use crate::store::{AppAction, Dispatch};
+use crate::store::{AppAction, Dispatch, Select};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
-
-struct SeededIterations(Vec<Iteration>);
-impl IterationReader for SeededIterations {
-    fn iterations(&self) -> Vec<Iteration> {
-        self.0.clone()
-    }
-}
 
 fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
@@ -117,7 +110,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_iteration_from_story)
         .collect();
-    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
+    orch.bind_select(Select::seeded(vec![], iterations, vec![]));
     orch
 }
 

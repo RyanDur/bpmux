@@ -94,9 +94,7 @@ pub async fn run_server(
     }
     let store = std::sync::Arc::new(store_inner);
     if let Some(refresh) = orchestrator.as_ref() {
-        refresh.bind_outcome_reader(store.outcome_reader());
-        refresh.bind_iteration_reader(store.iteration_reader());
-        refresh.bind_epic_reader(store.epic_reader());
+        refresh.bind_select(store.selector());
     }
     store.spawn_action_drainer(action_rx);
     wire_store_listeners(&store, &session, &ci_state_store);

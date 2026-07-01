@@ -2,7 +2,6 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::handle_edit_outcome;
-use crate::product_management::board::OutcomeReader;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -10,18 +9,11 @@ use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};
-use crate::store::{AppAction, Dispatch};
+use crate::store::{AppAction, Dispatch, Select};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
-
-struct SeededOutcomes(Vec<Outcome>);
-impl OutcomeReader for SeededOutcomes {
-    fn outcomes(&self) -> Vec<Outcome> {
-        self.0.clone()
-    }
-}
 
 fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
@@ -82,7 +74,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_outcome_from_story)
         .collect();
-    orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
+    orch.bind_select(Select::seeded(seeded, vec![], vec![]));
     orch
 }
 

@@ -2,6 +2,7 @@
 #![allow(clippy::expect_used)]
 
 use super::board::{board_iterations, board_roadmap};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::{
     decode_iteration_from_story, decode_outcome_from_story,
 };
@@ -11,10 +12,10 @@ use crate::product_management::board::adapters::relationships::{
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
-use crate::product_management::board::{IterationReader, OutcomeReader, RefreshDriver};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::store::Select;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
@@ -42,20 +43,6 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
     s
 }
 
-struct SeededOutcomes(Vec<crate::product_management::outcome::Outcome>);
-impl OutcomeReader for SeededOutcomes {
-    fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
-        self.0.clone()
-    }
-}
-
-struct SeededIterations(Vec<Iteration>);
-impl IterationReader for SeededIterations {
-    fn iterations(&self) -> Vec<Iteration> {
-        self.0.clone()
-    }
-}
-
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -71,7 +58,6 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_outcome_from_story)
         .collect();
-    orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
     let iterations: Vec<Iteration> = stories
         .iter()
         .filter(|s| {
@@ -81,7 +67,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_iteration_from_story)
         .collect();
-    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
+    orch.bind_select(Select::seeded(seeded, iterations, vec![]));
     orch
 }
 

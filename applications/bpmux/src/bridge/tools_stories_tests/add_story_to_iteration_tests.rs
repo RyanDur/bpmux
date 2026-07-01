@@ -6,22 +6,13 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
-use crate::product_management::board::{
-    BoardStore, IterationReader, RefreshDriver, SyncOrchestrator,
-};
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::story::{BoardState, Story, StoryId};
-use crate::store::{AppAction, Dispatch};
+use crate::store::{AppAction, Dispatch, Select};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
-
-struct SeededIterations(Vec<Iteration>);
-impl IterationReader for SeededIterations {
-    fn iterations(&self) -> Vec<Iteration> {
-        self.0.clone()
-    }
-}
 
 fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
@@ -62,7 +53,7 @@ async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_iteration_from_story)
         .collect();
-    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
+    orch.bind_select(Select::seeded(vec![], iterations, vec![]));
     orch
 }
 

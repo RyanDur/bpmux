@@ -8,28 +8,13 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::board::{
-    BoardStore, IterationReader, OutcomeReader, RefreshDriver, SyncOrchestrator,
-};
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::store::Select;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
-
-struct SeededOutcomes(Vec<crate::product_management::outcome::Outcome>);
-impl OutcomeReader for SeededOutcomes {
-    fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
-        self.0.clone()
-    }
-}
-
-struct SeededIterations(Vec<Iteration>);
-impl IterationReader for SeededIterations {
-    fn iterations(&self) -> Vec<Iteration> {
-        self.0.clone()
-    }
-}
 
 async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
@@ -46,7 +31,6 @@ async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_outcome_from_story)
         .collect();
-    orch.bind_outcome_reader(Arc::new(SeededOutcomes(seeded)));
     let iterations: Vec<Iteration> = stories
         .iter()
         .filter(|s| {
@@ -56,7 +40,7 @@ async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_iteration_from_story)
         .collect();
-    orch.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
+    orch.bind_select(Select::seeded(seeded, iterations, vec![]));
     orch
 }
 

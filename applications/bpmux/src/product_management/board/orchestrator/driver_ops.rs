@@ -30,24 +30,16 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.mutate(event)
     }
 
-    fn bind_outcome_reader(&self, reader: Arc<dyn super::OutcomeReader>) {
-        self.set_outcome_reader(reader);
+    fn bind_select(&self, select: crate::store::Select) {
+        self.set_select(select);
     }
 
     fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
         self.read_outcomes()
     }
 
-    fn bind_iteration_reader(&self, reader: Arc<dyn super::IterationReader>) {
-        self.set_iteration_reader(reader);
-    }
-
     fn iterations(&self) -> Vec<crate::product_management::iteration::Iteration> {
         self.read_iterations()
-    }
-
-    fn bind_epic_reader(&self, reader: Arc<dyn super::EpicReader>) {
-        self.set_epic_reader(reader);
     }
 
     fn epics(&self) -> Vec<crate::product_management::epic::Epic> {

@@ -7,18 +7,10 @@ use chrono::{TimeZone, Utc};
 use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{
-    BoardStore, IterationReader, RefreshDriver, SyncOrchestrator,
-};
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::{BoardState, Gate, GateComment, Stage, Story, StoryId};
-
-struct SeededIterations(Vec<Iteration>);
-impl IterationReader for SeededIterations {
-    fn iterations(&self) -> Vec<Iteration> {
-        self.0.clone()
-    }
-}
+use crate::store::Select;
 
 async fn seeded_orchestrator(
     mut stories: Vec<Story>,
@@ -49,7 +41,7 @@ async fn seeded_orchestrator(
         })
         .map(decode_iteration_from_story)
         .collect();
-    orchestrator.bind_iteration_reader(Arc::new(SeededIterations(iterations)));
+    orchestrator.bind_select(Select::seeded(vec![], iterations, vec![]));
     (store, orchestrator)
 }
 

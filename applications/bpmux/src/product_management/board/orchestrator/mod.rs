@@ -50,9 +50,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
         Arc<dyn crate::product_management::board::label_codec::LabelCodec + Send + Sync>,
     pub(super) next_mutation_id: AtomicU64,
     pub(super) action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
-    pub(super) outcome_reader: std::sync::OnceLock<Arc<dyn OutcomeReader>>,
-    pub(super) iteration_reader: std::sync::OnceLock<Arc<dyn IterationReader>>,
-    pub(super) epic_reader: std::sync::OnceLock<Arc<dyn EpicReader>>,
+    pub(super) select: std::sync::OnceLock<crate::store::Select>,
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
     pub(super) ci_state_store: Option<crate::transport::ci_state_store::CiStateStore>,
