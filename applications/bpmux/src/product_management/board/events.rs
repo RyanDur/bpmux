@@ -92,6 +92,11 @@ pub enum BoardEvent {
         meta: EventMeta,
         id: StoryId,
     },
+    AcceptorAssigned {
+        meta: EventMeta,
+        id: StoryId,
+        acceptor: Acceptor,
+    },
     ParentEpicSet {
         meta: EventMeta,
         id: StoryId,
@@ -165,6 +170,7 @@ impl BoardEvent {
             | BoardEvent::TagRemoved { meta, .. }
             | BoardEvent::StoryClosed { meta, .. }
             | BoardEvent::StoryReopened { meta, .. }
+            | BoardEvent::AcceptorAssigned { meta, .. }
             | BoardEvent::ParentEpicSet { meta, .. }
             | BoardEvent::ParentEpicUnset { meta, .. }
             | BoardEvent::IterationMembershipSet { meta, .. }
@@ -193,6 +199,7 @@ impl BoardEvent {
             | BoardEvent::TagRemoved { id, .. }
             | BoardEvent::StoryClosed { id, .. }
             | BoardEvent::StoryReopened { id, .. }
+            | BoardEvent::AcceptorAssigned { id, .. }
             | BoardEvent::ParentEpicSet { id, .. }
             | BoardEvent::ParentEpicUnset { id, .. }
             | BoardEvent::IterationMembershipSet { id, .. }

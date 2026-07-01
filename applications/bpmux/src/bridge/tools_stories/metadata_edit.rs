@@ -15,7 +15,7 @@ pub(crate) async fn handle_edit_story(
     let title = args.get("title").and_then(|v| v.as_str());
     let acceptor = match args.get("acceptor").and_then(|v| v.as_str()) {
         Some(raw) => Some(
-            super::acceptor_axis::AcceptorClass::parse(raw.trim()).ok_or_else(|| {
+            crate::product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
                 format!("acceptor must be one of: team | owner | dev (got {raw:?})")
             })?,
         ),
@@ -59,13 +59,14 @@ pub(crate) async fn handle_edit_story(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::PeerId::local(),
         };
-        let current_labels = r.story(id).map(|s| s.raw_labels).unwrap_or_default();
-        for event in
-            super::acceptor_axis::acceptor_label_events(acceptor, &current_labels, &meta, id)
-        {
-            r.mutate_sync(event)
-                .map_err(|e| format!("#{id} acceptor-label enqueue failed: {e}"))?;
-        }
+        r.mutate_sync(
+            crate::product_management::board::BoardEvent::AcceptorAssigned {
+                meta,
+                id: crate::product_management::story::StoryId::new(id),
+                acceptor,
+            },
+        )
+        .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
         r.drain_pending()
             .await
             .map_err(|e| format!("#{id} drain after acceptor re-set failed: {e}"))?;

@@ -1,7 +1,6 @@
 use crate::bridge::tools_stories::acceptance::helpers::{
     BugGate, format_bypass_payload, recent_evidence_for_story, verify_bug_question_or_bypass,
 };
-use crate::bridge::tools_stories::acceptor_axis::AcceptorClass;
 use crate::bridge::tools_stories::helpers::{
     LABEL_DELIVERED, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
@@ -9,7 +8,7 @@ use crate::product_management::story::StoryId;
 
 fn parse_acceptor_arg(
     args: &serde_json::Map<String, serde_json::Value>,
-) -> Result<AcceptorClass, String> {
+) -> Result<crate::product_management::story::Acceptor, String> {
     let raw = args.get("acceptor").and_then(|v| v.as_str()).ok_or_else(|| {
         serde_json::json!({
             "kind": "workflow-gate-mismatch",
@@ -19,7 +18,7 @@ fn parse_acceptor_arg(
         })
         .to_string()
     })?;
-    AcceptorClass::parse(raw.trim()).ok_or_else(|| {
+    crate::product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
         serde_json::json!({
             "kind": "workflow-gate-mismatch",
             "attempted_transition": "pass-desk-check",
@@ -98,16 +97,14 @@ pub(crate) async fn handle_pass_desk_check(
             .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), id, &meta, LABEL_DELIVERED)?;
-        let labels_after_reap = r.story(id).map(|s| s.raw_labels).unwrap_or_default();
-        for event in crate::bridge::tools_stories::acceptor_axis::acceptor_label_events(
-            acceptor,
-            &labels_after_reap,
-            &meta,
-            id,
-        ) {
-            r.mutate_sync(event)
-                .map_err(|e| format!("#{id} acceptor-label enqueue failed: {e}"))?;
-        }
+        r.mutate_sync(
+            crate::product_management::board::BoardEvent::AcceptorAssigned {
+                meta: meta.clone(),
+                id: StoryId::new(id),
+                acceptor,
+            },
+        )
+        .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
         r.mutate_sync(
             crate::product_management::board::BoardEvent::GateCommentAppended {
                 meta: meta.clone(),

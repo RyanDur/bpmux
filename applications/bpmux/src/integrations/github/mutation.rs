@@ -3,10 +3,11 @@ use crate::product_management::board::events::BoardEvent;
 use crate::product_management::board::sync::SyncError;
 
 use super::mutation_events::{
-    push_current_iteration_cleared, push_current_iteration_designated, push_free_comment_appended,
-    push_gate_comment_appended, push_iteration_membership_cleared, push_iteration_membership_set,
-    push_parent_epic_set, push_parent_epic_unset, push_state_transitioned, push_story_closed,
-    push_story_reopened, push_tag_added, push_tag_removed,
+    push_acceptor_assigned, push_current_iteration_cleared, push_current_iteration_designated,
+    push_free_comment_appended, push_gate_comment_appended, push_iteration_membership_cleared,
+    push_iteration_membership_set, push_parent_epic_set, push_parent_epic_unset,
+    push_state_transitioned, push_story_closed, push_story_reopened, push_tag_added,
+    push_tag_removed,
 };
 
 pub(super) async fn apply_push_event(
@@ -34,6 +35,9 @@ pub(super) async fn apply_push_event(
         BoardEvent::TagAdded { id, label, .. } => push_tag_added(inner, id.value(), label).await,
         BoardEvent::TagRemoved { id, label, .. } => {
             push_tag_removed(inner, id.value(), label).await
+        }
+        BoardEvent::AcceptorAssigned { id, acceptor, .. } => {
+            push_acceptor_assigned(inner, id.value(), *acceptor).await
         }
         BoardEvent::ParentEpicSet { id, epic_id, .. } => {
             push_parent_epic_set(inner, id.value(), *epic_id).await

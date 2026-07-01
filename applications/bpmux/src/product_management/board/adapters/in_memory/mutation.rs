@@ -116,6 +116,17 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &BoardEvent) {
                 story.body = Some(body.clone());
             }
         }
+        BoardEvent::AcceptorAssigned { id, acceptor, .. } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            if let Some(story) = s.stories.get_mut(&id.value()) {
+                story
+                    .raw_labels
+                    .retain(|l| GhLabelCodec.decode_acceptor(l).is_none());
+                story
+                    .raw_labels
+                    .push(GhLabelCodec.encode_acceptor(*acceptor).to_string());
+            }
+        }
         BoardEvent::ParentEpicSet { id, epic_id, .. } => {
             use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
             use crate::product_management::board::label_codec::LabelCodec;

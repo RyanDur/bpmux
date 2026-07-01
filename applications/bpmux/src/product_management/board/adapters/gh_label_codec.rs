@@ -154,6 +154,18 @@ impl GhLabelCodec {
         }
     }
 
+    pub fn encode_acceptor(
+        &self,
+        acceptor: crate::product_management::story::Acceptor,
+    ) -> &'static str {
+        use crate::product_management::story::Acceptor;
+        match acceptor {
+            Acceptor::Team => ACCEPTOR_TEAM_LABEL,
+            Acceptor::Owner => ACCEPTOR_OWNER_LABEL,
+            Acceptor::Dev => ACCEPTOR_DEV_LABEL,
+        }
+    }
+
     pub fn decode_story_type(
         &self,
         label: &str,

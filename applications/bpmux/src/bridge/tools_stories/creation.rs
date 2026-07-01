@@ -51,15 +51,13 @@ pub(crate) async fn handle_create_story(
         "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
     validate_parent_epic(r, parent_epic)?;
-    let acceptor_label = match args.get("acceptor").and_then(|v| v.as_str()) {
+    let acceptor = match args.get("acceptor").and_then(|v| v.as_str()) {
         Some(raw) => Some(
-            super::acceptor_axis::AcceptorClass::parse(raw.trim())
-                .ok_or_else(|| {
-                    format!("acceptor must be one of: team | owner | dev (got {raw:?})")
-                })?
-                .label(),
+            crate::product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
+                format!("acceptor must be one of: team | owner | dev (got {raw:?})")
+            })?,
         ),
-        None => super::acceptor_axis::derive_acceptor_label(user_job),
+        None => super::acceptor_axis::derive_acceptor(user_job),
     };
     let id = create_and_broadcast_story_events(
         r,
@@ -68,7 +66,7 @@ pub(crate) async fn handle_create_story(
         composed_body,
         story_type,
         parent_epic,
-        acceptor_label,
+        acceptor,
     )
     .await?;
     if let Some(story) = r.story(id)
@@ -143,7 +141,7 @@ async fn create_and_broadcast_story_events(
     composed_body: String,
     story_type: crate::product_management::story::StoryKind,
     parent_epic: Option<EpicId>,
-    acceptor_label: Option<&'static str>,
+    acceptor: Option<crate::product_management::story::Acceptor>,
 ) -> Result<u64, String> {
     let id = r
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
@@ -163,13 +161,15 @@ async fn create_and_broadcast_story_events(
         story_type,
     })
     .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
-    if let Some(label) = acceptor_label {
-        r.mutate_sync(crate::product_management::board::BoardEvent::TagAdded {
-            meta: meta.clone(),
-            id: StoryId::new(id),
-            label: label.to_string(),
-        })
-        .map_err(|e| format!("#{id} acceptor-label enqueue failed: {e}"))?;
+    if let Some(acceptor) = acceptor {
+        r.mutate_sync(
+            crate::product_management::board::BoardEvent::AcceptorAssigned {
+                meta: meta.clone(),
+                id: StoryId::new(id),
+                acceptor,
+            },
+        )
+        .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
     }
     if let Some(epic_id) = parent_epic {
         r.mutate_sync(

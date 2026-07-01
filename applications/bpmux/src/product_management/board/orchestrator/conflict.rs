@@ -22,6 +22,7 @@ pub fn classify_conflict(
         | BoardEvent::StateTransitioned { .. }
         | BoardEvent::StoryClosed { .. }
         | BoardEvent::StoryReopened { .. }
+        | BoardEvent::AcceptorAssigned { .. }
         | BoardEvent::ParentEpicSet { .. }
         | BoardEvent::ParentEpicUnset { .. }
         | BoardEvent::IterationMembershipSet { .. }

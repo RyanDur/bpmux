@@ -248,9 +248,9 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     );
     assert!(matches!(
         &pushed[1],
-        BoardEvent::TagAdded {
-            id, label, ..
-        } if *id == StoryId::new(201) && label == "awaiting owner"
+        BoardEvent::AcceptorAssigned {
+            id, acceptor, ..
+        } if *id == StoryId::new(201) && *acceptor == crate::product_management::story::Acceptor::Owner
     ));
     assert!(matches!(
         &pushed[2],

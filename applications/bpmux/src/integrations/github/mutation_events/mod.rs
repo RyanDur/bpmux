@@ -1,10 +1,12 @@
 use crate::product_management::board::events::BoardEvent;
 
+mod acceptor;
 mod comments;
 mod grouping;
 mod labels;
 mod lifecycle;
 
+pub(in crate::integrations::github) use acceptor::push_acceptor_assigned;
 pub(in crate::integrations::github) use comments::{
     push_free_comment_appended, push_gate_comment_appended,
 };

@@ -66,7 +66,7 @@ fn story_created_event_populates_store() {
 }
 
 #[test]
-fn tag_added_acceptor_label_decodes_into_the_stored_acceptor_field() {
+fn acceptor_assigned_event_sets_the_stored_acceptor_field() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {
         meta: meta("pm", 2026, "local"),
@@ -79,17 +79,17 @@ fn tag_added_acceptor_label_decodes_into_the_stored_acceptor_field() {
     assert_eq!(
         store.story(StoryId::new(8)).unwrap().acceptor(),
         None,
-        "a freshly created story carries no acceptor label yet"
+        "a freshly created story carries no acceptor yet"
     );
-    store.apply(&BoardEvent::TagAdded {
+    store.apply(&BoardEvent::AcceptorAssigned {
         meta: meta("pm", 2026, "local"),
         id: StoryId::new(8),
-        label: "awaiting owner".to_string(),
+        acceptor: Acceptor::Owner,
     });
     assert_eq!(
         store.story(StoryId::new(8)).unwrap().acceptor(),
         Some(Acceptor::Owner),
-        "the codec decodes the acceptor label into the stored field on the label-add event"
+        "the AcceptorAssigned event sets the typed acceptor field directly"
     );
 }
 

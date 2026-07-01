@@ -85,6 +85,15 @@ impl Acceptor {
             Acceptor::Dev => "dev",
         }
     }
+
+    pub fn parse(raw: &str) -> Option<Acceptor> {
+        match raw {
+            "team" => Some(Acceptor::Team),
+            "owner" => Some(Acceptor::Owner),
+            "dev" => Some(Acceptor::Dev),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

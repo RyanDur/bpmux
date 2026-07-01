@@ -1,7 +1,7 @@
 use super::{Stories, story_mut};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{BoardState, Story, StoryId, StoryKey, StoryKind};
+use crate::product_management::story::{Acceptor, BoardState, Story, StoryId, StoryKey, StoryKind};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn apply_story_created(
@@ -69,6 +69,12 @@ pub(super) fn apply_story_closed(w: &mut Stories, id: StoryId) {
 pub(super) fn apply_story_reopened(w: &mut Stories, id: StoryId) {
     if let Some(story) = story_mut(w, id) {
         story.is_closed = false;
+    }
+}
+
+pub(super) fn apply_acceptor_assigned(w: &mut Stories, id: StoryId, acceptor: Acceptor) {
+    if let Some(story) = story_mut(w, id) {
+        story.acceptor = Some(acceptor);
     }
 }
 

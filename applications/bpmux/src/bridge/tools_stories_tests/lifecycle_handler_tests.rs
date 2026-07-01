@@ -513,9 +513,9 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     assert!(
         matches!(
             &pushed[1],
-            BoardEvent::TagAdded { id, label, .. } if *id == StoryId::new(51) && label.as_str() == "awaiting team"
+            BoardEvent::AcceptorAssigned { id, acceptor, .. } if *id == StoryId::new(51) && *acceptor == crate::product_management::story::Acceptor::Team
         ),
-        "the 'As an agent (pm or dev)' multi-role use-axis derives the team acceptor, enqueued as awaiting-team at create (#1787); got {:?}",
+        "the 'As an agent (pm or dev)' multi-role use-axis derives the team acceptor, assigned at create (#1787); got {:?}",
         &pushed[1]
     );
 }

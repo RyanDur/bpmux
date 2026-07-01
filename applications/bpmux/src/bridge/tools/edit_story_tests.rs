@@ -4,7 +4,6 @@
 
 use crate::bridge::tools_stories::handle_edit_story;
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::adapters::github::acceptor_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::store::BoardStore;
@@ -128,15 +127,15 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         peer_id: crate::product_management::board::PeerId::local(),
     };
     refresh
-        .mutate_sync(BoardEvent::TagAdded {
+        .mutate_sync(BoardEvent::AcceptorAssigned {
             meta,
             id: StoryId::new(1234),
-            label: "awaiting dev".to_string(),
+            acceptor: Acceptor::Dev,
         })
         .unwrap();
     refresh.drain_pending().await.unwrap();
     assert_eq!(
-        acceptor_from_labels(&refresh.story(1234).unwrap().raw_labels),
+        refresh.story(1234).unwrap().acceptor(),
         Some(Acceptor::Dev),
         "precondition: the create-derived acceptor is dev"
     );
@@ -146,16 +145,10 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         .await
         .expect("edit_story with acceptor-only succeeds");
 
-    let story = refresh.story(1234).unwrap();
     assert_eq!(
-        acceptor_from_labels(&story.raw_labels),
+        refresh.story(1234).unwrap().acceptor(),
         Some(Acceptor::Owner),
-        "edit --acceptor owner re-derives the acceptor to owner"
-    );
-    assert!(
-        !story.raw_labels.iter().any(|l| l == "awaiting dev"),
-        "the stale 'awaiting dev' label is cleared (single-acceptor invariant); labels: {:?}",
-        story.raw_labels
+        "edit --acceptor owner resets the typed acceptor to owner; the single-acceptor invariant is held by the Option<Acceptor> field, not stale labels"
     );
 }
 
