@@ -4,8 +4,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::github::RateLimitObserver;
 use crate::session::Session;
-use crate::store::app::{AppAction, AppState};
 use crate::store::kernel::{Dispatch, Listener, ListenerFuture, Reaction};
+use crate::store::{AppAction, AppState};
 use crate::transport::ci_state_store::CiStateStore;
 use crate::transport::ci_watcher;
 

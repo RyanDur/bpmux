@@ -11,6 +11,7 @@ pub mod protocol;
 pub mod rest;
 pub mod rpc_routes;
 pub mod self_update;
+pub(crate) mod state_delta;
 pub mod test_routes;
 pub mod test_seed;
 pub mod unfurl;

@@ -11,10 +11,10 @@ use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
 };
 
-pub mod ci;
+pub use crate::ci::slice as ci;
 pub mod kernel;
-pub mod reactions;
-pub mod roster;
+pub use crate::reactions::slice as reactions;
+pub use crate::roster;
 pub mod sync;
 
 mod action;
@@ -53,24 +53,6 @@ pub use select::Select;
 #[cfg(test)]
 pub(crate) use select::{SeededStore, bind_seeded_refresh};
 pub use sync::SyncAction;
-
-pub(crate) fn broadcast_state_delta(
-    session: &session::Session,
-    payload: crate::message::StateDeltaPayload,
-    label: &str,
-) {
-    let msg = crate::message::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: crate::message::MessageType::StateDelta,
-        state_delta: Some(payload),
-        ..crate::message::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        crate::diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
-    }
-}
 
 pub struct Store {
     session: Arc<session::Session>,

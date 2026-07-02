@@ -1,3 +1,5 @@
+pub mod slice;
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::message::{ReactionAggregateWire, StateDeltaPayload};
 use crate::session;
-use crate::store::broadcast_state_delta;
+use crate::transport::state_delta::broadcast_state_delta;
 
 use super::{AggregatedReaction, ReactionsBroadcastListener};
 

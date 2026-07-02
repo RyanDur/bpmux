@@ -8,6 +8,7 @@ pub(crate) use broadcast::{
     build_dev_ci_signal, build_multi_depth_for_transition, compute_broadcast_text,
 };
 pub use classify::{RunEntry, classify_runs};
+pub mod slice;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]

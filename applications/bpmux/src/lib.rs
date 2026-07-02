@@ -39,6 +39,7 @@ pub mod reactions;
 #[cfg(test)]
 mod reactions_tests;
 pub mod room;
+pub mod roster;
 pub mod routing;
 pub mod server;
 pub mod session;
