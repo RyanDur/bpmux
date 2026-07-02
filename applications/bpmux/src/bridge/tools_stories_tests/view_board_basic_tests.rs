@@ -310,8 +310,13 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
-        4,
-        "#1570: 1 TagRemoved 'delivered' + 1 TagAdded 'retired' + 1 StateTransitioned + 1 StoryClosed (disposition=retire → retire-class): {pushed:?}"
+        3,
+        "#1570: TagAdded 'retired' + StateTransitioned + StoryClosed (state-label reaping is the transition export's concern now): {pushed:?}"
+    );
+    let labels = adapter.labels_for(301);
+    assert!(
+        !labels.iter().any(|l| l == "delivered") && labels.iter().any(|l| l == "retired"),
+        "the transition export strips the stale delivered label and the retired marker survives the close; got {labels:?}"
     );
     assert!(
         pushed.iter().any(|e| matches!(

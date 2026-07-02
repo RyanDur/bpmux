@@ -18,7 +18,6 @@ mod reopen_transition_tests;
 mod reorder_icebox_tests;
 mod role_tests;
 mod signal_tests;
-mod stale_workflow_labels_tests;
 mod verdict_substrate_tests;
 mod view_board_basic_tests;
 mod view_board_epic_tests;

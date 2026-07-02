@@ -1,6 +1,6 @@
 use super::{
     ACCEPTOR_DEV_LABEL, ACCEPTOR_OWNER_LABEL, ACCEPTOR_TEAM_LABEL, BLOCKED_BY_PREFIX,
-    BLOCKED_LABEL, DESK_CHECK_FAIL_LABEL, GhLabelCodec,
+    BLOCKED_LABEL, DESK_CHECK_FAIL_LABEL, GhLabelCodec, WORKFLOW_STATE_LABELS,
 };
 use crate::product_management::story::{Acceptor, StoryKind, Tag};
 
@@ -54,6 +54,12 @@ impl GhLabelCodec {
 
     pub fn encode_blocked_by(&self, blocker: u64) -> String {
         format!("{BLOCKED_BY_PREFIX}{blocker}")
+    }
+
+    pub fn is_workflow_state_label(&self, label: &str) -> bool {
+        WORKFLOW_STATE_LABELS
+            .iter()
+            .any(|s| label.eq_ignore_ascii_case(s))
     }
 
     pub fn decode_story_type(&self, label: &str) -> Option<StoryKind> {

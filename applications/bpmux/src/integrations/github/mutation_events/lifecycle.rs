@@ -1,18 +1,38 @@
 use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::{decode_story_metadata, state_to_label};
 use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::SyncError;
 use crate::product_management::story::{BoardState, StoryId};
+
+async fn strip_state_labels(
+    inner: &OctocrabStoryTracker,
+    number: u64,
+    keep: &str,
+) -> Result<(), SyncError> {
+    let current = inner.get_story_labels(number).await;
+    for stale in current
+        .iter()
+        .filter(|l| GhLabelCodec.is_workflow_state_label(l) && !l.eq_ignore_ascii_case(keep))
+    {
+        inner
+            .remove_label(number, stale)
+            .await
+            .map_err(SyncError::Other)?;
+    }
+    Ok(())
+}
 
 pub(in crate::integrations::github) async fn push_state_transitioned(
     inner: &OctocrabStoryTracker,
     number: u64,
     new_state: BoardState,
 ) -> Result<Option<StoryEvent>, SyncError> {
-    let label = state_to_label(new_state);
+    let keep = state_to_label(new_state);
+    strip_state_labels(inner, number, keep).await?;
     let labels = inner
-        .add_label(number, label)
+        .add_label(number, keep)
         .await
         .map_err(SyncError::Other)?;
     Ok(Some(labels_refreshed(number, labels)))
@@ -29,6 +49,7 @@ pub(in crate::integrations::github) async fn push_story_closed(
             .await
             .map_err(SyncError::Other)?;
     }
+    strip_state_labels(inner, number, BoardState::Accepted.github_label()).await?;
     match inner.close_story(number).await {
         Ok(value) => Ok(
             decode_story_metadata(&value).map(|story| StoryEvent::StoryRefreshed {

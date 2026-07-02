@@ -44,11 +44,7 @@ pub(crate) use creation::handle_create_story;
 pub(crate) use creation_iteration::handle_create_iteration;
 pub(crate) use creation_outcome::handle_create_outcome;
 pub(crate) use edit_outcome::handle_edit_outcome;
-#[cfg(test)]
-pub(crate) use helpers::{ALL_STATE_LABELS, stale_workflow_labels};
-pub(crate) use helpers::{
-    KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
-};
+pub(crate) use helpers::{ensure_story_in_canonical_store, role_from_name};
 pub(crate) use iteration_members::{handle_move_iteration_member, handle_remove_iteration_member};
 pub(crate) use iteration_reorg::{handle_rename_iteration, handle_reorder_iteration};
 pub(crate) use metadata::{handle_comment_on_story, handle_label_story};

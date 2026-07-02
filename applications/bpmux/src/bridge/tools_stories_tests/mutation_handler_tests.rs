@@ -224,31 +224,17 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
-        4,
-        "4 events expected post-#1459 (reap + acceptor-label + gate + state): {pushed:?}"
-    );
-    let reap_labels: Vec<&str> = pushed[..1]
-        .iter()
-        .filter_map(|e| match e {
-            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(201) => {
-                Some(label.as_str())
-            }
-            _ => None,
-        })
-        .collect();
-    assert_eq!(
-        reap_labels,
-        vec!["desk-check"],
-        "post-#1156 pre-filter: only present-stale 'desk-check' label reaped"
+        3,
+        "acceptor + gate + state events pushed; state-label reaping is the transition export's concern now: {pushed:?}"
     );
     assert!(matches!(
-        &pushed[1],
+        &pushed[0],
         StoryEvent::AcceptorAssigned {
             id, acceptor, ..
         } if *id == StoryId::new(201) && *acceptor == crate::product_management::story::Acceptor::Owner
     ));
     assert!(matches!(
-        &pushed[2],
+        &pushed[1],
         StoryEvent::GateCommentAppended {
             id,
             gate: Gate::PassDeskCheck,
@@ -257,13 +243,18 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         } if *id == StoryId::new(201)
     ));
     assert!(matches!(
-        &pushed[3],
+        &pushed[2],
         StoryEvent::StateTransitioned {
             id,
             new_state: BoardState::Delivered,
             ..
         } if *id == StoryId::new(201)
     ));
+    let labels = adapter.labels_for(201);
+    assert!(
+        !labels.iter().any(|l| l == "desk-check") && labels.iter().any(|l| l == "delivered"),
+        "the transition export strips the stale desk-check label and applies delivered at the adapter; got {labels:?}"
+    );
 }
 
 #[tokio::test]
@@ -312,23 +303,18 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     );
 
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 3, "3 events expected post-#1156: {pushed:?}");
-    let reap_labels: Vec<&str> = pushed[..1]
-        .iter()
-        .filter_map(|e| match e {
-            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(202) => {
-                Some(label.as_str())
-            }
-            _ => None,
-        })
-        .collect();
     assert_eq!(
-        reap_labels,
-        vec!["desk-check"],
-        "post-#1156 pre-filter: only present-stale 'desk-check' label reaped (from-state)"
+        pushed.len(),
+        2,
+        "gate + state events pushed; state-label reaping is the transition export's concern now: {pushed:?}"
+    );
+    let labels = adapter.labels_for(202);
+    assert!(
+        !labels.iter().any(|l| l == "desk-check") && labels.iter().any(|l| l == "in progress"),
+        "the transition export strips the stale desk-check label and applies in progress at the adapter; got {labels:?}"
     );
     assert!(matches!(
-        &pushed[1],
+        &pushed[0],
         StoryEvent::GateCommentAppended {
             id,
             gate: Gate::FailDeskCheck,
@@ -337,7 +323,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         } if *id == StoryId::new(202) && p == substantive_reason
     ));
     assert!(matches!(
-        &pushed[2],
+        &pushed[1],
         StoryEvent::StateTransitioned {
             id,
             new_state: BoardState::InProgress(Stage::Dev),

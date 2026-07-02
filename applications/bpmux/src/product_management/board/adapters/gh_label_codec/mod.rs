@@ -52,6 +52,18 @@ pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";
 pub const BLOCKED_LABEL: &str = "blocked";
 pub const DESK_CHECK_FAIL_LABEL: &str = "desk-check-fail";
 pub const BLOCKED_BY_PREFIX: &str = "blocked-by:";
+pub const LEGACY_STATE_LABELS: &[&str] = &["ready for accept", "needs fixes", "rejected"];
+pub const WORKFLOW_STATE_LABELS: &[&str] = &[
+    "icebox",
+    "ready",
+    "in progress",
+    "desk-check",
+    "delivered",
+    "ready for accept",
+    "needs fixes",
+    "rejected",
+    "accepted",
+];
 pub const ACCEPTOR_TEAM_LABEL: &str = "awaiting team";
 pub const ACCEPTOR_OWNER_LABEL: &str = "awaiting owner";
 pub const ACCEPTOR_DEV_LABEL: &str = "awaiting dev";

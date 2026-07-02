@@ -1,10 +1,7 @@
 use super::acceptance_test_path::{
     validate_acceptance_test_path_at_deliver, validate_acceptance_test_path_at_pickup,
 };
-use super::helpers::{
-    LABEL_IN_PROGRESS, ensure_story_in_canonical_store, reap_workflow_labels,
-    require_nonempty_string, role_from_name,
-};
+use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{PeerId, RefreshDriver, StoryEvent};
 use crate::product_management::story::{BoardState, Gate, Stage, Story, StoryId};
@@ -75,7 +72,6 @@ pub(crate) async fn handle_start_story(
             })
             .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
-        reap_workflow_labels(r.as_ref(), id, &meta, LABEL_IN_PROGRESS)?;
         r.mutate_sync(StoryEvent::GateCommentAppended {
             meta: meta.clone(),
             id: StoryId::new(id),
@@ -170,7 +166,6 @@ pub(crate) async fn handle_deliver_story(
             })
             .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
-        reap_workflow_labels(r.as_ref(), id, &meta, "desk-check")?;
         r.mutate_sync(StoryEvent::GateCommentAppended {
             meta: meta.clone(),
             id: StoryId::new(id),

@@ -1,4 +1,4 @@
-use super::InnerState;
+use super::{InnerState, typed_label_mirror};
 use crate::product_management::board::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment};
 
@@ -40,79 +40,28 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
                 labels.retain(|l| !l.eq_ignore_ascii_case(label));
             }
         }
-        StoryEvent::TagSet { id, tag, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            let label = GhLabelCodec.encode_tag(*tag);
-            if let Some(story) = s.stories.get_mut(&id.value())
-                && !story
-                    .raw_labels
-                    .iter()
-                    .any(|l| l.eq_ignore_ascii_case(label))
-            {
-                story.raw_labels.push(label.to_string());
-            }
-        }
-        StoryEvent::TagUnset { id, tag, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            let label = GhLabelCodec.encode_tag(*tag);
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story.raw_labels.retain(|l| !l.eq_ignore_ascii_case(label));
-            }
-        }
+        StoryEvent::TagSet { id, tag, .. } => typed_label_mirror::tag_set(s, id.value(), *tag),
+        StoryEvent::TagUnset { id, tag, .. } => typed_label_mirror::tag_unset(s, id.value(), *tag),
         StoryEvent::BlockedBySet { id, blocker, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_blocked_by(l).is_none());
-                story
-                    .raw_labels
-                    .push(GhLabelCodec.encode_blocked_by(blocker.value()));
-            }
+            typed_label_mirror::blocked_by_set(s, id.value(), blocker.value())
         }
         StoryEvent::BlockedByCleared { id, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_blocked_by(l).is_none());
-            }
+            typed_label_mirror::blocked_by_cleared(s, id.value())
         }
-        StoryEvent::StoryClosed { id, .. } => {
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story.is_closed = true;
-            }
-        }
+        StoryEvent::StoryClosed { id, .. } => typed_label_mirror::story_closed(s, id.value()),
         StoryEvent::StoryReopened { id, .. } => {
             if let Some(story) = s.stories.get_mut(&id.value()) {
                 story.is_closed = false;
             }
         }
         StoryEvent::StateTransitioned { id, new_state, .. } => {
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story.state = *new_state;
-            }
+            typed_label_mirror::state_transitioned(s, id.value(), *new_state)
         }
         StoryEvent::CurrentIterationDesignated { id, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value())
-                && !story
-                    .raw_labels
-                    .iter()
-                    .any(|l| GhLabelCodec.is_current_iteration_label(l))
-            {
-                story
-                    .raw_labels
-                    .push(GhLabelCodec.encode_current_iteration());
-            }
+            typed_label_mirror::current_iteration_designated(s, id.value())
         }
         StoryEvent::CurrentIterationCleared { id, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story
-                    .raw_labels
-                    .retain(|l| !GhLabelCodec.is_current_iteration_label(l));
-            }
+            typed_label_mirror::current_iteration_cleared(s, id.value())
         }
         StoryEvent::StoryCreated {
             id,
@@ -139,35 +88,13 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
             }
         }
         StoryEvent::AcceptorAssigned { id, acceptor, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_acceptor(l).is_none());
-                story
-                    .raw_labels
-                    .push(GhLabelCodec.encode_acceptor(*acceptor).to_string());
-            }
+            typed_label_mirror::acceptor_assigned(s, id.value(), *acceptor)
         }
         StoryEvent::ParentEpicSet { id, epic_id, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            use crate::product_management::board::label_codec::LabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
-                story
-                    .raw_labels
-                    .push(GhLabelCodec.encode_parent_epic(epic_id.value()));
-            }
+            typed_label_mirror::parent_epic_set(s, id.value(), epic_id.value())
         }
         StoryEvent::ParentEpicUnset { id, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
-            }
+            typed_label_mirror::parent_epic_unset(s, id.value())
         }
         _ => {}
     }

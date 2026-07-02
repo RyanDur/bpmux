@@ -142,3 +142,41 @@ fn is_iteration_position_label_excludes_order_and_non_digit_tails() {
     assert!(!GhLabelCodec.is_iteration_position_label("iteration-Octans.x"));
     assert!(!GhLabelCodec.is_iteration_position_label("ready-order.5"));
 }
+
+#[test]
+fn is_workflow_state_label_recognizes_every_canonical_and_legacy_state_label() {
+    for label in [
+        "icebox",
+        "ready",
+        "in progress",
+        "desk-check",
+        "delivered",
+        "ready for accept",
+        "needs fixes",
+        "rejected",
+        "accepted",
+    ] {
+        assert!(
+            GhLabelCodec.is_workflow_state_label(label),
+            "{label} is a workflow-state label the transition export must strip when stale"
+        );
+    }
+    assert!(
+        GhLabelCodec.is_workflow_state_label("Delivered"),
+        "state-label recognition is case-insensitive (GitHub label case can drift)"
+    );
+}
+
+#[test]
+fn is_workflow_state_label_excludes_retired_and_non_state_labels() {
+    assert!(
+        !GhLabelCodec.is_workflow_state_label("retired"),
+        "retired is terminal and must survive transition strips (retire flows add it explicitly)"
+    );
+    for label in ["Feature", "blocked", "desk-check-fail", "parent-epic-#7"] {
+        assert!(
+            !GhLabelCodec.is_workflow_state_label(label),
+            "{label} is not a workflow-state label and must never be stripped by a transition"
+        );
+    }
+}

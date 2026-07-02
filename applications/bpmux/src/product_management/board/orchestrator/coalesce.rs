@@ -102,7 +102,8 @@ pub(super) fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Ve
         BoardState::Delivered.github_label(),
         BoardState::Accepted.github_label(),
     ];
-    let legacy_state_labels = ["ready for accept", "needs fixes", "rejected"];
+    let legacy_state_labels =
+        crate::product_management::board::adapters::gh_label_codec::LEGACY_STATE_LABELS;
     raw_labels
         .iter()
         .filter(|l| {

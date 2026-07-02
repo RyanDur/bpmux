@@ -1,9 +1,7 @@
 use crate::bridge::tools_stories::acceptance::helpers::{
     BugGate, format_bypass_payload, recent_evidence_for_story, verify_bug_question_or_bypass,
 };
-use crate::bridge::tools_stories::helpers::{
-    LABEL_DELIVERED, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
-};
+use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
 fn parse_acceptor_arg(
@@ -96,7 +94,6 @@ pub(crate) async fn handle_pass_desk_check(
             )
             .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
-        reap_workflow_labels(r.as_ref(), id, &meta, LABEL_DELIVERED)?;
         r.mutate_sync(
             crate::product_management::board::StoryEvent::AcceptorAssigned {
                 meta: meta.clone(),

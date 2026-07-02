@@ -1,13 +1,7 @@
-use crate::bridge::tools_stories::helpers::{
-    ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
-};
+use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
-
-fn label_for_state(state: crate::product_management::story::BoardState) -> &'static str {
-    state.github_label()
-}
 
 pub(crate) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -82,8 +76,6 @@ pub(crate) async fn handle_fail_desk_check(
             )
             .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
-        let keep_label = label_for_state(target_state);
-        reap_workflow_labels(r.as_ref(), id, &meta, keep_label)?;
         r.mutate_sync(
             crate::product_management::board::StoryEvent::GateCommentAppended {
                 meta: meta.clone(),

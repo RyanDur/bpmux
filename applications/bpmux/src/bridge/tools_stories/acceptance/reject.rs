@@ -1,7 +1,4 @@
-use crate::bridge::tools_stories::helpers::{
-    LABEL_DELIVERED, LABEL_IN_PROGRESS, LABEL_READY, ensure_story_in_canonical_store,
-    reap_workflow_labels, role_from_name,
-};
+use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_reject_story(
@@ -80,15 +77,6 @@ pub(crate) async fn reject_via_canonical_store(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    let keep_label = match target_state {
-        crate::product_management::story::BoardState::Ready => LABEL_READY,
-        crate::product_management::story::BoardState::InProgress(
-            crate::product_management::story::Stage::Dev,
-        ) => LABEL_IN_PROGRESS,
-        crate::product_management::story::BoardState::Delivered => LABEL_DELIVERED,
-        _ => LABEL_READY,
-    };
-    reap_workflow_labels(refresh.as_ref(), id, &meta, keep_label)?;
     if was_accepted {
         refresh
             .mutate_sync(

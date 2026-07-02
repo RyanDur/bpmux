@@ -1,10 +1,7 @@
 use tokio::sync::Mutex;
 
 use super::super::tools::{WsSink, ws_send};
-use super::helpers::{
-    KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, require_purpose,
-    role_from_name,
-};
+use super::helpers::{ensure_story_in_canonical_store, require_purpose, role_from_name};
 use super::signals::build_iteration_close_signal;
 use crate::product_management::story::StoryId;
 
@@ -56,7 +53,6 @@ pub(crate) async fn handle_close_story(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::PeerId::local(),
         };
-        reap_workflow_labels(r.as_ref(), id, &meta, KEEP_NONE)?;
         if disposition == "retire" || disposition == "wontfix" {
             r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
                 meta: meta.clone(),

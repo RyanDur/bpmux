@@ -123,12 +123,14 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
         ),
         "reject_story must drain StoryReopened to adapter BEFORE returning (#469 cascade-fix). Without internal drain, the GH-side reopen does not propagate until next handler triggers drain. Pushed: {pushed:?}"
     );
+    let labels = adapter.labels_for(4690);
     assert!(
-        pushed.iter().any(|e| matches!(
-            e,
-            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(4690) && label == "accepted"
-        )),
-        "reject_story must drain TagRemoved(accepted) to adapter BEFORE returning. Pushed: {pushed:?}"
+        !labels.iter().any(|l| l == "accepted"),
+        "the state-transition export strips the stale accepted label at the adapter BEFORE the handler returns; got {labels:?}"
+    );
+    assert!(
+        labels.iter().any(|l| l == "ready"),
+        "the state-transition export applies the new state label at the adapter; got {labels:?}"
     );
 }
 
@@ -178,7 +180,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
 }
 
 #[tokio::test]
-async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
+async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
@@ -215,15 +217,10 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
     orch.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
 
-    let tag_removed_accepted = pushed.iter().any(|e| {
-        matches!(
-            e,
-            StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(469) && label == "accepted"
-        )
-    });
+    let labels = adapter.labels_for(469);
     assert!(
-        tag_removed_accepted,
-        "reject_story on previously-Accepted must emit TagRemoved(accepted): {pushed:?}"
+        !labels.iter().any(|l| l == "accepted"),
+        "reject_story on previously-Accepted must leave the adapter without the stale accepted label (the transition export strips it): {labels:?}"
     );
 
     let story_reopened = pushed

@@ -3,7 +3,6 @@ use std::sync::Arc;
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::bridge::tools_stories::{KEEP_NONE, reap_workflow_labels};
 use crate::product_management::board::events::EventMeta;
 use crate::product_management::board::{PeerId, RefreshDriver, StoryEvent};
 use crate::product_management::iteration::label::current_iteration_id;
@@ -74,9 +73,6 @@ pub(in crate::bridge) async fn handle_move_story(
         })
         .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
     }
-
-    let keep_label = target.as_label().unwrap_or(KEEP_NONE);
-    reap_workflow_labels(r.as_ref(), id, &meta, keep_label)?;
 
     if let Some(label) = target.as_label() {
         let target_state = match target {

@@ -53,6 +53,14 @@ impl InMemorySourceAdapter {
             .clone()
     }
 
+    pub fn labels_for(&self, number: u64) -> Vec<String> {
+        let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        s.stories
+            .get(&number)
+            .map(|story| story.raw_labels.clone())
+            .unwrap_or_default()
+    }
+
     pub fn set_push_failures(&self, fail: bool) {
         self.state
             .lock()

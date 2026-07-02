@@ -3,9 +3,7 @@ use super::helpers::{
     verify_bug_question_or_bypass,
 };
 use crate::bridge::tools_stories::build_verdict_reprompt_signal;
-use crate::bridge::tools_stories::helpers::{
-    ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
-};
+use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_accept_story(
@@ -116,7 +114,6 @@ pub(crate) async fn accept_via_canonical_store(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
-    reap_workflow_labels(refresh.as_ref(), id, &meta, "accepted")?;
     refresh
         .mutate_sync(
             crate::product_management::board::StoryEvent::GateCommentAppended {

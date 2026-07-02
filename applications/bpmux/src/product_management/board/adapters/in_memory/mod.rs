@@ -8,6 +8,7 @@ use crate::product_management::story::{FreeComment, GateComment, Story, StoryId}
 mod ingest;
 mod mutation;
 mod seed;
+mod typed_label_mirror;
 
 #[derive(Default)]
 pub struct InMemorySourceAdapter {
