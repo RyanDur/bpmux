@@ -32,6 +32,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                                     | StoryEvent::TagUnset { .. }
                                     | StoryEvent::BlockedBySet { .. }
                                     | StoryEvent::BlockedByCleared { .. }
+                                    | StoryEvent::IterationSlotSet { .. }
+                                    | StoryEvent::IterationSlotCleared { .. }
                             )
                         })
                         .map(|q| q.event.story_id())

@@ -7,6 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use super::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
+use crate::product_management::board::label_codec::LabelCodec;
 use crate::session;
 
 #[derive(Deserialize)]
@@ -54,48 +55,81 @@ pub async fn post_story_labels(
             LabelOp::Add(label) => {
                 let descriptor = format!("TagAdded {label} on #{id}");
                 let event = if let Some(tag) = codec.decode_tag(&label) {
-                    crate::product_management::board::StoryEvent::TagSet {
+                    Some(crate::product_management::board::StoryEvent::TagSet {
                         meta,
                         id: story_id,
                         tag,
-                    }
+                    })
                 } else if let Some(blocker) = codec.decode_blocked_by(&label) {
-                    crate::product_management::board::StoryEvent::BlockedBySet {
+                    Some(crate::product_management::board::StoryEvent::BlockedBySet {
                         meta,
                         id: story_id,
                         blocker: crate::product_management::story::StoryId::new(blocker),
-                    }
+                    })
+                } else if let Some(parts) =
+                    crate::product_management::iteration::label::parse_iteration_label(
+                        &codec, &label,
+                    )
+                {
+                    Some(
+                        crate::product_management::board::StoryEvent::IterationSlotSet {
+                            meta,
+                            id: story_id,
+                            name: parts.name,
+                            position: parts.position,
+                        },
+                    )
                 } else {
-                    crate::product_management::board::StoryEvent::TagAdded {
+                    Some(crate::product_management::board::StoryEvent::TagAdded {
                         meta,
                         id: story_id,
                         label,
-                    }
+                    })
                 };
                 (event, descriptor)
             }
             LabelOp::Remove(label) => {
                 let descriptor = format!("TagRemoved {label} on #{id}");
                 let event = if let Some(tag) = codec.decode_tag(&label) {
-                    crate::product_management::board::StoryEvent::TagUnset {
+                    Some(crate::product_management::board::StoryEvent::TagUnset {
                         meta,
                         id: story_id,
                         tag,
-                    }
+                    })
                 } else if codec.decode_blocked_by(&label).is_some() {
-                    crate::product_management::board::StoryEvent::BlockedByCleared {
-                        meta,
-                        id: story_id,
+                    Some(
+                        crate::product_management::board::StoryEvent::BlockedByCleared {
+                            meta,
+                            id: story_id,
+                        },
+                    )
+                } else if codec.is_iteration_label_loose(&label) {
+                    let current_chip = refresh.story(id).and_then(|s| {
+                        s.iteration_slot()
+                            .map(|slot| codec.encode_iteration(&slot.name, slot.position))
+                    });
+                    if current_chip.as_deref() == Some(label.as_str()) {
+                        Some(
+                            crate::product_management::board::StoryEvent::IterationSlotCleared {
+                                meta,
+                                id: story_id,
+                            },
+                        )
+                    } else {
+                        None
                     }
                 } else {
-                    crate::product_management::board::StoryEvent::TagRemoved {
+                    Some(crate::product_management::board::StoryEvent::TagRemoved {
                         meta,
                         id: story_id,
                         label,
-                    }
+                    })
                 };
                 (event, descriptor)
             }
+        };
+        let Some(event) = event else {
+            continue;
         };
         if let Err(e) = refresh.mutate_sync(event) {
             return (

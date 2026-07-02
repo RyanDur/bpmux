@@ -41,6 +41,30 @@ pub(super) fn blocked_by_cleared(s: &mut InnerState, number: u64) {
     }
 }
 
+pub(super) fn iteration_slot_set(s: &mut InnerState, number: u64, name: &str, position: u32) {
+    if let Some(story) = s.stories.get_mut(&number) {
+        story
+            .raw_labels
+            .retain(|l| !GhLabelCodec.is_iteration_label_loose(l));
+        story
+            .raw_labels
+            .push(GhLabelCodec.encode_iteration(name, position));
+        story.iteration_slot = Some(crate::product_management::story::IterationSlot {
+            name: name.to_string(),
+            position,
+        });
+    }
+}
+
+pub(super) fn iteration_slot_cleared(s: &mut InnerState, number: u64) {
+    if let Some(story) = s.stories.get_mut(&number) {
+        story
+            .raw_labels
+            .retain(|l| !GhLabelCodec.is_iteration_label_loose(l));
+        story.iteration_slot = None;
+    }
+}
+
 pub(super) fn acceptor_assigned(s: &mut InnerState, number: u64, acceptor: Acceptor) {
     if let Some(story) = s.stories.get_mut(&number) {
         story

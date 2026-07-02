@@ -55,10 +55,8 @@ fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     if let Some(position) = story.ready_order() {
         labels.push(codec.encode_ready_order(position));
     }
-    for raw in story.raw_labels() {
-        if codec.is_iteration_label_loose(raw) && !labels.iter().any(|l| l == raw) {
-            labels.push(raw.clone());
-        }
+    if let Some(slot) = story.iteration_slot() {
+        labels.push(codec.encode_iteration(&slot.name, slot.position));
     }
     labels
 }

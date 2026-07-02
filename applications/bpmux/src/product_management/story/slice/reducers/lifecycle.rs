@@ -33,6 +33,7 @@ pub(super) fn apply_story_created(
         tags: Vec::new(),
         blocked_by: None,
         ready_order: None,
+        iteration_slot: None,
     };
     w.insert(StoryKey::Saved(id), story);
 }
@@ -109,6 +110,21 @@ pub(super) fn apply_blocked_by_set(w: &mut Stories, id: StoryId, blocker: StoryI
 pub(super) fn apply_blocked_by_cleared(w: &mut Stories, id: StoryId) {
     if let Some(story) = story_mut(w, id) {
         story.blocked_by = None;
+    }
+}
+
+pub(super) fn apply_iteration_slot_cleared(w: &mut Stories, id: StoryId) {
+    if let Some(story) = story_mut(w, id) {
+        story.iteration_slot = None;
+    }
+}
+
+pub(super) fn apply_iteration_slot_set(w: &mut Stories, id: StoryId, name: &str, position: u32) {
+    if let Some(story) = story_mut(w, id) {
+        story.iteration_slot = Some(crate::product_management::story::IterationSlot {
+            name: name.to_string(),
+            position,
+        });
     }
 }
 

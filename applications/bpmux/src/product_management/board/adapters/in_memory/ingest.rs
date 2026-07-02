@@ -29,6 +29,14 @@ pub(super) fn classify_ingested(
         if let Some(labels) = labels.get(&story.id.value()) {
             story.raw_labels = labels.clone();
         }
+        if story.iteration_slot.is_none()
+            && let Some(slot) =
+                crate::product_management::board::adapters::github::iteration_slot_from_labels(
+                    &story.raw_labels,
+                )
+        {
+            story.iteration_slot = Some(slot);
+        }
         let has_label = |needle: &str| {
             story
                 .raw_labels

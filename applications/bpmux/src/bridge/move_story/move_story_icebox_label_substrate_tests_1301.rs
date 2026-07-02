@@ -45,10 +45,14 @@ async fn moving_loose_icebox_story_into_position_lands_in_unscheduled() {
     .await;
     reorder_icebox_story_via_labels(&orch, 3100, 1).unwrap();
     let s = orch.story(3100).unwrap();
-    assert!(
-        s.raw_labels.iter().any(|l| l == "iteration-Unscheduled.50"),
+    assert_eq!(
+        s.iteration_slot(),
+        Some(&crate::product_management::story::IterationSlot {
+            name: "Unscheduled".to_string(),
+            position: 50,
+        }),
         "loose story moved into icebox-position-1 joins Unscheduled at head; got {:?}",
-        s.raw_labels
+        s.iteration_slot()
     );
 }
 
@@ -62,11 +66,10 @@ async fn move_into_icebox_preserves_iteration_membership_when_story_already_in_n
     .await;
     reorder_icebox_story_via_labels(&orch, 3200, 1).unwrap();
     let s = orch.story(3200).unwrap();
-    assert!(
-        s.raw_labels
-            .iter()
-            .any(|l| l.starts_with("iteration-Pegasus.")),
+    assert_eq!(
+        s.iteration_slot().map(|slot| slot.name.as_str()),
+        Some("Pegasus"),
         "story keeps Pegasus name membership after move-to-icebox at position 1: {:?}",
-        s.raw_labels
+        s.iteration_slot()
     );
 }

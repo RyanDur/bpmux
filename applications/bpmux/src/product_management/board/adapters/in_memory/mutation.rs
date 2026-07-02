@@ -48,6 +48,12 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
         StoryEvent::BlockedByCleared { id, .. } => {
             typed_label_mirror::blocked_by_cleared(s, id.value())
         }
+        StoryEvent::IterationSlotSet {
+            id, name, position, ..
+        } => typed_label_mirror::iteration_slot_set(s, id.value(), name, *position),
+        StoryEvent::IterationSlotCleared { id, .. } => {
+            typed_label_mirror::iteration_slot_cleared(s, id.value())
+        }
         StoryEvent::StoryClosed { id, .. } => typed_label_mirror::story_closed(s, id.value()),
         StoryEvent::StoryReopened { id, .. } => {
             if let Some(story) = s.stories.get_mut(&id.value()) {

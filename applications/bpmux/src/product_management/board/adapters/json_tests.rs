@@ -26,6 +26,7 @@ fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> St
         tags: Vec::new(),
         blocked_by: None,
         ready_order: None,
+        iteration_slot: None,
     };
     s.raw_labels
         .push(GhLabelCodec.encode_story_type(story_type));
@@ -353,7 +354,11 @@ fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
     let mut s = sample_story(BoardState::Ready, StoryKind::Feature, false);
     s.parent_epic = Some(EpicId::new(42));
     s.ready_order = Some(100);
-    s.raw_labels = vec!["iter|Pegasus:200".to_string(), "noise-label".to_string()];
+    s.iteration_slot = Some(crate::product_management::story::IterationSlot {
+        name: "Pegasus".to_string(),
+        position: 200,
+    });
+    s.raw_labels = vec!["noise-label".to_string()];
     let json = story_to_board_json(&StubLabelCodec, &s);
     let labels: Vec<&str> = json["labels"]
         .as_array()

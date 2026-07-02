@@ -53,15 +53,14 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
         .await;
         reorder(&orch, 2003, 1).await.unwrap();
         let s = orch.story(2003).unwrap();
-        assert!(
-            s.raw_labels.iter().any(|l| l == "iteration-Pegasus.50"),
-            "story 2003 should land at the head with iteration-Pegasus.50 (midpoint of (0, 100)); got {:?}",
-            s.raw_labels
-        );
-        assert!(
-            !s.raw_labels.iter().any(|l| l == "iteration-Pegasus.300"),
-            "old iteration-Pegasus.300 label should be removed: {:?}",
-            s.raw_labels
+        assert_eq!(
+            s.iteration_slot(),
+            Some(&crate::product_management::story::IterationSlot {
+                name: "Pegasus".to_string(),
+                position: 50,
+            }),
+            "story 2003 should land at the head of Pegasus at 50 (midpoint of (0, 100)), replacing its old 300 slot; got {:?}",
+            s.iteration_slot()
         );
     }
 
@@ -75,10 +74,14 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
         .await;
         reorder(&orch, 2010, 1).await.unwrap();
         let s = orch.story(2010).unwrap();
-        assert!(
-            s.raw_labels.iter().any(|l| l == "iteration-Unscheduled.50"),
+        assert_eq!(
+            s.iteration_slot(),
+            Some(&crate::product_management::story::IterationSlot {
+                name: "Unscheduled".to_string(),
+                position: 50,
+            }),
             "loose story should join Unscheduled at the head (midpoint of (0, 100)); got {:?}",
-            s.raw_labels
+            s.iteration_slot()
         );
     }
 
@@ -91,10 +94,14 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
         .await;
         reorder(&orch, 2020, 99).await.unwrap();
         let s = orch.story(2020).unwrap();
-        assert!(
-            s.raw_labels.iter().any(|l| l == "iteration-Pegasus.300"),
+        assert_eq!(
+            s.iteration_slot(),
+            Some(&crate::product_management::story::IterationSlot {
+                name: "Pegasus".to_string(),
+                position: 300,
+            }),
             "tail position should compute last+step (200+100=300); got {:?}",
-            s.raw_labels
+            s.iteration_slot()
         );
     }
 
@@ -106,12 +113,17 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
             seed_story(2032, vec!["iteration-Pegasus.300".into()]),
         ])
         .await;
-        let labels_before = orch.story(2031).unwrap().raw_labels.clone();
+        let slot_before = orch.story(2031).unwrap().iteration_slot().cloned();
         reorder(&orch, 2031, 2).await.unwrap();
-        let labels_after = orch.story(2031).unwrap().raw_labels.clone();
+        let slot_after = orch.story(2031).unwrap().iteration_slot().cloned();
         assert_eq!(
-            labels_before, labels_after,
+            slot_before, slot_after,
             "reorder to current position should be a no-op"
+        );
+        assert_eq!(
+            slot_after.as_ref().map(|slot| slot.position),
+            Some(200),
+            "the no-op keeps the original position untouched"
         );
     }
 

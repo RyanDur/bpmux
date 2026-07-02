@@ -260,6 +260,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                 tags: Vec::new(),
                 blocked_by: None,
                 ready_order: None,
+                iteration_slot: None,
             },
         },
     );

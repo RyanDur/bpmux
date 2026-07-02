@@ -6,9 +6,9 @@ use crate::product_management::board::sync::SyncError;
 use super::mutation_events::{
     push_acceptor_assigned, push_blocked_by_cleared, push_blocked_by_set,
     push_current_iteration_cleared, push_current_iteration_designated, push_free_comment_appended,
-    push_gate_comment_appended, push_parent_epic_set, push_parent_epic_unset,
-    push_state_transitioned, push_story_closed, push_story_reopened, push_tag_added,
-    push_tag_removed,
+    push_gate_comment_appended, push_iteration_slot_cleared, push_iteration_slot_set,
+    push_parent_epic_set, push_parent_epic_unset, push_state_transitioned, push_story_closed,
+    push_story_reopened, push_tag_added, push_tag_removed,
 };
 
 pub(super) async fn apply_push_event(
@@ -47,6 +47,12 @@ pub(super) async fn apply_push_event(
             push_blocked_by_set(inner, id.value(), blocker.value()).await
         }
         StoryEvent::BlockedByCleared { id, .. } => push_blocked_by_cleared(inner, id.value()).await,
+        StoryEvent::IterationSlotSet {
+            id, name, position, ..
+        } => push_iteration_slot_set(inner, id.value(), name, *position).await,
+        StoryEvent::IterationSlotCleared { id, .. } => {
+            push_iteration_slot_cleared(inner, id.value()).await
+        }
         StoryEvent::AcceptorAssigned { id, acceptor, .. } => {
             push_acceptor_assigned(inner, id.value(), *acceptor).await
         }

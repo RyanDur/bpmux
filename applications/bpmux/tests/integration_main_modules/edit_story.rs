@@ -43,6 +43,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
         tags: Vec::new(),
         blocked_by: None,
         ready_order: None,
+        iteration_slot: None,
     };
     adapter.seed_stories(vec![story]);
     adapter.seed_body(id, "## What\n\noriginal body\n".to_string());

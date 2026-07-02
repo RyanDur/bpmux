@@ -44,6 +44,12 @@ pub struct FreeComment {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IterationSlot {
+    pub name: String,
+    pub position: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Story {
     pub id: StoryId,
     pub title: String,
@@ -69,6 +75,8 @@ pub struct Story {
     pub blocked_by: Option<StoryId>,
     #[serde(default)]
     pub ready_order: Option<u32>,
+    #[serde(default)]
+    pub iteration_slot: Option<IterationSlot>,
 }
 
 impl Story {
@@ -102,6 +110,7 @@ impl Story {
             tags: Vec::new(),
             blocked_by: None,
             ready_order: None,
+            iteration_slot: None,
         }
     }
 
@@ -139,6 +148,10 @@ impl Story {
 
     pub fn ready_order(&self) -> Option<u32> {
         self.ready_order
+    }
+
+    pub fn iteration_slot(&self) -> Option<&IterationSlot> {
+        self.iteration_slot.as_ref()
     }
 
     pub fn body(&self) -> Option<&str> {

@@ -222,16 +222,26 @@ pub async fn post_seed_stories(
                 ts: chrono::Utc::now(),
                 peer_id: crate::product_management::board::PeerId::local(),
             };
-            if let Err(e) =
-                refresh.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
+            let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            let event = match crate::product_management::iteration::label::parse_iteration_label(
+                &codec, label,
+            ) {
+                Some(parts) => crate::product_management::board::StoryEvent::IterationSlotSet {
+                    meta: tag_meta,
+                    id: crate::product_management::story::StoryId::new(s.id),
+                    name: parts.name,
+                    position: parts.position,
+                },
+                None => crate::product_management::board::StoryEvent::TagAdded {
                     meta: tag_meta,
                     id: crate::product_management::story::StoryId::new(s.id),
                     label: label.clone(),
-                })
-            {
+                },
+            };
+            if let Err(e) = refresh.mutate_sync(event) {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("seed_stories: TagAdded {label} on #{} failed: {e}", s.id),
+                    format!("seed_stories: label event {label} on #{} failed: {e}", s.id),
                 );
             }
         }

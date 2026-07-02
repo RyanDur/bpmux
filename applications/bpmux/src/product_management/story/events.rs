@@ -27,6 +27,8 @@ pub struct LabelDerivedFields {
     pub blocked_by: Option<StoryId>,
     #[serde(default)]
     pub ready_order: Option<u32>,
+    #[serde(default)]
+    pub iteration_slot: Option<crate::product_management::story::IterationSlot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,6 +72,16 @@ pub enum StoryEvent {
         blocker: StoryId,
     },
     BlockedByCleared {
+        meta: EventMeta,
+        id: StoryId,
+    },
+    IterationSlotSet {
+        meta: EventMeta,
+        id: StoryId,
+        name: String,
+        position: u32,
+    },
+    IterationSlotCleared {
         meta: EventMeta,
         id: StoryId,
     },
@@ -180,6 +192,8 @@ impl StoryEvent {
             | StoryEvent::TagUnset { meta, .. }
             | StoryEvent::BlockedBySet { meta, .. }
             | StoryEvent::BlockedByCleared { meta, .. }
+            | StoryEvent::IterationSlotSet { meta, .. }
+            | StoryEvent::IterationSlotCleared { meta, .. }
             | StoryEvent::StoryClosed { meta, .. }
             | StoryEvent::StoryReopened { meta, .. }
             | StoryEvent::AcceptorAssigned { meta, .. }
@@ -211,6 +225,8 @@ impl StoryEvent {
             | StoryEvent::TagUnset { id, .. }
             | StoryEvent::BlockedBySet { id, .. }
             | StoryEvent::BlockedByCleared { id, .. }
+            | StoryEvent::IterationSlotSet { id, .. }
+            | StoryEvent::IterationSlotCleared { id, .. }
             | StoryEvent::StoryClosed { id, .. }
             | StoryEvent::StoryReopened { id, .. }
             | StoryEvent::AcceptorAssigned { id, .. }

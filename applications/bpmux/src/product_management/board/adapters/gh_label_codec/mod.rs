@@ -21,7 +21,7 @@ impl LabelCodec for GhLabelCodec {
         let dot_idx = rest.rfind('.')?;
         let (name, dotted_pos) = rest.split_at(dot_idx);
         let position = dotted_pos.trim_start_matches('.').parse::<u32>().ok()?;
-        if name.is_empty() {
+        if name.is_empty() || matches!(name, "order" | "review-closed" | "dev-ok") {
             return None;
         }
         Some(IterationLabelParts {
@@ -31,7 +31,7 @@ impl LabelCodec for GhLabelCodec {
     }
 
     fn is_iteration_label_loose(&self, label: &str) -> bool {
-        label.starts_with("iteration-") && label.contains('.')
+        self.decode_iteration(label).is_some()
     }
 
     fn encode_iteration(&self, name: &str, position: u32) -> String {
