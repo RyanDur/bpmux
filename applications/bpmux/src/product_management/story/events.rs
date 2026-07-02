@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::peer::PeerId;
+use crate::product_management::board::peer::PeerId;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::{
     Acceptor, BoardState, FreeComment, Gate, GateComment, Story, StoryId, StoryKind, Tag,
@@ -155,12 +155,12 @@ pub enum StoryEvent {
     ConflictDetected {
         meta: EventMeta,
         id: StoryId,
-        kind: super::orchestrator::ConflictKind,
+        kind: super::conflict::ConflictKind,
     },
     ConflictResolved {
         meta: EventMeta,
         id: StoryId,
-        origin: super::orchestrator::ConflictResolveOrigin,
+        origin: super::conflict::ConflictResolveOrigin,
     },
 }
 

@@ -1,6 +1,6 @@
 pub mod adapters;
 pub mod column;
-pub mod events;
+pub use crate::product_management::story::events;
 pub mod label_codec;
 pub mod orchestrator;
 pub mod peer;

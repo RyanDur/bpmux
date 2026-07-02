@@ -12,7 +12,6 @@ use super::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story};
 
 mod coalesce;
-mod conflict;
 mod drain;
 mod driver;
 mod driver_ops;
@@ -24,8 +23,10 @@ mod slice_readers;
 mod status;
 mod types;
 
+pub use crate::product_management::story::conflict::{
+    ConflictKind, ConflictResolveOrigin, classify_conflict,
+};
 use coalesce::{coalesce_iteration_label_events, stale_state_labels_for};
-pub use conflict::{ConflictKind, ConflictResolveOrigin, classify_conflict};
 pub use driver::*;
 pub use outbox::{default_outbox_path, load_outbox_from_disk};
 pub use race_window::*;

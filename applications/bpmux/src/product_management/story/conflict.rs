@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::board::events::StoryEvent;
+use super::events::StoryEvent;
 use crate::product_management::story::Story;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

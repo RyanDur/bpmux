@@ -79,7 +79,7 @@ echo "Checking file sizes (max ${MAX_LINES} lines; hard fail)..."
 # hit a number. Add here only with a one-line reason; prefer splitting.
 size_gate_allowlisted() {
     case "$1" in
-        applications/bpmux/src/product_management/board/events.rs) return 0 ;; # BoardEvent: one declarative enum + its exhaustive meta()/story_number() matches; nesting would ripple to every construction + match site
+        applications/bpmux/src/product_management/story/events.rs) return 0 ;; # StoryEvent: one declarative enum + its exhaustive meta()/story_id() matches; nesting would ripple to every construction + match site
         applications/bpmux/src/bridge/connection.rs) return 0 ;;              # run_ws_connection: one connect/identify/receive async state-machine loop over shared loop-state
         applications/bpmux/src/transport/ws/mod.rs) return 0 ;;               # run_ws_session: one select! loop; branches share heavy mutable loop-state (cutting = param-threading noise)
         applications/bpmux/src/storage/instrumented.rs) return 0 ;;   # single `impl Storage for InstrumentedStorage` block (decorator); Rust can't split one trait impl across files
