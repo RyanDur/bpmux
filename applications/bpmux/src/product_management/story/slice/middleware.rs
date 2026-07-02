@@ -1,6 +1,5 @@
 use super::action::StoryAction;
 use super::reducers::Stories;
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::project_labels;
 use crate::product_management::board::events::{LabelDerivedFields, StoryEvent};
 use crate::product_management::story::StoryKey;
@@ -35,21 +34,6 @@ fn project_label_delta(stories: &Stories, event: &StoryEvent) -> Option<LabelDer
         StoryEvent::TagRemoved { id, label, .. } => {
             let mut labels = stories.get(&StoryKey::Saved(*id))?.raw_labels().to_vec();
             labels.retain(|l| l != label);
-            labels
-        }
-        StoryEvent::CurrentIterationDesignated { id, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*id))?.raw_labels().to_vec();
-            if !labels
-                .iter()
-                .any(|l| GhLabelCodec.is_current_iteration_label(l))
-            {
-                labels.push(GhLabelCodec.encode_current_iteration());
-            }
-            labels
-        }
-        StoryEvent::CurrentIterationCleared { id, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*id))?.raw_labels().to_vec();
-            labels.retain(|l| !GhLabelCodec.is_current_iteration_label(l));
             labels
         }
         _ => return None,
