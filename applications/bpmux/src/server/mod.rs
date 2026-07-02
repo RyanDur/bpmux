@@ -100,10 +100,6 @@ pub async fn run_server(
     store.spawn_action_drainer(action_rx);
     wire_store_listeners(&store, &session, &ci_state_store);
     wire_startup_roster(&store, &session, &pty_registry, &routing_store).await;
-    if let Some(refresh) = orchestrator.as_ref().cloned() {
-        spawn_board_broadcast_loop(refresh.clone(), session.clone(), ct.clone());
-        spawn_owner_park_loop(refresh, store.clone(), ct.clone());
-    }
     start_polling(&store, orchestrator.is_some()).await;
 
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =

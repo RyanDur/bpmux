@@ -1,8 +1,5 @@
 use std::sync::Arc;
 
-use tokio_util::sync::CancellationToken;
-
-use crate::product_management::board::RefreshDriver;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
 use crate::session;
@@ -44,57 +41,6 @@ pub(super) async fn wire_startup_roster(
         let routing_id = super::startup_routing_id(routing_store, &identity);
         crate::transport::ws::dispatch_roster_join(store, &routing_id, &identity).await;
     }
-}
-
-pub(super) fn spawn_owner_park_loop(
-    refresh: Arc<dyn RefreshDriver>,
-    store: Arc<Store>,
-    ct: CancellationToken,
-) {
-    let owner_park = crate::store::OwnerParkBroadcaster::new(store, refresh.store());
-    let mut events = refresh.store().subscribe();
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                _ = ct.cancelled() => return,
-                received = events.recv() => match received {
-                    Ok(crate::product_management::board::StoreChange::Event(event)) => {
-                        owner_park.on_board_event(&event).await
-                    }
-                    Ok(crate::product_management::board::StoreChange::Resynced)
-                    | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
-                        owner_park.recompute_from_snapshot().await;
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
-                }
-            }
-        }
-    });
-}
-
-pub(super) fn spawn_board_broadcast_loop(
-    refresh: Arc<dyn RefreshDriver>,
-    session: Arc<session::Session>,
-    ct: CancellationToken,
-) {
-    let mut events = refresh.store().subscribe();
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                _ = ct.cancelled() => return,
-                received = events.recv() => match received {
-                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
-                        crate::transport::rest::shared::broadcast_stories(&session, &refresh);
-                        crate::transport::rest::shared::broadcast_epics(&session, &refresh);
-                        crate::transport::rest::shared::broadcast_outcomes(&session, &refresh);
-                        crate::transport::rest::shared::broadcast_iterations(&session, &refresh);
-                        crate::transport::rest::shared::broadcast_roadmap(&session, &refresh);
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
-                }
-            }
-        }
-    });
 }
 
 pub(super) async fn start_polling(store: &Arc<Store>, has_refresh: bool) {

@@ -5,16 +5,42 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
+use super::app::{self, AppAction, AppState, OwnerParkListener, RosterBroadcast};
 use super::{
-    AggregatedReaction, CiSessionBroadcaster, OwnerParkBroadcaster, Presence,
-    ReactionsBroadcastListener, ReactionsSessionBroadcaster, RosterBroadcastListener, RosterMember,
-    RosterRole, RosterSessionBroadcaster,
+    AggregatedReaction, CiSessionBroadcaster, Presence, ReactionsBroadcastListener,
+    ReactionsSessionBroadcaster, RosterBroadcastListener, RosterMember, RosterRole,
+    RosterSessionBroadcaster,
 };
 use crate::ci::CiState;
 use crate::message::{Message, MessageType, StateDeltaPayload};
+use crate::product_management::story::slice::StoryAction;
 use crate::session::Session;
 use crate::store::CiBroadcastListener;
 use crate::store::ci::CiSnapshot;
+use crate::store::kernel;
+
+fn owner_park_kernel(session: Arc<Session>) -> Arc<kernel::Store<AppState, AppAction>> {
+    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    let roster_listeners: app::RosterListeners =
+        Arc::new(std::sync::Mutex::new(vec![
+            Arc::new(RosterSessionBroadcaster::new(session)) as Arc<dyn RosterBroadcastListener>,
+        ]));
+    store.add_listener(Arc::new(RosterBroadcast::new(roster_listeners)));
+    store.add_listener(Arc::new(OwnerParkListener));
+    store
+}
+
+fn seed_dev_online_kernel(store: &Arc<kernel::Store<AppState, AppAction>>) {
+    store.dispatch(AppAction::Roster(
+        crate::store::RosterAction::RosterMemberUpserted {
+            routing_id: "sess-dev".to_string(),
+            name: "dev".to_string(),
+            identity: "dev:claude-code".to_string(),
+            role: RosterRole::Dev,
+            presence: Presence::Online,
+        },
+    ));
+}
 
 fn fresh_session() -> (Arc<Session>, broadcast::Receiver<Message>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
@@ -141,15 +167,6 @@ fn current_iteration(
     }
 }
 
-async fn seed_current_iteration(orch: &Arc<crate::store::Store>, id: u64, story_ids: &[u64]) {
-    orch.dispatch(crate::store::AppAction::Iteration(
-        crate::product_management::iteration::IterationAction::Upserted(vec![current_iteration(
-            id, story_ids,
-        )]),
-    ))
-    .await;
-}
-
 fn state_transitioned(
     id: u64,
     actor: &str,
@@ -190,21 +207,8 @@ async fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<Ros
     }
 }
 
-async fn seed_dev_online(orch: &Arc<crate::store::Store>) {
-    use crate::store::{AppAction, RosterAction};
-    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
-        routing_id: "sess-dev".to_string(),
-        name: "dev".to_string(),
-        identity: "dev:claude-code".to_string(),
-        role: RosterRole::Dev,
-        presence: Presence::Online,
-    }))
-    .await;
-}
-
 #[tokio::test]
 async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::story::BoardState;
 
     let dir = TempDir::new().expect("tempdir");
@@ -215,23 +219,18 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
         tx,
     ));
     std::mem::forget(dir);
-    let orch = Arc::new(crate::store::Store::new(
-        session.clone(),
-        None,
-        crate::transport::ci_state_store::CiStateStore::new(),
-        tokio_util::sync::CancellationToken::new(),
-    ));
-    orch.add_roster_listener(Arc::new(RosterSessionBroadcaster::new(session.clone())));
-    seed_dev_online(&orch).await;
+    let store = owner_park_kernel(session);
+    seed_dev_online_kernel(&store);
     let _seed = drain_roster_presence(&mut rx).await;
 
-    let store = Arc::new(BoardStore::new());
-    store.seed_all(vec![owner_parked_story(900)]);
-
-    let broadcaster = OwnerParkBroadcaster::new(orch.clone(), store.clone());
-    broadcaster
-        .on_board_event(&state_transitioned(900, "dev", BoardState::Delivered))
-        .await;
+    store.dispatch(AppAction::Story(StoryAction::Seeded(vec![
+        owner_parked_story(900),
+    ])));
+    store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
+        900,
+        "dev",
+        BoardState::Delivered,
+    ))));
 
     let members = drain_roster_presence(&mut rx).await;
     let dev = members
@@ -247,7 +246,6 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
 
 #[tokio::test]
 async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::story::BoardState;
 
     let dir = TempDir::new().expect("tempdir");
@@ -258,24 +256,27 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
         tx,
     ));
     std::mem::forget(dir);
-    let orch = Arc::new(crate::store::Store::new(
-        session.clone(),
-        None,
-        crate::transport::ci_state_store::CiStateStore::new(),
-        tokio_util::sync::CancellationToken::new(),
+    let store = owner_park_kernel(session);
+    seed_dev_online_kernel(&store);
+    store.dispatch(AppAction::Iteration(
+        crate::product_management::iteration::IterationAction::Upserted(vec![current_iteration(
+            800,
+            &[901],
+        )]),
     ));
-    orch.add_roster_listener(Arc::new(RosterSessionBroadcaster::new(session.clone())));
-    seed_dev_online(&orch).await;
-    seed_current_iteration(&orch, 800, &[901]).await;
+    let _seed = drain_roster_presence(&mut rx).await;
 
-    let store = Arc::new(BoardStore::new());
-    store.seed_all(vec![owner_parked_story(900)]);
-    let broadcaster = OwnerParkBroadcaster::new(orch.clone(), store.clone());
-    broadcaster
-        .on_board_event(&state_transitioned(900, "dev", BoardState::Delivered))
-        .await;
+    store.dispatch(AppAction::Story(StoryAction::Seeded(vec![
+        owner_parked_story(900),
+    ])));
+    store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
+        900,
+        "dev",
+        BoardState::Delivered,
+    ))));
+    let blocked = drain_roster_presence(&mut rx).await;
     assert_eq!(
-        orch.roster_members()
+        blocked
             .iter()
             .find(|m| m.name == "dev")
             .expect("dev")
@@ -284,13 +285,18 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     );
     while rx.try_recv().is_ok() {}
 
-    store.seed_all(vec![owner_parked_story(900), ready_story(901, 800, 1)]);
-    broadcaster
-        .on_board_event(&state_transitioned(901, "pm", BoardState::Ready))
-        .await;
+    store.dispatch(AppAction::Story(StoryAction::Seeded(vec![
+        owner_parked_story(900),
+        ready_story(901, 800, 1),
+    ])));
+    store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
+        901,
+        "pm",
+        BoardState::Ready,
+    ))));
 
-    let dev_presence = orch
-        .roster_members()
+    let members = drain_roster_presence(&mut rx).await;
+    let dev_presence = members
         .iter()
         .find(|m| m.name == "dev")
         .expect("dev")

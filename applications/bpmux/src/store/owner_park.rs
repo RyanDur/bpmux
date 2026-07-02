@@ -1,11 +1,7 @@
-use std::sync::Arc;
-
-use crate::product_management::board::{BoardStore, StoryEvent};
 use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::label::current_iteration_id;
 use crate::product_management::story::{Acceptor, BoardState, Story};
-use crate::store::{AppAction, RosterMember, Store};
-use crate::store::{Presence, RosterAction};
+use crate::store::{Presence, RosterMember};
 
 fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
     let current = current_iteration_id(iterations);
@@ -50,50 +46,4 @@ pub fn owner_park_presence(
         }
     }
     changes
-}
-
-pub struct OwnerParkBroadcaster {
-    store: Arc<Store>,
-    board_store: Arc<BoardStore>,
-}
-
-impl OwnerParkBroadcaster {
-    pub fn new(store: Arc<Store>, board_store: Arc<BoardStore>) -> Self {
-        Self { store, board_store }
-    }
-
-    fn delivering_role(event: &StoryEvent) -> Option<String> {
-        match event {
-            StoryEvent::StateTransitioned {
-                meta,
-                new_state: BoardState::Delivered,
-                ..
-            } => Some(crate::transport::ws::short_name(&meta.actor).to_string()),
-            _ => None,
-        }
-    }
-
-    async fn dispatch_changes(&self, delivering: Option<&str>) {
-        let stories = self.board_store.all_stories();
-        let iterations = self.store.iterations();
-        let roster = self.store.roster_members();
-        let changes = owner_park_presence(&stories, &iterations, &roster, delivering);
-        for (routing_id, presence) in changes {
-            self.store
-                .dispatch(AppAction::Roster(RosterAction::RosterPresenceChanged {
-                    routing_id,
-                    presence,
-                }))
-                .await;
-        }
-    }
-
-    pub async fn on_board_event(&self, event: &StoryEvent) {
-        let delivering = Self::delivering_role(event);
-        self.dispatch_changes(delivering.as_deref()).await;
-    }
-
-    pub async fn recompute_from_snapshot(&self) {
-        self.dispatch_changes(None).await;
-    }
 }

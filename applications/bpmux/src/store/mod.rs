@@ -39,7 +39,7 @@ pub use ci::{
     CiStateStoreWriter,
 };
 pub use dispatch::Dispatch;
-pub use owner_park::{OwnerParkBroadcaster, owner_park_presence};
+pub use owner_park::owner_park_presence;
 pub use reactions::{
     AggregatedReaction, ReactionsAction, ReactionsBroadcastListener, ReactionsSessionBroadcaster,
 };
@@ -157,6 +157,13 @@ impl Store {
                 self.session.clone(),
                 refresh.clone(),
             )));
+        self.app_store
+            .add_listener(Arc::new(app::StoryBroadcast::new(
+                self.session.clone(),
+                refresh.clone(),
+            )));
+        self.app_store
+            .add_listener(Arc::new(app::OwnerParkListener));
         let github_drain = Arc::new(sync::GithubDrain::new(refresh, self.parent_ct.clone()));
         self.app_store.add_listener(github_drain.clone());
         self.sync_poll = Some(sync_poll);
