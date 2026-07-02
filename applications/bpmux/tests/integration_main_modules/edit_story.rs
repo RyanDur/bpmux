@@ -41,6 +41,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
+        blocked_by: None,
         ready_order: None,
     };
     adapter.seed_stories(vec![story]);

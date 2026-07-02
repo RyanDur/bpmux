@@ -24,6 +24,8 @@ pub struct LabelDerivedFields {
     #[serde(default)]
     pub tags: Vec<Tag>,
     #[serde(default)]
+    pub blocked_by: Option<StoryId>,
+    #[serde(default)]
     pub ready_order: Option<u32>,
 }
 
@@ -61,6 +63,15 @@ pub enum StoryEvent {
         meta: EventMeta,
         id: StoryId,
         tag: Tag,
+    },
+    BlockedBySet {
+        meta: EventMeta,
+        id: StoryId,
+        blocker: StoryId,
+    },
+    BlockedByCleared {
+        meta: EventMeta,
+        id: StoryId,
     },
     GateCommentAppended {
         meta: EventMeta,
@@ -167,6 +178,8 @@ impl StoryEvent {
             | StoryEvent::TagRemoved { meta, .. }
             | StoryEvent::TagSet { meta, .. }
             | StoryEvent::TagUnset { meta, .. }
+            | StoryEvent::BlockedBySet { meta, .. }
+            | StoryEvent::BlockedByCleared { meta, .. }
             | StoryEvent::StoryClosed { meta, .. }
             | StoryEvent::StoryReopened { meta, .. }
             | StoryEvent::AcceptorAssigned { meta, .. }
@@ -196,6 +209,8 @@ impl StoryEvent {
             | StoryEvent::TagRemoved { id, .. }
             | StoryEvent::TagSet { id, .. }
             | StoryEvent::TagUnset { id, .. }
+            | StoryEvent::BlockedBySet { id, .. }
+            | StoryEvent::BlockedByCleared { id, .. }
             | StoryEvent::StoryClosed { id, .. }
             | StoryEvent::StoryReopened { id, .. }
             | StoryEvent::AcceptorAssigned { id, .. }

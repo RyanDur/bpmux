@@ -34,6 +34,31 @@ fn project_marks_a_closed_story_gh_state_closed() {
 }
 
 #[test]
+fn project_encodes_badge_labels_from_typed_fields_not_raw_passthrough() {
+    let mut s = story(11, "badged", BoardState::Delivered);
+    s.tags = vec![crate::product_management::story::Tag::DeskCheckFail];
+    s.blocked_by = Some(StoryId::new(9));
+    s.raw_labels
+        .push("blocked-by:999-stale-raw-copy".to_string());
+    let view = StoryView::project(&GhLabelCodec, &s);
+    assert!(
+        view.labels.iter().any(|l| l == "desk-check-fail"),
+        "the rework badge label re-encodes from the typed DeskCheckFail tag; got {:?}",
+        view.labels
+    );
+    assert!(
+        view.labels.iter().any(|l| l == "blocked-by:9"),
+        "the blocker reference re-encodes from the typed blocked_by field; got {:?}",
+        view.labels
+    );
+    assert!(
+        !view.labels.iter().any(|l| l.contains("999-stale-raw-copy")),
+        "raw badge labels no longer pass through to the wire — typed fields are the source; got {:?}",
+        view.labels
+    );
+}
+
+#[test]
 fn project_leads_the_wire_labels_with_the_derived_type_label() {
     let s = story(20, "[Bug] broken thing", BoardState::Icebox);
     let view = StoryView::project(&GhLabelCodec, &s);

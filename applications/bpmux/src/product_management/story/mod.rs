@@ -60,6 +60,8 @@ pub struct Story {
     #[serde(default)]
     pub tags: Vec<Tag>,
     #[serde(default)]
+    pub blocked_by: Option<StoryId>,
+    #[serde(default)]
     pub ready_order: Option<u32>,
 }
 
@@ -92,6 +94,7 @@ impl Story {
             acceptor: None,
             parent_epic: None,
             tags: Vec::new(),
+            blocked_by: None,
             ready_order: None,
         }
     }
@@ -122,6 +125,10 @@ impl Story {
 
     pub fn tags(&self) -> &[Tag] {
         &self.tags
+    }
+
+    pub fn blocked_by(&self) -> Option<StoryId> {
+        self.blocked_by
     }
 
     pub fn ready_order(&self) -> Option<u32> {

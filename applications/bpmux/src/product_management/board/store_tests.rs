@@ -167,6 +167,53 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
 }
 
 #[test]
+fn blocked_by_events_set_and_clear_the_typed_blocker_reference_directly() {
+    let store = BoardStore::new();
+    store.apply(&StoryEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        id: StoryId::new(16),
+        title: "blockable".to_string(),
+        body: "b".to_string(),
+        initial_state: BoardState::Delivered,
+        story_type: StoryKind::Feature,
+    });
+    assert_eq!(
+        store.story(StoryId::new(16)).unwrap().blocked_by(),
+        None,
+        "a freshly created story references no blocker"
+    );
+    store.apply(&StoryEvent::BlockedBySet {
+        meta: meta("pm", 2026, "local"),
+        id: StoryId::new(16),
+        blocker: StoryId::new(9),
+    });
+    assert_eq!(
+        store.story(StoryId::new(16)).unwrap().blocked_by(),
+        Some(StoryId::new(9)),
+        "BlockedBySet assigns the typed blocker reference directly, not via a label round-trip"
+    );
+    store.apply(&StoryEvent::BlockedBySet {
+        meta: meta("pm", 2026, "local"),
+        id: StoryId::new(16),
+        blocker: StoryId::new(11),
+    });
+    assert_eq!(
+        store.story(StoryId::new(16)).unwrap().blocked_by(),
+        Some(StoryId::new(11)),
+        "a later BlockedBySet replaces the blocker reference"
+    );
+    store.apply(&StoryEvent::BlockedByCleared {
+        meta: meta("pm", 2026, "local"),
+        id: StoryId::new(16),
+    });
+    assert_eq!(
+        store.story(StoryId::new(16)).unwrap().blocked_by(),
+        None,
+        "BlockedByCleared drops the typed blocker reference"
+    );
+}
+
+#[test]
 fn labels_refreshed_assigns_the_ready_order_field_from_adapter_decoded_fields() {
     let store = BoardStore::new();
     store.apply(&StoryEvent::StoryCreated {
@@ -222,6 +269,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
             acceptor: Some(crate::product_management::story::Acceptor::Dev),
             parent_epic: Some(EpicId::new(7)),
             tags: Vec::new(),
+            blocked_by: None,
             ready_order: None,
         },
     });

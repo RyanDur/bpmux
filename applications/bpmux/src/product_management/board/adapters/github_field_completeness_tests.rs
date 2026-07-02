@@ -19,6 +19,7 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
             {"name": "iteration-#200"},
             {"name": "parent-iteration-#300.5"},
             {"name": "blocked"},
+            {"name": "blocked-by:41"},
             {"name": "awaiting owner"},
             {"name": "iteration-review-closed.designer"},
             {"name": "iteration-dev-ok.dev"},
@@ -51,6 +52,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         acceptor,
         parent_epic,
         tags,
+        blocked_by,
         ready_order,
     } = decoded;
 
@@ -76,6 +78,11 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         *tags,
         vec![crate::product_management::story::Tag::Blocked],
         "tags must decode from the blocked label into the stored domain field at ingest"
+    );
+    assert_eq!(
+        *blocked_by,
+        Some(StoryId::new(41)),
+        "blocked_by must decode from the blocked-by:N label into the stored domain field at ingest"
     );
     assert_eq!(
         *ready_order,

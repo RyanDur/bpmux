@@ -59,6 +59,25 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
                 story.raw_labels.retain(|l| !l.eq_ignore_ascii_case(label));
             }
         }
+        StoryEvent::BlockedBySet { id, blocker, .. } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            if let Some(story) = s.stories.get_mut(&id.value()) {
+                story
+                    .raw_labels
+                    .retain(|l| GhLabelCodec.decode_blocked_by(l).is_none());
+                story
+                    .raw_labels
+                    .push(GhLabelCodec.encode_blocked_by(blocker.value()));
+            }
+        }
+        StoryEvent::BlockedByCleared { id, .. } => {
+            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            if let Some(story) = s.stories.get_mut(&id.value()) {
+                story
+                    .raw_labels
+                    .retain(|l| GhLabelCodec.decode_blocked_by(l).is_none());
+            }
+        }
         StoryEvent::StoryClosed { id, .. } => {
             if let Some(story) = s.stories.get_mut(&id.value()) {
                 story.is_closed = true;

@@ -50,6 +50,8 @@ impl LabelCodec for GhLabelCodec {
 
 pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";
 pub const BLOCKED_LABEL: &str = "blocked";
+pub const DESK_CHECK_FAIL_LABEL: &str = "desk-check-fail";
+pub const BLOCKED_BY_PREFIX: &str = "blocked-by:";
 pub const ACCEPTOR_TEAM_LABEL: &str = "awaiting team";
 pub const ACCEPTOR_OWNER_LABEL: &str = "awaiting owner";
 pub const ACCEPTOR_DEV_LABEL: &str = "awaiting dev";

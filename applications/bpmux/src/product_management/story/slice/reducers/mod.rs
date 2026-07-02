@@ -14,10 +14,10 @@ use comments::{
 };
 use labels::{apply_labels_refreshed, apply_raw_labels};
 use lifecycle::{
-    apply_acceptor_assigned, apply_body_fetched, apply_body_updated, apply_parent_epic_set,
-    apply_parent_epic_unset, apply_state_transitioned, apply_story_closed, apply_story_created,
-    apply_story_refreshed, apply_story_reopened, apply_tag_set, apply_tag_unset,
-    apply_title_updated,
+    apply_acceptor_assigned, apply_blocked_by_cleared, apply_blocked_by_set, apply_body_fetched,
+    apply_body_updated, apply_parent_epic_set, apply_parent_epic_unset, apply_state_transitioned,
+    apply_story_closed, apply_story_created, apply_story_refreshed, apply_story_reopened,
+    apply_tag_set, apply_tag_unset, apply_title_updated,
 };
 
 pub(crate) type Stories = HashMap<StoryKey, Story>;
@@ -83,6 +83,8 @@ fn apply_event(w: &mut Stories, event: &StoryEvent) {
         StoryEvent::ParentEpicUnset { .. } => apply_parent_epic_unset(w, id),
         StoryEvent::TagSet { tag, .. } => apply_tag_set(w, id, *tag),
         StoryEvent::TagUnset { tag, .. } => apply_tag_unset(w, id, *tag),
+        StoryEvent::BlockedBySet { blocker, .. } => apply_blocked_by_set(w, id, *blocker),
+        StoryEvent::BlockedByCleared { .. } => apply_blocked_by_cleared(w, id),
         StoryEvent::TagAdded { .. }
         | StoryEvent::TagRemoved { .. }
         | StoryEvent::CurrentIterationDesignated { .. }

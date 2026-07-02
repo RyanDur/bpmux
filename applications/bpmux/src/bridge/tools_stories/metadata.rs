@@ -52,36 +52,50 @@ pub(crate) async fn handle_label_story(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::PeerId::local(),
         };
-        let tag = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .decode_tag(label);
+        let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+        let tag = codec.decode_tag(label);
+        let blocker = codec.decode_blocked_by(label);
         let (event, ok_msg) = match operation {
             "add" => (
-                match tag {
-                    Some(tag) => crate::product_management::board::StoryEvent::TagSet {
+                if let Some(tag) = tag {
+                    crate::product_management::board::StoryEvent::TagSet {
                         meta,
                         id: StoryId::new(id),
                         tag,
-                    },
-                    None => crate::product_management::board::StoryEvent::TagAdded {
+                    }
+                } else if let Some(blocker) = blocker {
+                    crate::product_management::board::StoryEvent::BlockedBySet {
+                        meta,
+                        id: StoryId::new(id),
+                        blocker: StoryId::new(blocker),
+                    }
+                } else {
+                    crate::product_management::board::StoryEvent::TagAdded {
                         meta,
                         id: StoryId::new(id),
                         label: label.to_string(),
-                    },
+                    }
                 },
                 format!("#{id} labeled '{label}'"),
             ),
             "remove" => (
-                match tag {
-                    Some(tag) => crate::product_management::board::StoryEvent::TagUnset {
+                if let Some(tag) = tag {
+                    crate::product_management::board::StoryEvent::TagUnset {
                         meta,
                         id: StoryId::new(id),
                         tag,
-                    },
-                    None => crate::product_management::board::StoryEvent::TagRemoved {
+                    }
+                } else if blocker.is_some() {
+                    crate::product_management::board::StoryEvent::BlockedByCleared {
+                        meta,
+                        id: StoryId::new(id),
+                    }
+                } else {
+                    crate::product_management::board::StoryEvent::TagRemoved {
                         meta,
                         id: StoryId::new(id),
                         label: label.to_string(),
-                    },
+                    }
                 },
                 format!("#{id} unlabeled '{label}'"),
             ),

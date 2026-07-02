@@ -1,12 +1,14 @@
 use crate::product_management::board::events::StoryEvent;
 
 mod acceptor;
+mod blocked;
 mod comments;
 mod grouping;
 mod labels;
 mod lifecycle;
 
 pub(in crate::integrations::github) use acceptor::push_acceptor_assigned;
+pub(in crate::integrations::github) use blocked::{push_blocked_by_cleared, push_blocked_by_set};
 pub(in crate::integrations::github) use comments::{
     push_free_comment_appended, push_gate_comment_appended,
 };

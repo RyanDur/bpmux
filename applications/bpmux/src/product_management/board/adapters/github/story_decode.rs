@@ -16,6 +16,7 @@ pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
         acceptor: super::label_fields::acceptor_from_labels(labels),
         parent_epic: super::label_fields::parent_epic_from_labels(labels).map(EpicId::new),
         tags: tags_from_labels(labels),
+        blocked_by: super::label_fields::blocked_by_from_labels(labels).map(StoryId::new),
         ready_order: super::label_fields::ready_order_from_labels(labels),
         raw_labels: labels.to_vec(),
     }
@@ -84,6 +85,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.acceptor = super::label_fields::acceptor_from_labels(&labels);
     story.parent_epic = super::label_fields::parent_epic_from_labels(&labels).map(EpicId::new);
     story.tags = tags_from_labels(&labels);
+    story.blocked_by = super::label_fields::blocked_by_from_labels(&labels).map(StoryId::new);
     story.ready_order = super::label_fields::ready_order_from_labels(&labels);
     story.raw_labels = labels;
     if let Some(body) = v.get("body").and_then(|x| x.as_str()) {

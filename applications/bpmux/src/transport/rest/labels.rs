@@ -53,33 +53,46 @@ pub async fn post_story_labels(
         let (event, descriptor) = match op {
             LabelOp::Add(label) => {
                 let descriptor = format!("TagAdded {label} on #{id}");
-                let event = match codec.decode_tag(&label) {
-                    Some(tag) => crate::product_management::board::StoryEvent::TagSet {
+                let event = if let Some(tag) = codec.decode_tag(&label) {
+                    crate::product_management::board::StoryEvent::TagSet {
                         meta,
                         id: story_id,
                         tag,
-                    },
-                    None => crate::product_management::board::StoryEvent::TagAdded {
+                    }
+                } else if let Some(blocker) = codec.decode_blocked_by(&label) {
+                    crate::product_management::board::StoryEvent::BlockedBySet {
+                        meta,
+                        id: story_id,
+                        blocker: crate::product_management::story::StoryId::new(blocker),
+                    }
+                } else {
+                    crate::product_management::board::StoryEvent::TagAdded {
                         meta,
                         id: story_id,
                         label,
-                    },
+                    }
                 };
                 (event, descriptor)
             }
             LabelOp::Remove(label) => {
                 let descriptor = format!("TagRemoved {label} on #{id}");
-                let event = match codec.decode_tag(&label) {
-                    Some(tag) => crate::product_management::board::StoryEvent::TagUnset {
+                let event = if let Some(tag) = codec.decode_tag(&label) {
+                    crate::product_management::board::StoryEvent::TagUnset {
                         meta,
                         id: story_id,
                         tag,
-                    },
-                    None => crate::product_management::board::StoryEvent::TagRemoved {
+                    }
+                } else if codec.decode_blocked_by(&label).is_some() {
+                    crate::product_management::board::StoryEvent::BlockedByCleared {
+                        meta,
+                        id: story_id,
+                    }
+                } else {
+                    crate::product_management::board::StoryEvent::TagRemoved {
                         meta,
                         id: story_id,
                         label,
-                    },
+                    }
                 };
                 (event, descriptor)
             }

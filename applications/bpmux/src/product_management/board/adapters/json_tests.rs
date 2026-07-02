@@ -24,6 +24,7 @@ fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> St
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
+        blocked_by: None,
         ready_order: None,
     };
     s.raw_labels

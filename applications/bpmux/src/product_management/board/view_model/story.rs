@@ -40,16 +40,14 @@ impl StoryView {
     }
 }
 
-fn is_renderer_badge_label(raw: &str) -> bool {
-    let lower = raw.to_ascii_lowercase();
-    lower == "desk-check-fail" || lower.starts_with("blocked-by:")
-}
-
 fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     let mut labels: Vec<String> = Vec::new();
     labels.push(story.story_type().as_label().to_string());
     for tag in story.tags() {
         labels.push(GhLabelCodec.encode_tag(*tag).to_string());
+    }
+    if let Some(blocker) = story.blocked_by() {
+        labels.push(GhLabelCodec.encode_blocked_by(blocker.value()));
     }
     if let Some(epic) = story.parent_epic() {
         labels.push(codec.encode_parent_epic(epic.value()));
@@ -59,9 +57,6 @@ fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     }
     for raw in story.raw_labels() {
         if codec.is_iteration_label_loose(raw) && !labels.iter().any(|l| l == raw) {
-            labels.push(raw.clone());
-        }
-        if is_renderer_badge_label(raw) && !labels.iter().any(|l| l == raw) {
             labels.push(raw.clone());
         }
     }

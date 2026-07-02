@@ -77,6 +77,13 @@ pub fn acceptor_from_labels(
     })
 }
 
+pub fn blocked_by_from_labels(labels: &[String]) -> Option<u64> {
+    labels.iter().find_map(|l| {
+        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            .decode_blocked_by(l)
+    })
+}
+
 pub fn horizon_from_labels(labels: &[String]) -> Option<crate::product_management::story::Horizon> {
     labels.iter().find_map(|l| {
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec.decode_horizon(l)
