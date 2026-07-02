@@ -1,20 +1,18 @@
 use std::sync::Arc;
 
-use crate::product_management::board::{BoardStore, RefreshDriver};
-use crate::product_management::story::StoryId;
+use crate::product_management::board::RefreshDriver;
 
 pub(in crate::bridge) async fn handle_view_comments(
     args: &serde_json::Map<String, serde_json::Value>,
-    board: Option<&Arc<BoardStore>>,
-    _refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
-    let b = board.ok_or("view_comments requires board (canonical-store)")?;
-    let story = b
-        .story(StoryId::new(id))
+    let r = refresh.ok_or("view_comments requires refresh (canonical-store)")?;
+    let story = r
+        .story(id)
         .ok_or_else(|| format!("story #{id} not found in board"))?;
     let hydrated = story.free_comments.is_some();
     let shaped: Vec<serde_json::Value> = story

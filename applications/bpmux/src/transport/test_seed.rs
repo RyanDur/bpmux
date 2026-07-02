@@ -79,7 +79,7 @@ pub async fn post_reset_stories(
             "reset_stories: tracker not configured (test-refresh handle absent)".to_string(),
         );
     };
-    refresh.store().clear();
+    refresh.clear_stories();
     let invalidate_delta = crate::message::Message {
         from: "bpmux".to_string(),
         text: String::new(),

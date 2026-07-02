@@ -113,7 +113,12 @@ async fn build_refresh(
         })
         .map(decode_outcome_from_story)
         .collect();
-    orch.bind_select(Select::seeded(seeded, iterations_from(&stories), vec![]));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        seeded,
+        iterations_from(&stories),
+        vec![],
+    ));
     (orch, adapter)
 }
 

@@ -120,7 +120,12 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_iteration_from_story)
         .collect();
-    orch.bind_select(Select::seeded(seeded, iterations, vec![]));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        seeded,
+        iterations,
+        vec![],
+    ));
     orch
 }
 
@@ -129,7 +134,12 @@ async fn roadmap_numbers_for(outcomes: Vec<Outcome>) -> Vec<u64> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
-    orch.bind_select(Select::seeded(outcomes, vec![], vec![]));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        outcomes,
+        vec![],
+        vec![],
+    ));
     band_numbers(&orch)
 }
 

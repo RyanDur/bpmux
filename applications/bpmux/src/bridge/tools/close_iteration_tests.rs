@@ -81,7 +81,12 @@ mod canonical_via_gh_1300 {
             })
             .map(decode_iteration_from_story)
             .collect();
-        orch.bind_select(Select::seeded(vec![], iterations, vec![]));
+        orch.bind_select(Select::seeded_for_board(
+            &orch.store(),
+            vec![],
+            iterations,
+            vec![],
+        ));
         orch
     }
 

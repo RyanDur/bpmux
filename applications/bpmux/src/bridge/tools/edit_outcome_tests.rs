@@ -74,7 +74,12 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_outcome_from_story)
         .collect();
-    orch.bind_select(Select::seeded(seeded, vec![], vec![]));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        seeded,
+        vec![],
+        vec![],
+    ));
     orch
 }
 

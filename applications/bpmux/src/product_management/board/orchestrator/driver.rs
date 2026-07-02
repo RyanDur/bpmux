@@ -75,6 +75,12 @@ pub trait RefreshDriver: Send + Sync {
     fn store_is_empty(&self) -> bool {
         self.store().is_empty()
     }
+    fn remove_story(&self, id: u64) -> Option<Story> {
+        self.store().remove(StoryId::new(id))
+    }
+    fn clear_stories(&self) {
+        self.store().clear();
+    }
     fn store(&self) -> Arc<BoardStore>;
     fn update_body(&self, id: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 

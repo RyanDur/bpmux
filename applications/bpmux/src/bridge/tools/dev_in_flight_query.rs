@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::dev_in_flight::*;
-use crate::product_management::board::BoardStore;
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::product_management::story::BoardState;
 use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
@@ -19,6 +20,13 @@ fn seed(state: BoardState, number: u64) -> Story {
     )
 }
 
+fn driver(store: Arc<BoardStore>) -> Arc<dyn RefreshDriver> {
+    Arc::new(SyncOrchestrator::new(
+        store,
+        Arc::new(InMemorySourceAdapter::new()),
+    ))
+}
+
 #[tokio::test]
 async fn returns_false_when_no_story_in_flight() {
     let store = Arc::new(BoardStore::new());
@@ -27,7 +35,7 @@ async fn returns_false_when_no_story_in_flight() {
         seed(BoardState::Delivered, 2),
         seed(BoardState::Accepted, 3),
     ]);
-    let result = handle_dev_in_flight(&store).await.unwrap();
+    let result = handle_dev_in_flight(&driver(store.clone())).await.unwrap();
     assert!(result.contains("\"dev_in_flight\":false"));
 }
 
@@ -39,7 +47,7 @@ async fn returns_true_when_a_story_is_in_progress() {
         seed(BoardState::InProgress(Stage::Dev), 2),
         seed(BoardState::Delivered, 3),
     ]);
-    let result = handle_dev_in_flight(&store).await.unwrap();
+    let result = handle_dev_in_flight(&driver(store.clone())).await.unwrap();
     assert!(result.contains("\"dev_in_flight\":true"));
 }
 
@@ -47,7 +55,7 @@ async fn returns_true_when_a_story_is_in_progress() {
 async fn response_contains_no_story_identifiers() {
     let store = Arc::new(BoardStore::new());
     store.seed_all(vec![seed(BoardState::InProgress(Stage::Dev), 1)]);
-    let result = handle_dev_in_flight(&store).await.unwrap();
+    let result = handle_dev_in_flight(&driver(store.clone())).await.unwrap();
     assert!(!result.contains("\"id\""));
     assert!(!result.contains("title"));
 }
@@ -55,6 +63,6 @@ async fn response_contains_no_story_identifiers() {
 #[tokio::test]
 async fn returns_false_on_empty_store() {
     let store = Arc::new(BoardStore::new());
-    let result = handle_dev_in_flight(&store).await.unwrap();
+    let result = handle_dev_in_flight(&driver(store.clone())).await.unwrap();
     assert!(result.contains("\"dev_in_flight\":false"));
 }

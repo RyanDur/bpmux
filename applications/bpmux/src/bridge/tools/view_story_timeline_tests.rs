@@ -3,13 +3,13 @@
 use super::view_story_timeline::handle_view_story_timeline;
 
 #[tokio::test]
-async fn handler_requires_board_after_canonical_only_refactor() {
+async fn handler_requires_refresh_as_the_canonical_read_handle() {
     let args = serde_json::json!({"id": 418});
-    let result = handle_view_story_timeline(args.as_object().unwrap(), None, None).await;
-    let err = result.expect_err("missing-board path errors");
+    let result = handle_view_story_timeline(args.as_object().unwrap(), None).await;
+    let err = result.expect_err("missing-refresh path errors");
     assert!(
-        err.contains("requires board"),
-        "post-#1165 slice 4: timeline requires canonical store; got: {err}"
+        err.contains("requires refresh"),
+        "the RefreshDriver is the single canonical read handle post-dissolution-S2; got: {err}"
     );
 }
 
@@ -30,9 +30,7 @@ async fn handler_errors_when_story_not_in_board() {
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 9999});
-    let result =
-        handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
-            .await;
+    let result = handle_view_story_timeline(args.as_object().unwrap(), Some(&orchestrator)).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found in board"));
 }
@@ -70,10 +68,9 @@ async fn handler_reads_gates_from_canonical_store() {
     ));
 
     let args = serde_json::json!({"id": 418});
-    let result =
-        handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
-            .await
-            .expect("canonical-path handler success");
+    let result = handle_view_story_timeline(args.as_object().unwrap(), Some(&orchestrator))
+        .await
+        .expect("canonical-path handler success");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     assert_eq!(parsed["gate_comments_hydrated"], true);
     let events = parsed["events"].as_array().expect("events array");
@@ -112,10 +109,9 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
     ));
 
     let args = serde_json::json!({"id": 419});
-    let result =
-        handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
-            .await
-            .expect("canonical-path handler succeeds without live GH");
+    let result = handle_view_story_timeline(args.as_object().unwrap(), Some(&orchestrator))
+        .await
+        .expect("canonical-path handler succeeds without live GH");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     assert_eq!(parsed["gate_comments_hydrated"], false);
     let events = parsed["events"].as_array().expect("events array");
@@ -244,10 +240,9 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     ));
 
     let args = serde_json::json!({"id": 1524});
-    let result =
-        handle_view_story_timeline(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
-            .await
-            .expect("success");
+    let result = handle_view_story_timeline(args.as_object().unwrap(), Some(&orchestrator))
+        .await
+        .expect("success");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     assert_eq!(
         parsed["gate_comments_hydrated"], true,

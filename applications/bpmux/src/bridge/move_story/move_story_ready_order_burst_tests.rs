@@ -58,6 +58,7 @@ async fn build_orchestrator(stories: Vec<Story>) -> (Arc<dyn RefreshDriver>, See
         .map(decode_iteration_from_story)
         .collect();
     let seed = SeededStore::new(vec![], iterations, vec![]);
+    seed.mirror_board(&orch.store());
     orch.bind_select(seed.select());
     (orch, seed)
 }

@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use crate::product_management::board::{BoardStore, RefreshDriver};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::story::{
-    BoardState, Gate, GateComment, Stage, StoryId, most_recent_backward_transition,
-    replay_transitions,
+    BoardState, Gate, GateComment, Stage, most_recent_backward_transition, replay_transitions,
 };
 
 use super::get_story_view::{
@@ -58,36 +57,28 @@ fn latest_reject_json(gates: &[GateComment]) -> Option<serde_json::Value> {
 
 pub(in crate::bridge) async fn handle_get_story(
     args: &serde_json::Map<String, serde_json::Value>,
-    board: Option<&Arc<BoardStore>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
-    let b = board.ok_or("get_story requires board (canonical-store)")?;
-    let story_id = StoryId::new(id);
-    if let Some(r) = refresh
-        && let Some(iteration) =
-            r.iteration(crate::product_management::iteration::IterationId::new(id))
+    let r = refresh.ok_or("get_story requires refresh (canonical-store)")?;
+    if let Some(iteration) = r.iteration(crate::product_management::iteration::IterationId::new(id))
     {
-        return render_iteration_detail(b, refresh, &iteration).await;
+        return render_iteration_detail(r, &iteration).await;
     }
-    if let Some(r) = refresh
-        && let Some(epic) = r.epic(crate::product_management::epic::EpicId::new(id))
-    {
+    if let Some(epic) = r.epic(crate::product_management::epic::EpicId::new(id)) {
         return render_epic_detail(refresh, &epic).await;
     }
-    let mut story = b
-        .story(story_id)
+    let mut story = r
+        .story(id)
         .ok_or_else(|| format!("story #{id} not found in board"))?;
-    if story.body.is_none()
-        && let Some(r) = refresh
-    {
+    if story.body.is_none() {
         match r.fetch_body(id).await {
             Ok(_) => {
-                story = b
-                    .story(story_id)
+                story = r
+                    .story(id)
                     .ok_or_else(|| format!("story #{id} not found in board after fetch"))?;
             }
             Err(e) => {
@@ -102,14 +93,11 @@ pub(in crate::bridge) async fn handle_get_story(
         BoardState::Ready | BoardState::InProgress(Stage::Dev)
     ) || story.is_closed
         || matches!(story.state, BoardState::Accepted);
-    if needs_gates
-        && story.gate_comments.is_none()
-        && let Some(r) = refresh
-    {
+    if needs_gates && story.gate_comments.is_none() {
         match r.fetch_gate_comments(id).await {
             Ok(_) => {
-                story = b
-                    .story(story_id)
+                story = r
+                    .story(id)
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {

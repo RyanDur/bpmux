@@ -21,7 +21,12 @@ fn bind_epics(
         .filter(|s| is_epic_story(s))
         .map(decode_epic_from_story)
         .collect();
-    orch.bind_select(Select::seeded(vec![], vec![], epics));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        vec![],
+        vec![],
+        epics,
+    ));
 }
 
 #[tokio::test]

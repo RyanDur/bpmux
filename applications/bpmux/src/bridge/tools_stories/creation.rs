@@ -84,7 +84,7 @@ pub(crate) async fn handle_create_story(
                 },
             ]),
         ));
-        r.store().remove(StoryId::new(id));
+        r.remove_story(id);
     }
     Ok(match parent_epic {
         Some(epic) => {

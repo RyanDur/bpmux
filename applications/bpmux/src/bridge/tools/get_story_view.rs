@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::product_management::board::{BoardStore, RefreshDriver};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::iteration::section::{
     derive_iteration_member_section, substitute_member_stories_section,
 };
@@ -9,16 +9,12 @@ pub(super) const NOT_HYDRATED_PLACEHOLDER: &str =
     "(body not yet hydrated; no refresh driver available to live-fetch.)";
 
 pub(super) async fn render_iteration_detail(
-    b: &Arc<BoardStore>,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    r: &Arc<dyn RefreshDriver>,
     iteration: &crate::product_management::iteration::Iteration,
 ) -> Result<String, String> {
     let id = iteration.id.value();
     let mut body = iteration.body.clone();
-    if body.is_none()
-        && let Some(r) = refresh
-        && r.fetch_body(id).await.is_ok()
-    {
+    if body.is_none() && r.fetch_body(id).await.is_ok() {
         body = r
             .iteration(crate::product_management::iteration::IterationId::new(id))
             .and_then(|it| it.body);
@@ -30,9 +26,9 @@ pub(super) async fn render_iteration_detail(
             .stories
             .iter()
             .filter_map(|n| {
-                b.story(*n)
+                r.story(n.value())
                     .filter(|s| !s.is_closed)
-                    .map(|s| ((*n).value(), s.title.clone()))
+                    .map(|s| (n.value(), s.title.clone()))
             })
             .collect();
         let members_refs: Vec<(u64, &str)> =

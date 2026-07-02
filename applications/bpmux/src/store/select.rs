@@ -37,6 +37,9 @@ impl SeededStore {
         let handle = Self {
             store: kernel::Store::new(AppState::default(), Box::new(super::app::app_reduce)),
         };
+        handle.store.add_middleware(std::sync::Arc::new(
+            super::app::StoryLabelAppMiddleware::new(),
+        ));
         if !outcomes.is_empty() {
             handle.dispatch(AppAction::Outcome(
                 crate::product_management::outcome::OutcomeAction::Upserted(outcomes),
@@ -59,6 +62,18 @@ impl SeededStore {
         Select::new(std::sync::Arc::downgrade(&self.store))
     }
 
+    pub(crate) fn mirror_board(&self, board: &crate::product_management::board::BoardStore) {
+        let weak = std::sync::Arc::downgrade(&self.store);
+        board.bind_central_mirror(move |action| {
+            if let Some(store) = weak.upgrade() {
+                store.dispatch(AppAction::Story(action));
+            }
+        });
+        self.dispatch(AppAction::Story(
+            crate::product_management::story::slice::StoryAction::Seeded(board.all_stories()),
+        ));
+    }
+
     pub(crate) fn dispatch(&self, action: AppAction) {
         self.store.dispatch(action);
     }
@@ -66,12 +81,14 @@ impl SeededStore {
 
 #[cfg(test)]
 impl Select {
-    pub(crate) fn seeded(
+    pub(crate) fn seeded_for_board(
+        board: &crate::product_management::board::BoardStore,
         outcomes: Vec<crate::product_management::outcome::Outcome>,
         iterations: Vec<crate::product_management::iteration::Iteration>,
         epics: Vec<crate::product_management::epic::Epic>,
     ) -> Self {
         let handle = SeededStore::new(outcomes, iterations, epics);
+        handle.mirror_board(board);
         let select = handle.select();
         std::mem::forget(handle);
         select

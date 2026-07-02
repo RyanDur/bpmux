@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use crate::product_management::board::BoardStore;
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::{BoardState, Story};
 
 pub(in crate::bridge) async fn handle_list_ready(
-    store: &Arc<BoardStore>,
+    refresh: &Arc<dyn RefreshDriver>,
     iterations: &[Iteration],
 ) -> Result<String, String> {
     let current_order = iterations
@@ -13,7 +13,11 @@ pub(in crate::bridge) async fn handle_list_ready(
         .find(|iteration| iteration.is_current)
         .map(|iteration| iteration.stories.clone())
         .unwrap_or_default();
-    let ready = store.stories_in_state(BoardState::Ready);
+    let ready: Vec<Story> = refresh
+        .all_stories()
+        .into_iter()
+        .filter(|story| story.state() == BoardState::Ready)
+        .collect();
     let mut queue: Vec<&Story> = current_order
         .iter()
         .filter_map(|id| ready.iter().find(|s| s.id == *id))

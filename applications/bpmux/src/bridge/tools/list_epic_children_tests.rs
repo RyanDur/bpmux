@@ -55,7 +55,12 @@ async fn store_with(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         .filter(|s| is_epic_story(s))
         .map(decode_epic_from_story)
         .collect();
-    orch.bind_select(Select::seeded(vec![], vec![], epics));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        vec![],
+        vec![],
+        epics,
+    ));
     orch
 }
 

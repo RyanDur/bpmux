@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::product_management::board::{BoardStore, RefreshDriver};
-use crate::product_management::story::{Gate, GateComment, Story, StoryId};
+use crate::product_management::board::RefreshDriver;
+use crate::product_management::story::{Gate, GateComment, Story};
 
 pub fn gate_as_str(gate: Gate) -> &'static str {
     match gate {
@@ -41,24 +41,21 @@ pub fn build_timeline_from_board(story: &Story, gates: &[GateComment]) -> Vec<se
 
 pub(in crate::bridge) async fn handle_view_story_timeline(
     args: &serde_json::Map<String, serde_json::Value>,
-    board: Option<&Arc<BoardStore>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
-    let b = board.ok_or("view_story_timeline requires board (canonical-store)")?;
-    let mut story = b
-        .story(StoryId::new(id))
+    let r = refresh.ok_or("view_story_timeline requires refresh (canonical-store)")?;
+    let mut story = r
+        .story(id)
         .ok_or_else(|| format!("story #{id} not found in board"))?;
-    if story.gate_comments.is_none()
-        && let Some(r) = refresh
-    {
+    if story.gate_comments.is_none() {
         match r.fetch_gate_comments(id).await {
             Ok(_) => {
-                story = b
-                    .story(StoryId::new(id))
+                story = r
+                    .story(id)
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {

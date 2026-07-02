@@ -124,11 +124,19 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     }
 
     fn story(&self, number: u64) -> Option<Story> {
-        self.store.story(StoryId::new(number))
+        self.read_story(StoryId::new(number))
     }
 
     fn all_stories(&self) -> Vec<Story> {
-        self.store.all_stories()
+        self.read_all_stories()
+    }
+
+    fn backing_story(&self, id: u64) -> Option<Story> {
+        self.read_story(StoryId::new(id))
+    }
+
+    fn store_is_empty(&self) -> bool {
+        self.read_store_is_empty()
     }
 
     fn store(&self) -> Arc<BoardStore> {

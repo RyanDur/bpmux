@@ -31,7 +31,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
     ));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8001));
-    let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
+    let result = handle_get_story(&args, Some(&refresh)).await;
     assert!(
         result.is_ok(),
         "get_story succeeds without live GH-fetch even when body is None: {result:?}"
@@ -62,7 +62,7 @@ async fn get_story_serves_cached_body_from_canonical_store() {
     ));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8002));
-    let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
+    let result = handle_get_story(&args, Some(&refresh)).await;
     let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
     assert_eq!(json["body_hydrated"], true);
     assert!(
@@ -87,7 +87,7 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
     ));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8003));
-    let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
+    let result = handle_get_story(&args, Some(&refresh)).await;
     assert!(
         result.is_ok(),
         "get_story does not invoke adapter.fetch_body even though body is missing + adapter would fail: {result:?}"
@@ -310,7 +310,7 @@ async fn get_story_returns_gate_comments_hydrated_flag_in_response() {
     ));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8004));
-    let result = handle_get_story(&args, Some(&store), Some(&refresh)).await;
+    let result = handle_get_story(&args, Some(&refresh)).await;
     let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
     assert_eq!(
         json["gate_comments_hydrated"], true,

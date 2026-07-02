@@ -40,7 +40,12 @@ async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_iteration_from_story)
         .collect();
-    orch.bind_select(Select::seeded(seeded, iterations, vec![]));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        seeded,
+        iterations,
+        vec![],
+    ));
     orch
 }
 

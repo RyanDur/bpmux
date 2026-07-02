@@ -108,7 +108,12 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     adapter.seed_stories(stories.clone());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
-    orch.bind_select(Select::seeded(outcomes_from(&stories), vec![], vec![]));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        outcomes_from(&stories),
+        vec![],
+        vec![],
+    ));
     orch
 }
 
@@ -117,7 +122,12 @@ async fn refresh_with_outcomes(outcomes: Vec<Outcome>) -> Arc<dyn RefreshDriver>
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
     orch.refresh_all().await.unwrap();
-    orch.bind_select(Select::seeded(outcomes, vec![], vec![]));
+    orch.bind_select(Select::seeded_for_board(
+        &orch.store(),
+        outcomes,
+        vec![],
+        vec![],
+    ));
     orch
 }
 
