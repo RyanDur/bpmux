@@ -1,0 +1,128 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
+use std::sync::Arc;
+
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::events::EventMeta;
+use crate::product_management::board::peer::PeerId;
+use crate::product_management::board::{RefreshDriver, StoryEvent, SyncOrchestrator};
+use crate::product_management::story::slice::StoryAction;
+use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
+use crate::store::{AppAction, SeededStore};
+use chrono::{TimeZone, Utc};
+
+fn meta() -> EventMeta {
+    EventMeta {
+        actor: "pm".to_string(),
+        ts: Utc.with_ymd_and_hms(2026, 7, 3, 0, 0, 0).unwrap(),
+        peer_id: PeerId::named("local"),
+    }
+}
+
+fn bound_orchestrator() -> (SeededStore, Arc<dyn RefreshDriver>) {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let handle = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    handle.bind_refresh(&orch);
+    (handle, orch)
+}
+
+fn created(id: u64, title: &str) -> StoryEvent {
+    StoryEvent::StoryCreated {
+        meta: meta(),
+        id: StoryId::new(id),
+        title: title.to_string(),
+        body: "b".to_string(),
+        initial_state: BoardState::Ready,
+        story_type: StoryKind::Feature,
+    }
+}
+
+fn minimal_story(id: u64, title: &str) -> Story {
+    Story::new_minimal(
+        StoryId::new(id),
+        title.to_string(),
+        BoardState::Icebox,
+        Utc.with_ymd_and_hms(2026, 7, 3, 0, 0, 0).unwrap(),
+        "pm".to_string(),
+    )
+}
+
+#[test]
+fn an_orchestrator_write_is_synchronously_visible_through_its_own_reads() {
+    let (_handle, orch) = bound_orchestrator();
+    orch.mutate_sync(created(42, "written")).unwrap();
+    let read_back = orch.story(42).expect(
+        "the story is readable the moment mutate_sync returns \
+         (synchronous dispatch — read-your-write holds)",
+    );
+    assert_eq!(read_back.title, "written");
+    assert_eq!(read_back.state, BoardState::Ready);
+}
+
+#[test]
+fn the_bound_store_runs_the_label_middleware_so_tag_churn_projects_into_raw_labels() {
+    let (_handle, orch) = bound_orchestrator();
+    orch.mutate_sync(created(7, "labeled")).unwrap();
+    orch.mutate_sync(StoryEvent::TagAdded {
+        meta: meta(),
+        id: StoryId::new(7),
+        label: "some-generic-label".to_string(),
+    })
+    .unwrap();
+    let story = orch.story(7).unwrap();
+    assert_eq!(
+        story.raw_labels,
+        vec!["some-generic-label".to_string()],
+        "the reducer ignores TagAdded — only StoryLabelAppMiddleware projects it into \
+         raw labels, so this landing proves the central store runs the middleware"
+    );
+}
+
+#[test]
+fn seed_remove_and_clear_act_on_the_bound_central_store() {
+    let (handle, orch) = bound_orchestrator();
+    assert!(
+        orch.store_is_empty(),
+        "a freshly bound central store starts empty"
+    );
+    let seeded = minimal_story(9, "seeded");
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seeded.clone()])));
+    assert_eq!(orch.story(9), Some(seeded.clone()));
+    assert!(
+        orch.remove_story(404).is_none(),
+        "removing an absent story yields nothing"
+    );
+    let removed = orch.remove_story(9);
+    assert_eq!(
+        removed,
+        Some(seeded),
+        "remove_story returns the story it removed"
+    );
+    assert!(
+        orch.story(9).is_none(),
+        "the removed story is gone from reads"
+    );
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![minimal_story(
+        10,
+        "for-clear",
+    )])));
+    orch.clear_stories();
+    assert!(
+        orch.store_is_empty(),
+        "clear_stories empties the bound store"
+    );
+}
+
+#[test]
+fn an_unbound_orchestrator_drops_writes_and_reads_come_back_empty() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    orch.mutate_sync(created(1, "dropped")).unwrap();
+    assert!(
+        orch.story(1).is_none(),
+        "an unbound write is dropped — reads stay empty instead of panicking"
+    );
+    assert!(orch.all_stories().is_empty());
+    assert!(orch.store_is_empty());
+}

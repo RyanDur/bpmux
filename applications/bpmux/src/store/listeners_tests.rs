@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-use super::app::{self, AppAction, AppState, OwnerParkListener, RosterBroadcast};
+use super::app::{self, AppAction, AppState, RosterBroadcast};
 use super::{
     AggregatedReaction, CiSessionBroadcaster, Presence, ReactionsBroadcastListener,
     ReactionsSessionBroadcaster, RosterBroadcastListener, RosterMember, RosterRole,
@@ -13,6 +13,7 @@ use super::{
 };
 use crate::ci::CiState;
 use crate::message::{Message, MessageType, StateDeltaPayload};
+use crate::product_management::owner_park::OwnerParkListener;
 use crate::product_management::story::slice::StoryAction;
 use crate::session::Session;
 use crate::store::CiBroadcastListener;

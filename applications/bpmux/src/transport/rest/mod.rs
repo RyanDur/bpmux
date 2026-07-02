@@ -2,6 +2,7 @@ mod board;
 mod board_acceptance;
 mod board_read;
 mod board_story_detail;
+pub mod broadcast_listeners;
 mod capture;
 mod ci;
 mod classifier;
