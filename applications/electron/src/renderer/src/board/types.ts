@@ -81,7 +81,6 @@ export interface Story {
   created_at: string
   body: string
   parent_epic?: number | null
-  iteration_membership?: IterationMembership | null
   iteration_order?: number | null
   is_current?: boolean
   acceptor?: Acceptor | null

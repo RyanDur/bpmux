@@ -43,13 +43,10 @@ describe('#1578 deriveNowView — narrowed NOW render-input', () => {
     expect(view.members[0].membership).toEqual({ iteration_id: 200, position: 1 })
   })
 
-  test('a story missing iteration_membership is excluded, never a silent member', () => {
+  test('a story not in the iteration container is excluded, never a silent member', () => {
     const iter = iteration({ id: 200, is_current: true })
     const orphan = story({ id: 9002 })
-    const otherIter = story({
-      id: 9003,
-      iteration_membership: { iteration_id: 999, position: 100 }
-    })
+    const otherIter = story({ id: 9003 })
     const view = deriveNowView([iter], [orphan, otherIter])
     if (view.kind !== 'current') throw new Error('expected current variant')
     expect(view.members).toEqual([])

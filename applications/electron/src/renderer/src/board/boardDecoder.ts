@@ -1,9 +1,5 @@
 import * as D from 'schemawax'
 
-const iterationMembership = D.object({
-  required: { iteration_id: D.number, position: D.number }
-})
-
 const outcomeMembership = D.object({
   required: { outcome_id: D.number, position: D.number }
 })
@@ -51,7 +47,6 @@ export const story = D.object({
   optional: {
     gh_state: D.literalUnion('open', 'closed'),
     parent_epic: D.nullable(D.number),
-    iteration_membership: D.nullable(iterationMembership),
     iteration_order: D.nullable(D.number),
     is_current: D.boolean,
     acceptor: D.nullable(acceptor),

@@ -11,7 +11,6 @@ const validStory = {
   created_at: '2026-06-17T00:00:00Z',
   body: 'b',
   parent_epic: 100,
-  iteration_membership: { iteration_id: 10, position: 1 },
   iteration_order: 2,
   is_current: true,
   acceptor: 'owner',
@@ -29,7 +28,6 @@ describe('story decoder', () => {
     if (result.type === 'ok') {
       expect(result.data.id).toBe(2)
       expect(result.data.readiness?.review_closed).toBe(false)
-      expect(result.data.iteration_membership?.iteration_id).toBe(10)
       expect(result.data.rework_comment).toBeNull()
     }
   })

@@ -40,13 +40,11 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     ])
     const m1 = featureStory({
       id: 9001,
-      state: 'ready',
-      iteration_membership: { iteration_id: 1552, position: 100 }
+      state: 'ready'
     })
     const m2 = featureStory({
       id: 9002,
-      state: 'in-progress',
-      iteration_membership: { iteration_id: 1552, position: 200 }
+      state: 'in-progress'
     })
     const nonMember = featureStory({ id: 9999, state: 'ready' })
     render(<BoardTabs {...buildProps([m1, m2, nonMember])} />)
@@ -72,8 +70,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     ])
     const inFlightChild = featureStory({
       id: 9101,
-      state: 'in-progress',
-      iteration_membership: { iteration_id: 1500, position: 100 }
+      state: 'in-progress'
     })
     render(<BoardTabs {...buildProps([inFlightChild])} />)
     expect(boardTabs.panelHasStory('now', 9101)).toBe(true)
@@ -92,13 +89,11 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     const epicOut = epicStory({ id: 8002, title: 'Epic Out' })
     const memberOfIter = featureStory({
       id: 9101,
-      parent_epic: 8001,
-      iteration_membership: { iteration_id: 1500, position: 100 }
+      parent_epic: 8001
     })
     const memberOfOther = featureStory({
       id: 9102,
-      parent_epic: 8002,
-      iteration_membership: { iteration_id: 9999, position: 100 }
+      parent_epic: 8002
     })
     render(<BoardTabs {...buildProps([epicIn, epicOut, memberOfIter, memberOfOther])} />)
     expect(boardTabs.epicTitleCount('Epic In')).toBeGreaterThan(0)
@@ -151,8 +146,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     ])
     const member = featureStory({
       id: 9101,
-      state: 'ready',
-      iteration_membership: { iteration_id: 1552, position: 100 }
+      state: 'ready'
     })
     render(<BoardTabs {...buildProps([member])} />)
     expect(boardTabs.panelHasStory('now', 9101)).toBe(true)

@@ -3,7 +3,6 @@
 use super::json::story_to_board_json;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
 
 fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> Story {
@@ -47,7 +46,6 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
         "gh_state",
         "labels",
         "parent_epic",
-        "iteration_membership",
         "acceptor",
         "assignees",
         "created_at",
@@ -59,31 +57,11 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
             "wire-format must include `{required}` (drift catches #451-class regression); keys present: {keys:?}"
         );
     }
-    assert_eq!(obj.len(), 12, "no spurious keys; keys present: {keys:?}");
-}
-
-#[test]
-fn story_to_board_json_iteration_membership_null_when_none_1492() {
-    let s = sample_story(BoardState::Icebox, StoryKind::Feature, false);
-    let json = story_to_board_json(&GhLabelCodec, &s);
+    assert_eq!(obj.len(), 11, "no spurious keys; keys present: {keys:?}");
     assert!(
-        json["iteration_membership"].is_null(),
-        "iteration_membership emits JSON null when Story.iteration_membership is None; got: {}",
-        json["iteration_membership"]
+        !keys.iter().any(|k| k.as_str() == "iteration_membership"),
+        "iteration_membership is gone from the wire — membership is the iteration container's concern (iteration.stories); keys present: {keys:?}"
     );
-}
-
-#[test]
-fn story_to_board_json_iteration_membership_object_when_set_1492() {
-    let mut s = sample_story(BoardState::Icebox, StoryKind::Feature, false);
-    s.raw_labels.push("parent-iteration-#1464.100".to_string());
-    s.iteration_membership = Some((IterationId::new(1464), 100));
-    let json = story_to_board_json(&GhLabelCodec, &s);
-    let membership = json["iteration_membership"]
-        .as_object()
-        .expect("iteration_membership object when Some");
-    assert_eq!(membership["iteration_id"].as_u64(), Some(1464));
-    assert_eq!(membership["position"].as_u64(), Some(100));
 }
 
 #[test]

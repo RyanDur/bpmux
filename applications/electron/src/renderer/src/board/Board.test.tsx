@@ -31,8 +31,7 @@ const MEMBERS: Story[] = [
     id: 101,
     title: 'a ready member',
     state: 'ready',
-    labels: ['Feature'],
-    iteration_membership: { iteration_id: 100, position: 100 }
+    labels: ['Feature']
   })
 ]
 

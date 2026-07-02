@@ -90,10 +90,7 @@ describe('#1453 isMemberOfIteration', () => {
 
   test('different iteration does not match', () => {
     const iter = iteration({ id: 1464, title: 'Iteration Reticulum' })
-    const memberOfOther = story({
-      id: 9701,
-      iteration_membership: { iteration_id: 1491, position: 100 }
-    })
+    const memberOfOther = story({ id: 9701 })
     expect(isMemberOfIteration(memberOfOther, iter)).toBe(false)
   })
 

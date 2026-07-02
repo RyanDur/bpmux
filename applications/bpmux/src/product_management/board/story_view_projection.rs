@@ -2,7 +2,6 @@
 
 use super::view_model::*;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 
@@ -35,19 +34,6 @@ fn project_marks_a_closed_story_gh_state_closed() {
 }
 
 #[test]
-fn project_translates_iteration_membership_into_a_typed_subview() {
-    let mut s = story(10, "member", BoardState::Ready);
-    s.raw_labels.push("parent-iteration-#200.150".to_string());
-    s.iteration_membership = Some((IterationId::new(200), 150));
-    let view = StoryView::project(&GhLabelCodec, &s);
-    let m = view
-        .iteration_membership
-        .expect("iteration membership present");
-    assert_eq!(m.iteration_id, IterationId::new(200));
-    assert_eq!(m.position, 150);
-}
-
-#[test]
 fn project_leads_the_wire_labels_with_the_derived_type_label() {
     let s = story(20, "[Bug] broken thing", BoardState::Icebox);
     let view = StoryView::project(&GhLabelCodec, &s);
@@ -68,8 +54,8 @@ fn story_view_serializes_to_the_renderer_wire_shape() {
     assert_eq!(json["gh_state"], "open");
     assert!(json.get("labels").is_some(), "labels key present");
     assert!(
-        json.get("iteration_membership").is_some(),
-        "iteration_membership key present (null when absent)"
+        json.get("iteration_membership").is_none(),
+        "iteration_membership is gone from the wire — membership is the iteration container's concern (iteration.stories)"
     );
     assert_eq!(json["assignees"], serde_json::json!([]));
     assert_eq!(

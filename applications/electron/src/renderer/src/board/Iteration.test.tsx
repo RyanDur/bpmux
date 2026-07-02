@@ -72,14 +72,8 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
         stories: [9201, 9202]
       })
     ])
-    const m1 = memberStory({
-      id: 9201,
-      iteration_membership: { iteration_id: 9002, position: 100 }
-    })
-    const m2 = memberStory({
-      id: 9202,
-      iteration_membership: { iteration_id: 9002, position: 200 }
-    })
+    const m1 = memberStory({ id: 9201 })
+    const m2 = memberStory({ id: 9202 })
     const html = renderIteration([m1, m2])
     expect(html).toContain('data-test="board-iteration-9002"')
     expect(html).toContain('Iteration Carina')
@@ -96,10 +90,7 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
         stories: [9301]
       })
     ])
-    const m1 = memberStory({
-      id: 9301,
-      iteration_membership: { iteration_id: 9003, position: 100 }
-    })
+    const m1 = memberStory({ id: 9301 })
     const html = renderIteration([m1])
     expect(html).toContain('data-test="board-iteration-9003"')
     expect(html).toContain('Iteration Andromeda')
@@ -112,8 +103,8 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
   })
 })
 
-describe('#1492 Iteration — reads canonical-relation iteration_membership typed field', () => {
-  test('Scenario 5 (fix-anchor): canonical-relation members via typed field surface in count', () => {
+describe('#1492 Iteration — member count/membership derives from the iteration container (iteration.stories)', () => {
+  test('Scenario 5 (fix-anchor): container members surface in count', () => {
     seedIterations([
       boardIteration({
         id: 1464,
@@ -121,21 +112,15 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
         stories: [9501, 9502]
       })
     ])
-    const m1 = memberStory({
-      id: 9501,
-      iteration_membership: { iteration_id: 1464, position: 100 }
-    })
-    const m2 = memberStory({
-      id: 9502,
-      iteration_membership: { iteration_id: 1464, position: 200 }
-    })
+    const m1 = memberStory({ id: 9501 })
+    const m2 = memberStory({ id: 9502 })
     const html = renderIteration([m1, m2])
     expect(html).toContain('data-test="board-iteration-1464"')
     expect(html).toContain('Iteration Reticulum')
     expect(html).toContain('(2)')
   })
 
-  test('Scenario 6 (regression-anchor): legacy-only member is dropped; only canonical-typed members count', () => {
+  test('Scenario 6 (regression-anchor): legacy-label-only member is dropped; only container members count', () => {
     seedIterations([
       boardIteration({
         id: 1491,
@@ -147,14 +132,10 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
       id: 9601,
       labels: ['Feature', iterationLabel('Caelum', 100)]
     })
-    const canonicalOnly = memberStory({
-      id: 9602,
-      iteration_membership: { iteration_id: 1491, position: 200 }
-    })
+    const canonicalOnly = memberStory({ id: 9602 })
     const both = memberStory({
       id: 9603,
-      labels: ['Feature', iterationLabel('Caelum', 300)],
-      iteration_membership: { iteration_id: 1491, position: 300 }
+      labels: ['Feature', iterationLabel('Caelum', 300)]
     })
     const html = renderIteration([legacyOnly, canonicalOnly, both])
     expect(html).toContain('data-test="board-iteration-1491"')
@@ -162,7 +143,7 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
     expect(html).toContain('(2)')
   })
 
-  test('Scenario 7 (drill-in-axis): canonical-typed members enumerated in member-list', () => {
+  test('Scenario 7 (drill-in-axis): container members enumerated in member-list', () => {
     seedIterations([
       boardIteration({
         id: 1398,
@@ -172,8 +153,7 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
     ])
     const m1 = memberStory({
       id: 9701,
-      title: 'canonical-member-one',
-      iteration_membership: { iteration_id: 1398, position: 100 }
+      title: 'canonical-member-one'
     })
     const html = renderIteration([m1])
     expect(html).toContain('canonical-member-one')
@@ -188,10 +168,7 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
         stories: [9801]
       })
     ])
-    const memberOfCaelum = memberStory({
-      id: 9801,
-      iteration_membership: { iteration_id: 1491, position: 100 }
-    })
+    const memberOfCaelum = memberStory({ id: 9801 })
     const html = renderIteration([memberOfCaelum])
     const reticulumOpenTag =
       '<details class="board-iteration-card" data-test="board-iteration-1464"'
@@ -213,8 +190,7 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
     const readyMember = memberStory({
       id: 1537,
       title: 'ready-member',
-      state: 'ready',
-      iteration_membership: { iteration_id: 1543, position: 100 }
+      state: 'ready'
     })
     const html = renderIteration([readyMember])
     expect(html).toContain('ready-member')
@@ -234,14 +210,12 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
     const inProgress = memberStory({
       id: 1538,
       title: 'in-progress-member',
-      state: 'in-progress',
-      iteration_membership: { iteration_id: 1543, position: 100 }
+      state: 'in-progress'
     })
     const deskCheck = memberStory({
       id: 1539,
       title: 'desk-check-member',
-      state: 'desk-check',
-      iteration_membership: { iteration_id: 1543, position: 200 }
+      state: 'desk-check'
     })
     const html = renderIteration([inProgress, deskCheck])
     expect(html).toContain('data-state="in-progress"')
@@ -255,8 +229,7 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
     const iceboxMember = memberStory({
       id: 1540,
       title: 'icebox-member',
-      state: 'icebox',
-      iteration_membership: { iteration_id: 1543, position: 100 }
+      state: 'icebox'
     })
     const html = renderIteration([iceboxMember])
     expect(html).toContain('icebox-member')
@@ -338,13 +311,11 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     ])
     const firstIceboxChild = memberStory({
       id: 9501,
-      state: 'icebox',
-      iteration_membership: { iteration_id: 9001, position: 100 }
+      state: 'icebox'
     })
     const secondInFlightChild = memberStory({
       id: 9502,
-      state: 'in-progress',
-      iteration_membership: { iteration_id: 9002, position: 100 }
+      state: 'in-progress'
     })
     const html = renderIteration([firstIceboxChild, secondInFlightChild])
     expect(

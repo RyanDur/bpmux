@@ -3,16 +3,9 @@ use serde::Serialize;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
     Story, most_recent_backward_transition, replay_transitions,
 };
-
-#[derive(Debug, Clone, Serialize)]
-pub struct IterationMembershipView {
-    pub iteration_id: IterationId,
-    pub position: u32,
-}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StoryView {
@@ -22,7 +15,6 @@ pub struct StoryView {
     pub gh_state: &'static str,
     pub labels: Vec<String>,
     pub parent_epic: Option<EpicId>,
-    pub iteration_membership: Option<IterationMembershipView>,
     pub acceptor: Option<&'static str>,
     pub assignees: Vec<String>,
     pub created_at: String,
@@ -39,12 +31,6 @@ impl StoryView {
             gh_state: if story.is_closed { "closed" } else { "open" },
             labels: wire_labels(codec, story),
             parent_epic: story.parent_epic(),
-            iteration_membership: story
-                .iteration_membership()
-                .map(|(iteration_id, position)| IterationMembershipView {
-                    iteration_id,
-                    position,
-                }),
             acceptor: story.acceptor().map(|a| a.as_str()),
             assignees: Vec::new(),
             created_at: story.filed_at().to_rfc3339(),
