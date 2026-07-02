@@ -4,6 +4,7 @@ use crate::product_management::story::slice::StoryAction;
 
 impl BoardStore {
     pub fn apply(&self, event: &StoryEvent) {
+        self.mirror_to_central(StoryAction::Event(event.clone()));
         self.store.dispatch(StoryAction::Event(event.clone()));
         let _ = self.event_tx.send(StoreChange::Event(event.clone()));
         #[cfg(test)]

@@ -13,6 +13,15 @@ impl Store {
         Select::new(Arc::downgrade(&self.app_store))
     }
 
+    pub fn bind_board_mirror(&self, board: &crate::product_management::board::BoardStore) {
+        let app = Arc::downgrade(&self.app_store);
+        board.bind_central_mirror(move |action| {
+            if let Some(store) = app.upgrade() {
+                store.dispatch(super::AppAction::Story(action));
+            }
+        });
+    }
+
     pub fn outcomes(&self) -> Vec<Outcome> {
         self.app_store.select(|state| outcome::all(&state.outcomes))
     }
