@@ -64,10 +64,33 @@ Three concepts, currently conflated into one enum:
    anti-corruption layer exists so the domain speaks the product's language while
    GitHub keeps historical strings. Transitional note: the enum briefly holds both
    `Acceptance` (the column) and `Accepted` (the lifecycle fact) until slice 4.
-2. **Board configuration TOML**: stages of the configurable middle become data
-   (name, order). The domain's middle becomes stage-by-id; the renderer and bucket
-   vocabulary read the config. Generic-engine-in-app canon: the board engine is
-   baked in, the working-style configuration lives in the light layer.
+2. **Board configuration TOML** — reuse `.bpmux/workflow.toml` (Ryan, 2026-07-02):
+   ONE config defines both the workflow state-machine and the board's columns; no
+   parallel board.toml. The loader (`workflow/loader.rs`) already reads it and falls
+   back to `bundled_default`; its `in-work` section already holds the configurable
+   middle (`in-progress`, `desk-check`). The board just doesn't read it for columns
+   yet — today columns come from the hardcoded `BoardState::InProgress(Stage::Dev |
+   DeskCheck)` enum, a parallel representation. Slice 2 connects them. Gated
+   sub-sequence (dev's HOW):
+   - **2a** — reconcile the section skeleton: `acceptance` moves `in-work` →
+     `post-work`, so `in-work` is EXACTLY the configurable middle (Ryan's model:
+     Ready and Acceptance are stable bookends; the configurable part is strictly
+     between them). Skeleton-safe (in-work keeps in-progress+desk-check).
+   - **2b** — backend derives the board's middle-stage vocabulary (ordered ids +
+     labels) from the config `in-work` section; the CLI board headers and column
+     bucket vocabulary read it instead of hardcoding. Behavior-preserving (default
+     config == current).
+   - **2c** — the wire serves the board stage config; the renderer's GROUP_ORDER
+     middle + columnFor read it. Behavior-preserving.
+   - **2d** — falsifier: reconfigure the `in-work` labels/order in a test; the board
+     columns follow (proves it's config-driven, not still hardcoded).
+   Generic-engine-in-app canon: the board engine is baked in, the working-style
+   config lives in the light layer (the TOML). DEFERRED to the deep remodel
+   (slice 3+): a genuinely OPEN middle (arbitrary N stages, add/remove) — that needs
+   `BoardState`/`Stage` reconceived (the enum is `Copy`; carrying an open config-id
+   breaks that), which folds into the board-as-projection reshape. Slice 2 makes the
+   middle's presence/labels/order config-driven; the two canonical stage slots stay
+   typed until the remodel opens them.
 3. **Board = ordered projection of the current iteration**: columns as ordered
    lists; ready inherits iteration order; adding to the board = adding to the
    iteration; loose-ready dissolves. `ready_order` fractional machinery reduces to
@@ -77,8 +100,8 @@ Three concepts, currently conflated into one enum:
 5. **Rejection policy point**: current behavior (move to next iteration) expressed
    as the single replaceable policy.
 
-Open placement decision (dev's, small): where the TOML lives — candidate is a
-board section in a repo-root bpmux config file so it versions with the shared tree.
+TOML placement: RESOLVED — `.bpmux/workflow.toml` (the existing loader path),
+reused as the single board+workflow config. Versions with the shared tree.
 
 ## Retained mechanical findings from the earlier audit
 
