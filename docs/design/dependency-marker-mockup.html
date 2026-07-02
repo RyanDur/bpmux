@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Dependency marker — Slice 1 capture-surface (thin concept-validation)</title>
+<style>
+  /* tokens RECONCILED to the canonical styles/tokens.css (2026-06-30 refresh — was a warm #15161a variant) */
+  :root {
+    --bg-base: rgb(26 26 26); --bg-elevated: rgb(37 37 37); --bg-row: rgb(51 51 51);
+    --border-subtle: rgb(51 51 51); --border-strong: rgb(85 85 85);
+    --fg-primary: rgb(232 232 232); --fg-secondary: rgb(176 176 176);
+    --fg-dim: rgb(157 157 157); --fg-dimmer: rgb(128 128 128);
+    --accent-warning: rgb(212 161 60); --accent-error: rgb(255 107 107); --accent-success: rgb(63 185 80);
+    --accent-brand: rgb(106 160 255);
+    --space-2: 2px; --space-4: 4px; --space-8: 8px; --space-12: 12px; --space-16: 16px;
+    --font-12: 0.75rem; --font-13: 0.8125rem; --font-15: 0.9375rem;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-base); color: var(--fg-primary);
+    font: var(--font-13)/1.5 -apple-system, "SF Pro Text", system-ui, sans-serif; padding: var(--space-16); }
+  h1 { font-size: var(--font-15); margin: 0 0 var(--space-4); }
+  .intent { color: var(--fg-secondary); max-width: 60ch; margin: 0 0 var(--space-16); }
+  .intent b { color: var(--fg-primary); }
+  .panel { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+    border-radius: 8px; padding: var(--space-12); margin: 0 0 var(--space-16); max-width: 58ch; }
+  .panel-label { font-size: var(--font-12); color: var(--fg-dim); text-transform: uppercase;
+    letter-spacing: 0.04em; margin: 0 0 var(--space-8); }
+
+  /* --- the story-row (grounded on StoryRow.tsx: #num, glyph, badge, title, epic-ref) --- */
+  .row { display: flex; align-items: center; gap: var(--space-8);
+    background: var(--bg-row); border: 1px solid var(--border-subtle); border-radius: 6px;
+    padding: var(--space-8) var(--space-12); margin-bottom: var(--space-4); }
+  .row-num { color: var(--fg-dim); font-size: var(--font-12); }
+  .row-glyph { color: var(--accent-brand); }
+  .row-title { flex: 1 1 auto; font-weight: 600; min-width: 0; }
+  /* relation-chip — mirrors .board-story-epic-ref ("↳ Epic #N") */
+  .chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: var(--space-4);
+    padding: var(--space-2) var(--space-8); border-radius: 999px; font-size: var(--font-12);
+    font-weight: 600; white-space: nowrap; border: 1px solid transparent; cursor: pointer; }
+  .chip--epic { color: var(--fg-dim); }
+  .chip--needs { color: var(--accent-warning); border-color: color-mix(in srgb, var(--accent-warning) 35%, transparent);
+    background: color-mix(in srgb, var(--accent-warning) 10%, transparent); }
+  .chip--blocks { color: var(--fg-secondary); border-color: var(--border-subtle); }
+  .chip--needs.is-ready { color: var(--accent-success);
+    border-color: color-mix(in srgb, var(--accent-success) 35%, transparent);
+    background: color-mix(in srgb, var(--accent-success) 10%, transparent); }
+
+  /* --- the drill-in capture-form (grounded on DrillInActions.tsx drill-in-* patterns) --- */
+  .field-label { font-size: var(--font-12); color: var(--fg-dim); margin-bottom: var(--space-4); }
+  .dep-list { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-8); }
+  .dep-item { display: flex; align-items: center; gap: var(--space-8);
+    background: var(--bg-row); border: 1px solid var(--border-subtle); border-radius: 6px;
+    padding: var(--space-4) var(--space-8); }
+  .dep-item-num { color: var(--accent-warning); font-weight: 600; }
+  .dep-item-title { flex: 1 1 auto; color: var(--fg-secondary); }
+  .dep-item-x { color: var(--fg-dimmer); cursor: pointer; border: 0; background: none; font-size: var(--font-15); }
+  .add-dep { display: inline-flex; align-items: center; gap: var(--space-4);
+    color: var(--accent-brand); background: none; border: 1px dashed color-mix(in srgb, var(--accent-brand) 40%, transparent);
+    border-radius: 6px; padding: var(--space-4) var(--space-8); font: inherit; font-weight: 600; cursor: pointer; }
+  /* the pick-a-story typeahead (the friction-critical interaction) */
+  .picker { margin-top: var(--space-8); border: 1px solid var(--accent-brand); border-radius: 6px;
+    background: var(--bg-row); overflow: hidden; }
+  .picker-input { width: 100%; border: 0; background: none; color: var(--fg-primary);
+    padding: var(--space-8); font: inherit; outline: none; }
+  .picker-opt { display: flex; gap: var(--space-8); padding: var(--space-4) var(--space-8);
+    border-top: 1px solid var(--border-subtle); cursor: pointer; }
+  .picker-opt:hover { background: var(--bg-elevated); }
+  .picker-opt-num { color: var(--fg-dim); }
+
+  /* the go-wide auto-infer hint (hybrid mechanism — friction comparison) */
+  .infer-hint { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-8);
+    padding: var(--space-8); border-radius: 6px; font-size: var(--font-12);
+    background: color-mix(in srgb, var(--accent-brand) 8%, var(--bg-elevated));
+    border: 1px solid color-mix(in srgb, var(--accent-brand) 25%, transparent); color: var(--fg-secondary); }
+  .infer-hint b { color: var(--fg-primary); }
+  .infer-accept { margin-left: auto; color: var(--accent-brand); background: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
+
+  .note { font-size: var(--font-12); color: var(--fg-dim); margin-top: var(--space-4); }
+  .taste { background: color-mix(in srgb, var(--accent-warning) 7%, var(--bg-elevated));
+    border: 1px solid color-mix(in srgb, var(--accent-warning) 25%, transparent); border-radius: 8px;
+    padding: var(--space-12); max-width: 58ch; }
+  .taste h2 { font-size: var(--font-13); margin: 0 0 var(--space-8); color: var(--accent-warning); }
+  .taste li { margin-bottom: var(--space-4); color: var(--fg-secondary); }
+  .taste b { color: var(--fg-primary); }
+</style>
+</head>
+<body>
+  <h1>Dependency marker — Slice 1 capture-surface</h1>
+  <p class="intent">
+    <b>Outcome:</b> planning is dependency-aware. <b>This slice (the FOUNDATION):</b> capture a story's
+    dependency (B depends on A being done first) + see it. <b>Riskiest assumption this mock validates:</b>
+    is marking a dependency <b>low-friction + reliable</b> enough that it actually gets done? If marking is
+    skipped, the visible-plan (Slice 2) + guard (Slice 3) are hollow — so we prove capture FIRST, thin.
+  </p>
+
+  <div class="panel">
+    <p class="panel-label">SEE — the dependency on the story-row (mirrors the ↳ Epic #N chip)</p>
+    <!-- story B: depends on A -->
+    <div class="row">
+      <span class="row-num">#1788</span><span class="row-glyph">◆</span>
+      <span class="row-title">SQLite storage engine</span>
+      <span class="chip chip--needs" title="this story can't start until #1787 is done">⛔ Needs #1787</span>
+      <span class="chip chip--epic">↳ Epic #1700</span>
+    </div>
+    <!-- story A: blocks B (the inverse, for visibility) -->
+    <div class="row">
+      <span class="row-num">#1787</span><span class="row-glyph">◆</span>
+      <span class="row-title">Off-MCP acceptor affordance</span>
+      <span class="chip chip--blocks" title="#1788 is waiting on this">↰ Blocks #1788</span>
+    </div>
+    <!-- B again, once A is done: the chip flips to ready (the dep is satisfied) -->
+    <div class="row">
+      <span class="row-num">#1788</span><span class="row-glyph">◆</span>
+      <span class="row-title">SQLite storage engine</span>
+      <span class="chip chip--needs is-ready" title="#1787 is done — this is unblocked">✓ Needs #1787</span>
+      <span class="chip chip--epic">↳ Epic #1700</span>
+    </div>
+    <p class="note">The chip is the at-a-glance SEE: amber "⛔ Needs" while blocked, green "✓ Needs" once
+      satisfied; the inverse "↰ Blocks" shows on the prerequisite. (Click-through opens the linked story, like the epic-ref.)</p>
+    <p class="note"><b>Currency (2026-06-30, grounded on current StoryRow.tsx):</b> the chip mirrors the shipped
+      <code>.board-story-epic-ref</code> ("↳ Epic #N") — still present post-refactor. And StoryRow ALREADY carries
+      blocked-plumbing: <code>deriveBadge(story)==='blocked'</code> → <code>.board-story-row--blocked</code>, and
+      <code>StoryBadge</code> takes an <code>onOpenBlocker</code> prop — so #1554's SEE-badge <b>reconciles with the
+      existing blocked-affordance</b> (the click-to-blocker hook is already there), not a purely net-new render.</p>
+  </div>
+
+  <div class="panel">
+    <p class="panel-label">MARK — the capture-form in the story drill-in (the friction-critical path)</p>
+    <p class="field-label">Depends on</p>
+    <div class="dep-list">
+      <div class="dep-item">
+        <span class="dep-item-num">#1787</span>
+        <span class="dep-item-title">Off-MCP acceptor affordance</span>
+        <button class="dep-item-x" aria-label="remove dependency">×</button>
+      </div>
+    </div>
+    <button class="add-dep">+ Add a dependency</button>
+    <!-- the pick-a-story typeahead (one field, one action — the low-friction test) -->
+    <div class="picker">
+      <input class="picker-input" placeholder="Search a story this one depends on…" value="accept" />
+      <div class="picker-opt"><span class="picker-opt-num">#1787</span><span>Off-MCP acceptor affordance</span></div>
+      <div class="picker-opt"><span class="picker-opt-num">#934</span><span>accept-target</span></div>
+    </div>
+    <!-- go-wide: the hybrid auto-infer variant, to compare friction against manual -->
+    <div class="infer-hint">
+      <span>💡 This story's body references <b>#1787</b> — mark it as a dependency?</span>
+      <button class="infer-accept">Mark it</button>
+    </div>
+    <p class="note">Manual-mark is the thin Slice-1 (one search-and-pick, mirroring how you'd link an epic).
+      The 💡 auto-infer hint is the GO-WIDE probe: if manual marking proves too high-friction in the walk,
+      the hybrid (system-suggests-from-references, human-confirms) is the future enhancement — NOT built now.</p>
+  </div>
+
+  <div class="taste">
+    <h2>Taste-calls for Ryan (the irreducible feel)</h2>
+    <ul>
+      <li><b>Chip wording/glyph:</b> "⛔ Needs #1787" vs "Depends on #1787" vs "after #1787" — which reads
+        right at-a-glance on a dense row?</li>
+      <li><b>Friction floor:</b> is search-and-pick low-friction enough, or does the 💡 auto-infer hint need to
+        lead (suggest-first) so marking is near-zero-effort? (This is the riskiest-assumption call.)</li>
+      <li><b>Satisfied-state:</b> should a done-dependency's chip stay visible (green "✓ Needs", shown here) as
+        a record, or vanish once unblocked? Visible = honest history; vanish = less row-clutter.</li>
+      <li><b>Where capture lives:</b> drill-in only (shown), or also a quick-add on the row itself?</li>
+    </ul>
+  </div>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<!--
+  BOARD / PLAN REORGANIZATION — designer 2026-06-30 (owner-directed, Ryan).
+
+  THE MIGRATION (Ryan 2026-06-30): "roadmap becomes plan, and roadmap and backlog
+  become sub views of the plan." The Plan sub-tab migrates OUT of the Board to pair
+  with the Roadmap; Done is deprioritized ("not something I look at often").
+
+  BEFORE                                   AFTER
+  [ Board | Roadmap ]                      [ Board | Plan ]
+     |        |                               |       |
+   [Now|Plan|Done]  outcomes               Now    [ Roadmap | Backlog ]
+                                          (current  outcomes   epics+iterations
+                                           iter)               +icebox (+Done tucked)
+
+  - BOARD = the current iteration only (the old Now). The operational surface — no sub-tabs.
+  - PLAN (was Roadmap) = the planning home, two sub-views:
+      ROADMAP  = outcomes Now/Next/Later (the strategic altitude; epics NOT surfaced — settled model).
+      BACKLOG  = the old Plan tab: all epics + iterations (active/planned/closed) + icebox
+                 (the story-ledger altitude). Done tucks here, collapsed.
+  - Top [Board | Plan] switcher = the settled 50/50 underline switcher, adaptive Board tab.
+
+  This is RE-CHROMING of components that already ship (Roadmap, Epic, Iteration, icebox,
+  the Now lanes) — NO new visual behavior, per Ryan ("we haven't changed any visual behavior,
+  just how the information flows"). Reconciles to roadmap-board-tab-switcher-mockup.html (chrome)
+  + roadmap-outcome-based-mockup.html (roadmap content). Real tokens. Dual-theme.
+
+  DESIGNER TASTE-CALLS (flagged for Ryan to react to):
+    1. Plan opens on ROADMAP by default (the planning glance) — Backlog one click away.
+    2. DONE = a collapsed disclosure at the bottom of Backlog (the ledger tail; rarely opened).
+    3. BOARD has no sub-tab strip now — the adaptive Board tab already names the iteration.
+    4. Top tab keeps the 🗺 glyph on "Plan" (continuity with the map metaphor) — easy to drop.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Board / Plan reorganization</title>
+<style>
+  :root{
+    --bg-base:#1a1a1a;--bg-elevated:#252525;--bg-highlighted:#333;--fg-primary:#e8e8e8;--fg-secondary:#b0b0b0;--fg-dim:#9d9d9d;--fg-dimmer:#808080;
+    --accent-brand:#6aa0ff;--accent-success:#3fb950;--accent-warning:#d4a13c;--border-subtle:#333;--border-strong:#555;
+  }
+  [data-theme="light"]{
+    --bg-base:#fff;--bg-elevated:#f5f5f5;--bg-highlighted:#e5e8ef;--fg-primary:#1a1a1a;--fg-secondary:#4a5568;--fg-dim:#5a6578;--fg-dimmer:#718096;
+    --accent-brand:#2563eb;--accent-success:#1a7f37;--accent-warning:#b45309;--border-subtle:#e2e8f0;--border-strong:#cbd5e0;
+  }
+  *{box-sizing:border-box}
+  body{background:#0e0e0e;color:var(--fg-primary);font-family:-apple-system,system-ui,sans-serif;margin:0;padding:20px;line-height:1.45}
+  h1{font-size:16px;margin:0 0 3px}.sub{color:var(--fg-dim);font-size:12px;margin:0 0 14px;max-width:1040px}.sub b{color:var(--fg-secondary)}
+  .toggle button{font:inherit;font-size:12px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 10px;cursor:pointer;margin:0 0 16px}
+  .pair{display:flex;gap:18px;flex-wrap:wrap}
+  .stack{display:flex;flex-direction:column;gap:6px;width:430px}
+  .lbl{font-size:11px;color:var(--fg-dim)}.lbl b{color:var(--fg-secondary)}
+  .col{border:1px solid var(--border-strong);border-radius:7px;overflow:hidden;background:var(--bg-elevated)}
+
+  /* TOP switcher — the settled 50/50 underline tab-row */
+  .tabs{display:flex;border-bottom:1px solid var(--border-subtle)}
+  .tab{flex:1;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:2px solid transparent;margin-bottom:-1px;min-width:0}
+  .tab.center{justify-content:center}
+  .tab.on{border-bottom-color:var(--accent-brand)}
+  .iter{flex:1 1 auto;min-width:0;font-size:.9375rem;font-weight:600;color:var(--fg-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tab.on .iter{color:var(--fg-primary)}.tab.on .rm{color:var(--fg-primary)}
+  .blabel{flex-shrink:0;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--fg-dim)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent-success);flex-shrink:0}
+  .rm{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--fg-dim);display:flex;align-items:center;gap:6px}
+
+  /* SECONDARY sub-tabs — Plan's [Roadmap | Backlog] (subordinate underline) */
+  .subtabs{display:flex;gap:2px;border-bottom:1px solid var(--border-subtle);background:color-mix(in srgb,var(--bg-base) 55%,var(--bg-elevated))}
+  .subtab{padding:6px 13px;font-size:10.5px;font-weight:600;letter-spacing:.02em;color:var(--fg-dim);border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px}
+  .subtab.on{color:var(--fg-primary);border-bottom-color:var(--accent-brand)}
+  .subtab .ct{font-size:9px;color:var(--fg-dimmer);font-weight:700}
+
+  .pane{padding:10px 12px;min-height:380px}
+  .live{display:inline-flex;align-items:center;gap:5px;font-size:9px;color:var(--fg-dimmer);margin-bottom:6px}.live .d{width:5px;height:5px;border-radius:50%;background:var(--accent-success)}
+
+  /* HORIZON bands + OUTCOME card (from roadmap-outcome-based-mockup.html) */
+  .horizon{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-dimmer);font-weight:700;margin:13px 0 6px;display:flex;align-items:center;gap:8px}
+  .horizon:first-of-type{margin-top:0}.horizon .ln{flex:1;height:1px;background:var(--border-subtle)}
+  .oc{border:1px solid var(--border-subtle);border-radius:6px;background:var(--bg-base);margin:0 0 7px;overflow:hidden}
+  .oc.now{border-left:3px solid var(--accent-brand)}.oc.ready{border-left:3px solid var(--accent-success)}.oc.gap{border-left:3px solid var(--accent-warning)}.oc.future{border-left:3px solid var(--fg-dimmer)}
+  .och{display:flex;align-items:center;gap:8px;padding:8px 10px 4px}
+  .dis{color:var(--fg-dim);font-size:10px;width:9px;flex-shrink:0}
+  .ocnm{flex:1;min-width:0;color:var(--fg-primary);font-weight:600;font-size:12.5px;line-height:1.25}
+  .attn{color:var(--accent-warning);flex-shrink:0;font-size:12px}.rdy{color:var(--accent-success);flex-shrink:0;font-size:11px}
+  .why{font-size:10.5px;color:var(--fg-secondary);padding:0 10px 7px 27px;line-height:1.4}.why b{color:var(--fg-primary)}
+  .meta{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:9px;color:var(--fg-dim);padding:0 10px 8px 27px}
+  .meta span b{color:var(--fg-secondary);font-weight:600}.conf{color:var(--accent-success)}.conf.med{color:var(--accent-warning)}
+
+  /* BOARD lanes (the gated current-iteration columns) + story rows */
+  .epicline{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--border-subtle);border-radius:6px;background:var(--bg-base);margin:0 0 8px}
+  .epicline .eg{color:var(--accent-brand);font-size:11px}.epicline .eid{font-size:9.5px;color:var(--fg-dimmer);font-weight:700}
+  .epicline .etitle{flex:1;font-size:11px;font-weight:600;color:var(--fg-primary);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prog{width:64px;height:5px;border-radius:3px;background:var(--bg-highlighted);overflow:hidden;flex-shrink:0}.prog i{display:block;height:100%;background:var(--accent-success)}
+  .epicline .ec{font-size:9px;color:var(--fg-dim);min-width:30px;text-align:right}
+
+  .lane{border:1px solid var(--border-subtle);border-radius:6px;margin:0 0 6px;overflow:hidden;background:var(--bg-base)}
+  .laneh{display:flex;align-items:center;gap:7px;padding:6px 9px;background:var(--bg-elevated)}
+  .lanedis{color:var(--fg-dim);font-size:9px}
+  .lanenm{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;color:var(--fg-dim)}
+  .lanect{font-size:9px;color:var(--fg-dimmer);font-weight:700;background:var(--bg-highlighted);border-radius:9px;padding:0 6px}
+  .srow{display:flex;align-items:center;gap:7px;padding:4px 9px 4px 14px;font-size:10.5px;border-top:1px solid var(--border-subtle)}
+  .srow .grip{color:var(--fg-dimmer);font-size:9px;cursor:grab}.srow .sid{color:var(--fg-dimmer);font-weight:700;font-size:9px}
+  .srow .sg{font-size:10px}.srow .stitle{flex:1;color:var(--fg-secondary);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .srow .ep{font-size:8.5px;color:var(--fg-dimmer)}
+
+  /* BACKLOG — epics + iterations + icebox + Done-tuck */
+  .bsect{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-dimmer);font-weight:700;margin:12px 0 6px;display:flex;align-items:center;gap:8px}
+  .bsect:first-child{margin-top:0}.bsect .ln{flex:1;height:1px;background:var(--border-subtle)}
+  .epic{border:1px solid var(--border-subtle);border-radius:6px;background:var(--bg-base);margin:0 0 6px;overflow:hidden}
+  .epich{display:flex;align-items:center;gap:7px;padding:7px 9px}
+  .epic .est{font-size:8px;font-weight:700;padding:1px 6px;border-radius:9px;text-transform:uppercase;letter-spacing:.03em}
+  .est.prog{color:var(--accent-brand);background:color-mix(in srgb,var(--accent-brand) 14%,transparent);width:auto;height:auto}
+  .est.ready{color:var(--accent-success);background:color-mix(in srgb,var(--accent-success) 14%,transparent)}
+  .itbl{border:1px solid var(--border-subtle);border-radius:6px;background:var(--bg-base);margin:0 0 5px;overflow:hidden}
+  .itblh{display:flex;align-items:center;gap:7px;padding:6px 9px}
+  .itblh .grip{color:var(--fg-dimmer);font-size:9px}.itblh .iid{font-size:9px;color:var(--fg-dimmer);font-weight:700}
+  .itblh .itt{flex:1;font-size:11px;font-weight:600;color:var(--fg-primary)}
+  .itblh .cur{font-size:8px;font-weight:700;color:var(--accent-brand);text-transform:uppercase;letter-spacing:.03em}
+  .itblh .mc{font-size:9px;color:var(--fg-dim)}.itblh .closed{font-size:8.5px;color:var(--fg-dimmer)}
+  .done{border:1px dashed var(--border-strong);border-radius:6px;background:transparent;margin:10px 0 0;padding:7px 10px;display:flex;align-items:center;gap:8px;color:var(--fg-dim);font-size:10.5px}
+  .done .dl{font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:9px;color:var(--fg-dimmer)}
+  .done .dc{margin-left:auto;font-size:9px;color:var(--fg-dimmer)}
+  .cap{font-size:12px;color:var(--fg-dim);margin:16px 0 0;max-width:1040px;line-height:1.6}.cap b{color:var(--fg-secondary)}
+  .note{background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:7px;padding:12px 15px;font-size:12px;max-width:1040px;margin-top:10px;line-height:1.6;color:var(--fg-secondary)}.note b{color:var(--fg-primary)}
+  .note ol{margin:6px 0 0;padding-left:18px}.note li{margin:0 0 3px}
+</style></head>
+<body id="b">
+  <h1>Board / Plan reorganization — Plan migrates out, pairs with Roadmap</h1>
+  <p class="sub"><b>Roadmap becomes Plan</b>; <b>Roadmap</b> + <b>Backlog</b> are sub-views of Plan. <b>Board</b> = the current iteration only (no sub-tabs). <b>Done</b> tucks into Backlog, collapsed. Re-chroming of components that already ship — no new visual behavior. Three states below: Board active · Plan→Roadmap · Plan→Backlog.</p>
+  <p class="toggle"><button onclick="b.setAttribute('data-theme',b.getAttribute('data-theme')==='light'?'':'light')">toggle dark / light</button></p>
+
+  <div class="pair">
+
+    <!-- STATE A — BOARD (current iteration only) -->
+    <div class="stack">
+      <p class="lbl"><b>Board</b> — the current iteration, projected into the gated lanes. No sub-tabs; the adaptive Board tab names it.</p>
+      <div class="col">
+        <div class="tabs">
+          <span class="tab on"><span class="iter">Lupus</span><span class="blabel">Board</span><span class="dot"></span></span>
+          <span class="tab"><span class="rm">🗺 Plan</span></span>
+        </div>
+        <div class="pane">
+          <div class="epicline"><span class="eg">◆</span><span class="eid">#1236</span><span class="etitle">Chart visual-system</span><span class="prog"><i style="width:40%"></i></span><span class="ec">2/5</span></div>
+          <div class="lane">
+            <div class="laneh"><span class="lanedis">▾</span><span class="lanenm">Ready</span><span class="lanect">2</span></div>
+            <div class="srow"><span class="grip">⠿</span><span class="sid">#1786</span><span class="sg">🐛</span><span class="stitle">Next-iteration derivations plan+completion-aware</span><span class="ep">↳#1236</span></div>
+            <div class="srow"><span class="grip">⠿</span><span class="sid">#529</span><span class="sg">🐛</span><span class="stitle">Close-actor attribution reads firing role</span></div>
+          </div>
+          <div class="lane">
+            <div class="laneh"><span class="lanedis">▾</span><span class="lanenm">In Progress</span><span class="lanect">1</span></div>
+            <div class="srow"><span class="sid">#1705</span><span class="sg">✦</span><span class="stitle">Close-approach readiness nudge</span></div>
+          </div>
+          <div class="lane">
+            <div class="laneh"><span class="lanedis">▾</span><span class="lanenm">Desk Check</span><span class="lanect">1</span></div>
+            <div class="srow"><span class="sid">#1239</span><span class="sg">✦</span><span class="stitle">Box-and-whisker lead-time chart</span><span class="ep">↳#1236</span></div>
+          </div>
+          <div class="lane">
+            <div class="laneh"><span class="lanedis">▾</span><span class="lanenm">Acceptance</span><span class="lanect">1</span></div>
+            <div class="srow"><span class="sid">#1237</span><span class="sg">✦</span><span class="stitle">Sparkline WIP-count</span><span class="ep">↳#1236</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="lbl">↑ Board sheds Plan + Done — it's purely the work in flight.</p>
+    </div>
+
+    <!-- STATE B — PLAN → ROADMAP (default sub-view) -->
+    <div class="stack">
+      <p class="lbl"><b>Plan → Roadmap</b> — outcomes by horizon (the strategic altitude). Opens here by default (the planning glance).</p>
+      <div class="col">
+        <div class="tabs">
+          <span class="tab"><span class="iter">Lupus</span><span class="blabel">Board</span><span class="dot"></span></span>
+          <span class="tab on"><span class="rm">🗺 Plan</span></span>
+        </div>
+        <div class="subtabs">
+          <span class="subtab on">Roadmap</span>
+          <span class="subtab">Backlog <span class="ct">23</span></span>
+        </div>
+        <div class="pane">
+          <span class="live"><span class="d"></span> live · always current</span>
+          <div class="horizon">Now<span class="ln"></span></div>
+          <div class="oc now">
+            <div class="och"><span class="dis">▸</span><span class="ocnm">The team runs on its own infra, off Channels</span><span class="rdy">✓ ready</span></div>
+            <div class="why">So agents collaborate without Claude-specific glue — <b>any agent plugs in</b>.</div>
+            <div class="meta"><span><b>Metric:</b> 0 Claude-only paths</span><span><b>Confidence:</b> <span class="conf">high</span></span></div>
+          </div>
+          <div class="oc gap">
+            <div class="och"><span class="dis">▸</span><span class="ocnm">You see what's coming — and whether it's ready</span><span class="attn">◐</span></div>
+            <div class="why">So you steer the next iterations <b>before</b> convening.</div>
+            <div class="meta"><span><b>Metric:</b> next-iter ready at convene</span><span><b>Readiness:</b> 1 gap</span></div>
+          </div>
+          <div class="horizon">Next<span class="ln"></span></div>
+          <div class="oc ready">
+            <div class="och"><span class="dis">▸</span><span class="ocnm">The app looks like one designed thing</span><span class="rdy">✓ ready</span></div>
+            <div class="why">So every surface is coherent + accessible by construction.</div>
+            <div class="meta"><span><b>Value:</b> high</span><span><b>Confidence:</b> <span class="conf">high</span></span></div>
+          </div>
+          <div class="horizon">Later<span class="ln"></span></div>
+          <div class="oc future"><div class="och"><span class="dis">▸</span><span class="ocnm">Remote humans + agents collaborate over P2P</span></div></div>
+        </div>
+      </div>
+      <p class="lbl">↑ the existing Roadmap view, now a sub-view of Plan (epics not surfaced — settled).</p>
+    </div>
+
+    <!-- STATE C — PLAN → BACKLOG -->
+    <div class="stack">
+      <p class="lbl"><b>Plan → Backlog</b> — the ledger: all epics + iterations + icebox (the old Plan tab). Done tucked at the bottom.</p>
+      <div class="col">
+        <div class="tabs">
+          <span class="tab"><span class="iter">Lupus</span><span class="blabel">Board</span><span class="dot"></span></span>
+          <span class="tab on"><span class="rm">🗺 Plan</span></span>
+        </div>
+        <div class="subtabs">
+          <span class="subtab">Roadmap</span>
+          <span class="subtab on">Backlog <span class="ct">23</span></span>
+        </div>
+        <div class="pane">
+          <div class="bsect">Epics<span class="ln"></span></div>
+          <div class="epic"><div class="epich"><span class="eg" style="color:var(--accent-brand)">◆</span><span class="eid" style="font-size:9.5px;color:var(--fg-dimmer);font-weight:700">#1236</span><span class="etitle">Chart visual-system</span><span class="est prog">in progress</span><span class="prog"><i style="width:40%"></i></span><span class="ec">2/5</span></div></div>
+          <div class="epic"><div class="epich"><span class="eg" style="color:var(--accent-brand)">◆</span><span class="eid" style="font-size:9.5px;color:var(--fg-dimmer);font-weight:700">#1657</span><span class="etitle">bpmux runs on its own infra</span><span class="est ready">ready</span><span class="prog"><i style="width:15%"></i></span><span class="ec">1/7</span></div></div>
+
+          <div class="bsect">Iterations<span class="ln"></span></div>
+          <div class="itbl"><div class="itblh"><span class="grip">⠿</span><span class="iid">#it</span><span class="itt">Lupus</span><span class="cur">current</span><span class="mc">5 stories</span></div></div>
+          <div class="itbl"><div class="itblh"><span class="grip">⠿</span><span class="iid">#it</span><span class="itt">Mensa</span><span class="mc">planned · 4</span></div></div>
+          <div class="itbl"><div class="itblh"><span class="iid">#it</span><span class="itt">Crater</span><span class="closed">(closed)</span><span class="mc" style="margin-left:auto">3</span></div></div>
+
+          <div class="bsect">Icebox<span class="ln"></span></div>
+          <div class="lane">
+            <div class="laneh"><span class="lanedis">▾</span><span class="lanenm">Unscheduled</span><span class="lanect">23</span></div>
+            <div class="srow"><span class="grip">⠿</span><span class="sid">#1346</span><span class="sg">✦</span><span class="stitle">Advisory-signal research</span></div>
+            <div class="srow"><span class="grip">⠿</span><span class="sid">#1527</span><span class="sg">✦</span><span class="stitle">Lifecycle-signal events-pill routing</span></div>
+            <div class="srow"><span class="grip">⠿</span><span class="sid">#149</span><span class="sg">✦</span><span class="stitle">P2P trust model</span></div>
+          </div>
+
+          <div class="done"><span class="dl">Done ▸</span><span>accepted + retired</span><span class="dc">48 accepted · 9 retired</span></div>
+        </div>
+      </div>
+      <p class="lbl">↑ the old Plan-tab content, renamed Backlog. Done = a collapsed disclosure (rarely opened).</p>
+    </div>
+
+  </div>
+
+  <p class="cap"><b>The shape:</b> top <b>[Board | Plan]</b> switcher (settled chrome). <b>Board</b> = the current iteration's gated lanes — the operational surface. <b>Plan</b> = the planning home, two sub-views: <b>Roadmap</b> (outcomes by Now/Next/Later — strategic) + <b>Backlog</b> (all epics + iterations + icebox — the ledger). <b>Done</b> tucks into Backlog, collapsed. The two altitudes — outcome (Roadmap) + story-ledger (Backlog) — sit under one Plan home; Board carries the in-flight work.</p>
+
+  <div class="note">
+    <b>Designer taste-calls — react to any:</b>
+    <ol>
+      <li><b>Plan opens on Roadmap</b> on first visit (the planning-entry glance), then <b>persists the last sub-tab</b> (<code>useTabStorage</code>, like today's tabs) — so the Roadmap-default only bites the very first open; a triage-heavy session stays on Backlog. (PM-validated: persistence is what makes the default low-stakes for both the owner-glance and the working-user.)</li>
+      <li><b>Done</b> = a collapsed disclosure at the bottom of Backlog (the ledger tail). Could be removed from Plan entirely if you truly never open it.</li>
+      <li><b>Board</b> has no sub-tab strip — the adaptive Board tab already names the iteration. (If a no-iteration state needs a fallback, that's the existing #1684 roadmap-fallback.)</li>
+      <li><b>Top tab keeps 🗺 on "Plan"</b> for map-metaphor continuity — trivial to drop to a bare "Plan".</li>
+    </ol>
+  </div>
+</body></html>

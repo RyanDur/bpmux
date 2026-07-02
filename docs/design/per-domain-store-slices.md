@@ -50,9 +50,17 @@ to the domain.
 | Domain | Slice today | Domain folder (home) | Status / landmine |
 |---|---|---|---|
 | ci | `src/store/ci/` | `src/ci/` (exists: `mod.rs`, `broadcast.rs`, `classify.rs`) | clean-ish; wide consumers + `poll.rs` lives in the slice |
-| reactions | `src/store/reactions/` | `src/reactions.rs` (exists) | **LANDMINE: `src/reactions.rs` is a *separate* file-backed `ReactionsStore` with its own `AggregatedReaction`, distinct from the slice's `ReactionsState`. Must reconcile the two before/while moving — not a mechanical move.** |
-| roster | `src/store/roster/` | **none yet** | **OPEN: no `src/roster/`. Belongs in a new `src/roster/`, or under `session`? Owner decision.** |
-| sync | `src/store/sync/` | **none yet** | **OPEN: no `src/sync/`. Belongs with `integrations/github` / a new `src/sync/`? Owner decision.** |
+| reactions | `src/store/reactions/` | `src/reactions/` (new — fold in the existing `src/reactions.rs`) | **LANDMINE: `src/reactions.rs` is a *separate* file-backed `ReactionsStore` with its own `AggregatedReaction`, distinct from the slice's `ReactionsState`. Reconcile the two into `src/reactions/` — not a mechanical move.** |
+| roster | `src/store/roster/` | `src/roster/` (new) | its own domain folder — `session` is a dissolved directory, not a home |
+
+**sync is NOT a domain — it's a mechanism.** `AppState` has no `sync`
+field and `app_reduce` does `AppAction::Sync(_) => state.clone()`
+(app.rs:71): sync owns no state. Its actions only trigger the `SyncPoll`
++ `GithubDrain` listeners — the engine that polls GitHub (ingest) and
+drains the outbox (export). It does not get a per-domain state slice; it
+is the machinery that moves data **into** the domain slices (split
+per-domain on ingest) and **out** via the outbox. It belongs with the
+ingest/export mechanism, not in the domain-slice list.
 | story | board grab-bag | `product_management/story/` (exists) | new slice; part of board dissolution |
 | iteration | board grab-bag | `product_management/iteration/` (exists) | new slice; resolve read-decode asymmetry |
 | outcome | board grab-bag | `product_management/outcome/` (exists) | new slice; template (smallest board domain) |
@@ -101,9 +109,14 @@ Target:
 Each step: nextest + vitest + e2e green, committed, pushed, ls-remote
 verified — and never reported "done" until it is.
 
-## Open decisions for the owner
+## Homes are not decisions — the rule decides
 
-- **roster** home: new `src/roster/`, or under `session`?
-- **sync** home: new `src/sync/`, or with `integrations/github`?
-- **reactions**: is `src/reactions.rs` (file-backed) live and separate
-  from the slice, or should the two be unified into one `src/reactions/`?
+Every *domain* gets its own top-level folder. There is nothing to ask:
+roster → `src/roster/`, reactions → `src/reactions/`. `session` is a
+dissolved directory and is never a home. **sync is not a domain — it's the
+ingest/export mechanism (see above) and gets no domain slice.**
+
+The only non-mechanical task hiding here is reactions: `src/reactions.rs`
+(file-backed `ReactionsStore`) and the `src/store/reactions/` slice are two
+implementations that must be reconciled into the single `src/reactions/`
+domain — that's work, not a question.

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Authorization config — per-agent panel v2 (grouped + context-driven)</title>
+<style>
+  :root {
+    --bg-base: #15161a; --bg-elevated: #1c1e24; --bg-row: #20232b; --bg-row-hi: #262a34;
+    --border-subtle: #2c2f38; --fg-primary: #e6e8ee; --fg-secondary: #aab0bd;
+    --fg-dim: #7b8190; --fg-dimmer: #565c69;
+    --accent-warning: #e0a44a; --accent-error: #e06a5a; --accent-success: #5fb87a; --accent-brand: #6aa3ff;
+    --space-2: 2px; --space-4: 4px; --space-8: 8px; --space-12: 12px; --space-16: 16px;
+    --font-11: 11px; --font-12: 12px; --font-13: 13px; --font-15: 15px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-base); color: var(--fg-primary);
+    font: var(--font-13)/1.5 -apple-system, "SF Pro Text", system-ui, sans-serif; padding: var(--space-16); }
+  h1 { font-size: var(--font-15); margin: 0 0 var(--space-4); }
+  .intent { color: var(--fg-secondary); max-width: 64ch; margin: 0 0 var(--space-16); }
+  .intent b { color: var(--fg-primary); }
+  .delta { color: var(--accent-success); }
+
+  .wrap { display: flex; gap: var(--space-16); align-items: flex-start; flex-wrap: wrap; }
+  .panel { background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+    border-radius: 8px; width: 380px; overflow: hidden; }
+  .panel-head { display: flex; align-items: center; gap: var(--space-8);
+    padding: var(--space-12) var(--space-16); border-bottom: 1px solid var(--border-subtle); }
+  .panel-head .lbl { color: var(--fg-dim); font-size: var(--font-12); text-transform: uppercase; letter-spacing: 0.04em; }
+  .agent-pick { display: inline-flex; align-items: center; gap: var(--space-4); margin-left: auto;
+    background: var(--bg-row); border: 1px solid var(--border-subtle); border-radius: 6px; padding: var(--space-4) var(--space-8); font-weight: 600; cursor: pointer; }
+  .agent-pick .id { color: var(--fg-dimmer); font-size: var(--font-11); font-weight: 400; }
+
+  .section { padding: var(--space-12) var(--space-12) var(--space-16); }
+  .section + .section { border-top: 1px solid var(--border-subtle); }
+  .sec-head { display: flex; align-items: baseline; gap: var(--space-8); margin: 0 var(--space-4) var(--space-8); }
+  .sec-title { font-weight: 700; font-size: var(--font-13); }
+  .sec-polarity { color: var(--fg-dim); font-size: var(--font-12); }
+  .section--caps .sec-title { color: var(--accent-success); }
+  .section--flow .sec-title { color: var(--accent-brand); }
+
+  /* a GROUP — collapsed shows a one-line resolved SUMMARY (context-driven: default-majority stays summarized) */
+  .group { border-radius: 6px; margin-bottom: var(--space-2); }
+  .group-head { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-8); cursor: pointer; border-radius: 6px; }
+  .group-head:hover { background: var(--bg-row); }
+  .chev { color: var(--fg-dim); width: 12px; font-size: var(--font-11); }
+  .group-name { font-weight: 600; }
+  .group-sum { margin-left: auto; font-size: var(--font-12); }
+  .group-sum--default { color: var(--fg-dim); }            /* all-default = quiet */
+  .group-sum--exception { color: var(--accent-error); font-weight: 600; }  /* has a restriction = stands out */
+  .group-sum--assigned { color: var(--accent-brand); font-weight: 600; }
+
+  .group-body { padding: var(--space-2) var(--space-8) var(--space-8) var(--space-16); }
+  .row { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-4) var(--space-8); border-radius: 6px; }
+  .row:hover { background: var(--bg-row); }
+  .row-name { flex: 1 1 auto; }
+  .row-name code { font: var(--font-12)/1.4 "SF Mono", ui-monospace, monospace; color: var(--fg-secondary); }
+
+  .eff { display: inline-flex; align-items: center; gap: var(--space-4); font-size: var(--font-12); font-weight: 600;
+    padding: var(--space-2) var(--space-8); border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .eff--on { color: var(--accent-success); }
+  .eff--restricted { color: var(--accent-error); background: color-mix(in srgb, var(--accent-error) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent-error) 35%, transparent); }
+  .eff--driver { color: var(--accent-brand); background: color-mix(in srgb, var(--accent-brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent-brand) 35%, transparent); }
+  .eff--none { color: var(--fg-dim); border: 1px dashed var(--border-subtle); }
+  .eff.open { outline: 2px solid var(--accent-brand); outline-offset: 1px; }
+  .lock { color: var(--accent-warning); font-size: var(--font-12); cursor: pointer; }
+
+  /* THE "WHY" FIX: provenance is a POPOVER off the clicked chip (click the chip = see why + change it), no cryptic 'why' link */
+  .pop { margin: var(--space-4) var(--space-8) var(--space-8) auto; width: 300px;
+    background: var(--bg-base); border: 1px solid var(--accent-brand); border-radius: 8px; padding: var(--space-12); }
+  .pop-h { font-size: var(--font-11); color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-8); }
+  .lvl-row { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-4) 0; }
+  .lvl-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .lvl-dot--win { background: var(--accent-error); }
+  .lvl-dot--off { background: var(--fg-dimmer); }
+  .lvl-name { font-size: var(--font-12); color: var(--fg-secondary); flex: 1 1 auto; }
+  .lvl-name .scope { font: 9px "SF Mono", ui-monospace, monospace; color: var(--fg-dimmer); margin-left: var(--space-4); }
+  .lvl-val { font-size: var(--font-12); }
+  .lvl-val.win { color: var(--fg-primary); font-weight: 600; }
+  .lvl-val.struck { color: var(--fg-dimmer); text-decoration: line-through; }
+  .pop-model { font-size: var(--font-11); color: var(--accent-brand); margin-bottom: var(--space-8); display: flex; align-items: center; gap: var(--space-4); }
+  .lvl-row--win { background: color-mix(in srgb, var(--accent-error) 10%, transparent); border-radius: 6px; }
+  .lvl-tag { margin-left: var(--space-8); font-size: var(--font-11); white-space: nowrap; }
+  .lvl-tag--win { color: var(--accent-error); font-weight: 700; }
+  .lvl-tag--over { color: var(--fg-dim); }
+  .pop-foot { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-8); padding-top: var(--space-8); border-top: 1px solid var(--border-subtle); }
+  .pop-foot .lockbtn { color: var(--accent-warning); font-size: var(--font-12); font-weight: 600; cursor: pointer; }
+  .pop-foot .note { color: var(--fg-dim); font-size: var(--font-11); }
+
+  .footlinks { display: flex; align-items: center; gap: var(--space-16); padding: var(--space-12) var(--space-16); border-top: 1px solid var(--border-subtle); font-size: var(--font-12); }
+  .footlinks a { color: var(--accent-brand); text-decoration: none; cursor: pointer; }
+  .footlinks .hint { color: var(--fg-dim); margin-left: auto; }
+
+  .taste { background: color-mix(in srgb, var(--accent-warning) 7%, var(--bg-elevated));
+    border: 1px solid color-mix(in srgb, var(--accent-warning) 25%, transparent); border-radius: 8px; padding: var(--space-12); width: 380px; }
+  .taste h2 { font-size: var(--font-13); margin: 0 0 var(--space-8); color: var(--accent-warning); }
+  .taste li { margin-bottom: var(--space-4); color: var(--fg-secondary); }
+  .taste b { color: var(--fg-primary); }
+  .src { color: var(--fg-dim); font-size: var(--font-11); margin-top: var(--space-8); }
+</style>
+</head>
+<body>
+  <h1>Authorization config — per-agent panel <span style="color:var(--fg-dim);font-weight:400;">v2</span></h1>
+  <p class="intent">
+    <b>Capabilities-first auth config</b>, grounded in UX research. Principles applied:
+    <b>permissive by default</b> &mdash; agents are a <i>trusted team</i>, so everything's on unless you restrict it
+    (intentional, <i>not</i> least-privilege); <b>reveal-on-demand</b> &mdash; the read-out answers just "can it? at what
+    level?", and the change-controls + lock reveal on click (deferring detail = ~30&ndash;50% faster, research-backed);
+    <b>context-driven groups</b> &mdash; all-default groups stay a quiet summary, exceptions stand out; and it reads as
+    <b>a configuration, not a verdict</b> &mdash; effect + a neutral scope ("set at the agent level"), no "narrowest-wins"
+    lecture and no singling-out language. Per-agent lens (your pick); matrix one click away for N.
+  </p>
+
+  <div class="wrap">
+  <div class="panel">
+    <div class="panel-head">
+      <span class="lbl">Authorizations</span>
+      <span class="agent-pick">dev <span class="id">id&middot;8048…c871d</span> &#9662;</span>
+    </div>
+
+    <!-- CAPABILITIES: permissive-default. All-on groups collapse to a quiet summary; the exception opens. -->
+    <div class="section section--caps">
+      <div class="sec-head"><span class="sec-title">Capabilities</span><span class="sec-polarity">on by default &middot; agents are trusted, restrict the exception</span></div>
+      <div class="group"><div class="group-head"><span class="chev">&#9656;</span><span class="group-name">Messaging</span><span class="group-sum group-sum--default">all on &middot; 2</span></div></div>
+      <div class="group"><div class="group-head"><span class="chev">&#9656;</span><span class="group-name">Presence</span><span class="group-sum group-sum--default">all on &middot; 1</span></div></div>
+      <!-- Events group: has a restriction → auto-open + the summary stands out (context-driven) -->
+      <div class="group">
+        <div class="group-head"><span class="chev">&#9662;</span><span class="group-name">Events</span><span class="group-sum group-sum--exception">1 restricted</span></div>
+        <div class="group-body">
+          <div class="row"><span class="row-name"><code>subscribe</code></span><span class="eff eff--on">&#10003; on</span></div>
+          <div class="row"><span class="row-name"><code>wake-on-event</code></span><span style="color:var(--fg-dim); font-size:var(--font-11);">agent</span><span class="eff eff--restricted open">&#8856; restricted</span></div>
+          <!-- THE WHY-FIX: popover opened from clicking the chip above -->
+          <div class="pop">
+            <div class="pop-h">wake-on-event &middot; dev</div>
+            <div style="display:flex; align-items:center; gap:var(--space-8); margin:var(--space-4) 0 var(--space-8);">
+              <button style="background:var(--bg-row); border:1px solid var(--border-subtle); color:var(--fg-secondary); border-radius:6px; padding:var(--space-2) var(--space-12); font:inherit; cursor:pointer;">Allow</button>
+              <button style="background:color-mix(in srgb, var(--accent-error) 15%, transparent); border:1px solid var(--accent-error); color:var(--accent-error); border-radius:6px; padding:var(--space-2) var(--space-12); font:inherit; font-weight:600; cursor:pointer;">Restricted</button>
+              <label style="margin-left:auto; color:var(--accent-warning); font-size:var(--font-12); cursor:pointer;"><input type="checkbox" checked style="vertical-align:middle;"> &#128274; lock</label>
+            </div>
+            <div style="color:var(--fg-dim); font-size:var(--font-11);">set at the agent level</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKFLOW STEPS: DEFERRED — who-drives lives in the board-workflow config (#1384), not this surface -->
+    <div class="section section--flow" style="opacity:0.6">
+      <div class="sec-head"><span class="sec-title">Workflow steps</span><span class="sec-polarity">&rarr; in the board workflow</span></div>
+      <div style="padding:var(--space-4) var(--space-8); color:var(--fg-dim); font-size:var(--font-12);">
+        Who drives each step (start / deliver / accept / pass-review&hellip;) is part of the
+        <b style="color:var(--fg-secondary);">board workflow config (#1384)</b> &mdash; defined + authorized where the
+        transitions live (<code style="font-size:var(--font-11);">.bpmux/workflow.toml</code>). Shown grayed for the full
+        per-agent picture; <b style="color:var(--fg-secondary);">built with #1384, after the capabilities surface.</b>
+      </div>
+    </div>
+
+    <div class="footlinks">
+      <a>&#9783; Compare all agents &rarr;</a>
+      <a>Add an override&hellip;</a>
+      <span class="hint">id-keyed &middot; name shown</span>
+    </div>
+  </div>
+
+  <div class="taste">
+    <h2>Taste-calls for Ryan</h2>
+    <ul>
+      <li><b>The read-out reads as a configuration:</b> clicking a chip is a neutral config control &mdash; Allow /
+        Restricted + lock, with a quiet "set at the agent level" scope-note. No "just this agent," no "narrowest wins,"
+        no full cascade &mdash; it configures a setting, it doesn't explain a verdict. Neutral enough now?</li>
+      <li><b>Permissive-default, named:</b> the header states agents are trusted (on-by-default, restrict-the-exception)
+        &mdash; a deliberate divergence from the least-privilege norm. Does framing it as intentional read right?</li>
+      <li><b>Context-driven groups:</b> all-default groups are a quiet one-line summary ("Messaging — all on");
+        a group with a restriction/assignment auto-opens + its summary stands out (red "1 restricted" / blue "dev drives 2").
+        So you scan exceptions, not 30 rows. Right behaviour?</li>
+      <li><b>Group summaries:</b> the collapsed line reads the resolved state at a glance ("Iteration ops — pm drives · 6").
+        Is the summary enough, or do you want a peek of which functions on hover?</li>
+      <li><b>Grouping shape:</b> Capabilities → Messaging / Presence / Events; Workflow → Lifecycle / Review gates /
+        Iteration ops / Epic ops. Are these the right buckets, or grouped some other way?</li>
+      <li><b>Scale check:</b> ~6 capabilities + ~15 workflow-steps collapse to ~3 + ~4 group-lines until you open one.
+        Does that feel reason-about-able at full size?</li>
+    </ul>
+    <p class="src">Thin concept-validation; tokens approximate; functions are real bpmux affordances, grouping is a
+      designer-proposal. Engine/registry/DB = dev's substrate. Research: reference_permission_config_ui_patterns
+      (CMU Expandable-Grids · NN/g progressive-disclosure · Figma/Notion) + the reveal-on-demand / conflict-visible /
+      permissive-default-intentional pass.</p>
+  </div>
+  </div>
+</body>
+</html>

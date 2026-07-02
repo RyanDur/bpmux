@@ -288,6 +288,62 @@ paste-block to Claude as ONE MERGED turn. The human's deliberate input is stolen
   defer-QUEUE (does `\r` queue-at-turn-boundary or interrupt?) — its OWN walk, separate build. Clause (d)
   is mid-HUMAN-typing — the submit-isolation. Two walks, two builds (or none).
 
+## (b) The booting-park — RETRACTED paste-ready gate → ACCEPTED edge (dev-grounded 2026-06-21)
+
+> **RETRACTION.** The paste-ready-gate proposal (detailed below, now HISTORICAL) was BUILT then REVERTED.
+> Dev grounded firsthand (6 `terminal_receive_affordances_e2e` failures): gating delivery on paste-ready is
+> CLAUDE-SPECIFIC GLUE — a cooked/non-Claude agent (always-ready, never paste-capable) is INDISTINGUISHABLE
+> from a booting-raw agent (`paste_capable=false` for both), so any server-side readiness-gate breaks
+> cooked/non-Claude delivery. The booting-park CANNOT be server-fixed without breaking the agnostic-receive
+> premise (ANY agent, zero glue — the core #1656 point). The conflict is irreducible, not tunable.
+>
+> **RESOLUTION — ACCEPT the booting-park** as a rare, recoverable restart-edge: once-per-restart; the
+> message is DELIVERED + visible in the input-box (not lost — needs ONE submit); inside the restart-flow the
+> owner is already in. Preserving agnostic-receive (load-bearing) > a Claude-glue that fixes this rare edge.
+>
+> **Never-park caveat:** a message always LANDS without manual-enter EXCEPT the rare post-restart
+> booting-window (delivered-but-needs-one-submit, recoverable — NOT a lost-message never-park failure).
+>
+> **Owner-ratify pending:** @ryan flagged the booting-park, so the final accept-vs-other-cut is his
+> product-call. Designer-call is ACCEPT (preserve agnostic); he ratifies on return. The detail below is the
+> design we tried + why it can't work agnostically.
+
+## (b) [HISTORICAL — retracted] Agent-readiness defer — deliver-when-paste-ready
+
+The Crux agnostic-receive + clause-d cover the autonomous spine (idle agent → immediate submit) and the
+owner-typing submit-isolation. The owner's post-restart walk surfaced the remaining axis: an inject that
+arrives while the agent is NOT at its input-prompt.
+
+**The booting-park (the never-park VIOLATION).** A broadcast arrived while dev+designer were BOOTING
+(just-restarted, not yet at Claude's input-prompt). The delivered line sat UNSUBMITTED in the input-box and
+PARKED until the owner manually hit enter. (PM, already booted+idle, got it auto — so this is
+agent-readiness, NOT clause-d [a broadcast, not typed-into] NOR an activity-stamp.) Grounded by the owner's
+"after the first one it stopped" = once booted, later broadcasts auto-submitted.
+
+- **Trigger (grounded):** the agent is NOT paste-ready — booting, OR mid-turn, OR a sub-mode (pager/vim,
+  paste-off). The delivered paste-block can't auto-submit because Claude isn't at its prompt to receive it.
+- **Contract — deliver-when-paste-ready (B1, no new signal):** DELIVER the inject when the agent is
+  PASTE-READY (B1 `current_paste_mode` = Claude at its input-prompt, ready to receive + auto-submit). If
+  NOT-ready → BOUNDED-DEFER until paste-ready returns (max-hold bounded), THEN auto-deliver+submit. Ready
+  agents → IMMEDIATE (autonomous spine intact).
+- **Cooked-agent edge (dev-grounded):** a bare cooked read-loop NEVER latches bracketed-paste
+  (`paste_capable=false` forever), and a booting-raw Claude is indistinguishable from it pre-first-latch.
+  The MAX-HOLD is the guard: a never-paste-ready agent delivers at the max-hold (no infinite-park). So the
+  gate is hold-until-(paste-ready OR max-hold). PRODUCTION is all-raw-Claude (latches paste at its prompt
+  → deliver-when-ready, max-hold rarely fires); cooked is test-only (falls to max-hold, acceptable).
+- **Never-park reconciliation (the key distinction):** a BOUNDED defer-until-paste-ready SATISFIES
+  never-park — the message ALWAYS lands WITHOUT a manual-enter, just deferred-until-ready (the cure). The
+  OPEN-park-awaiting-manual-enter (the booting bug) is THE never-park violation. The property isn't "never
+  delay" — it's "never require a human to unstick delivery." Bounded-defer = cure; open-park = violation.
+- **Unifies two cases into one gate:** agent-paste-readiness covers BOTH the booting-park (this walk) AND
+  the §pass-through-default sub-mode paste-off edge — both are "agent not ready to receive a
+  paste-and-submit." One gate, no new signal.
+- **Orthogonal to clause-d (two independent axes):** (b) = agent-not-ready (booting/mid-turn/sub-mode);
+  clause-d = owner-typing-INTO-this-terminal. The combined delivery-gate: **deliver when (agent-paste-ready
+  [B1, the (b) gate] AND NOT owner-typing-into-this-terminal [clause-d's genuine-keystrokes]).**
+- **Re-walk falsifier:** a broadcast to a BOOTING agent auto-delivers once it reaches paste-ready (no
+  manual-enter, bounded hold) → PASS. An open-park-awaiting-enter → FAIL.
+
 ## Cooked compose-line craft-pass (Circinus — the B2 baseline → designer polish)
 
 The B2 cooked compose-line (`TerminalCompose`, reusing the chat readline stack `useInputKeyboard` /
