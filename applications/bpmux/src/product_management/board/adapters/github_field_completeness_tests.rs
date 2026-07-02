@@ -3,7 +3,6 @@
 
 use crate::product_management::board::adapters::github::decode_story_metadata;
 use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{Story, StoryId};
 
 #[test]
@@ -51,7 +50,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         story_type,
         acceptor,
         parent_epic,
-        iteration_membership,
         tags,
         ready_order,
     } = decoded;
@@ -104,11 +102,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         *parent_epic,
         Some(EpicId::new(100)),
         "parent_epic must decode from the parent-epic label into the stored domain field at ingest"
-    );
-    assert_eq!(
-        *iteration_membership,
-        Some((IterationId::new(300), 5)),
-        "iteration_membership must decode (iteration_number, position) from the parent-iteration label into the stored domain field at ingest"
     );
     assert!(
         !raw_labels.is_empty(),

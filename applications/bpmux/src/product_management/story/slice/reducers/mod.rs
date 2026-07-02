@@ -85,8 +85,6 @@ fn apply_event(w: &mut Stories, event: &StoryEvent) {
         StoryEvent::TagUnset { tag, .. } => apply_tag_unset(w, id, *tag),
         StoryEvent::TagAdded { .. }
         | StoryEvent::TagRemoved { .. }
-        | StoryEvent::IterationMembershipSet { .. }
-        | StoryEvent::IterationMembershipCleared { .. }
         | StoryEvent::CurrentIterationDesignated { .. }
         | StoryEvent::CurrentIterationCleared { .. } => {}
         StoryEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, id, story),

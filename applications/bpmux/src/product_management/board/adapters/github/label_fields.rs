@@ -14,13 +14,6 @@ pub fn parent_epic_from_labels(labels: &[String]) -> Option<u64> {
     })
 }
 
-pub fn iteration_membership_from_labels(labels: &[String]) -> Option<(u64, u32)> {
-    labels.iter().find_map(|l| {
-        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .decode_parent_iteration(l)
-    })
-}
-
 pub fn outcome_membership_from_labels(labels: &[String]) -> Option<(u64, u32)> {
     labels.iter().find_map(|l| {
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec

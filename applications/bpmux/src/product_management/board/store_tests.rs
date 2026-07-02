@@ -6,11 +6,10 @@ use super::events::{EventMeta, LabelDerivedFields, StoryEvent, event_wins};
 use super::peer::PeerId;
 use super::store::{BoardStore, StoreChange};
 use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, decode_iteration_from_story, iteration_membership_from_labels,
-    parent_epic_from_labels, story_type_from_labels_or_title, tags_from_labels,
+    acceptor_from_labels, decode_iteration_from_story, parent_epic_from_labels,
+    story_type_from_labels_or_title, tags_from_labels,
 };
 use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
     Acceptor, BoardState, FreeComment, Gate, Stage, Story, StoryId, StoryKind, Tag,
 };
@@ -222,7 +221,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
             ],
             acceptor: Some(crate::product_management::story::Acceptor::Dev),
             parent_epic: Some(EpicId::new(7)),
-            iteration_membership: Some((IterationId::new(1655), 106)),
             tags: Vec::new(),
             ready_order: None,
         },
@@ -230,10 +228,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
 
     let s = store.story(StoryId::new(77)).expect("story exists");
     assert_eq!(parent_epic_from_labels(&s.raw_labels), Some(7));
-    assert_eq!(
-        iteration_membership_from_labels(&s.raw_labels),
-        Some((1655, 106))
-    );
     assert_eq!(acceptor_from_labels(&s.raw_labels), Some(Acceptor::Dev));
     assert_eq!(
         s.raw_labels,
@@ -722,55 +716,6 @@ fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
         store.story(StoryId::new(1)).unwrap().tags(),
         [Tag::Blocked],
         "a generic raw-label add/remove must not re-project (clobber) the typed tags field"
-    );
-}
-
-#[test]
-fn tag_added_parent_iteration_label_rederives_iteration_membership_1553() {
-    let store = BoardStore::new();
-    store.apply(&StoryEvent::StoryCreated {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        title: "t".to_string(),
-        body: "b".to_string(),
-        initial_state: BoardState::Ready,
-        story_type: StoryKind::Feature,
-    });
-    store.apply(&StoryEvent::TagAdded {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "parent-iteration-#9301.100".to_string(),
-    });
-    assert_eq!(
-        iteration_membership_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
-        Some((9301, 100))
-    );
-}
-
-#[test]
-fn tag_removed_parent_iteration_label_clears_iteration_membership_1553() {
-    let store = BoardStore::new();
-    store.apply(&StoryEvent::StoryCreated {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        title: "t".to_string(),
-        body: "b".to_string(),
-        initial_state: BoardState::Ready,
-        story_type: StoryKind::Feature,
-    });
-    store.apply(&StoryEvent::TagAdded {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "parent-iteration-#9301.100".to_string(),
-    });
-    store.apply(&StoryEvent::TagRemoved {
-        meta: meta("pm", 2026, "local"),
-        id: StoryId::new(1),
-        label: "parent-iteration-#9301.100".to_string(),
-    });
-    assert_eq!(
-        iteration_membership_from_labels(&store.story(StoryId::new(1)).unwrap().raw_labels),
-        None
     );
 }
 

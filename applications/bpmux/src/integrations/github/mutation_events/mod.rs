@@ -11,8 +11,7 @@ pub(in crate::integrations::github) use comments::{
     push_free_comment_appended, push_gate_comment_appended,
 };
 pub(in crate::integrations::github) use grouping::{
-    push_current_iteration_cleared, push_current_iteration_designated,
-    push_iteration_membership_cleared, push_iteration_membership_set, push_parent_epic_set,
+    push_current_iteration_cleared, push_current_iteration_designated, push_parent_epic_set,
     push_parent_epic_unset,
 };
 pub(in crate::integrations::github) use labels::{push_tag_added, push_tag_removed};

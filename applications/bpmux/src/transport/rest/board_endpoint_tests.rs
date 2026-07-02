@@ -71,7 +71,6 @@ fn member(id: u64, iteration_id: u64, position: u32) -> Story {
         "pm".into(),
     );
     s.raw_labels = vec![format!("parent-iteration-#{iteration_id}.{position}")];
-    s.iteration_membership = Some((IterationId::new(iteration_id), position));
     s
 }
 

@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use super::peer::PeerId;
 use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
     Acceptor, BoardState, FreeComment, Gate, GateComment, Story, StoryId, StoryKind, Tag,
 };
@@ -22,8 +21,6 @@ pub struct LabelDerivedFields {
     pub acceptor: Option<Acceptor>,
     #[serde(default)]
     pub parent_epic: Option<EpicId>,
-    #[serde(default)]
-    pub iteration_membership: Option<(IterationId, u32)>,
     #[serde(default)]
     pub tags: Vec<Tag>,
     #[serde(default)]
@@ -116,16 +113,6 @@ pub enum StoryEvent {
         meta: EventMeta,
         id: StoryId,
     },
-    IterationMembershipSet {
-        meta: EventMeta,
-        id: StoryId,
-        iteration_id: IterationId,
-        position: u32,
-    },
-    IterationMembershipCleared {
-        meta: EventMeta,
-        id: StoryId,
-    },
     CurrentIterationDesignated {
         meta: EventMeta,
         id: StoryId,
@@ -185,8 +172,6 @@ impl StoryEvent {
             | StoryEvent::AcceptorAssigned { meta, .. }
             | StoryEvent::ParentEpicSet { meta, .. }
             | StoryEvent::ParentEpicUnset { meta, .. }
-            | StoryEvent::IterationMembershipSet { meta, .. }
-            | StoryEvent::IterationMembershipCleared { meta, .. }
             | StoryEvent::CurrentIterationDesignated { meta, .. }
             | StoryEvent::CurrentIterationCleared { meta, .. }
             | StoryEvent::StoryRefreshed { meta, .. }
@@ -216,8 +201,6 @@ impl StoryEvent {
             | StoryEvent::AcceptorAssigned { id, .. }
             | StoryEvent::ParentEpicSet { id, .. }
             | StoryEvent::ParentEpicUnset { id, .. }
-            | StoryEvent::IterationMembershipSet { id, .. }
-            | StoryEvent::IterationMembershipCleared { id, .. }
             | StoryEvent::CurrentIterationDesignated { id, .. }
             | StoryEvent::CurrentIterationCleared { id, .. }
             | StoryEvent::StoryRefreshed { id, .. }

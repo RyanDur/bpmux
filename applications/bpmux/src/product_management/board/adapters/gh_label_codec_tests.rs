@@ -34,26 +34,6 @@ fn decode_parent_epic_rejects_non_epic_labels() {
 }
 
 #[test]
-fn decode_parent_iteration_parses_number_and_position() {
-    assert_eq!(
-        GhLabelCodec.decode_parent_iteration("parent-iteration-#1495.7"),
-        Some((1495, 7))
-    );
-}
-
-#[test]
-fn decode_parent_iteration_rejects_malformed() {
-    assert_eq!(
-        GhLabelCodec.decode_parent_iteration("parent-iteration-#1495"),
-        None
-    );
-    assert_eq!(
-        GhLabelCodec.decode_parent_iteration("parent-epic-#1495"),
-        None
-    );
-}
-
-#[test]
 fn iteration_review_closed_round_trips_role() {
     let encoded = GhLabelCodec.encode_iteration_review_closed("designer");
     assert_eq!(encoded, "iteration-review-closed.designer");

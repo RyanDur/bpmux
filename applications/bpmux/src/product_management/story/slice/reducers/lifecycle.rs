@@ -30,7 +30,6 @@ pub(super) fn apply_story_created(
         story_type,
         acceptor: None,
         parent_epic: None,
-        iteration_membership: None,
         tags: Vec::new(),
         ready_order: None,
     };

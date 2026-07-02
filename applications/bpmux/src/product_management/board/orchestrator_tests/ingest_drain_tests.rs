@@ -158,13 +158,12 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(
-        store.story(StoryId::new(1687)).and_then(|s| {
-            crate::product_management::board::adapters::github::iteration_membership_from_labels(
-                &s.raw_labels,
-            )
-        }),
-        Some((1655, 125)),
+    assert!(
+        store
+            .story(StoryId::new(1687))
+            .unwrap()
+            .raw_labels
+            .contains(&"parent-iteration-#1655.125".to_string()),
         "baseline: story starts membered at the old position"
     );
 
@@ -182,25 +181,19 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
             label: "parent-iteration-#1655.125".to_string(),
         })
         .unwrap();
-    assert_eq!(
-        store.story(StoryId::new(1687)).and_then(|s| {
-            crate::product_management::board::adapters::github::iteration_membership_from_labels(
-                &s.raw_labels,
-            )
-        }),
-        Some((1655, 106)),
+    let after_reorder = store.story(StoryId::new(1687)).unwrap().raw_labels;
+    assert!(
+        after_reorder.contains(&"parent-iteration-#1655.106".to_string())
+            && !after_reorder.contains(&"parent-iteration-#1655.125".to_string()),
         "optimistic reorder moves the story to the new position"
     );
 
     orchestrator.ingest_once().await.unwrap();
 
-    assert_eq!(
-        store.story(StoryId::new(1687)).and_then(|s| {
-            crate::product_management::board::adapters::github::iteration_membership_from_labels(
-                &s.raw_labels,
-            )
-        }),
-        Some((1655, 106)),
+    let after_ingest = store.story(StoryId::new(1687)).unwrap().raw_labels;
+    assert!(
+        after_ingest.contains(&"parent-iteration-#1655.106".to_string())
+            && !after_ingest.contains(&"parent-iteration-#1655.125".to_string()),
         "a refresh that reads the source before the reorder's write has drained must NOT clobber the un-acknowledged optimistic position"
     );
 }

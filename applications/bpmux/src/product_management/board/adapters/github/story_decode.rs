@@ -3,7 +3,6 @@ use chrono::{DateTime, Utc};
 use super::label_fields::story_type_from_labels;
 use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{
     BoardState, Stage, Story, StoryId, StoryKind, Tag, story_type_from_title,
 };
@@ -16,8 +15,6 @@ pub fn project_labels(labels: &[String]) -> LabelDerivedFields {
     LabelDerivedFields {
         acceptor: super::label_fields::acceptor_from_labels(labels),
         parent_epic: super::label_fields::parent_epic_from_labels(labels).map(EpicId::new),
-        iteration_membership: super::label_fields::iteration_membership_from_labels(labels)
-            .map(|(number, position)| (IterationId::new(number), position)),
         tags: tags_from_labels(labels),
         ready_order: super::label_fields::ready_order_from_labels(labels),
         raw_labels: labels.to_vec(),
@@ -86,8 +83,6 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.story_type = story_type_from_labels_or_title(&labels, &title);
     story.acceptor = super::label_fields::acceptor_from_labels(&labels);
     story.parent_epic = super::label_fields::parent_epic_from_labels(&labels).map(EpicId::new);
-    story.iteration_membership = super::label_fields::iteration_membership_from_labels(&labels)
-        .map(|(number, position)| (IterationId::new(number), position));
     story.tags = tags_from_labels(&labels);
     story.ready_order = super::label_fields::ready_order_from_labels(&labels);
     story.raw_labels = labels;

@@ -1,16 +1,6 @@
 use super::{CURRENT_ITERATION_LABEL, GhLabelCodec};
 
 impl GhLabelCodec {
-    pub fn decode_parent_iteration(&self, label: &str) -> Option<(u64, u32)> {
-        let rest = label.strip_prefix("parent-iteration-#")?;
-        let (number, position) = rest.split_once('.')?;
-        Some((number.parse().ok()?, position.parse().ok()?))
-    }
-
-    pub fn encode_parent_iteration(&self, iteration_number: u64, position: u32) -> String {
-        format!("parent-iteration-#{iteration_number}.{position}")
-    }
-
     pub fn decode_iteration_order(&self, label: &str) -> Option<u32> {
         label.strip_prefix("iteration-order.")?.parse().ok()
     }

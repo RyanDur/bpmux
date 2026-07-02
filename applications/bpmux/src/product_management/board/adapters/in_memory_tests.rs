@@ -7,7 +7,6 @@ use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::peer::PeerId;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{BoardState, FreeComment, Stage, Story, StoryId};
 
 fn meta() -> EventMeta {
@@ -303,49 +302,8 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
 }
 
 #[tokio::test]
-async fn iteration_membership_set_surfaces_in_ingested_metadata() {
+async fn parent_epic_event_no_ops_for_unseeded_story() {
     let adapter = InMemorySourceAdapter::new();
-    adapter.seed_stories(vec![seed_story(42, "member")]);
-    adapter
-        .push_event(&StoryEvent::IterationMembershipSet {
-            meta: meta(),
-            id: StoryId::new(42),
-            iteration_id: IterationId::new(1300),
-            position: 200,
-        })
-        .await
-        .unwrap();
-    let stories = ingest_stories(&adapter).await;
-    let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
-    assert_eq!(
-        crate::product_management::board::adapters::github::iteration_membership_from_labels(
-            &story.raw_labels
-        ),
-        Some((1300, 200)),
-        "IterationMembershipSet must surface iteration_membership in the round-tripped Story"
-    );
-    let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
-    assert_eq!(
-        crate::product_management::board::adapters::github::iteration_membership_from_labels(
-            &fetched.raw_labels
-        ),
-        Some((1300, 200)),
-        "IterationMembershipSet must also surface via fetch_story_metadata"
-    );
-}
-
-#[tokio::test]
-async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
-    let adapter = InMemorySourceAdapter::new();
-    adapter
-        .push_event(&StoryEvent::IterationMembershipSet {
-            meta: meta(),
-            id: StoryId::new(999),
-            iteration_id: IterationId::new(1),
-            position: 1,
-        })
-        .await
-        .unwrap();
     adapter
         .push_event(&StoryEvent::ParentEpicSet {
             meta: meta(),

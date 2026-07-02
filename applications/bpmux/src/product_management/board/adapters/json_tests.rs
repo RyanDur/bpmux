@@ -23,7 +23,6 @@ fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> St
         story_type,
         acceptor: None,
         parent_epic: None,
-        iteration_membership: None,
         tags: Vec::new(),
         ready_order: None,
     };

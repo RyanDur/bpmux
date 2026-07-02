@@ -8,7 +8,7 @@ use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
-use crate::product_management::iteration::{Iteration, IterationId};
+use crate::product_management::iteration::Iteration;
 use crate::product_management::story::{BoardState, Gate, GateComment, Stage, Story, StoryId};
 use crate::store::Select;
 
@@ -487,7 +487,6 @@ fn make_member(id: u64, title: &str, iteration_id: u64, position: u32) -> Story 
         "ready".into(),
         format!("parent-iteration-#{iteration_id}.{position}"),
     ];
-    s.iteration_membership = Some((IterationId::new(iteration_id), position));
     s
 }
 

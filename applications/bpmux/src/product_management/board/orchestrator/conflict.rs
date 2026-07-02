@@ -27,8 +27,6 @@ pub fn classify_conflict(
         | StoryEvent::AcceptorAssigned { .. }
         | StoryEvent::ParentEpicSet { .. }
         | StoryEvent::ParentEpicUnset { .. }
-        | StoryEvent::IterationMembershipSet { .. }
-        | StoryEvent::IterationMembershipCleared { .. }
         | StoryEvent::CurrentIterationDesignated { .. }
         | StoryEvent::CurrentIterationCleared { .. } => None,
         StoryEvent::StoryCreated { .. }

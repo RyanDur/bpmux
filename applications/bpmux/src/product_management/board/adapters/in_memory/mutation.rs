@@ -150,30 +150,6 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
                     .retain(|l| GhLabelCodec.decode_parent_epic(l).is_none());
             }
         }
-        StoryEvent::IterationMembershipSet {
-            id,
-            iteration_id,
-            position,
-            ..
-        } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
-                story
-                    .raw_labels
-                    .push(GhLabelCodec.encode_parent_iteration(iteration_id.value(), *position));
-            }
-        }
-        StoryEvent::IterationMembershipCleared { id, .. } => {
-            use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story
-                    .raw_labels
-                    .retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
-            }
-        }
         _ => {}
     }
 }

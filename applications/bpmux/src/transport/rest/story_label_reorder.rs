@@ -1,10 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::labels::{LabelMutationPayload, post_story_labels};
-use crate::product_management::board::adapters::github::iteration_membership_from_labels;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::{BoardStore, RefreshDriver, StoreChange, SyncOrchestrator};
-use crate::product_management::iteration::IterationId;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::session::Session;
 use axum::Json;
@@ -22,16 +20,16 @@ fn membered_member(id: u64, label: &str) -> Story {
         "tester".to_string(),
     );
     story.raw_labels = vec![label.to_string()];
-    story.iteration_membership = iteration_membership_from_labels(&story.raw_labels)
-        .map(|(id, position)| (IterationId::new(id), position));
     story
 }
 
-fn membership(store: &BoardStore, id: u64) -> Option<(IterationId, u32)> {
+fn membered(store: &BoardStore, id: u64) -> bool {
     store
         .story(StoryId::new(id))
         .unwrap()
-        .iteration_membership()
+        .raw_labels
+        .iter()
+        .any(|l| l.starts_with("parent-iteration-#"))
 }
 
 #[tokio::test]
@@ -78,14 +76,11 @@ async fn reordering_a_member_through_the_label_endpoint_never_transiently_orphan
 
     let replay = BoardStore::new();
     replay.seed_all(vec![membered_member(1687, "parent-iteration-#1655.125")]);
-    assert!(
-        membership(&replay, 1687).is_some(),
-        "fixture starts membered"
-    );
+    assert!(membered(&replay, 1687), "fixture starts membered");
     for event in &sequence {
         replay.apply(event);
         assert!(
-            membership(&replay, 1687).is_some(),
+            membered(&replay, 1687),
             "a reorder must never transiently orphan the story (#1524): the label-mutation \
              endpoint must emit the ADD of the new parent-iteration label before the REMOVE of \
              the old one, so a concurrent board read never drops the row from its iteration until \
@@ -93,9 +88,12 @@ async fn reordering_a_member_through_the_label_endpoint_never_transiently_orphan
         );
     }
 
-    assert_eq!(
-        membership(&store, 1687),
-        Some((IterationId::new(1655), 106)),
+    assert!(
+        store
+            .story(StoryId::new(1687))
+            .unwrap()
+            .raw_labels
+            .contains(&"parent-iteration-#1655.106".to_string()),
         "after the swap the story is membered at the new position"
     );
 }

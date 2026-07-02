@@ -52,22 +52,6 @@ fn project_label_delta(stories: &Stories, event: &StoryEvent) -> Option<LabelDer
             labels.retain(|l| !GhLabelCodec.is_current_iteration_label(l));
             labels
         }
-        StoryEvent::IterationMembershipSet {
-            id,
-            iteration_id,
-            position,
-            ..
-        } => {
-            let mut labels = stories.get(&StoryKey::Saved(*id))?.raw_labels().to_vec();
-            labels.retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
-            labels.push(GhLabelCodec.encode_parent_iteration(iteration_id.value(), *position));
-            labels
-        }
-        StoryEvent::IterationMembershipCleared { id, .. } => {
-            let mut labels = stories.get(&StoryKey::Saved(*id))?.raw_labels().to_vec();
-            labels.retain(|l| GhLabelCodec.decode_parent_iteration(l).is_none());
-            labels
-        }
         _ => return None,
     };
     Some(project_labels(&new_labels))
