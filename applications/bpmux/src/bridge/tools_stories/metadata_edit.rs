@@ -93,13 +93,22 @@ pub(crate) async fn handle_edit_story(
         ));
     }
     if (title.is_some() || body.is_some())
-        && r.epic(crate::product_management::epic::EpicId::new(id))
-            .is_some()
-        && let Some(story) = r.story(id)
+        && let Some(epic) = r.epic(crate::product_management::epic::EpicId::new(id))
     {
+        let new_title = title
+            .map(str::to_string)
+            .unwrap_or_else(|| epic.title.clone());
+        let new_body = match body {
+            Some(b) => Some(b.to_string()),
+            None => epic.body.clone(),
+        };
         dispatch.dispatch(crate::store::AppAction::Epic(
             crate::product_management::epic::EpicAction::Upserted(vec![
-                crate::product_management::board::adapters::github::decode_epic_from_story(&story),
+                crate::product_management::epic::Epic {
+                    title: new_title,
+                    body: new_body,
+                    ..epic
+                },
             ]),
         ));
     }

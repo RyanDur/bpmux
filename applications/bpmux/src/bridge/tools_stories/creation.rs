@@ -59,6 +59,7 @@ pub(crate) async fn handle_create_story(
         ),
         None => super::acceptor_axis::derive_acceptor(user_job),
     };
+    let epic_body = composed_body.clone();
     let id = create_and_broadcast_story_events(
         r,
         agent_name,
@@ -69,12 +70,18 @@ pub(crate) async fn handle_create_story(
         acceptor,
     )
     .await?;
-    if let Some(story) = r.story(id)
-        && crate::product_management::board::adapters::github::is_epic_story(&story)
-    {
+    if crate::product_management::board::adapters::github::is_epic_title(title) {
         dispatch.dispatch(crate::store::AppAction::Epic(
             crate::product_management::epic::EpicAction::Upserted(vec![
-                crate::product_management::board::adapters::github::decode_epic_from_story(&story),
+                crate::product_management::epic::Epic {
+                    id: crate::product_management::epic::EpicId::new(id),
+                    title: title.to_string(),
+                    body: Some(epic_body),
+                    filed_at: chrono::Utc::now(),
+                    filed_by: crate::transport::ws::short_name(agent_name).to_string(),
+                    state: crate::product_management::story::BoardState::Icebox,
+                    is_closed: false,
+                },
             ]),
         ));
         r.store().remove(StoryId::new(id));

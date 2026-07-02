@@ -220,7 +220,7 @@ async fn label_story_default_op_requires_refresh_after_5n() {
         "id": 42,
         "label": "ready"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, &td()).await;
+    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -232,7 +232,7 @@ async fn label_story_add_op_requires_refresh_after_5n() {
         "label": "blocked",
         "operation": "add"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, &td()).await;
+    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -244,7 +244,7 @@ async fn label_story_remove_op_requires_refresh_after_5n() {
         "label": "in progress",
         "operation": "remove"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, &td()).await;
+    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -256,7 +256,7 @@ async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
         "label": "never-attached-label",
         "operation": "remove"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, &td()).await;
+    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -296,7 +296,6 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
         args.as_object().unwrap(),
         "pm:claude-code",
         Some(&orchestrator),
-        &td(),
     )
     .await;
     assert!(result.is_err());
@@ -312,7 +311,7 @@ async fn label_story_add_propagates_tracker_error_without_broadcast() {
         "label": "ready",
         "operation": "add"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, &td()).await;
+    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None).await;
     assert!(
         result.is_err(),
         "add-with-API-error must surface error: {result:?}"
@@ -326,7 +325,7 @@ async fn label_story_remove_propagates_tracker_error_without_broadcast() {
         "label": "ready",
         "operation": "remove"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, &td()).await;
+    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None).await;
     assert!(
         result.is_err(),
         "remove-with-API-error must surface error: {result:?}"
@@ -341,7 +340,7 @@ async fn label_story_still_pm_gated_with_operation_param() {
         "operation": "remove"
     });
     for caller in ["dev:claude-code", "designer:claude-code"] {
-        let result = handle_label_story(args.as_object().unwrap(), caller, None, &td()).await;
+        let result = handle_label_story(args.as_object().unwrap(), caller, None).await;
         assert!(
             result.is_err(),
             "{caller} (non-pm, non-owner) must be rejected by PM-only gate"
@@ -351,8 +350,7 @@ async fn label_story_still_pm_gated_with_operation_param() {
             "{caller} rejection should cite role restriction"
         );
     }
-    let owner_result =
-        handle_label_story(args.as_object().unwrap(), "owner:human", None, &td()).await;
+    let owner_result = handle_label_story(args.as_object().unwrap(), "owner:human", None).await;
     assert!(
         !owner_result
             .as_ref()

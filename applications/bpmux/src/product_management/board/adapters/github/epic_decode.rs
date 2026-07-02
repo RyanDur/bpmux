@@ -2,6 +2,10 @@ use super::story_decode::{decode_story_metadata, extract_label_names};
 use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::story::Story;
 
+pub fn is_epic_title(title: &str) -> bool {
+    title.trim_start().to_ascii_lowercase().starts_with("[epic")
+}
+
 pub fn is_epic_issue(v: &serde_json::Value) -> bool {
     let has_label = extract_label_names(v)
         .iter()
@@ -9,7 +13,7 @@ pub fn is_epic_issue(v: &serde_json::Value) -> bool {
     let title_prefixed = v
         .get("title")
         .and_then(|x| x.as_str())
-        .map(|t| t.trim_start().to_ascii_lowercase().starts_with("[epic"))
+        .map(is_epic_title)
         .unwrap_or(false);
     has_label || title_prefixed
 }
@@ -19,12 +23,7 @@ pub fn is_epic_story(story: &Story) -> bool {
         .raw_labels()
         .iter()
         .any(|l| l.eq_ignore_ascii_case("epic"));
-    let title_prefixed = story
-        .title()
-        .trim_start()
-        .to_ascii_lowercase()
-        .starts_with("[epic");
-    has_label || title_prefixed
+    has_label || is_epic_title(story.title())
 }
 
 pub fn decode_epic(v: &serde_json::Value) -> Option<Epic> {

@@ -105,17 +105,6 @@ pub async fn post_story_labels(
             ]),
         ));
     }
-    if refresh
-        .epic(crate::product_management::epic::EpicId::new(id))
-        .is_some()
-        && let Some(story) = refresh.story(id)
-    {
-        dispatcher.dispatch(crate::store::AppAction::Epic(
-            crate::product_management::epic::EpicAction::Upserted(vec![
-                crate::product_management::board::adapters::github::decode_epic_from_story(&story),
-            ]),
-        ));
-    }
     broadcast_board_invalidate(&session);
     broadcast_stories(&session, &refresh);
     (
