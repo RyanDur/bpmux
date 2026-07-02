@@ -15,6 +15,39 @@ pub(super) struct Classified {
     pub epics: Vec<Epic>,
 }
 
+fn derive_typed_fields_from_labels(story: &mut Story) {
+    let fields =
+        crate::product_management::board::adapters::github::project_labels(&story.raw_labels);
+    let labeled_type =
+        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
+            &story.raw_labels,
+            &story.title,
+        );
+    if labeled_type != story.story_type
+        && crate::product_management::story::story_type_from_title(&story.title) == story.story_type
+    {
+        story.story_type = labeled_type;
+    }
+    if story.tags.is_empty() {
+        story.tags = fields.tags;
+    }
+    if story.acceptor.is_none() {
+        story.acceptor = fields.acceptor;
+    }
+    if story.parent_epic.is_none() {
+        story.parent_epic = fields.parent_epic;
+    }
+    if story.blocked_by.is_none() {
+        story.blocked_by = fields.blocked_by;
+    }
+    if story.ready_order.is_none() {
+        story.ready_order = fields.ready_order;
+    }
+    if story.iteration_slot.is_none() {
+        story.iteration_slot = fields.iteration_slot;
+    }
+}
+
 pub(super) fn classify_ingested(
     stories: impl Iterator<Item = Story>,
     labels: &HashMap<u64, Vec<String>>,
@@ -29,14 +62,7 @@ pub(super) fn classify_ingested(
         if let Some(labels) = labels.get(&story.id.value()) {
             story.raw_labels = labels.clone();
         }
-        if story.iteration_slot.is_none()
-            && let Some(slot) =
-                crate::product_management::board::adapters::github::iteration_slot_from_labels(
-                    &story.raw_labels,
-                )
-        {
-            story.iteration_slot = Some(slot);
-        }
+        derive_typed_fields_from_labels(&mut story);
         let has_label = |needle: &str| {
             story
                 .raw_labels

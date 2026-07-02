@@ -82,7 +82,6 @@ impl Store {
         let reactions_listeners: app::ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
         let ci_listeners: app::CiListeners = Arc::new(Mutex::new(Vec::new()));
         let app_store = kernel::Store::new(app::AppState::default(), Box::new(app::app_reduce));
-        app_store.add_middleware(Arc::new(app::StoryLabelAppMiddleware::new()));
         app_store.add_listener(Arc::new(app::RosterBroadcast::new(
             roster_listeners.clone(),
         )));

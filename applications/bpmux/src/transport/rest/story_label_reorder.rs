@@ -27,7 +27,8 @@ fn membered_member(id: u64, label: &str) -> Story {
 async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![membered_member(1687, "parent-iteration-#1655.125")]);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    adapter.seed_labels(1687, vec!["parent-iteration-#1655.125".to_string()]);
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
     refresh.refresh_all().await.unwrap();
     assert!(
@@ -63,15 +64,17 @@ async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() 
     .await
     .into_response();
     assert_eq!(response.status(), axum::http::StatusCode::OK);
+    refresh.drain_pending().await.unwrap();
 
-    let reordered = refresh
+    refresh
         .story(1687)
         .expect("a reorder must never orphan the story (#1524)");
+    let edge_labels = adapter.labels_for(1687);
     assert_eq!(
-        reordered.raw_labels,
+        edge_labels,
         vec!["parent-iteration-#1655.106".to_string()],
-        "after the swap the story is membered at exactly the new position — the new \
-         parent-iteration label landed and the old one is gone, so no board read can \
-         drop the row from its iteration (#1524)"
+        "after the swap the story is membered at exactly the new position at the \
+         GitHub edge — the new parent-iteration label landed and the old one is gone, \
+         so no board read can drop the row from its iteration (#1524)"
     );
 }

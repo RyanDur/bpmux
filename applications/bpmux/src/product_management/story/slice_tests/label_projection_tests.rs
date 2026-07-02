@@ -1,130 +1,28 @@
 use super::{apply, created, meta, minimal, seed, seeded, story_at};
 use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, decode_iteration_from_story, parent_epic_from_labels,
-    story_type_from_labels_or_title, tags_from_labels,
+    acceptor_from_labels, parent_epic_from_labels,
 };
 use crate::product_management::board::events::{LabelDerivedFields, StoryEvent};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::{Acceptor, BoardState, Stage, StoryId, StoryKind, Tag};
-use crate::store::SeededStore;
 
 #[test]
-fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
+fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
     let store = seeded();
     created(&store, 1, "t", BoardState::Delivered);
     apply(
         &store,
-        StoryEvent::TagAdded {
+        StoryEvent::AcceptorAssigned {
             meta: meta("designer", 2026, "local"),
             id: StoryId::new(1),
-            label: "awaiting team".to_string(),
+            acceptor: Acceptor::Team,
         },
     );
     assert_eq!(
-        acceptor_from_labels(&story_at(&store, 1).unwrap().raw_labels),
+        story_at(&store, 1).unwrap().acceptor(),
         Some(Acceptor::Team),
-        "the awaiting-label add re-derives the typed acceptor (closes the view refresh-gap)"
-    );
-    apply(
-        &store,
-        StoryEvent::TagRemoved {
-            meta: meta("designer", 2026, "local"),
-            id: StoryId::new(1),
-            label: "awaiting team".to_string(),
-        },
-    );
-    assert_eq!(
-        acceptor_from_labels(&story_at(&store, 1).unwrap().raw_labels),
-        None,
-        "removing the awaiting-label clears the acceptor — honest-neutral, not stale"
-    );
-}
-
-fn iteration_at(store: &SeededStore, id: u64) -> crate::product_management::iteration::Iteration {
-    decode_iteration_from_story(&story_at(store, id).expect("iteration issue present in the store"))
-}
-
-fn seed_iteration_issue(store: &SeededStore, id: u64) {
-    apply(
-        store,
-        StoryEvent::StoryCreated {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(id),
-            title: "Iteration Vela".to_string(),
-            body: "b".to_string(),
-            initial_state: BoardState::Ready,
-            story_type: StoryKind::default(),
-        },
-    );
-    apply(
-        store,
-        StoryEvent::TagAdded {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(id),
-            label: "iteration".to_string(),
-        },
-    );
-}
-
-#[test]
-fn tag_added_review_close_label_rederives_closers_then_removal_clears_them_1703() {
-    let store = seeded();
-    seed_iteration_issue(&store, 1);
-    apply(
-        &store,
-        StoryEvent::TagAdded {
-            meta: meta("designer", 2026, "local"),
-            id: StoryId::new(1),
-            label: "iteration-review-closed.designer".to_string(),
-        },
-    );
-    assert_eq!(
-        iteration_at(&store, 1).review_closers,
-        vec!["designer".to_string()],
-        "the review-close label add re-derives the closer-set from the recorded act"
-    );
-    apply(
-        &store,
-        StoryEvent::TagRemoved {
-            meta: meta("designer", 2026, "local"),
-            id: StoryId::new(1),
-            label: "iteration-review-closed.designer".to_string(),
-        },
-    );
-    assert!(
-        iteration_at(&store, 1).review_closers.is_empty(),
-        "removing the review-close label clears the closer — derived, never stale"
-    );
-}
-
-#[test]
-fn tag_added_dev_ok_label_rederives_approvers_then_removal_clears_them_1736() {
-    let store = seeded();
-    seed_iteration_issue(&store, 1);
-    apply(
-        &store,
-        StoryEvent::TagAdded {
-            meta: meta("dev", 2026, "local"),
-            id: StoryId::new(1),
-            label: "iteration-dev-ok.dev".to_string(),
-        },
-    );
-    assert_eq!(
-        iteration_at(&store, 1).dev_ok_by,
-        vec!["dev".to_string()],
-        "the dev-OK label add re-derives the approver-set from the recorded act"
-    );
-    apply(
-        &store,
-        StoryEvent::TagRemoved {
-            meta: meta("dev", 2026, "local"),
-            id: StoryId::new(1),
-            label: "iteration-dev-ok.dev".to_string(),
-        },
-    );
-    assert!(
-        iteration_at(&store, 1).dev_ok_by.is_empty(),
-        "removing the dev-OK label clears the approver — derived, never stale"
+        "the acceptor lands via its typed event — the awaiting-label projection is gone; \
+         generic awaiting-label adds reach the domain only through the adapter refresh"
     );
 }
 
@@ -140,7 +38,10 @@ fn tag_added_unknown_label_is_dropped() {
             label: "high-priority".to_string(),
         },
     );
-    assert!(tags_from_labels(&story_at(&store, 1).unwrap().raw_labels).is_empty());
+    assert!(
+        story_at(&store, 1).unwrap().tags().is_empty(),
+        "a generic raw-label add never lands in the typed tags field"
+    );
 }
 
 #[test]
@@ -192,20 +93,10 @@ fn story_created_event_carries_story_type() {
             story_type: StoryKind::Bug,
         },
     );
-    apply(
-        &store,
-        StoryEvent::TagAdded {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(1),
-            label: "bug".to_string(),
-        },
-    );
     assert_eq!(
-        story_type_from_labels_or_title(
-            &story_at(&store, 1).unwrap().raw_labels,
-            &story_at(&store, 1).unwrap().title
-        ),
-        StoryKind::Bug
+        story_at(&store, 1).unwrap().story_type(),
+        StoryKind::Bug,
+        "the reducer takes story_type from the StoryCreated event itself"
     );
 }
 

@@ -101,11 +101,17 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
     let story = orch.story(200).expect("story present");
     assert!(
         story
-            .raw_labels
-            .iter()
-            .any(|l| l == "blocked" || l == "parent-epic-#1384"),
-        "non-iteration labels actually applied; got {:?}",
-        story.raw_labels
+            .tags
+            .contains(&crate::product_management::story::Tag::Blocked),
+        "the blocked label classifies into the typed tag at the tool edge; got {:?}",
+        story.tags
+    );
+    orch.refresh_all().await.unwrap();
+    let story = orch.story(200).expect("story present after refresh");
+    assert_eq!(
+        story.parent_epic().map(|e| e.value()),
+        Some(1384),
+        "generic labels reach the adapter edge and decode back typed on refresh"
     );
 }
 

@@ -61,7 +61,7 @@ fn an_orchestrator_write_is_synchronously_visible_through_its_own_reads() {
 }
 
 #[test]
-fn the_bound_store_runs_the_label_middleware_so_tag_churn_projects_into_raw_labels() {
+fn generic_tag_churn_has_no_domain_side_effect_after_the_middleware_retire() {
     let (_handle, orch) = bound_orchestrator();
     orch.mutate_sync(created(7, "labeled")).unwrap();
     orch.mutate_sync(StoryEvent::TagAdded {
@@ -71,11 +71,11 @@ fn the_bound_store_runs_the_label_middleware_so_tag_churn_projects_into_raw_labe
     })
     .unwrap();
     let story = orch.story(7).unwrap();
-    assert_eq!(
-        story.raw_labels,
-        vec!["some-generic-label".to_string()],
-        "the reducer ignores TagAdded — only StoryLabelAppMiddleware projects it into \
-         raw labels, so this landing proves the central store runs the middleware"
+    assert!(
+        story.raw_labels.is_empty() && story.tags().is_empty(),
+        "a generic TagAdded is edge-bound only — no reducer arm and no middleware \
+         projects it into domain state; it reaches GitHub via the outbox and returns \
+         typed through the adapter refresh"
     );
 }
 

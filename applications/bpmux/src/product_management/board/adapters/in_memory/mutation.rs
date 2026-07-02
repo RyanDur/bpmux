@@ -34,10 +34,21 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
             if !labels.iter().any(|l| l.eq_ignore_ascii_case(label)) {
                 labels.push(label.clone());
             }
+            if let Some(story) = s.stories.get_mut(&id.value())
+                && !story
+                    .raw_labels
+                    .iter()
+                    .any(|l| l.eq_ignore_ascii_case(label))
+            {
+                story.raw_labels.push(label.clone());
+            }
         }
         StoryEvent::TagRemoved { id, label, .. } => {
             if let Some(labels) = s.labels.get_mut(&id.value()) {
                 labels.retain(|l| !l.eq_ignore_ascii_case(label));
+            }
+            if let Some(story) = s.stories.get_mut(&id.value()) {
+                story.raw_labels.retain(|l| !l.eq_ignore_ascii_case(label));
             }
         }
         StoryEvent::TagSet { id, tag, .. } => typed_label_mirror::tag_set(s, id.value(), *tag),

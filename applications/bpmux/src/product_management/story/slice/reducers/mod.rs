@@ -12,7 +12,7 @@ use comments::{
     apply_free_comment_appended, apply_free_comments_fetched, apply_gate_comment_appended,
     apply_gate_comments_fetched,
 };
-use labels::{apply_labels_refreshed, apply_raw_labels};
+use labels::apply_labels_refreshed;
 use lifecycle::{
     apply_acceptor_assigned, apply_blocked_by_cleared, apply_blocked_by_set, apply_body_fetched,
     apply_body_updated, apply_iteration_slot_cleared, apply_iteration_slot_set,
@@ -31,9 +31,6 @@ pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
     let mut stories = state.clone();
     match action {
         StoryAction::Event(event) => apply_event(&mut stories, event),
-        StoryAction::RawLabelsAssigned { id, fields } => {
-            apply_raw_labels(&mut stories, *id, fields)
-        }
         StoryAction::Seeded(incoming) => {
             for item in incoming {
                 stories.insert(item.key(), item.clone());

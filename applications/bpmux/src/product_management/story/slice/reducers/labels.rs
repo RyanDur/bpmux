@@ -2,12 +2,6 @@ use super::Stories;
 use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::story::{StoryId, StoryKey};
 
-pub(super) fn apply_raw_labels(w: &mut Stories, id: StoryId, fields: &LabelDerivedFields) {
-    if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
-        story.raw_labels = fields.raw_labels.clone();
-    }
-}
-
 pub(super) fn apply_labels_refreshed(w: &mut Stories, id: StoryId, fields: &LabelDerivedFields) {
     if fields.raw_labels.is_empty() {
         return;

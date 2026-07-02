@@ -37,9 +37,6 @@ impl SeededStore {
         let handle = Self {
             store: kernel::Store::new(AppState::default(), Box::new(super::app::app_reduce)),
         };
-        handle.store.add_middleware(std::sync::Arc::new(
-            super::app::StoryLabelAppMiddleware::new(),
-        ));
         if !outcomes.is_empty() {
             handle.dispatch(AppAction::Outcome(
                 crate::product_management::outcome::OutcomeAction::Upserted(outcomes),

@@ -168,51 +168,52 @@ async fn drain_once_handles_multiple_events_in_order() {
 async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = seed_story(1687, BoardState::Ready);
-    seeded.raw_labels = vec!["parent-iteration-#1655.125".to_string()];
+    seeded.raw_labels = vec!["iteration-Pegasus.125".to_string()];
     adapter.seed_stories(vec![seeded]);
-    adapter.seed_labels(1687, vec!["parent-iteration-#1655.125".to_string()]);
+    adapter.seed_labels(1687, vec!["iteration-Pegasus.125".to_string()]);
     let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
 
     orchestrator.ingest_once().await.unwrap();
-    assert!(
+    assert_eq!(
         orchestrator
             .story(1687)
             .unwrap()
-            .raw_labels
-            .contains(&"parent-iteration-#1655.125".to_string()),
-        "baseline: story starts membered at the old position"
+            .iteration_slot()
+            .map(|slot| slot.position),
+        Some(125),
+        "baseline: story starts slotted at the old position"
     );
 
     orchestrator
-        .mutate(StoryEvent::TagAdded {
+        .mutate(StoryEvent::IterationSlotSet {
             meta: meta(),
             id: StoryId::new(1687),
-            label: "parent-iteration-#1655.106".to_string(),
+            name: "Pegasus".to_string(),
+            position: 106,
         })
         .unwrap();
-    orchestrator
-        .mutate(StoryEvent::TagRemoved {
-            meta: meta(),
-            id: StoryId::new(1687),
-            label: "parent-iteration-#1655.125".to_string(),
-        })
-        .unwrap();
-    let after_reorder = orchestrator.story(1687).unwrap().raw_labels;
-    assert!(
-        after_reorder.contains(&"parent-iteration-#1655.106".to_string())
-            && !after_reorder.contains(&"parent-iteration-#1655.125".to_string()),
+    assert_eq!(
+        orchestrator
+            .story(1687)
+            .unwrap()
+            .iteration_slot()
+            .map(|slot| slot.position),
+        Some(106),
         "optimistic reorder moves the story to the new position"
     );
 
     orchestrator.ingest_once().await.unwrap();
 
-    let after_ingest = orchestrator.story(1687).unwrap().raw_labels;
-    assert!(
-        after_ingest.contains(&"parent-iteration-#1655.106".to_string())
-            && !after_ingest.contains(&"parent-iteration-#1655.125".to_string()),
+    assert_eq!(
+        orchestrator
+            .story(1687)
+            .unwrap()
+            .iteration_slot()
+            .map(|slot| slot.position),
+        Some(106),
         "a refresh that reads the source before the reorder's write has drained must NOT clobber the un-acknowledged optimistic position"
     );
 }

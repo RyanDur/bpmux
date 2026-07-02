@@ -40,7 +40,7 @@ impl StoryView {
     }
 }
 
-fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
+pub(crate) fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     let mut labels: Vec<String> = Vec::new();
     labels.push(story.story_type().as_label().to_string());
     for tag in story.tags() {
@@ -48,6 +48,9 @@ fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     }
     if let Some(blocker) = story.blocked_by() {
         labels.push(GhLabelCodec.encode_blocked_by(blocker.value()));
+    }
+    if let Some(acceptor) = story.acceptor() {
+        labels.push(GhLabelCodec.encode_acceptor(acceptor).to_string());
     }
     if let Some(epic) = story.parent_epic() {
         labels.push(codec.encode_parent_epic(epic.value()));

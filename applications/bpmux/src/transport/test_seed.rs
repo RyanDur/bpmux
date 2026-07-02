@@ -264,23 +264,34 @@ pub async fn post_seed_stories(
                 );
             }
         }
-        if is_iteration_seed && let Some(story) = refresh.backing_story(s.id) {
-            dispatcher.dispatch(crate::store::AppAction::Iteration(
-                crate::product_management::iteration::IterationAction::Upserted(vec![
-                    crate::product_management::board::adapters::github::decode_iteration_from_story(
-                        &story,
-                    ),
-                ]),
-            ));
-        }
-        if is_epic_seed && let Some(story) = refresh.backing_story(s.id) {
-            dispatcher.dispatch(crate::store::AppAction::Epic(
-                crate::product_management::epic::EpicAction::Upserted(vec![
-                    crate::product_management::board::adapters::github::decode_epic_from_story(
-                        &story,
-                    ),
-                ]),
-            ));
+        if is_iteration_seed || is_epic_seed {
+            let mut carrier = crate::product_management::story::Story::new_minimal(
+                crate::product_management::story::StoryId::new(s.id),
+                s.title.clone(),
+                initial_state,
+                chrono::Utc::now(),
+                "test-seed".to_string(),
+            );
+            carrier.body = Some(s.body.clone());
+            carrier.is_closed = s.is_closed;
+            carrier.raw_labels = s.labels.clone();
+            if is_iteration_seed {
+                dispatcher.dispatch(crate::store::AppAction::Iteration(
+                    crate::product_management::iteration::IterationAction::Upserted(vec![
+                        crate::product_management::board::adapters::github::decode_iteration_from_story(
+                            &carrier,
+                        ),
+                    ]),
+                ));
+            } else {
+                dispatcher.dispatch(crate::store::AppAction::Epic(
+                    crate::product_management::epic::EpicAction::Upserted(vec![
+                        crate::product_management::board::adapters::github::decode_epic_from_story(
+                            &carrier,
+                        ),
+                    ]),
+                ));
+            }
         }
     }
     let invalidate_delta = crate::message::Message {

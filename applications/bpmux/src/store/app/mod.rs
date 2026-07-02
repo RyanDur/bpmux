@@ -10,9 +10,7 @@ use crate::store::roster::{self, RosterAction, RosterState};
 use crate::store::sync::SyncAction;
 
 mod listeners;
-mod story_middleware;
 pub use listeners::*;
-pub(crate) use story_middleware::StoryLabelAppMiddleware;
 
 #[derive(Default, Clone)]
 pub struct AppState {

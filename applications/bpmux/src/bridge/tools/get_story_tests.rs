@@ -304,7 +304,7 @@ async fn divergent_case_workflow_accepted_but_gh_open_observable() {
 }
 
 #[tokio::test]
-async fn surfaces_full_raw_labels_array_not_synthesized_state_label() {
+async fn surfaces_typed_label_chips_and_never_state_labels() {
     let mut story = make_story(1207, BoardState::Ready, Some("body"));
     story.raw_labels = vec![
         "bug".to_string(),
@@ -341,13 +341,18 @@ async fn surfaces_full_raw_labels_array_not_synthesized_state_label() {
         "Rework label surfaces; got {names:?}"
     );
     assert!(
-        names.contains(&"ready"),
-        "State label still surfaces alongside others; got {names:?}"
+        !names.contains(&"ready"),
+        "State labels never render as chips — state is the workflow_state field; got {names:?}"
+    );
+    assert_eq!(
+        parsed["workflow_state"].as_str(),
+        Some("ready"),
+        "the state the old chip carried lives in workflow_state"
     );
 }
 
 #[tokio::test]
-async fn empty_raw_labels_returns_empty_labels_array() {
+async fn labels_reencode_from_typed_fields_without_state_synthesis() {
     let mut story = make_story(1208, BoardState::Icebox, Some("body"));
     story.raw_labels = Vec::new();
     let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
@@ -356,10 +361,17 @@ async fn empty_raw_labels_returns_empty_labels_array() {
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
-    let labels = parsed["labels"].as_array().expect("labels is array");
-    assert!(
-        labels.is_empty(),
-        "raw_labels empty → labels array empty (no state-label synthesis); got {labels:?}"
+    let labels: Vec<&str> = parsed["labels"]
+        .as_array()
+        .expect("labels is array")
+        .iter()
+        .filter_map(|l| l["name"].as_str())
+        .collect();
+    assert_eq!(
+        labels,
+        vec!["feature"],
+        "labels re-encode from typed fields (story_type chip only here) — never from raw \
+         storage, never synthesizing state labels; state lives in workflow_state"
     );
 }
 
