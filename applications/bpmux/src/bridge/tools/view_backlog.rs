@@ -1,4 +1,4 @@
-use crate::product_management::board::column::{ColumnBucket, column_for};
+use crate::product_management::board::arrangement::{ColumnBucket, column_for};
 use crate::product_management::story::Story;
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";

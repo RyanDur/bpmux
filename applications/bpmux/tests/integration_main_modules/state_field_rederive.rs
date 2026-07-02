@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use bpmux::product_management::board::adapters::github::state_from_labels;
-use bpmux::product_management::board::column::{ColumnBucket, column_for};
+use bpmux::product_management::board::arrangement::{ColumnBucket, column_for};
 use bpmux::product_management::story::BoardState;
 use bpmux::product_management::story::Stage;
 

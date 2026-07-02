@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::view::*;
-use crate::product_management::board::column::ColumnBucket;
+use crate::product_management::board::arrangement::ColumnBucket;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::BoardState;
 use crate::product_management::story::Stage;

@@ -50,8 +50,8 @@ pub(crate) async fn handle_view_board(
     Ok(build_board_text(&epics, &stories, &iterations, &scope))
 }
 
-fn parse_bucket(s: &str) -> Option<crate::product_management::board::column::ColumnBucket> {
-    use crate::product_management::board::column::ColumnBucket;
+fn parse_bucket(s: &str) -> Option<crate::product_management::board::arrangement::ColumnBucket> {
+    use crate::product_management::board::arrangement::ColumnBucket;
     match s.to_ascii_lowercase().as_str() {
         "icebox" => Some(ColumnBucket::Icebox),
         "ready" => Some(ColumnBucket::Ready),
@@ -66,7 +66,7 @@ fn parse_bucket(s: &str) -> Option<crate::product_management::board::column::Col
 
 #[derive(Default)]
 pub(in crate::bridge) struct BoardScope {
-    pub state: Option<crate::product_management::board::column::ColumnBucket>,
+    pub state: Option<crate::product_management::board::arrangement::ColumnBucket>,
     pub iteration: Option<u64>,
     pub row_limit: Option<usize>,
 }
@@ -99,7 +99,7 @@ pub(in crate::bridge) fn build_board_text(
             ),
         )
     };
-    use crate::product_management::board::column::{ColumnBucket, column_for};
+    use crate::product_management::board::arrangement::{ColumnBucket, column_for};
     let in_scope_iteration = |s: &crate::product_management::story::Story| -> bool {
         match scope.iteration {
             Some(n) => {

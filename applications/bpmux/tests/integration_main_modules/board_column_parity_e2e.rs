@@ -1,23 +1,6 @@
-//! Cross-surface column-bucket parity test for #520.
-//!
-//! Pins the invariant: for every (state × is_closed) cell, the Rust
-//! `board::column::column_for` returns the same column the Electron
-//! renderer's TypeScript `columnFor` (board/types.ts) returns. Two
-//! surfaces, one definition of truth — and a single test that catches
-//! drift in either direction.
-//!
-//! The TS function lives in
-//! `applications/electron/src/renderer/src/board/types.ts` and is
-//! mirrored here as a truth-table. If the renderer's columnFor
-//! changes, this test breaks until both sides update; if the Rust
-//! function changes, same. Per `feedback_test_fidelity_vocabulary_discipline`:
-//! this is integration-fidelity (cross-surface contract) — substituting
-//! a per-surface unit-test would be the cheaper-test bug the spec
-//! falsifier-set explicitly rejects (F8).
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use bpmux::product_management::board::column::{ColumnBucket, column_for};
+use bpmux::product_management::board::arrangement::{ColumnBucket, column_for};
 use bpmux::product_management::story::BoardState;
 use bpmux::product_management::story::Stage;
 
