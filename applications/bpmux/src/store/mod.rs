@@ -4,8 +4,12 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::product_management::board::RefreshDriver;
+use crate::product_management::owner_park::OwnerParkListener;
 use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
+use crate::transport::rest::broadcast_listeners::{
+    EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
+};
 
 pub mod ci;
 pub mod kernel;
@@ -140,33 +144,24 @@ impl Store {
             self.parent_ct.clone(),
         ));
         self.app_store.add_listener(sync_poll.clone());
-        self.app_store.add_listener(Arc::new(
-            crate::transport::rest::broadcast_listeners::OutcomeBroadcast::new(
+        self.app_store.add_listener(Arc::new(OutcomeBroadcast::new(
+            self.session.clone(),
+            refresh.clone(),
+        )));
+        self.app_store
+            .add_listener(Arc::new(IterationBroadcast::new(
                 self.session.clone(),
                 refresh.clone(),
-            ),
-        ));
-        self.app_store.add_listener(Arc::new(
-            crate::transport::rest::broadcast_listeners::IterationBroadcast::new(
-                self.session.clone(),
-                refresh.clone(),
-            ),
-        ));
-        self.app_store.add_listener(Arc::new(
-            crate::transport::rest::broadcast_listeners::EpicBroadcast::new(
-                self.session.clone(),
-                refresh.clone(),
-            ),
-        ));
-        self.app_store.add_listener(Arc::new(
-            crate::transport::rest::broadcast_listeners::StoryBroadcast::new(
-                self.session.clone(),
-                refresh.clone(),
-            ),
-        ));
-        self.app_store.add_listener(Arc::new(
-            crate::product_management::owner_park::OwnerParkListener,
-        ));
+            )));
+        self.app_store.add_listener(Arc::new(EpicBroadcast::new(
+            self.session.clone(),
+            refresh.clone(),
+        )));
+        self.app_store.add_listener(Arc::new(StoryBroadcast::new(
+            self.session.clone(),
+            refresh.clone(),
+        )));
+        self.app_store.add_listener(Arc::new(OwnerParkListener));
         let github_drain = Arc::new(sync::GithubDrain::new(refresh, self.parent_ct.clone()));
         self.app_store.add_listener(github_drain.clone());
         self.sync_poll = Some(sync_poll);
