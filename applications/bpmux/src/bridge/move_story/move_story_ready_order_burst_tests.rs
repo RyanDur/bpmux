@@ -3,7 +3,7 @@
 use crate::bridge::dispatch::{dispatch_list_ready, dispatch_move_story};
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::{Iteration, IterationAction};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch, SeededStore};
@@ -43,11 +43,9 @@ fn current_iteration_story(id: u64) -> Story {
 }
 
 async fn build_orchestrator(stories: Vec<Story>) -> (Arc<dyn RefreshDriver>, SeededStore) {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let iterations: Vec<Iteration> = stories
         .iter()
         .filter(|s| {
@@ -58,8 +56,8 @@ async fn build_orchestrator(stories: Vec<Story>) -> (Arc<dyn RefreshDriver>, See
         .map(decode_iteration_from_story)
         .collect();
     let seed = SeededStore::new(vec![], iterations, vec![]);
-    seed.mirror_board(&orch.store());
-    orch.bind_select(seed.select());
+    seed.bind_refresh(&orch);
+    orch.refresh_all().await.unwrap();
     (orch, seed)
 }
 

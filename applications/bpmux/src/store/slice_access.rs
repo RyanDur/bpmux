@@ -13,13 +13,15 @@ impl Store {
         Select::new(Arc::downgrade(&self.app_store))
     }
 
-    pub fn bind_board_mirror(&self, board: &crate::product_management::board::BoardStore) {
+    pub fn story_dispatcher(
+        &self,
+    ) -> Box<dyn Fn(crate::product_management::story::slice::StoryAction) + Send + Sync> {
         let app = Arc::downgrade(&self.app_store);
-        board.bind_central_mirror(move |action| {
+        Box::new(move |action| {
             if let Some(store) = app.upgrade() {
                 store.dispatch(super::AppAction::Story(action));
             }
-        });
+        })
     }
 
     pub fn outcomes(&self) -> Vec<Outcome> {

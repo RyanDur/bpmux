@@ -18,7 +18,6 @@
 
 use std::sync::Arc;
 
-use bpmux::product_management::board::BoardStore;
 use bpmux::product_management::board::PeerId;
 use bpmux::product_management::board::RefreshDriver;
 use bpmux::product_management::board::StoryEvent;
@@ -26,14 +25,16 @@ use bpmux::product_management::board::SyncOrchestrator;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::board::events::EventMeta;
 use bpmux::product_management::story::{BoardState, Story, StoryId};
+use bpmux::session::Session;
 use chrono::{TimeZone, Utc};
+use tokio::sync::broadcast;
+use tokio_util::sync::CancellationToken;
 
 #[tokio::test]
 async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     // Verify the slice-1 extraction preserves universal-reap behavior:
     // both start_story and deliver_story emit 8 TagRemoved events
     // (one per ALL_STATE_LABELS entry except the target's keep-label).
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
         StoryId::new(909),
@@ -43,10 +44,23 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+
+    let session_dir = tempfile::tempdir().expect("session dir");
+    let (wake_tx, _) = broadcast::channel(64);
+    let session = Arc::new(Session::new(
+        session_dir.path().to_path_buf(),
+        "test".to_string(),
+        wake_tx,
     ));
+    let app_store = Arc::new(bpmux::store::Store::new(
+        session,
+        None,
+        bpmux::transport::ci_state_store::CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    orch.bind_select(app_store.selector());
+    orch.bind_story_dispatch(app_store.story_dispatcher());
     orch.refresh_all().await.unwrap();
 
     let meta = EventMeta {

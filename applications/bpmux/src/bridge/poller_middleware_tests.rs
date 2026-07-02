@@ -6,8 +6,10 @@ use chrono::{TimeZone, Utc};
 
 use crate::bridge::tools::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
+use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::store::{AppAction, SeededStore};
 
 fn seed_minimal(id: u64, state: BoardState) -> Story {
     Story::new_minimal(
@@ -21,14 +23,15 @@ fn seed_minimal(id: u64, state: BoardState) -> Story {
 
 #[tokio::test]
 async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    store.seed_all(vec![seed_minimal(8001, BoardState::Ready)]);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let seed = SeededStore::new(vec![], vec![], vec![]);
+    seed.bind_refresh(&refresh);
+    seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
+        8001,
+        BoardState::Ready,
+    )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8001));
     let result = handle_get_story(&args, Some(&refresh)).await;
@@ -51,15 +54,13 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
 
 #[tokio::test]
 async fn get_story_serves_cached_body_from_canonical_store() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut story = seed_minimal(8002, BoardState::Ready);
     story.body = Some("# real body\n\ncached body content from prior hydrate".to_string());
-    store.seed_all(vec![story]);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let seed = SeededStore::new(vec![], vec![], vec![]);
+    seed.bind_refresh(&refresh);
+    seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![story])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8002));
     let result = handle_get_story(&args, Some(&refresh)).await;
@@ -77,14 +78,15 @@ async fn get_story_serves_cached_body_from_canonical_store() {
 
 #[tokio::test]
 async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    store.seed_all(vec![seed_minimal(8003, BoardState::InProgress(Stage::Dev))]);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let seed = SeededStore::new(vec![], vec![], vec![]);
+    seed.bind_refresh(&refresh);
+    seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
+        8003,
+        BoardState::InProgress(Stage::Dev),
+    )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8003));
     let result = handle_get_story(&args, Some(&refresh)).await;
@@ -148,15 +150,23 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 #[tokio::test]
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     use crate::product_management::board::events::StoryEvent;
-    let store = BoardStore::new();
-    store.seed_all(vec![seed_minimal(9000, BoardState::Ready)]);
-    store.apply(&StoryEvent::BodyFetched {
-        meta: crate::product_management::board::orchestrator::cache_fill_meta(),
-        id: StoryId::new(9000),
-        body: "hydrated body content".to_string(),
-        etag: Some("W/\"deadbeef\"".to_string()),
-    });
-    let story = store.story(StoryId::new(9000)).expect("story present");
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let seed = SeededStore::new(vec![], vec![], vec![]);
+    seed.bind_refresh(&orch);
+    seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
+        9000,
+        BoardState::Ready,
+    )])));
+    seed.dispatch(AppAction::Story(StoryAction::Event(
+        StoryEvent::BodyFetched {
+            meta: crate::product_management::board::orchestrator::cache_fill_meta(),
+            id: StoryId::new(9000),
+            body: "hydrated body content".to_string(),
+            etag: Some("W/\"deadbeef\"".to_string()),
+        },
+    )));
+    let story = orch.story(9000).expect("story present");
     assert_eq!(story.body.as_deref(), Some("hydrated body content"));
     assert_eq!(story.body_etag.as_deref(), Some("W/\"deadbeef\""));
 }
@@ -165,23 +175,28 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 async fn local_body_mutate_invalidates_prior_etag() {
     use crate::product_management::board::events::{EventMeta, StoryEvent};
     use crate::product_management::board::peer::PeerId;
-    let store = BoardStore::new();
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch);
     let mut seed = seed_minimal(9100, BoardState::Ready);
     seed.body = Some("v1".to_string());
     seed.body_etag = Some("W/\"etag-v1\"".to_string());
-    store.seed_all(vec![seed.clone()]);
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed.clone()])));
     let mut updated = seed;
     updated.body = Some("v2".to_string());
-    store.apply(&StoryEvent::StoryRefreshed {
-        meta: EventMeta {
-            actor: "test".to_string(),
-            ts: Utc::now(),
-            peer_id: PeerId::local(),
+    handle.dispatch(AppAction::Story(StoryAction::Event(
+        StoryEvent::StoryRefreshed {
+            meta: EventMeta {
+                actor: "test".to_string(),
+                ts: Utc::now(),
+                peer_id: PeerId::local(),
+            },
+            id: StoryId::new(9100),
+            story: Box::new(updated),
         },
-        id: StoryId::new(9100),
-        story: Box::new(updated),
-    });
-    let after = store.story(StoryId::new(9100)).expect("story present");
+    )));
+    let after = orch.story(9100).expect("story present");
     assert_eq!(after.body.as_deref(), Some("v2"));
     assert_eq!(
         after.body_etag, None,
@@ -193,22 +208,27 @@ async fn local_body_mutate_invalidates_prior_etag() {
 async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
     use crate::product_management::board::events::{EventMeta, StoryEvent};
     use crate::product_management::board::peer::PeerId;
-    let store = BoardStore::new();
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch);
     let mut seed = seed_minimal(9200, BoardState::InProgress(Stage::Dev));
     seed.raw_labels = vec!["in progress".to_string()];
-    store.seed_all(vec![seed.clone()]);
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed.clone()])));
     let mut refreshed = seed;
     refreshed.raw_labels = vec!["in progress".to_string(), "iteration-order.300".to_string()];
-    store.apply(&StoryEvent::StoryRefreshed {
-        meta: EventMeta {
-            actor: "test".to_string(),
-            ts: Utc::now(),
-            peer_id: PeerId::local(),
+    handle.dispatch(AppAction::Story(StoryAction::Event(
+        StoryEvent::StoryRefreshed {
+            meta: EventMeta {
+                actor: "test".to_string(),
+                ts: Utc::now(),
+                peer_id: PeerId::local(),
+            },
+            id: StoryId::new(9200),
+            story: Box::new(refreshed),
         },
-        id: StoryId::new(9200),
-        story: Box::new(refreshed),
-    });
-    let after = store.story(StoryId::new(9200)).expect("story present");
+    )));
+    let after = orch.story(9200).expect("story present");
     assert!(
         after
             .raw_labels
@@ -220,30 +240,19 @@ async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
 
 #[tokio::test]
 async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
-    use crate::product_management::board::events::StoryEvent;
     use crate::product_management::board::sync::ConditionalBody;
-    use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_minimal(9001, BoardState::Ready)]);
     adapter.seed_body(9001, "real body".into());
-    let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
-    orch.ingest_once().await.unwrap();
-    let mut rx = store.subscribe();
-    let result = RefreshDriver::fetch_body_conditional(&orch, 9001, None)
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    orch.refresh_all().await.unwrap();
+    let result = orch
+        .fetch_body_conditional(9001, None)
         .await
         .expect("conditional fetch ok");
     assert!(matches!(result, ConditionalBody::Modified { .. }));
-    let event = rx.recv().await.expect("event dispatched");
-    assert!(matches!(
-        event,
-        crate::product_management::board::StoreChange::Event(StoryEvent::BodyFetched { id, .. })
-            if id == StoryId::new(9001)
-    ));
-    assert_eq!(
-        store.story(StoryId::new(9001)).unwrap().body.as_deref(),
-        Some("real body")
-    );
+    assert_eq!(orch.story(9001).unwrap().body.as_deref(), Some("real body"));
 }
 
 #[tokio::test]
@@ -301,13 +310,14 @@ async fn select_stories_to_revalidate_caps_at_limit() {
 
 #[tokio::test]
 async fn get_story_returns_gate_comments_hydrated_flag_in_response() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    store.seed_all(vec![seed_minimal(8004, BoardState::Ready)]);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let seed = SeededStore::new(vec![], vec![], vec![]);
+    seed.bind_refresh(&refresh);
+    seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
+        8004,
+        BoardState::Ready,
+    )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8004));
     let result = handle_get_story(&args, Some(&refresh)).await;

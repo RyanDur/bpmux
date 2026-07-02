@@ -17,7 +17,7 @@ pub use story_listeners::{OwnerParkListener, StoryBroadcast};
 pub(crate) use story_middleware::StoryLabelAppMiddleware;
 
 #[cfg(test)]
-mod story_mirror_tests;
+mod story_write_path_tests;
 
 #[derive(Default, Clone)]
 pub struct AppState {

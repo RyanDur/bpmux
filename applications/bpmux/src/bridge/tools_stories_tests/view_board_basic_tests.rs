@@ -14,7 +14,6 @@ async fn view_board_requires_refresh_after_5l_fallback_retirement() {
 
 #[tokio::test]
 async fn view_board_auto_reingests_when_store_is_empty() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -22,7 +21,6 @@ async fn view_board_auto_reingests_when_store_is_empty() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap();
     adapter.seed_stories(vec![Story::new_minimal(
@@ -32,10 +30,8 @@ async fn view_board_auto_reingests_when_store_is_empty() {
         ts,
         "dev".into(),
     )]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     assert!(
         orch.all_stories().is_empty(),
         "store must start empty (simulates post-restart cache-loss); got: {:?}",
@@ -56,18 +52,14 @@ async fn view_board_auto_reingests_when_store_is_empty() {
 
 #[tokio::test]
 async fn view_board_handles_refresh_succeeding_with_empty_result_without_errors() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
 
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
@@ -88,19 +80,15 @@ async fn view_board_handles_refresh_succeeding_with_empty_result_without_errors(
 
 #[tokio::test]
 async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
 
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
@@ -118,7 +106,6 @@ async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log()
 
 #[tokio::test]
 async fn view_board_buckets_stories_by_story_state() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -126,7 +113,6 @@ async fn view_board_buckets_stories_by_story_state() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let stories = vec![
@@ -167,10 +153,8 @@ async fn view_board_buckets_stories_by_story_state() {
         ),
     ];
     adapter.seed_stories(stories);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
@@ -197,7 +181,6 @@ async fn view_board_buckets_stories_by_story_state() {
 
 #[tokio::test]
 async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -205,7 +188,6 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut closed_in_progress = Story::new_minimal(
@@ -225,10 +207,8 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     );
     accepted_closed.is_closed = true;
     adapter.seed_stories(vec![closed_in_progress, accepted_closed]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
@@ -259,7 +239,6 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
 
 #[tokio::test]
 async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -268,7 +247,6 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
         StoryId::new(301),
@@ -278,10 +256,9 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -294,7 +271,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let result = handle_close_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(StoryId::new(301)).expect("story exists");
+    let story = orchestrator.story(301).expect("story exists");
     assert!(story.is_closed, "is_closed flag must be set");
     assert_eq!(
         story.state,

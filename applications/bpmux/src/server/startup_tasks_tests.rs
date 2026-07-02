@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::story::{BoardState, Story, StoryId};
 
 use super::startup_tasks::spawn_background_ingest;
@@ -19,25 +19,25 @@ async fn ingest_runs_in_background_not_inline() {
         chrono::Utc::now(),
         "test".to_string(),
     )]);
-    let store = Arc::new(BoardStore::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store.clone(), adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
 
     spawn_background_ingest(orch.clone());
 
     assert!(
-        store.all_stories().is_empty(),
+        orch.all_stories().is_empty(),
         "ingest must be deferred to the background, not run inline before the server binds"
     );
 
     for _ in 0..100 {
-        if !store.all_stories().is_empty() {
+        if !orch.all_stories().is_empty() {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
 
     assert_eq!(
-        store.all_stories().len(),
+        orch.all_stories().len(),
         1,
         "background ingest should populate the store from the source once it runs"
     );

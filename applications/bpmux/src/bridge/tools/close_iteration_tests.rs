@@ -8,10 +8,9 @@ mod canonical_via_gh_1300 {
     use crate::product_management::board::adapters::github::decode_iteration_from_story;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::board::orchestrator::SyncOrchestrator;
-    use crate::product_management::board::store::BoardStore;
     use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
     use crate::product_management::story::{BoardState, Story, StoryId};
-    use crate::store::{AppAction, Dispatch, Select};
+    use crate::store::{AppAction, Dispatch};
     use crate::transport::rest::{close_iteration_canonical, collect_ready_queue_blockers};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
@@ -67,11 +66,9 @@ mod canonical_via_gh_1300 {
     }
 
     async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(stories.clone());
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
-        orch.refresh_all().await.unwrap();
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
         let iterations: Vec<Iteration> = stories
             .iter()
             .filter(|s| {
@@ -81,12 +78,8 @@ mod canonical_via_gh_1300 {
             })
             .map(decode_iteration_from_story)
             .collect();
-        orch.bind_select(Select::seeded_for_board(
-            &orch.store(),
-            vec![],
-            iterations,
-            vec![],
-        ));
+        crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
+        orch.refresh_all().await.unwrap();
         orch
     }
 
@@ -219,37 +212,23 @@ mod canonical_via_gh_1300 {
             seed_member(200, BoardState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
-        let (dispatch, _rx) = dispatch_channel();
-        let store = refresh.store();
-        let mut rx = store.subscribe();
+        let (dispatch, mut rx) = dispatch_channel();
+        let before = refresh.story(200).expect("member 200 seeded");
         close_iteration_canonical(&refresh, &dispatch, 1400)
             .await
             .unwrap();
-        let mut events = Vec::new();
-        while let Ok(e) = rx.try_recv() {
-            events.push(e);
-        }
-        let member_promotion_touch = events.iter().any(|e| {
-            matches!(
-                e,
-                crate::product_management::board::StoreChange::Event(
-                    crate::product_management::board::StoryEvent::TagAdded { id, .. }
-                        | crate::product_management::board::StoryEvent::StateTransitioned { id, .. }
-                ) if *id == StoryId::new(200)
-            )
-        });
-        assert!(
-            !member_promotion_touch,
-            "#1556: close promotes nothing — no member TagAdded/StateTransitioned: {events:?}"
+        let after = refresh.story(200).expect("member 200 survives the close");
+        assert_eq!(
+            after.state, before.state,
+            "#1556: close promotes nothing — no member StateTransitioned"
+        );
+        assert_eq!(
+            after.raw_labels, before.raw_labels,
+            "#1556: close promotes nothing — no member TagAdded/TagRemoved"
         );
         assert!(
-            events.iter().any(|e| matches!(
-                e,
-                crate::product_management::board::StoreChange::Event(
-                    crate::product_management::board::StoryEvent::StoryClosed { .. }
-                )
-            )),
-            "StoryClosed still fires for the iteration-issue: {events:?}"
+            closed_iteration(&mut rx, 1400).complete,
+            "the close still lands for the iteration-issue — dispatched onto the slice as complete"
         );
     }
 }

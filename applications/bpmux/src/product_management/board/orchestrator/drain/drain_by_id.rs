@@ -20,7 +20,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             return DrainOneOutcome::Confirmed;
         };
         let event = queued.event.clone();
-        let current = self.store.backing_story(event.story_id());
+        let current = self.read_story(event.story_id());
         let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
         match kind {
             Some(ConflictKind::IdempotentSkip) => {
@@ -37,7 +37,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 self.remove_pending_by_id(id);
                 self.persist_outbox();
                 decrement_pending(&self.status);
-                self.store.apply(&StoryEvent::ConflictDetected {
+                self.apply_story_event(&StoryEvent::ConflictDetected {
                     meta: cache_fill_meta(),
                     id: event.story_id(),
                     kind: divergent,
@@ -57,7 +57,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     decrement_pending(&self.status);
                     record_push_success(&self.status);
                     if let Some(refresh_event) = follow_up {
-                        self.store.apply(&refresh_event);
+                        self.apply_story_event(&refresh_event);
                     }
                     DrainOneOutcome::Confirmed
                 }

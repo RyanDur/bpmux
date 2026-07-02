@@ -19,15 +19,12 @@ async fn accept_requires_refresh_after_5n_fallback_retirement() {
 #[tokio::test]
 async fn accept_rejects_unknown_role_via_handler() {
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+    use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let args = serde_json::json!({"id": 1, "would_file_bug": false});
     let result = handle_accept_story(
         args.as_object().unwrap(),
@@ -132,14 +129,11 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
 #[tokio::test]
 async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::{
-        BoardStore, RefreshDriver, StoryEvent, SyncOrchestrator,
-    };
+    use crate::product_management::board::{RefreshDriver, StoryEvent, SyncOrchestrator};
     use crate::product_management::story::{BoardState, Story};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(777),
@@ -148,10 +142,9 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
         Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({
@@ -206,15 +199,12 @@ async fn reject_allows_pm_designer_dev_owner() {
 #[tokio::test]
 async fn reject_rejects_unknown_role_via_handler() {
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+    use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let args = serde_json::json!({"id": 1, "reason": "test"});
     let result = handle_reject_story(
         args.as_object().unwrap(),

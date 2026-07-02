@@ -62,16 +62,17 @@ impl SeededStore {
         Select::new(std::sync::Arc::downgrade(&self.store))
     }
 
-    pub(crate) fn mirror_board(&self, board: &crate::product_management::board::BoardStore) {
+    pub(crate) fn bind_refresh(
+        &self,
+        refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    ) {
+        refresh.bind_select(self.select());
         let weak = std::sync::Arc::downgrade(&self.store);
-        board.bind_central_mirror(move |action| {
+        refresh.bind_story_dispatch(Box::new(move |action| {
             if let Some(store) = weak.upgrade() {
                 store.dispatch(AppAction::Story(action));
             }
-        });
-        self.dispatch(AppAction::Story(
-            crate::product_management::story::slice::StoryAction::Seeded(board.all_stories()),
-        ));
+        }));
     }
 
     pub(crate) fn dispatch(&self, action: AppAction) {
@@ -80,17 +81,13 @@ impl SeededStore {
 }
 
 #[cfg(test)]
-impl Select {
-    pub(crate) fn seeded_for_board(
-        board: &crate::product_management::board::BoardStore,
-        outcomes: Vec<crate::product_management::outcome::Outcome>,
-        iterations: Vec<crate::product_management::iteration::Iteration>,
-        epics: Vec<crate::product_management::epic::Epic>,
-    ) -> Self {
-        let handle = SeededStore::new(outcomes, iterations, epics);
-        handle.mirror_board(board);
-        let select = handle.select();
-        std::mem::forget(handle);
-        select
-    }
+pub(crate) fn bind_seeded_refresh(
+    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    outcomes: Vec<crate::product_management::outcome::Outcome>,
+    iterations: Vec<crate::product_management::iteration::Iteration>,
+    epics: Vec<crate::product_management::epic::Epic>,
+) {
+    let handle = SeededStore::new(outcomes, iterations, epics);
+    handle.bind_refresh(refresh);
+    std::mem::forget(handle);
 }

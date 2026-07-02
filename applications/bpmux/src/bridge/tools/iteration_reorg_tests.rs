@@ -14,10 +14,9 @@ use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
 use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
-use crate::store::{AppAction, Dispatch, Select};
+use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -96,11 +95,9 @@ fn member_story(id: u64, state: BoardState) -> Story {
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let iterations: Vec<Iteration> = stories
         .iter()
         .filter(|s| {
@@ -110,12 +107,8 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_iteration_from_story)
         .collect();
-    orch.bind_select(Select::seeded_for_board(
-        &orch.store(),
-        vec![],
-        iterations,
-        vec![],
-    ));
+    crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
+    orch.refresh_all().await.unwrap();
     orch
 }
 

@@ -5,23 +5,21 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::store::bind_seeded_refresh;
 
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
-    use crate::product_management::board::RefreshDriver;
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(1, BoardState::Ready)]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
     orchestrator
         .mutate_sync(StoryEvent::StateTransitioned {
@@ -37,7 +35,6 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
 
 #[tokio::test]
 async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_label() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut delivered = seed_story(450, BoardState::Delivered);
     delivered.raw_labels.push("bug".to_string());
@@ -50,10 +47,9 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
             "bug".to_string(),
         ],
     );
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+    bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.ingest_once().await.unwrap();
     let repairs = orch.reconcile_dual_state_labels().await.unwrap();
     assert_eq!(repairs, 1, "stale 'in progress' label should fire 1 repair");
@@ -67,14 +63,12 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
 
 #[tokio::test]
 async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(451, BoardState::Delivered)]);
     adapter.seed_labels(451, vec!["delivered".to_string(), "feature".to_string()]);
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+    bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.ingest_once().await.unwrap();
     let repairs = orch.reconcile_dual_state_labels().await.unwrap();
     assert_eq!(repairs, 0, "clean labels should fire 0 repairs");

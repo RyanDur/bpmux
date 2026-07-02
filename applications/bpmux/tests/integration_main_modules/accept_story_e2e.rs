@@ -206,7 +206,7 @@ fn accept_role_survives_ingest_poll_after_acceptor_label_seed_1550() {
         )
         .await
         .expect(
-            "accept survives the re-ingest poll: the stateful GET /issues mock reflects the pushed acceptor-label, so seed_all does not clobber it to OwnerWalk/[owner]",
+            "accept survives the re-ingest poll: the stateful GET /issues mock reflects the pushed acceptor-label, so re-ingest dispatching Seeded into the central store does not clobber it to OwnerWalk/[owner]",
         );
 
         pm.close().await;

@@ -5,35 +5,38 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
+use crate::store::{AppAction, SeededStore};
 
 #[tokio::test]
 async fn ingest_once_populates_store_from_adapter() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![
         seed_story(1, BoardState::Ready),
         seed_story(2, BoardState::Delivered),
     ]);
-    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(store.len(), 2);
-    assert!(store.story(StoryId::new(1)).is_some());
-    assert!(store.story(StoryId::new(2)).is_some());
+    assert_eq!(orchestrator.all_stories().len(), 2);
+    assert!(orchestrator.story(1).is_some());
+    assert!(orchestrator.story(2).is_some());
     assert!(orchestrator.snapshot_status().last_ingest_at.is_some());
 }
 
 #[tokio::test]
 async fn ingest_once_records_error_on_source_failure() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let orchestrator = SyncOrchestrator::new(adapter);
     let result = orchestrator.ingest_once().await;
     assert!(result.is_err());
     let status = orchestrator.snapshot_status();
@@ -43,9 +46,11 @@ async fn ingest_once_records_error_on_source_failure() {
 
 #[tokio::test]
 async fn mutate_applies_event_locally_and_enqueues_for_push() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
     orchestrator
         .mutate(StoryEvent::StoryCreated {
             meta: meta(),
@@ -56,8 +61,8 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
             story_type: StoryKind::Feature,
         })
         .unwrap();
-    assert_eq!(store.len(), 1);
-    assert_eq!(store.story(StoryId::new(100)).unwrap().title, "test");
+    assert_eq!(orchestrator.all_stories().len(), 1);
+    assert_eq!(orchestrator.story(100).unwrap().title, "test");
     assert_eq!(orchestrator.snapshot_status().pending_events, 1);
     assert!(
         adapter.pushed_events().is_empty(),
@@ -67,10 +72,15 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
 
 #[tokio::test]
 async fn drain_once_pushes_pending_events_to_adapter() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    store.seed_all(vec![seed_story(1, BoardState::Ready)]);
-    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+        1,
+        BoardState::Ready,
+    )])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -87,10 +97,15 @@ async fn drain_once_pushes_pending_events_to_adapter() {
 
 #[tokio::test]
 async fn drain_once_requeues_event_on_adapter_failure() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    store.seed_all(vec![seed_story(1, BoardState::Ready)]);
-    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+        1,
+        BoardState::Ready,
+    )])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -117,13 +132,15 @@ async fn drain_once_requeues_event_on_adapter_failure() {
 
 #[tokio::test]
 async fn drain_once_handles_multiple_events_in_order() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    store.seed_all(vec![
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
         seed_story(1, BoardState::Ready),
         seed_story(2, BoardState::Ready),
-    ]);
-    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    ])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -149,18 +166,20 @@ async fn drain_once_handles_multiple_events_in_order() {
 
 #[tokio::test]
 async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = seed_story(1687, BoardState::Ready);
     seeded.raw_labels = vec!["parent-iteration-#1655.125".to_string()];
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(1687, vec!["parent-iteration-#1655.125".to_string()]);
-    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
 
     orchestrator.ingest_once().await.unwrap();
     assert!(
-        store
-            .story(StoryId::new(1687))
+        orchestrator
+            .story(1687)
             .unwrap()
             .raw_labels
             .contains(&"parent-iteration-#1655.125".to_string()),
@@ -181,7 +200,7 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
             label: "parent-iteration-#1655.125".to_string(),
         })
         .unwrap();
-    let after_reorder = store.story(StoryId::new(1687)).unwrap().raw_labels;
+    let after_reorder = orchestrator.story(1687).unwrap().raw_labels;
     assert!(
         after_reorder.contains(&"parent-iteration-#1655.106".to_string())
             && !after_reorder.contains(&"parent-iteration-#1655.125".to_string()),
@@ -190,7 +209,7 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
 
     orchestrator.ingest_once().await.unwrap();
 
-    let after_ingest = store.story(StoryId::new(1687)).unwrap().raw_labels;
+    let after_ingest = orchestrator.story(1687).unwrap().raw_labels;
     assert!(
         after_ingest.contains(&"parent-iteration-#1655.106".to_string())
             && !after_ingest.contains(&"parent-iteration-#1655.125".to_string()),

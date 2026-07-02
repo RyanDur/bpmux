@@ -5,12 +5,14 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::store::{AppAction, SeededStore};
 
 mod codec_injection_substrate {
     use super::*;
@@ -92,11 +94,14 @@ mod codec_injection_substrate {
 
     #[tokio::test]
     async fn coalescer_uses_injected_codec_classification() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(8801)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter))
-            .with_codec(Arc::new(StubLabelCodec));
+        let orch = Arc::new(SyncOrchestrator::new(adapter).with_codec(Arc::new(StubLabelCodec)));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            8801,
+        )])));
 
         orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
@@ -121,11 +126,14 @@ mod codec_injection_substrate {
 
     #[tokio::test]
     async fn coalescer_keeps_distinct_stub_iteration_namespaces_apart() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(8802)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter))
-            .with_codec(Arc::new(StubLabelCodec));
+        let orch = Arc::new(SyncOrchestrator::new(adapter).with_codec(Arc::new(StubLabelCodec)));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            8802,
+        )])));
 
         orch.mutate(StoryEvent::TagAdded {
             meta: meta(),

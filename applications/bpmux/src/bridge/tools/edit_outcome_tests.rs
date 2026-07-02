@@ -6,10 +6,9 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};
-use crate::store::{AppAction, Dispatch, Select};
+use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -60,11 +59,9 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let seeded: Vec<Outcome> = stories
         .iter()
         .filter(|s| {
@@ -74,12 +71,8 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_outcome_from_story)
         .collect();
-    orch.bind_select(Select::seeded_for_board(
-        &orch.store(),
-        seeded,
-        vec![],
-        vec![],
-    ));
+    crate::store::bind_seeded_refresh(&orch, seeded, vec![], vec![]);
+    orch.refresh_all().await.unwrap();
     orch
 }
 

@@ -263,7 +263,6 @@ async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
 
 #[tokio::test]
 async fn label_story_rejects_invalid_operation_in_migrated_path() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -271,7 +270,6 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
         StoryId::new(42),
@@ -281,10 +279,9 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({

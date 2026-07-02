@@ -7,7 +7,6 @@ use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
 async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -15,7 +14,6 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
         StoryId::new(882),
@@ -26,10 +24,8 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     );
     seeded.raw_labels.push("feature".to_string());
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -47,7 +43,6 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
 
 #[tokio::test]
 async fn start_story_passes_chore_without_acceptance_test_path() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -55,7 +50,6 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
         StoryId::new(883),
@@ -66,10 +60,8 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     );
     seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -82,7 +74,6 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
 
 #[tokio::test]
 async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -91,7 +82,6 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
         StoryId::new(4690),
@@ -103,10 +93,8 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
     seeded.raw_labels.push("bug".to_string());
     seeded.is_closed = true;
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -136,7 +124,6 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
 
 #[tokio::test]
 async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_return() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -145,7 +132,6 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
         StoryId::new(4691),
@@ -156,10 +142,8 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     );
     seeded.raw_labels.push("bug".to_string());
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -181,7 +165,6 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
 
 #[tokio::test]
 async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -190,7 +173,6 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
         StoryId::new(469),
@@ -202,10 +184,8 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     seeded.raw_labels.push("bug".to_string());
     seeded.is_closed = true;
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -231,7 +211,7 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
         "reject_story on previously-Accepted must emit StoryReopened: {pushed:?}"
     );
 
-    let story = store.story(StoryId::new(469)).unwrap();
+    let story = orch.story(469).unwrap();
     assert!(
         !story.is_closed,
         "store must reflect re-opened state post-reject"
@@ -241,7 +221,6 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
 
 #[tokio::test]
 async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -250,7 +229,6 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
         StoryId::new(470),
@@ -261,10 +239,8 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     );
     seeded.raw_labels.push("bug".to_string());
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -287,7 +263,6 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
 
 #[tokio::test]
 async fn deliver_story_propagates_drain_failure_at_label_remove() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -295,7 +270,6 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
         StoryId::new(450),
@@ -306,10 +280,8 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     );
     seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     adapter.set_push_failures(true);

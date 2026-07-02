@@ -11,24 +11,23 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub(super) fn read_story(&self, id: StoryId) -> Option<Story> {
-        match self.select.get() {
-            Some(s) => s.select(|state| state.stories.get(&StoryKey::Saved(id)).cloned()),
-            None => self.store.story(id),
-        }
+        self.select
+            .get()
+            .and_then(|s| s.select(|state| state.stories.get(&StoryKey::Saved(id)).cloned()))
     }
 
     pub(super) fn read_all_stories(&self) -> Vec<Story> {
-        match self.select.get() {
-            Some(s) => s.select(|state| state.stories.values().cloned().collect()),
-            None => self.store.all_stories(),
-        }
+        self.select
+            .get()
+            .map(|s| s.select(|state| state.stories.values().cloned().collect()))
+            .unwrap_or_default()
     }
 
     pub(super) fn read_store_is_empty(&self) -> bool {
-        match self.select.get() {
-            Some(s) => s.select(|state| state.stories.is_empty()),
-            None => self.store.is_empty(),
-        }
+        self.select
+            .get()
+            .map(|s| s.select(|state| state.stories.is_empty()))
+            .unwrap_or(true)
     }
 
     pub(super) fn read_outcomes(&self) -> Vec<Outcome> {

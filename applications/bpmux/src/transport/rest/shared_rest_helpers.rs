@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::message::StateDeltaPayload;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 
 #[tokio::test]
@@ -13,12 +13,11 @@ async fn stories_delta_wakes_subscribers_but_is_not_persisted_durably() {
     let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
     let session =
         session::Session::new(dir.path().to_path_buf(), "test:owner".to_string(), wake_tx);
-    let orch = SyncOrchestrator::new(
-        Arc::new(BoardStore::new()),
-        Arc::new(InMemorySourceAdapter::new()),
-    );
-    orch.ingest_once().await.expect("seed-empty ingest");
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(orch);
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::new(
+        InMemorySourceAdapter::new(),
+    )));
+    crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
+    refresh.refresh_all().await.expect("seed-empty ingest");
 
     let mut subscriber = session.subscribe();
     super::shared::broadcast_stories(&session, &refresh);

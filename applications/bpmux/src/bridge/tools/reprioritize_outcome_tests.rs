@@ -6,10 +6,9 @@ use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};
-use crate::store::{AppAction, Dispatch, Select};
+use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
@@ -103,31 +102,19 @@ fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, outcomes_from(&stories), vec![], vec![]);
     orch.refresh_all().await.unwrap();
-    orch.bind_select(Select::seeded_for_board(
-        &orch.store(),
-        outcomes_from(&stories),
-        vec![],
-        vec![],
-    ));
     orch
 }
 
 async fn refresh_with_outcomes(outcomes: Vec<Outcome>) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, outcomes, vec![], vec![]);
     orch.refresh_all().await.unwrap();
-    orch.bind_select(Select::seeded_for_board(
-        &orch.store(),
-        outcomes,
-        vec![],
-        vec![],
-    ));
     orch
 }
 

@@ -4,14 +4,15 @@ use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};
 
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::{
     ConflictKind, QueuedEvent, SyncOrchestrator, classify_conflict, load_outbox_from_disk,
 };
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::store::bind_seeded_refresh;
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -33,14 +34,13 @@ fn seed_story(id: u64, state: BoardState) -> Story {
 
 #[tokio::test]
 async fn mutate_captures_pre_state_snapshot_before_local_apply() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(500, BoardState::Ready)]);
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("outbox.json");
-    let orch =
-        SyncOrchestrator::with_outbox_path(Arc::clone(&store), Arc::clone(&adapter), path.clone())
-            .unwrap();
+    let orch = Arc::new(SyncOrchestrator::with_outbox_path(adapter, path.clone()).unwrap());
+    let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+    bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     orch.mutate(StoryEvent::StateTransitioned {
@@ -73,13 +73,12 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
 
 #[tokio::test]
 async fn mutate_pre_state_none_when_story_not_in_store_at_queue_time() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("outbox.json");
-    let orch =
-        SyncOrchestrator::with_outbox_path(Arc::clone(&store), Arc::clone(&adapter), path.clone())
-            .unwrap();
+    let orch = Arc::new(SyncOrchestrator::with_outbox_path(adapter, path.clone()).unwrap());
+    let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+    bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
 
     orch.mutate(StoryEvent::TagAdded {
         meta: meta(),
@@ -167,12 +166,10 @@ fn conflict_kind_serde_round_trip() {
 
 #[tokio::test]
 async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(800, BoardState::Ready)]);
-    let orch: Arc<dyn crate::product_management::board::RefreshDriver> = Arc::new(
-        SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)),
-    );
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     orch.mutate_sync(StoryEvent::StateTransitioned {

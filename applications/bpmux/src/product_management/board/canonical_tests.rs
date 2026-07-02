@@ -3,11 +3,16 @@
 
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::decode_story_metadata;
-use crate::product_management::board::store::BoardStore;
-use crate::product_management::board::{PeerId, StoryEvent, events::EventMeta};
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::product_management::board::{
+    PeerId, RefreshDriver, StoryEvent, SyncOrchestrator, events::EventMeta,
+};
+use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
+use crate::store::{AppAction, SeededStore};
 use chrono::{TimeZone, Utc};
 use serde_json::json;
+use std::sync::Arc;
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -74,16 +79,22 @@ fn iteration_label_decoder_does_not_populate_a_story_field() {
 
 #[test]
 fn create_story_event_does_not_seed_iteration_membership() {
-    let store = BoardStore::new();
-    store.apply(&StoryEvent::StoryCreated {
-        meta: meta(),
-        id: StoryId::new(200),
-        title: "freshly-created".to_string(),
-        body: "no membership at filing-time".to_string(),
-        initial_state: BoardState::Icebox,
-        story_type: StoryKind::Feature,
-    });
-    let s = store.story(StoryId::new(200)).expect("story present");
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::new(
+        InMemorySourceAdapter::new(),
+    )));
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch);
+    handle.dispatch(AppAction::Story(StoryAction::Event(
+        StoryEvent::StoryCreated {
+            meta: meta(),
+            id: StoryId::new(200),
+            title: "freshly-created".to_string(),
+            body: "no membership at filing-time".to_string(),
+            initial_state: BoardState::Icebox,
+            story_type: StoryKind::Feature,
+        },
+    )));
+    let s = orch.story(200).expect("story present");
     let json =
         crate::product_management::board::adapters::json::story_to_board_json(&GhLabelCodec, &s);
     let obj = json.as_object().expect("object");

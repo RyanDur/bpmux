@@ -25,7 +25,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 break;
             };
             let event = queued.event.clone();
-            let current = self.store.backing_story(event.story_id());
+            let current = self.read_story(event.story_id());
             let prior_classification = queued.last_classification;
             let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
 
@@ -38,7 +38,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 )
             ) && kind.is_none()
             {
-                self.store.apply(&StoryEvent::ConflictResolved {
+                self.apply_story_event(&StoryEvent::ConflictResolved {
                     meta: cache_fill_meta(),
                     id: event.story_id(),
                     origin: ConflictResolveOrigin::DrainAutoReclassify,
@@ -75,7 +75,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                                 | ConflictKind::External
                         )
                     ) {
-                        self.store.apply(&StoryEvent::ConflictDetected {
+                        self.apply_story_event(&StoryEvent::ConflictDetected {
                             meta: cache_fill_meta(),
                             id: event.story_id(),
                             kind: divergent,
@@ -110,7 +110,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     drained += 1;
                     record_push_success(&self.status);
                     if let Some(refresh_event) = follow_up {
-                        self.store.apply(&refresh_event);
+                        self.apply_story_event(&refresh_event);
                     }
                 }
                 Err(e) => {

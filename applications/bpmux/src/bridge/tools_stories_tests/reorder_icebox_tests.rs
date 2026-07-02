@@ -7,7 +7,6 @@ use crate::transport::protocol::ClientMessage;
 #[cfg(test)]
 mod reorder_story_icebox_label_substrate_tests_1301 {
     use crate::bridge::tools_stories::reorder_icebox_story_via_labels;
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -28,13 +27,10 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
     }
 
     async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(stories);
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-        ));
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
         orch.refresh_all().await.unwrap();
         orch
     }

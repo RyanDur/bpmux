@@ -5,13 +5,15 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::storage::{SqliteStorage, Storage};
+use crate::store::{AppAction, SeededStore};
 
 mod outbox_persistence {
     use super::*;
@@ -24,11 +26,8 @@ mod outbox_persistence {
     async fn with_outbox_path_starts_empty_when_file_missing() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch =
-            SyncOrchestrator::with_outbox_path(Arc::clone(&store), Arc::clone(&adapter), path)
-                .unwrap();
+        let orch = SyncOrchestrator::with_outbox_path(adapter, path).unwrap();
         assert_eq!(orch.snapshot_status().pending_events, 0);
     }
 
@@ -36,15 +35,15 @@ mod outbox_persistence {
     async fn mutate_persists_event_to_disk_outbox() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(10, BoardState::Ready)]);
-        let orch = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            path.clone(),
-        )
-        .unwrap();
+        let orch = Arc::new(SyncOrchestrator::with_outbox_path(adapter, path.clone()).unwrap());
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            10,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(10),
@@ -61,15 +60,15 @@ mod outbox_persistence {
     async fn drain_once_removes_pushed_event_from_disk_outbox() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(20, BoardState::Ready)]);
-        let orch = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            path.clone(),
-        )
-        .unwrap();
+        let orch = Arc::new(SyncOrchestrator::with_outbox_path(adapter, path.clone()).unwrap());
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            20,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(20),
@@ -88,15 +87,15 @@ mod outbox_persistence {
         let dir = tempfile::tempdir().unwrap();
         let storage: Arc<dyn Storage> =
             Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap());
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(90, BoardState::Ready)]);
-        let orch = SyncOrchestrator::with_storage(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            Arc::clone(&storage),
-        )
-        .unwrap();
+        let orch = Arc::new(SyncOrchestrator::with_storage(adapter, Arc::clone(&storage)).unwrap());
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            90,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(90),
@@ -121,15 +120,17 @@ mod outbox_persistence {
     async fn drain_once_keeps_event_on_disk_when_push_fails() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(30, BoardState::Ready)]);
-        let orch = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            path.clone(),
-        )
-        .unwrap();
+        let orch = Arc::new(
+            SyncOrchestrator::with_outbox_path(Arc::clone(&adapter), path.clone()).unwrap(),
+        );
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            30,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(30),
@@ -147,15 +148,15 @@ mod outbox_persistence {
     async fn outbox_survives_restart_simulated_via_fresh_orchestrator() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store_a = Arc::new(BoardStore::new());
         let adapter_a = Arc::new(InMemorySourceAdapter::new());
-        store_a.seed_all(vec![seed_story(40, BoardState::Ready)]);
-        let orch_a = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store_a),
-            Arc::clone(&adapter_a),
-            path.clone(),
-        )
-        .unwrap();
+        let orch_a = Arc::new(SyncOrchestrator::with_outbox_path(adapter_a, path.clone()).unwrap());
+        let orch_a_dyn: Arc<dyn RefreshDriver> = orch_a.clone();
+        let handle_a = SeededStore::new(vec![], vec![], vec![]);
+        handle_a.bind_refresh(&orch_a_dyn);
+        handle_a.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            40,
+            BoardState::Ready,
+        )])));
         orch_a
             .mutate(StoryEvent::StateTransitioned {
                 meta: meta(),
@@ -163,15 +164,11 @@ mod outbox_persistence {
                 new_state: BoardState::Delivered,
             })
             .unwrap();
+        drop(orch_a_dyn);
         drop(orch_a);
-        let store_b = Arc::new(BoardStore::new());
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
-        let orch_b = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store_b),
-            Arc::clone(&adapter_b),
-            path.clone(),
-        )
-        .unwrap();
+        let orch_b =
+            SyncOrchestrator::with_outbox_path(Arc::clone(&adapter_b), path.clone()).unwrap();
         assert_eq!(orch_b.snapshot_status().pending_events, 1);
         let drained = orch_b.drain_once().await.unwrap();
         assert_eq!(drained, 1, "rehydrated event drains on fresh orchestrator");
@@ -182,15 +179,17 @@ mod outbox_persistence {
     async fn drain_drops_event_on_permanent_push_failure() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(60, BoardState::Ready)]);
-        let orch = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            path.clone(),
-        )
-        .unwrap();
+        let orch = Arc::new(
+            SyncOrchestrator::with_outbox_path(Arc::clone(&adapter), path.clone()).unwrap(),
+        );
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            60,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(60),
@@ -212,15 +211,17 @@ mod outbox_persistence {
     async fn permanent_failure_records_dropped_event_in_status() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(65, BoardState::Ready)]);
-        let orch = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            path.clone(),
-        )
-        .unwrap();
+        let orch = Arc::new(
+            SyncOrchestrator::with_outbox_path(Arc::clone(&adapter), path.clone()).unwrap(),
+        );
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            65,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(65),
@@ -239,15 +240,17 @@ mod outbox_persistence {
         use crate::product_management::board::orchestrator::acknowledge_dropped;
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(66, BoardState::Ready)]);
-        let orch = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            path.clone(),
-        )
-        .unwrap();
+        let orch = Arc::new(
+            SyncOrchestrator::with_outbox_path(Arc::clone(&adapter), path.clone()).unwrap(),
+        );
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            66,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(66),
@@ -266,18 +269,17 @@ mod outbox_persistence {
     async fn drain_continues_past_permanent_failure_to_next_event() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![
+        let orch = Arc::new(
+            SyncOrchestrator::with_outbox_path(Arc::clone(&adapter), path.clone()).unwrap(),
+        );
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
             seed_story(70, BoardState::Ready),
             seed_story(71, BoardState::Ready),
-        ]);
-        let orch = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            path.clone(),
-        )
-        .unwrap();
+        ])));
         for n in [70u64, 71] {
             orch.mutate(StoryEvent::StateTransitioned {
                 meta: meta(),
@@ -300,15 +302,17 @@ mod outbox_persistence {
     async fn drain_keeps_event_on_transient_failure() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(80, BoardState::Ready)]);
-        let orch = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-            path.clone(),
-        )
-        .unwrap();
+        let orch = Arc::new(
+            SyncOrchestrator::with_outbox_path(Arc::clone(&adapter), path.clone()).unwrap(),
+        );
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            80,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(80),
@@ -331,19 +335,16 @@ mod outbox_persistence {
     async fn outbox_preserves_fifo_order_across_restart() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
-        let store_a = Arc::new(BoardStore::new());
         let adapter_a = Arc::new(InMemorySourceAdapter::new());
-        store_a.seed_all(vec![
+        let orch_a = Arc::new(SyncOrchestrator::with_outbox_path(adapter_a, path.clone()).unwrap());
+        let orch_a_dyn: Arc<dyn RefreshDriver> = orch_a.clone();
+        let handle_a = SeededStore::new(vec![], vec![], vec![]);
+        handle_a.bind_refresh(&orch_a_dyn);
+        handle_a.dispatch(AppAction::Story(StoryAction::Seeded(vec![
             seed_story(50, BoardState::Ready),
             seed_story(51, BoardState::Ready),
             seed_story(52, BoardState::Ready),
-        ]);
-        let orch_a = SyncOrchestrator::with_outbox_path(
-            Arc::clone(&store_a),
-            Arc::clone(&adapter_a),
-            path.clone(),
-        )
-        .unwrap();
+        ])));
         for n in [50u64, 51, 52] {
             orch_a
                 .mutate(StoryEvent::StateTransitioned {
@@ -353,12 +354,10 @@ mod outbox_persistence {
                 })
                 .unwrap();
         }
+        drop(orch_a_dyn);
         drop(orch_a);
-        let store_b = Arc::new(BoardStore::new());
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
-        let orch_b =
-            SyncOrchestrator::with_outbox_path(Arc::clone(&store_b), Arc::clone(&adapter_b), path)
-                .unwrap();
+        let orch_b = SyncOrchestrator::with_outbox_path(Arc::clone(&adapter_b), path).unwrap();
         orch_b.drain_once().await.unwrap();
         let pushed = adapter_b.pushed_events();
         assert_eq!(pushed[0].story_id(), StoryId::new(50));
@@ -368,9 +367,11 @@ mod outbox_persistence {
 
     #[tokio::test]
     async fn mutate_silent_no_op_when_story_not_in_store_pins_reducer_shape() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
 
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -380,17 +381,19 @@ mod outbox_persistence {
         .unwrap();
 
         assert!(
-            store.story(StoryId::new(999)).is_none(),
+            orch.story(999).is_none(),
             "reducer silently no-ops when story not in store; #1197 fix is at gate-tool layer"
         );
     }
 
     #[tokio::test]
     async fn refresh_story_populates_store_so_subsequent_mutate_lands() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seed_story(777, BoardState::Ready)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
 
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -399,13 +402,13 @@ mod outbox_persistence {
         })
         .unwrap();
         assert!(
-            store.story(StoryId::new(777)).is_none(),
+            orch.story(777).is_none(),
             "pre-refresh mutate silently no-ops"
         );
 
         orch.refresh_story(777).await.unwrap();
         assert!(
-            store.story(StoryId::new(777)).is_some(),
+            orch.story(777).is_some(),
             "refresh_story populates the store from adapter"
         );
 
@@ -416,7 +419,7 @@ mod outbox_persistence {
         })
         .unwrap();
         assert_eq!(
-            store.story(StoryId::new(777)).map(|s| s.state),
+            orch.story(777).map(|s| s.state),
             Some(BoardState::InProgress(Stage::Dev)),
             "post-refresh mutate lands"
         );

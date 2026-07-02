@@ -5,12 +5,13 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{BoardState, Story};
+use crate::store::bind_seeded_refresh;
 
 mod staleness {
     use super::*;
@@ -67,9 +68,10 @@ mod staleness {
 
     #[tokio::test]
     async fn snapshot_status_default_threshold_keeps_fresh_ingest_not_stale() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         orch.ingest_once().await.unwrap();
         let snap = orch.snapshot_status();
         assert!(snap.last_ingest_at.is_some(), "ingest happened");
@@ -107,10 +109,9 @@ mod staleness {
 
     #[tokio::test]
     async fn snapshot_status_surfaces_startup_fail_when_ingest_fails_with_no_prior_success() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.set_ingest_failures(true);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = SyncOrchestrator::new(adapter);
         let _ = orch.ingest_once().await;
         let snap = orch.snapshot_status();
         assert!(snap.last_ingest_at.is_none(), "no successful ingest yet");

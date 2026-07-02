@@ -14,12 +14,11 @@ use crate::store::{AppAction, Store, SyncAction};
 use crate::transport::ci_state_store::CiStateStore;
 
 fn refresh_for_tests() -> Arc<dyn crate::product_management::board::RefreshDriver> {
-    let store = Arc::new(crate::product_management::board::BoardStore::new());
     let adapter = Arc::new(
         crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
     );
     Arc::new(crate::product_management::board::SyncOrchestrator::new(
-        store, adapter,
+        adapter,
     ))
 }
 

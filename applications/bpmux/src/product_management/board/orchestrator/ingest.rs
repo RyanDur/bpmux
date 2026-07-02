@@ -81,7 +81,9 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         ));
                     }
                 }
-                self.store.seed_items(items);
+                self.dispatch_story(
+                    crate::product_management::story::slice::StoryAction::Seeded(items),
+                );
                 record_ingest_success(&self.status);
                 Ok(())
             }
@@ -98,7 +100,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     ) -> Result<Option<crate::product_management::story::Story>, SyncError> {
         match self.adapter.fetch_story_metadata(number).await {
             Ok(Some(story)) => {
-                self.store.seed_all(vec![story.clone()]);
+                self.dispatch_story(
+                    crate::product_management::story::slice::StoryAction::Seeded(vec![
+                        story.clone(),
+                    ]),
+                );
                 record_ingest_success(&self.status);
                 Ok(Some(story))
             }

@@ -7,31 +7,26 @@ use chrono::{TimeZone, Utc};
 use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::{BoardState, Gate, GateComment, Stage, Story, StoryId};
-use crate::store::Select;
+use crate::store::SeededStore;
 
 async fn seeded_orchestrator(
     mut stories: Vec<Story>,
     gates: Vec<(u64, Vec<GateComment>)>,
-) -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
+) -> (SeededStore, Arc<dyn RefreshDriver>) {
     for (n, gs) in &gates {
         if let Some(s) = stories.iter_mut().find(|s| s.id == StoryId::new(*n)) {
             s.gate_comments = Some(gs.clone());
         }
     }
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories.clone());
     for (n, gs) in &gates {
         adapter.seed_gate_comments(*n, gs.clone());
     }
-    store.seed_all(stories.clone());
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let iterations: Vec<Iteration> = stories
         .iter()
         .filter(|s| {
@@ -41,13 +36,10 @@ async fn seeded_orchestrator(
         })
         .map(decode_iteration_from_story)
         .collect();
-    orchestrator.bind_select(Select::seeded_for_board(
-        &orchestrator.store(),
-        vec![],
-        iterations,
-        vec![],
-    ));
-    (store, orchestrator)
+    let handle = SeededStore::new(vec![], iterations, vec![]);
+    handle.bind_refresh(&orchestrator);
+    orchestrator.refresh_all().await.unwrap();
+    (handle, orchestrator)
 }
 
 fn make_story(id: u64, state: BoardState, body: Option<&str>) -> Story {
@@ -374,18 +366,15 @@ async fn empty_raw_labels_returns_empty_labels_array() {
 #[tokio::test]
 async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
     let story = make_story(1226, BoardState::Ready, None);
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_stories(vec![story]);
     adapter.seed_body(
         1226,
         "live-fetched body content via read-through".to_string(),
     );
-    store.seed_all(vec![story]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    orchestrator.refresh_all().await.unwrap();
     let args = serde_json::json!({"id": 1226});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
         .await
@@ -427,18 +416,15 @@ async fn cache_miss_returns_placeholder_when_the_fetch_cannot_hydrate() {
 #[tokio::test]
 async fn cache_hit_does_not_refetch_when_body_already_present() {
     let story = make_story(1226, BoardState::Ready, Some("already-cached body"));
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_stories(vec![story]);
     adapter.seed_body(
         1226,
         "ADAPTER body — should NOT be returned because cache is hit".to_string(),
     );
-    store.seed_all(vec![story]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    orchestrator.refresh_all().await.unwrap();
     let args = serde_json::json!({"id": 1226});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
         .await
@@ -640,15 +626,12 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
             payload: Some(reason.into()),
         },
     ];
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_stories(vec![story]);
     adapter.seed_gate_comments(1524, gates);
-    store.seed_all(vec![story]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 1524});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
@@ -673,14 +656,11 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
 #[tokio::test]
 async fn non_rejected_story_carries_no_latest_reject() {
     let story = make_story(500, BoardState::Ready, Some("body"));
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![story.clone()]);
-    store.seed_all(vec![story]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    adapter.seed_stories(vec![story]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 500});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
@@ -707,7 +687,7 @@ async fn latest_reject_survives_an_iteration_move() {
         actor: "owner".into(),
         payload: Some(reason.into()),
     }];
-    let (store, orch) = seeded_orchestrator(vec![story], vec![(1524, gates)]).await;
+    let (handle, orch) = seeded_orchestrator(vec![story], vec![(1524, gates)]).await;
     let args = serde_json::json!({"id": 1524});
 
     let before = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -721,16 +701,24 @@ async fn latest_reject_survives_an_iteration_move() {
     );
 
     let meta = crate::product_management::board::orchestrator::cache_fill_meta();
-    store.apply(&crate::product_management::board::StoryEvent::TagAdded {
-        meta: meta.clone(),
-        id: StoryId::new(1524),
-        label: "parent-iteration-#1656.1".to_string(),
-    });
-    store.apply(&crate::product_management::board::StoryEvent::TagRemoved {
-        meta,
-        id: StoryId::new(1524),
-        label: "parent-iteration-#1655.1".to_string(),
-    });
+    handle.dispatch(crate::store::AppAction::Story(
+        crate::product_management::story::slice::StoryAction::Event(
+            crate::product_management::board::StoryEvent::TagAdded {
+                meta: meta.clone(),
+                id: StoryId::new(1524),
+                label: "parent-iteration-#1656.1".to_string(),
+            },
+        ),
+    ));
+    handle.dispatch(crate::store::AppAction::Story(
+        crate::product_management::story::slice::StoryAction::Event(
+            crate::product_management::board::StoryEvent::TagRemoved {
+                meta,
+                id: StoryId::new(1524),
+                label: "parent-iteration-#1655.1".to_string(),
+            },
+        ),
+    ));
 
     let after = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -746,13 +734,13 @@ async fn latest_reject_survives_an_iteration_move() {
 #[tokio::test]
 async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
     let story = make_story(442, BoardState::Ready, Some("body"));
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    store.seed_all(vec![story]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orchestrator);
+    handle.dispatch(crate::store::AppAction::Story(
+        crate::product_management::story::slice::StoryAction::Seeded(vec![story]),
     ));
     let args = serde_json::json!({"id": 442});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
@@ -792,15 +780,12 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
             payload: Some(reason.into()),
         },
     ];
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_stories(vec![story]);
     adapter.seed_gate_comments(1700, gates);
-    store.seed_all(vec![story]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    orch.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 1700});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -847,15 +832,12 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
             payload: None,
         },
     ];
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_stories(vec![story]);
     adapter.seed_gate_comments(1701, gates);
-    store.seed_all(vec![story]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    orch.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 1701});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))

@@ -3,7 +3,6 @@
 
 mod gate_retire_1348 {
     use crate::bridge::tools_stories::{handle_deliver_story, handle_start_story};
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -18,7 +17,6 @@ mod gate_retire_1348 {
         story_type: StoryKind,
         body: &str,
     ) -> Arc<dyn RefreshDriver> {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let mut seeded = Story::new_minimal(
             StoryId::new(id),
@@ -33,10 +31,8 @@ mod gate_retire_1348 {
         );
         adapter.seed_stories(vec![seeded]);
         adapter.seed_body(id, body.into());
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-        ));
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
         orch.refresh_all().await.unwrap();
         orch
     }

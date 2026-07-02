@@ -5,12 +5,14 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::store::{AppAction, SeededStore, bind_seeded_refresh};
 
 mod slice_7_2_mutation_id_dispatch {
     use super::*;
@@ -19,15 +21,16 @@ mod slice_7_2_mutation_id_dispatch {
 
     #[tokio::test]
     async fn mutate_dispatches_start_update_github_with_unique_id() {
-        let store = Arc::new(BoardStore::new());
-        store.seed_all(vec![
-            seed_story(101, BoardState::Ready),
-            seed_story(102, BoardState::Ready),
-        ]);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-        let orch =
-            SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
+        let orch = Arc::new(SyncOrchestrator::new(adapter).with_action_tx(tx));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
+            seed_story(101, BoardState::Ready),
+            seed_story(102, BoardState::Ready),
+        ])));
 
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -58,10 +61,11 @@ mod slice_7_2_mutation_id_dispatch {
 
     #[tokio::test]
     async fn mutate_without_action_tx_does_not_panic() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seed_story(201, BoardState::Ready)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         orch.ingest_once().await.unwrap();
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -73,12 +77,16 @@ mod slice_7_2_mutation_id_dispatch {
 
     #[tokio::test]
     async fn queued_event_carries_allocated_id() {
-        let store = Arc::new(BoardStore::new());
-        store.seed_all(vec![seed_story(301, BoardState::Ready)]);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-        let orch =
-            SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
+        let orch = Arc::new(SyncOrchestrator::new(adapter).with_action_tx(tx));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            301,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(301),
@@ -111,10 +119,15 @@ mod slice_7_3_drain_one_by_id {
 
     #[tokio::test]
     async fn drain_one_by_id_pushes_clean_event_returns_confirmed() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(401, BoardState::Ready)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            401,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(401),
@@ -135,10 +148,15 @@ mod slice_7_3_drain_one_by_id {
 
     #[tokio::test]
     async fn drain_one_by_id_transient_error_leaves_entry_in_outbox() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(601, BoardState::Ready)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            601,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(601),
@@ -159,19 +177,23 @@ mod slice_7_3_drain_one_by_id {
 
     #[tokio::test]
     async fn drain_one_by_id_returns_not_found_for_unknown_id() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = SyncOrchestrator::new(adapter);
         let outcome = orch.drain_one_by_id(MutationId(99999)).await;
         assert!(matches!(outcome, DrainOneOutcome::NotFound));
     }
 
     #[tokio::test]
     async fn apply_server_rollback_overwrites_local_optimistic_state() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(701, BoardState::Ready)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            701,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(701),
@@ -179,16 +201,13 @@ mod slice_7_3_drain_one_by_id {
         })
         .unwrap();
         assert_eq!(
-            store.story(StoryId::new(701)).map(|s| s.state),
+            orch.story(701).map(|s| s.state),
             Some(BoardState::InProgress(Stage::Dev))
         );
 
         let server_view = seed_story(701, BoardState::Accepted);
         orch.apply_server_rollback(server_view);
-        assert_eq!(
-            store.story(StoryId::new(701)).map(|s| s.state),
-            Some(BoardState::Accepted)
-        );
+        assert_eq!(orch.story(701).map(|s| s.state), Some(BoardState::Accepted));
     }
 }
 
@@ -198,10 +217,15 @@ mod slice_7_4_drain_one_by_id_falsifiers {
 
     #[tokio::test]
     async fn permanent_push_failure_drops_entry_returns_confirmed() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(801, BoardState::Ready)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            801,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(801),
@@ -223,16 +247,15 @@ mod slice_7_4_drain_one_by_id_falsifiers {
 
     #[tokio::test]
     async fn concurrent_calls_for_different_ids_complete_independently() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![
+        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
             seed_story(901, BoardState::Ready),
             seed_story(902, BoardState::Ready),
-        ]);
-        let orch = Arc::new(SyncOrchestrator::new(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-        ));
+        ])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(901),
@@ -263,10 +286,15 @@ mod slice_7_4_drain_one_by_id_falsifiers {
 
     #[tokio::test]
     async fn serial_calls_drain_in_request_order_for_same_issue() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(1001, BoardState::Ready)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            1001,
+            BoardState::Ready,
+        )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1001),

@@ -7,7 +7,6 @@ use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
 async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -16,7 +15,6 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
         StoryId::new(123),
@@ -26,10 +24,9 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -41,7 +38,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     let result = handle_comment_on_story(&args, "dev:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(StoryId::new(123)).unwrap();
+    let story = orchestrator.story(123).unwrap();
     let comments = story.free_comments.expect("FreeCommentAppended applied");
     assert_eq!(comments.len(), 1);
     assert_eq!(comments[0].body, "new comment via orchestrator");
@@ -59,7 +56,6 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
 
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_added_event() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -68,7 +64,6 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
         StoryId::new(200),
@@ -78,10 +73,9 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -91,7 +85,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     let result = handle_label_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(StoryId::new(200)).unwrap();
+    let story = orchestrator.story(200).unwrap();
     assert_eq!(
         story.tags(),
         [Tag::Blocked],
@@ -113,7 +107,6 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
 
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_removed_event() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -122,7 +115,6 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
         StoryId::new(200),
@@ -132,10 +124,9 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut add_args = serde_json::Map::new();
@@ -156,7 +147,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "migrated remove path should succeed: {result:?}"
     );
 
-    let story = store.story(StoryId::new(200)).unwrap();
+    let story = orchestrator.story(200).unwrap();
     assert!(
         story.tags().is_empty(),
         "tags should be empty after the typed unset"
@@ -181,7 +172,6 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 
 #[tokio::test]
 async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -190,7 +180,6 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
         StoryId::new(201),
@@ -200,9 +189,10 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orch_concrete = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter))
+    let orch_concrete = SyncOrchestrator::new(Arc::clone(&adapter))
         .with_ci_state_store(test_ci_state_store_green());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -213,7 +203,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         handle_pass_desk_check(&args, "designer:claude-code", Some(&orchestrator), None).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(StoryId::new(201)).unwrap();
+    let story = orchestrator.story(201).unwrap();
     assert_eq!(story.state, BoardState::Delivered);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
@@ -259,7 +249,6 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
 
 #[tokio::test]
 async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -268,7 +257,6 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = Story::new_minimal(
         StoryId::new(202),
@@ -278,10 +266,9 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -291,7 +278,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     let result = handle_fail_desk_check(&args, "designer:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = store.story(StoryId::new(202)).unwrap();
+    let story = orchestrator.story(202).unwrap();
     assert_eq!(story.state, BoardState::InProgress(Stage::Dev));
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(

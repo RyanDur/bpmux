@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use crate::product_management::board::BoardStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -9,8 +8,7 @@ use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-async fn build_orchestrator() -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
-    let store = Arc::new(BoardStore::new());
+async fn build_orchestrator() -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let story = Story::new_minimal(
         StoryId::new(200),
@@ -20,12 +18,10 @@ async fn build_orchestrator() -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
         "pm".into(),
     );
     adapter.seed_stories(vec![story]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
-    (store, orch)
+    orch
 }
 
 fn label_args(label: &str, operation: &str) -> serde_json::Map<String, serde_json::Value> {
@@ -38,7 +34,7 @@ fn label_args(label: &str, operation: &str) -> serde_json::Map<String, serde_jso
 
 #[tokio::test]
 async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
-    let (_store, orch) = build_orchestrator().await;
+    let orch = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
@@ -66,7 +62,7 @@ async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
 
 #[tokio::test]
 async fn label_story_rejects_iteration_label_for_different_names_1402() {
-    let (_store, orch) = build_orchestrator().await;
+    let orch = build_orchestrator().await;
     for label in [
         "iteration-Pegasus.100",
         "iteration-Big-Dipper.200",
@@ -85,7 +81,7 @@ async fn label_story_rejects_iteration_label_for_different_names_1402() {
 
 #[tokio::test]
 async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
-    let (store, orch) = build_orchestrator().await;
+    let orch = build_orchestrator().await;
     for label in [
         "blocked",
         "deferred",
@@ -102,7 +98,7 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
             "{label} should NOT be affected by #1402 retire: {result:?}"
         );
     }
-    let story = store.story(StoryId::new(200)).expect("story present");
+    let story = orch.story(200).expect("story present");
     assert!(
         story
             .raw_labels
@@ -130,7 +126,7 @@ async fn label_story_rejects_iteration_label_before_canonical_store_check_1402()
 
 #[tokio::test]
 async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
-    let (_store, orch) = build_orchestrator().await;
+    let orch = build_orchestrator().await;
     for label in [
         "iteration-",
         "iteration-Pegasus",
@@ -149,7 +145,7 @@ async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
 
 #[tokio::test]
 async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
-    let (_store, orch) = build_orchestrator().await;
+    let orch = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "remove"),
         "pm:claude-code",
@@ -164,7 +160,7 @@ async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
 
 #[tokio::test]
 async fn non_pm_role_rejected_before_retire_gate_fires_1402() {
-    let (_store, orch) = build_orchestrator().await;
+    let orch = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "dev:claude-code",

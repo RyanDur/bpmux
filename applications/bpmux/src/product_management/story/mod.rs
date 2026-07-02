@@ -16,7 +16,11 @@ pub use transition::{
 #[cfg(test)]
 mod enums_tests;
 #[cfg(test)]
+mod events_tests;
+#[cfg(test)]
 mod key_tests;
+#[cfg(test)]
+mod slice_tests;
 #[cfg(test)]
 mod story_type_tests;
 

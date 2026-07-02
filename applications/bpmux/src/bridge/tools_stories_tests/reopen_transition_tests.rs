@@ -8,7 +8,6 @@ use crate::transport::protocol::ClientMessage;
 mod reopen_on_state_transition_tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -32,25 +31,21 @@ mod reopen_on_state_transition_tests {
 
     async fn build_orchestrator(
         seeded: Story,
-    ) -> (
-        Arc<BoardStore>,
-        Arc<dyn RefreshDriver>,
-        Arc<InMemorySourceAdapter>,
-    ) {
-        let store = Arc::new(BoardStore::new());
+    ) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seeded.clone()]);
-        let orch_concrete = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter))
+        adapter.seed_stories(vec![seeded]);
+        let orch_concrete = SyncOrchestrator::new(Arc::clone(&adapter))
             .with_ci_state_store(super::test_ci_state_store_green());
         let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
+        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
         orch.refresh_all().await.unwrap();
-        (store, orch, adapter)
+        (orch, adapter)
     }
 
     #[tokio::test]
     async fn start_story_reopens_when_prior_is_closed_true() {
         let seeded = seeded_closed_chore(7110, BoardState::Ready);
-        let (_store, orch, adapter) = build_orchestrator(seeded).await;
+        let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7110));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
@@ -71,7 +66,7 @@ mod reopen_on_state_transition_tests {
     async fn start_story_does_not_reopen_when_prior_is_closed_false() {
         let mut seeded = seeded_closed_chore(7111, BoardState::Ready);
         seeded.is_closed = false;
-        let (_store, orch, adapter) = build_orchestrator(seeded).await;
+        let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7111));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
@@ -92,7 +87,7 @@ mod reopen_on_state_transition_tests {
     #[tokio::test]
     async fn deliver_story_reopens_when_prior_is_closed_true() {
         let seeded = seeded_closed_chore(7120, BoardState::InProgress(Stage::Dev));
-        let (_store, orch, adapter) = build_orchestrator(seeded).await;
+        let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7120));
         args.insert(
@@ -113,7 +108,7 @@ mod reopen_on_state_transition_tests {
     #[tokio::test]
     async fn pass_desk_check_reopens_when_prior_is_closed_true() {
         let seeded = seeded_closed_chore(7130, BoardState::InProgress(Stage::DeskCheck));
-        let (_store, orch, adapter) = build_orchestrator(seeded).await;
+        let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7130));
         args.insert("acceptor".into(), serde_json::json!("owner"));

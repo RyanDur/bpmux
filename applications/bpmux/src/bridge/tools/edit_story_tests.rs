@@ -6,7 +6,6 @@ use crate::bridge::tools_stories::handle_edit_story;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use chrono::{TimeZone, Utc};
@@ -31,11 +30,10 @@ fn seed_story(id: u64, title: &str, body: &str) -> Story {
 }
 
 async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories);
-    let orch = SyncOrchestrator::new(store, adapter);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(orch);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
     orch
 }

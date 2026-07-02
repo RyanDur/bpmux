@@ -14,8 +14,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn mutate(&self, event: StoryEvent) -> Result<(), SyncError> {
         let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
         let story_id = event.story_id();
-        let pre_state = self.store.backing_story(story_id);
-        self.store.apply(&event);
+        let pre_state = self.read_story(story_id);
+        self.apply_story_event(&event);
         let queue_len = self.with_pending_mut(|p| {
             let absorbed = coalesce_iteration_label_events(&*self.codec, p, &event, id, &pre_state);
             if !absorbed {

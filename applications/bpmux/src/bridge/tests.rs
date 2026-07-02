@@ -404,9 +404,10 @@ mod ingest_poll_loop_tests {
         fn all_stories(&self) -> Vec<crate::product_management::story::Story> {
             Vec::new()
         }
-        fn store(&self) -> Arc<crate::product_management::board::BoardStore> {
-            Arc::new(crate::product_management::board::BoardStore::new())
+        fn remove_story(&self, _id: u64) -> Option<crate::product_management::story::Story> {
+            None
         }
+        fn clear_stories(&self) {}
         fn update_body(
             &self,
             _number: u64,

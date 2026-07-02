@@ -5,12 +5,14 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
+use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::events::{EventMeta, StoryEvent};
 use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::store::BoardStore;
+use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::store::{AppAction, SeededStore};
 
 mod outbox_coalesce_1339_step_2e {
     use super::*;
@@ -32,12 +34,14 @@ mod outbox_coalesce_1339_step_2e {
 
     #[tokio::test]
     async fn rapid_drag_sequence_coalesces_to_first_remove_plus_last_add_per_class() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let mut seed = seed_story(7011, BoardState::Icebox);
         seed.raw_labels = vec!["iteration-Pegasus.300".to_string()];
-        store.seed_all(vec![seed]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
 
         orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
@@ -89,10 +93,15 @@ mod outbox_coalesce_1339_step_2e {
 
     #[tokio::test]
     async fn coalesce_per_class_keeps_distinct_iteration_namespaces_apart() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(7012, BoardState::Icebox)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            7012,
+            BoardState::Icebox,
+        )])));
 
         orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
@@ -126,13 +135,15 @@ mod outbox_coalesce_1339_step_2e {
 
     #[tokio::test]
     async fn coalesce_does_not_collapse_across_stories() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
             seed_story(7013, BoardState::Icebox),
             seed_story(7014, BoardState::Icebox),
-        ]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        ])));
 
         orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
@@ -173,10 +184,15 @@ mod outbox_coalesce_1339_step_2e {
 
     #[tokio::test]
     async fn coalesce_does_not_touch_non_iteration_labels() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(7015, BoardState::Ready)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            7015,
+            BoardState::Ready,
+        )])));
 
         orch.mutate(StoryEvent::TagAdded {
             meta: meta(),
@@ -207,10 +223,15 @@ mod outbox_coalesce_1339_step_2e {
 
     #[tokio::test]
     async fn coalesce_handles_add_only_sequence_keeping_last_add() {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        store.seed_all(vec![seed_story(7016, BoardState::Icebox)]);
-        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        handle.bind_refresh(&orch_dyn);
+        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+            7016,
+            BoardState::Icebox,
+        )])));
 
         orch.mutate(StoryEvent::TagAdded {
             meta: meta(),

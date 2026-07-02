@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use crate::product_management::board::events::StoryEvent;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
 use super::{
     BoxedFuture, DrainOneOutcome, MutationId, RefreshDriver, SyncOrchestrator, SyncStatus,
-    acknowledge_dropped, cache_fill_meta,
+    acknowledge_dropped,
 };
 
 impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
@@ -51,9 +50,8 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     }
 
     fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()> {
-        let store = Arc::clone(&self.store);
         Box::pin(async move {
-            store.seed_all(vec![story]);
+            self.apply_server_rollback(story);
         })
     }
 
@@ -139,36 +137,27 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_store_is_empty()
     }
 
-    fn store(&self) -> Arc<BoardStore> {
-        Arc::clone(&self.store)
+    fn bind_story_dispatch(
+        &self,
+        dispatch: Box<dyn Fn(crate::product_management::story::slice::StoryAction) + Send + Sync>,
+    ) {
+        self.bind_story_dispatch(dispatch);
+    }
+
+    fn remove_story(&self, id: u64) -> Option<Story> {
+        self.remove_story(StoryId::new(id))
+    }
+
+    fn clear_stories(&self) {
+        self.clear_stories();
     }
 
     fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>> {
-        let adapter = Arc::clone(&self.adapter);
-        let store = Arc::clone(&self.store);
-        Box::pin(async move {
-            adapter.update_body(number, &body).await?;
-            store.apply(&StoryEvent::BodyUpdated {
-                meta: cache_fill_meta(),
-                id: StoryId::new(number),
-                body,
-            });
-            Ok(())
-        })
+        Box::pin(self.update_body(number, body))
     }
 
     fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>> {
-        let adapter = Arc::clone(&self.adapter);
-        let store = Arc::clone(&self.store);
-        Box::pin(async move {
-            adapter.update_title(number, &title).await?;
-            store.apply(&StoryEvent::TitleUpdated {
-                meta: cache_fill_meta(),
-                id: StoryId::new(number),
-                title,
-            });
-            Ok(())
-        })
+        Box::pin(self.update_title(number, title))
     }
 
     fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {

@@ -47,9 +47,9 @@ pub use roster::{
     Presence, RosterAction, RosterBroadcastListener, RosterMember, RosterRole,
     RosterSessionBroadcaster,
 };
-#[cfg(test)]
-pub(crate) use select::SeededStore;
 pub use select::Select;
+#[cfg(test)]
+pub(crate) use select::{SeededStore, bind_seeded_refresh};
 pub use sync::SyncAction;
 
 pub(crate) fn broadcast_state_delta(

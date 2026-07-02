@@ -1,8 +1,8 @@
 use std::collections::{HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 
+use crate::product_management::board::PersistError;
 use crate::product_management::board::orchestrator::QueuedEvent;
-use crate::product_management::board::store::PersistError;
 
 use super::{Storage, UserRecord, default_kind};
 use crate::comprehension::search::{self, SearchFilters, SearchResult};

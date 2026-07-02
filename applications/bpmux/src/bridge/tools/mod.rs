@@ -2,8 +2,6 @@ mod helpers;
 
 mod add_principle;
 mod add_value;
-#[cfg(test)]
-mod board_event_fire_ordering_tests;
 mod capture_electron_window;
 mod ci_get_job_status;
 #[cfg(test)]

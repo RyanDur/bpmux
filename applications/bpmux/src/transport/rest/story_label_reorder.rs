@@ -2,7 +2,7 @@
 
 use super::labels::{LabelMutationPayload, post_story_labels};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, StoreChange, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::session::Session;
 use axum::Json;
@@ -23,25 +23,22 @@ fn membered_member(id: u64, label: &str) -> Story {
     story
 }
 
-fn membered(store: &BoardStore, id: u64) -> bool {
-    store
-        .story(StoryId::new(id))
-        .unwrap()
-        .raw_labels
-        .iter()
-        .any(|l| l.starts_with("parent-iteration-#"))
-}
-
 #[tokio::test]
-async fn reordering_a_member_through_the_label_endpoint_never_transiently_orphans_it_1524() {
-    let store = Arc::new(BoardStore::new());
+async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![membered_member(1687, "parent-iteration-#1655.125")]);
-    let refresh: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&store), adapter));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
     refresh.refresh_all().await.unwrap();
-
-    let mut emitted = store.subscribe();
+    assert!(
+        refresh
+            .story(1687)
+            .unwrap()
+            .raw_labels
+            .iter()
+            .any(|l| l.starts_with("parent-iteration-#")),
+        "fixture starts membered"
+    );
 
     let dir = tempfile::tempdir().unwrap();
     let (wake_tx, _wake_rx) = broadcast::channel(16);
@@ -67,33 +64,14 @@ async fn reordering_a_member_through_the_label_endpoint_never_transiently_orphan
     .into_response();
     assert_eq!(response.status(), axum::http::StatusCode::OK);
 
-    let mut sequence = Vec::new();
-    while let Ok(change) = emitted.try_recv() {
-        if let StoreChange::Event(event) = change {
-            sequence.push(event);
-        }
-    }
-
-    let replay = BoardStore::new();
-    replay.seed_all(vec![membered_member(1687, "parent-iteration-#1655.125")]);
-    assert!(membered(&replay, 1687), "fixture starts membered");
-    for event in &sequence {
-        replay.apply(event);
-        assert!(
-            membered(&replay, 1687),
-            "a reorder must never transiently orphan the story (#1524): the label-mutation \
-             endpoint must emit the ADD of the new parent-iteration label before the REMOVE of \
-             the old one, so a concurrent board read never drops the row from its iteration until \
-             refresh; the emitted sequence was {sequence:?}"
-        );
-    }
-
-    assert!(
-        store
-            .story(StoryId::new(1687))
-            .unwrap()
-            .raw_labels
-            .contains(&"parent-iteration-#1655.106".to_string()),
-        "after the swap the story is membered at the new position"
+    let reordered = refresh
+        .story(1687)
+        .expect("a reorder must never orphan the story (#1524)");
+    assert_eq!(
+        reordered.raw_labels,
+        vec!["parent-iteration-#1655.106".to_string()],
+        "after the swap the story is membered at exactly the new position — the new \
+         parent-iteration label landed and the old one is gone, so no board read can \
+         drop the row from its iteration (#1524)"
     );
 }

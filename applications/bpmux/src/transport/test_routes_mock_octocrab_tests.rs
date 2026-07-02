@@ -11,7 +11,7 @@ use tower::ServiceExt;
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::integrations::github::GitHubSourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::server::OrchestratorHandle;
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 
@@ -33,13 +33,9 @@ async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn Re
     )
     .expect("build tracker against mock");
     let adapter = Arc::new(GitHubSourceAdapter::new(tracker));
-    let store = Arc::new(BoardStore::new());
-    let orch_concrete = SyncOrchestrator::new(store, adapter);
-    orch_concrete
-        .ingest_once()
-        .await
-        .expect("seed-empty ingest");
-    let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    orch.refresh_all().await.expect("seed-empty ingest");
     let orchestrator: OrchestratorHandle = Some(orch.clone());
     let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()

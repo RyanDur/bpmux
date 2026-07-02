@@ -5,7 +5,6 @@ use super::test_ci_state_store_green;
 use crate::product_management::board::adapters::github::{decode_epic_from_story, is_epic_story};
 use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::story::{Story, StoryId};
-use crate::store::Select;
 use crate::transport::protocol::ClientMessage;
 
 fn td() -> crate::store::Dispatch {
@@ -21,17 +20,11 @@ fn bind_epics(
         .filter(|s| is_epic_story(s))
         .map(decode_epic_from_story)
         .collect();
-    orch.bind_select(Select::seeded_for_board(
-        &orch.store(),
-        vec![],
-        vec![],
-        epics,
-    ));
+    crate::store::bind_seeded_refresh(orch, vec![], vec![], epics);
 }
 
 #[tokio::test]
 async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -40,7 +33,6 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let child = Story::new_minimal(
         StoryId::new(300),
@@ -59,12 +51,10 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     epic.raw_labels.push("epic".to_string());
     let seeded = vec![child, epic];
     adapter.seed_stories(seeded.clone());
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orchestrator.refresh_all().await.unwrap();
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orchestrator, &seeded);
+    orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(300));
@@ -73,7 +63,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     assert_eq!(
-        store.story(StoryId::new(300)).unwrap().parent_epic(),
+        orchestrator.story(300).unwrap().parent_epic(),
         Some(EpicId::new(457))
     );
 
@@ -93,7 +83,6 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
 
 #[tokio::test]
 async fn set_parent_epic_rejects_non_existent_epic() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -101,7 +90,6 @@ async fn set_parent_epic_rejects_non_existent_epic() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let child = Story::new_minimal(
         StoryId::new(310),
@@ -111,10 +99,9 @@ async fn set_parent_epic_rejects_non_existent_epic() {
         "pm".into(),
     );
     adapter.seed_stories(vec![child]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -127,7 +114,6 @@ async fn set_parent_epic_rejects_non_existent_epic() {
 
 #[tokio::test]
 async fn set_parent_epic_rejects_non_epic_parent() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -135,7 +121,6 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let child = Story::new_minimal(
         StoryId::new(311),
@@ -153,10 +138,9 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     );
     not_epic.raw_labels.push("feature".to_string());
     adapter.seed_stories(vec![child, not_epic]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -170,7 +154,6 @@ async fn set_parent_epic_rejects_non_epic_parent() {
 
 #[tokio::test]
 async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -179,7 +162,6 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut seeded = Story::new_minimal(
         StoryId::new(301),
@@ -191,13 +173,12 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     seeded.raw_labels.push("parent-epic-#457".to_string());
     seeded.parent_epic = Some(EpicId::new(457));
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
     assert_eq!(
-        store.story(StoryId::new(301)).unwrap().parent_epic(),
+        orchestrator.story(301).unwrap().parent_epic(),
         Some(EpicId::new(457)),
         "precondition: the seeded parent-epic decodes to the typed field on ingest"
     );
@@ -207,7 +188,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     let result = handle_unset_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    assert_eq!(store.story(StoryId::new(301)).unwrap().parent_epic(), None);
+    assert_eq!(orchestrator.story(301).unwrap().parent_epic(), None);
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 1);
@@ -245,7 +226,6 @@ async fn set_parent_epic_rejects_self_parent() {
 
 #[tokio::test]
 async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::StoryEvent;
     use crate::product_management::board::SyncOrchestrator;
@@ -254,7 +234,6 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut epic = Story::new_minimal(
         StoryId::new(500),
@@ -266,12 +245,10 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     epic.raw_labels.push("epic".to_string());
     let seeded = vec![epic];
     adapter.seed_stories(seeded.clone());
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orchestrator.refresh_all().await.unwrap();
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orchestrator, &seeded);
+    orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
     args.insert("title".into(), serde_json::json!("child of epic"));
@@ -303,7 +280,6 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
 
 #[tokio::test]
 async fn create_story_with_non_epic_parent_rejects_before_create() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -311,7 +287,6 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut not_epic = Story::new_minimal(
         StoryId::new(501),
@@ -322,10 +297,9 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     );
     not_epic.raw_labels.push("feature".to_string());
     adapter.seed_stories(vec![not_epic]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -345,7 +319,6 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
 
 #[tokio::test]
 async fn view_board_renders_epic_summary_section_with_child_progress() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -353,7 +326,6 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut epic = Story::new_minimal(
@@ -394,12 +366,9 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     child_c.parent_epic = Some(EpicId::new(700));
     let seeded = vec![epic, child_a, child_b, child_c];
     adapter.seed_stories(seeded.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orch, &seeded);
+    orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
         .unwrap();
@@ -425,7 +394,6 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
 
 #[tokio::test]
 async fn view_board_omits_epic_section_when_no_epics_present() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -433,7 +401,6 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let plain = Story::new_minimal(
         StoryId::new(800),
@@ -443,10 +410,8 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
         "pm".into(),
     );
     adapter.seed_stories(vec![plain]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
@@ -459,7 +424,6 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
 
 #[tokio::test]
 async fn view_board_filters_epic_stories_out_of_state_lanes() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -467,7 +431,6 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut epic = Story::new_minimal(
@@ -480,12 +443,9 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
     epic.raw_labels.push("epic".to_string());
     let seeded = vec![epic];
     adapter.seed_stories(seeded.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orch, &seeded);
+    orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
         .unwrap();
@@ -517,7 +477,6 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
 
 #[tokio::test]
 async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -525,7 +484,6 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut epic = Story::new_minimal(
@@ -556,12 +514,9 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     b.parent_epic = Some(EpicId::new(720));
     let seeded = vec![epic, a, b];
     adapter.seed_stories(seeded.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orch, &seeded);
+    orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
         .unwrap();
@@ -573,7 +528,6 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
 
 #[tokio::test]
 async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -581,7 +535,6 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
     let mut epic = Story::new_minimal(
@@ -603,12 +556,9 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
     a.parent_epic = Some(EpicId::new(730));
     let seeded = vec![epic, a];
     adapter.seed_stories(seeded.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orch, &seeded);
+    orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
         .await
         .unwrap();
@@ -620,19 +570,15 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
 
 #[tokio::test]
 async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_story_lanes() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::epic::EpicAction;
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<crate::store::AppAction>();

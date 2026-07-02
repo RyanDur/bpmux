@@ -5,7 +5,6 @@ pub mod label_codec;
 pub mod orchestrator;
 pub mod peer;
 pub mod ready_order_label;
-pub mod store;
 pub mod sync;
 pub mod velocity;
 pub mod view_model;
@@ -19,19 +18,19 @@ mod event_messages_audit_tests;
 #[cfg(test)]
 mod orchestrator_tests;
 #[cfg(test)]
-mod ready_order_label_codec;
+mod peer_tests;
 #[cfg(test)]
-mod store_tests;
+mod ready_order_label_codec;
 #[cfg(test)]
 mod story_view_projection;
 #[cfg(test)]
 mod velocity_tests;
 
 pub use events::StoryEvent;
+pub use orchestrator::PersistError;
 pub use orchestrator::{
     DrainOneOutcome, MutationId, QueuedEvent, RaceWindowBarrier, RefreshDriver, SyncOrchestrator,
     SyncStatus, SyncTransition, acknowledge_dropped, default_outbox_path, sync_transition,
 };
 pub use peer::PeerId;
-pub use store::{BoardStore, PersistError, StoreChange};
 pub use sync::{SourceAdapter, SyncError};

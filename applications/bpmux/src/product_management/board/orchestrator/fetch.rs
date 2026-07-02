@@ -15,7 +15,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     body: body.clone(),
                     etag: None,
                 };
-                self.store.apply(&event);
+                self.apply_story_event(&event);
                 record_ingest_success(&self.status);
                 Ok(body)
             }
@@ -47,7 +47,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     body: body.clone(),
                     etag: etag.clone(),
                 };
-                self.store.apply(&event);
+                self.apply_story_event(&event);
                 record_ingest_success(&self.status);
                 Ok(ConditionalBody::Modified { body, etag })
             }
@@ -69,7 +69,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     id: StoryId::new(number),
                     comments: comments.clone(),
                 };
-                self.store.apply(&event);
+                self.apply_story_event(&event);
                 record_ingest_success(&self.status);
                 Ok(comments)
             }
@@ -88,7 +88,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     id: StoryId::new(number),
                     comments: comments.clone(),
                 };
-                self.store.apply(&event);
+                self.apply_story_event(&event);
                 record_ingest_success(&self.status);
                 Ok(comments)
             }

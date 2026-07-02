@@ -5,13 +5,12 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::AtomicU64;
 
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::SourceAdapter;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
-    pub fn new(store: Arc<BoardStore>, adapter: Arc<A>) -> Self {
+    pub fn new(adapter: Arc<A>) -> Self {
         Self {
-            store,
+            story_dispatch: std::sync::OnceLock::new(),
             adapter,
             status: Arc::new(Mutex::new(SyncStatus::default())),
             pending: Arc::new(Mutex::new(VecDeque::new())),
@@ -50,15 +49,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self
     }
 
-    pub fn with_outbox_path(
-        store: Arc<BoardStore>,
-        adapter: Arc<A>,
-        path: PathBuf,
-    ) -> Result<Self, PersistError> {
+    pub fn with_outbox_path(adapter: Arc<A>, path: PathBuf) -> Result<Self, PersistError> {
         let pending = load_outbox_from_disk(&path)?;
         let next = pending.iter().map(|e| e.id.0).max().unwrap_or(0) + 1;
         Ok(Self {
-            store,
+            story_dispatch: std::sync::OnceLock::new(),
             adapter,
             status: Arc::new(Mutex::new(SyncStatus {
                 pending_events: pending.len(),
@@ -80,14 +75,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub fn with_storage(
-        store: Arc<BoardStore>,
         adapter: Arc<A>,
         storage: Arc<dyn crate::storage::Storage>,
     ) -> Result<Self, PersistError> {
         let pending = storage.load_outbox()?;
         let next = pending.iter().map(|e| e.id.0).max().unwrap_or(0) + 1;
         Ok(Self {
-            store,
+            story_dispatch: std::sync::OnceLock::new(),
             adapter,
             status: Arc::new(Mutex::new(SyncStatus {
                 pending_events: pending.len(),

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::session;
 
 pub(super) fn test_mode_enabled() -> bool {
@@ -49,18 +49,14 @@ pub(super) async fn build_test_orchestrator(
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
     race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(
         crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
     );
-    let orch_concrete = match SyncOrchestrator::with_storage(
-        store.clone(),
-        adapter.clone(),
-        session.storage.clone(),
-    ) {
-        Ok(o) => o,
-        Err(_) => SyncOrchestrator::new(store, adapter),
-    };
+    let orch_concrete =
+        match SyncOrchestrator::with_storage(adapter.clone(), session.storage.clone()) {
+            Ok(o) => o,
+            Err(_) => SyncOrchestrator::new(adapter),
+        };
     let orch_concrete = match action_tx {
         Some(tx) => orch_concrete.with_action_tx(tx),
         None => orch_concrete,
@@ -71,11 +67,6 @@ pub(super) async fn build_test_orchestrator(
         orch_concrete = orch_concrete.with_race_window_barrier(barrier);
     }
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-    if let Err(e) = orch.refresh_all().await {
-        crate::diag::log_diag(&format!(
-            "server: BPMUX_TEST_MODE initial ingest skipped — {e}"
-        ));
-    }
     orch
 }
 
@@ -86,26 +77,22 @@ pub(super) fn build_prod_orchestrator(
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
     race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
-    let orch_concrete = match SyncOrchestrator::with_storage(
-        store.clone(),
-        adapter.clone(),
-        session.storage.clone(),
-    ) {
-        Ok(o) => {
-            let pending_count = o.snapshot_status().pending_events;
-            crate::diag::log_diag(&format!(
-                "server: board-outbox hydrated via storage ({pending_count} pending events)"
-            ));
-            o
-        }
-        Err(e) => {
-            crate::diag::log_diag(&format!(
-                "server: board-outbox storage-load failed ({e}); starting with empty outbox"
-            ));
-            SyncOrchestrator::new(store.clone(), adapter.clone())
-        }
-    };
+    let orch_concrete =
+        match SyncOrchestrator::with_storage(adapter.clone(), session.storage.clone()) {
+            Ok(o) => {
+                let pending_count = o.snapshot_status().pending_events;
+                crate::diag::log_diag(&format!(
+                    "server: board-outbox hydrated via storage ({pending_count} pending events)"
+                ));
+                o
+            }
+            Err(e) => {
+                crate::diag::log_diag(&format!(
+                    "server: board-outbox storage-load failed ({e}); starting with empty outbox"
+                ));
+                SyncOrchestrator::new(adapter.clone())
+            }
+        };
     let orch_concrete = match action_tx {
         Some(tx) => orch_concrete.with_action_tx(tx),
         None => orch_concrete,
@@ -116,6 +103,6 @@ pub(super) fn build_prod_orchestrator(
         orch_concrete = orch_concrete.with_race_window_barrier(barrier);
     }
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-    super::startup_tasks::spawn_background_ingest(orch.clone());
+
     orch
 }

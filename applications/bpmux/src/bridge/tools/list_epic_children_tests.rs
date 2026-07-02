@@ -6,10 +6,9 @@ use crate::product_management::board::adapters::github::{
     decode_epic_from_story, decode_story_metadata, is_epic_story,
 };
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::epic::Epic;
 use crate::product_management::story::{BoardState, Story, StoryKind};
-use crate::store::Select;
 use serde_json::json;
 use std::sync::Arc;
 
@@ -45,22 +44,16 @@ fn child_without_parent(number: u64) -> Story {
 }
 
 async fn store_with(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let epics: Vec<Epic> = stories
         .iter()
         .filter(|s| is_epic_story(s))
         .map(decode_epic_from_story)
         .collect();
-    orch.bind_select(Select::seeded_for_board(
-        &orch.store(),
-        vec![],
-        vec![],
-        epics,
-    ));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], epics);
+    orch.refresh_all().await.unwrap();
     orch
 }
 

@@ -30,7 +30,7 @@ use tokio_util::sync::CancellationToken;
 
 use bpmux::auth as auth_token;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use bpmux::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use bpmux::product_management::board::{RefreshDriver, SyncOrchestrator};
 use bpmux::product_management::story::{BoardState, Story, StoryId};
 use bpmux::session::Session;
 use bpmux::transport::auth::{AuthState, gate};
@@ -85,14 +85,9 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
     let token_path = dir.path().join("auth_token");
     let token = auth_token::ensure(&token_path).expect("ensure token");
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     seed_story(&adapter, 42, "fixture story");
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.ingest_once().await.expect("seed ingest");
+    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
     let test_refresh: Option<Arc<dyn RefreshDriver>> = Some(Arc::clone(&refresh));
 
@@ -103,6 +98,15 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         "test".to_string(),
         wake_tx,
     ));
+    let app_store = Arc::new(bpmux::store::Store::new(
+        session.clone(),
+        None,
+        bpmux::transport::ci_state_store::CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    refresh.bind_select(app_store.selector());
+    refresh.bind_story_dispatch(app_store.story_dispatcher());
+    orch.ingest_once().await.expect("seed ingest");
     let auth_state = AuthState::new(token.clone());
 
     let (action_tx, _action_rx) = tokio::sync::mpsc::unbounded_channel::<bpmux::store::AppAction>();

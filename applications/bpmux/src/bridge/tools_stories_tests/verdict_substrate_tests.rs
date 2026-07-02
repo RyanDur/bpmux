@@ -9,7 +9,6 @@ use crate::transport::protocol::ClientMessage;
 mod verdict_substrate_integration_1407 {
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -29,13 +28,10 @@ mod verdict_substrate_integration_1407 {
     }
 
     async fn build_orchestrator_with_seed(seeded: Story) -> Arc<dyn RefreshDriver> {
-        let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seeded]);
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-        ));
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
         orch.refresh_all().await.unwrap();
         orch
     }

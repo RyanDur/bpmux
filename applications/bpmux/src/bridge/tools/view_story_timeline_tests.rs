@@ -15,18 +15,14 @@ async fn handler_requires_refresh_as_the_canonical_read_handle() {
 
 #[tokio::test]
 async fn handler_errors_when_story_not_in_board() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 9999});
@@ -37,15 +33,14 @@ async fn handler_errors_when_story_not_in_board() {
 
 #[tokio::test]
 async fn handler_reads_gates_from_canonical_store() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::slice::StoryAction;
     use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let filed_at = Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap();
     let mut story = Story::new_minimal(
@@ -61,11 +56,12 @@ async fn handler_reads_gates_from_canonical_store() {
         actor: "dev".into(),
         payload: Some("ran end-to-end".into()),
     }]);
-    store.seed_all(vec![story]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let handle = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orchestrator);
+    handle.dispatch(crate::store::AppAction::Story(StoryAction::Seeded(vec![
+        story,
+    ])));
 
     let args = serde_json::json!({"id": 418});
     let result = handle_view_story_timeline(args.as_object().unwrap(), Some(&orchestrator))
@@ -84,15 +80,14 @@ async fn handler_reads_gates_from_canonical_store() {
 
 #[tokio::test]
 async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_missing() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::slice::StoryAction;
     use crate::product_management::story::{BoardState, Story, StoryId};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
     let story = Story::new_minimal(
@@ -102,11 +97,12 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    store.seed_all(vec![story]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let handle = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orchestrator);
+    handle.dispatch(crate::store::AppAction::Story(StoryAction::Seeded(vec![
+        story,
+    ])));
 
     let args = serde_json::json!({"id": 419});
     let result = handle_view_story_timeline(args.as_object().unwrap(), Some(&orchestrator))
@@ -205,7 +201,6 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
 
 #[tokio::test]
 async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
-    use crate::product_management::board::BoardStore;
     use crate::product_management::board::RefreshDriver;
     use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
@@ -213,7 +208,6 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let reason = "drag srt does not persist and does not have the same drag css as the iteration";
     let story = Story::new_minimal(
@@ -223,7 +217,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
         Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_stories(vec![story]);
     adapter.seed_gate_comments(
         1524,
         vec![GateComment {
@@ -233,11 +227,9 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
             payload: Some(reason.into()),
         }],
     );
-    store.seed_all(vec![story]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 1524});
     let result = handle_view_story_timeline(args.as_object().unwrap(), Some(&orchestrator))

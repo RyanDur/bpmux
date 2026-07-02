@@ -1,17 +1,18 @@
 use std::sync::Arc;
 
 use crate::product_management::board::events::StoryEvent;
-use crate::product_management::board::store::BoardStore;
 use crate::product_management::board::sync::{ConditionalBody, SyncError};
 use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
+use crate::product_management::story::slice::StoryAction;
+use crate::product_management::story::{FreeComment, GateComment, Story};
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
 
 pub trait RefreshDriver: Send + Sync {
     fn bind_select(&self, _select: crate::store::Select) {}
+    fn bind_story_dispatch(&self, _dispatch: Box<dyn Fn(StoryAction) + Send + Sync>) {}
     fn refresh_story(&self, id: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn refresh_all_since(
@@ -70,18 +71,13 @@ pub trait RefreshDriver: Send + Sync {
         self.epics().into_iter().find(|epic| epic.id == epic_id)
     }
     fn backing_story(&self, id: u64) -> Option<Story> {
-        self.store().backing_story(StoryId::new(id))
+        self.story(id)
     }
     fn store_is_empty(&self) -> bool {
-        self.store().is_empty()
+        self.all_stories().is_empty()
     }
-    fn remove_story(&self, id: u64) -> Option<Story> {
-        self.store().remove(StoryId::new(id))
-    }
-    fn clear_stories(&self) {
-        self.store().clear();
-    }
-    fn store(&self) -> Arc<BoardStore>;
+    fn remove_story(&self, id: u64) -> Option<Story>;
+    fn clear_stories(&self);
     fn update_body(&self, id: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 
     fn update_title(&self, id: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>>;

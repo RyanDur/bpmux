@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::integrations::github::GitHubSourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 
 fn comment(body: &str) -> Value {
     json!({
@@ -50,10 +50,10 @@ async fn fixture_orchestrator(server: &MockServer) -> Arc<dyn RefreshDriver> {
     )
     .expect("build tracker against mock");
     let adapter = Arc::new(GitHubSourceAdapter::new(tracker));
-    let store = Arc::new(BoardStore::new());
-    let orch = SyncOrchestrator::new(store, adapter);
-    orch.ingest_once().await.expect("seed-empty ingest");
-    Arc::new(orch)
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    orch.refresh_all().await.expect("seed-empty ingest");
+    orch
 }
 
 #[tokio::test]

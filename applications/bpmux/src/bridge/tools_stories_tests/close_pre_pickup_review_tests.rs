@@ -3,11 +3,11 @@
 use super::super::tools_stories::*;
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::readiness::iteration_readiness;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::story::{BoardState, Story, StoryId};
-use crate::store::{AppAction, Dispatch, Select};
+use crate::store::{AppAction, Dispatch};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -29,11 +29,9 @@ fn iteration_upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Iteration> {
 }
 
 async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories.clone());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
-    orch.refresh_all().await.unwrap();
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let iterations: Vec<Iteration> = stories
         .iter()
         .filter(|s| {
@@ -43,12 +41,8 @@ async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         })
         .map(decode_iteration_from_story)
         .collect();
-    orch.bind_select(Select::seeded_for_board(
-        &orch.store(),
-        vec![],
-        iterations,
-        vec![],
-    ));
+    crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
+    orch.refresh_all().await.unwrap();
     orch
 }
 

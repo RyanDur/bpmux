@@ -18,8 +18,8 @@ use crate::comprehension::search::{self, SearchFilters, SearchResult};
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
+use crate::product_management::board::PersistError;
 use crate::product_management::board::orchestrator::QueuedEvent;
-use crate::product_management::board::store::PersistError;
 use crate::reactions::ReactionsStore;
 
 pub struct SqliteStorage {

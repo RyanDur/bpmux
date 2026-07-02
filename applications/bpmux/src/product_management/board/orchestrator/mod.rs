@@ -7,9 +7,9 @@ use std::sync::atomic::AtomicU64;
 use chrono::Utc;
 
 use super::events::StoryEvent;
-use super::store::{BoardStore, PersistError};
 use super::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment, Story};
+pub use persist_error::PersistError;
 
 mod coalesce;
 mod drain;
@@ -18,10 +18,12 @@ mod driver_ops;
 mod fetch;
 mod ingest;
 mod outbox;
+mod persist_error;
 mod race_window;
 mod slice_readers;
 mod status;
 mod types;
+mod write_through;
 
 pub use crate::product_management::story::conflict::{
     ConflictKind, ConflictResolveOrigin, classify_conflict,
@@ -41,7 +43,9 @@ use status::{
 pub use types::*;
 
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
-    pub(super) store: Arc<BoardStore>,
+    pub(super) story_dispatch: std::sync::OnceLock<
+        Box<dyn Fn(crate::product_management::story::slice::StoryAction) + Send + Sync>,
+    >,
     pub(super) adapter: Arc<A>,
     pub(super) status: Arc<Mutex<SyncStatus>>,
     pub(super) pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
@@ -78,12 +82,35 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.with_pending(|p| p.clone())
     }
 
-    pub fn store(&self) -> Arc<BoardStore> {
-        Arc::clone(&self.store)
+    pub fn bind_story_dispatch(
+        &self,
+        dispatch: impl Fn(crate::product_management::story::slice::StoryAction) + Send + Sync + 'static,
+    ) {
+        let _ = self.story_dispatch.set(Box::new(dispatch));
+    }
+
+    pub(super) fn dispatch_story(
+        &self,
+        action: crate::product_management::story::slice::StoryAction,
+    ) {
+        match self.story_dispatch.get() {
+            Some(dispatch) => dispatch(action),
+            None => crate::diag::log_diag(
+                "orchestrator: story dispatch unbound; write dropped (bind_story_dispatch missing)",
+            ),
+        }
+    }
+
+    pub(super) fn apply_story_event(&self, event: &StoryEvent) {
+        self.dispatch_story(crate::product_management::story::slice::StoryAction::Event(
+            event.clone(),
+        ));
     }
 
     pub fn apply_server_rollback(&self, story: Story) {
-        self.store.seed_all(vec![story]);
+        self.dispatch_story(
+            crate::product_management::story::slice::StoryAction::Seeded(vec![story]),
+        );
     }
 
     pub fn pending_issue_for_mutation(&self, id: MutationId) -> Option<u64> {
@@ -139,7 +166,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub async fn reconcile_dual_state_labels(&self) -> Result<usize, SyncError> {
-        let stories = self.store.all_stories();
+        let stories = self.read_all_stories();
         let mut repairs = 0usize;
         for story in stories {
             let labels = match self.adapter.fetch_story_labels(story.id.value()).await {
