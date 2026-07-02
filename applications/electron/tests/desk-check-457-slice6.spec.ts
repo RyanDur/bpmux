@@ -73,8 +73,8 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
       await createStory(rpc, '[Epic] Epic ready for owner')
       await createStory(rpc, 'Child A delivered', 1)
       await createStory(rpc, 'Child B delivered', 1)
-      await moveTo(rpc, 2, 'delivered')
-      await moveTo(rpc, 3, 'delivered')
+      await moveTo(rpc, 2, 'acceptance')
+      await moveTo(rpc, 3, 'acceptance')
 
       await win.reload()
       await expect(board.region()).toBeVisible()

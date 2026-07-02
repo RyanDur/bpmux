@@ -56,7 +56,7 @@ fn derive_epic_state_returns_in_progress_for_active_child_1450() {
     for active_state in [
         BoardState::InProgress(Stage::Dev),
         BoardState::InProgress(Stage::DeskCheck),
-        BoardState::Delivered,
+        BoardState::Acceptance,
     ] {
         let kids = [
             epic_child(1, BoardState::Ready),
@@ -181,7 +181,7 @@ fn derive_epic_state_1189_paradox_regression_1450() {
 fn derive_epic_state_does_not_return_non_epic_states_1450() {
     let kids = [
         epic_child(1, BoardState::InProgress(Stage::DeskCheck)),
-        epic_child(2, BoardState::Delivered),
+        epic_child(2, BoardState::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let derived = derive_epic_state(BoardState::Icebox, &refs);
@@ -238,7 +238,7 @@ fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
         epic_child(1, BoardState::Ready),
         epic_child(2, BoardState::InProgress(Stage::Dev)),
         epic_child(3, BoardState::InProgress(Stage::DeskCheck)),
-        epic_child(4, BoardState::Delivered),
+        epic_child(4, BoardState::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs);

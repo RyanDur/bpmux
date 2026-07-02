@@ -72,7 +72,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(20),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
         let drained = orch.drain_once().await.unwrap();
@@ -99,7 +99,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(90),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
         assert_eq!(
@@ -134,7 +134,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(30),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
         adapter.set_push_failures(true);
@@ -161,7 +161,7 @@ mod outbox_persistence {
             .mutate(StoryEvent::StateTransitioned {
                 meta: meta(),
                 id: StoryId::new(40),
-                new_state: BoardState::Delivered,
+                new_state: BoardState::Acceptance,
             })
             .unwrap();
         drop(orch_a_dyn);
@@ -193,7 +193,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(60),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -225,7 +225,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(65),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -254,7 +254,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(66),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -284,7 +284,7 @@ mod outbox_persistence {
             orch.mutate(StoryEvent::StateTransitioned {
                 meta: meta(),
                 id: StoryId::new(n),
-                new_state: BoardState::Delivered,
+                new_state: BoardState::Acceptance,
             })
             .unwrap();
         }
@@ -316,7 +316,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(80),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
         adapter.set_push_failures(true);

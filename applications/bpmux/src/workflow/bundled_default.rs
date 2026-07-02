@@ -49,7 +49,7 @@ pub fn bundled_default() -> WorkflowConfig {
                 section: "in-work".into(),
             },
             State {
-                id: "delivered".into(),
+                id: "acceptance".into(),
                 section: "in-work".into(),
             },
             State {
@@ -83,7 +83,7 @@ pub fn bundled_default() -> WorkflowConfig {
             Transition {
                 id: "pass-desk-check".into(),
                 from: "desk-check".into(),
-                to: "delivered".into(),
+                to: "acceptance".into(),
                 actor_roles: vec!["designer".into()],
                 gate_class: GateClass::TeamVerifiable,
                 evidence_window_seconds: 600,
@@ -92,7 +92,7 @@ pub fn bundled_default() -> WorkflowConfig {
             Transition {
                 id: "pass-desk-check".into(),
                 from: "desk-check".into(),
-                to: "delivered".into(),
+                to: "acceptance".into(),
                 actor_roles: vec!["designer".into()],
                 gate_class: GateClass::OwnerWalk,
                 evidence_window_seconds: 600,
@@ -101,7 +101,7 @@ pub fn bundled_default() -> WorkflowConfig {
             Transition {
                 id: "pass-desk-check".into(),
                 from: "desk-check".into(),
-                to: "delivered".into(),
+                to: "acceptance".into(),
                 actor_roles: vec!["designer".into()],
                 gate_class: GateClass::DevVerifiable,
                 evidence_window_seconds: 600,
@@ -118,7 +118,7 @@ pub fn bundled_default() -> WorkflowConfig {
             },
             Transition {
                 id: "reject".into(),
-                from: "delivered".into(),
+                from: "acceptance".into(),
                 to: "ready".into(),
                 actor_roles: vec!["pm".into()],
                 gate_class: GateClass::None,
@@ -127,7 +127,7 @@ pub fn bundled_default() -> WorkflowConfig {
             },
             Transition {
                 id: "accept".into(),
-                from: "delivered".into(),
+                from: "acceptance".into(),
                 to: "accepted".into(),
                 actor_roles: vec!["pm".into()],
                 gate_class: GateClass::TeamVerifiable,
@@ -136,7 +136,7 @@ pub fn bundled_default() -> WorkflowConfig {
             },
             Transition {
                 id: "accept".into(),
-                from: "delivered".into(),
+                from: "acceptance".into(),
                 to: "accepted".into(),
                 actor_roles: vec![],
                 gate_class: GateClass::OwnerWalk,
@@ -145,7 +145,7 @@ pub fn bundled_default() -> WorkflowConfig {
             },
             Transition {
                 id: "accept".into(),
-                from: "delivered".into(),
+                from: "acceptance".into(),
                 to: "accepted".into(),
                 actor_roles: vec!["dev".into()],
                 gate_class: GateClass::DevVerifiable,

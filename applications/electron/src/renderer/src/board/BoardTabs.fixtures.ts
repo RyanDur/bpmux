@@ -61,7 +61,7 @@ export const buildProps = (stories: Story[]): Parameters<typeof BoardTabs>[0] =>
       ready: false,
       'in-progress': false,
       'desk-check': false,
-      delivered: false,
+      acceptance: false,
       accepted: true,
       retired: true
     } as Record<ColumnState, boolean>,

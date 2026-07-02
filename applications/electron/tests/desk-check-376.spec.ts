@@ -74,11 +74,11 @@ const seedFixture = async (result: MockGhLaunchResult): Promise<void> => {
 }
 
 const GROUP = {
-  delivered: { tab: 'Now', label: 'Acceptance' },
+  acceptance: { tab: 'Now', label: 'Acceptance' },
   accepted: { tab: 'Done', label: 'Accepted' }
 } as const
 
-const openGroup = async (board: BoardPage, state: 'delivered' | 'accepted'): Promise<void> => {
+const openGroup = async (board: BoardPage, state: 'acceptance' | 'accepted'): Promise<void> => {
   const { tab, label } = GROUP[state]
   await board.openTab(tab)
   await board.openColumn(label)
@@ -95,9 +95,9 @@ test.describe('desk-check #376 color-differentiate awaiting vs accepted', () => 
       await win.reload()
       await expect(board.region()).toBeVisible()
 
-      await openGroup(board, 'delivered')
-      await expect(board.storyStateBadge(1)).toHaveAttribute('data-state', 'delivered')
-      await expect(board.storyStateBadge(3)).toHaveAttribute('data-state', 'delivered')
+      await openGroup(board, 'acceptance')
+      await expect(board.storyStateBadge(1)).toHaveAttribute('data-state', 'acceptance')
+      await expect(board.storyStateBadge(3)).toHaveAttribute('data-state', 'acceptance')
 
       await openGroup(board, 'accepted')
       await expect(board.storyStateBadge(2)).toHaveAttribute('data-state', 'accepted')
@@ -117,7 +117,7 @@ test.describe('desk-check #376 color-differentiate awaiting vs accepted', () => 
       await win.reload()
       await expect(board.region()).toBeVisible()
 
-      await openGroup(board, 'delivered')
+      await openGroup(board, 'acceptance')
       const deliveredColor = await board
         .storyStateBadge(1)
         .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)

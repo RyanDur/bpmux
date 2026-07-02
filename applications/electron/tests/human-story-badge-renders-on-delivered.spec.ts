@@ -78,7 +78,7 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       const badge = board.storyBadge('Acceptance', 'awaiting owner')
       await expect(badge).toBeVisible()
       await expect(badge).toHaveAttribute('data-badge-kind', 'accepted')
-      await expect(badge).toHaveAttribute('data-state', 'delivered')
+      await expect(badge).toHaveAttribute('data-state', 'acceptance')
       await expect(badge).toContainText('awaiting owner')
 
       expect(consoleErrors).toEqual([])

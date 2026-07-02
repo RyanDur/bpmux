@@ -51,8 +51,8 @@ fn view_backlog_returns_zero_counts_for_empty_board() {
             "empty-board has zero in-progress stories; got {result:?}"
         );
         assert_eq!(
-            result["delivered_count"], 0,
-            "empty-board has zero delivered stories; got {result:?}"
+            result["acceptance_count"], 0,
+            "empty-board has zero acceptance-column stories; got {result:?}"
         );
         assert_eq!(
             result["accepted_count"], 0,
@@ -109,8 +109,8 @@ fn view_backlog_reflects_seeded_states_via_fixture() {
             "fixture-seeded board has one in-progress story; got {result:?}"
         );
         assert_eq!(
-            result["delivered_count"], 1,
-            "fixture-seeded board has one delivered story; got {result:?}"
+            result["acceptance_count"], 1,
+            "fixture-seeded board has one acceptance-column story; got {result:?}"
         );
 
         let ready_samples = result["ready_samples"]

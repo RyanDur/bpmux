@@ -115,7 +115,7 @@ pub(crate) async fn handle_pass_desk_check(
             crate::product_management::board::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
-                new_state: crate::product_management::story::BoardState::Delivered,
+                new_state: crate::product_management::story::BoardState::Acceptance,
             },
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;

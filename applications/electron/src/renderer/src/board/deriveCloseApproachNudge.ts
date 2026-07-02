@@ -13,7 +13,7 @@ export interface CloseApproachNudge {
 
 const CLOSE_APPROACH_WORK_DONE_RATIO = 0.75
 
-const WORK_DONE_COLUMNS: ReadonlyArray<ColumnState> = ['delivered', 'accepted']
+const WORK_DONE_COLUMNS: ReadonlyArray<ColumnState> = ['acceptance', 'accepted']
 
 const nextIterationAfter = (
   current: BoardIterationData,

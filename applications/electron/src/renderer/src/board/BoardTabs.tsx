@@ -19,7 +19,7 @@ const VALID_TAB_IDS: ReadonlyArray<BoardTabId> = ['now', 'plan', 'done'] as cons
 
 const DONE_STATES: ReadonlyArray<ColumnState> = ['accepted', 'retired']
 
-const NOW_STATES: ReadonlyArray<ColumnState> = ['ready', 'in-progress', 'desk-check', 'delivered']
+const NOW_STATES: ReadonlyArray<ColumnState> = ['ready', 'in-progress', 'desk-check', 'acceptance']
 
 const groupsFor = (states: ReadonlyArray<ColumnState>): GroupSpec[] =>
   states

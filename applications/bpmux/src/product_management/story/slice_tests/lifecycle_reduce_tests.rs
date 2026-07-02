@@ -58,7 +58,7 @@ fn state_transitioned_event_silently_drops_when_story_missing() {
 #[test]
 fn acceptor_assigned_event_sets_the_stored_acceptor_field() {
     let store = seeded();
-    created(&store, 8, "needs an acceptor", BoardState::Delivered);
+    created(&store, 8, "needs an acceptor", BoardState::Acceptance);
     assert_eq!(
         story_at(&store, 8).unwrap().acceptor(),
         None,
@@ -82,7 +82,7 @@ fn acceptor_assigned_event_sets_the_stored_acceptor_field() {
 #[test]
 fn tag_set_event_sets_the_typed_tags_field_directly() {
     let store = seeded();
-    created(&store, 15, "blockable", BoardState::Delivered);
+    created(&store, 15, "blockable", BoardState::Acceptance);
     assert!(
         story_at(&store, 15).unwrap().tags().is_empty(),
         "a freshly created story carries no tags yet"
@@ -130,7 +130,7 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
 #[test]
 fn blocked_by_events_set_and_clear_the_typed_blocker_reference_directly() {
     let store = seeded();
-    created(&store, 16, "blockable", BoardState::Delivered);
+    created(&store, 16, "blockable", BoardState::Acceptance);
     assert_eq!(
         story_at(&store, 16).unwrap().blocked_by(),
         None,

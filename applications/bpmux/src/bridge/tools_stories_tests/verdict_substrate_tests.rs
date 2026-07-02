@@ -40,7 +40,7 @@ mod verdict_substrate_integration_1407 {
         let mut story = Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            BoardState::Delivered,
+            BoardState::Acceptance,
             Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
             "dev".to_string(),
         );

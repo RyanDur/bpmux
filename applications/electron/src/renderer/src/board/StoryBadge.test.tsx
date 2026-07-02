@@ -4,7 +4,7 @@ import type { Story } from './types'
 const baseStory = (overrides: Partial<Story> = {}): Story => ({
   id: 100,
   title: 'test story',
-  state: 'delivered',
+  state: 'acceptance',
   labels: [],
   assignees: [],
   created_at: '2026-05-19T00:00:00Z',
@@ -25,28 +25,28 @@ describe('#1551 deriveBadge — acceptor-class from typed field, honest-neutral 
     expect(deriveBadge(baseStory({ acceptor: 'dev' }))).toBe('dev-accepted')
   })
 
-  test('delivered with no acceptor → pending (honest-neutral, not a guess)', () => {
-    expect(deriveBadge(baseStory({ state: 'delivered', acceptor: undefined }))).toBe('pending')
+  test('acceptance with no acceptor → pending (honest-neutral, not a guess)', () => {
+    expect(deriveBadge(baseStory({ state: 'acceptance', acceptor: undefined }))).toBe('pending')
   })
 
   test('badge is NOT inferred from story-type — a bug with no acceptor is pending, not team-accepted', () => {
-    expect(deriveBadge(baseStory({ state: 'delivered', labels: ['bug'] }))).toBe('pending')
-    expect(deriveBadge(baseStory({ state: 'delivered', labels: ['feature'] }))).toBe('pending')
+    expect(deriveBadge(baseStory({ state: 'acceptance', labels: ['bug'] }))).toBe('pending')
+    expect(deriveBadge(baseStory({ state: 'acceptance', labels: ['feature'] }))).toBe('pending')
   })
 
   test('blocked precedence overrides acceptor', () => {
     expect(
-      deriveBadge(baseStory({ state: 'delivered', acceptor: 'team', labels: ['blocked'] }))
+      deriveBadge(baseStory({ state: 'acceptance', acceptor: 'team', labels: ['blocked'] }))
     ).toBe('blocked')
   })
 
   test('rework precedence overrides acceptor', () => {
     expect(
-      deriveBadge(baseStory({ state: 'delivered', acceptor: 'team', labels: ['desk-check-fail'] }))
+      deriveBadge(baseStory({ state: 'acceptance', acceptor: 'team', labels: ['desk-check-fail'] }))
     ).toBe('rework')
   })
 
-  test('no badge for non-delivered/accepted states even with an acceptor', () => {
+  test('no badge for non-acceptance/accepted states even with an acceptor', () => {
     expect(deriveBadge(baseStory({ state: 'ready', acceptor: 'team' }))).toBeNull()
     expect(deriveBadge(baseStory({ state: 'in-progress', acceptor: 'team' }))).toBeNull()
   })

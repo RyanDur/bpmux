@@ -99,7 +99,7 @@ pub(super) fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Ve
         BoardState::Ready.github_label(),
         BoardState::InProgress(Stage::Dev).github_label(),
         BoardState::InProgress(Stage::DeskCheck).github_label(),
-        BoardState::Delivered.github_label(),
+        BoardState::Acceptance.github_label(),
         BoardState::Accepted.github_label(),
     ];
     let legacy_state_labels =

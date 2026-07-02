@@ -107,7 +107,7 @@ async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
     accepted.body = None;
     let mut icebox = seed_minimal(103, BoardState::Icebox);
     icebox.body = None;
-    let mut delivered = seed_minimal(104, BoardState::Delivered);
+    let mut delivered = seed_minimal(104, BoardState::Acceptance);
     delivered.body = None;
     let stories = vec![active, hydrated, accepted, icebox, delivered];
     let picks = select_stories_to_hydrate(&stories, 10);

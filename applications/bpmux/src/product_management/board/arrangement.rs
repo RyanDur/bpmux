@@ -6,7 +6,7 @@ pub enum ColumnBucket {
     Ready,
     InProgress,
     DeskCheck,
-    Delivered,
+    Acceptance,
     Accepted,
     Retired,
 }
@@ -18,7 +18,7 @@ impl ColumnBucket {
             ColumnBucket::Ready => "READY",
             ColumnBucket::InProgress => "IN PROGRESS",
             ColumnBucket::DeskCheck => "DESK CHECK",
-            ColumnBucket::Delivered => "DELIVERED",
+            ColumnBucket::Acceptance => "ACCEPTANCE",
             ColumnBucket::Accepted => "ACCEPTED",
             ColumnBucket::Retired => "RETIRED",
         }
@@ -34,7 +34,7 @@ pub fn column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
         BoardState::Ready => ColumnBucket::Ready,
         BoardState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
         BoardState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
-        BoardState::Delivered => ColumnBucket::Delivered,
+        BoardState::Acceptance => ColumnBucket::Acceptance,
         BoardState::Accepted => ColumnBucket::Accepted,
         BoardState::Retired => ColumnBucket::Retired,
     }

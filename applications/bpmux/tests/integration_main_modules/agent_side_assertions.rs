@@ -71,7 +71,7 @@ fn view_board_response_exposes_story_fields_for_agent_assertions() {
             "view_board should expose story 101 fields. got:\n{rendered}"
         );
         assert!(
-            rendered.contains("READY (") && rendered.contains("DELIVERED ("),
+            rendered.contains("READY (") && rendered.contains("ACCEPTANCE ("),
             "view_board should group stories by state. got:\n{rendered}"
         );
         dev.close().await;

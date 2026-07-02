@@ -48,7 +48,7 @@ fn view_board_renders_all_section_headers_on_empty_board() {
             "READY",
             "IN PROGRESS",
             "DESK CHECK",
-            "DELIVERED",
+            "ACCEPTANCE",
             "ACCEPTED",
         ] {
             assert!(
@@ -87,7 +87,7 @@ fn view_board_state_scope_renders_only_the_requested_column() {
             "ICEBOX",
             "IN PROGRESS",
             "DESK CHECK",
-            "DELIVERED",
+            "ACCEPTANCE",
             "ACCEPTED",
             "RETIRED",
         ] {

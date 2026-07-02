@@ -46,7 +46,7 @@ async fn handler_reads_gates_from_canonical_store() {
     let mut story = Story::new_minimal(
         StoryId::new(418),
         "title".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         filed_at,
         "pm".into(),
     );
@@ -93,7 +93,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
     let story = Story::new_minimal(
         StoryId::new(419),
         "title".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -124,7 +124,7 @@ fn build_timeline_from_board_sorts_chronologically() {
     let story = Story::new_minimal(
         StoryId::new(500),
         "title".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

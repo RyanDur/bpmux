@@ -42,7 +42,7 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
         BoardState::Ready.github_label(),
         BoardState::InProgress(Stage::Dev).github_label(),
         BoardState::InProgress(Stage::DeskCheck).github_label(),
-        BoardState::Delivered.github_label(),
+        BoardState::Acceptance.github_label(),
         BoardState::Accepted.github_label(),
         "ready for accept",
         "needs fixes",
@@ -156,10 +156,10 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> BoardState {
         return BoardState::InProgress(Stage::Dev);
     }
     if has("ready for accept") {
-        return BoardState::Delivered;
+        return BoardState::Acceptance;
     }
-    if has(BoardState::Delivered.github_label()) {
-        return BoardState::Delivered;
+    if has(BoardState::Acceptance.github_label()) {
+        return BoardState::Acceptance;
     }
     if has(BoardState::InProgress(Stage::DeskCheck).github_label()) {
         return BoardState::InProgress(Stage::DeskCheck);

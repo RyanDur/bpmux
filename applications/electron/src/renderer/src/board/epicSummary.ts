@@ -5,7 +5,7 @@ export interface StateBreakdown {
   total: number
   accepted: number
   retired: number
-  delivered: number
+  acceptance: number
   inProgress: number
   deskCheck: number
   ready: number
@@ -19,7 +19,7 @@ export const breakdownFor = (epic: Story, all: Story[]): StateBreakdown => {
     total: children.length,
     accepted: count('accepted'),
     retired: count('retired'),
-    delivered: count('delivered') + count('ready-for-accept'),
+    acceptance: count('acceptance') + count('ready-for-accept'),
     inProgress: count('in-progress') + count('needs-fixes'),
     deskCheck: count('desk-check'),
     ready: count('ready') + count('rejected'),
@@ -28,7 +28,7 @@ export const breakdownFor = (epic: Story, all: Story[]): StateBreakdown => {
 }
 
 export const progressDenominatorFor = (b: StateBreakdown): number =>
-  b.accepted + b.delivered + b.inProgress + b.deskCheck + b.ready + b.icebox
+  b.accepted + b.acceptance + b.inProgress + b.deskCheck + b.ready + b.icebox
 
 export const extractDescription = (body: string): string => {
   if (!body.trim()) return ''
@@ -47,7 +47,7 @@ export const stripEpicPrefix = (title: string): string => title.replace(EPIC_TIT
 
 export const breakdownAriaLabel = (b: StateBreakdown): string => {
   const denom = progressDenominatorFor(b)
-  return `Progress: ${b.accepted} of ${denom} children needing completion accepted; ${b.delivered} delivered, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox, ${b.retired} retired (scope-removed; excluded from progress denominator)`
+  return `Progress: ${b.accepted} of ${denom} children needing completion accepted; ${b.acceptance} in acceptance, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox, ${b.retired} retired (scope-removed; excluded from progress denominator)`
 }
 
 export const isOpenByDefault = (derived: StoryState): boolean =>

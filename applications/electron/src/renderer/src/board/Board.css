@@ -330,7 +330,7 @@
     border-color: var(--accent-brand);
   }
 
-  & .board-iteration-member-state[data-state='delivered'] {
+  & .board-iteration-member-state[data-state='acceptance'] {
     color: var(--accent-warning);
     border-color: var(--accent-warning);
   }
@@ -715,7 +715,7 @@
     border-color: var(--accent-info);
   }
 
-  & .board-epic-state[data-state='delivered'] {
+  & .board-epic-state[data-state='acceptance'] {
     color: var(--accent-warning);
     border-color: var(--accent-warning);
   }
@@ -852,7 +852,7 @@
     color: var(--accent-info);
   }
 
-  & .board-epic-miniboard-column[data-state='delivered'] .board-epic-miniboard-column-label {
+  & .board-epic-miniboard-column[data-state='acceptance'] .board-epic-miniboard-column-label {
     color: var(--accent-warning);
   }
 
@@ -980,12 +980,12 @@
   background: transparent;
 }
 
-.story-badge--team-accepted[data-state='delivered'] {
+.story-badge--team-accepted[data-state='acceptance'] {
   background: var(--accent-warning);
   border-color: var(--accent-warning);
 }
 
-.story-badge--accepted[data-state='delivered'] {
+.story-badge--accepted[data-state='acceptance'] {
   color: var(--accent-warning);
   border-color: var(--accent-warning);
 }
@@ -996,7 +996,7 @@
   border-color: var(--accent-info);
 }
 
-.story-badge--dev-accepted[data-state='delivered'] {
+.story-badge--dev-accepted[data-state='acceptance'] {
   background: transparent;
   color: var(--accent-info);
 }

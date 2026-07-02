@@ -438,7 +438,7 @@ fn evidence_check_no_verdict_state_when_class_is_none_or_no_required_roles_1461(
 #[test]
 fn target_state_valid_passes_when_current_is_not_yet_target() {
     let t = accept_team_verifiable();
-    assert!(check_target_state_valid(&t, "delivered").is_ok());
+    assert!(check_target_state_valid(&t, "acceptance").is_ok());
     assert!(check_target_state_valid(&t, "in-progress").is_ok());
 }
 
@@ -454,7 +454,7 @@ fn target_state_valid_refuses_when_already_in_target_state() {
         } => {
             assert_eq!(attempted_transition, "accept");
             assert_eq!(current_state, "accepted");
-            assert_eq!(expected_state, "delivered");
+            assert_eq!(expected_state, "acceptance");
         }
         other => panic!("expected TargetStateInvalid, got {other:?}"),
     }
@@ -465,12 +465,12 @@ fn target_state_invalid_json_shape() {
     let err = GateError::TargetStateInvalid {
         attempted_transition: "accept".into(),
         current_state: "accepted".into(),
-        expected_state: "delivered".into(),
+        expected_state: "acceptance".into(),
     };
     let json = serde_json::to_value(&err).unwrap();
     assert_eq!(json["kind"], "workflow-target-state-invalid");
     assert_eq!(json["current_state"], "accepted");
-    assert_eq!(json["expected_state"], "delivered");
+    assert_eq!(json["expected_state"], "acceptance");
 }
 
 fn prior(gate_id: &str, actor: &str) -> PriorFire {
@@ -554,8 +554,8 @@ fn pass_desk_check_transition() -> Transition {
         })
         .unwrap_or(Transition {
             id: "pass-desk-check".to_string(),
-            from: "delivered".to_string(),
-            to: "delivered".to_string(),
+            from: "desk-check".to_string(),
+            to: "acceptance".to_string(),
             actor_roles: vec!["designer".to_string()],
             gate_class: GateClass::None,
             required_evidence_roles: Vec::new(),

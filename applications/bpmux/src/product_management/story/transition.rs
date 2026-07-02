@@ -24,14 +24,14 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
                 ),
                 Gate::PassDeskCheck => (
                     BoardState::InProgress(Stage::DeskCheck),
-                    BoardState::Delivered,
+                    BoardState::Acceptance,
                 ),
                 Gate::FailDeskCheck => (
                     BoardState::InProgress(Stage::DeskCheck),
                     BoardState::InProgress(Stage::Dev),
                 ),
-                Gate::Rejected => (BoardState::Delivered, BoardState::Ready),
-                Gate::Accepted => (BoardState::Delivered, BoardState::Accepted),
+                Gate::Rejected => (BoardState::Acceptance, BoardState::Ready),
+                Gate::Accepted => (BoardState::Acceptance, BoardState::Accepted),
             };
             Some(StateTransition {
                 from,
@@ -50,7 +50,7 @@ fn state_ordinal(s: BoardState) -> u8 {
         BoardState::Ready => 1,
         BoardState::InProgress(Stage::Dev) => 2,
         BoardState::InProgress(Stage::DeskCheck) => 3,
-        BoardState::Delivered => 4,
+        BoardState::Acceptance => 4,
         BoardState::Accepted | BoardState::Retired => 5,
     }
 }

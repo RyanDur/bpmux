@@ -136,13 +136,13 @@ fn state_from_labels_needs_fixes_label_projects_to_in_progress() {
 #[test]
 fn state_from_labels_ready_for_accept_label_projects_to_delivered() {
     let labels = vec!["delivered".to_string(), "ready for accept".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Delivered);
+    assert_eq!(state_from_labels(&labels, false), BoardState::Acceptance);
 }
 
 #[test]
 fn state_from_labels_delivered_without_accept_labels() {
     let labels = vec!["delivered".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Delivered);
+    assert_eq!(state_from_labels(&labels, false), BoardState::Acceptance);
 }
 
 #[test]
@@ -329,7 +329,7 @@ fn decode_story_metadata_gh_state_open_does_not_force_closed() {
     );
     assert_eq!(
         story.state,
-        BoardState::Delivered,
+        BoardState::Acceptance,
         "state_from_labels with is_closed=false should decode delivered label as Delivered"
     );
 }

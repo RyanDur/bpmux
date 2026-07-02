@@ -21,7 +21,7 @@ describe('#1720 useBoardFetch — a pushed stories delta becomes the data (rende
       {
         id: 7,
         title: 'pushed-live',
-        state: 'delivered',
+        state: 'acceptance',
         labels: [],
         assignees: [],
         created_at: '2026-06-13T00:00:00Z',
@@ -31,7 +31,7 @@ describe('#1720 useBoardFetch — a pushed stories delta becomes the data (rende
     act(() => pushStories(pushed))
 
     await waitFor(() =>
-      expect(result.current.data?.[0]).toMatchObject({ id: 7, state: 'delivered' })
+      expect(result.current.data?.[0]).toMatchObject({ id: 7, state: 'acceptance' })
     )
     expect(result.current.loading).toBe(false)
   })

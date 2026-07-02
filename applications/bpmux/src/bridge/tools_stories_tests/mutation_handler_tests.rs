@@ -204,7 +204,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(201).unwrap();
-    assert_eq!(story.state, BoardState::Delivered);
+    assert_eq!(story.state, BoardState::Acceptance);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates.iter().any(|g| g.gate == Gate::PassDeskCheck),
@@ -236,7 +236,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         &pushed[2],
         StoryEvent::StateTransitioned {
             id,
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
             ..
         } if *id == StoryId::new(201)
     ));

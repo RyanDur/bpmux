@@ -233,7 +233,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     let seeded = Story::new_minimal(
         StoryId::new(470),
         "[Bug] reject-from-delivered".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "owner".into(),
     );

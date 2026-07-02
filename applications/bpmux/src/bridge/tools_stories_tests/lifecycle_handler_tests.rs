@@ -180,7 +180,7 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
     let seeded = Story::new_minimal(
         StoryId::new(205),
         "t".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -262,7 +262,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     let seeded = Story::new_minimal(
         StoryId::new(5070),
         "[Bug] post-slice-5b accept-on-delivered cascade".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
@@ -330,7 +330,7 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     let seeded = Story::new_minimal(
         StoryId::new(206),
         "t".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -676,7 +676,7 @@ mod classify_for_pass_desk_check_tests {
         let mut s = Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            BoardState::Delivered,
+            BoardState::Acceptance,
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );

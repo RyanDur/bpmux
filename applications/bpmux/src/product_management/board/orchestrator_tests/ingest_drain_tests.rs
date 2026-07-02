@@ -19,7 +19,7 @@ async fn ingest_once_populates_store_from_adapter() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![
         seed_story(1, BoardState::Ready),
-        seed_story(2, BoardState::Delivered),
+        seed_story(2, BoardState::Acceptance),
     ]);
     let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
@@ -85,7 +85,7 @@ async fn drain_once_pushes_pending_events_to_adapter() {
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
     let drained = orchestrator.drain_once().await.unwrap();
@@ -110,7 +110,7 @@ async fn drain_once_requeues_event_on_adapter_failure() {
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
     adapter.set_push_failures(true);
@@ -145,7 +145,7 @@ async fn drain_once_handles_multiple_events_in_order() {
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
     orchestrator

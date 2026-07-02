@@ -59,7 +59,7 @@ async fn refresh_all_is_alias_for_ingest_once() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![
         seed_story(1, BoardState::Ready),
-        seed_story(2, BoardState::Delivered),
+        seed_story(2, BoardState::Acceptance),
     ]);
     let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();

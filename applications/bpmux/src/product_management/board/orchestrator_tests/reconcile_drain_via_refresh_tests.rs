@@ -25,7 +25,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
         .mutate_sync(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: BoardState::Delivered,
+            new_state: BoardState::Acceptance,
         })
         .unwrap();
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -36,7 +36,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
 #[tokio::test]
 async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_label() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let delivered = seed_story(450, BoardState::Delivered);
+    let delivered = seed_story(450, BoardState::Acceptance);
     adapter.seed_stories(vec![delivered]);
     adapter.seed_labels(
         450,
@@ -63,7 +63,7 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
 #[tokio::test]
 async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(451, BoardState::Delivered)]);
+    adapter.seed_stories(vec![seed_story(451, BoardState::Acceptance)]);
     adapter.seed_labels(451, vec!["delivered".to_string(), "feature".to_string()]);
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();

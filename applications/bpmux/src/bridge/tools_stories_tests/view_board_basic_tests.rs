@@ -140,7 +140,7 @@ async fn view_board_buckets_stories_by_story_state() {
         Story::new_minimal(
             StoryId::new(104),
             "delivered-story".into(),
-            BoardState::Delivered,
+            BoardState::Acceptance,
             ts,
             "dev".into(),
         ),
@@ -166,7 +166,7 @@ async fn view_board_buckets_stories_by_story_state() {
         "READY (1)",
         "IN PROGRESS (1)",
         "DESK CHECK (0)",
-        "DELIVERED (1)",
+        "ACCEPTANCE (1)",
         "ACCEPTED (1)",
     ] {
         assert!(
@@ -251,7 +251,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let seeded = Story::new_minimal(
         StoryId::new(301),
         "won't fix story".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );

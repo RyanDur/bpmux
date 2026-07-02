@@ -5,7 +5,7 @@ import type { Story } from './types'
 const story = (overrides: Partial<Story>): Story => ({
   id: 800,
   title: 'stub story',
-  state: 'delivered',
+  state: 'acceptance',
   labels: ['Feature'],
   assignees: [],
   created_at: '2026-05-09T00:00:00Z',

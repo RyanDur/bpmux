@@ -8,8 +8,8 @@ describe('#514 columnFor — closed-state-aware bucketing', () => {
       ['ready', 'ready'],
       ['in-progress', 'in-progress'],
       ['desk-check', 'desk-check'],
-      ['delivered', 'delivered'],
-      ['ready-for-accept', 'delivered'],
+      ['acceptance', 'acceptance'],
+      ['ready-for-accept', 'acceptance'],
       ['needs-fixes', 'in-progress'],
       ['rejected', 'ready'],
       ['accepted', 'accepted']
@@ -24,7 +24,7 @@ describe('#514 columnFor — closed-state-aware bucketing', () => {
       ['ready', 'retired'],
       ['in-progress', 'retired'],
       ['desk-check', 'retired'],
-      ['delivered', 'retired'],
+      ['acceptance', 'retired'],
       ['ready-for-accept', 'retired'],
       ['needs-fixes', 'retired'],
       ['rejected', 'retired']

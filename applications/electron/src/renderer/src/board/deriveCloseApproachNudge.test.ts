@@ -40,14 +40,14 @@ const NOT_READY: IterationReadiness = {
 }
 
 const drainingMembers = (): Story[] => [
-  member('delivered'),
-  member('delivered'),
-  member('delivered'),
+  member('acceptance'),
+  member('acceptance'),
+  member('acceptance'),
   member('in-progress')
 ]
 
 describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not ready at close-approach', () => {
-  test('FIRES: current draining (>=75% work-done, delivered pre-batch-accept) + next exists + next not-ready', () => {
+  test('FIRES: current draining (>=75% work-done, in-acceptance pre-batch-accept) + next exists + next not-ready', () => {
     const members = drainingMembers()
     const current = iteration({
       id: 100,

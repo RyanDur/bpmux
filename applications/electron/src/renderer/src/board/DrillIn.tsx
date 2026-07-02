@@ -62,7 +62,7 @@ const DrillIn = ({
     return () => clearTimeout(id)
   }, [toast])
 
-  const canAct = isOwner && story.state === 'delivered'
+  const canAct = isOwner && story.state === 'acceptance'
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {

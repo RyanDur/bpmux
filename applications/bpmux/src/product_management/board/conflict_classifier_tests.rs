@@ -124,7 +124,7 @@ async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
 async fn outbox_round_trips_new_shape_through_disk() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("new-outbox.json");
-    let pre = seed_story(7, BoardState::Delivered);
+    let pre = seed_story(7, BoardState::Acceptance);
     let queued = QueuedEvent::new(
         StoryEvent::StateTransitioned {
             meta: meta(),
@@ -141,7 +141,7 @@ async fn outbox_round_trips_new_shape_through_disk() {
     let entry = entries.front().unwrap();
     let restored_pre = entry.pre_state.as_ref().unwrap();
     assert_eq!(restored_pre.id, pre.id);
-    assert_eq!(restored_pre.state, BoardState::Delivered);
+    assert_eq!(restored_pre.state, BoardState::Acceptance);
 }
 
 #[test]

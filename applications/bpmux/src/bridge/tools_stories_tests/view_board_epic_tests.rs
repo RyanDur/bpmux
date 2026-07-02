@@ -352,7 +352,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     let mut child_b = Story::new_minimal(
         StoryId::new(702),
         "child b".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         ts,
         "pm".into(),
     );
@@ -502,7 +502,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     let mut a = Story::new_minimal(
         StoryId::new(721),
         "a".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         ts,
         "pm".into(),
     );
@@ -510,7 +510,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
     let mut b = Story::new_minimal(
         StoryId::new(722),
         "b".into(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         ts,
         "pm".into(),
     );

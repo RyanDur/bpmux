@@ -138,7 +138,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(777),
         "[Bug] bypass-target".to_string(),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )]);

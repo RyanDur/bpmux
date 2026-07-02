@@ -121,7 +121,7 @@ fn owner_parked_story(id: u64) -> crate::product_management::story::Story {
     let mut story = crate::product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("story {id}"),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         chrono::Utc::now(),
         "dev".to_string(),
     );
@@ -225,7 +225,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
     store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
         900,
         "dev",
-        BoardState::Delivered,
+        BoardState::Acceptance,
     ))));
 
     let members = drain_roster_presence(&mut rx).await;
@@ -268,7 +268,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
         900,
         "dev",
-        BoardState::Delivered,
+        BoardState::Acceptance,
     ))));
     let blocked = drain_roster_presence(&mut rx).await;
     assert_eq!(

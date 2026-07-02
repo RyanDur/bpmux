@@ -19,7 +19,7 @@ fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
 fn any_owner_parked_delivery(stories: &[Story]) -> bool {
     stories
         .iter()
-        .any(|s| s.state == BoardState::Delivered && s.acceptor() == Some(Acceptor::Owner))
+        .any(|s| s.state == BoardState::Acceptance && s.acceptor() == Some(Acceptor::Owner))
 }
 
 pub fn owner_park_presence(
@@ -64,7 +64,7 @@ impl crate::store::kernel::Listener<crate::store::AppState, crate::store::AppAct
             crate::product_management::story::slice::StoryAction::Event(
                 crate::product_management::board::StoryEvent::StateTransitioned {
                     meta,
-                    new_state: BoardState::Delivered,
+                    new_state: BoardState::Acceptance,
                     ..
                 },
             ) => Some(crate::transport::ws::short_name(&meta.actor).to_string()),

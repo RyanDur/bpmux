@@ -11,7 +11,7 @@ pub enum BoardState {
     Icebox,
     Ready,
     InProgress(Stage),
-    Delivered,
+    Acceptance,
     Accepted,
     Retired,
 }
@@ -37,7 +37,7 @@ impl BoardState {
             BoardState::Ready => "ready",
             BoardState::InProgress(Stage::Dev) => "in-progress",
             BoardState::InProgress(Stage::DeskCheck) => "desk-check",
-            BoardState::Delivered => "delivered",
+            BoardState::Acceptance => "acceptance",
             BoardState::Accepted => "accepted",
             BoardState::Retired => "retired",
         }
@@ -49,7 +49,7 @@ impl BoardState {
             BoardState::Ready => "ready",
             BoardState::InProgress(Stage::Dev) => "in progress",
             BoardState::InProgress(Stage::DeskCheck) => "desk-check",
-            BoardState::Delivered => "delivered",
+            BoardState::Acceptance => "delivered",
             BoardState::Accepted => "accepted",
             BoardState::Retired => "retired",
         }
@@ -61,7 +61,7 @@ impl BoardState {
             "ready" => Some(BoardState::Ready),
             "in-progress" | "in_progress" => Some(BoardState::InProgress(Stage::Dev)),
             "desk-check" | "desk_check" => Some(BoardState::InProgress(Stage::DeskCheck)),
-            "delivered" => Some(BoardState::Delivered),
+            "acceptance" | "delivered" => Some(BoardState::Acceptance),
             "accepted" => Some(BoardState::Accepted),
             "retired" => Some(BoardState::Retired),
             _ => None,

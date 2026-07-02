@@ -65,7 +65,7 @@ export interface SeedStory {
   id: number
   title: string
   body?: string
-  initial_state?: 'icebox' | 'ready' | 'in-progress' | 'desk-check' | 'delivered' | 'accepted'
+  initial_state?: 'icebox' | 'ready' | 'in-progress' | 'desk-check' | 'acceptance' | 'accepted'
   story_type?: 'feature' | 'bug' | 'chore' | 'epic' | 'iteration'
   labels?: string[]
   is_closed?: boolean

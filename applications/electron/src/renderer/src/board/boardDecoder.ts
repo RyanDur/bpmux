@@ -22,7 +22,7 @@ const storyState = D.literalUnion(
   'ready',
   'in-progress',
   'desk-check',
-  'delivered',
+  'acceptance',
   'ready-for-accept',
   'needs-fixes',
   'rejected',

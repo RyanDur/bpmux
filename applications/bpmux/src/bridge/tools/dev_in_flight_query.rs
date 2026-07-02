@@ -33,7 +33,7 @@ async fn driver(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 async fn returns_false_when_no_story_in_flight() {
     let refresh = driver(vec![
         seed(BoardState::Ready, 1),
-        seed(BoardState::Delivered, 2),
+        seed(BoardState::Acceptance, 2),
         seed(BoardState::Accepted, 3),
     ])
     .await;
@@ -46,7 +46,7 @@ async fn returns_true_when_a_story_is_in_progress() {
     let refresh = driver(vec![
         seed(BoardState::Ready, 1),
         seed(BoardState::InProgress(Stage::Dev), 2),
-        seed(BoardState::Delivered, 3),
+        seed(BoardState::Acceptance, 3),
     ])
     .await;
     let result = handle_dev_in_flight(&refresh).await.unwrap();

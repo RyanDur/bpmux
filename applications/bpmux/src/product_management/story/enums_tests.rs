@@ -10,7 +10,7 @@ fn story_state_parse_round_trips_via_as_str() {
         BoardState::Ready,
         BoardState::InProgress(Stage::Dev),
         BoardState::InProgress(Stage::DeskCheck),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         BoardState::Accepted,
     ] {
         let s = state.as_str();
@@ -44,7 +44,7 @@ fn story_state_serde_round_trips_via_canonical_string() {
         BoardState::Ready,
         BoardState::InProgress(Stage::Dev),
         BoardState::InProgress(Stage::DeskCheck),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         BoardState::Accepted,
         BoardState::Retired,
     ] {
@@ -65,9 +65,13 @@ fn story_state_serde_emits_canonical_kebab_not_variant_name() {
 }
 
 #[test]
-fn story_state_delivered_legacy_label_preserved_for_backward_compat() {
-    assert_eq!(BoardState::parse("delivered"), Some(BoardState::Delivered));
-    assert_eq!(BoardState::Delivered.as_str(), "delivered");
+fn story_state_acceptance_wire_vocab_parses_and_keeps_legacy_delivered_alias() {
+    assert_eq!(BoardState::Acceptance.as_str(), "acceptance");
+    assert_eq!(
+        BoardState::parse("acceptance"),
+        Some(BoardState::Acceptance)
+    );
+    assert_eq!(BoardState::parse("delivered"), Some(BoardState::Acceptance));
 }
 
 #[test]
@@ -82,7 +86,7 @@ fn story_state_github_label_canonical_form_per_variant() {
         BoardState::InProgress(Stage::DeskCheck).github_label(),
         "desk-check"
     );
-    assert_eq!(BoardState::Delivered.github_label(), "delivered");
+    assert_eq!(BoardState::Acceptance.github_label(), "delivered");
     assert_eq!(BoardState::Accepted.github_label(), "accepted");
     assert_eq!(BoardState::Retired.github_label(), "retired");
 }
@@ -93,7 +97,7 @@ fn story_state_github_label_round_trips_via_state_from_labels() {
         BoardState::Ready,
         BoardState::InProgress(Stage::Dev),
         BoardState::InProgress(Stage::DeskCheck),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         BoardState::Accepted,
         BoardState::Retired,
     ] {
@@ -107,17 +111,21 @@ fn story_state_github_label_round_trips_via_state_from_labels() {
 }
 
 #[test]
-fn story_state_github_label_differs_from_as_str_on_in_progress_and_matches_otherwise() {
+fn story_state_github_label_diverges_from_as_str_for_in_progress_and_acceptance() {
     assert_ne!(
         BoardState::InProgress(Stage::Dev).github_label(),
         BoardState::InProgress(Stage::Dev).as_str(),
-        "InProgress is the only variant where github_label (spaces) diverges from as_str (kebab)"
+        "InProgress(Dev): github_label uses spaces, as_str uses kebab"
+    );
+    assert_ne!(
+        BoardState::Acceptance.github_label(),
+        BoardState::Acceptance.as_str(),
+        "Acceptance: the domain wire says `acceptance`, the GitHub edge keeps the historical `delivered` label"
     );
     for state in [
         BoardState::Icebox,
         BoardState::Ready,
         BoardState::InProgress(Stage::DeskCheck),
-        BoardState::Delivered,
         BoardState::Accepted,
         BoardState::Retired,
     ] {

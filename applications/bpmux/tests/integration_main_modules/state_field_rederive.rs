@@ -49,7 +49,7 @@ fn stacked_delivered_ready_for_accept_decodes_to_delivered() {
     // #1146 slice 3: stale "ready for accept" projects to Delivered
     // (was display-equivalent to Delivered pre-collapse).
     let stacked = vec!["delivered".to_string(), "ready for accept".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::Delivered);
+    assert_eq!(state_from_labels(&stacked, false), BoardState::Acceptance);
 }
 
 #[test]

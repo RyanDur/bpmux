@@ -16,7 +16,7 @@ fn state_label(state: BoardState) -> &'static str {
         BoardState::Ready => "ready",
         BoardState::InProgress(Stage::Dev) => "in progress",
         BoardState::InProgress(Stage::DeskCheck) => "desk-check",
-        BoardState::Delivered => "delivered",
+        BoardState::Acceptance => "acceptance",
         BoardState::Accepted => "accepted",
         BoardState::Retired => "retired",
     }

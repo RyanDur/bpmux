@@ -24,9 +24,9 @@ export const blockerIdFromLabels = (labels: string[]): number | null => {
 }
 
 export const deriveBadge = (story: Story): BadgeKind | null => {
-  if (story.state !== 'delivered' && story.state !== 'accepted') return null
+  if (story.state !== 'acceptance' && story.state !== 'accepted') return null
   const normalized = story.labels.map((l) => l.toLowerCase())
-  if (story.state === 'delivered' && normalized.includes(BLOCKED_LABEL)) {
+  if (story.state === 'acceptance' && normalized.includes(BLOCKED_LABEL)) {
     return 'blocked'
   }
   if (normalized.includes(DESK_CHECK_FAIL_LABEL)) return 'rework'

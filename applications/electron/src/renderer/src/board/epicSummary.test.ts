@@ -23,10 +23,10 @@ const story = (over: Partial<Story>): Story => ({
 const child = (epicId: number, state: StoryState): Story => story({ parent_epic: epicId, state })
 
 describe('epicSummary', () => {
-  test('breakdownFor groups child states (delivered+ready-for-accept, in-progress+needs-fixes, ready+rejected) and scopes to the epic', () => {
+  test('breakdownFor groups child states (acceptance+ready-for-accept, in-progress+needs-fixes, ready+rejected) and scopes to the epic', () => {
     const b = breakdownFor(story({ id: 100 }), [
       child(100, 'accepted'),
-      child(100, 'delivered'),
+      child(100, 'acceptance'),
       child(100, 'ready-for-accept'),
       child(100, 'in-progress'),
       child(100, 'needs-fixes'),
@@ -39,7 +39,7 @@ describe('epicSummary', () => {
     ])
     expect(b.total).toBe(10)
     expect(b.accepted).toBe(1)
-    expect(b.delivered).toBe(2)
+    expect(b.acceptance).toBe(2)
     expect(b.inProgress).toBe(2)
     expect(b.deskCheck).toBe(1)
     expect(b.ready).toBe(2)

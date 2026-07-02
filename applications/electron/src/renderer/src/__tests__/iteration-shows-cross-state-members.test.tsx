@@ -12,7 +12,7 @@ describe('#1297 — iteration container shows members regardless of workflow sta
     rendered = null
   })
 
-  it('a delivered story with parent-iteration-#9300.100 label renders inside the Cassiopeia container body AND in its workflow column', async () => {
+  it('an in-acceptance story with parent-iteration-#9300.100 label renders inside the Cassiopeia container body AND in its workflow column', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
@@ -28,9 +28,9 @@ describe('#1297 — iteration container shows members regardless of workflow sta
       },
       {
         id: 9301,
-        title: 'cassiopeia-member-delivered',
+        title: 'cassiopeia-member-acceptance',
         story_type: 'feature',
-        initial_state: 'delivered'
+        initial_state: 'acceptance'
       }
     ])
 

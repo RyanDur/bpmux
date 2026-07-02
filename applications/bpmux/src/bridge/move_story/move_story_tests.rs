@@ -37,7 +37,7 @@ fn target_state_rejects_noncanonical_spellings() {
 fn closes_issue_is_true_only_for_terminal_states() {
     assert!(TargetState::Retired.closes_issue());
     assert!(TargetState::Workflow(BoardState::Accepted).closes_issue());
-    assert!(!TargetState::Workflow(BoardState::Delivered).closes_issue());
+    assert!(!TargetState::Workflow(BoardState::Acceptance).closes_issue());
     assert!(!TargetState::Workflow(BoardState::Ready).closes_issue());
     assert!(!TargetState::Workflow(BoardState::Icebox).closes_issue());
 }

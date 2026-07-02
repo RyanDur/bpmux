@@ -176,7 +176,7 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
       }),
       story({
         id: 1102,
-        state: 'delivered',
+        state: 'acceptance',
         labels: featureLabels,
         parent_epic: 1100
       })
@@ -185,12 +185,12 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
     expect(html).toMatch(/aria-label="Progress: 1 of 2 children needing completion accepted/)
-    expect(html).toContain('1 delivered')
+    expect(html).toContain('1 in acceptance')
     expect(html).toContain('0 in progress')
     expect(html).toContain('0 retired')
   })
 
-  test('progress aria-label rolls ready-for-accept into delivered + needs-fixes into in-progress + rejected into ready', () => {
+  test('progress aria-label rolls ready-for-accept into acceptance + needs-fixes into in-progress + rejected into ready', () => {
     const epic = story({ id: 1100 })
     const children: Story[] = [
       story({
@@ -215,7 +215,7 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
-    expect(html).toContain('1 delivered')
+    expect(html).toContain('1 in acceptance')
     expect(html).toContain('1 in progress')
     expect(html).toContain('1 ready')
   })
@@ -363,7 +363,7 @@ describe('#1234 isActiveEpic predicate (carried over from EpicSummary surface)',
       'ready',
       'in-progress',
       'desk-check',
-      'delivered',
+      'acceptance',
       'ready-for-accept',
       'needs-fixes',
       'rejected'
@@ -595,7 +595,7 @@ describe('#1244 Epic dropdown mini-board — replaces breakdown text', () => {
     expect(html).toContain('data-test="board-epic-1100-miniboard-column-ready"')
     expect(html).toContain('data-test="board-epic-1100-miniboard-column-in-progress"')
     expect(html).toContain('data-test="board-epic-1100-miniboard-column-desk-check"')
-    expect(html).toContain('data-test="board-epic-1100-miniboard-column-delivered"')
+    expect(html).toContain('data-test="board-epic-1100-miniboard-column-acceptance"')
     expect(html).toContain('data-test="board-epic-1100-miniboard-column-accepted"')
     expect(html).toContain('data-test="board-epic-1100-miniboard-column-icebox"')
   })
@@ -642,7 +642,7 @@ describe('#1244 Epic dropdown mini-board — replaces breakdown text', () => {
     expect(inProgressColMatch?.[0]).not.toContain('#1101')
   })
 
-  test('rolls ready-for-accept → delivered, needs-fixes → in-progress, rejected → ready (uses columnFor)', () => {
+  test('rolls ready-for-accept → acceptance, needs-fixes → in-progress, rejected → ready (uses columnFor)', () => {
     const epic = story({ id: 1100, state: 'in-progress' })
     const children: Story[] = [
       story({
@@ -667,10 +667,10 @@ describe('#1244 Epic dropdown mini-board — replaces breakdown text', () => {
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
-    const deliveredColMatch = html.match(
-      /data-test="board-epic-1100-miniboard-column-delivered"[\s\S]*?<\/details>/
+    const acceptanceColMatch = html.match(
+      /data-test="board-epic-1100-miniboard-column-acceptance"[\s\S]*?<\/details>/
     )
-    expect(deliveredColMatch?.[0]).toContain('#1101')
+    expect(acceptanceColMatch?.[0]).toContain('#1101')
 
     const inProgressColMatch = html.match(
       /data-test="board-epic-1100-miniboard-column-in-progress"[\s\S]*?<\/details>/
@@ -799,7 +799,7 @@ describe('#1244 Epic dropdown mini-board — replaces breakdown text', () => {
       }),
       story({
         id: 1102,
-        state: 'delivered',
+        state: 'acceptance',
         labels: featureLabels,
         parent_epic: 1100
       }),
@@ -814,7 +814,7 @@ describe('#1244 Epic dropdown mini-board — replaces breakdown text', () => {
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
     expect(html).not.toContain('1/3 accepted')
-    expect(html).not.toContain('1/3 delivered')
+    expect(html).not.toContain('1/3 acceptance')
     expect(html).not.toContain('1/3 icebox')
     expect(html).not.toContain('board-epic-breakdown')
   })

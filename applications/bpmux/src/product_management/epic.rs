@@ -86,7 +86,7 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
             BoardState::Accepted => counts.accepted_count += 1,
             BoardState::Retired => counts.retired_count += 1,
             BoardState::Icebox => counts.icebox_count += 1,
-            BoardState::Ready | BoardState::InProgress(_) | BoardState::Delivered => {
+            BoardState::Ready | BoardState::InProgress(_) | BoardState::Acceptance => {
                 counts.active_count += 1
             }
         }
@@ -98,9 +98,12 @@ pub fn derive_epic_state(_epic_explicit_state: BoardState, children: &[&Story]) 
     if children.is_empty() || children.iter().all(|c| c.state() == BoardState::Icebox) {
         return BoardState::Icebox;
     }
-    let any_active = children
-        .iter()
-        .any(|c| matches!(c.state(), BoardState::InProgress(_) | BoardState::Delivered));
+    let any_active = children.iter().any(|c| {
+        matches!(
+            c.state(),
+            BoardState::InProgress(_) | BoardState::Acceptance
+        )
+    });
     if any_active {
         return BoardState::InProgress(Stage::Dev);
     }

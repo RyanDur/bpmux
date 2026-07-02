@@ -18,7 +18,7 @@ fn renderer_column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
         BoardState::Ready => ColumnBucket::Ready,
         BoardState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
         BoardState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
-        BoardState::Delivered => ColumnBucket::Delivered,
+        BoardState::Acceptance => ColumnBucket::Acceptance,
         BoardState::Accepted => ColumnBucket::Accepted,
         BoardState::Retired => ColumnBucket::Retired,
     }
@@ -31,7 +31,7 @@ fn column_for_agrees_across_full_cross_product() {
         BoardState::Ready,
         BoardState::InProgress(Stage::Dev),
         BoardState::InProgress(Stage::DeskCheck),
-        BoardState::Delivered,
+        BoardState::Acceptance,
         BoardState::Accepted,
     ];
     for state in states {
@@ -58,7 +58,7 @@ fn closed_non_accepted_stories_project_to_retired() {
         BoardState::Ready,
         BoardState::InProgress(Stage::Dev),
         BoardState::InProgress(Stage::DeskCheck),
-        BoardState::Delivered,
+        BoardState::Acceptance,
     ] {
         assert_eq!(
             column_for(state, true),
@@ -93,8 +93,8 @@ fn open_workflow_states_bucket_one_to_one() {
         ColumnBucket::DeskCheck
     );
     assert_eq!(
-        column_for(BoardState::Delivered, false),
-        ColumnBucket::Delivered
+        column_for(BoardState::Acceptance, false),
+        ColumnBucket::Acceptance
     );
     assert_eq!(
         column_for(BoardState::Accepted, false),

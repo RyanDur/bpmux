@@ -22,7 +22,7 @@ fn empty_stories_returns_all_zero_counts() {
     let summary = build_backlog_summary(&[]);
     assert_eq!(summary["ready_count"], 0);
     assert_eq!(summary["in_progress_count"], 0);
-    assert_eq!(summary["delivered_count"], 0);
+    assert_eq!(summary["acceptance_count"], 0);
     assert_eq!(summary["accepted_count"], 0);
     assert_eq!(summary["icebox_count"], 0);
 }
@@ -51,12 +51,12 @@ fn in_progress_state_counted_correctly() {
 }
 
 #[test]
-fn delivered_and_desk_check_collapse_into_delivered_count() {
+fn acceptance_and_desk_check_collapse_into_acceptance_count() {
     let stories = vec![
-        story(104, "d", BoardState::Delivered),
+        story(104, "d", BoardState::Acceptance),
         story(105, "dc", BoardState::InProgress(Stage::DeskCheck)),
     ];
-    assert_eq!(build_backlog_summary(&stories)["delivered_count"], 2);
+    assert_eq!(build_backlog_summary(&stories)["acceptance_count"], 2);
 }
 
 #[test]

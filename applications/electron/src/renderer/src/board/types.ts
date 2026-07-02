@@ -3,7 +3,7 @@ export type StoryState =
   | 'ready'
   | 'in-progress'
   | 'desk-check'
-  | 'delivered'
+  | 'acceptance'
   | 'ready-for-accept'
   | 'needs-fixes'
   | 'rejected'
@@ -15,7 +15,7 @@ export type ColumnState =
   | 'ready'
   | 'in-progress'
   | 'desk-check'
-  | 'delivered'
+  | 'acceptance'
   | 'accepted'
   | 'retired'
 
@@ -32,7 +32,7 @@ export const columnFor = (
   }
   switch (state) {
     case 'ready-for-accept':
-      return 'delivered'
+      return 'acceptance'
     case 'needs-fixes':
       return 'in-progress'
     case 'rejected':
@@ -101,7 +101,7 @@ export const GROUP_ORDER: GroupSpec[] = [
   { state: 'ready', label: 'Ready', collapsed: false },
   { state: 'in-progress', label: 'In Progress', collapsed: false },
   { state: 'desk-check', label: 'Desk Check', collapsed: false },
-  { state: 'delivered', label: 'Acceptance', collapsed: false },
+  { state: 'acceptance', label: 'Acceptance', collapsed: false },
   { state: 'accepted', label: 'Accepted', collapsed: true },
   { state: 'retired', label: 'Retired', collapsed: true },
   { state: 'icebox', label: 'Icebox', collapsed: false }
@@ -112,7 +112,7 @@ export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
   ready: ['ready', 'rejected'],
   'in-progress': ['in-progress', 'needs-fixes'],
   'desk-check': ['desk-check'],
-  delivered: ['delivered', 'ready-for-accept'],
+  acceptance: ['acceptance', 'ready-for-accept'],
   accepted: ['accepted'],
   retired: []
 }
@@ -151,7 +151,7 @@ export const deriveEpicState = (_epicExplicitState: StoryState, children: Story[
     (c) =>
       c.state === 'in-progress' ||
       c.state === 'desk-check' ||
-      c.state === 'delivered' ||
+      c.state === 'acceptance' ||
       c.state === 'ready-for-accept'
   )
   if (anyActive) return 'in-progress'

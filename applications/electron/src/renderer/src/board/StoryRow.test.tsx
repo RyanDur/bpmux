@@ -97,7 +97,13 @@ describe('#1260 story-row hierarchy + color', () => {
   })
 
   test('hierarchy applies across all column states (sister-surfaces; falsifier-i)', () => {
-    const states: Story['state'][] = ['ready', 'in-progress', 'desk-check', 'delivered', 'accepted']
+    const states: Story['state'][] = [
+      'ready',
+      'in-progress',
+      'desk-check',
+      'acceptance',
+      'accepted'
+    ]
     for (const state of states) {
       const s = story({ id: 1258, state, parent_epic: 1189 })
       const html = renderToStaticMarkup(

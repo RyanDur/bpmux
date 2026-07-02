@@ -157,7 +157,7 @@ pub async fn post_seed_stories(
             "desk-check" => crate::product_management::story::BoardState::InProgress(
                 crate::product_management::story::Stage::DeskCheck,
             ),
-            "delivered" => crate::product_management::story::BoardState::Delivered,
+            "delivered" | "acceptance" => crate::product_management::story::BoardState::Acceptance,
             "accepted" => crate::product_management::story::BoardState::Accepted,
             _ => crate::product_management::story::BoardState::Icebox,
         };

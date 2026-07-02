@@ -157,7 +157,7 @@ test.describe('#1158 — offline-first board', () => {
           peer_id: 'local'
         },
         id: 200,
-        new_state: 'delivered'
+        new_state: 'acceptance'
       }
     }
     writeFileSync(outboxPath, JSON.stringify([event]))

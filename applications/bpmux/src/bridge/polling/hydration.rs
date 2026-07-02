@@ -12,7 +12,7 @@ pub(crate) fn select_stories_to_hydrate(
         .filter(|s| {
             matches!(
                 s.state,
-                BoardState::Ready | BoardState::InProgress(_) | BoardState::Delivered
+                BoardState::Ready | BoardState::InProgress(_) | BoardState::Acceptance
             ) && s.body.is_none()
         })
         .take(limit)
@@ -30,7 +30,7 @@ pub(crate) fn select_stories_to_revalidate(
         .filter(|s| {
             matches!(
                 s.state,
-                BoardState::Ready | BoardState::InProgress(_) | BoardState::Delivered
+                BoardState::Ready | BoardState::InProgress(_) | BoardState::Acceptance
             ) && s.body.is_some()
         })
         .take(limit)

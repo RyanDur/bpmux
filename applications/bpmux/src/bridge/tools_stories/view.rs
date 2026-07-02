@@ -57,7 +57,7 @@ fn parse_bucket(s: &str) -> Option<crate::product_management::board::arrangement
         "ready" => Some(ColumnBucket::Ready),
         "in_progress" | "in-progress" | "inprogress" => Some(ColumnBucket::InProgress),
         "desk_check" | "desk-check" | "deskcheck" => Some(ColumnBucket::DeskCheck),
-        "delivered" => Some(ColumnBucket::Delivered),
+        "acceptance" | "delivered" => Some(ColumnBucket::Acceptance),
         "accepted" => Some(ColumnBucket::Accepted),
         "retired" => Some(ColumnBucket::Retired),
         _ => None,
@@ -167,7 +167,7 @@ pub(in crate::bridge) fn build_board_text(
         ColumnBucket::Ready,
         ColumnBucket::InProgress,
         ColumnBucket::DeskCheck,
-        ColumnBucket::Delivered,
+        ColumnBucket::Acceptance,
         ColumnBucket::Accepted,
         ColumnBucket::Retired,
     ] {

@@ -63,7 +63,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
 
 #[test]
 fn story_to_board_json_acceptor_null_when_none_1551() {
-    let s = sample_story(BoardState::Delivered, StoryKind::Feature, false);
+    let s = sample_story(BoardState::Acceptance, StoryKind::Feature, false);
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(
         json["acceptor"].is_null(),
@@ -74,7 +74,7 @@ fn story_to_board_json_acceptor_null_when_none_1551() {
 
 #[test]
 fn story_to_board_json_acceptor_emits_class_string_1551() {
-    let mut s = sample_story(BoardState::Delivered, StoryKind::Feature, false);
+    let mut s = sample_story(BoardState::Acceptance, StoryKind::Feature, false);
     s.acceptor = Some(crate::product_management::story::Acceptor::Dev);
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(
@@ -183,14 +183,14 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
         (BoardState::Ready, "ready"),
         (BoardState::InProgress(Stage::Dev), "in-progress"),
         (BoardState::InProgress(Stage::DeskCheck), "desk-check"),
-        (BoardState::Delivered, "delivered"),
+        (BoardState::Acceptance, "acceptance"),
         (BoardState::Accepted, "accepted"),
     ] {
         let s = sample_story(*state, StoryKind::Feature, false);
         assert_eq!(
             json_str(&story_to_board_json(&GhLabelCodec, &s), "state"),
             *expected,
-            "{state:?} serializes to canonical wire-vocab `{expected}` per #505 boundary-principle"
+            "{state:?} serializes to canonical domain wire-vocab `{expected}`; the GitHub label stays `delivered` at the edge"
         );
     }
 }

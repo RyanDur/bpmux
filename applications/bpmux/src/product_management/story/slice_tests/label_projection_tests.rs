@@ -6,7 +6,7 @@ use crate::product_management::story::{Acceptor, BoardState, Stage, StoryId, Sto
 #[test]
 fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
     let store = seeded();
-    created(&store, 1, "t", BoardState::Delivered);
+    created(&store, 1, "t", BoardState::Acceptance);
     apply(
         &store,
         StoryEvent::AcceptorAssigned {

@@ -35,7 +35,7 @@ fn project_marks_a_closed_story_gh_state_closed() {
 
 #[test]
 fn project_encodes_badge_labels_from_typed_fields() {
-    let mut s = story(11, "badged", BoardState::Delivered);
+    let mut s = story(11, "badged", BoardState::Acceptance);
     s.tags = vec![crate::product_management::story::Tag::DeskCheckFail];
     s.blocked_by = Some(StoryId::new(9));
     let view = StoryView::project(&GhLabelCodec, &s);

@@ -36,7 +36,7 @@ describe('#1547 facet 1 — iterationContainerStories gates on membership, not w
   })
 
   test('a canonical member is included in every active workflow-state', () => {
-    const states = ['ready', 'in-progress', 'desk-check', 'delivered'] as const
+    const states = ['ready', 'in-progress', 'desk-check', 'acceptance'] as const
     const members = states.map((state, i) =>
       story({ id: 2000 + i, state, labels: [state, 'feature'] })
     )

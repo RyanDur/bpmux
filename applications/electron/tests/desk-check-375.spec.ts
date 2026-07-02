@@ -76,11 +76,11 @@ const seedFixture = async (result: MockGhLaunchResult): Promise<void> => {
 }
 
 const GROUP = {
-  delivered: { tab: 'Now', label: 'Acceptance' },
+  acceptance: { tab: 'Now', label: 'Acceptance' },
   accepted: { tab: 'Done', label: 'Accepted' }
 } as const
 
-const openGroup = async (board: BoardPage, state: 'delivered' | 'accepted'): Promise<void> => {
+const openGroup = async (board: BoardPage, state: 'acceptance' | 'accepted'): Promise<void> => {
   const { tab, label } = GROUP[state]
   await board.openTab(tab)
   await board.openColumn(label)
@@ -96,7 +96,7 @@ test.describe('desk-check #375 state-aware badge labels', () => {
       await seedFixture(result)
       await win.reload()
       await expect(board.region()).toBeVisible()
-      await openGroup(board, 'delivered')
+      await openGroup(board, 'acceptance')
 
       const feat = board.storyStateBadge(1)
       await expect(feat).toHaveClass(/story-badge--accepted\b/)
