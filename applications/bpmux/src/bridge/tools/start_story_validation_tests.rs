@@ -18,16 +18,19 @@ mod gate_retire_1348 {
         body: &str,
     ) -> Arc<dyn RefreshDriver> {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let mut seeded = Story::new_minimal(
+        let seeded = Story::new_minimal(
             StoryId::new(id),
             title.into(),
             state,
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "dev".into(),
         );
-        seeded.raw_labels.push(
-            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-                .encode_story_type(story_type),
+        adapter.seed_labels(
+            id,
+            vec![
+                crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                    .encode_story_type(story_type),
+            ],
         );
         adapter.seed_stories(vec![seeded]);
         adapter.seed_body(id, body.into());

@@ -60,7 +60,6 @@ pub struct Story {
     pub free_comments: Option<Vec<FreeComment>>,
     pub gate_comments: Option<Vec<GateComment>>,
     pub is_closed: bool,
-    pub raw_labels: Vec<String>,
     #[serde(default)]
     pub body_etag: Option<String>,
     #[serde(default)]
@@ -87,10 +86,6 @@ impl Story {
         filed_at: DateTime<Utc>,
         filed_by: String,
     ) -> Self {
-        let raw_labels = match state {
-            BoardState::Icebox => Vec::new(),
-            other => vec![other.github_label().to_string()],
-        };
         let story_type = story_type::story_type_from_title(&title);
         Self {
             id,
@@ -102,7 +97,6 @@ impl Story {
             free_comments: None,
             gate_comments: None,
             is_closed: false,
-            raw_labels,
             body_etag: None,
             story_type,
             acceptor: None,
@@ -164,10 +158,6 @@ impl Story {
 
     pub fn filed_by(&self) -> &str {
         &self.filed_by
-    }
-
-    pub fn raw_labels(&self) -> &[String] {
-        &self.raw_labels
     }
 
     pub fn free_comments(&self) -> Option<&[FreeComment]> {

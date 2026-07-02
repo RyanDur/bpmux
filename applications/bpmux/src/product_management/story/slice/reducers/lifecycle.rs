@@ -25,7 +25,6 @@ pub(super) fn apply_story_created(
         free_comments: Some(Vec::new()),
         gate_comments: Some(Vec::new()),
         is_closed: false,
-        raw_labels: Vec::new(),
         body_etag: None,
         story_type,
         acceptor: None,
@@ -140,7 +139,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story)
         Some(existing) => {
             existing.title = story.title.clone();
             existing.state = story.state;
-            existing.raw_labels = story.raw_labels.clone();
             existing.is_closed = story.is_closed;
             if story.body.is_some() {
                 existing.body = story.body.clone();

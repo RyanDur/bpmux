@@ -61,9 +61,8 @@ impl SourceAdapter for InMemorySourceAdapter {
         let Some(mut story) = s.stories.get(&number).cloned() else {
             return Ok(None);
         };
-        if let Some(labels) = s.labels.get(&number) {
-            story.raw_labels = labels.clone();
-        }
+        let labels = s.labels.get(&number).cloned().unwrap_or_default();
+        ingest::derive_typed_fields_from_labels(&mut story, &labels);
         if let Some(comments) = s.free_comments.get(&number) {
             story.free_comments = Some(comments.clone());
         }

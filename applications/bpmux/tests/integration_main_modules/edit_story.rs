@@ -35,7 +35,6 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
         free_comments: None,
         filed_by: "test".to_string(),
         filed_at: Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
-        raw_labels: Vec::new(),
         body_etag: None,
         story_type: bpmux::product_management::story::story_type_from_title("fixture story"),
         acceptor: None,

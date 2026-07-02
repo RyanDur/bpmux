@@ -19,41 +19,44 @@ fn merge_dispatched(seed: &SeededStore, rx: &mut UnboundedReceiver<AppAction>) {
     }
 }
 
-fn ready_story(id: u64) -> Story {
-    Story::new_minimal(
+fn ready_story(id: u64) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
-    )
+    );
+    (s, Vec::new())
 }
 
-fn current_iteration_story(id: u64) -> Story {
-    let mut s = Story::new_minimal(
+fn current_iteration_story(id: u64) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    s.raw_labels.push("iteration".to_string());
-    s.raw_labels.push("current-iteration".to_string());
-    s
+    (
+        s,
+        vec!["iteration".to_string(), "current-iteration".to_string()],
+    )
 }
 
-async fn build_orchestrator(stories: Vec<Story>) -> (Arc<dyn RefreshDriver>, SeededStore) {
+async fn build_orchestrator(
+    seeds: Vec<(Story, Vec<String>)>,
+) -> (Arc<dyn RefreshDriver>, SeededStore) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let iterations: Vec<Iteration> = stories
+    let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect();
     let seed = SeededStore::new(vec![], iterations, vec![]);
     seed.bind_refresh(&orch);

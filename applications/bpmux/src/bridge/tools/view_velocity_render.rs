@@ -8,16 +8,19 @@ use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryK
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn orchestrator_with_seed(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.into_iter().map(|(s, _)| s).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
     orch
 }
 
-fn make_story(id: u64, story_type: StoryKind) -> Story {
+fn make_story(id: u64, story_type: StoryKind) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
@@ -25,12 +28,12 @@ fn make_story(id: u64, story_type: StoryKind) -> Story {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    s.raw_labels.push(
+    s.story_type = story_type;
+    let labels = vec![
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
             .encode_story_type(story_type),
-    );
-    s.story_type = story_type;
-    s
+    ];
+    (s, labels)
 }
 
 #[tokio::test]

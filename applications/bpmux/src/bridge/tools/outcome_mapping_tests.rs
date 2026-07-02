@@ -22,15 +22,11 @@ use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
-fn iterations_from(stories: &[Story]) -> Vec<Iteration> {
-    stories
+fn iterations_from(seeds: &[(Story, Vec<String>)]) -> Vec<Iteration> {
+    seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect()
 }
 
@@ -57,7 +53,7 @@ fn iteration_upserted(rx: &mut tokio::sync::mpsc::UnboundedReceiver<AppAction>) 
     found
 }
 
-fn outcome(id: u64, iterations: Vec<u64>) -> Story {
+fn outcome(id: u64, iterations: Vec<u64>) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Outcome #{id}"),
@@ -65,7 +61,6 @@ fn outcome(id: u64, iterations: Vec<u64>) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
@@ -73,10 +68,10 @@ fn outcome(id: u64, iterations: Vec<u64>) -> Story {
         }
         .write_into_body("## Outcome\n"),
     );
-    s
+    (s, vec!["outcome".into(), "horizon.now".into()])
 }
 
-fn iteration_for(id: u64, outcome_id: u64) -> Story {
+fn iteration_for(id: u64, outcome_id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
@@ -84,7 +79,6 @@ fn iteration_for(id: u64, outcome_id: u64) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels.push("iteration".to_string());
     s.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(outcome_id)),
@@ -92,25 +86,24 @@ fn iteration_for(id: u64, outcome_id: u64) -> Story {
         }
         .write_into_body("## composed"),
     );
-    s
+    (s, vec!["iteration".to_string()])
 }
 
 async fn build_refresh(
-    stories: Vec<Story>,
+    seeds: Vec<(Story, Vec<String>)>,
 ) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
-    let seeded: Vec<Outcome> = stories
+    let seeded: Vec<Outcome> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("outcome"))
-        })
-        .map(decode_outcome_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
+        .map(|(story, labels)| decode_outcome_from_story(story, labels))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, seeded, iterations_from(&stories), vec![]);
+    crate::store::bind_seeded_refresh(&orch, seeded, iterations_from(&seeds), vec![]);
     orch.refresh_all().await.unwrap();
     (orch, adapter)
 }
@@ -286,15 +279,18 @@ async fn unmap_rejects_an_unmapped_iteration_1763() {
 
 #[tokio::test]
 async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary_1763() {
-    let mut feature = Story::new_minimal(
+    let feature = Story::new_minimal(
         StoryId::new(700),
         "[Feature] plain".into(),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    feature.raw_labels.push("feature".to_string());
-    let (refresh, _adapter) = build_refresh(vec![feature, iteration_for(710, 700)]).await;
+    let (refresh, _adapter) = build_refresh(vec![
+        (feature, vec!["feature".to_string()]),
+        iteration_for(710, 700),
+    ])
+    .await;
     let err = handle_unmap_outcome_iteration(
         &args(700, 710),
         "pm:claude-code",

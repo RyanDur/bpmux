@@ -18,11 +18,8 @@ pub fn is_epic_issue(v: &serde_json::Value) -> bool {
     has_label || title_prefixed
 }
 
-pub fn is_epic_story(story: &Story) -> bool {
-    let has_label = story
-        .raw_labels()
-        .iter()
-        .any(|l| l.eq_ignore_ascii_case("epic"));
+pub fn is_epic_story(story: &Story, labels: &[String]) -> bool {
+    let has_label = labels.iter().any(|l| l.eq_ignore_ascii_case("epic"));
     has_label || is_epic_title(story.title())
 }
 

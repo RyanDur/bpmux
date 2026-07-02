@@ -125,24 +125,19 @@ fn owner_parked_story(id: u64) -> crate::product_management::story::Story {
         chrono::Utc::now(),
         "dev".to_string(),
     );
-    story.raw_labels.push("awaiting owner".to_string());
     story.acceptor = Some(crate::product_management::story::Acceptor::Owner);
     story
 }
 
-fn ready_story(id: u64, iteration: u64, position: u32) -> crate::product_management::story::Story {
+fn ready_story(id: u64) -> crate::product_management::story::Story {
     use crate::product_management::story::{BoardState, StoryId};
-    let mut story = crate::product_management::story::Story::new_minimal(
+    crate::product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("ready {id}"),
         BoardState::Ready,
         chrono::Utc::now(),
         "pm".to_string(),
-    );
-    story
-        .raw_labels
-        .push(format!("parent-iteration-#{iteration}.{position}"));
-    story
+    )
 }
 
 fn current_iteration(
@@ -288,7 +283,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
 
     store.dispatch(AppAction::Story(StoryAction::Seeded(vec![
         owner_parked_story(900),
-        ready_story(901, 800, 1),
+        ready_story(901),
     ])));
     store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
         901,

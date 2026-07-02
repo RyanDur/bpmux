@@ -17,51 +17,44 @@ use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-fn iteration_seed(id: u64, title: &str) -> Story {
-    let mut s = Story::new_minimal(
+fn iteration_seed(id: u64, title: &str) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["iteration".to_string()];
-    s
+    (s, vec!["iteration".to_string()])
 }
 
-fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
-    let mut s = Story::new_minimal(
+fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = labels.iter().map(ToString::to_string).collect();
-    s
+    (s, labels.iter().map(ToString::to_string).collect())
 }
 
-async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let seeded: Vec<_> = stories
+    let seeded: Vec<_> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("outcome"))
-        })
-        .map(decode_outcome_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
+        .map(|(story, labels)| decode_outcome_from_story(story, labels))
         .collect();
-    let iterations: Vec<Iteration> = stories
+    let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect();
     crate::store::bind_seeded_refresh(&orch, seeded, iterations, vec![]);
     orch.refresh_all().await.unwrap();
@@ -100,7 +93,7 @@ async fn board_roadmap_serves_flat_priority_cards_carrying_the_enriched_state() 
 
 #[tokio::test]
 async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() {
-    let mut iteration = iteration_seed(810, "Iteration");
+    let (mut iteration, iteration_labels) = iteration_seed(810, "Iteration");
     iteration.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(700)),
@@ -108,7 +101,7 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
         }
         .write_into_body("## composed"),
     );
-    let mut outcome = seed_outcome(700, "Outcome", &["outcome", "horizon.now"]);
+    let (mut outcome, outcome_labels) = seed_outcome(700, "Outcome", &["outcome", "horizon.now"]);
     outcome.body = Some(
         OutcomeRelationships {
             roadmap: None,
@@ -116,7 +109,11 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
         }
         .write_into_body("## Outcome\n"),
     );
-    let refresh = build_refresh(vec![outcome, iteration]).await;
+    let refresh = build_refresh(vec![
+        (outcome, outcome_labels),
+        (iteration, iteration_labels),
+    ])
+    .await;
 
     let iterations = board_iterations(&refresh);
     let mapped = iterations

@@ -13,7 +13,7 @@ fn outcome(id: u64, title: &str) -> Outcome {
         Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    decode_outcome_from_story(&story)
+    decode_outcome_from_story(&story, &[])
 }
 
 #[test]

@@ -15,34 +15,29 @@ use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-async fn orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let seeded: Vec<_> = stories
+    let seeded: Vec<_> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("outcome"))
-        })
-        .map(decode_outcome_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
+        .map(|(story, labels)| decode_outcome_from_story(story, labels))
         .collect();
-    let iterations: Vec<Iteration> = stories
+    let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect();
     crate::store::bind_seeded_refresh(&orch, seeded, iterations, vec![]);
     orch.refresh_all().await.unwrap();
     orch
 }
 
-fn iteration(id: u64) -> Story {
+fn iteration(id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "Iteration Vela".to_string(),
@@ -51,25 +46,29 @@ fn iteration(id: u64) -> Story {
         "pm".into(),
     );
     s.body = Some("## Iteration overview\n\ncomposed".to_string());
-    s.raw_labels = vec![
-        "iteration".into(),
-        "ready".into(),
-        "iteration-review-closed.designer".into(),
-        "iteration-dev-ok.dev".into(),
-    ];
-    s
+    (
+        s,
+        vec![
+            "iteration".into(),
+            "ready".into(),
+            "iteration-review-closed.designer".into(),
+            "iteration-dev-ok.dev".into(),
+        ],
+    )
 }
 
-fn member(id: u64, iteration_id: u64, position: u32) -> Story {
-    let mut s = Story::new_minimal(
+fn member(id: u64, iteration_id: u64, position: u32) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("member #{id}"),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec![format!("parent-iteration-#{iteration_id}.{position}")];
-    s
+    (
+        s,
+        vec![format!("parent-iteration-#{iteration_id}.{position}")],
+    )
 }
 
 fn find(stories: &[serde_json::Value], id: u64) -> &serde_json::Value {
@@ -86,7 +85,7 @@ fn find_story(stories: &[serde_json::Value], id: u64) -> &serde_json::Value {
         .expect("story present in snapshot")
 }
 
-fn outcome(id: u64, iterations: Vec<u64>) -> Story {
+fn outcome(id: u64, iterations: Vec<u64>) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "An outcome".to_string(),
@@ -94,7 +93,6 @@ fn outcome(id: u64, iterations: Vec<u64>) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["outcome".into(), "horizon.now".into()];
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
@@ -102,11 +100,11 @@ fn outcome(id: u64, iterations: Vec<u64>) -> Story {
         }
         .write_into_body("## Outcome\n"),
     );
-    s
+    (s, vec!["outcome".into(), "horizon.now".into()])
 }
 
-fn iteration_with_stories(id: u64, stories: Vec<u64>) -> Story {
-    let mut s = iteration(id);
+fn iteration_with_stories(id: u64, stories: Vec<u64>) -> (Story, Vec<String>) {
+    let (mut s, labels) = iteration(id);
     s.body = Some(
         IterationRelationships {
             outcome: None,
@@ -114,11 +112,11 @@ fn iteration_with_stories(id: u64, stories: Vec<u64>) -> Story {
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
     );
-    s
+    (s, labels)
 }
 
-fn building_iteration(id: u64, outcome_id: u64, stories: Vec<u64>) -> Story {
-    let mut s = iteration(id);
+fn building_iteration(id: u64, outcome_id: u64, stories: Vec<u64>) -> (Story, Vec<String>) {
+    let (mut s, labels) = iteration(id);
     s.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(outcome_id)),
@@ -126,7 +124,7 @@ fn building_iteration(id: u64, outcome_id: u64, stories: Vec<u64>) -> Story {
         }
         .write_into_body(s.body.as_deref().unwrap_or_default()),
     );
-    s
+    (s, labels)
 }
 
 #[tokio::test]

@@ -6,7 +6,7 @@ use crate::product_management::epic::EpicId;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
 
 fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> Story {
-    let mut s = Story {
+    Story {
         id: StoryId::new(42),
         title: "[Feature] sample".to_string(),
         state,
@@ -18,7 +18,6 @@ fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> St
         free_comments: Some(Vec::new()),
         gate_comments: Some(Vec::new()),
         is_closed,
-        raw_labels: Vec::new(),
         body_etag: None,
         story_type,
         acceptor: None,
@@ -27,10 +26,7 @@ fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> St
         blocked_by: None,
         ready_order: None,
         iteration_slot: None,
-    };
-    s.raw_labels
-        .push(GhLabelCodec.encode_story_type(story_type));
-    s
+    }
 }
 
 #[test]
@@ -79,7 +75,6 @@ fn story_to_board_json_acceptor_null_when_none_1551() {
 #[test]
 fn story_to_board_json_acceptor_emits_class_string_1551() {
     let mut s = sample_story(BoardState::Delivered, StoryKind::Feature, false);
-    s.raw_labels.push("awaiting dev".to_string());
     s.acceptor = Some(crate::product_management::story::Acceptor::Dev);
     let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(
@@ -358,7 +353,6 @@ fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
         name: "Pegasus".to_string(),
         position: 200,
     });
-    s.raw_labels = vec!["noise-label".to_string()];
     let json = story_to_board_json(&StubLabelCodec, &s);
     let labels: Vec<&str> = json["labels"]
         .as_array()
@@ -377,9 +371,5 @@ fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
     assert!(
         labels.contains(&"rdy:100"),
         "stub ready-order forwarded: {labels:?}"
-    );
-    assert!(
-        !labels.contains(&"noise-label"),
-        "non-iteration non-ready-order labels not forwarded: {labels:?}"
     );
 }

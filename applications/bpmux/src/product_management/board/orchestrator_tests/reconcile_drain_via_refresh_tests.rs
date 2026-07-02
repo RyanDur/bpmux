@@ -36,8 +36,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
 #[tokio::test]
 async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_label() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut delivered = seed_story(450, BoardState::Delivered);
-    delivered.raw_labels.push("bug".to_string());
+    let delivered = seed_story(450, BoardState::Delivered);
     adapter.seed_stories(vec![delivered]);
     adapter.seed_labels(
         450,

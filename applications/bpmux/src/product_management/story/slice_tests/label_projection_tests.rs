@@ -1,7 +1,4 @@
 use super::{apply, created, meta, minimal, seed, seeded, story_at};
-use crate::product_management::board::adapters::github::{
-    acceptor_from_labels, parent_epic_from_labels,
-};
 use crate::product_management::board::events::{LabelDerivedFields, StoryEvent};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::{Acceptor, BoardState, Stage, StoryId, StoryKind, Tag};
@@ -156,16 +153,8 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
         },
     );
     let s = story_at(&store, 77).expect("story exists");
-    assert_eq!(parent_epic_from_labels(&s.raw_labels), Some(7));
-    assert_eq!(acceptor_from_labels(&s.raw_labels), Some(Acceptor::Dev));
-    assert_eq!(
-        s.raw_labels,
-        vec![
-            "parent-epic-#7".to_string(),
-            "parent-iteration-#1655.106".to_string(),
-            "awaiting dev".to_string()
-        ]
-    );
+    assert_eq!(s.parent_epic(), Some(EpicId::new(7)));
+    assert_eq!(s.acceptor(), Some(Acceptor::Dev));
     assert_eq!(
         s.state,
         BoardState::InProgress(Stage::Dev),

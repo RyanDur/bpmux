@@ -72,7 +72,7 @@ fn generic_tag_churn_has_no_domain_side_effect_after_the_middleware_retire() {
     .unwrap();
     let story = orch.story(7).unwrap();
     assert!(
-        story.raw_labels.is_empty() && story.tags().is_empty(),
+        story.tags().is_empty(),
         "a generic TagAdded is edge-bound only — no reducer arm and no middleware \
          projects it into domain state; it reaches GitHub via the outbox and returns \
          typed through the adapter refresh"

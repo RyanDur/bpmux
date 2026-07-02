@@ -15,12 +15,11 @@ pub(super) struct Classified {
     pub epics: Vec<Epic>,
 }
 
-fn derive_typed_fields_from_labels(story: &mut Story) {
-    let fields =
-        crate::product_management::board::adapters::github::project_labels(&story.raw_labels);
+pub(super) fn derive_typed_fields_from_labels(story: &mut Story, labels: &[String]) {
+    let fields = crate::product_management::board::adapters::github::project_labels(labels);
     let labeled_type =
         crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &story.raw_labels,
+            labels,
             &story.title,
         );
     if labeled_type != story.story_type
@@ -59,21 +58,16 @@ pub(super) fn classify_ingested(
         epics: Vec::new(),
     };
     for mut story in stories {
-        if let Some(labels) = labels.get(&story.id.value()) {
-            story.raw_labels = labels.clone();
-        }
-        derive_typed_fields_from_labels(&mut story);
-        let has_label = |needle: &str| {
-            story
-                .raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case(needle))
-        };
+        let story_labels = labels.get(&story.id.value()).cloned().unwrap_or_default();
+        derive_typed_fields_from_labels(&mut story, &story_labels);
+        let has_label = |needle: &str| story_labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
         if has_label("outcome") {
-            c.outcomes.push(decode_outcome_from_story(&story));
+            c.outcomes
+                .push(decode_outcome_from_story(&story, &story_labels));
         } else if has_label("iteration") {
-            c.iterations.push(decode_iteration_from_story(&story));
-        } else if is_epic_story(&story) {
+            c.iterations
+                .push(decode_iteration_from_story(&story, &story_labels));
+        } else if is_epic_story(&story, &story_labels) {
             c.epics.push(decode_epic_from_story(&story));
         } else {
             c.items.push(story);

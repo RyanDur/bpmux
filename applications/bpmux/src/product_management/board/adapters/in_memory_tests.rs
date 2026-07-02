@@ -186,7 +186,7 @@ async fn push_event_accepts_story_created_variant() {
 }
 
 #[tokio::test]
-async fn tag_added_surfaces_label_in_ingested_raw_labels() {
+async fn tag_added_surfaces_ordering_label_in_ingested_iteration_slot() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
     adapter
@@ -199,17 +199,18 @@ async fn tag_added_surfaces_label_in_ingested_raw_labels() {
         .unwrap();
     let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
-    assert!(
-        story
-            .raw_labels
-            .iter()
-            .any(|l| l == "iteration-Unscheduled.300"),
-        "TagAdded must surface the ordering label in raw_labels so reorder round-trips survive drain"
+    assert_eq!(
+        story.iteration_slot,
+        Some(crate::product_management::story::IterationSlot {
+            name: "Unscheduled".to_string(),
+            position: 300,
+        }),
+        "TagAdded must land the ordering label at the edge and surface it as the typed iteration_slot at ingest so reorder round-trips survive drain"
     );
 }
 
 #[tokio::test]
-async fn tag_removed_drops_label_from_ingested_raw_labels() {
+async fn tag_removed_drops_ordering_label_from_ingested_iteration_slot() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
     adapter.seed_labels(42, vec!["iteration-Unscheduled.300".to_string()]);
@@ -223,12 +224,9 @@ async fn tag_removed_drops_label_from_ingested_raw_labels() {
         .unwrap();
     let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
-    assert!(
-        !story
-            .raw_labels
-            .iter()
-            .any(|l| l == "iteration-Unscheduled.300"),
-        "TagRemoved must drop the label from raw_labels"
+    assert_eq!(
+        story.iteration_slot, None,
+        "TagRemoved must drop the ordering label at the edge so no iteration_slot derives at ingest"
     );
 }
 
@@ -247,18 +245,14 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
     let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert_eq!(
-        crate::product_management::board::adapters::github::parent_epic_from_labels(
-            &story.raw_labels
-        ),
-        Some(7),
+        story.parent_epic,
+        Some(EpicId::new(7)),
         "ParentEpicSet must surface parent_epic in the round-tripped Story"
     );
     let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
     assert_eq!(
-        crate::product_management::board::adapters::github::parent_epic_from_labels(
-            &fetched.raw_labels
-        ),
-        Some(7),
+        fetched.parent_epic,
+        Some(EpicId::new(7)),
         "ParentEpicSet must also surface via fetch_story_metadata"
     );
 }
@@ -285,18 +279,12 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
     let stories = ingest_stories(&adapter).await;
     let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
     assert_eq!(
-        crate::product_management::board::adapters::github::parent_epic_from_labels(
-            &story.raw_labels
-        ),
-        None,
+        story.parent_epic, None,
         "ParentEpicUnset must clear parent_epic in the round-tripped Story"
     );
     let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
     assert_eq!(
-        crate::product_management::board::adapters::github::parent_epic_from_labels(
-            &fetched.raw_labels
-        ),
-        None,
+        fetched.parent_epic, None,
         "ParentEpicUnset must also clear via fetch_story_metadata"
     );
 }

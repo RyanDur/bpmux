@@ -11,6 +11,7 @@ use crate::product_management::board::adapters::github::{
     warn_on_inconsistent_state_labels,
 };
 use crate::product_management::board::sync::{SyncError, classify_close_error};
+use crate::product_management::epic::EpicId;
 use crate::product_management::story::{BoardState, Gate, Stage, StoryId, StoryKind, Tag};
 
 #[test]
@@ -470,7 +471,7 @@ fn epic_recognized_from_title_prefix() {
         "user": { "login": "pm" },
     }))
     .expect("issue JSON must decode");
-    assert!(is_epic_story(&upper));
+    assert!(is_epic_story(&upper, &[]));
     assert!(is_epic_issue(
         &serde_json::json!({ "title": "[epic] lowercase" })
     ));
@@ -487,7 +488,7 @@ fn epic_recognized_from_label() {
         "user": { "login": "pm" },
     }))
     .expect("issue JSON must decode");
-    assert!(is_epic_story(&story));
+    assert!(is_epic_story(&story, &["epic".to_string()]));
 }
 
 #[test]
@@ -529,11 +530,8 @@ fn decode_story_metadata_populates_story_type_and_tags_from_labels() {
         "labels": [{"name": "bug"}, {"name": "blocked"}],
     });
     let story = decode_story_metadata(&v).unwrap();
-    assert_eq!(
-        story_type_from_labels_or_title(&story.raw_labels, &story.title),
-        StoryKind::Bug
-    );
-    assert_eq!(tags_from_labels(&story.raw_labels), vec![Tag::Blocked]);
+    assert_eq!(story.story_type, StoryKind::Bug);
+    assert_eq!(story.tags, vec![Tag::Blocked]);
 }
 
 #[test]
@@ -621,14 +619,21 @@ fn iteration_order_from_labels_picks_lowest_when_multiple_1735() {
 }
 
 #[test]
-fn decode_story_metadata_sets_iteration_order_from_label_1735() {
+fn decode_iteration_from_story_sets_iteration_order_from_label_1735() {
     let v = serde_json::json!({
         "number": 1397,
         "title": "Iteration Fornax",
         "labels": [{"name": "iteration-Fornax.100"}, {"name": "iteration-order.200"}],
     });
     let story = decode_story_metadata(&v).expect("decodes");
-    assert_eq!(iteration_order_from_labels(&story.raw_labels), Some(200));
+    let labels = vec![
+        "iteration-Fornax.100".to_string(),
+        "iteration-order.200".to_string(),
+    ];
+    let iteration = crate::product_management::board::adapters::github::decode_iteration_from_story(
+        &story, &labels,
+    );
+    assert_eq!(iteration.iteration_order, Some(200));
 }
 
 #[test]
@@ -642,7 +647,7 @@ fn decode_story_metadata_populates_parent_epic_from_label() {
         "user": {"login": "pm"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert_eq!(parent_epic_from_labels(&story.raw_labels), Some(457));
+    assert_eq!(story.parent_epic, Some(EpicId::new(457)));
 }
 
 #[test]
@@ -656,48 +661,5 @@ fn decode_story_metadata_parent_epic_none_when_label_absent() {
         "user": {"login": "pm"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert_eq!(parent_epic_from_labels(&story.raw_labels), None);
-}
-
-#[test]
-fn decode_story_metadata_populates_raw_labels_for_reap_pre_filter() {
-    let json = serde_json::json!({
-        "number": 1156,
-        "title": "[Bug] reap-pre-filter substrate",
-        "state": "open",
-        "labels": [
-            {"name": "ready"},
-            {"name": "Feature"},
-            {"name": "blocked"},
-        ],
-        "created_at": "2026-05-03T00:00:00Z",
-        "user": {"login": "pm"},
-    });
-    let story = decode_story_metadata(&json).unwrap();
-    assert_eq!(
-        story.raw_labels,
-        vec![
-            "ready".to_string(),
-            "Feature".to_string(),
-            "blocked".to_string()
-        ],
-        "raw_labels must mirror GH labels list verbatim — this is what reap_workflow_labels pre-filters against; if decode drops the field, every gate-fire silently no-ops"
-    );
-}
-
-#[test]
-fn decode_story_metadata_raw_labels_empty_when_gh_returns_no_labels() {
-    let json = serde_json::json!({
-        "number": 2002,
-        "title": "story with no labels",
-        "state": "open",
-        "labels": [],
-        "created_at": "2026-05-03T00:00:00Z",
-        "user": {"login": "pm"},
-    });
-    let story = decode_story_metadata(&json).unwrap();
-    assert!(
-        story.raw_labels.is_empty(),
-        "raw_labels empty when GH returns []; pre-filter sees []; reap is no-op (correct since no labels to strip)"
-    );
+    assert_eq!(story.parent_epic, None);
 }

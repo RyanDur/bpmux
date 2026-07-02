@@ -38,44 +38,43 @@ fn stories_of(iterations: &[Iteration], id: u64) -> Vec<StoryId> {
         .unwrap_or_else(|| panic!("iteration #{id} present in the optimistic dispatch"))
 }
 
-async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let iterations: Vec<Iteration> = stories
+    let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect();
     crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
     orch.refresh_all().await.unwrap();
     orch
 }
 
-fn iteration_seed(id: u64, name: &str) -> Story {
-    let mut s = Story::new_minimal(
+fn iteration_seed(id: u64, name: &str) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["iteration".into(), "ready".into()];
-    s
+    (s, vec!["iteration".into(), "ready".into()])
 }
 
-fn member_seed(id: u64, title: &str) -> Story {
-    Story::new_minimal(
+fn member_seed(id: u64, title: &str) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         title.into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
-    )
+    );
+    (s, Vec::new())
 }
 
 fn args(
@@ -281,7 +280,7 @@ async fn add_records_the_member_in_the_iterations_ordered_stories_1399() {
 
 #[tokio::test]
 async fn replace_semantic_overwrites_existing_membership_1399() {
-    let mut it1 = iteration_seed(1397, "Telescopium");
+    let (mut it1, it1_labels) = iteration_seed(1397, "Telescopium");
     it1.body = Some(
         IterationRelationships {
             outcome: None,
@@ -291,7 +290,7 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
     );
     let it2 = iteration_seed(1396, "Sextans");
     let member = member_seed(1500, "moving target");
-    let orch = build_orchestrator(vec![it1, it2, member]).await;
+    let orch = build_orchestrator(vec![(it1, it1_labels), it2, member]).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_add_story_to_iteration(
         &args(1396, 1500, 300),

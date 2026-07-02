@@ -52,7 +52,6 @@ fn default_scope_is_unchanged_full_board() {
 #[test]
 fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
     let mut s = story(77, "acceptor-visible", BoardState::Ready);
-    s.raw_labels.push("awaiting owner".to_string());
     s.acceptor = Some(crate::product_management::story::Acceptor::Owner);
     let out = build_board_text(&[], &[s], &[], &BoardScope::default());
     assert!(

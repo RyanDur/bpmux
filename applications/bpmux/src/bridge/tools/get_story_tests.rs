@@ -13,28 +13,27 @@ use crate::product_management::story::{BoardState, Gate, GateComment, Stage, Sto
 use crate::store::SeededStore;
 
 async fn seeded_orchestrator(
-    mut stories: Vec<Story>,
+    mut seeds: Vec<(Story, Vec<String>)>,
     gates: Vec<(u64, Vec<GateComment>)>,
 ) -> (SeededStore, Arc<dyn RefreshDriver>) {
     for (n, gs) in &gates {
-        if let Some(s) = stories.iter_mut().find(|s| s.id == StoryId::new(*n)) {
+        if let Some((s, _)) = seeds.iter_mut().find(|(s, _)| s.id == StoryId::new(*n)) {
             s.gate_comments = Some(gs.clone());
         }
     }
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     for (n, gs) in &gates {
         adapter.seed_gate_comments(*n, gs.clone());
     }
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let iterations: Vec<Iteration> = stories
+    let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect();
     let handle = SeededStore::new(vec![], iterations, vec![]);
     handle.bind_refresh(&orchestrator);
@@ -93,7 +92,7 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
             payload: Some("channelKeyRef is not legitimate".into()),
         },
     ];
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![(443, gates)]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(443, gates)]).await;
     let args = serde_json::json!({"id": 443});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -119,7 +118,7 @@ async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
         actor: "designer".into(),
         payload: Some("failed spec".into()),
     }];
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![(200, gates)]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(200, gates)]).await;
     let args = serde_json::json!({"id": 200});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -133,7 +132,7 @@ async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
 #[tokio::test]
 async fn does_not_enrich_body_for_non_rework_story() {
     let story = make_story(100, BoardState::Ready, Some("original body"));
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 100});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -172,7 +171,7 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
             payload: Some("user-story not satisfied; reshape needed".into()),
         },
     ];
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![(700, gates)]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(700, gates)]).await;
     let args = serde_json::json!({"id": 700});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -222,7 +221,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
             payload: None,
         },
     ];
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![(701, gates)]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(701, gates)]).await;
     let args = serde_json::json!({"id": 701});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -238,7 +237,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
 #[tokio::test]
 async fn skips_enrichment_when_no_rework_gate_comments() {
     let story = make_story(50, BoardState::Ready, Some("plain body"));
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![(50, vec![])]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(50, vec![])]).await;
     let args = serde_json::json!({"id": 50});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -252,7 +251,7 @@ async fn skips_enrichment_when_no_rework_gate_comments() {
 async fn output_exposes_workflow_state_and_is_closed_separately() {
     let mut story = make_story(101, BoardState::Accepted, Some("body"));
     story.is_closed = true;
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 101});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -270,7 +269,7 @@ async fn output_exposes_workflow_state_and_is_closed_separately() {
 async fn divergent_case_workflow_ready_but_gh_closed_observable() {
     let mut story = make_story(102, BoardState::Ready, Some("body"));
     story.is_closed = true;
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 102});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -290,7 +289,7 @@ async fn divergent_case_workflow_ready_but_gh_closed_observable() {
 async fn divergent_case_workflow_accepted_but_gh_open_observable() {
     let mut story = make_story(103, BoardState::Accepted, Some("body"));
     story.is_closed = false;
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 103});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -305,15 +304,15 @@ async fn divergent_case_workflow_accepted_but_gh_open_observable() {
 
 #[tokio::test]
 async fn surfaces_typed_label_chips_and_never_state_labels() {
-    let mut story = make_story(1207, BoardState::Ready, Some("body"));
-    story.raw_labels = vec![
+    let story = make_story(1207, BoardState::Ready, Some("body"));
+    let labels = vec![
         "bug".to_string(),
         "ready".to_string(),
         "blocked".to_string(),
         "blocked-by:514".to_string(),
         "desk-check-fail".to_string(),
     ];
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, labels)], vec![]).await;
     let args = serde_json::json!({"id": 1207});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -353,9 +352,8 @@ async fn surfaces_typed_label_chips_and_never_state_labels() {
 
 #[tokio::test]
 async fn labels_reencode_from_typed_fields_without_state_synthesis() {
-    let mut story = make_story(1208, BoardState::Icebox, Some("body"));
-    story.raw_labels = Vec::new();
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let story = make_story(1208, BoardState::Icebox, Some("body"));
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 1208});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -407,7 +405,7 @@ async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
 #[tokio::test]
 async fn cache_miss_returns_placeholder_when_the_fetch_cannot_hydrate() {
     let story = make_story(1226, BoardState::Ready, None);
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 1226});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -449,7 +447,7 @@ async fn cache_hit_does_not_refetch_when_body_already_present() {
     );
 }
 
-fn make_iteration(id: u64, name: &str, body: &str) -> Story {
+fn make_iteration(id: u64, name: &str, body: &str) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
@@ -457,16 +455,20 @@ fn make_iteration(id: u64, name: &str, body: &str) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels.push("iteration".to_string());
     s.body = Some(body.to_string());
-    s
+    (s, vec!["iteration".to_string()])
 }
 
-fn make_iteration_with_members(id: u64, name: &str, body: &str, members: Vec<u64>) -> Story {
+fn make_iteration_with_members(
+    id: u64,
+    name: &str,
+    body: &str,
+    members: Vec<u64>,
+) -> (Story, Vec<String>) {
     use crate::product_management::board::adapters::relationships::{
         IterationRelationships, Relationships,
     };
-    let mut s = make_iteration(id, name, body);
+    let (mut s, labels) = make_iteration(id, name, body);
     s.body = Some(
         IterationRelationships {
             outcome: None,
@@ -474,22 +476,22 @@ fn make_iteration_with_members(id: u64, name: &str, body: &str, members: Vec<u64
         }
         .write_into_body(body),
     );
-    s
+    (s, labels)
 }
 
-fn make_member(id: u64, title: &str, iteration_id: u64, position: u32) -> Story {
-    let mut s = Story::new_minimal(
+fn make_member(id: u64, title: &str, iteration_id: u64, position: u32) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         title.into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec![
+    let labels = vec![
         "ready".into(),
         format!("parent-iteration-#{iteration_id}.{position}"),
     ];
-    s
+    (s, labels)
 }
 
 const ITERATION_BODY_TEMPLATE: &str = "## Iteration Telescopium\n\
@@ -578,7 +580,7 @@ async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
         BoardState::Accepted,
         Some("## Iteration Telescopium\n\n## Member stories\n\n_(no members yet)_\n\n## Notes\n"),
     );
-    let (_store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 1463});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -599,8 +601,9 @@ async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
         ITERATION_BODY_TEMPLATE,
         vec![1309, 1265],
     );
-    let mut closed_member = make_member(1309, "Already shipped", 1397, 100);
+    let (mut closed_member, closed_member_labels) = make_member(1309, "Already shipped", 1397, 100);
     closed_member.is_closed = true;
+    let closed_member = (closed_member, closed_member_labels);
     let open_member = make_member(1265, "Still open", 1397, 200);
     let (_store, orch) =
         seeded_orchestrator(vec![iteration, closed_member, open_member], vec![]).await;
@@ -699,7 +702,7 @@ async fn latest_reject_survives_an_iteration_move() {
         actor: "owner".into(),
         payload: Some(reason.into()),
     }];
-    let (handle, orch) = seeded_orchestrator(vec![story], vec![(1524, gates)]).await;
+    let (handle, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(1524, gates)]).await;
     let args = serde_json::json!({"id": 1524});
 
     let before = handle_get_story(args.as_object().unwrap(), Some(&orch))

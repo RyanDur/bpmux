@@ -205,36 +205,33 @@ async fn local_body_mutate_invalidates_prior_etag() {
 }
 
 #[tokio::test]
-async fn story_refreshed_adopts_refreshed_raw_labels_so_selectors_read_fresh() {
+async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh() {
     use crate::product_management::board::events::{EventMeta, StoryEvent};
     use crate::product_management::board::peer::PeerId;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
-    let mut seed = seed_minimal(9200, BoardState::InProgress(Stage::Dev));
-    seed.raw_labels = vec!["in progress".to_string()];
-    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed.clone()])));
-    let mut refreshed = seed;
-    refreshed.raw_labels = vec!["in progress".to_string(), "iteration-order.300".to_string()];
+    let seed = seed_minimal(9200, BoardState::InProgress(Stage::Dev));
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
+    let labels = vec!["in progress".to_string(), "ready-order.300".to_string()];
     handle.dispatch(AppAction::Story(StoryAction::Event(
-        StoryEvent::StoryRefreshed {
+        StoryEvent::LabelsRefreshed {
             meta: EventMeta {
                 actor: "test".to_string(),
                 ts: Utc::now(),
                 peer_id: PeerId::local(),
             },
             id: StoryId::new(9200),
-            story: Box::new(refreshed),
+            fields: crate::product_management::board::adapters::github::project_labels(&labels),
         },
     )));
     let after = orch.story(9200).expect("story present");
-    assert!(
-        after
-            .raw_labels
-            .contains(&"iteration-order.300".to_string()),
-        "StoryRefreshed must adopt the refreshed raw_labels so derived selectors read fresh values, not the stale pre-refresh label set; got {:?}",
-        after.raw_labels
+    assert_eq!(
+        after.ready_order(),
+        Some(300),
+        "a label refresh must adopt the adapter-decoded typed fields so derived selectors read fresh values, not the stale pre-refresh story; got {:?}",
+        after.ready_order()
     );
 }
 

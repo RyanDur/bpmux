@@ -11,31 +11,27 @@ use axum::response::IntoResponse;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-fn membered_member(id: u64, label: &str) -> Story {
-    let mut story = Story::new_minimal(
+fn membered_member(id: u64) -> Story {
+    Story::new_minimal(
         StoryId::new(id),
         "reorder fixture".to_string(),
         BoardState::Ready,
         chrono::Utc::now(),
         "tester".to_string(),
-    );
-    story.raw_labels = vec![label.to_string()];
-    story
+    )
 }
 
 #[tokio::test]
 async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![membered_member(1687, "parent-iteration-#1655.125")]);
+    adapter.seed_stories(vec![membered_member(1687)]);
     adapter.seed_labels(1687, vec!["parent-iteration-#1655.125".to_string()]);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
     refresh.refresh_all().await.unwrap();
     assert!(
-        refresh
-            .story(1687)
-            .unwrap()
-            .raw_labels
+        adapter
+            .labels_for(1687)
             .iter()
             .any(|l| l.starts_with("parent-iteration-#")),
         "fixture starts membered"

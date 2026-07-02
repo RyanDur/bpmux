@@ -72,7 +72,7 @@ fn iteration_label_decoder_does_not_populate_a_story_field() {
     assert!(
         !label_strs.iter().any(|l| l.starts_with("iteration-#")),
         "story-to-board emit no longer derives iteration-#NNNN from a field; \
-         legacy labels on raw_labels are not re-emitted into wire-format-labels: {:?}",
+         legacy GH labels are not re-emitted into wire-format-labels: {:?}",
         label_strs
     );
 }

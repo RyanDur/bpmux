@@ -35,8 +35,12 @@ mod canonical_via_gh_1300 {
         found.expect("the closed iteration is dispatched onto the slice")
     }
 
-    fn seed_member(id: u64, state: BoardState, iteration: Option<(&str, u32)>) -> Story {
-        let mut s = Story::new_minimal(
+    fn seed_member(
+        id: u64,
+        state: BoardState,
+        iteration: Option<(&str, u32)>,
+    ) -> (Story, Vec<String>) {
+        let s = Story::new_minimal(
             StoryId::new(id),
             format!("[Feature] member-{id}"),
             state,
@@ -44,61 +48,61 @@ mod canonical_via_gh_1300 {
             "pm".to_string(),
         );
         let state_label = format!("{state:?}").to_lowercase();
-        s.raw_labels = match iteration {
+        let labels = match iteration {
             Some((name, position)) => {
                 vec![state_label, format!("iteration-{name}.{position}")]
             }
             None => vec![state_label],
         };
-        s
+        (s, labels)
     }
 
-    fn seed_iteration_issue(id: u64, name: &str) -> Story {
-        let mut s = Story::new_minimal(
+    fn seed_iteration_issue(id: u64, name: &str) -> (Story, Vec<String>) {
+        let s = Story::new_minimal(
             StoryId::new(id),
             format!("Iteration {name}"),
             BoardState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
-        s.raw_labels = vec!["iteration".to_string()];
-        s
+        (s, vec!["iteration".to_string()])
     }
 
-    async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+    async fn build_refresh(
+        seeds: Vec<(Story, Vec<String>)>,
+    ) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(stories.clone());
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-        let iterations: Vec<Iteration> = stories
+        for (story, labels) in &seeds {
+            adapter.seed_labels(story.id.value(), labels.clone());
+        }
+        adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let iterations: Vec<Iteration> = seeds
             .iter()
-            .filter(|s| {
-                s.raw_labels
-                    .iter()
-                    .any(|l| l.eq_ignore_ascii_case("iteration"))
-            })
-            .map(decode_iteration_from_story)
+            .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+            .map(|(story, labels)| decode_iteration_from_story(story, labels))
             .collect();
         crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
         orch.refresh_all().await.unwrap();
-        orch
+        (orch, adapter)
     }
 
     #[tokio::test]
     async fn close_promotes_nothing_and_does_not_error_on_canonical_member_1556() {
-        let mut canonical_member = Story::new_minimal(
+        let canonical_member = Story::new_minimal(
             StoryId::new(200),
             "[Feature] canonical-member".to_string(),
             BoardState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
-        canonical_member.raw_labels = vec![
+        let canonical_labels = vec![
             "icebox".to_string(),
             "parent-iteration-#1400.100".to_string(),
         ];
-        let refresh = build_refresh(vec![
+        let (refresh, _adapter) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            canonical_member,
+            (canonical_member, canonical_labels),
         ])
         .await;
         let (dispatch, mut rx) = dispatch_channel();
@@ -121,9 +125,9 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn closing_the_current_iteration_clears_its_designation_1540() {
-        let mut current = seed_iteration_issue(1400, "Pegasus");
-        current.raw_labels.push("current-iteration".to_string());
-        let refresh = build_refresh(vec![current]).await;
+        let (current, mut current_labels) = seed_iteration_issue(1400, "Pegasus");
+        current_labels.push("current-iteration".to_string());
+        let (refresh, _adapter) = build_refresh(vec![(current, current_labels)]).await;
         assert!(
             refresh
                 .iteration(IterationId::new(1400))
@@ -147,7 +151,7 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn ready_queue_empty_guard_blocks_close_when_stories_in_ready() {
-        let refresh = build_refresh(vec![
+        let (refresh, _adapter) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(900, BoardState::Ready, None),
             seed_member(200, BoardState::Icebox, Some(("Pegasus", 100))),
@@ -161,7 +165,7 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn ready_queue_empty_guard_passes_when_no_ready_stories() {
-        let refresh = build_refresh(vec![
+        let (refresh, _adapter) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(200, BoardState::Icebox, Some(("Pegasus", 100))),
         ])
@@ -175,7 +179,7 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn closed_iteration_issue_remains_queryable_for_history_preservation() {
-        let refresh = build_refresh(vec![
+        let (refresh, _adapter) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(200, BoardState::Icebox, Some(("Pegasus", 100))),
         ])
@@ -197,7 +201,7 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn empty_member_list_closes_iteration_issue_gracefully() {
-        let refresh = build_refresh(vec![seed_iteration_issue(1400, "Pegasus")]).await;
+        let (refresh, _adapter) = build_refresh(vec![seed_iteration_issue(1400, "Pegasus")]).await;
         let (dispatch, mut rx) = dispatch_channel();
         close_iteration_canonical(&refresh, &dispatch, 1400)
             .await
@@ -207,13 +211,14 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn close_fires_storyclosed_without_member_promotion_mutations_1556() {
-        let refresh = build_refresh(vec![
+        let (refresh, adapter) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(200, BoardState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
         let (dispatch, mut rx) = dispatch_channel();
         let before = refresh.story(200).expect("member 200 seeded");
+        let labels_before = adapter.labels_for(200);
         close_iteration_canonical(&refresh, &dispatch, 1400)
             .await
             .unwrap();
@@ -223,7 +228,8 @@ mod canonical_via_gh_1300 {
             "#1556: close promotes nothing — no member StateTransitioned"
         );
         assert_eq!(
-            after.raw_labels, before.raw_labels,
+            adapter.labels_for(200),
+            labels_before,
             "#1556: close promotes nothing — no member TagAdded/TagRemoved"
         );
         assert!(

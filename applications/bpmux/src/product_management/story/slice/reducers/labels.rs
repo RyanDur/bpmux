@@ -13,6 +13,5 @@ pub(super) fn apply_labels_refreshed(w: &mut Stories, id: StoryId, fields: &Labe
         existing.blocked_by = fields.blocked_by;
         existing.ready_order = fields.ready_order;
         existing.iteration_slot = fields.iteration_slot.clone();
-        existing.raw_labels = fields.raw_labels.clone();
     }
 }

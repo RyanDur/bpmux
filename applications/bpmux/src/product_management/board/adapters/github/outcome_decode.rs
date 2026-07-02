@@ -49,7 +49,7 @@ pub fn decode_outcome(v: &serde_json::Value) -> Option<Outcome> {
     ))
 }
 
-pub fn decode_outcome_from_story(story: &Story) -> Outcome {
+pub fn decode_outcome_from_story(story: &Story, labels: &[String]) -> Outcome {
     let retired = story.state() == BoardState::Retired;
     assemble_outcome(
         OutcomeId::new(story.id.value()),
@@ -57,7 +57,7 @@ pub fn decode_outcome_from_story(story: &Story) -> Outcome {
         story.body().map(str::to_string),
         story.filed_at(),
         story.filed_by().to_string(),
-        story.raw_labels(),
+        labels,
         retired,
     )
 }

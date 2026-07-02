@@ -32,16 +32,15 @@ fn upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Outcome> {
     found
 }
 
-fn seed_iteration(id: u64) -> Story {
-    let mut s = Story::new_minimal(
+fn seed_iteration(id: u64) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["iteration".to_string()];
-    s
+    (s, vec!["iteration".to_string()])
 }
 
 async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
@@ -52,56 +51,50 @@ async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
     orch
 }
 
-fn typed_seed(id: u64, story_type: StoryKind, label: &str) -> Story {
+fn typed_seed(id: u64, story_type: StoryKind, label: &str) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("#{id}"),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
-    );
-    s.raw_labels = vec![label.to_string()];
-    s.raw_labels.push(
-        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .encode_story_type(story_type),
     );
     s.story_type = story_type;
-    s
+    let labels = vec![
+        label.to_string(),
+        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            .encode_story_type(story_type),
+    ];
+    (s, labels)
 }
 
-fn seed_outcome(id: u64) -> Story {
-    let mut s = Story::new_minimal(
+fn seed_outcome(id: u64) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("#{id}"),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["outcome".to_string()];
-    s
+    (s, vec!["outcome".to_string()])
 }
 
-async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let seeded: Vec<Outcome> = stories
+    let seeded: Vec<Outcome> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("outcome"))
-        })
-        .map(decode_outcome_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
+        .map(|(story, labels)| decode_outcome_from_story(story, labels))
         .collect();
-    let iterations: Vec<Iteration> = stories
+    let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect();
     crate::store::bind_seeded_refresh(&orch, seeded, iterations, vec![]);
     orch.refresh_all().await.unwrap();

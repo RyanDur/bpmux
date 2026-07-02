@@ -28,44 +28,43 @@ fn iteration_upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Iteration> {
     found
 }
 
-async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let iterations: Vec<Iteration> = stories
+    let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect();
     crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
     orch.refresh_all().await.unwrap();
     orch
 }
 
-fn iteration_seed(id: u64, name: &str) -> Story {
-    let mut s = Story::new_minimal(
+fn iteration_seed(id: u64, name: &str) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["iteration".into(), "ready".into()];
-    s
+    (s, vec!["iteration".into(), "ready".into()])
 }
 
-fn feature_seed(id: u64) -> Story {
-    Story::new_minimal(
+fn feature_seed(id: u64) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         "a feature".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
-    )
+    );
+    (s, Vec::new())
 }
 
 fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {

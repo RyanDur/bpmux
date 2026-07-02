@@ -15,15 +15,15 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(882),
         "[Feature] missing-test-file".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.raw_labels.push("feature".to_string());
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(882, vec!["feature".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -51,15 +51,15 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(883),
         "[Chore] no test required".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(883, vec!["chore".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -90,9 +90,9 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.raw_labels.push("bug".to_string());
     seeded.is_closed = true;
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(4690, vec!["bug".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -133,15 +133,15 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(4691),
         "[Bug] cascade-drain-on-fail-desk-check".into(),
         BoardState::InProgress(Stage::DeskCheck),
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.raw_labels.push("bug".to_string());
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(4691, vec!["bug".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -181,9 +181,9 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.raw_labels.push("bug".to_string());
     seeded.is_closed = true;
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(469, vec!["bug".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -230,15 +230,15 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(470),
         "[Bug] reject-from-delivered".into(),
         BoardState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.raw_labels.push("bug".to_string());
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(470, vec!["bug".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -271,15 +271,15 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(450),
         "[Chore] label-leak repro".into(),
         BoardState::InProgress(Stage::Dev),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(450, vec!["chore".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();

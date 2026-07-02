@@ -9,7 +9,7 @@ use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};
 
-fn iteration_story(labels: Vec<String>, body: Option<String>, closed: bool) -> Story {
+fn iteration_story(body: Option<String>, closed: bool) -> Story {
     let mut story = Story::new_minimal(
         StoryId::new(710),
         "Iteration Crux".to_string(),
@@ -17,7 +17,6 @@ fn iteration_story(labels: Vec<String>, body: Option<String>, closed: bool) -> S
         chrono::Utc::now(),
         "pm".to_string(),
     );
-    story.raw_labels = labels;
     story.body = body;
     story.is_closed = closed;
     story
@@ -31,15 +30,12 @@ fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
         stories: vec![StoryId::new(101), StoryId::new(102)],
     }
     .write_into_body("## Iteration Crux\n");
-    let iteration = decode_iteration_from_story(&iteration_story(
-        vec![
-            codec.encode_iteration_review_closed("designer"),
-            codec.encode_iteration_dev_ok("dev"),
-            codec.encode_current_iteration(),
-        ],
-        Some(body),
-        false,
-    ));
+    let labels = vec![
+        codec.encode_iteration_review_closed("designer"),
+        codec.encode_iteration_dev_ok("dev"),
+        codec.encode_current_iteration(),
+    ];
+    let iteration = decode_iteration_from_story(&iteration_story(Some(body), false), &labels);
     assert_eq!(iteration.id, IterationId::new(710));
     assert_eq!(iteration.title, "Iteration Crux");
     assert_eq!(iteration.outcome, Some(OutcomeId::new(900)));
@@ -56,7 +52,7 @@ fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
 
 #[test]
 fn decode_leaves_an_unannotated_iteration_empty_and_reads_closed_as_complete() {
-    let iteration = decode_iteration_from_story(&iteration_story(vec![], None, true));
+    let iteration = decode_iteration_from_story(&iteration_story(None, true), &[]);
     assert_eq!(iteration.outcome, None);
     assert_eq!(iteration.builds_outcome(), None);
     assert!(iteration.stories.is_empty());

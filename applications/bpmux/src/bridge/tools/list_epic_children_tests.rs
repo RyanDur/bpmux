@@ -12,9 +12,9 @@ use crate::product_management::story::{BoardState, Story, StoryKind};
 use serde_json::json;
 use std::sync::Arc;
 
-fn decoded(number: u64, title: &str, labels: &[&str]) -> Story {
+fn decoded(number: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
     let label_json: Vec<serde_json::Value> = labels.iter().map(|n| json!({ "name": n })).collect();
-    decode_story_metadata(&json!({
+    let story = decode_story_metadata(&json!({
         "number": number,
         "title": title,
         "gh_state": "open",
@@ -22,14 +22,20 @@ fn decoded(number: u64, title: &str, labels: &[&str]) -> Story {
         "created_at": "2026-05-15T01:00:00+00:00",
         "user": { "login": "pm" },
     }))
-    .expect("issue JSON must decode")
+    .expect("issue JSON must decode");
+    (story, labels.iter().map(ToString::to_string).collect())
 }
 
-fn epic(number: u64) -> Story {
+fn epic(number: u64) -> (Story, Vec<String>) {
     decoded(number, &format!("Epic #{number}"), &["epic", "icebox"])
 }
 
-fn child(number: u64, parent: u64, story_type: StoryKind, state: BoardState) -> Story {
+fn child(
+    number: u64,
+    parent: u64,
+    story_type: StoryKind,
+    state: BoardState,
+) -> (Story, Vec<String>) {
     let parent_label = format!("parent-epic-#{parent}");
     let type_label = GhLabelCodec.encode_story_type(story_type);
     let mut labels = vec![parent_label.as_str(), type_label.as_str()];
@@ -39,18 +45,21 @@ fn child(number: u64, parent: u64, story_type: StoryKind, state: BoardState) -> 
     decoded(number, &format!("child #{number}"), &labels)
 }
 
-fn child_without_parent(number: u64) -> Story {
+fn child_without_parent(number: u64) -> (Story, Vec<String>) {
     decoded(number, &format!("orphan #{number}"), &["feature"])
 }
 
-async fn store_with(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn store_with(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let epics: Vec<Epic> = stories
+    let epics: Vec<Epic> = seeds
         .iter()
-        .filter(|s| is_epic_story(s))
-        .map(decode_epic_from_story)
+        .filter(|(story, labels)| is_epic_story(story, labels))
+        .map(|(story, _)| decode_epic_from_story(story))
         .collect();
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], epics);
     orch.refresh_all().await.unwrap();
@@ -177,9 +186,9 @@ async fn handles_large_epic_with_ten_children() {
 
 #[tokio::test]
 async fn surfaces_is_closed_state() {
-    let mut accepted = child(101, 100, StoryKind::Feature, BoardState::Accepted);
+    let (mut accepted, accepted_labels) = child(101, 100, StoryKind::Feature, BoardState::Accepted);
     accepted.is_closed = true;
-    let store = store_with(vec![epic(100), accepted]).await;
+    let store = store_with(vec![epic(100), (accepted, accepted_labels)]).await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(parsed["children"][0]["is_closed"], true);

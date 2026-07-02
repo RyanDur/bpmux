@@ -14,21 +14,23 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seed_story(id: u64, labels: Vec<String>) -> Story {
-        let mut s = Story::new_minimal(
+    fn seed_story(id: u64, labels: Vec<String>) -> (Story, Vec<String>) {
+        let s = Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
             BoardState::Icebox,
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
-        s.raw_labels = labels;
-        s
+        (s, labels)
     }
 
-    async fn build_orchestrator(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+    async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(stories);
+        for (story, labels) in &seeds {
+            adapter.seed_labels(story.id.value(), labels.clone());
+        }
+        adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
         crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
         orch.refresh_all().await.unwrap();

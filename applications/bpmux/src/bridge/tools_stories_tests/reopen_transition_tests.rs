@@ -16,7 +16,7 @@ mod reopen_on_state_transition_tests {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seeded_closed_chore(id: u64, state: BoardState) -> Story {
+    fn seeded_closed_chore(id: u64, state: BoardState) -> (Story, Vec<String>) {
         let mut s = Story::new_minimal(
             StoryId::new(id),
             "t".into(),
@@ -24,16 +24,17 @@ mod reopen_on_state_transition_tests {
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );
-        s.raw_labels.push("chore".to_string());
         s.is_closed = true;
-        s
+        (s, vec!["chore".to_string()])
     }
 
     async fn build_orchestrator(
-        seeded: Story,
+        seeded: (Story, Vec<String>),
     ) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seeded]);
+        let (story, labels) = seeded;
+        adapter.seed_labels(story.id.value(), labels);
+        adapter.seed_stories(vec![story]);
         let orch_concrete = SyncOrchestrator::new(Arc::clone(&adapter))
             .with_ci_state_store(super::test_ci_state_store_green());
         let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
@@ -64,9 +65,9 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn start_story_does_not_reopen_when_prior_is_closed_false() {
-        let mut seeded = seeded_closed_chore(7111, BoardState::Ready);
-        seeded.is_closed = false;
-        let (orch, adapter) = build_orchestrator(seeded).await;
+        let (mut story, labels) = seeded_closed_chore(7111, BoardState::Ready);
+        story.is_closed = false;
+        let (orch, adapter) = build_orchestrator((story, labels)).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7111));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));

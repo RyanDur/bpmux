@@ -3,6 +3,7 @@
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
 use crate::product_management::board::adapters::github::{decode_epic_from_story, is_epic_story};
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::story::{Story, StoryId};
 use crate::transport::protocol::ClientMessage;
@@ -11,14 +12,21 @@ fn td() -> crate::store::Dispatch {
     crate::store::Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
 }
 
+fn seed_adapter(adapter: &InMemorySourceAdapter, seeded: &[(Story, Vec<String>)]) {
+    for (story, labels) in seeded {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeded.iter().map(|(s, _)| s.clone()).collect());
+}
+
 fn bind_epics(
     orch: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
-    seeded: &[Story],
+    seeded: &[(Story, Vec<String>)],
 ) {
     let epics: Vec<Epic> = seeded
         .iter()
-        .filter(|s| is_epic_story(s))
-        .map(decode_epic_from_story)
+        .filter(|(story, labels)| is_epic_story(story, labels))
+        .map(|(story, _)| decode_epic_from_story(story))
         .collect();
     crate::store::bind_seeded_refresh(orch, vec![], vec![], epics);
 }
@@ -41,16 +49,15 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    let mut epic = Story::new_minimal(
+    let epic = Story::new_minimal(
         StoryId::new(457),
         "epic story".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    epic.raw_labels.push("epic".to_string());
-    let seeded = vec![child, epic];
-    adapter.seed_stories(seeded.clone());
+    let seeded = vec![(child, Vec::new()), (epic, vec!["epic".to_string()])];
+    seed_adapter(&adapter, &seeded);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orchestrator, &seeded);
@@ -129,15 +136,15 @@ async fn set_parent_epic_rejects_non_epic_parent() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    let mut not_epic = Story::new_minimal(
+    let not_epic = Story::new_minimal(
         StoryId::new(458),
         "ordinary feature".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    not_epic.raw_labels.push("feature".to_string());
     adapter.seed_stories(vec![child, not_epic]);
+    adapter.seed_labels(458, vec!["feature".to_string()]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -163,16 +170,15 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(301),
         "child".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    seeded.raw_labels.push("parent-epic-#457".to_string());
-    seeded.parent_epic = Some(EpicId::new(457));
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(301, vec!["parent-epic-#457".to_string()]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -235,16 +241,15 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut epic = Story::new_minimal(
+    let epic = Story::new_minimal(
         StoryId::new(500),
         "epic story".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    epic.raw_labels.push("epic".to_string());
-    let seeded = vec![epic];
-    adapter.seed_stories(seeded.clone());
+    let seeded = vec![(epic, vec!["epic".to_string()])];
+    seed_adapter(&adapter, &seeded);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orchestrator, &seeded);
@@ -288,15 +293,15 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut not_epic = Story::new_minimal(
+    let not_epic = Story::new_minimal(
         StoryId::new(501),
         "not epic".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    not_epic.raw_labels.push("feature".to_string());
     adapter.seed_stories(vec![not_epic]);
+    adapter.seed_labels(501, vec!["feature".to_string()]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -328,14 +333,13 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
-    let mut epic = Story::new_minimal(
+    let epic = Story::new_minimal(
         StoryId::new(700),
         "umbrella story".into(),
         BoardState::Ready,
         ts,
         "pm".into(),
     );
-    epic.raw_labels.push("epic".to_string());
     let mut child_a = Story::new_minimal(
         StoryId::new(701),
         "child a".into(),
@@ -343,7 +347,6 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         ts,
         "pm".into(),
     );
-    child_a.raw_labels.push("parent-epic-#700".to_string());
     child_a.parent_epic = Some(EpicId::new(700));
     child_a.is_closed = true;
     let mut child_b = Story::new_minimal(
@@ -353,7 +356,6 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         ts,
         "pm".into(),
     );
-    child_b.raw_labels.push("parent-epic-#700".to_string());
     child_b.parent_epic = Some(EpicId::new(700));
     let mut child_c = Story::new_minimal(
         StoryId::new(703),
@@ -362,10 +364,15 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         ts,
         "pm".into(),
     );
-    child_c.raw_labels.push("parent-epic-#700".to_string());
     child_c.parent_epic = Some(EpicId::new(700));
-    let seeded = vec![epic, child_a, child_b, child_c];
-    adapter.seed_stories(seeded.clone());
+    let member_labels = vec!["parent-epic-#700".to_string()];
+    let seeded = vec![
+        (epic, vec!["epic".to_string()]),
+        (child_a, member_labels.clone()),
+        (child_b, member_labels.clone()),
+        (child_c, member_labels),
+    ];
+    seed_adapter(&adapter, &seeded);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orch, &seeded);
     orch.refresh_all().await.unwrap();
@@ -433,16 +440,15 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
-    let mut epic = Story::new_minimal(
+    let epic = Story::new_minimal(
         StoryId::new(710),
         "another umbrella".into(),
         BoardState::Ready,
         ts,
         "pm".into(),
     );
-    epic.raw_labels.push("epic".to_string());
-    let seeded = vec![epic];
-    adapter.seed_stories(seeded.clone());
+    let seeded = vec![(epic, vec!["epic".to_string()])];
+    seed_adapter(&adapter, &seeded);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orch, &seeded);
     orch.refresh_all().await.unwrap();
@@ -486,14 +492,13 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
-    let mut epic = Story::new_minimal(
+    let epic = Story::new_minimal(
         StoryId::new(720),
         "delivered umbrella".into(),
         BoardState::Ready,
         ts,
         "pm".into(),
     );
-    epic.raw_labels.push("epic".to_string());
     let mut a = Story::new_minimal(
         StoryId::new(721),
         "a".into(),
@@ -501,7 +506,6 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
         ts,
         "pm".into(),
     );
-    a.raw_labels.push("parent-epic-#720".to_string());
     a.parent_epic = Some(EpicId::new(720));
     let mut b = Story::new_minimal(
         StoryId::new(722),
@@ -510,10 +514,14 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
         ts,
         "pm".into(),
     );
-    b.raw_labels.push("parent-epic-#720".to_string());
     b.parent_epic = Some(EpicId::new(720));
-    let seeded = vec![epic, a, b];
-    adapter.seed_stories(seeded.clone());
+    let member_labels = vec!["parent-epic-#720".to_string()];
+    let seeded = vec![
+        (epic, vec!["epic".to_string()]),
+        (a, member_labels.clone()),
+        (b, member_labels),
+    ];
+    seed_adapter(&adapter, &seeded);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orch, &seeded);
     orch.refresh_all().await.unwrap();
@@ -537,14 +545,13 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
-    let mut epic = Story::new_minimal(
+    let epic = Story::new_minimal(
         StoryId::new(730),
         "owner-accepted umbrella".into(),
         BoardState::Accepted,
         ts,
         "pm".into(),
     );
-    epic.raw_labels.push("epic".to_string());
     let mut a = Story::new_minimal(
         StoryId::new(731),
         "a".into(),
@@ -552,10 +559,12 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
         ts,
         "pm".into(),
     );
-    a.raw_labels.push("parent-epic-#730".to_string());
     a.parent_epic = Some(EpicId::new(730));
-    let seeded = vec![epic, a];
-    adapter.seed_stories(seeded.clone());
+    let seeded = vec![
+        (epic, vec!["epic".to_string()]),
+        (a, vec!["parent-epic-#730".to_string()]),
+    ];
+    seed_adapter(&adapter, &seeded);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_epics(&orch, &seeded);
     orch.refresh_all().await.unwrap();

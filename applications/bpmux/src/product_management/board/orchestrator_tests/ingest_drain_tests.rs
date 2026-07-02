@@ -167,8 +167,7 @@ async fn drain_once_handles_multiple_events_in_order() {
 #[tokio::test]
 async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = seed_story(1687, BoardState::Ready);
-    seeded.raw_labels = vec!["iteration-Pegasus.125".to_string()];
+    let seeded = seed_story(1687, BoardState::Ready);
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(1687, vec!["iteration-Pegasus.125".to_string()]);
     let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));

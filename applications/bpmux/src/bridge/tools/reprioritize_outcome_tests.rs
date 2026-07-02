@@ -29,7 +29,7 @@ fn upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Outcome> {
     found
 }
 
-fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> Story {
+fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
@@ -37,36 +37,31 @@ fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = labels.iter().map(ToString::to_string).collect();
-    s.raw_labels.push(
+    s.story_type = story_type;
+    let mut seed_labels: Vec<String> = labels.iter().map(ToString::to_string).collect();
+    seed_labels.push(
         crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
             .encode_story_type(story_type),
     );
-    s.story_type = story_type;
-    s
+    (s, seed_labels)
 }
 
-fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> Story {
-    let mut s = Story::new_minimal(
+fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = labels.iter().map(ToString::to_string).collect();
-    s
+    (s, labels.iter().map(ToString::to_string).collect())
 }
 
-fn outcomes_from(stories: &[Story]) -> Vec<Outcome> {
-    stories
+fn outcomes_from(seeds: &[(Story, Vec<String>)]) -> Vec<Outcome> {
+    seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("outcome"))
-        })
-        .map(decode_outcome_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
+        .map(|(story, labels)| decode_outcome_from_story(story, labels))
         .collect()
 }
 
@@ -101,11 +96,14 @@ fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
         .collect()
 }
 
-async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    crate::store::bind_seeded_refresh(&orch, outcomes_from(&stories), vec![], vec![]);
+    crate::store::bind_seeded_refresh(&orch, outcomes_from(&seeds), vec![], vec![]);
     orch.refresh_all().await.unwrap();
     orch
 }

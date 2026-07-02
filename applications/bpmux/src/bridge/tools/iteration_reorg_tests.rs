@@ -45,33 +45,31 @@ fn find_iteration(iterations: &[Iteration], id: u64) -> &Iteration {
         .unwrap_or_else(|| panic!("iteration #{id} present in the optimistic dispatch"))
 }
 
-fn iteration(id: u64, name: &str) -> Story {
-    let mut s = Story::new_minimal(
+fn iteration(id: u64, name: &str) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels.push("iteration".to_string());
-    s
+    (s, vec!["iteration".to_string()])
 }
 
-fn current_iteration(id: u64, name: &str) -> Story {
-    let mut s = iteration(id, name);
-    s.raw_labels.push(GhLabelCodec.encode_current_iteration());
-    s
+fn current_iteration(id: u64, name: &str) -> (Story, Vec<String>) {
+    let (s, mut labels) = iteration(id, name);
+    labels.push(GhLabelCodec.encode_current_iteration());
+    (s, labels)
 }
 
-fn iteration_at(id: u64, name: &str, order: u32) -> Story {
-    let mut s = iteration(id, name);
-    s.raw_labels
-        .push(GhLabelCodec.encode_iteration_order(order));
-    s
+fn iteration_at(id: u64, name: &str, order: u32) -> (Story, Vec<String>) {
+    let (s, mut labels) = iteration(id, name);
+    labels.push(GhLabelCodec.encode_iteration_order(order));
+    (s, labels)
 }
 
-fn iteration_with_members(id: u64, name: &str, members: Vec<u64>) -> Story {
-    let mut s = iteration(id, name);
+fn iteration_with_members(id: u64, name: &str, members: Vec<u64>) -> (Story, Vec<String>) {
+    let (mut s, labels) = iteration(id, name);
     s.body = Some(
         IterationRelationships {
             outcome: None,
@@ -79,33 +77,31 @@ fn iteration_with_members(id: u64, name: &str, members: Vec<u64>) -> Story {
         }
         .write_into_body("## composed"),
     );
-    s
+    (s, labels)
 }
 
-fn member_story(id: u64, state: BoardState) -> Story {
-    let mut s = Story::new_minimal(
+fn member_story(id: u64, state: BoardState) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("[Feature] member-{id}"),
         state,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels.push("feature".to_string());
-    s
+    (s, vec!["feature".to_string()])
 }
 
-async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories.clone());
+    for (story, labels) in &seeds {
+        adapter.seed_labels(story.id.value(), labels.clone());
+    }
+    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let iterations: Vec<Iteration> = stories
+    let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
-        })
-        .map(decode_iteration_from_story)
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels))
         .collect();
     crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
     orch.refresh_all().await.unwrap();
@@ -363,15 +359,14 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
 
 #[tokio::test]
 async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
-    let mut feature = Story::new_minimal(
+    let feature = Story::new_minimal(
         StoryId::new(700),
         "[Feature] plain".into(),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    feature.raw_labels.push("feature".to_string());
-    let refresh = build_refresh(vec![feature]).await;
+    let refresh = build_refresh(vec![(feature, vec!["feature".to_string()])]).await;
     let (dispatch, _rx) = dispatch_channel();
     let args = json!({ "iteration_id": 700, "name": "X" })
         .as_object()

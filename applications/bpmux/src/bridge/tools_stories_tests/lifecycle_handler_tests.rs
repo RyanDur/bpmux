@@ -20,15 +20,15 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(203),
         "t".into(),
         BoardState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(203, vec!["chore".to_string()]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -104,15 +104,15 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(204),
         "t".into(),
         BoardState::InProgress(Stage::Dev),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(204, vec!["chore".to_string()]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -438,10 +438,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     assert_eq!(story.title, "[Bug] live-verify failure");
     assert_eq!(story.state, BoardState::Icebox);
     assert_eq!(
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            &story.raw_labels,
-            &story.title
-        ),
+        story.story_type,
         StoryKind::Bug,
         "story_type derived from title prefix [Bug]"
     );
@@ -482,15 +479,15 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(207),
         "store-titled-207".into(),
         BoardState::InProgress(Stage::Dev),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
-    seeded.raw_labels.push("chore".to_string());
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(207, vec!["chore".to_string()]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -682,10 +679,6 @@ mod classify_for_pass_desk_check_tests {
             BoardState::Delivered,
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
-        );
-        s.raw_labels.push(
-            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-                .encode_story_type(story_type),
         );
         s.story_type = story_type;
         s

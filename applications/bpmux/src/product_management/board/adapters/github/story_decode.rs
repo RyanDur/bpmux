@@ -103,7 +103,6 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.blocked_by = super::label_fields::blocked_by_from_labels(&labels).map(StoryId::new);
     story.ready_order = super::label_fields::ready_order_from_labels(&labels);
     story.iteration_slot = iteration_slot_from_labels(&labels);
-    story.raw_labels = labels;
     if let Some(body) = v.get("body").and_then(|x| x.as_str()) {
         story.body = Some(body.to_string());
     }

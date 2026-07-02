@@ -12,7 +12,7 @@ use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
 
-fn iteration(id: u64, outcome_id: u64) -> Story {
+fn iteration(id: u64, outcome_id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Crux-{id}"),
@@ -20,7 +20,6 @@ fn iteration(id: u64, outcome_id: u64) -> Story {
         Utc::now(),
         "pm".to_string(),
     );
-    s.raw_labels.push("iteration".to_string());
     s.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(outcome_id)),
@@ -28,7 +27,7 @@ fn iteration(id: u64, outcome_id: u64) -> Story {
         }
         .write_into_body("## composed"),
     );
-    s
+    (s, vec!["iteration".to_string()])
 }
 
 fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
@@ -39,7 +38,6 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
         Utc::now(),
         "pm".to_string(),
     );
-    s.raw_labels = vec!["outcome".to_string()];
     s.body = Some(
         OutcomeRelationships {
             roadmap: None,
@@ -47,23 +45,25 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
         }
         .write_into_body("## Outcome\n"),
     );
-    decode_outcome_from_story(&s)
+    decode_outcome_from_story(&s, &["outcome".to_string()])
 }
 
-fn decode_iterations(stories: &[Story]) -> Vec<crate::product_management::iteration::Iteration> {
-    stories
+fn decode_iterations(
+    seeds: &[(Story, Vec<String>)],
+) -> Vec<crate::product_management::iteration::Iteration> {
+    seeds
         .iter()
-        .filter(|s| {
-            s.raw_labels()
-                .iter()
-                .any(|l| l.eq_ignore_ascii_case("iteration"))
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels)| {
+            crate::product_management::board::adapters::github::decode_iteration_from_story(
+                story, labels,
+            )
         })
-        .map(crate::product_management::board::adapters::github::decode_iteration_from_story)
         .collect()
 }
 
-fn fully_ready(id: u64, outcome_id: u64, member: u64) -> Story {
-    let mut it = iteration(id, outcome_id);
+fn fully_ready(id: u64, outcome_id: u64, member: u64) -> (Story, Vec<String>) {
+    let (mut it, mut labels) = iteration(id, outcome_id);
     it.body = Some(
         IterationRelationships {
             outcome: Some(OutcomeId::new(outcome_id)),
@@ -71,11 +71,9 @@ fn fully_ready(id: u64, outcome_id: u64, member: u64) -> Story {
         }
         .write_into_body("## composed"),
     );
-    it.raw_labels
-        .push(GhLabelCodec.encode_iteration_review_closed("designer"));
-    it.raw_labels
-        .push(GhLabelCodec.encode_iteration_dev_ok("dev"));
-    it
+    labels.push(GhLabelCodec.encode_iteration_review_closed("designer"));
+    labels.push(GhLabelCodec.encode_iteration_dev_ok("dev"));
+    (it, labels)
 }
 
 #[test]
@@ -95,10 +93,10 @@ fn iterations_render_in_the_outcomes_priority_order() {
 
 #[test]
 fn an_iteration_with_nothing_done_reads_not_started_with_no_checks_and_no_convene() {
-    let mut it = iteration(20, 11);
+    let (mut it, it_labels) = iteration(20, 11);
     it.body = None;
     let outcome = outcome_with(11, vec![20]);
-    let stories = vec![it];
+    let stories = vec![(it, it_labels)];
     let drill = derive_outcome_drill_in(&outcome, &decode_iterations(&stories), &bundled_default());
     assert_eq!(drill.iterations[0].state, DrillIterationState::NotStarted);
     assert!(drill.iterations[0].checks.is_empty());
@@ -145,10 +143,10 @@ fn the_first_partially_done_gap_holder_reads_next_and_others_read_gap() {
 
 #[test]
 fn a_closed_iteration_reads_done_excluded_from_convene_with_no_checks() {
-    let mut done = iteration(20, 11);
+    let (mut done, done_labels) = iteration(20, 11);
     done.is_closed = true;
     let outcome = outcome_with(11, vec![20, 21]);
-    let stories = vec![done, iteration(21, 11)];
+    let stories = vec![(done, done_labels), iteration(21, 11)];
     let drill = derive_outcome_drill_in(&outcome, &decode_iterations(&stories), &bundled_default());
     assert_eq!(drill.iterations[0].state, DrillIterationState::Done);
     assert!(drill.iterations[0].checks.is_empty());

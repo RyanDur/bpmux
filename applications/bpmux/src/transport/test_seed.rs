@@ -274,12 +274,12 @@ pub async fn post_seed_stories(
             );
             carrier.body = Some(s.body.clone());
             carrier.is_closed = s.is_closed;
-            carrier.raw_labels = s.labels.clone();
             if is_iteration_seed {
                 dispatcher.dispatch(crate::store::AppAction::Iteration(
                     crate::product_management::iteration::IterationAction::Upserted(vec![
                         crate::product_management::board::adapters::github::decode_iteration_from_story(
                             &carrier,
+                            &s.labels,
                         ),
                     ]),
                 ));

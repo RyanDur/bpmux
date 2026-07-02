@@ -33,10 +33,16 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
         "body": "## Acceptance test path\n\ntests/field_completeness_sentinel.rs\n",
     });
     let decoded = decode_story_metadata(&json).expect("sentinel JSON must decode");
-    assert_metadata_axis_complete(&decoded);
+    let labels: Vec<String> = json["labels"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["name"].as_str().unwrap().to_string())
+        .collect();
+    assert_metadata_axis_complete(&decoded, &labels);
 }
 
-fn assert_metadata_axis_complete(decoded: &Story) {
+fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
     let Story {
         id,
         title,
@@ -47,7 +53,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         free_comments,
         gate_comments,
         is_closed,
-        raw_labels,
         body_etag,
         story_type,
         acceptor,
@@ -120,10 +125,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         Some(EpicId::new(100)),
         "parent_epic must decode from the parent-epic label into the stored domain field at ingest"
     );
-    assert!(
-        !raw_labels.is_empty(),
-        "raw_labels must roundtrip from JSON labels"
-    );
     assert_eq!(
         *acceptor,
         Some(crate::product_management::story::Acceptor::Owner),
@@ -131,29 +132,25 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     );
     assert_eq!(
         crate::product_management::board::adapters::github::iteration_review_closers_from_labels(
-            raw_labels
+            labels
         )
         .as_slice(),
         ["designer".to_string()],
         "iteration_review_closed_by must decode the closer role from the review-close label"
     );
     assert_eq!(
-        crate::product_management::board::adapters::github::iteration_dev_ok_by_from_labels(
-            raw_labels
-        )
-        .as_slice(),
+        crate::product_management::board::adapters::github::iteration_dev_ok_by_from_labels(labels)
+            .as_slice(),
         ["dev".to_string()],
         "iteration_dev_ok_by must decode the approver role from the dev-ok label"
     );
     assert_eq!(
-        crate::product_management::board::adapters::github::horizon_from_labels(raw_labels),
+        crate::product_management::board::adapters::github::horizon_from_labels(labels),
         Some(crate::product_management::story::Horizon::Next),
         "horizon must decode from the horizon.next label"
     );
     assert_eq!(
-        crate::product_management::board::adapters::github::outcome_membership_from_labels(
-            raw_labels
-        ),
+        crate::product_management::board::adapters::github::outcome_membership_from_labels(labels),
         Some((700, 2)),
         "outcome_membership must decode (outcome_number, position) from the parent-outcome label"
     );
