@@ -3,9 +3,7 @@ use serde::Serialize;
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{
-    Story, most_recent_backward_transition, replay_transitions,
-};
+use crate::product_management::story::{Story, most_recent_needs_work};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StoryView {
@@ -67,8 +65,6 @@ pub(crate) fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String
 fn rework_comment(story: &Story) -> Option<String> {
     story
         .gate_comments()
-        .map(replay_transitions)
-        .as_deref()
-        .and_then(|ts| most_recent_backward_transition(ts).cloned())
-        .and_then(|t| t.comment)
+        .and_then(most_recent_needs_work)
+        .and_then(|g| g.payload.clone())
 }

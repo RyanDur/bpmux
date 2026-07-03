@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::story::{
-    BoardState, Gate, GateComment, Stage, most_recent_backward_transition, replay_transitions,
+    BoardState, Gate, GateComment, Stage, most_recent_needs_work,
 };
 
 use super::get_story_view::{
@@ -25,9 +25,7 @@ fn state_label(state: BoardState) -> &'static str {
 }
 
 fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
-    let transitions = replay_transitions(gates);
-    let backward = most_recent_backward_transition(&transitions)?;
-    let rejection = backward.comment.clone();
+    let rejection = most_recent_needs_work(gates)?.payload.clone();
     let prior_delivery = gates
         .iter()
         .rev()
@@ -114,9 +112,10 @@ pub(in crate::bridge) async fn handle_get_story(
     let workflow_state = story
         .gate_comments
         .as_deref()
-        .and_then(|gates| {
-            let transitions = replay_transitions(gates);
-            most_recent_backward_transition(&transitions).map(|t| state_label(t.to.clone()))
+        .and_then(most_recent_needs_work)
+        .map(|g| match g.gate {
+            Gate::FailDeskCheck => "in progress",
+            _ => "ready",
         })
         .unwrap_or_else(|| state_label(story.state.clone()));
     if needs_gates
