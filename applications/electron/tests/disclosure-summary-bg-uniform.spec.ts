@@ -111,11 +111,22 @@ test.describe('#1519 disclosure-summary background uniformity (dark theme)', () 
         await win.mouse.move(0, 0)
         return loc.evaluate((el) => getComputedStyle(el as Element).backgroundColor)
       }
-      const hoverRead = async (loc: LocLike): Promise<string> => {
+      const backgroundWhileHovering = async (loc: LocLike): Promise<string> => {
         await loc.hover()
-        const v = await loc.evaluate((el) => getComputedStyle(el as Element).backgroundColor)
+        return loc.evaluate((el) => getComputedStyle(el as Element).backgroundColor)
+      }
+      const hoverRead = async (loc: LocLike): Promise<string> => {
+        let settled = await backgroundWhileHovering(loc)
+        await expect
+          .poll(async () => {
+            const again = await backgroundWhileHovering(loc)
+            const isSettled = again === settled
+            settled = again
+            return isSettled
+          })
+          .toBe(true)
         await win.mouse.move(0, 0)
-        return v
+        return settled
       }
       const isOpen = (loc: LocLike): Promise<boolean> =>
         loc.evaluate((el) => (el as HTMLDetailsElement).open)
