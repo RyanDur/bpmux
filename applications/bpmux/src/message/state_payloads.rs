@@ -58,7 +58,7 @@ impl StateDeltaPayload {
                     "run_id": snapshot.run_id,
                     "head_sha": snapshot.head_sha,
                     "display_title": snapshot.display_title,
-                    "url": crate::ci::github_actions_url(),
+                    "url": crate::ci_link::github_actions_url(),
                 }),
             )),
             StateDeltaPayload::Sync { transition } => Some((

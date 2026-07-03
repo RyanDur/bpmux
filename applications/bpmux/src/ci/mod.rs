@@ -2,8 +2,8 @@ mod broadcast;
 mod classify;
 
 #[cfg(test)]
-pub(crate) use broadcast::resolve_ci_actions_url;
-pub use broadcast::{GITHUB_BASE_URL, github_actions_url};
+pub(crate) use crate::ci_link::resolve_ci_actions_url;
+pub use crate::ci_link::{GITHUB_BASE_URL, github_actions_url};
 pub(crate) use broadcast::{
     build_dev_ci_signal, build_multi_depth_for_transition, compute_broadcast_text,
 };
