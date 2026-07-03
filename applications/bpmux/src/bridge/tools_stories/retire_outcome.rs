@@ -26,7 +26,7 @@ pub(crate) async fn handle_retire_outcome(
     let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
 
     let meta = || EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
         peer_id: PeerId::local(),
     };

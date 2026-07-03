@@ -110,7 +110,7 @@ pub async fn post_message(
     }
     let explicit_privacy = payload.to.is_some();
     let sender_id = routing
-        .resolve(crate::transport::ws::short_name(&payload.from))
+        .resolve(crate::routing::short_name(&payload.from))
         .into_iter()
         .next();
     let msg = crate::message::Message {

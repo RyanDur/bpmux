@@ -1,11 +1,8 @@
 use super::role_from_short_name;
 use crate::message::MessageType;
+use crate::routing::short_name;
 
 pub(crate) const MAX_MESSAGE_SIZE: usize = 65536;
-
-pub(crate) fn short_name(identity: &str) -> &str {
-    identity.split(':').next().unwrap_or(identity)
-}
 
 pub(crate) fn should_deliver(msg: &crate::message::Message, peer_identity: &str) -> bool {
     if matches!(

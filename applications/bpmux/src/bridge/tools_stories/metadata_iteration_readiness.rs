@@ -23,7 +23,7 @@ pub(crate) async fn handle_designate_current_iteration(
         ));
     }
     let meta = || crate::product_management::board::events::EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
@@ -91,7 +91,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
     let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .encode_iteration_review_closed(&role);
     let meta = crate::product_management::board::events::EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
@@ -140,7 +140,7 @@ pub(crate) async fn handle_dev_ok_iteration(
     let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .encode_iteration_dev_ok(&role);
     let meta = crate::product_management::board::events::EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };

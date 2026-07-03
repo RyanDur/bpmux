@@ -81,7 +81,7 @@ pub(crate) async fn handle_pass_desk_check(
     };
     if let Some(r) = refresh {
         let meta = crate::product_management::board::events::EventMeta {
-            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::PeerId::local(),
         };

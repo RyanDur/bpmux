@@ -25,7 +25,7 @@ pub(crate) async fn handle_set_parent_epic(
     ensure_story_in_canonical_store(r, id).await?;
     ensure_epic_in_canonical_store(r, epic_id).await?;
     let meta = crate::product_management::board::events::EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };
@@ -53,7 +53,7 @@ pub(crate) async fn handle_unset_parent_epic(
     let r = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, id).await?;
     let meta = crate::product_management::board::events::EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };

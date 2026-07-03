@@ -57,7 +57,7 @@ pub(crate) async fn handle_reject_story(
                 transition.to
             )
         })?;
-    let actor = crate::transport::ws::short_name(agent_name).to_string();
+    let actor = crate::routing::short_name(agent_name).to_string();
     reject_via_canonical_store(r, id, actor, reason.clone(), target_state).await?;
     Ok(format!("#{id} rejected: {reason}"))
 }

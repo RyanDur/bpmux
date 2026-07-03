@@ -11,6 +11,13 @@ fn instant(rfc3339: &str) -> i64 {
 }
 
 #[test]
+fn short_name_strips_tool_suffix() {
+    assert_eq!(short_name("dev:claude-code"), "dev");
+    assert_eq!(short_name("owner:human"), "owner");
+    assert_eq!(short_name("bpmux"), "bpmux");
+}
+
+#[test]
 fn drain_floor_clamps_a_stale_client_cursor_forward_the_durable_cure_for_tmp_replay() {
     let dir = tempfile::TempDir::new().expect("dir");
     let storage = sqlite_test_storage(dir.path());

@@ -67,7 +67,7 @@ impl crate::store::kernel::Listener<crate::store::AppState, crate::store::AppAct
                     new_state: BoardState::Acceptance,
                     ..
                 },
-            ) => Some(crate::transport::ws::short_name(&meta.actor).to_string()),
+            ) => Some(crate::routing::short_name(&meta.actor).to_string()),
             _ => None,
         };
         let stories: Vec<Story> = reaction.current.stories.values().cloned().collect();

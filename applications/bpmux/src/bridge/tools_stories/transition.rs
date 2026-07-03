@@ -61,7 +61,7 @@ pub(crate) async fn handle_start_story(
         format!("{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}");
     if let Some(r) = refresh {
         let meta = EventMeta {
-            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
             peer_id: PeerId::local(),
         };
@@ -155,7 +155,7 @@ pub(crate) async fn handle_deliver_story(
             .map(|s| s.is_closed)
             .unwrap_or(false);
         let meta = EventMeta {
-            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
             peer_id: PeerId::local(),
         };

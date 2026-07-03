@@ -48,7 +48,7 @@ pub(crate) async fn handle_label_story(
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
         let meta = crate::product_management::board::events::EventMeta {
-            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::board::PeerId::local(),
         };
@@ -138,7 +138,7 @@ pub(crate) async fn handle_comment_on_story(
         ensure_story_in_canonical_store(r, id).await?;
         let event = crate::product_management::board::StoryEvent::FreeCommentAppended {
             meta: crate::product_management::board::events::EventMeta {
-                actor: crate::transport::ws::short_name(agent_name).to_string(),
+                actor: crate::routing::short_name(agent_name).to_string(),
                 ts: chrono::Utc::now(),
                 peer_id: crate::product_management::board::PeerId::local(),
             },

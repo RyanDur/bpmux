@@ -7,8 +7,8 @@ use crate::message::{BROADCAST_ALL, Message};
 use crate::room::CommitmentStore;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
+use crate::routing::short_name;
 use crate::session::Session;
-use crate::transport::ws::short_name;
 
 use super::terminal_inject::frame_team_message;
 

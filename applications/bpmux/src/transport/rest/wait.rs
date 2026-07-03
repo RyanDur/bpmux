@@ -7,7 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
 
-use crate::routing::RoutingStore;
+use crate::routing::{RoutingStore, short_name};
 use crate::session;
 use crate::transport::ws::should_deliver;
 
@@ -155,8 +155,4 @@ fn channel_label(to: &Option<Vec<String>>) -> String {
         }
         Some(recipients) => recipients.join(","),
     }
-}
-
-fn short_name(name: &str) -> &str {
-    name.split(':').next().unwrap_or(name)
 }

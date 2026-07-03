@@ -47,7 +47,7 @@ pub(crate) async fn handle_reprioritize_outcome(
 
     let codec = GhLabelCodec;
     let meta = || EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
         peer_id: PeerId::local(),
     };

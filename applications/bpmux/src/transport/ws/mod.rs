@@ -8,6 +8,7 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 
+use crate::routing::short_name;
 use crate::session;
 use crate::transport::protocol::ServerMessage;
 

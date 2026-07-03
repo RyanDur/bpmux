@@ -96,7 +96,7 @@ pub(crate) async fn handle_accept_story(
             .map_err(|e| e.as_json_string())?;
         }
     }
-    let actor = crate::transport::ws::short_name(agent_name).to_string();
+    let actor = crate::routing::short_name(agent_name).to_string();
     accept_via_canonical_store(r, id, actor, bypass).await?;
     r.test_race_window_complete();
     Ok(format!("#{id} accepted and closed"))

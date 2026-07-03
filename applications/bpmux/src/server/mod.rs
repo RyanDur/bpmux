@@ -10,7 +10,7 @@ pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
 
 fn startup_routing_id(routing: &crate::routing::RoutingStore, identity: &str) -> String {
     routing
-        .resolve(crate::transport::ws::short_name(identity))
+        .resolve(crate::routing::short_name(identity))
         .into_iter()
         .next()
         .unwrap_or_else(|| identity.to_string())

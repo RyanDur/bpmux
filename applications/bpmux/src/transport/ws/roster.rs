@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::short_name;
+use crate::routing::short_name;
 
 pub(crate) fn is_reserved_display(name: &str) -> bool {
     use crate::store::RosterRole;

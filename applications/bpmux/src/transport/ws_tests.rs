@@ -331,13 +331,6 @@ fn nudge_still_delivered_to_every_agent_role() {
 }
 
 #[test]
-fn short_name_strips_tool_suffix() {
-    assert_eq!(short_name("dev:claude-code"), "dev");
-    assert_eq!(short_name("owner:human"), "owner");
-    assert_eq!(short_name("bpmux"), "bpmux");
-}
-
-#[test]
 fn message_size_ok_returns_true_for_short_ping_sized_text() {
     let typical = "pm: 🖐 pm — distinct angle on the sequencing";
     assert!(message_size_ok(typical));

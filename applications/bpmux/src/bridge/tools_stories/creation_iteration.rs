@@ -53,7 +53,7 @@ pub(crate) async fn handle_create_iteration(
         .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
         .await
         .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
-    let filed_by = crate::transport::ws::short_name(agent_name).to_string();
+    let filed_by = crate::routing::short_name(agent_name).to_string();
     let filed_at = chrono::Utc::now();
     let meta = crate::product_management::board::events::EventMeta {
         actor: filed_by.clone(),

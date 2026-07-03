@@ -58,7 +58,7 @@ pub(in crate::bridge) async fn handle_move_story(
     let from_display = current_state_display(prior.as_ref()).to_string();
     let was_closed = prior.as_ref().map(|s| s.is_closed).unwrap_or(false);
 
-    let actor_short = crate::transport::ws::short_name(agent_name).to_string();
+    let actor_short = crate::routing::short_name(agent_name).to_string();
     let meta = EventMeta {
         actor: actor_short.clone(),
         ts: chrono::Utc::now(),

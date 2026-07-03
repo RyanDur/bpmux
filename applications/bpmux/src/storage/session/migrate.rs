@@ -5,7 +5,7 @@ use super::{FileStorage, SqliteStorage, Storage};
 use crate::log::LogError;
 use crate::message::{Message, StateDeltaPayload};
 use crate::product_management::board::PersistError;
-use crate::routing::short;
+use crate::routing::short_name;
 
 const MIGRATION_FLAG_KEY: &str = "migration:file_log_to_sqlite";
 const MIGRATION_DONE: &str = "done";
@@ -99,7 +99,7 @@ pub fn migrate_routing_identity_to_agents(
         .unwrap_or_default();
     let mut migrated = 0;
     for (id, display) in &legacy.display_by_id {
-        target.upsert_user(id, display, short(display))?;
+        target.upsert_user(id, display, short_name(display))?;
         if let Some(ms) = legacy
             .cursor_by_id
             .get(id)

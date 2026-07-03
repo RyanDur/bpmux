@@ -78,7 +78,7 @@ pub(crate) async fn handle_create_story(
                     title: title.to_string(),
                     body: Some(epic_body),
                     filed_at: chrono::Utc::now(),
-                    filed_by: crate::transport::ws::short_name(agent_name).to_string(),
+                    filed_by: crate::routing::short_name(agent_name).to_string(),
                     state: crate::product_management::story::BoardState::Icebox,
                     is_closed: false,
                 },
@@ -155,7 +155,7 @@ async fn create_and_broadcast_story_events(
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
     let meta = crate::product_management::board::events::EventMeta {
-        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::board::PeerId::local(),
     };

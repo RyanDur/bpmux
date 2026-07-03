@@ -5,7 +5,7 @@ use super::cursor_time::{cursor_after, from_millis, is_future, later_cursor, to_
 use super::identity::RoutingIdentity;
 use crate::storage::Storage;
 
-pub(crate) fn short(identity: &str) -> &str {
+pub(crate) fn short_name(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
@@ -41,7 +41,7 @@ impl RoutingStore {
         identity.register(session_id, display);
         let _ = self
             .storage
-            .upsert_user(session_id, display, short(display));
+            .upsert_user(session_id, display, short_name(display));
     }
 
     pub fn link_terminal(&self, session_id: &str, terminal_id: &str) {
@@ -93,7 +93,7 @@ impl RoutingStore {
         identity.rename(session_id, new_display);
         let _ = self
             .storage
-            .upsert_user(session_id, new_display, short(new_display));
+            .upsert_user(session_id, new_display, short_name(new_display));
     }
 
     pub fn drain_floor(&self, session_id: &str, client_ack: Option<&str>) -> Option<String> {
@@ -130,7 +130,7 @@ impl RoutingStore {
 
     pub fn delivery_targets(&self, to: Option<&[String]>, sender: &str) -> Vec<(String, String)> {
         let identity = self.identity.lock().unwrap_or_else(|e| e.into_inner());
-        let sender_ids = identity.resolve(short(sender));
+        let sender_ids = identity.resolve(short_name(sender));
         let recipient_ids: Vec<String> = match to {
             None => identity.all_ids(),
             Some(names) if names.iter().any(|n| n == crate::message::BROADCAST_ALL) => {
@@ -138,14 +138,14 @@ impl RoutingStore {
             }
             Some(names) => names
                 .iter()
-                .flat_map(|name| identity.resolve(short(name)))
+                .flat_map(|name| identity.resolve(short_name(name)))
                 .collect(),
         };
         recipient_ids
             .into_iter()
             .filter(|id| !sender_ids.contains(id))
             .filter_map(|id| identity.terminal_for(&id).map(|terminal| (id, terminal)))
-            .filter(|(_, terminal)| bridge_agent_name(terminal) != short(sender))
+            .filter(|(_, terminal)| bridge_agent_name(terminal) != short_name(sender))
             .collect()
     }
 
@@ -170,7 +170,7 @@ impl RoutingStore {
         if let Some(current) = identity.display_for(session_id) {
             let _ = self
                 .storage
-                .upsert_user(session_id, &current, short(&current));
+                .upsert_user(session_id, &current, short_name(&current));
         }
         if let Some(cursor) = identity.cursor(session_id)
             && let Some(ms) = to_millis(&cursor)
