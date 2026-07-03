@@ -512,13 +512,13 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
 
 #[test]
 fn blocked_roster_member_wire_serializes_blocked_presence() {
-    use crate::message::RosterMemberWire;
+    use crate::message::{PresenceWire, RosterMemberWire, RosterRoleWire};
     let wire = RosterMemberWire {
         routing_id: "sess-dev".to_string(),
         name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),
-        role: RosterRole::Dev,
-        presence: Presence::Blocked,
+        role: RosterRoleWire::Dev,
+        presence: PresenceWire::Blocked,
     };
     let json = serde_json::to_string(&wire).unwrap();
     assert!(

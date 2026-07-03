@@ -35,8 +35,8 @@ fn roster_to_wire(members: &[RosterMember]) -> Vec<RosterMemberWire> {
             routing_id: m.routing_id.clone(),
             name: m.name.clone(),
             identity: m.identity.clone(),
-            role: m.role,
-            presence: m.presence,
+            role: m.role.into(),
+            presence: m.presence.into(),
         })
         .collect()
 }

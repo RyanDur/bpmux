@@ -23,6 +23,33 @@ pub enum Presence {
     Help,
 }
 
+impl From<RosterRole> for crate::message::RosterRoleWire {
+    fn from(role: RosterRole) -> Self {
+        use crate::message::RosterRoleWire;
+        match role {
+            RosterRole::Designer => RosterRoleWire::Designer,
+            RosterRole::Dev => RosterRoleWire::Dev,
+            RosterRole::Pm => RosterRoleWire::Pm,
+            RosterRole::Owner => RosterRoleWire::Owner,
+            RosterRole::Other => RosterRoleWire::Other,
+        }
+    }
+}
+
+impl From<Presence> for crate::message::PresenceWire {
+    fn from(presence: Presence) -> Self {
+        use crate::message::PresenceWire;
+        match presence {
+            Presence::Online => PresenceWire::Online,
+            Presence::Busy => PresenceWire::Busy,
+            Presence::Idle => PresenceWire::Idle,
+            Presence::Offline => PresenceWire::Offline,
+            Presence::Blocked => PresenceWire::Blocked,
+            Presence::Help => PresenceWire::Help,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct RosterMember {
     pub routing_id: String,

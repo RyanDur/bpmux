@@ -167,13 +167,32 @@ pub struct CiSnapshotWire {
     pub url: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RosterRoleWire {
+    Designer,
+    Dev,
+    Pm,
+    Owner,
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PresenceWire {
+    Online,
+    Busy,
+    Idle,
+    Offline,
+    Blocked,
+    Help,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RosterMemberWire {
     pub routing_id: String,
     pub name: String,
     pub identity: String,
-    pub role: crate::store::RosterRole,
-    pub presence: crate::store::Presence,
+    pub role: RosterRoleWire,
+    pub presence: PresenceWire,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

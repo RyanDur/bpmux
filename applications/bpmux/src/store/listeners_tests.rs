@@ -179,7 +179,9 @@ fn state_transitioned(
     }
 }
 
-async fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<RosterMember> {
+async fn drain_roster_presence(
+    rx: &mut broadcast::Receiver<Message>,
+) -> Vec<crate::message::RosterMemberWire> {
     loop {
         let msg = rx
             .recv()
@@ -189,16 +191,7 @@ async fn drain_roster_presence(rx: &mut broadcast::Receiver<Message>) -> Vec<Ros
             continue;
         }
         if let Some(StateDeltaPayload::Roster { members }) = msg.state_delta {
-            return members
-                .into_iter()
-                .map(|m| RosterMember {
-                    routing_id: m.routing_id,
-                    name: m.name,
-                    identity: m.identity,
-                    role: m.role,
-                    presence: m.presence,
-                })
-                .collect();
+            return members;
         }
     }
 }
@@ -235,7 +228,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
         .expect("dev in roster");
     assert_eq!(
         dev.presence,
-        Presence::Blocked,
+        crate::message::PresenceWire::Blocked,
         "delivering role becomes Blocked when its story is owner-parked with empty ready queue"
     );
 }
@@ -277,7 +270,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
             .find(|m| m.name == "dev")
             .expect("dev")
             .presence,
-        Presence::Blocked
+        crate::message::PresenceWire::Blocked
     );
     while rx.try_recv().is_ok() {}
 
@@ -299,7 +292,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
         .presence;
     assert_eq!(
         dev_presence,
-        Presence::Online,
+        crate::message::PresenceWire::Online,
         "presence recomputes to Online from durable state: the delivered story STILL awaits owner-accept, but a ready story appeared so the agent can pull again — no longer parked, never decayed-stale"
     );
 }
@@ -321,8 +314,8 @@ async fn roster_listener_emits_typed_state_delta() {
         StateDeltaPayload::Roster { members } => {
             assert_eq!(members.len(), 1);
             assert_eq!(members[0].name, "owner");
-            assert_eq!(members[0].role, RosterRole::Owner);
-            assert_eq!(members[0].presence, Presence::Online);
+            assert_eq!(members[0].role, crate::message::RosterRoleWire::Owner);
+            assert_eq!(members[0].presence, crate::message::PresenceWire::Online);
         }
         _ => panic!("expected Roster variant"),
     }

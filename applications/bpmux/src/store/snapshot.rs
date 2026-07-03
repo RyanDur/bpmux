@@ -41,8 +41,8 @@ impl Store {
                 routing_id: m.routing_id,
                 name: m.name,
                 identity: m.identity,
-                role: m.role,
-                presence: m.presence,
+                role: m.role.into(),
+                presence: m.presence.into(),
             })
             .collect();
         StateSnapshotPayload {
