@@ -1,6 +1,7 @@
 pub mod conflict;
 pub mod enums;
 pub mod events;
+mod gate_class;
 pub mod key;
 pub mod rework;
 pub(crate) mod slice;
@@ -8,6 +9,7 @@ pub mod stage;
 pub mod story_type;
 
 pub use enums::{Acceptor, BoardState, Gate, Horizon, Tag};
+pub use gate_class::{gate_class_from_acceptor, gate_class_from_acceptor_and_story_type};
 pub use key::{StoryId, StoryKey};
 pub use rework::most_recent_needs_work;
 pub use stage::Stage;
@@ -17,6 +19,8 @@ pub use story_type::{StoryKind, story_type_from_title};
 mod enums_tests;
 #[cfg(test)]
 mod events_tests;
+#[cfg(test)]
+mod gate_class_tests;
 #[cfg(test)]
 mod key_tests;
 #[cfg(test)]

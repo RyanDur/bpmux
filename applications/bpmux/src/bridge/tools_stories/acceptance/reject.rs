@@ -35,7 +35,10 @@ pub(crate) async fn handle_reject_story(
     let class = story_opt
         .as_ref()
         .map(|s| {
-            crate::workflow::gate_class_from_acceptor_and_story_type(s.acceptor(), s.story_type())
+            crate::product_management::story::gate_class_from_acceptor_and_story_type(
+                s.acceptor(),
+                s.story_type(),
+            )
         })
         .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
     let transition = crate::workflow::resolve_transition(workflow, "reject", class)

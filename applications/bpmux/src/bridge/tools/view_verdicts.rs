@@ -21,7 +21,7 @@ fn resolve_accept_window_secs(
     story_id: StoryId,
 ) -> Option<u64> {
     let story = refresh?.story(story_id.value())?;
-    let class = crate::workflow::gate_class_from_acceptor_and_story_type(
+    let class = crate::product_management::story::gate_class_from_acceptor_and_story_type(
         story.acceptor(),
         story.story_type(),
     );

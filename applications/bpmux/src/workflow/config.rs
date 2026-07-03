@@ -101,34 +101,3 @@ impl WorkflowConfig {
         self.role_id_for_purpose("owner")
     }
 }
-
-fn gate_class_for_acceptor(acceptor: crate::product_management::story::Acceptor) -> GateClass {
-    use crate::product_management::story::Acceptor;
-    match acceptor {
-        Acceptor::Team => GateClass::TeamVerifiable,
-        Acceptor::Owner => GateClass::OwnerWalk,
-        Acceptor::Dev => GateClass::DevVerifiable,
-    }
-}
-
-pub fn gate_class_from_acceptor(
-    acceptor: Option<crate::product_management::story::Acceptor>,
-) -> GateClass {
-    acceptor
-        .map(gate_class_for_acceptor)
-        .unwrap_or(GateClass::TeamVerifiable)
-}
-
-pub fn gate_class_from_acceptor_and_story_type(
-    acceptor: Option<crate::product_management::story::Acceptor>,
-    story_type: crate::product_management::story::StoryKind,
-) -> GateClass {
-    use crate::product_management::story::StoryKind;
-    acceptor
-        .map(gate_class_for_acceptor)
-        .unwrap_or_else(|| match story_type {
-            StoryKind::Feature => GateClass::OwnerWalk,
-            StoryKind::Bug => GateClass::TeamVerifiable,
-            StoryKind::Chore => GateClass::DevVerifiable,
-        })
-}
