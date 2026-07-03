@@ -85,12 +85,46 @@ Three concepts, currently conflated into one enum:
    - **2d** — falsifier: reconfigure the `in-work` labels/order in a test; the board
      columns follow (proves it's config-driven, not still hardcoded).
    Generic-engine-in-app canon: the board engine is baked in, the working-style
-   config lives in the light layer (the TOML). DEFERRED to the deep remodel
-   (slice 3+): a genuinely OPEN middle (arbitrary N stages, add/remove) — that needs
-   `BoardState`/`Stage` reconceived (the enum is `Copy`; carrying an open config-id
-   breaks that), which folds into the board-as-projection reshape. Slice 2 makes the
-   middle's presence/labels/order config-driven; the two canonical stage slots stay
-   typed until the remodel opens them.
+   config lives in the light layer (the TOML). Ryan (2026-07-02) chose to FOLD this
+   into the genuinely-open middle — slices 2 and 3 are one arc.
+
+   ### Slice 2 arc — the open middle (audit-resolved plan)
+   Type: `BoardState::InProgress(StageId)` where `StageId(Arc<str>)`. The rails
+   (`Icebox|Ready|Acceptance|Accepted|Retired`) stay typed variants; only the middle
+   opens. Rejected `StageIndex(u16)` — persistence (JSON + SQLite outbox) and the
+   wire `StoryView.state` are ALREADY id-strings, so `StageId` is isomorphic to the
+   on-disk format → migration-free; an index breaks on config reorder. `Arc<str>`
+   keeps `.clone()` a pointer-bump; dropping `Copy` on `BoardState` is a small
+   ripple (~5 production sites: `TargetState` [drop Copy, `&self` methods],
+   `Story::state()`, a few double-use sites — all durable containers are already
+   `Clone`). Workflow gate needs ZERO change (already string-keyed vs `.as_str()`).
+   The 8 exhaustive `Stage::Dev|DeskCheck` destructures (`as_str`, `github_label`,
+   `parse`, `replay_transitions`, `state_ordinal`, `column_for`,
+   `current_state_display`, get_story state-label) centralize onto config lookups.
+   RISKIEST consumer: `state_from_labels` (github/story_decode.rs) — priority-ordered
+   decode with hardcoded alias labels ("needs fixes"→first-in-work, "rejected"→ready,
+   "ready for accept"→acceptance) that have no config home yet; needs a round-trip
+   property test over the config middle table.
+
+   Gated sub-slices:
+   - **S0** — seam: add `StageId(Arc<str>)` + a `Stage → StageId` bridge; a config
+     lookup returning today's two bundled middle stages. No public type change,
+     existing tests untouched.
+   - **S1** — flip `InProgress(Stage)` → `InProgress(StageId)`, drop `Copy`;
+     centralize the 8 destructures onto config lookups; fix `TargetState`,
+     `Story::state()`. Middle still populated by the two bundled stages →
+     behavior-identical; fixtures rewrite `Stage::Dev`→`stage_id("dev")`. Big diff,
+     no behavior change.
+   - **S2** — middle becomes config-defined (add/remove/rename actually work):
+     `workflow.toml [in-work]` ordered list feeds the middle table; `ColumnBucket`
+     middle → `Middle(StageId)`, de-exhaust the two CLI matches; retire the `Gate`
+     closed-enum coupling in `replay_transitions` toward gate-id strings. Falsifier:
+     a test config with a THIRD middle stage; stories can hold it.
+   - **S3 / S4** (wire column-structure message + renderer consumes N columns) — the
+     HINGE: fold these into the board-as-projection arc rather than a separate
+     follow-up, because they're where "Story sheds state" would otherwise force a
+     rewrite of the just-added `StageId` field. Design `StageId` AS the projection's
+     stage identity to avoid double-touching `Story.state`.
 3. **Board = ordered projection of the current iteration**: columns as ordered
    lists; ready inherits iteration order; adding to the board = adding to the
    iteration; loose-ready dissolves. `ready_order` fractional machinery reduces to
