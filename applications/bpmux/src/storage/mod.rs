@@ -1,10 +1,7 @@
 use std::collections::VecDeque;
-use std::path::Path;
 
 use crate::product_management::board::PersistError;
 use crate::product_management::board::orchestrator::QueuedEvent;
-
-use crate::comprehension::search::{SearchFilters, SearchResult};
 
 use crate::memory::lessons::LessonIndex;
 
@@ -43,11 +40,9 @@ pub trait Storage: Send + Sync {
         offset: usize,
         matches: &dyn Fn(&Message) -> bool,
     ) -> Result<Vec<Message>, LogError>;
-    fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult>;
     fn clear_messages(&self) -> Result<(), std::io::Error>;
 
     fn load_lessons(&self) -> LessonIndex;
-    fn save_lessons(&self, index: &LessonIndex) -> Result<(), std::io::Error>;
     fn add_lesson(
         &self,
         topic: &str,
@@ -69,8 +64,6 @@ pub trait Storage: Send + Sync {
         topics: &std::collections::HashSet<String>,
     ) -> Result<(), std::io::Error>;
 
-    fn dir(&self) -> &Path;
-
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError>;
     fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError>;
     fn set_user_last_delivered(&self, id: &str, at: i64) -> Result<(), PersistError>;
@@ -78,19 +71,6 @@ pub trait Storage: Send + Sync {
 
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError>;
-
-    fn load_bookmark(&self, role: &str) -> crate::bookmark::Bookmark;
-    fn save_bookmark(
-        &self,
-        role: &str,
-        bookmark: &crate::bookmark::Bookmark,
-    ) -> Result<(), std::io::Error>;
-
-    fn load_reactions(&self) -> crate::reactions::ReactionsStore;
-    fn save_reactions(
-        &self,
-        store: &crate::reactions::ReactionsStore,
-    ) -> Result<(), std::io::Error>;
 }
 
 pub trait GlobalStore: Send + Sync {
@@ -124,6 +104,6 @@ pub trait GlobalStore: Send + Sync {
 
 #[cfg(test)]
 #[allow(clippy::expect_used)]
-pub(crate) fn sqlite_test_storage(dir: &Path) -> std::sync::Arc<dyn Storage> {
+pub(crate) fn sqlite_test_storage(dir: &std::path::Path) -> std::sync::Arc<dyn Storage> {
     std::sync::Arc::new(SqliteStorage::new(dir.to_path_buf()).expect("sqlite test storage"))
 }

@@ -1,11 +1,10 @@
 use std::collections::{HashSet, VecDeque};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::product_management::board::PersistError;
 use crate::product_management::board::orchestrator::QueuedEvent;
 
 use super::{Storage, UserRecord, default_kind};
-use crate::comprehension::search::{self, SearchFilters, SearchResult};
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
@@ -66,13 +65,6 @@ impl Storage for FileStorage {
         crate::log::read_recent(&self.dir, limit, offset, matches)
     }
 
-    fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {
-        match self.read_messages() {
-            Ok(messages) => search::search(&messages, filters),
-            Err(_) => Vec::new(),
-        }
-    }
-
     fn clear_messages(&self) -> Result<(), std::io::Error> {
         let log_path = self.dir.join("log.jsonl");
         match std::fs::remove_file(&log_path) {
@@ -84,10 +76,6 @@ impl Storage for FileStorage {
 
     fn load_lessons(&self) -> LessonIndex {
         crate::memory::lessons::load_index(&self.dir)
-    }
-
-    fn save_lessons(&self, index: &LessonIndex) -> Result<(), std::io::Error> {
-        crate::memory::lessons::save_index(&self.dir, index)
     }
 
     fn add_lesson(
@@ -147,10 +135,6 @@ impl Storage for FileStorage {
         std::fs::write(&tmp, &json)?;
         std::fs::rename(&tmp, &path)?;
         Ok(())
-    }
-
-    fn dir(&self) -> &Path {
-        &self.dir
     }
 
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {
@@ -213,38 +197,13 @@ impl Storage for FileStorage {
         std::fs::rename(&tmp, &path)?;
         Ok(())
     }
-
-    fn load_bookmark(&self, role: &str) -> crate::bookmark::Bookmark {
-        crate::bookmark::load_bookmark(&self.dir, role)
-    }
-
-    fn save_bookmark(
-        &self,
-        role: &str,
-        bookmark: &crate::bookmark::Bookmark,
-    ) -> Result<(), std::io::Error> {
-        crate::bookmark::save_bookmark(&self.dir, role, bookmark)
-    }
-
-    fn load_reactions(&self) -> crate::reactions::ReactionsStore {
-        crate::reactions::load(&self.dir)
-    }
-
-    fn save_reactions(
-        &self,
-        store: &crate::reactions::ReactionsStore,
-    ) -> Result<(), std::io::Error> {
-        crate::reactions::save(&self.dir, store)
-    }
 }
 
 mod sqlite;
-mod sqlite_bookmarks;
 mod sqlite_engine;
 mod sqlite_messages;
 mod sqlite_meta;
 mod sqlite_outbox;
-mod sqlite_reactions;
 mod sqlite_surfaced_topics;
 mod sqlite_users;
 pub use sqlite::*;

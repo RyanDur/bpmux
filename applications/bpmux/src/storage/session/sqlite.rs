@@ -1,26 +1,21 @@
 use std::collections::{HashSet, VecDeque};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use rusqlite::Connection;
 
-use super::sqlite_bookmarks as bookmarks;
 use super::sqlite_engine as engine;
 use super::sqlite_messages as messages;
 use super::sqlite_meta as meta;
 use super::sqlite_outbox as outbox;
-use super::sqlite_reactions as reactions;
 use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
 use super::{Storage, UserRecord};
-use crate::bookmark::Bookmark;
-use crate::comprehension::search::{self, SearchFilters, SearchResult};
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
 use crate::product_management::board::PersistError;
 use crate::product_management::board::orchestrator::QueuedEvent;
-use crate::reactions::ReactionsStore;
 
 pub struct SqliteStorage {
     dir: PathBuf,
@@ -83,13 +78,6 @@ impl Storage for SqliteStorage {
         messages::read_recent(&self.lock(), limit, offset, matches)
     }
 
-    fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {
-        match self.read_messages() {
-            Ok(messages) => search::search(&messages, filters),
-            Err(_) => Vec::new(),
-        }
-    }
-
     fn clear_messages(&self) -> Result<(), std::io::Error> {
         messages::clear(&self.lock())
             .map(|_| ())
@@ -98,10 +86,6 @@ impl Storage for SqliteStorage {
 
     fn load_lessons(&self) -> LessonIndex {
         crate::memory::lessons::load_index(&self.dir)
-    }
-
-    fn save_lessons(&self, index: &LessonIndex) -> Result<(), std::io::Error> {
-        crate::memory::lessons::save_index(&self.dir, index)
     }
 
     fn add_lesson(
@@ -142,10 +126,6 @@ impl Storage for SqliteStorage {
         surfaced_topics::replace(&self.lock(), topics)
     }
 
-    fn dir(&self) -> &Path {
-        &self.dir
-    }
-
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {
         users::load_all(&self.lock()).map_err(engine::persist_err)
     }
@@ -174,21 +154,5 @@ impl Storage for SqliteStorage {
 
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {
         outbox::replace(&self.lock(), events)
-    }
-
-    fn load_bookmark(&self, role: &str) -> Bookmark {
-        bookmarks::get(&self.lock(), role)
-    }
-
-    fn save_bookmark(&self, role: &str, bookmark: &Bookmark) -> Result<(), std::io::Error> {
-        bookmarks::put(&self.lock(), role, bookmark)
-    }
-
-    fn load_reactions(&self) -> ReactionsStore {
-        reactions::load(&self.lock())
-    }
-
-    fn save_reactions(&self, store: &ReactionsStore) -> Result<(), std::io::Error> {
-        reactions::replace(&self.lock(), store)
     }
 }

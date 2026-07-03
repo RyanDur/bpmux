@@ -48,7 +48,7 @@ pub async fn post_seed_reactions(
     State(session): State<Arc<session::Session>>,
     Json(body): Json<SeedReactionsBody>,
 ) -> impl IntoResponse {
-    if let Err(e) = session.storage.save_reactions(&body.store) {
+    if let Err(e) = crate::reactions::save(&session.dir, &body.store) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("seed_reactions save failed: {e}"),

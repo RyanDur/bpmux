@@ -1,9 +1,8 @@
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use super::Storage;
-use crate::comprehension::search::{SearchFilters, SearchResult};
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
@@ -85,18 +84,6 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {
-        let start = Instant::now();
-        let results = self.inner.search_messages(filters);
-        self.log(&format!(
-            "search '{}' → {} results {:.1}ms",
-            filters.query,
-            results.len(),
-            start.elapsed().as_secs_f64() * 1000.0
-        ));
-        results
-    }
-
     fn clear_messages(&self) -> Result<(), std::io::Error> {
         let start = Instant::now();
         let result = self.inner.clear_messages();
@@ -116,16 +103,6 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
             start.elapsed().as_secs_f64() * 1000.0
         ));
         index
-    }
-
-    fn save_lessons(&self, index: &LessonIndex) -> Result<(), std::io::Error> {
-        let start = Instant::now();
-        let result = self.inner.save_lessons(index);
-        self.log(&format!(
-            "save_lessons {:.1}ms",
-            start.elapsed().as_secs_f64() * 1000.0
-        ));
-        result
     }
 
     fn add_lesson(
@@ -181,10 +158,6 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         topics: &std::collections::HashSet<String>,
     ) -> Result<(), std::io::Error> {
         self.inner.save_surfaced_topics(topics)
-    }
-
-    fn dir(&self) -> &Path {
-        self.inner.dir()
     }
 
     fn load_users(
@@ -275,55 +248,6 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         self.log(&format!(
             "save_outbox {} events {:.1}ms",
             events.len(),
-            start.elapsed().as_secs_f64() * 1000.0
-        ));
-        result
-    }
-
-    fn load_bookmark(&self, role: &str) -> crate::bookmark::Bookmark {
-        let start = Instant::now();
-        let result = self.inner.load_bookmark(role);
-        self.log(&format!(
-            "load_bookmark '{}' {:.1}ms",
-            role,
-            start.elapsed().as_secs_f64() * 1000.0
-        ));
-        result
-    }
-
-    fn save_bookmark(
-        &self,
-        role: &str,
-        bookmark: &crate::bookmark::Bookmark,
-    ) -> Result<(), std::io::Error> {
-        let start = Instant::now();
-        let result = self.inner.save_bookmark(role, bookmark);
-        self.log(&format!(
-            "save_bookmark '{}' {:.1}ms",
-            role,
-            start.elapsed().as_secs_f64() * 1000.0
-        ));
-        result
-    }
-
-    fn load_reactions(&self) -> crate::reactions::ReactionsStore {
-        let start = Instant::now();
-        let result = self.inner.load_reactions();
-        self.log(&format!(
-            "load_reactions {:.1}ms",
-            start.elapsed().as_secs_f64() * 1000.0
-        ));
-        result
-    }
-
-    fn save_reactions(
-        &self,
-        store: &crate::reactions::ReactionsStore,
-    ) -> Result<(), std::io::Error> {
-        let start = Instant::now();
-        let result = self.inner.save_reactions(store);
-        self.log(&format!(
-            "save_reactions {:.1}ms",
             start.elapsed().as_secs_f64() * 1000.0
         ));
         result

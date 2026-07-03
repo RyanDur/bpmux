@@ -1,4 +1,3 @@
-use crate::comprehension::search::SearchFilters;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
 use crate::storage::StorageBackend;
@@ -175,51 +174,11 @@ contract!(
     }
 );
 
-contract!(search_returns_matching_messages, |storage: &dyn Storage| {
-    storage
-        .append_message(&fresh_message("hello world"))
-        .unwrap();
-    storage.append_message(&fresh_message("goodbye")).unwrap();
-    let results = storage.search_messages(&SearchFilters {
-        query: "hello".to_string(),
-        sender: None,
-        after: None,
-        before: None,
-        channel: None,
-        message_class: None,
-        insight_only: false,
-        owner_name: "dev".to_string(),
-    });
-    assert_eq!(results.len(), 1, "search for 'hello' returns 1 match");
-});
-
 contract!(load_lessons_default_when_empty, |storage: &dyn Storage| {
     let idx = storage.load_lessons();
     assert!(idx.lessons.is_empty());
     assert!(idx.experiences.is_empty());
 });
-
-contract!(
-    save_then_load_lessons_roundtrips,
-    |storage: &dyn Storage| {
-        let mut idx = LessonIndex::default();
-        idx.lessons.push(crate::memory::lessons::AgentLesson {
-            topic: "test-topic".to_string(),
-            lesson: "test-lesson-text".to_string(),
-            author_role: "dev".to_string(),
-            evidence: vec!["e1".to_string()],
-            established: "2026-05-11T12:00:00Z".to_string(),
-            last_reinforced: None,
-            reinforcement_count: 0,
-            reinforcement_history: Vec::new(),
-        });
-        storage.save_lessons(&idx).unwrap();
-        let loaded = storage.load_lessons();
-        assert_eq!(loaded.lessons.len(), 1);
-        assert_eq!(loaded.lessons[0].topic, "test-topic");
-        assert_eq!(loaded.lessons[0].lesson, "test-lesson-text");
-    }
-);
 
 contract!(add_lesson_appends_to_index, |storage: &dyn Storage| {
     storage
@@ -291,14 +250,6 @@ contract!(
         storage.save_state("k", "first");
         storage.save_state("k", "second");
         assert_eq!(storage.load_state("k").as_deref(), Some("second"));
-    }
-);
-
-contract!(
-    dir_returns_path_passed_at_construction,
-    |storage: &dyn Storage| {
-        let d = storage.dir();
-        assert!(!d.as_os_str().is_empty());
     }
 );
 
@@ -411,63 +362,6 @@ contract!(
         let loaded = storage.load_users().unwrap();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].session_id, "sess-b");
-    }
-);
-
-contract!(load_bookmark_default_when_unset, |storage: &dyn Storage| {
-    let bm = storage.load_bookmark("dev");
-    assert!(bm.current_task.is_empty());
-    assert!(bm.decisions.is_empty());
-});
-
-contract!(
-    save_then_load_bookmark_roundtrips,
-    |storage: &dyn Storage| {
-        let bm = crate::bookmark::Bookmark {
-            current_task: "refactor storage trait".to_string(),
-            decisions: vec!["use DI pattern".to_string()],
-            open_questions: vec!["global vs session scope?".to_string()],
-            next_step: "phase 2".to_string(),
-            notes: "test note".to_string(),
-            last_updated: "2026-05-11T13:00:00Z".to_string(),
-        };
-        storage.upsert_user("sess-dev", "dev", "dev").unwrap();
-        storage.save_bookmark("dev", &bm).unwrap();
-        let loaded = storage.load_bookmark("dev");
-        assert_eq!(loaded.current_task, "refactor storage trait");
-        assert_eq!(loaded.decisions.len(), 1);
-    }
-);
-
-contract!(per_role_bookmark_isolation, |storage: &dyn Storage| {
-    let dev_bm = crate::bookmark::Bookmark {
-        current_task: "dev task".to_string(),
-        ..Default::default()
-    };
-    let pm_bm = crate::bookmark::Bookmark {
-        current_task: "pm task".to_string(),
-        ..Default::default()
-    };
-    storage.upsert_user("sess-dev", "dev", "dev").unwrap();
-    storage.upsert_user("sess-pm", "pm", "pm").unwrap();
-    storage.save_bookmark("dev", &dev_bm).unwrap();
-    storage.save_bookmark("pm", &pm_bm).unwrap();
-    assert_eq!(storage.load_bookmark("dev").current_task, "dev task");
-    assert_eq!(storage.load_bookmark("pm").current_task, "pm task");
-});
-
-contract!(load_reactions_empty_when_unset, |storage: &dyn Storage| {
-    let store = storage.load_reactions();
-    assert!(store.channels.is_empty());
-});
-
-contract!(
-    save_then_load_reactions_roundtrips,
-    |storage: &dyn Storage| {
-        let store = crate::reactions::ReactionsStore::default();
-        storage.save_reactions(&store).unwrap();
-        let loaded = storage.load_reactions();
-        assert!(loaded.channels.is_empty());
     }
 );
 

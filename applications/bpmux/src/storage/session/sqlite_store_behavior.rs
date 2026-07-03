@@ -47,26 +47,3 @@ fn an_unresolvable_author_is_kept_never_dropped() {
         "the kept message round-trips its original author verbatim"
     );
 }
-
-#[test]
-fn a_bookmark_is_reachable_by_role_and_cascades_when_the_user_is_deleted() {
-    let (_dir, storage) = store();
-    storage.upsert_user("sess-dev", "dev", "dev").unwrap();
-    let bm = crate::bookmark::Bookmark {
-        current_task: "wire the bookmark FK".to_string(),
-        ..Default::default()
-    };
-    storage.save_bookmark("dev", &bm).unwrap();
-    assert_eq!(
-        storage.load_bookmark("dev").current_task,
-        "wire the bookmark FK",
-        "a bookmark is reachable by role, resolved through to the user's id"
-    );
-
-    storage.delete_users(&["sess-dev".to_string()]).unwrap();
-    assert_eq!(
-        storage.load_bookmark("dev"),
-        crate::bookmark::Bookmark::default(),
-        "ON DELETE CASCADE removes the bookmark when its user row is reaped — load_bookmark falls back to the default, observable through the public Storage API"
-    );
-}
