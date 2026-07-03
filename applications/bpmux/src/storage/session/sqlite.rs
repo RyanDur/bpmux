@@ -85,7 +85,7 @@ impl crate::log::MessageLog for SqliteStorage {
     }
 }
 
-impl Storage for SqliteStorage {
+impl crate::memory::lessons::LessonRepo for SqliteStorage {
     fn load_lessons(&self) -> LessonIndex {
         crate::memory::lessons::load_index(&self.dir)
     }
@@ -111,7 +111,9 @@ impl Storage for SqliteStorage {
     fn list_peers(&self) -> Vec<String> {
         crate::memory::lessons::list_peer_names(&self.dir)
     }
+}
 
+impl Storage for SqliteStorage {
     fn load_state(&self, key: &str) -> Option<String> {
         meta::get(&self.lock(), key).ok().flatten()
     }

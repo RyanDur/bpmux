@@ -3,8 +3,6 @@ use std::collections::VecDeque;
 use crate::product_management::board::PersistError;
 use crate::product_management::board::orchestrator::QueuedEvent;
 
-use crate::memory::lessons::LessonIndex;
-
 mod backend;
 mod global;
 mod instrumented;
@@ -29,21 +27,12 @@ fn default_kind() -> String {
 }
 
 pub trait Storage:
-    crate::awareness::SurfacedTopicsRepo + crate::log::MessageLog + Send + Sync
+    crate::awareness::SurfacedTopicsRepo
+    + crate::log::MessageLog
+    + crate::memory::lessons::LessonRepo
+    + Send
+    + Sync
 {
-    fn load_lessons(&self) -> LessonIndex;
-    fn add_lesson(
-        &self,
-        topic: &str,
-        lesson: &str,
-        author_role: &str,
-        evidence: Vec<String>,
-    ) -> Result<(), std::io::Error>;
-
-    fn load_peer_lessons(&self, peer: &str) -> LessonIndex;
-    fn save_peer_lessons(&self, peer: &str, index: &LessonIndex) -> Result<(), std::io::Error>;
-    fn list_peers(&self) -> Vec<String>;
-
     fn load_state(&self, key: &str) -> Option<String>;
     fn save_state(&self, key: &str, value: &str);
 

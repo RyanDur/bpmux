@@ -75,7 +75,7 @@ impl crate::log::MessageLog for FileStorage {
     }
 }
 
-impl Storage for FileStorage {
+impl crate::memory::lessons::LessonRepo for FileStorage {
     fn load_lessons(&self) -> LessonIndex {
         crate::memory::lessons::load_index(&self.dir)
     }
@@ -101,7 +101,9 @@ impl Storage for FileStorage {
     fn list_peers(&self) -> Vec<String> {
         crate::memory::lessons::list_peer_names(&self.dir)
     }
+}
 
+impl Storage for FileStorage {
     fn load_state(&self, key: &str) -> Option<String> {
         let safe_key = crate::memory::identity::sanitize_name(key);
         let path = self.dir.join(format!("{safe_key}.json"));

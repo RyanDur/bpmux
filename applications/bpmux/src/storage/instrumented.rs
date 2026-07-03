@@ -95,7 +95,7 @@ impl<S: Storage> crate::log::MessageLog for InstrumentedStorage<S> {
     }
 }
 
-impl<S: Storage> Storage for InstrumentedStorage<S> {
+impl<S: Storage> crate::memory::lessons::LessonRepo for InstrumentedStorage<S> {
     fn load_lessons(&self) -> LessonIndex {
         let start = Instant::now();
         let index = self.inner.load_lessons();
@@ -142,7 +142,9 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn list_peers(&self) -> Vec<String> {
         self.inner.list_peers()
     }
+}
 
+impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn load_state(&self, key: &str) -> Option<String> {
         self.inner.load_state(key)
     }

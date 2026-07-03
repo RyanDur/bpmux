@@ -3,6 +3,20 @@ use crate::message::Message;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub trait LessonRepo: Send + Sync {
+    fn load_lessons(&self) -> LessonIndex;
+    fn add_lesson(
+        &self,
+        topic: &str,
+        lesson: &str,
+        author_role: &str,
+        evidence: Vec<String>,
+    ) -> Result<(), std::io::Error>;
+    fn load_peer_lessons(&self, peer: &str) -> LessonIndex;
+    fn save_peer_lessons(&self, peer: &str, index: &LessonIndex) -> Result<(), std::io::Error>;
+    fn list_peers(&self) -> Vec<String>;
+}
+
 const STOP_WORDS: &[&str] = &[
     "a", "an", "the", "is", "it", "to", "in", "of", "and", "or", "for", "on", "at", "by", "we",
     "i", "you", "that", "this", "with", "not", "but", "be", "are", "was", "do", "if", "so", "can",
