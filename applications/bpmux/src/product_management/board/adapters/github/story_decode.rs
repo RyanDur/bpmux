@@ -40,8 +40,8 @@ pub fn iteration_slot_from_labels(
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     let state_labels = [
         BoardState::Ready.github_label(),
-        BoardState::InProgress(Stage::Dev).github_label(),
-        BoardState::InProgress(Stage::DeskCheck).github_label(),
+        BoardState::InProgress(Stage::Dev.id()).github_label(),
+        BoardState::InProgress(Stage::DeskCheck.id()).github_label(),
         BoardState::Acceptance.github_label(),
         BoardState::Accepted.github_label(),
         "ready for accept",
@@ -153,7 +153,7 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> BoardState {
         return BoardState::Ready;
     }
     if has("needs fixes") {
-        return BoardState::InProgress(Stage::Dev);
+        return BoardState::InProgress(Stage::Dev.id());
     }
     if has("ready for accept") {
         return BoardState::Acceptance;
@@ -161,11 +161,11 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> BoardState {
     if has(BoardState::Acceptance.github_label()) {
         return BoardState::Acceptance;
     }
-    if has(BoardState::InProgress(Stage::DeskCheck).github_label()) {
-        return BoardState::InProgress(Stage::DeskCheck);
+    if has(BoardState::InProgress(Stage::DeskCheck.id()).github_label()) {
+        return BoardState::InProgress(Stage::DeskCheck.id());
     }
-    if has(BoardState::InProgress(Stage::Dev).github_label()) {
-        return BoardState::InProgress(Stage::Dev);
+    if has(BoardState::InProgress(Stage::Dev.id()).github_label()) {
+        return BoardState::InProgress(Stage::Dev.id());
     }
     if has(BoardState::Ready.github_label()) {
         return BoardState::Ready;

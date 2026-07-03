@@ -105,7 +105,7 @@ pub fn derive_epic_state(_epic_explicit_state: BoardState, children: &[&Story]) 
         )
     });
     if any_active {
-        return BoardState::InProgress(Stage::Dev);
+        return BoardState::InProgress(Stage::Dev.id());
     }
     let non_retired: Vec<&&Story> = children
         .iter()

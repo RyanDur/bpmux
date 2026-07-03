@@ -39,7 +39,8 @@ pub(crate) fn board_epics(
                 .iter()
                 .filter(|s| s.parent_epic() == Some(epic.id))
                 .collect();
-            let derived = crate::product_management::epic::derive_epic_state(epic.state, &children);
+            let derived =
+                crate::product_management::epic::derive_epic_state(epic.state.clone(), &children);
             serde_json::json!({
                 "id": epic.id.value(),
                 "title": epic.title,

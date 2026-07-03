@@ -81,7 +81,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9102,
             "[Feature] gherkin-only deliver",
-            BoardState::InProgress(Stage::Dev),
+            BoardState::InProgress(Stage::Dev.id()),
             StoryKind::Feature,
             body,
         )
@@ -157,7 +157,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9105,
             "[Feature] backward-compat ATP deliver",
-            BoardState::InProgress(Stage::Dev),
+            BoardState::InProgress(Stage::Dev.id()),
             StoryKind::Feature,
             &body,
         )

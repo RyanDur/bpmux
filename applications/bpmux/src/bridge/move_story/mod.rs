@@ -75,8 +75,8 @@ pub(in crate::bridge) async fn handle_move_story(
     }
 
     if let Some(label) = target.as_label() {
-        let target_state = match target {
-            TargetState::Workflow(state) => state,
+        let target_state = match &target {
+            TargetState::Workflow(state) => state.clone(),
             TargetState::Retired => BoardState::Retired,
         };
         let already_labeled = prior
@@ -93,12 +93,12 @@ pub(in crate::bridge) async fn handle_move_story(
         }
     }
 
-    match target {
+    match &target {
         TargetState::Workflow(state) => {
             r.mutate_sync(StoryEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: story_id,
-                new_state: state,
+                new_state: state.clone(),
             })
             .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
             if matches!(state, BoardState::Accepted) && !was_closed {
@@ -152,7 +152,7 @@ pub(in crate::bridge) async fn handle_move_story(
         .map_err(|e| format!("#{id} ready-order (iteration-member) set failed: {e}"))?;
     }
 
-    let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
+    let body = audit_comment_body(&actor_short, &from_display, &target, position, &rationale);
     r.mutate_sync(StoryEvent::FreeCommentAppended {
         meta,
         id: story_id,

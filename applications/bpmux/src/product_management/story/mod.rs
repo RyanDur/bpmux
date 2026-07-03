@@ -119,7 +119,7 @@ impl Story {
     }
 
     pub fn state(&self) -> BoardState {
-        self.state
+        self.state.clone()
     }
 
     pub fn story_type(&self) -> StoryKind {

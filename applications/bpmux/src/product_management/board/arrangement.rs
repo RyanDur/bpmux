@@ -32,8 +32,10 @@ pub fn column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
     match state {
         BoardState::Icebox => ColumnBucket::Icebox,
         BoardState::Ready => ColumnBucket::Ready,
-        BoardState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
-        BoardState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
+        BoardState::InProgress(stage) => match stage.as_stage() {
+            Some(Stage::DeskCheck) => ColumnBucket::DeskCheck,
+            Some(Stage::Dev) | None => ColumnBucket::InProgress,
+        },
         BoardState::Acceptance => ColumnBucket::Acceptance,
         BoardState::Accepted => ColumnBucket::Accepted,
         BoardState::Retired => ColumnBucket::Retired,

@@ -40,7 +40,11 @@ fn iteration_with(id: u64, story_ids: &[u64]) -> Iteration {
 fn default_scope_is_unchanged_full_board() {
     let stories = vec![
         story(1, "ready one", BoardState::Ready),
-        story(2, "in-progress one", BoardState::InProgress(Stage::Dev)),
+        story(
+            2,
+            "in-progress one",
+            BoardState::InProgress(Stage::Dev.id()),
+        ),
     ];
     let out = build_board_text(&[], &stories, &[], &BoardScope::default());
     assert!(out.contains("#1 ready one"));
@@ -78,7 +82,11 @@ fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
 fn state_scope_renders_only_the_matching_bucket() {
     let stories = vec![
         story(1, "ready one", BoardState::Ready),
-        story(2, "in-progress one", BoardState::InProgress(Stage::Dev)),
+        story(
+            2,
+            "in-progress one",
+            BoardState::InProgress(Stage::Dev.id()),
+        ),
     ];
     let scope = BoardScope {
         state: Some(ColumnBucket::Ready),

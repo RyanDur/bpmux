@@ -14,8 +14,10 @@ fn state_label(state: BoardState) -> &'static str {
     match state {
         BoardState::Icebox => "icebox",
         BoardState::Ready => "ready",
-        BoardState::InProgress(Stage::Dev) => "in progress",
-        BoardState::InProgress(Stage::DeskCheck) => "desk-check",
+        BoardState::InProgress(stage) => match stage.as_stage() {
+            Some(Stage::DeskCheck) => "desk-check",
+            Some(Stage::Dev) | None => "in progress",
+        },
         BoardState::Acceptance => "acceptance",
         BoardState::Accepted => "accepted",
         BoardState::Retired => "retired",
@@ -88,10 +90,9 @@ pub(in crate::bridge) async fn handle_get_story(
             }
         }
     }
-    let needs_gates = matches!(
-        story.state,
-        BoardState::Ready | BoardState::InProgress(Stage::Dev)
-    ) || story.is_closed
+    let needs_gates = matches!(story.state, BoardState::Ready)
+        || matches!(&story.state, BoardState::InProgress(stage) if stage.as_stage() == Some(Stage::Dev))
+        || story.is_closed
         || matches!(story.state, BoardState::Accepted);
     if needs_gates && story.gate_comments.is_none() {
         match r.fetch_gate_comments(id).await {
@@ -115,9 +116,9 @@ pub(in crate::bridge) async fn handle_get_story(
         .as_deref()
         .and_then(|gates| {
             let transitions = replay_transitions(gates);
-            most_recent_backward_transition(&transitions).map(|t| state_label(t.to))
+            most_recent_backward_transition(&transitions).map(|t| state_label(t.to.clone()))
         })
-        .unwrap_or_else(|| state_label(story.state));
+        .unwrap_or_else(|| state_label(story.state.clone()));
     if needs_gates
         && let Some(gates) = story.gate_comments.as_ref()
         && let Some(ctx) = rework_context_from_gates(gates)

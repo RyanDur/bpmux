@@ -16,7 +16,7 @@ pub(in crate::bridge) async fn handle_dev_in_flight(
     let in_flight = refresh
         .all_stories()
         .iter()
-        .any(|s| s.state() == BoardState::InProgress(Stage::Dev));
+        .any(|s| s.state() == BoardState::InProgress(Stage::Dev.id()));
     let response = DevInFlight {
         dev_in_flight: in_flight,
     };

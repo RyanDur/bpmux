@@ -158,7 +158,7 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
     let story = Story::new_minimal(
         StoryId::new(501),
         "title".into(),
-        BoardState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev.id()),
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

@@ -15,7 +15,7 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
 
     for story in stories {
         let entry = format!("{} {}", story.id, story.title);
-        match column_for(story.state, story.is_closed) {
+        match column_for(story.state.clone(), story.is_closed) {
             ColumnBucket::Icebox => icebox.push(entry),
             ColumnBucket::Ready => ready.push(entry),
             ColumnBucket::InProgress => in_progress.push(entry),

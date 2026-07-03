@@ -138,7 +138,7 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story)
     match w.get_mut(&key) {
         Some(existing) => {
             existing.title = story.title.clone();
-            existing.state = story.state;
+            existing.state = story.state.clone();
             existing.is_closed = story.is_closed;
             if story.body.is_some() {
                 existing.body = story.body.clone();

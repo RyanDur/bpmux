@@ -129,7 +129,7 @@ fn state_from_labels_needs_fixes_label_projects_to_in_progress() {
     let labels = vec!["delivered".to_string(), "needs fixes".to_string()];
     assert_eq!(
         state_from_labels(&labels, false),
-        BoardState::InProgress(Stage::Dev)
+        BoardState::InProgress(Stage::Dev.id())
     );
 }
 
@@ -150,7 +150,7 @@ fn state_from_labels_in_progress_has_priority_over_ready() {
     let labels = vec!["ready".to_string(), "in progress".to_string()];
     assert_eq!(
         state_from_labels(&labels, false),
-        BoardState::InProgress(Stage::Dev)
+        BoardState::InProgress(Stage::Dev.id())
     );
 }
 
@@ -180,10 +180,10 @@ fn state_to_label_roundtrips_ready() {
 
 #[test]
 fn state_to_label_roundtrips_in_progress_space() {
-    let labels = vec![state_to_label(BoardState::InProgress(Stage::Dev)).to_string()];
+    let labels = vec![state_to_label(BoardState::InProgress(Stage::Dev.id())).to_string()];
     assert_eq!(
         state_from_labels(&labels, false),
-        BoardState::InProgress(Stage::Dev)
+        BoardState::InProgress(Stage::Dev.id())
     );
 }
 
@@ -200,7 +200,7 @@ fn decode_story_metadata_reads_object_label_shape() {
     let story = decode_story_metadata(&json).expect("story");
     assert_eq!(story.id, StoryId::new(451));
     assert_eq!(story.title, "Internal board abstraction");
-    assert_eq!(story.state, BoardState::InProgress(Stage::Dev));
+    assert_eq!(story.state, BoardState::InProgress(Stage::Dev.id()));
     assert_eq!(story.filed_by, "owner");
     assert!(
         story.body.is_none(),

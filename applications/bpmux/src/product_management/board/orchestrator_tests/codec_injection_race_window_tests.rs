@@ -72,7 +72,7 @@ mod codec_injection_substrate {
         Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            BoardState::InProgress(Stage::Dev),
+            BoardState::InProgress(Stage::Dev.id()),
             Utc.with_ymd_and_hms(2026, 5, 17, 0, 0, 0).unwrap(),
             "pm".to_string(),
         )

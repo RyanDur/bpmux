@@ -91,14 +91,14 @@ pub(super) fn coalesce_iteration_label_events(
 }
 
 pub(super) fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Vec<String> {
-    let expected = match story.state {
+    let expected = match &story.state {
         BoardState::Icebox => "",
         other => other.github_label(),
     };
     let canonical_state_labels = [
         BoardState::Ready.github_label(),
-        BoardState::InProgress(Stage::Dev).github_label(),
-        BoardState::InProgress(Stage::DeskCheck).github_label(),
+        BoardState::InProgress(Stage::Dev.id()).github_label(),
+        BoardState::InProgress(Stage::DeskCheck.id()).github_label(),
         BoardState::Acceptance.github_label(),
         BoardState::Accepted.github_label(),
     ];

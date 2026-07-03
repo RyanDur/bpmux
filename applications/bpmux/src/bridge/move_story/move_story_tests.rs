@@ -9,7 +9,7 @@ fn target_state_parses_canonical_spellings() {
     );
     assert_eq!(
         TargetState::parse("In-Progress").unwrap(),
-        TargetState::Workflow(BoardState::InProgress(Stage::Dev))
+        TargetState::Workflow(BoardState::InProgress(Stage::Dev.id()))
     );
     assert_eq!(TargetState::parse("retired").unwrap(), TargetState::Retired);
     assert_eq!(
@@ -96,7 +96,7 @@ fn audit_comment_body_includes_actor_transition_position_rationale() {
     let body = audit_comment_body(
         "dev",
         "delivered",
-        TargetState::Workflow(BoardState::Ready),
+        &TargetState::Workflow(BoardState::Ready),
         Some(3),
         "rework after desk-check",
     );
@@ -111,7 +111,7 @@ fn audit_comment_body_omits_position_segment_when_none() {
     let body = audit_comment_body(
         "pm",
         "icebox",
-        TargetState::Workflow(BoardState::Ready),
+        &TargetState::Workflow(BoardState::Ready),
         None,
         "next-iteration promote",
     );

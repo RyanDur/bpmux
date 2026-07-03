@@ -45,7 +45,7 @@ async fn returns_false_when_no_story_in_flight() {
 async fn returns_true_when_a_story_is_in_progress() {
     let refresh = driver(vec![
         seed(BoardState::Ready, 1),
-        seed(BoardState::InProgress(Stage::Dev), 2),
+        seed(BoardState::InProgress(Stage::Dev.id()), 2),
         seed(BoardState::Acceptance, 3),
     ])
     .await;
@@ -55,7 +55,7 @@ async fn returns_true_when_a_story_is_in_progress() {
 
 #[tokio::test]
 async fn response_contains_no_story_identifiers() {
-    let refresh = driver(vec![seed(BoardState::InProgress(Stage::Dev), 1)]).await;
+    let refresh = driver(vec![seed(BoardState::InProgress(Stage::Dev.id()), 1)]).await;
     let result = handle_dev_in_flight(&refresh).await.unwrap();
     assert!(!result.contains("\"id\""));
     assert!(!result.contains("title"));

@@ -152,7 +152,7 @@ async fn drain_once_handles_multiple_events_in_order() {
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(2),
-            new_state: BoardState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev.id()),
         })
         .unwrap();
     assert_eq!(orchestrator.snapshot_status().pending_events, 2);

@@ -24,7 +24,7 @@ fn make_story(id: u64, story_type: StoryKind) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
-        BoardState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev.id()),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );

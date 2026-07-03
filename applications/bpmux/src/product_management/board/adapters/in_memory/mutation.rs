@@ -61,7 +61,7 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
             }
         }
         StoryEvent::StateTransitioned { id, new_state, .. } => {
-            typed_label_mirror::state_transitioned(s, id.value(), *new_state)
+            typed_label_mirror::state_transitioned(s, id.value(), new_state.clone())
         }
         StoryEvent::CurrentIterationDesignated { id, .. } => {
             typed_label_mirror::current_iteration_designated(s, id.value())
@@ -81,12 +81,12 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
                 crate::product_management::story::Story::new_minimal(
                     *id,
                     title.clone(),
-                    *initial_state,
+                    initial_state.clone(),
                     meta.ts,
                     meta.actor.clone(),
                 )
             });
-            story.state = *initial_state;
+            story.state = initial_state.clone();
             story.title = title.clone();
             story.story_type = *story_type;
             if !body.is_empty() {

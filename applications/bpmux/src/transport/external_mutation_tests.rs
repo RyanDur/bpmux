@@ -149,7 +149,7 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
     assert_eq!(
         updated.state,
         crate::product_management::story::BoardState::InProgress(
-            crate::product_management::story::Stage::Dev
+            crate::product_management::story::Stage::Dev.id()
         ),
         "post-refresh, bpmux state reflects externally-added 'in progress' label"
     );
@@ -291,7 +291,7 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
     assert_eq!(
         initial.state,
         crate::product_management::story::BoardState::InProgress(
-            crate::product_management::story::Stage::Dev
+            crate::product_management::story::Stage::Dev.id()
         ),
         "fixture seeds in-progress state"
     );

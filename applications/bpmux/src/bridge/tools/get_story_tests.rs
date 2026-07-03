@@ -109,7 +109,7 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
 async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
     let story = make_story(
         200,
-        BoardState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev.id()),
         Some("original body"),
     );
     let gates = vec![GateComment {
@@ -188,7 +188,11 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
 
 #[tokio::test]
 async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
-    let story = make_story(701, BoardState::InProgress(Stage::Dev), Some("clean body"));
+    let story = make_story(
+        701,
+        BoardState::InProgress(Stage::Dev.id()),
+        Some("clean body"),
+    );
     let gates = vec![
         GateComment {
             gate: Gate::Pickup,

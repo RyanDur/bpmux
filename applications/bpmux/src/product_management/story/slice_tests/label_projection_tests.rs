@@ -130,7 +130,11 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     let store = seeded();
     seed(
         &store,
-        vec![minimal(77, "membered", BoardState::InProgress(Stage::Dev))],
+        vec![minimal(
+            77,
+            "membered",
+            BoardState::InProgress(Stage::Dev.id()),
+        )],
     );
     apply(
         &store,
@@ -157,7 +161,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     assert_eq!(s.acceptor(), Some(Acceptor::Dev));
     assert_eq!(
         s.state,
-        BoardState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev.id()),
         "LabelsRefreshed is a pure typed assign; workflow state flows via StateTransitioned, not the label echo"
     );
 }

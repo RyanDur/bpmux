@@ -17,18 +17,18 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
         .filter_map(|gc| {
             let (from, to) = match gc.gate {
                 Gate::Filed => return None,
-                Gate::Pickup => (BoardState::Ready, BoardState::InProgress(Stage::Dev)),
+                Gate::Pickup => (BoardState::Ready, BoardState::InProgress(Stage::Dev.id())),
                 Gate::Delivered => (
-                    BoardState::InProgress(Stage::Dev),
-                    BoardState::InProgress(Stage::DeskCheck),
+                    BoardState::InProgress(Stage::Dev.id()),
+                    BoardState::InProgress(Stage::DeskCheck.id()),
                 ),
                 Gate::PassDeskCheck => (
-                    BoardState::InProgress(Stage::DeskCheck),
+                    BoardState::InProgress(Stage::DeskCheck.id()),
                     BoardState::Acceptance,
                 ),
                 Gate::FailDeskCheck => (
-                    BoardState::InProgress(Stage::DeskCheck),
-                    BoardState::InProgress(Stage::Dev),
+                    BoardState::InProgress(Stage::DeskCheck.id()),
+                    BoardState::InProgress(Stage::Dev.id()),
                 ),
                 Gate::Rejected => (BoardState::Acceptance, BoardState::Ready),
                 Gate::Accepted => (BoardState::Acceptance, BoardState::Accepted),
@@ -44,19 +44,21 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
         .collect()
 }
 
-fn state_ordinal(s: BoardState) -> u8 {
+fn state_ordinal(s: &BoardState) -> u8 {
     match s {
         BoardState::Icebox => 0,
         BoardState::Ready => 1,
-        BoardState::InProgress(Stage::Dev) => 2,
-        BoardState::InProgress(Stage::DeskCheck) => 3,
+        BoardState::InProgress(stage) => match stage.as_stage() {
+            Some(Stage::DeskCheck) => 3,
+            Some(Stage::Dev) | None => 2,
+        },
         BoardState::Acceptance => 4,
         BoardState::Accepted | BoardState::Retired => 5,
     }
 }
 
 pub fn is_backward(t: &StateTransition) -> bool {
-    state_ordinal(t.to) < state_ordinal(t.from)
+    state_ordinal(&t.to) < state_ordinal(&t.from)
 }
 
 pub fn most_recent_backward_transition(

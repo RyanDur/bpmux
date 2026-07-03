@@ -136,7 +136,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     let seeded = Story::new_minimal(
         StoryId::new(4691),
         "[Bug] cascade-drain-on-fail-desk-check".into(),
-        BoardState::InProgress(Stage::DeskCheck),
+        BoardState::InProgress(Stage::DeskCheck.id()),
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
@@ -157,7 +157,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            StoryEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == BoardState::InProgress(Stage::Dev)
+            StoryEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == BoardState::InProgress(Stage::Dev.id())
         )),
         "fail_desk_check must drain StateTransitioned(InProgress) to adapter BEFORE returning. Pushed: {pushed:?}"
     );
@@ -274,7 +274,7 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     let seeded = Story::new_minimal(
         StoryId::new(450),
         "[Chore] label-leak repro".into(),
-        BoardState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev.id()),
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );

@@ -31,7 +31,7 @@ fn stacked_needs_fixes_in_progress_decodes_in_progress() {
     let stacked = vec!["in progress".to_string(), "needs fixes".to_string()];
     assert_eq!(
         state_from_labels(&stacked, false),
-        BoardState::InProgress(Stage::Dev)
+        BoardState::InProgress(Stage::Dev.id())
     );
 }
 
@@ -40,7 +40,7 @@ fn stacked_ready_in_progress_decodes_in_progress() {
     let stacked = vec!["ready".to_string(), "in progress".to_string()];
     assert_eq!(
         state_from_labels(&stacked, false),
-        BoardState::InProgress(Stage::Dev)
+        BoardState::InProgress(Stage::Dev.id())
     );
 }
 
@@ -63,7 +63,7 @@ fn ready_state_buckets_to_ready_column() {
 
 #[test]
 fn in_progress_state_buckets_to_in_progress_column() {
-    let bucket = column_for(BoardState::InProgress(Stage::Dev), false);
+    let bucket = column_for(BoardState::InProgress(Stage::Dev.id()), false);
     assert_eq!(bucket, ColumnBucket::InProgress);
 }
 

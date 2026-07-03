@@ -43,7 +43,7 @@ mod canonical_via_gh_1300 {
         let s = Story::new_minimal(
             StoryId::new(id),
             format!("[Feature] member-{id}"),
-            state,
+            state.clone(),
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );

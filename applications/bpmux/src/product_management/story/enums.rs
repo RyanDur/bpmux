@@ -1,12 +1,12 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-use super::stage::Stage;
+use super::stage::{Stage, StageId};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BoardState {
     Icebox,
     Ready,
-    InProgress(Stage),
+    InProgress(StageId),
     Acceptance,
     Accepted,
     Retired,
@@ -27,24 +27,28 @@ impl<'de> Deserialize<'de> for BoardState {
 }
 
 impl BoardState {
-    pub fn as_str(self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             BoardState::Icebox => "icebox",
             BoardState::Ready => "ready",
-            BoardState::InProgress(Stage::Dev) => "in-progress",
-            BoardState::InProgress(Stage::DeskCheck) => "desk-check",
+            BoardState::InProgress(stage) => match stage.as_stage() {
+                Some(Stage::DeskCheck) => "desk-check",
+                Some(Stage::Dev) | None => "in-progress",
+            },
             BoardState::Acceptance => "acceptance",
             BoardState::Accepted => "accepted",
             BoardState::Retired => "retired",
         }
     }
 
-    pub fn github_label(self) -> &'static str {
+    pub fn github_label(&self) -> &'static str {
         match self {
             BoardState::Icebox => "icebox",
             BoardState::Ready => "ready",
-            BoardState::InProgress(Stage::Dev) => "in progress",
-            BoardState::InProgress(Stage::DeskCheck) => "desk-check",
+            BoardState::InProgress(stage) => match stage.as_stage() {
+                Some(Stage::DeskCheck) => "desk-check",
+                Some(Stage::Dev) | None => "in progress",
+            },
             BoardState::Acceptance => "delivered",
             BoardState::Accepted => "accepted",
             BoardState::Retired => "retired",
@@ -55,8 +59,12 @@ impl BoardState {
         match s {
             "icebox" => Some(BoardState::Icebox),
             "ready" => Some(BoardState::Ready),
-            "in-progress" | "in_progress" => Some(BoardState::InProgress(Stage::Dev)),
-            "desk-check" | "desk_check" => Some(BoardState::InProgress(Stage::DeskCheck)),
+            "in-progress" | "in_progress" => {
+                Some(BoardState::InProgress(StageId::from("in-progress")))
+            }
+            "desk-check" | "desk_check" => {
+                Some(BoardState::InProgress(StageId::from("desk-check")))
+            }
             "acceptance" | "delivered" => Some(BoardState::Acceptance),
             "accepted" => Some(BoardState::Accepted),
             "retired" => Some(BoardState::Retired),

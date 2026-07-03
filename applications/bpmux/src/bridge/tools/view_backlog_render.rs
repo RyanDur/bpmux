@@ -44,8 +44,8 @@ fn ready_state_populates_samples() {
 #[test]
 fn in_progress_state_counted_correctly() {
     let stories = vec![
-        story(102, "a", BoardState::InProgress(Stage::Dev)),
-        story(103, "b", BoardState::InProgress(Stage::Dev)),
+        story(102, "a", BoardState::InProgress(Stage::Dev.id())),
+        story(103, "b", BoardState::InProgress(Stage::Dev.id())),
     ];
     assert_eq!(build_backlog_summary(&stories)["in_progress_count"], 2);
 }
@@ -54,7 +54,7 @@ fn in_progress_state_counted_correctly() {
 fn acceptance_and_desk_check_collapse_into_acceptance_count() {
     let stories = vec![
         story(104, "d", BoardState::Acceptance),
-        story(105, "dc", BoardState::InProgress(Stage::DeskCheck)),
+        story(105, "dc", BoardState::InProgress(Stage::DeskCheck.id())),
     ];
     assert_eq!(build_backlog_summary(&stories)["acceptance_count"], 2);
 }

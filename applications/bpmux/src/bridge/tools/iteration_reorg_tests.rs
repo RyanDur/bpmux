@@ -150,7 +150,7 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
 async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_1762() {
     let refresh = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
-        member_story(710, BoardState::InProgress(Stage::Dev)),
+        member_story(710, BoardState::InProgress(Stage::Dev.id())),
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();

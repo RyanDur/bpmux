@@ -54,9 +54,9 @@ fn apply_event(w: &mut Stories, event: &StoryEvent) {
             body,
             initial_state,
             story_type,
-        } => apply_story_created(w, *n, meta, title, body, *initial_state, *story_type),
+        } => apply_story_created(w, *n, meta, title, body, initial_state.clone(), *story_type),
         StoryEvent::StateTransitioned { new_state, .. } => {
-            apply_state_transitioned(w, id, *new_state)
+            apply_state_transitioned(w, id, new_state.clone())
         }
         StoryEvent::GateCommentAppended {
             meta,

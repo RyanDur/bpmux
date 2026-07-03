@@ -47,7 +47,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(10),
-            new_state: BoardState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev.id()),
         })
         .unwrap();
         assert!(path.exists(), "outbox file must exist after mutate");
@@ -350,7 +350,7 @@ mod outbox_persistence {
                 .mutate(StoryEvent::StateTransitioned {
                     meta: meta(),
                     id: StoryId::new(n),
-                    new_state: BoardState::InProgress(Stage::Dev),
+                    new_state: BoardState::InProgress(Stage::Dev.id()),
                 })
                 .unwrap();
         }
@@ -376,7 +376,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(999),
-            new_state: BoardState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev.id()),
         })
         .unwrap();
 
@@ -398,7 +398,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
-            new_state: BoardState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev.id()),
         })
         .unwrap();
         assert!(
@@ -415,12 +415,12 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
-            new_state: BoardState::InProgress(Stage::Dev),
+            new_state: BoardState::InProgress(Stage::Dev.id()),
         })
         .unwrap();
         assert_eq!(
             orch.story(777).map(|s| s.state),
-            Some(BoardState::InProgress(Stage::Dev)),
+            Some(BoardState::InProgress(Stage::Dev.id())),
             "post-refresh mutate lands"
         );
     }

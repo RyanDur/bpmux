@@ -16,8 +16,10 @@ fn renderer_column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
     match state {
         BoardState::Icebox => ColumnBucket::Icebox,
         BoardState::Ready => ColumnBucket::Ready,
-        BoardState::InProgress(Stage::Dev) => ColumnBucket::InProgress,
-        BoardState::InProgress(Stage::DeskCheck) => ColumnBucket::DeskCheck,
+        BoardState::InProgress(stage) => match stage.as_stage() {
+            Some(Stage::DeskCheck) => ColumnBucket::DeskCheck,
+            Some(Stage::Dev) | None => ColumnBucket::InProgress,
+        },
         BoardState::Acceptance => ColumnBucket::Acceptance,
         BoardState::Accepted => ColumnBucket::Accepted,
         BoardState::Retired => ColumnBucket::Retired,
@@ -29,15 +31,15 @@ fn column_for_agrees_across_full_cross_product() {
     let states = [
         BoardState::Icebox,
         BoardState::Ready,
-        BoardState::InProgress(Stage::Dev),
-        BoardState::InProgress(Stage::DeskCheck),
+        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress(Stage::DeskCheck.id()),
         BoardState::Acceptance,
         BoardState::Accepted,
     ];
     for state in states {
         for is_closed in [false, true] {
-            let rust_bucket = column_for(state, is_closed);
-            let renderer_bucket = renderer_column_for(state, is_closed);
+            let rust_bucket = column_for(state.clone(), is_closed);
+            let renderer_bucket = renderer_column_for(state.clone(), is_closed);
             assert_eq!(
                 rust_bucket, renderer_bucket,
                 "drift: state={state:?} is_closed={is_closed} \
@@ -56,12 +58,12 @@ fn closed_non_accepted_stories_project_to_retired() {
     for state in [
         BoardState::Icebox,
         BoardState::Ready,
-        BoardState::InProgress(Stage::Dev),
-        BoardState::InProgress(Stage::DeskCheck),
+        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress(Stage::DeskCheck.id()),
         BoardState::Acceptance,
     ] {
         assert_eq!(
-            column_for(state, true),
+            column_for(state.clone(), true),
             ColumnBucket::Retired,
             "closed + state={state:?} (non-Accepted) must project to RETIRED"
         );
@@ -85,11 +87,11 @@ fn open_workflow_states_bucket_one_to_one() {
     assert_eq!(column_for(BoardState::Icebox, false), ColumnBucket::Icebox);
     assert_eq!(column_for(BoardState::Ready, false), ColumnBucket::Ready);
     assert_eq!(
-        column_for(BoardState::InProgress(Stage::Dev), false),
+        column_for(BoardState::InProgress(Stage::Dev.id()), false),
         ColumnBucket::InProgress
     );
     assert_eq!(
-        column_for(BoardState::InProgress(Stage::DeskCheck), false),
+        column_for(BoardState::InProgress(Stage::DeskCheck.id()), false),
         ColumnBucket::DeskCheck
     );
     assert_eq!(

@@ -123,7 +123,7 @@ async fn multiple_pushed_events_preserve_order() {
     let e1 = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: BoardState::InProgress(Stage::Dev),
+        new_state: BoardState::InProgress(Stage::Dev.id()),
     };
     let e2 = StoryEvent::StateTransitioned {
         meta: meta(),

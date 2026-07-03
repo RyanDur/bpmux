@@ -5,7 +5,7 @@ use crate::product_management::story::{BoardState, Stage};
 
 const TARGET_STATE_RETIRED: &str = "retired";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum TargetState {
     Workflow(BoardState),
     Retired,
@@ -24,7 +24,7 @@ impl TargetState {
         })
     }
 
-    pub(super) fn as_label(self) -> Option<&'static str> {
+    pub(super) fn as_label(&self) -> Option<&'static str> {
         match self {
             Self::Workflow(BoardState::Icebox) => None,
             Self::Workflow(state) => Some(state.github_label()),
@@ -32,11 +32,11 @@ impl TargetState {
         }
     }
 
-    pub(super) fn closes_issue(self) -> bool {
+    pub(super) fn closes_issue(&self) -> bool {
         matches!(self, Self::Retired | Self::Workflow(BoardState::Accepted))
     }
 
-    pub(super) fn as_display(self) -> &'static str {
+    pub(super) fn as_display(&self) -> &'static str {
         match self {
             Self::Workflow(state) => state.as_str(),
             Self::Retired => BoardState::Retired.as_str(),
@@ -81,11 +81,13 @@ pub(super) fn current_state_display(
 ) -> &'static str {
     match story {
         Some(s) if s.is_closed => "retired-or-accepted",
-        Some(s) => match s.state {
+        Some(s) => match &s.state {
             BoardState::Icebox => "icebox",
             BoardState::Ready => "ready",
-            BoardState::InProgress(Stage::Dev) => "in-progress",
-            BoardState::InProgress(Stage::DeskCheck) => "desk-check",
+            BoardState::InProgress(stage) => match stage.as_stage() {
+                Some(Stage::DeskCheck) => "desk-check",
+                Some(Stage::Dev) | None => "in-progress",
+            },
             BoardState::Acceptance => "acceptance",
             BoardState::Accepted => "accepted",
             BoardState::Retired => "retired",
@@ -97,7 +99,7 @@ pub(super) fn current_state_display(
 pub(super) fn audit_comment_body(
     actor_short: &str,
     from_state: &str,
-    target: TargetState,
+    target: &TargetState,
     position: Option<usize>,
     rationale: &str,
 ) -> String {

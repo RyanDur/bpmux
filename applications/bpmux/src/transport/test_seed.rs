@@ -152,10 +152,10 @@ pub async fn post_seed_stories(
             "icebox" => crate::product_management::story::BoardState::Icebox,
             "ready" => crate::product_management::story::BoardState::Ready,
             "in-progress" => crate::product_management::story::BoardState::InProgress(
-                crate::product_management::story::Stage::Dev,
+                crate::product_management::story::Stage::Dev.id(),
             ),
             "desk-check" => crate::product_management::story::BoardState::InProgress(
-                crate::product_management::story::Stage::DeskCheck,
+                crate::product_management::story::Stage::DeskCheck.id(),
             ),
             "delivered" | "acceptance" => crate::product_management::story::BoardState::Acceptance,
             "accepted" => crate::product_management::story::BoardState::Accepted,
@@ -182,7 +182,7 @@ pub async fn post_seed_stories(
                 id: crate::product_management::story::StoryId::new(s.id),
                 title: s.title.clone(),
                 body: s.body.clone(),
-                initial_state,
+                initial_state: initial_state.clone(),
                 story_type,
             })
         {

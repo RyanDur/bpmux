@@ -115,7 +115,7 @@ pub(in crate::bridge) fn build_board_text(
         let mut entries: Vec<(u64, String)> = stories
             .iter()
             .filter(|s| in_scope_iteration(s))
-            .filter(|s| column_for(s.state, s.is_closed) == bucket)
+            .filter(|s| column_for(s.state.clone(), s.is_closed) == bucket)
             .map(format_entry)
             .collect();
         entries.sort_by_key(|(n, _)| *n);
@@ -138,8 +138,10 @@ pub(in crate::bridge) fn build_board_text(
                     .filter(|c| c.parent_epic() == Some(epic.id))
                     .collect();
                 let counts = crate::product_management::epic::derive_epic_counts(&children);
-                let derived =
-                    crate::product_management::epic::derive_epic_state(epic.state, &children);
+                let derived = crate::product_management::epic::derive_epic_state(
+                    epic.state.clone(),
+                    &children,
+                );
                 out.push_str(&format!(
                     "  #{} [{}] {} ({total} children: {accepted} accepted, {retired} retired, {active} active, {icebox} icebox)\n",
                     epic.id.value(),

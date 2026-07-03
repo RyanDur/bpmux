@@ -133,7 +133,7 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
 fn story_to_board_json_rework_comment_clears_after_forward_edge() {
     use crate::product_management::story::{Gate, GateComment};
     let mut s = sample_story(
-        BoardState::InProgress(Stage::Dev),
+        BoardState::InProgress(Stage::Dev.id()),
         StoryKind::Feature,
         false,
     );
@@ -181,12 +181,12 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
     for (state, expected) in &[
         (BoardState::Icebox, "icebox"),
         (BoardState::Ready, "ready"),
-        (BoardState::InProgress(Stage::Dev), "in-progress"),
-        (BoardState::InProgress(Stage::DeskCheck), "desk-check"),
+        (BoardState::InProgress(Stage::Dev.id()), "in-progress"),
+        (BoardState::InProgress(Stage::DeskCheck.id()), "desk-check"),
         (BoardState::Acceptance, "acceptance"),
         (BoardState::Accepted, "accepted"),
     ] {
-        let s = sample_story(*state, StoryKind::Feature, false);
+        let s = sample_story(state.clone(), StoryKind::Feature, false);
         assert_eq!(
             json_str(&story_to_board_json(&GhLabelCodec, &s), "state"),
             *expected,
