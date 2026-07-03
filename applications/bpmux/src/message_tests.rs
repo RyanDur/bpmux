@@ -332,3 +332,158 @@ fn read_messages_skips_zero_lines_with_legacy_state_delta_variant() {
     assert_eq!(parsed.len(), 3, "all 3 lines parse — none dropped");
     assert!(parsed[1].state_delta.is_none(), "legacy variant → None");
 }
+
+#[test]
+fn ci_delta_wire_json_is_byte_identical_for_every_ci_state_string() {
+    for state in ["unknown", "green", "red", "running", "quota_exhausted"] {
+        let wire = serde_json::json!({
+            "domain": "ci",
+            "snapshot": {
+                "state": state,
+                "run_id": null,
+                "head_sha": null,
+                "display_title": null,
+                "last_successful_poll_at": null,
+                "url": null
+            }
+        });
+        let payload: StateDeltaPayload =
+            serde_json::from_value(wire.clone()).expect("ci delta parses");
+        assert_eq!(
+            serde_json::to_value(&payload).expect("ci delta serializes"),
+            wire,
+            "the renderer pins these CI-state strings — the wire must round-trip byte-identical for {state}"
+        );
+    }
+}
+
+#[test]
+fn roster_delta_wire_json_is_byte_identical_for_every_role_and_presence_string() {
+    for role in ["Designer", "Dev", "Pm", "Owner", "Other"] {
+        for presence in ["Online", "Busy", "Idle", "Offline", "Blocked", "Help"] {
+            let wire = serde_json::json!({
+                "domain": "roster",
+                "members": [{
+                    "routing_id": "r1",
+                    "name": "n",
+                    "identity": "i",
+                    "role": role,
+                    "presence": presence
+                }]
+            });
+            let payload: StateDeltaPayload =
+                serde_json::from_value(wire.clone()).expect("roster delta parses");
+            assert_eq!(
+                serde_json::to_value(&payload).expect("roster delta serializes"),
+                wire,
+                "roster role/presence ride PascalCase on the wire — must round-trip identical for {role}/{presence}"
+            );
+        }
+    }
+}
+
+#[test]
+fn state_snapshot_wire_json_is_byte_identical_with_ci_and_roster_present() {
+    let wire = serde_json::json!({
+        "reactions": [],
+        "ci": {
+            "state": "green",
+            "run_id": 42,
+            "head_sha": "abc",
+            "display_title": "t",
+            "last_successful_poll_at": "2026-07-03T00:00:00Z",
+            "url": "https://example/actions"
+        },
+        "roster": [{
+            "routing_id": "r1",
+            "name": "n",
+            "identity": "i",
+            "role": "Owner",
+            "presence": "Online"
+        }]
+    });
+    let payload: StateSnapshotPayload =
+        serde_json::from_value(wire.clone()).expect("snapshot parses");
+    assert_eq!(
+        serde_json::to_value(&payload).expect("snapshot serializes"),
+        wire,
+        "the connect-time hydration snapshot wire shape must round-trip byte-identical"
+    );
+}
+
+#[test]
+fn empty_state_snapshot_omits_ci_and_emits_empty_reaction_and_roster_lists() {
+    let payload = StateSnapshotPayload::default();
+    assert_eq!(
+        serde_json::to_value(&payload).expect("serialize"),
+        serde_json::json!({"reactions": [], "roster": []}),
+        "an empty snapshot omits ci (skip_serializing_if) and emits empty lists — the renderer's baseline"
+    );
+}
+
+#[test]
+fn persisted_ci_delta_without_url_or_poll_time_survives_and_keeps_typed_values() {
+    let raw = r#"{
+        "from": "bpmux",
+        "text": "",
+        "ts": "2026-05-15T01:23:45Z",
+        "message_type": "state-delta",
+        "state_delta": {"domain": "ci", "snapshot": {"state": "red", "run_id": 7}}
+    }"#;
+    let m: Message = serde_json::from_str(raw).expect("a historical ci delta must parse");
+    let payload = m
+        .state_delta
+        .expect("the ci delta must survive the tolerant deserializer, not silently vanish");
+    let reserialized = serde_json::to_value(&payload).expect("serialize");
+    assert_eq!(reserialized["domain"], "ci");
+    assert_eq!(reserialized["snapshot"]["state"], "red");
+    assert_eq!(reserialized["snapshot"]["run_id"], 7);
+    assert_eq!(
+        reserialized["snapshot"]["url"],
+        serde_json::Value::Null,
+        "a delta persisted before the url field existed defaults url to null — the payload is never dropped"
+    );
+}
+
+#[test]
+fn persisted_roster_delta_with_pascalcase_survives_and_keeps_typed_values() {
+    let raw = r#"{
+        "from": "bpmux",
+        "text": "",
+        "ts": "2026-05-16T01:23:45Z",
+        "message_type": "state-delta",
+        "state_delta": {"domain": "roster", "members": [
+            {"routing_id": "r1", "name": "n", "identity": "i", "role": "Dev", "presence": "Blocked"}
+        ]}
+    }"#;
+    let m: Message = serde_json::from_str(raw).expect("a historical roster delta must parse");
+    let payload = m
+        .state_delta
+        .expect("the roster delta must survive the tolerant deserializer");
+    let reserialized = serde_json::to_value(&payload).expect("serialize");
+    assert_eq!(reserialized["domain"], "roster");
+    assert_eq!(reserialized["members"][0]["role"], "Dev");
+    assert_eq!(reserialized["members"][0]["presence"], "Blocked");
+}
+
+#[test]
+fn ci_state_changed_subscription_event_pins_conclusion_and_freshly_resolved_url() {
+    let payload: StateDeltaPayload = serde_json::from_value(serde_json::json!({
+        "domain": "ci",
+        "snapshot": {"state": "green", "run_id": 99, "head_sha": "sha1", "display_title": "build"}
+    }))
+    .expect("ci delta parses");
+    let (event_class, body) = payload
+        .to_subscription_event("2026-07-03T00:00:00Z")
+        .expect("a ci delta maps to a subscription event");
+    assert_eq!(event_class, "ci_state_changed");
+    assert_eq!(body["conclusion"], "green");
+    assert_eq!(body["run_id"], 99);
+    assert_eq!(body["head_sha"], "sha1");
+    assert_eq!(body["display_title"], "build");
+    assert_eq!(
+        body["url"],
+        serde_json::Value::String(crate::ci::github_actions_url()),
+        "the subscription event resolves the CI actions URL fresh at emit time — never from the persisted snapshot.url, so live and replayed deltas emit the same url"
+    );
+}
