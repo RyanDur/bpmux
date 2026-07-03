@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::sqlite::SqliteStorage;
+use crate::log::MessageLog;
 use crate::message::{Message, MessageType};
 use crate::storage::Storage;
 

@@ -42,7 +42,7 @@ impl<S: Storage> InstrumentedStorage<S> {
     }
 }
 
-impl<S: Storage> Storage for InstrumentedStorage<S> {
+impl<S: Storage> crate::log::MessageLog for InstrumentedStorage<S> {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let start = Instant::now();
         let result = self.inner.append_message(msg);
@@ -93,7 +93,9 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         ));
         result
     }
+}
 
+impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn load_lessons(&self) -> LessonIndex {
         let start = Instant::now();
         let index = self.inner.load_lessons();

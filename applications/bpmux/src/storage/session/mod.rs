@@ -47,7 +47,7 @@ impl FileStorage {
     }
 }
 
-impl Storage for FileStorage {
+impl crate::log::MessageLog for FileStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         crate::log::append_message(&self.dir, msg)
     }
@@ -73,7 +73,9 @@ impl Storage for FileStorage {
             Err(e) => Err(e),
         }
     }
+}
 
+impl Storage for FileStorage {
     fn load_lessons(&self) -> LessonIndex {
         crate::memory::lessons::load_index(&self.dir)
     }

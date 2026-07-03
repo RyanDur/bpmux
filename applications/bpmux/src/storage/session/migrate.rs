@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use super::{FileStorage, SqliteStorage, Storage};
-use crate::log::LogError;
+use crate::log::{LogError, MessageLog};
 use crate::message::{Message, StateDeltaPayload};
 use crate::product_management::board::PersistError;
 use crate::routing::short_name;

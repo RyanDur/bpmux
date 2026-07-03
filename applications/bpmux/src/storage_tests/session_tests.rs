@@ -1,3 +1,4 @@
+use crate::log::MessageLog;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
 use crate::storage::StorageBackend;

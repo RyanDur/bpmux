@@ -5,9 +5,6 @@ use crate::product_management::board::orchestrator::QueuedEvent;
 
 use crate::memory::lessons::LessonIndex;
 
-use crate::log::LogError;
-use crate::message::Message;
-
 mod backend;
 mod global;
 mod instrumented;
@@ -31,17 +28,9 @@ fn default_kind() -> String {
     "agent".to_string()
 }
 
-pub trait Storage: crate::awareness::SurfacedTopicsRepo + Send + Sync {
-    fn append_message(&self, msg: &Message) -> Result<(), LogError>;
-    fn read_messages(&self) -> Result<Vec<Message>, LogError>;
-    fn read_recent(
-        &self,
-        limit: usize,
-        offset: usize,
-        matches: &dyn Fn(&Message) -> bool,
-    ) -> Result<Vec<Message>, LogError>;
-    fn clear_messages(&self) -> Result<(), std::io::Error>;
-
+pub trait Storage:
+    crate::awareness::SurfacedTopicsRepo + crate::log::MessageLog + Send + Sync
+{
     fn load_lessons(&self) -> LessonIndex;
     fn add_lesson(
         &self,

@@ -46,7 +46,7 @@ impl SqliteStorage {
     }
 }
 
-impl Storage for SqliteStorage {
+impl crate::log::MessageLog for SqliteStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let payload = serde_json::to_string(msg)?;
         let created_at = msg.ts.timestamp();
@@ -83,7 +83,9 @@ impl Storage for SqliteStorage {
             .map(|_| ())
             .map_err(engine::io_err)
     }
+}
 
+impl Storage for SqliteStorage {
     fn load_lessons(&self) -> LessonIndex {
         crate::memory::lessons::load_index(&self.dir)
     }
