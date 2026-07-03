@@ -42,6 +42,11 @@ use status::{
 };
 pub use types::*;
 
+pub trait OutboxRepo: Send + Sync {
+    fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, crate::persist::PersistError>;
+    fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), crate::persist::PersistError>;
+}
+
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) story_dispatch: std::sync::OnceLock<
         Box<dyn Fn(crate::product_management::story::slice::StoryAction) + Send + Sync>,

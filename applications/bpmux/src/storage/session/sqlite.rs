@@ -14,8 +14,8 @@ use super::{Storage, UserRecord};
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
-use crate::product_management::board::PersistError;
-use crate::product_management::board::orchestrator::QueuedEvent;
+use crate::persist::PersistError;
+use crate::sync::QueuedEvent;
 
 pub struct SqliteStorage {
     dir: PathBuf,
@@ -143,7 +143,9 @@ impl Storage for SqliteStorage {
             .map(|_| ())
             .map_err(engine::persist_err)
     }
+}
 
+impl crate::sync::OutboxRepo for SqliteStorage {
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
         outbox::load(&self.lock())
     }

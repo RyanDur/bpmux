@@ -213,13 +213,13 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         ));
         result
     }
+}
 
+impl<S: Storage> crate::sync::OutboxRepo for InstrumentedStorage<S> {
     fn load_outbox(
         &self,
-    ) -> Result<
-        std::collections::VecDeque<crate::product_management::board::orchestrator::QueuedEvent>,
-        crate::product_management::board::PersistError,
-    > {
+    ) -> Result<std::collections::VecDeque<crate::sync::QueuedEvent>, crate::persist::PersistError>
+    {
         let start = Instant::now();
         let result = self.inner.load_outbox();
         if let Ok(ref queue) = result {
@@ -234,8 +234,8 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
 
     fn save_outbox(
         &self,
-        events: &[crate::product_management::board::orchestrator::QueuedEvent],
-    ) -> Result<(), crate::product_management::board::PersistError> {
+        events: &[crate::sync::QueuedEvent],
+    ) -> Result<(), crate::persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.save_outbox(events);
         self.log(&format!(

@@ -1,8 +1,8 @@
 use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
 
-use crate::product_management::board::PersistError;
-use crate::product_management::board::orchestrator::QueuedEvent;
+use crate::persist::PersistError;
+use crate::sync::QueuedEvent;
 
 use super::{Storage, UserRecord, default_kind};
 use crate::log::LogError;
@@ -31,7 +31,7 @@ impl FileStorage {
         if let Some(p) = &self.outbox_path {
             return Ok(p.clone());
         }
-        crate::product_management::board::orchestrator::default_outbox_path()
+        crate::sync::default_outbox_path()
     }
 
     fn write_users(&self, records: &[UserRecord]) -> Result<(), PersistError> {
@@ -166,10 +166,12 @@ impl Storage for FileStorage {
         records.retain(|r| !ids.iter().any(|id| id == &r.session_id));
         self.write_users(&records)
     }
+}
 
+impl crate::sync::OutboxRepo for FileStorage {
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
         let path = self.resolve_outbox_path()?;
-        crate::product_management::board::orchestrator::load_outbox_from_disk(&path)
+        crate::sync::load_outbox_from_disk(&path)
     }
 
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {

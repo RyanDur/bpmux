@@ -1,7 +1,4 @@
-use std::collections::VecDeque;
-
-use crate::product_management::board::PersistError;
-use crate::product_management::board::orchestrator::QueuedEvent;
+use crate::persist::PersistError;
 
 mod backend;
 mod global;
@@ -30,6 +27,7 @@ pub trait Storage:
     crate::awareness::SurfacedTopicsRepo
     + crate::log::MessageLog
     + crate::memory::lessons::LessonRepo
+    + crate::sync::OutboxRepo
     + Send
     + Sync
 {
@@ -40,9 +38,6 @@ pub trait Storage:
     fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError>;
     fn set_user_last_delivered(&self, id: &str, at: i64) -> Result<(), PersistError>;
     fn delete_users(&self, ids: &[String]) -> Result<(), PersistError>;
-
-    fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;
-    fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError>;
 }
 
 pub trait GlobalStore: Send + Sync {
