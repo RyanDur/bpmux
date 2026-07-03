@@ -50,7 +50,7 @@ pub fn bundled_default() -> WorkflowConfig {
             },
             State {
                 id: "acceptance".into(),
-                section: "in-work".into(),
+                section: "post-work".into(),
             },
             State {
                 id: "accepted".into(),
