@@ -6,12 +6,13 @@ use std::sync::atomic::AtomicU64;
 
 use chrono::Utc;
 
-use super::events::StoryEvent;
-use super::sync::{SourceAdapter, SyncError};
-use crate::product_management::story::{FreeComment, GateComment, Story};
+use crate::product_management::board::events::StoryEvent;
+use crate::product_management::board::sync::{SourceAdapter, SyncError};
+use crate::product_management::story::{FreeComment, GateComment};
 pub use persist_error::PersistError;
 
 mod coalesce;
+mod dispatch;
 mod drain;
 mod driver;
 mod driver_ops;
@@ -82,37 +83,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.with_pending(|p| p.clone())
     }
 
-    pub fn bind_story_dispatch(
-        &self,
-        dispatch: impl Fn(crate::product_management::story::slice::StoryAction) + Send + Sync + 'static,
-    ) {
-        let _ = self.story_dispatch.set(Box::new(dispatch));
-    }
-
-    pub(super) fn dispatch_story(
-        &self,
-        action: crate::product_management::story::slice::StoryAction,
-    ) {
-        match self.story_dispatch.get() {
-            Some(dispatch) => dispatch(action),
-            None => crate::diag::log_diag(
-                "orchestrator: story dispatch unbound; write dropped (bind_story_dispatch missing)",
-            ),
-        }
-    }
-
-    pub(super) fn apply_story_event(&self, event: &StoryEvent) {
-        self.dispatch_story(crate::product_management::story::slice::StoryAction::Event(
-            event.clone(),
-        ));
-    }
-
-    pub fn apply_server_rollback(&self, story: Story) {
-        self.dispatch_story(
-            crate::product_management::story::slice::StoryAction::Seeded(vec![story]),
-        );
-    }
-
     pub fn pending_issue_for_mutation(&self, id: MutationId) -> Option<u64> {
         self.with_pending(|p| {
             p.iter()
@@ -175,10 +145,10 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             };
             let stale = stale_state_labels_for(&story, &labels);
             for stale_label in stale {
-                let meta = super::events::EventMeta {
+                let meta = crate::product_management::board::events::EventMeta {
                     actor: "bpmux:reconcile".to_string(),
                     ts: Utc::now(),
-                    peer_id: super::peer::PeerId::local(),
+                    peer_id: crate::product_management::board::peer::PeerId::local(),
                 };
                 self.mutate(StoryEvent::TagRemoved {
                     meta,
@@ -198,3 +168,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 use outbox::persist_outbox_to_disk;
 
 mod builder;
+
+#[cfg(test)]
+mod conflict_classifier_tests;
+#[cfg(test)]
+mod orchestrator_tests;

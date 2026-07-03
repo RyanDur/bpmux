@@ -2,7 +2,7 @@ pub mod adapters;
 pub mod arrangement;
 pub use crate::product_management::story::events;
 pub mod label_codec;
-pub mod orchestrator;
+pub use crate::sync as orchestrator;
 pub mod peer;
 pub mod ready_order_label;
 pub mod sync;
@@ -12,11 +12,7 @@ pub mod view_model;
 #[cfg(test)]
 mod canonical_tests;
 #[cfg(test)]
-mod conflict_classifier_tests;
-#[cfg(test)]
 mod event_messages_audit_tests;
-#[cfg(test)]
-mod orchestrator_tests;
 #[cfg(test)]
 mod peer_tests;
 #[cfg(test)]

@@ -11,6 +11,8 @@ const FORBIDDEN_VENDOR_TOKENS: &[&str] = &[
 
 const SELF_FILE: &str = "boundary_tests.rs";
 
+const FORBIDDEN_EDGE_TOKENS: &[&str] = &["crate::storage"];
+
 const REDUCER_DIR: &str = "src/product_management/story/slice/reducers";
 
 const REDUCER_FORBIDDEN_DECODE_TOKENS: &[&str] = &[
@@ -58,6 +60,37 @@ fn product_management_domain_imports_no_vendor_integration() {
     assert!(
         violations.is_empty(),
         "product_management is the integration-agnostic domain: it depends on the SourceAdapter port, never on a concrete integration mechanism (octocrab, reqwest, crate::github wire client, crate::bridge::tracker). Move the offending code into integrations/<provider>/ (gateway + mapper + adapter) and inject the concrete gateway at the composition root. Violations:\n{}",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn product_management_domain_imports_no_persistence_edge() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/product_management");
+    let mut files = Vec::new();
+    collect_rs_files(&root, &mut files);
+    assert!(
+        !files.is_empty(),
+        "expected to find product_management source files under {}",
+        root.display()
+    );
+
+    let mut violations: Vec<String> = Vec::new();
+    for file in &files {
+        if file.file_name().and_then(|n| n.to_str()) == Some(SELF_FILE) {
+            continue;
+        }
+        let contents = std::fs::read_to_string(file).expect("read source file");
+        for token in FORBIDDEN_EDGE_TOKENS {
+            if contents.contains(token) {
+                violations.push(format!("{}: {token}", file.display()));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "product_management is the domain: it does not reach the persistence edge (crate::storage) directly. State lives in the store; the synchronization engine (crate::sync) owns the Storage dependency and persists off the store as an eventually-consistent projection. Move the offending code into crate::sync or behind a store-owned port. Violations:\n{}",
         violations.join("\n")
     );
 }

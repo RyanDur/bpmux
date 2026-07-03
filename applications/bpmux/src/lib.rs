@@ -51,6 +51,7 @@ pub mod storage;
 #[cfg(test)]
 mod storage_tests;
 pub mod store;
+pub mod sync;
 #[cfg(test)]
 mod team_roster_tests;
 pub mod telemetry;
