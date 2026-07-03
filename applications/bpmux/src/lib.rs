@@ -35,6 +35,7 @@ pub mod memory;
 pub mod message;
 #[cfg(test)]
 mod message_tests;
+pub(crate) mod persist;
 pub mod product_management;
 pub mod reactions;
 #[cfg(test)]

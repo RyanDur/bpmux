@@ -6,10 +6,10 @@ use std::sync::atomic::AtomicU64;
 
 use chrono::Utc;
 
+pub use crate::persist::PersistError;
 use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::{FreeComment, GateComment};
-pub use persist_error::PersistError;
 
 mod coalesce;
 mod dispatch;
@@ -19,7 +19,6 @@ mod driver_ops;
 mod fetch;
 mod ingest;
 mod outbox;
-mod persist_error;
 mod race_window;
 mod slice_readers;
 mod status;
