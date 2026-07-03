@@ -27,6 +27,8 @@ mod outcome_mapping;
 mod reorder;
 mod retire_outcome;
 mod signals;
+#[cfg(test)]
+mod signals_tests;
 mod transition;
 mod view;
 

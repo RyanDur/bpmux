@@ -11,7 +11,7 @@ const FORBIDDEN_VENDOR_TOKENS: &[&str] = &[
 
 const SELF_FILE: &str = "boundary_tests.rs";
 
-const FORBIDDEN_EDGE_TOKENS: &[&str] = &["crate::storage"];
+const FORBIDDEN_EDGE_TOKENS: &[&str] = &["crate::storage", "crate::transport"];
 
 const REDUCER_DIR: &str = "src/product_management/story/slice/reducers";
 
@@ -65,7 +65,7 @@ fn product_management_domain_imports_no_vendor_integration() {
 }
 
 #[test]
-fn product_management_domain_imports_no_persistence_edge() {
+fn product_management_domain_imports_no_infrastructure_edge() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/product_management");
     let mut files = Vec::new();
     collect_rs_files(&root, &mut files);
@@ -90,7 +90,7 @@ fn product_management_domain_imports_no_persistence_edge() {
 
     assert!(
         violations.is_empty(),
-        "product_management is the domain: it does not reach the persistence edge (crate::storage) directly. State lives in the store; the synchronization engine (crate::sync) owns the Storage dependency and persists off the store as an eventually-consistent projection. Move the offending code into crate::sync or behind a store-owned port. Violations:\n{}",
+        "product_management is the domain: it does not reach the infrastructure edges (crate::storage persistence, crate::transport delivery) directly. State lives in the store; the synchronization engine (crate::sync) owns persistence and projects off the store; identity/name helpers live in crate::routing. Move the offending code into crate::sync, behind a store-owned port, or to a support module (crate::routing). Violations:\n{}",
         violations.join("\n")
     );
 }

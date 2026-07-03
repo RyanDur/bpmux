@@ -12,8 +12,6 @@ pub mod view_model;
 #[cfg(test)]
 mod canonical_tests;
 #[cfg(test)]
-mod event_messages_audit_tests;
-#[cfg(test)]
 mod peer_tests;
 #[cfg(test)]
 mod ready_order_label_codec;
