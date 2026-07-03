@@ -194,3 +194,22 @@ mod role_resolver_tests {
         );
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod board_middle_stage_ids_tests {
+    use crate::workflow::{board_middle_stage_ids, bundled_default::bundled_default};
+
+    #[test]
+    fn middle_stages_derive_from_the_in_work_section_in_config_order() {
+        let ids: Vec<String> = board_middle_stage_ids(&bundled_default())
+            .iter()
+            .map(|id| id.as_str().to_string())
+            .collect();
+        assert_eq!(
+            ids,
+            vec!["in-progress".to_string(), "desk-check".to_string()],
+            "the board's configurable middle is exactly the in-work section, in config order"
+        );
+    }
+}

@@ -3,11 +3,13 @@ pub mod enums;
 pub mod events;
 pub mod key;
 pub(crate) mod slice;
+pub mod stage;
 pub mod story_type;
 pub mod transition;
 
-pub use enums::{Acceptor, BoardState, Gate, Horizon, Stage, Tag};
+pub use enums::{Acceptor, BoardState, Gate, Horizon, Tag};
 pub use key::{StoryId, StoryKey};
+pub use stage::{Stage, StageId};
 pub use story_type::{StoryKind, story_type_from_title};
 pub use transition::{
     StateTransition, is_backward, most_recent_backward_transition, replay_transitions,

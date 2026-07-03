@@ -1,10 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Stage {
-    Dev,
-    DeskCheck,
-}
+use super::stage::Stage;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BoardState {
