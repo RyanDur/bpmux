@@ -152,11 +152,10 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn save_state(&self, key: &str, value: &str) {
         self.inner.save_state(key, value)
     }
+}
 
-    fn load_users(
-        &self,
-    ) -> Result<Vec<crate::storage::UserRecord>, crate::product_management::board::PersistError>
-    {
+impl<S: Storage> crate::routing::UserRepo for InstrumentedStorage<S> {
+    fn load_users(&self) -> Result<Vec<crate::routing::UserRecord>, crate::persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.load_users();
         if let Ok(ref records) = result {
@@ -174,7 +173,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         id: &str,
         name: &str,
         role: &str,
-    ) -> Result<(), crate::product_management::board::PersistError> {
+    ) -> Result<(), crate::persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.upsert_user(id, name, role);
         self.log(&format!(
@@ -189,7 +188,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         &self,
         id: &str,
         at: i64,
-    ) -> Result<(), crate::product_management::board::PersistError> {
+    ) -> Result<(), crate::persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.set_user_last_delivered(id, at);
         self.log(&format!(
@@ -200,10 +199,7 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn delete_users(
-        &self,
-        ids: &[String],
-    ) -> Result<(), crate::product_management::board::PersistError> {
+    fn delete_users(&self, ids: &[String]) -> Result<(), crate::persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.delete_users(ids);
         self.log(&format!(

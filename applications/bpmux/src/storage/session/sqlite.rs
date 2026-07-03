@@ -4,17 +4,18 @@ use std::sync::Mutex;
 
 use rusqlite::Connection;
 
+use super::Storage;
 use super::sqlite_engine as engine;
 use super::sqlite_messages as messages;
 use super::sqlite_meta as meta;
 use super::sqlite_outbox as outbox;
 use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
-use super::{Storage, UserRecord};
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
 use crate::persist::PersistError;
+use crate::routing::{UserRecord, UserRepo};
 use crate::sync::QueuedEvent;
 
 pub struct SqliteStorage {
@@ -121,7 +122,9 @@ impl Storage for SqliteStorage {
     fn save_state(&self, key: &str, value: &str) {
         let _ = meta::put(&self.lock(), key, value);
     }
+}
 
+impl UserRepo for SqliteStorage {
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {
         users::load_all(&self.lock()).map_err(engine::persist_err)
     }

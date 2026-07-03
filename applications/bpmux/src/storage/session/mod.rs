@@ -4,10 +4,11 @@ use std::path::PathBuf;
 use crate::persist::PersistError;
 use crate::sync::QueuedEvent;
 
-use super::{Storage, UserRecord, default_kind};
+use super::Storage;
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::message::Message;
+use crate::routing::{UserRecord, UserRepo, default_kind};
 
 pub struct FileStorage {
     dir: PathBuf,
@@ -122,7 +123,9 @@ impl Storage for FileStorage {
             crate::diag::log_diag(&format!("save_state rename failed for {safe_key}: {e}"));
         }
     }
+}
 
+impl UserRepo for FileStorage {
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {
         let path = self.dir.join("users.json");
         if !path.exists() {

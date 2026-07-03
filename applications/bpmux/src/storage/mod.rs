@@ -1,5 +1,3 @@
-use crate::persist::PersistError;
-
 mod backend;
 mod global;
 mod instrumented;
@@ -9,35 +7,17 @@ pub use backend::StorageBackend;
 pub use global::*;
 pub use session::*;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct UserRecord {
-    pub session_id: String,
-    pub name: String,
-    pub role: String,
-    #[serde(default = "default_kind")]
-    pub kind: String,
-    pub last_delivered_at: Option<i64>,
-}
-
-fn default_kind() -> String {
-    "agent".to_string()
-}
-
 pub trait Storage:
     crate::awareness::SurfacedTopicsRepo
     + crate::log::MessageLog
     + crate::memory::lessons::LessonRepo
     + crate::sync::OutboxRepo
+    + crate::routing::UserRepo
     + Send
     + Sync
 {
     fn load_state(&self, key: &str) -> Option<String>;
     fn save_state(&self, key: &str, value: &str);
-
-    fn load_users(&self) -> Result<Vec<UserRecord>, PersistError>;
-    fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError>;
-    fn set_user_last_delivered(&self, id: &str, at: i64) -> Result<(), PersistError>;
-    fn delete_users(&self, ids: &[String]) -> Result<(), PersistError>;
 }
 
 pub trait GlobalStore: Send + Sync {
