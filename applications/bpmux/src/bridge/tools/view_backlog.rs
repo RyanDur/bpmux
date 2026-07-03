@@ -18,8 +18,8 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
         match column_for(story.state.clone(), story.is_closed) {
             ColumnBucket::Icebox => icebox.push(entry),
             ColumnBucket::Ready => ready.push(entry),
-            ColumnBucket::InProgress => in_progress.push(entry),
-            ColumnBucket::DeskCheck | ColumnBucket::Acceptance => acceptance.push(entry),
+            ColumnBucket::Middle(_) => in_progress.push(entry),
+            ColumnBucket::Acceptance => acceptance.push(entry),
             ColumnBucket::Accepted => accepted.push(entry),
             ColumnBucket::Retired => retired.push(entry),
         }

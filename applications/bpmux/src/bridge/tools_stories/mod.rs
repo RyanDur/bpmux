@@ -4,6 +4,9 @@ mod acceptor_axis;
 #[cfg(test)]
 mod acceptor_axis_classification;
 mod authorization;
+mod board_render;
+#[cfg(test)]
+mod board_render_tests;
 mod canonical_store;
 mod closure;
 mod creation;
@@ -26,8 +29,6 @@ mod retire_outcome;
 mod signals;
 mod transition;
 mod view;
-#[cfg(test)]
-mod view_tests;
 
 pub(crate) use acceptance::{
     BugGate, accept_via_canonical_store, handle_accept_story, handle_fail_desk_check,

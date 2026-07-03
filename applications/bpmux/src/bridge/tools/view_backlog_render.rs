@@ -51,12 +51,14 @@ fn in_progress_state_counted_correctly() {
 }
 
 #[test]
-fn acceptance_and_desk_check_collapse_into_acceptance_count() {
+fn in_work_middle_stages_count_as_in_progress_acceptance_is_the_rail_only() {
     let stories = vec![
         story(104, "d", BoardState::Acceptance),
         story(105, "dc", BoardState::InProgress(Stage::DeskCheck.id())),
     ];
-    assert_eq!(build_backlog_summary(&stories)["acceptance_count"], 2);
+    let summary = build_backlog_summary(&stories);
+    assert_eq!(summary["acceptance_count"], 1);
+    assert_eq!(summary["in_progress_count"], 1);
 }
 
 #[test]

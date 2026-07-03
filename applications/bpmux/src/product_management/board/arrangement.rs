@@ -1,26 +1,24 @@
-use crate::product_management::story::{BoardState, Stage};
+use crate::product_management::story::{BoardState, StageId};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ColumnBucket {
     Icebox,
     Ready,
-    InProgress,
-    DeskCheck,
+    Middle(StageId),
     Acceptance,
     Accepted,
     Retired,
 }
 
 impl ColumnBucket {
-    pub fn header(self) -> &'static str {
+    pub fn header(&self) -> String {
         match self {
-            ColumnBucket::Icebox => "ICEBOX",
-            ColumnBucket::Ready => "READY",
-            ColumnBucket::InProgress => "IN PROGRESS",
-            ColumnBucket::DeskCheck => "DESK CHECK",
-            ColumnBucket::Acceptance => "ACCEPTANCE",
-            ColumnBucket::Accepted => "ACCEPTED",
-            ColumnBucket::Retired => "RETIRED",
+            ColumnBucket::Icebox => "ICEBOX".to_string(),
+            ColumnBucket::Ready => "READY".to_string(),
+            ColumnBucket::Middle(stage) => stage.as_str().to_ascii_uppercase().replace('-', " "),
+            ColumnBucket::Acceptance => "ACCEPTANCE".to_string(),
+            ColumnBucket::Accepted => "ACCEPTED".to_string(),
+            ColumnBucket::Retired => "RETIRED".to_string(),
         }
     }
 }
@@ -32,10 +30,7 @@ pub fn column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
     match state {
         BoardState::Icebox => ColumnBucket::Icebox,
         BoardState::Ready => ColumnBucket::Ready,
-        BoardState::InProgress(stage) => match stage.as_stage() {
-            Some(Stage::DeskCheck) => ColumnBucket::DeskCheck,
-            Some(Stage::Dev) | None => ColumnBucket::InProgress,
-        },
+        BoardState::InProgress(stage) => ColumnBucket::Middle(stage),
         BoardState::Acceptance => ColumnBucket::Acceptance,
         BoardState::Accepted => ColumnBucket::Accepted,
         BoardState::Retired => ColumnBucket::Retired,

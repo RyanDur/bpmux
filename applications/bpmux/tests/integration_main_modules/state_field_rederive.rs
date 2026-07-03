@@ -64,7 +64,7 @@ fn ready_state_buckets_to_ready_column() {
 #[test]
 fn in_progress_state_buckets_to_in_progress_column() {
     let bucket = column_for(BoardState::InProgress(Stage::Dev.id()), false);
-    assert_eq!(bucket, ColumnBucket::InProgress);
+    assert_eq!(bucket, ColumnBucket::Middle(Stage::Dev.id()));
 }
 
 #[test]

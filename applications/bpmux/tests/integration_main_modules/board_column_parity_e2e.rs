@@ -16,10 +16,7 @@ fn renderer_column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
     match state {
         BoardState::Icebox => ColumnBucket::Icebox,
         BoardState::Ready => ColumnBucket::Ready,
-        BoardState::InProgress(stage) => match stage.as_stage() {
-            Some(Stage::DeskCheck) => ColumnBucket::DeskCheck,
-            Some(Stage::Dev) | None => ColumnBucket::InProgress,
-        },
+        BoardState::InProgress(stage) => ColumnBucket::Middle(stage),
         BoardState::Acceptance => ColumnBucket::Acceptance,
         BoardState::Accepted => ColumnBucket::Accepted,
         BoardState::Retired => ColumnBucket::Retired,
@@ -88,11 +85,11 @@ fn open_workflow_states_bucket_one_to_one() {
     assert_eq!(column_for(BoardState::Ready, false), ColumnBucket::Ready);
     assert_eq!(
         column_for(BoardState::InProgress(Stage::Dev.id()), false),
-        ColumnBucket::InProgress
+        ColumnBucket::Middle(Stage::Dev.id())
     );
     assert_eq!(
         column_for(BoardState::InProgress(Stage::DeskCheck.id()), false),
-        ColumnBucket::DeskCheck
+        ColumnBucket::Middle(Stage::DeskCheck.id())
     );
     assert_eq!(
         column_for(BoardState::Acceptance, false),
