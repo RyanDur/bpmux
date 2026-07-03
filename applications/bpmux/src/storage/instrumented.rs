@@ -149,17 +149,6 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         self.inner.save_state(key, value)
     }
 
-    fn load_surfaced_topics(&self) -> std::collections::HashSet<String> {
-        self.inner.load_surfaced_topics()
-    }
-
-    fn save_surfaced_topics(
-        &self,
-        topics: &std::collections::HashSet<String>,
-    ) -> Result<(), std::io::Error> {
-        self.inner.save_surfaced_topics(topics)
-    }
-
     fn load_users(
         &self,
     ) -> Result<Vec<crate::storage::UserRecord>, crate::product_management::board::PersistError>
@@ -251,5 +240,18 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
             start.elapsed().as_secs_f64() * 1000.0
         ));
         result
+    }
+}
+
+impl<S: Storage> crate::awareness::SurfacedTopicsRepo for InstrumentedStorage<S> {
+    fn load_surfaced_topics(&self) -> std::collections::HashSet<String> {
+        self.inner.load_surfaced_topics()
+    }
+
+    fn save_surfaced_topics(
+        &self,
+        topics: &std::collections::HashSet<String>,
+    ) -> Result<(), std::io::Error> {
+        self.inner.save_surfaced_topics(topics)
     }
 }

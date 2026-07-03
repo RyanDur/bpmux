@@ -15,6 +15,14 @@ use handoff::HandoffTracker;
 use pileon::PileonDetector;
 use recall::RecallSystem;
 
+pub trait SurfacedTopicsRepo: Send + Sync {
+    fn load_surfaced_topics(&self) -> std::collections::HashSet<String>;
+    fn save_surfaced_topics(
+        &self,
+        topics: &std::collections::HashSet<String>,
+    ) -> Result<(), std::io::Error>;
+}
+
 const TRAIN_WINDOW: usize = 2000;
 
 fn training_messages(session: &Session) -> Vec<crate::message::Message> {

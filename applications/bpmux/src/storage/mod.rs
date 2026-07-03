@@ -31,7 +31,7 @@ fn default_kind() -> String {
     "agent".to_string()
 }
 
-pub trait Storage: Send + Sync {
+pub trait Storage: crate::awareness::SurfacedTopicsRepo + Send + Sync {
     fn append_message(&self, msg: &Message) -> Result<(), LogError>;
     fn read_messages(&self) -> Result<Vec<Message>, LogError>;
     fn read_recent(
@@ -57,12 +57,6 @@ pub trait Storage: Send + Sync {
 
     fn load_state(&self, key: &str) -> Option<String>;
     fn save_state(&self, key: &str, value: &str);
-
-    fn load_surfaced_topics(&self) -> std::collections::HashSet<String>;
-    fn save_surfaced_topics(
-        &self,
-        topics: &std::collections::HashSet<String>,
-    ) -> Result<(), std::io::Error>;
 
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError>;
     fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), PersistError>;

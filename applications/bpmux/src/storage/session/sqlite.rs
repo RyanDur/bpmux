@@ -118,14 +118,6 @@ impl Storage for SqliteStorage {
         let _ = meta::put(&self.lock(), key, value);
     }
 
-    fn load_surfaced_topics(&self) -> HashSet<String> {
-        surfaced_topics::load(&self.lock())
-    }
-
-    fn save_surfaced_topics(&self, topics: &HashSet<String>) -> Result<(), std::io::Error> {
-        surfaced_topics::replace(&self.lock(), topics)
-    }
-
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {
         users::load_all(&self.lock()).map_err(engine::persist_err)
     }
@@ -154,5 +146,15 @@ impl Storage for SqliteStorage {
 
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {
         outbox::replace(&self.lock(), events)
+    }
+}
+
+impl crate::awareness::SurfacedTopicsRepo for SqliteStorage {
+    fn load_surfaced_topics(&self) -> HashSet<String> {
+        surfaced_topics::load(&self.lock())
+    }
+
+    fn save_surfaced_topics(&self, topics: &HashSet<String>) -> Result<(), std::io::Error> {
+        surfaced_topics::replace(&self.lock(), topics)
     }
 }
