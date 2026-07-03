@@ -2,6 +2,7 @@ pub mod bundled_default;
 pub mod config;
 pub mod gate;
 pub mod loader;
+pub mod stage_id;
 pub mod verdicts;
 
 #[cfg(test)]
@@ -26,16 +27,15 @@ pub use loader::{
     CANONICAL_SECTIONS, WorkflowLoadError, current_workflow, install_workflow,
     load_project_root_or_cwd, load_workflow, validate_section_skeleton, workflow_path,
 };
+pub use stage_id::StageId;
 
 pub const IN_WORK_SECTION: &str = "in-work";
 
-pub fn board_middle_stage_ids(
-    config: &WorkflowConfig,
-) -> Vec<crate::product_management::story::StageId> {
+pub fn board_middle_stage_ids(config: &WorkflowConfig) -> Vec<StageId> {
     config
         .state
         .iter()
         .filter(|s| s.section == IN_WORK_SECTION)
-        .map(|s| crate::product_management::story::StageId::from(s.id.as_str()))
+        .map(|s| StageId::from(s.id.as_str()))
         .collect()
 }

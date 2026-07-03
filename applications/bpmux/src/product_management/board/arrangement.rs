@@ -1,4 +1,5 @@
-use crate::product_management::story::{BoardState, StageId};
+use crate::product_management::story::BoardState;
+use crate::workflow::StageId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ColumnBucket {

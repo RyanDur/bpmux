@@ -14,7 +14,7 @@ fn state_label(state: BoardState) -> &'static str {
     match state {
         BoardState::Icebox => "icebox",
         BoardState::Ready => "ready",
-        BoardState::InProgress(stage) => match stage.as_stage() {
+        BoardState::InProgress(stage) => match Stage::from_id(&stage) {
             Some(Stage::DeskCheck) => "desk-check",
             Some(Stage::Dev) | None => "in progress",
         },
@@ -89,7 +89,7 @@ pub(in crate::bridge) async fn handle_get_story(
         }
     }
     let needs_gates = matches!(story.state, BoardState::Ready)
-        || matches!(&story.state, BoardState::InProgress(stage) if stage.as_stage() == Some(Stage::Dev))
+        || matches!(&story.state, BoardState::InProgress(stage) if Stage::from_id(stage) == Some(Stage::Dev))
         || story.is_closed
         || matches!(story.state, BoardState::Accepted);
     if needs_gates && story.gate_comments.is_none() {

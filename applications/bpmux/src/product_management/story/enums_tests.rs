@@ -139,15 +139,18 @@ fn story_state_github_label_diverges_from_as_str_for_in_progress_and_acceptance(
 
 #[test]
 fn stage_id_bridges_the_typed_middle_stages_to_config_ids() {
-    use super::stage::StageId;
+    use crate::workflow::StageId;
     assert_eq!(Stage::Dev.id().as_str(), "in-progress");
     assert_eq!(Stage::DeskCheck.id().as_str(), "desk-check");
-    assert_eq!(StageId::from("in-progress").as_stage(), Some(Stage::Dev));
     assert_eq!(
-        StageId::from("desk-check").as_stage(),
+        Stage::from_id(&StageId::from("in-progress")),
+        Some(Stage::Dev)
+    );
+    assert_eq!(
+        Stage::from_id(&StageId::from("desk-check")),
         Some(Stage::DeskCheck)
     );
-    assert_eq!(StageId::from("qa").as_stage(), None);
+    assert_eq!(Stage::from_id(&StageId::from("qa")), None);
 }
 
 #[test]
@@ -155,6 +158,6 @@ fn stage_id_round_trips_through_its_string_id() {
     let id = Stage::DeskCheck.id();
     let json = serde_json::to_string(&id).unwrap();
     assert_eq!(json, "\"desk-check\"");
-    let back: super::stage::StageId = serde_json::from_str(&json).unwrap();
+    let back: crate::workflow::StageId = serde_json::from_str(&json).unwrap();
     assert_eq!(back, id);
 }

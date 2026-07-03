@@ -10,7 +10,7 @@ pub mod story_type;
 pub use enums::{Acceptor, BoardState, Gate, Horizon, Tag};
 pub use key::{StoryId, StoryKey};
 pub use rework::most_recent_needs_work;
-pub use stage::{Stage, StageId};
+pub use stage::Stage;
 pub use story_type::{StoryKind, story_type_from_title};
 
 #[cfg(test)]

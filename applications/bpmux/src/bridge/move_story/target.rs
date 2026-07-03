@@ -84,7 +84,7 @@ pub(super) fn current_state_display(
         Some(s) => match &s.state {
             BoardState::Icebox => "icebox",
             BoardState::Ready => "ready",
-            BoardState::InProgress(stage) => match stage.as_stage() {
+            BoardState::InProgress(stage) => match Stage::from_id(stage) {
                 Some(Stage::DeskCheck) => "desk-check",
                 Some(Stage::Dev) | None => "in-progress",
             },

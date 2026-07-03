@@ -10,7 +10,7 @@ pub(in crate::bridge) fn build_board_text(
     stories: &[crate::product_management::story::Story],
     iterations: &[crate::product_management::iteration::Iteration],
     scope: &BoardScope,
-    middle: &[crate::product_management::story::StageId],
+    middle: &[crate::workflow::StageId],
 ) -> String {
     let format_entry = |s: &crate::product_management::story::Story| -> (u64, String) {
         let parent_epic = s.parent_epic();

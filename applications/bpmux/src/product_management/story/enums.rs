@@ -1,6 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-use super::stage::{Stage, StageId};
+use super::stage::Stage;
+use crate::workflow::StageId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BoardState {
@@ -31,7 +32,7 @@ impl BoardState {
         match self {
             BoardState::Icebox => "icebox",
             BoardState::Ready => "ready",
-            BoardState::InProgress(stage) => match stage.as_stage() {
+            BoardState::InProgress(stage) => match Stage::from_id(stage) {
                 Some(Stage::DeskCheck) => "desk-check",
                 Some(Stage::Dev) | None => "in-progress",
             },
@@ -45,7 +46,7 @@ impl BoardState {
         match self {
             BoardState::Icebox => "icebox",
             BoardState::Ready => "ready",
-            BoardState::InProgress(stage) => match stage.as_stage() {
+            BoardState::InProgress(stage) => match Stage::from_id(stage) {
                 Some(Stage::DeskCheck) => "desk-check",
                 Some(Stage::Dev) | None => "in progress",
             },

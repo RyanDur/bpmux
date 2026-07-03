@@ -5,9 +5,9 @@ use crate::product_management::board::arrangement::ColumnBucket;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::BoardState;
 use crate::product_management::story::Stage;
-use crate::product_management::story::StageId;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
+use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
 
 fn bundled_middle() -> Vec<StageId> {

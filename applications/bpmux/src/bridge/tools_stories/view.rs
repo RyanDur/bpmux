@@ -66,7 +66,7 @@ pub(crate) async fn handle_view_board(
 
 fn parse_bucket(
     s: &str,
-    middle: &[crate::product_management::story::StageId],
+    middle: &[crate::workflow::StageId],
 ) -> Option<crate::product_management::board::arrangement::ColumnBucket> {
     use crate::product_management::board::arrangement::ColumnBucket;
     let lower = s.to_ascii_lowercase();
