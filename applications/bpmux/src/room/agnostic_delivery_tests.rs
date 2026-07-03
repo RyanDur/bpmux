@@ -18,7 +18,7 @@ fn ci_event(state: crate::ci::CiState, ts: &str) -> Message {
         message_type: MessageType::StateDelta,
         state_delta: Some(StateDeltaPayload::Ci {
             snapshot: CiSnapshotWire {
-                state,
+                state: state.into(),
                 run_id: Some(42),
                 head_sha: Some("abc123".to_string()),
                 display_title: Some("CI on main".to_string()),

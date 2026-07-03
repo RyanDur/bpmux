@@ -404,3 +404,29 @@ fn resolve_ci_actions_url_ignores_blank_override_and_derives_from_repo() {
         "https://github.com/acme/bpmux/actions"
     );
 }
+
+#[test]
+fn ci_state_wire_mirror_serializes_identically_to_domain_ci_state() {
+    for state in [
+        CiState::Unknown,
+        CiState::Green,
+        CiState::Red,
+        CiState::Running,
+        CiState::QuotaExhausted,
+    ] {
+        let domain_json = serde_json::to_value(state).expect("CiState serializes");
+        let wire_json = serde_json::to_value(crate::message::CiStateWire::from(state))
+            .expect("CiStateWire serializes");
+        assert_eq!(
+            domain_json, wire_json,
+            "the wire mirror must serialize byte-identically to the domain CiState — the renderer decodes these strings; a serde-attr edit on either side fails here"
+        );
+        let back: crate::message::CiStateWire = serde_json::from_value(domain_json)
+            .expect("the domain wire string parses into the mirror");
+        assert_eq!(
+            back,
+            state.into(),
+            "the mirror deserializes the domain's own wire string"
+        );
+    }
+}

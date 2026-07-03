@@ -144,9 +144,7 @@ fn broadcast_ci_poll(
     last_successful_poll_at: Option<String>,
 ) {
     let wire = CiSnapshotWire {
-        state: snapshot
-            .map(|s| s.state)
-            .unwrap_or(crate::ci::CiState::Unknown),
+        state: snapshot.map(|s| s.state.into()).unwrap_or_default(),
         run_id: snapshot.and_then(|s| s.run_id),
         head_sha: snapshot.and_then(|s| s.head_sha.clone()),
         display_title: snapshot.and_then(|s| s.display_title.clone()),

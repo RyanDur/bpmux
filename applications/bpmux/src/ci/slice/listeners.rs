@@ -78,7 +78,7 @@ impl CiBroadcastListener for CiSessionBroadcaster {
 
 fn ci_to_wire(snap: &CiSnapshot) -> CiSnapshotWire {
     CiSnapshotWire {
-        state: snap.state,
+        state: snap.state.into(),
         run_id: snap.run_id,
         head_sha: snap.head_sha.clone(),
         display_title: snap.display_title.clone(),

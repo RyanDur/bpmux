@@ -21,6 +21,19 @@ pub enum CiState {
     QuotaExhausted,
 }
 
+impl From<CiState> for crate::message::CiStateWire {
+    fn from(state: CiState) -> Self {
+        use crate::message::CiStateWire;
+        match state {
+            CiState::Unknown => CiStateWire::Unknown,
+            CiState::Green => CiStateWire::Green,
+            CiState::Red => CiStateWire::Red,
+            CiState::Running => CiStateWire::Running,
+            CiState::QuotaExhausted => CiStateWire::QuotaExhausted,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct CiEvent {
     pub state: CiState,

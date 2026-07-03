@@ -144,9 +144,20 @@ pub struct StoryTransitionWire {
     pub actor: String,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CiStateWire {
+    #[default]
+    Unknown,
+    Green,
+    Red,
+    Running,
+    QuotaExhausted,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CiSnapshotWire {
-    pub state: crate::ci::CiState,
+    pub state: CiStateWire,
     pub run_id: Option<u64>,
     pub head_sha: Option<String>,
     pub display_title: Option<String>,

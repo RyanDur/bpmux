@@ -81,7 +81,7 @@ async fn ci_listener_emits_typed_state_delta() {
     let payload = drain_state_delta(&mut rx);
     match payload {
         StateDeltaPayload::Ci { snapshot } => {
-            assert_eq!(snapshot.state, CiState::Green);
+            assert_eq!(snapshot.state, CiState::Green.into());
             assert_eq!(snapshot.run_id, Some(7));
             assert_eq!(snapshot.head_sha.as_deref(), Some("abc123"));
         }

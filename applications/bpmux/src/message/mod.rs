@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 mod state_payloads;
 
 pub use state_payloads::{
-    CiSnapshotWire, DeepDetail, IterationCloseBlockerPayload, MultiDepthPayload,
+    CiSnapshotWire, CiStateWire, DeepDetail, IterationCloseBlockerPayload, MultiDepthPayload,
     ReactionAggregateWire, ReactionsChannelSnapshot, RosterMemberWire, StateDeltaPayload,
     StateSnapshotPayload, StoryTransitionWire, SyncTransitionWire, payload_matches_filter,
 };

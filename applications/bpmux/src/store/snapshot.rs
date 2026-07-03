@@ -27,7 +27,7 @@ impl Store {
             })
             .collect();
         let ci = self.ci_snapshot().map(|s| CiSnapshotWire {
-            state: s.state,
+            state: s.state.into(),
             run_id: s.run_id,
             head_sha: s.head_sha,
             display_title: s.display_title,
