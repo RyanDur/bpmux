@@ -43,17 +43,29 @@ current iteration's references. Name it "workflow" (it already is — `WorkflowC
 - **Board states:** `ready` (stable start) → `[middle]` (config-defined, N stages) →
   `acceptance` (stable end). The board is exactly these. Only the middle comes from
   the toml; `ready`/`acceptance` are fixed bookends.
-- **Beyond the board:** `accepted` — the terminal position reached by succeeding at
-  acceptance. **`accepted` is not on the board.**
-- Each state has a **judge** (a role/agent). Movement is a **verdict** the judge fires:
-  - **Succeed** → the next state in order (deterministic — forward is just "next").
-    At `acceptance`, success → `accepted` (off the board).
-  - **NeedsWork** → the state's configured fail-target, or, if unconfigured, a place
-    the judge chooses at fire-time (non-deterministic — "back to somewhere earlier").
+- **Beyond the board (terminals, both off-board):** `accepted` — reached by
+  succeeding at acceptance (the "done / succeeded" terminal); `retired` — reached by
+  abandoning/removing a story from anywhere (the "won't-do / superseded" terminal).
+  **Neither is on the board.** "Closed" is GitHub's word for these — `is_closed` is
+  the edge representation of `position ∈ {accepted, retired}`, not a domain fact.
+- Each state has a **judge** (a role/agent). Movement is a **verdict** the judge fires
+  — the judgment that the work meets (or misses) the team's quality bar. The verdict
+  IS the gate; it drives the transition directly:
+  - **Succeed** (meets the bar) → the next state in order (deterministic — forward is
+    just "next"). At `acceptance`, success → `accepted` (off the board).
+  - **NeedsWork** (misses the bar) → the state's configured fail-target, or, if
+    unconfigured, a place the judge chooses at fire-time (non-deterministic — "back to
+    somewhere earlier").
+- **The verdict already exists.** `workflow/verdicts.rs` today stores an agent's
+  grounding verdict as *evidence*, which a *separate* gate action (pass-desk-check /
+  accept) consumes within a freshness window. This remodel collapses the two: the
+  verdict fires the transition first-class instead of being posted-then-consumed. The
+  named `Gate`s (deliver/pass/fail/reject/accept) each become "a verdict at a state";
+  pickup (entering the board) is the one non-verdict move.
 - **One story moves at a time.** A verdict changes that one story's position field;
   every projection re-derives. No multi-story coordination.
-- The gate / evidence / role-authorization machinery attaches to the verdict at a
-  state (acceptance's judge = the story's acceptor).
+- The evidence / role-authorization machinery survives as the verdict's preconditions
+  (acceptance's judge = the story's acceptor).
 
 Deleted by this model: the `Gate` enum, the hand-written transition table, and
 ordinal `is_backward` / `state_ordinal`. "Backward" is simply a `NeedsWork` verdict —
@@ -92,8 +104,11 @@ always projected. Consistent with the #58–#68 "GitHub to the edge" work.
   stateful aggregate would duplicate the label and fight per-issue persistence. "One
   story moves at a time" makes B safe: change one field, re-derive.
 - **Order on the lists, not the story.** Rank is list index. `ready_order` dies.
-- **Verdicts, not gates.** Two edge kinds per state (`Succeed` / `NeedsWork`)
-  generate the machine; the seven-name `Gate` enum was a denormalized expansion.
+- **Verdicts ARE the gates.** A verdict is the agent's judgment that the work meets
+  the team's quality bar; that judgment fires the transition (Succeed / NeedsWork).
+  This unifies today's split — a verdict posted as evidence + a separate gate action
+  that consumes it — into one first-class move. The seven-name `Gate` enum was a
+  denormalized expansion of "a verdict at a state."
 - **`accepted` is off the board.** The board ends at `acceptance`; `accepted` lives
   only in the backlog `accepted` column. Same single field, different projection filter.
 - **Three orderings, kept distinct:** priority (composition lists), flow sequence
@@ -102,14 +117,17 @@ always projected. Consistent with the #58–#68 "GitHub to the edge" work.
 ## What this replaces in current code
 
 - `BoardState` (7 rails) → one workflow-position id (`ready` / a middle stage /
-  `acceptance` / `accepted`); `icebox` / `readyForWork` / `current` stop being states
-  and become derived backlog columns.
+  `acceptance` / `accepted` / `retired`); `icebox` / `readyForWork` / `current` stop
+  being states and become derived backlog columns. `accepted` and `retired` are
+  off-board terminals.
 - `ColumnBucket` + `column_for` → gone; the board is `Map<State, [StoryId]>` with no
   board-column type. (S2's `Middle(StageId)` + `header()` were still the old
   fixed-column thinking; `header()` was a view concern leaking into the domain.)
 - `Gate` + transition table + `state_ordinal` / `is_backward` → verdicts over the
   config's states.
-- `ready_order` + `is_closed` on the story → shed (order = list index; closed derived).
+- `ready_order` on the story → shed (order = list index).
+- `is_closed` on the story → shed; it becomes edge-derived (`position ∈ {accepted,
+  retired}`). The ~20 sites that branch on the bool re-express as "branch on position."
 - The S2 wire-codec direction (open `as_str` / `parse`) is subsumed: the wire carries
   the story's one position; there is no rails-vs-middle split to "open."
 
@@ -122,11 +140,15 @@ reuses as the workflow-position type, so they are not wasted — but
 are superseded and will be dismantled by this remodel. Sequencing the dismantle +
 rebuild into gated slices is the next planning step (not in this doc).
 
-## Open questions (unresolved with Ryan)
+## Resolved with Ryan (2026-07-03)
 
-- **Epics** — a PM type today, not placed in `roadmap → outcome → iteration → story`.
-  Likely an orthogonal cross-cut (an epic references stories across iterations), not a
-  level in the composition — unconfirmed.
-- **Retired / closed** — the backlog is four columns (icebox / readyForWork / current
-  / accepted); no retired. How a closed / abandoned story is modeled (a fifth column?
-  archived out? folded into accepted?) is unresolved.
+- **Epics** — not an open question; they have their place. An epic is an **orthogonal
+  cross-cut** — it references stories across iterations, a grouping *over* the
+  composition, not a rung on the roadmap → outcome → iteration → story ladder. This
+  remodel does not touch them.
+- **Retired / closed** — `retired` is an off-board terminal position (the
+  won't-do / superseded sibling of `accepted`'s succeeded). "Closed" is GitHub's word
+  for a terminal, so `is_closed` is **edge-only** (github-closed iff `position ∈
+  {accepted, retired}`) and sheds from the domain. Working assumption (confirm):
+  a retired story is **archived** — queryable, absent from the active board and the
+  four backlog columns.
