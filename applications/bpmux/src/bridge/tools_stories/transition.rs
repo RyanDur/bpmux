@@ -2,9 +2,10 @@ use super::acceptance_test_path::{
     validate_acceptance_test_path_at_deliver, validate_acceptance_test_path_at_pickup,
 };
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
-use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{PeerId, RefreshDriver, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{BoardState, Gate, Stage, Story, StoryId};
+use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,

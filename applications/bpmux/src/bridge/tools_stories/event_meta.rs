@@ -1,5 +1,5 @@
-use crate::product_management::board::PeerId;
-use crate::product_management::board::events::EventMeta;
+use crate::product_management::story::events::EventMeta;
+use crate::product_management::story::peer::PeerId;
 
 pub(super) fn meta_for(agent_name: &str) -> EventMeta {
     EventMeta {

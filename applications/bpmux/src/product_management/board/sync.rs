@@ -1,8 +1,8 @@
-use super::events::StoryEvent;
 use crate::product_management::epic::Epic;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::Story;
+use crate::product_management::story::events::StoryEvent;
 
 #[derive(Debug, Clone, Default)]
 pub struct Ingested {

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::product_management::board::events::StoryEvent;
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{BoardState, Stage, Story};
 
 use super::{MutationId, QueuedEvent};

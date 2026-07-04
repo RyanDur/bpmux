@@ -69,7 +69,7 @@ pub(crate) fn build_reject_signal(id: u64, reason: &str) -> ClientMessage {
 
 pub(crate) fn classify_for_pass_desk_check(
     id: u64,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> crate::product_management::story::StoryKind {
     refresh
         .and_then(|r| r.story(id))

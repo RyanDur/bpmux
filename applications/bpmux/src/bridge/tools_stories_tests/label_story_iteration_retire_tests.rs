@@ -1,10 +1,10 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::SyncOrchestrator;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 

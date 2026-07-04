@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 
 use super::label_fields::story_type_from_labels;
-use crate::product_management::board::events::LabelDerivedFields;
 use crate::product_management::epic::EpicId;
+use crate::product_management::story::events::LabelDerivedFields;
 use crate::product_management::story::{
     BoardState, Stage, Story, StoryId, StoryKind, Tag, story_type_from_title,
 };

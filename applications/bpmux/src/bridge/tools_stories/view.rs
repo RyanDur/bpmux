@@ -2,7 +2,7 @@ use super::board_render::{BoardScope, build_board_text};
 
 pub(crate) async fn handle_view_board(
     args: &serde_json::Map<String, serde_json::Value>,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let r = refresh.ok_or(
         "view_board requires refresh (RefreshDriver) — tracker fallback retired in slice 5l",

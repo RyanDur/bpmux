@@ -7,10 +7,10 @@ use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
 async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -43,10 +43,10 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
 
 #[tokio::test]
 async fn start_story_passes_chore_without_acceptance_test_path() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -74,11 +74,11 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
 
 #[tokio::test]
 async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -124,11 +124,11 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
 
 #[tokio::test]
 async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_return() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Stage, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -165,11 +165,11 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
 
 #[tokio::test]
 async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -221,11 +221,11 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
 
 #[tokio::test]
 async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -263,10 +263,10 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
 
 #[tokio::test]
 async fn deliver_story_propagates_drain_failure_at_label_remove() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

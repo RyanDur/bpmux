@@ -27,7 +27,7 @@ pub(crate) fn retired_iteration_label_axis_error(label: &str) -> String {
 pub(crate) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "label")?;
     let id = args
@@ -47,10 +47,10 @@ pub(crate) async fn handle_label_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
-        let meta = crate::product_management::board::events::EventMeta {
+        let meta = crate::product_management::story::events::EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::board::PeerId::local(),
+            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
         let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
         let tag = codec.decode_tag(label);
@@ -58,19 +58,19 @@ pub(crate) async fn handle_label_story(
         let (event, ok_msg) = match operation {
             "add" => (
                 if let Some(tag) = tag {
-                    crate::product_management::board::StoryEvent::TagSet {
+                    crate::product_management::story::events::StoryEvent::TagSet {
                         meta,
                         id: StoryId::new(id),
                         tag,
                     }
                 } else if let Some(blocker) = blocker {
-                    crate::product_management::board::StoryEvent::BlockedBySet {
+                    crate::product_management::story::events::StoryEvent::BlockedBySet {
                         meta,
                         id: StoryId::new(id),
                         blocker: StoryId::new(blocker),
                     }
                 } else {
-                    crate::product_management::board::StoryEvent::TagAdded {
+                    crate::product_management::story::events::StoryEvent::TagAdded {
                         meta,
                         id: StoryId::new(id),
                         label: label.to_string(),
@@ -80,18 +80,18 @@ pub(crate) async fn handle_label_story(
             ),
             "remove" => (
                 if let Some(tag) = tag {
-                    crate::product_management::board::StoryEvent::TagUnset {
+                    crate::product_management::story::events::StoryEvent::TagUnset {
                         meta,
                         id: StoryId::new(id),
                         tag,
                     }
                 } else if blocker.is_some() {
-                    crate::product_management::board::StoryEvent::BlockedByCleared {
+                    crate::product_management::story::events::StoryEvent::BlockedByCleared {
                         meta,
                         id: StoryId::new(id),
                     }
                 } else {
-                    crate::product_management::board::StoryEvent::TagRemoved {
+                    crate::product_management::story::events::StoryEvent::TagRemoved {
                         meta,
                         id: StoryId::new(id),
                         label: label.to_string(),
@@ -121,7 +121,7 @@ pub(crate) async fn handle_label_story(
 pub(crate) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let id = args
         .get("id")
@@ -136,11 +136,11 @@ pub(crate) async fn handle_comment_on_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
-        let event = crate::product_management::board::StoryEvent::FreeCommentAppended {
-            meta: crate::product_management::board::events::EventMeta {
+        let event = crate::product_management::story::events::StoryEvent::FreeCommentAppended {
+            meta: crate::product_management::story::events::EventMeta {
                 actor: crate::routing::short_name(agent_name).to_string(),
                 ts: chrono::Utc::now(),
-                peer_id: crate::product_management::board::PeerId::local(),
+                peer_id: crate::product_management::story::peer::PeerId::local(),
             },
             id: StoryId::new(id),
             body: body.to_string(),

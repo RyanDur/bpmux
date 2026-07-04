@@ -6,9 +6,9 @@ use crate::product_management::board::adapters::github::{
     decode_epic_from_story, decode_story_metadata, is_epic_story,
 };
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::epic::Epic;
 use crate::product_management::story::{BoardState, Story, StoryKind};
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use serde_json::json;
 use std::sync::Arc;
 

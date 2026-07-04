@@ -1,5 +1,5 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
-use crate::product_management::board::RefreshDriver;
+use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
 pub(crate) async fn handle_edit_outcome(

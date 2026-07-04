@@ -3,10 +3,11 @@ use std::sync::Arc;
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{PeerId, RefreshDriver, StoryEvent};
 use crate::product_management::iteration::label::current_iteration_id;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{BoardState, StoryId};
+use crate::sync::RefreshDriver;
 
 mod authorization;
 mod target;

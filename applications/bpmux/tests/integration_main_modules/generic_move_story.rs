@@ -18,14 +18,14 @@
 
 use std::sync::Arc;
 
-use bpmux::product_management::board::PeerId;
-use bpmux::product_management::board::RefreshDriver;
-use bpmux::product_management::board::StoryEvent;
-use bpmux::product_management::board::SyncOrchestrator;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use bpmux::product_management::board::events::EventMeta;
+use bpmux::product_management::story::events::EventMeta;
+use bpmux::product_management::story::events::StoryEvent;
+use bpmux::product_management::story::peer::PeerId;
 use bpmux::product_management::story::{BoardState, Story, StoryId};
 use bpmux::session::Session;
+use bpmux::sync::RefreshDriver;
+use bpmux::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;

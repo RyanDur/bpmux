@@ -50,7 +50,7 @@ pub(crate) fn stories_message(stories: serde_json::Value) -> crate::message::Mes
 
 pub(crate) fn broadcast_stories(
     session: &session::Session,
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) {
     let stories = serde_json::Value::Array(super::board::ordered_board_stories(refresh));
     session.broadcast_ephemeral(&stories_message(stories));
@@ -69,7 +69,7 @@ pub(crate) fn epics_message(epics: serde_json::Value) -> crate::message::Message
 
 pub(crate) fn broadcast_epics(
     session: &session::Session,
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) {
     let epics = serde_json::Value::Array(super::board::board_epics(refresh));
     session.broadcast_ephemeral(&epics_message(epics));
@@ -88,7 +88,7 @@ pub(crate) fn outcomes_message(outcomes: serde_json::Value) -> crate::message::M
 
 pub(crate) fn broadcast_outcomes(
     session: &session::Session,
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) {
     let outcomes = serde_json::Value::Array(super::board::board_outcomes(refresh));
     session.broadcast_ephemeral(&outcomes_message(outcomes));
@@ -107,7 +107,7 @@ pub(crate) fn iterations_message(iterations: serde_json::Value) -> crate::messag
 
 pub(crate) fn broadcast_iterations(
     session: &session::Session,
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) {
     let iterations = serde_json::Value::Array(super::board::board_iterations(refresh));
     session.broadcast_ephemeral(&iterations_message(iterations));
@@ -126,7 +126,7 @@ pub(crate) fn roadmap_message(roadmap: serde_json::Value) -> crate::message::Mes
 
 pub(crate) fn broadcast_roadmap(
     session: &session::Session,
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) {
     let roadmap = serde_json::Value::Array(super::board::board_roadmap(refresh));
     session.broadcast_ephemeral(&roadmap_message(roadmap));

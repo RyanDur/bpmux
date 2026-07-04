@@ -1,8 +1,8 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
-use crate::product_management::board::RefreshDriver;
-use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{PeerId, StoryEvent};
 use crate::product_management::story::StoryId;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
+use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
 pub(crate) async fn handle_retire_outcome(

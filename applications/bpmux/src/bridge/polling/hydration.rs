@@ -39,7 +39,7 @@ pub(crate) fn select_stories_to_revalidate(
 }
 
 pub async fn run_hydration_loop_cancellable(
-    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: Arc<dyn crate::sync::RefreshDriver>,
     interval: std::time::Duration,
     observer: crate::github::RateLimitObserver,
     ct: tokio_util::sync::CancellationToken,

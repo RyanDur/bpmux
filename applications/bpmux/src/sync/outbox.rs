@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 
 use super::PersistError;
-use crate::product_management::board::events::StoryEvent;
+use crate::product_management::story::events::StoryEvent;
 
 use super::QueuedEvent;
 

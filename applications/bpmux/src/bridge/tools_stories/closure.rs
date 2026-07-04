@@ -10,7 +10,7 @@ const REASON_CITE_MIN_CHARS: usize = 16;
 pub(crate) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -48,20 +48,22 @@ pub(crate) async fn handle_close_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
-        let meta = crate::product_management::board::events::EventMeta {
+        let meta = crate::product_management::story::events::EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::board::PeerId::local(),
+            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
         if disposition == "retire" || disposition == "wontfix" {
-            r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-                label: "retired".to_string(),
-            })
+            r.mutate_sync(
+                crate::product_management::story::events::StoryEvent::TagAdded {
+                    meta: meta.clone(),
+                    id: StoryId::new(id),
+                    label: "retired".to_string(),
+                },
+            )
             .map_err(|e| format!("#{id} retired-tag enqueue failed: {e}"))?;
             r.mutate_sync(
-                crate::product_management::board::StoryEvent::StateTransitioned {
+                crate::product_management::story::events::StoryEvent::StateTransitioned {
                     meta: meta.clone(),
                     id: StoryId::new(id),
                     new_state: crate::product_management::story::BoardState::Retired,
@@ -69,11 +71,13 @@ pub(crate) async fn handle_close_story(
             )
             .map_err(|e| format!("#{id} retired-state enqueue failed: {e}"))?;
         }
-        r.mutate_sync(crate::product_management::board::StoryEvent::StoryClosed {
-            meta,
-            id: StoryId::new(id),
-            reason: Some(reason.to_string()),
-        })
+        r.mutate_sync(
+            crate::product_management::story::events::StoryEvent::StoryClosed {
+                meta,
+                id: StoryId::new(id),
+                reason: Some(reason.to_string()),
+            },
+        )
         .map_err(|e| format!("#{id} close enqueue failed: {e}"))?;
         r.drain_pending()
             .await

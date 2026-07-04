@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use crate::message::StateDeltaPayload;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 #[tokio::test]
 async fn stories_delta_wakes_subscribers_but_is_not_persisted_durably() {

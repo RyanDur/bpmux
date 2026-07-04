@@ -2,13 +2,13 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::handle_edit_outcome;
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};
 use crate::store::{AppAction, Dispatch};
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;

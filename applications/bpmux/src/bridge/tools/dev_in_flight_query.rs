@@ -2,11 +2,11 @@
 
 use super::dev_in_flight::*;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::story::BoardState;
 use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 

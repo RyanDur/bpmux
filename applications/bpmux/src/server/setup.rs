@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::session;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 pub(super) fn test_mode_enabled() -> bool {
     std::env::var("BPMUX_TEST_MODE")
@@ -9,16 +9,13 @@ pub(super) fn test_mode_enabled() -> bool {
         .unwrap_or(false)
 }
 
-pub(super) fn race_window_barrier_from_env()
--> Option<Arc<crate::product_management::board::RaceWindowBarrier>> {
+pub(super) fn race_window_barrier_from_env() -> Option<Arc<crate::sync::RaceWindowBarrier>> {
     let raw = std::env::var("BPMUX_TEST_RACE_WINDOW_REQUESTS").ok()?;
     let target: usize = raw.trim().parse().ok()?;
     if target < 2 {
         return None;
     }
-    Some(Arc::new(
-        crate::product_management::board::RaceWindowBarrier::new(target),
-    ))
+    Some(Arc::new(crate::sync::RaceWindowBarrier::new(target)))
 }
 
 pub(super) fn seed_ci_green_for_tests(store: &crate::ci::CiStateStore) {
@@ -47,7 +44,7 @@ pub(super) async fn build_test_orchestrator(
     session: Arc<session::Session>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
     ci_state_store: crate::ci::CiStateStore,
-    race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,
+    race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(
         crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
@@ -75,7 +72,7 @@ pub(super) fn build_prod_orchestrator(
     adapter: Arc<crate::integrations::github::GitHubSourceAdapter>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
     ci_state_store: crate::ci::CiStateStore,
-    race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,
+    race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let orch_concrete =
         match SyncOrchestrator::with_storage(adapter.clone(), session.storage.clone()) {

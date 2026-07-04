@@ -3,12 +3,12 @@
 use std::sync::Arc;
 
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::peer::PeerId;
-use crate::product_management::board::{RefreshDriver, StoryEvent, SyncOrchestrator};
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
 use crate::store::{AppAction, SeededStore};
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 
 fn meta() -> EventMeta {

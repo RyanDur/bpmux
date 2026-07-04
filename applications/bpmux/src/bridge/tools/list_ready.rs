@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::{BoardState, Story};
+use crate::sync::RefreshDriver;
 
 pub(in crate::bridge) async fn handle_list_ready(
     refresh: &Arc<dyn RefreshDriver>,

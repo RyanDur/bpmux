@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::action::StoryAction;
-use crate::product_management::board::events::StoryEvent;
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{Story, StoryId, StoryKey};
 
 mod comments;

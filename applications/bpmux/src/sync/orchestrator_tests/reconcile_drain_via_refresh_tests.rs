@@ -5,13 +5,13 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{EventMeta, StoryEvent};
-use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::bind_seeded_refresh;
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {

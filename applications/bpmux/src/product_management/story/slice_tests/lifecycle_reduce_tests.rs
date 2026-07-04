@@ -1,5 +1,5 @@
 use super::{apply, created, meta, seeded, story_at};
-use crate::product_management::board::events::StoryEvent;
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{Acceptor, BoardState, Stage, StoryId, StoryKind, Tag};
 
 #[test]

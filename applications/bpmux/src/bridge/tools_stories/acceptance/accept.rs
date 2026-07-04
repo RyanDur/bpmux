@@ -9,7 +9,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     session: Option<&std::sync::Arc<crate::session::Session>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -106,20 +106,20 @@ pub(crate) async fn handle_accept_story(
 }
 
 pub(crate) async fn accept_via_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
     actor: String,
     bypass: Option<String>,
 ) -> Result<(), String> {
     ensure_story_in_canonical_store(refresh, id).await?;
-    let meta = crate::product_management::board::events::EventMeta {
+    let meta = crate::product_management::story::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
+        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     refresh
         .mutate_sync(
-            crate::product_management::board::StoryEvent::GateCommentAppended {
+            crate::product_management::story::events::StoryEvent::GateCommentAppended {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::Accepted,
@@ -129,7 +129,7 @@ pub(crate) async fn accept_via_canonical_store(
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
     refresh
         .mutate_sync(
-            crate::product_management::board::StoryEvent::StateTransitioned {
+            crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 new_state: crate::product_management::story::BoardState::Accepted,
@@ -137,11 +137,13 @@ pub(crate) async fn accept_via_canonical_store(
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
     refresh
-        .mutate_sync(crate::product_management::board::StoryEvent::StoryClosed {
-            meta,
-            id: StoryId::new(id),
-            reason: None,
-        })
+        .mutate_sync(
+            crate::product_management::story::events::StoryEvent::StoryClosed {
+                meta,
+                id: StoryId::new(id),
+                reason: None,
+            },
+        )
         .map_err(|e| format!("#{id} close enqueue failed: {e}"))?;
     refresh
         .drain_pending()

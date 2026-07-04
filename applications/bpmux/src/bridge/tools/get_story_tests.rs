@@ -7,10 +7,10 @@ use chrono::{TimeZone, Utc};
 use super::get_story::handle_get_story;
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::{BoardState, Gate, GateComment, Stage, Story, StoryId};
 use crate::store::SeededStore;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 async fn seeded_orchestrator(
     mut seeds: Vec<(Story, Vec<String>)>,
@@ -719,10 +719,10 @@ async fn latest_reject_survives_an_iteration_move() {
         "pre-move: the rejected story surfaces its reject"
     );
 
-    let meta = crate::product_management::board::orchestrator::cache_fill_meta();
+    let meta = crate::sync::cache_fill_meta();
     handle.dispatch(crate::store::AppAction::Story(
         crate::product_management::story::slice::StoryAction::Event(
-            crate::product_management::board::StoryEvent::TagAdded {
+            crate::product_management::story::events::StoryEvent::TagAdded {
                 meta: meta.clone(),
                 id: StoryId::new(1524),
                 label: "parent-iteration-#1656.1".to_string(),
@@ -731,7 +731,7 @@ async fn latest_reject_survives_an_iteration_move() {
     ));
     handle.dispatch(crate::store::AppAction::Story(
         crate::product_management::story::slice::StoryAction::Event(
-            crate::product_management::board::StoryEvent::TagRemoved {
+            crate::product_management::story::events::StoryEvent::TagRemoved {
                 meta,
                 id: StoryId::new(1524),
                 label: "parent-iteration-#1655.1".to_string(),

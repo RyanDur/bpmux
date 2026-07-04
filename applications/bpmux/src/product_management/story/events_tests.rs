@@ -3,7 +3,7 @@
 use chrono::{TimeZone, Utc};
 
 use super::events::{EventMeta, event_wins};
-use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::peer::PeerId;
 
 fn meta(actor: &str, ts_year: i32, peer: &str) -> EventMeta {
     EventMeta {

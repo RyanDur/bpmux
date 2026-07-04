@@ -1,8 +1,8 @@
 use super::SyncOrchestrator;
 use super::status::{record_error, record_ingest_success};
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::StoryId;
+use crate::product_management::story::events::StoryEvent;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn ingest_once(&self) -> Result<(), SyncError> {

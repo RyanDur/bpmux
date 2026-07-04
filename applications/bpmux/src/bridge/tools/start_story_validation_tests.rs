@@ -3,10 +3,10 @@
 
 mod gate_retire_1348 {
     use crate::bridge::tools_stories::{handle_deliver_story, handle_start_story};
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

@@ -3,10 +3,10 @@
 use crate::bridge::dispatch::{dispatch_list_ready, dispatch_move_story};
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::{Iteration, IterationAction};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch, SeededStore};
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;

@@ -5,15 +5,15 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{EventMeta, StoryEvent};
-use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::storage::{SqliteStorage, Storage};
 use crate::store::{AppAction, SeededStore};
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 
 mod outbox_persistence {
     use super::*;
@@ -51,8 +51,7 @@ mod outbox_persistence {
         })
         .unwrap();
         assert!(path.exists(), "outbox file must exist after mutate");
-        let events =
-            crate::product_management::board::orchestrator::load_outbox_from_disk(&path).unwrap();
+        let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert_eq!(events.len(), 1);
     }
 
@@ -77,8 +76,7 @@ mod outbox_persistence {
         .unwrap();
         let drained = orch.drain_once().await.unwrap();
         assert_eq!(drained, 1);
-        let events =
-            crate::product_management::board::orchestrator::load_outbox_from_disk(&path).unwrap();
+        let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert!(events.is_empty(), "outbox empty after successful drain");
     }
 
@@ -139,8 +137,7 @@ mod outbox_persistence {
         .unwrap();
         adapter.set_push_failures(true);
         let _ = orch.drain_once().await;
-        let events =
-            crate::product_management::board::orchestrator::load_outbox_from_disk(&path).unwrap();
+        let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert_eq!(events.len(), 1, "failed event stays in outbox");
     }
 
@@ -237,7 +234,7 @@ mod outbox_persistence {
 
     #[tokio::test]
     async fn acknowledge_dropped_clears_dropped_events() {
-        use crate::product_management::board::orchestrator::acknowledge_dropped;
+        use crate::sync::acknowledge_dropped;
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -321,13 +318,11 @@ mod outbox_persistence {
         .unwrap();
         adapter.set_push_failures(true);
         let _ = orch.drain_once().await;
-        let events =
-            crate::product_management::board::orchestrator::load_outbox_from_disk(&path).unwrap();
+        let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert_eq!(events.len(), 1, "transient failure keeps event for retry");
         adapter.set_push_failures(false);
         orch.drain_once().await.unwrap();
-        let events =
-            crate::product_management::board::orchestrator::load_outbox_from_disk(&path).unwrap();
+        let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert!(events.is_empty(), "event drains on retry post-recovery");
     }
 

@@ -7,8 +7,8 @@ use std::sync::atomic::AtomicU64;
 use chrono::Utc;
 
 pub use crate::persist::PersistError;
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment};
 
 mod coalesce;
@@ -149,10 +149,10 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             };
             let stale = stale_state_labels_for(&story, &labels);
             for stale_label in stale {
-                let meta = crate::product_management::board::events::EventMeta {
+                let meta = crate::product_management::story::events::EventMeta {
                     actor: "bpmux:reconcile".to_string(),
                     ts: Utc::now(),
-                    peer_id: crate::product_management::board::peer::PeerId::local(),
+                    peer_id: crate::product_management::story::peer::PeerId::local(),
                 };
                 self.mutate(StoryEvent::TagRemoved {
                     meta,

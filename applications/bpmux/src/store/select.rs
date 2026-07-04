@@ -59,10 +59,7 @@ impl SeededStore {
         Select::new(std::sync::Arc::downgrade(&self.store))
     }
 
-    pub(crate) fn bind_refresh(
-        &self,
-        refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
-    ) {
+    pub(crate) fn bind_refresh(&self, refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>) {
         refresh.bind_select(self.select());
         let weak = std::sync::Arc::downgrade(&self.store);
         refresh.bind_story_dispatch(Box::new(move |action| {
@@ -79,7 +76,7 @@ impl SeededStore {
 
 #[cfg(test)]
 pub(crate) fn bind_seeded_refresh(
-    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     outcomes: Vec<crate::product_management::outcome::Outcome>,
     iterations: Vec<crate::product_management::iteration::Iteration>,
     epics: Vec<crate::product_management::epic::Epic>,

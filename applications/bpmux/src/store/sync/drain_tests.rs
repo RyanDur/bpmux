@@ -13,13 +13,11 @@ use crate::session::Session;
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, Store, SyncAction};
 
-fn refresh_for_tests() -> Arc<dyn crate::product_management::board::RefreshDriver> {
+fn refresh_for_tests() -> Arc<dyn crate::sync::RefreshDriver> {
     let adapter = Arc::new(
         crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
     );
-    Arc::new(crate::product_management::board::SyncOrchestrator::new(
-        adapter,
-    ))
+    Arc::new(crate::sync::SyncOrchestrator::new(adapter))
 }
 
 #[tokio::test]
@@ -40,7 +38,7 @@ async fn start_update_github_tracks_then_clears_when_drain_finds_nothing() {
         ),
     );
 
-    let mutation_id = crate::product_management::board::MutationId::default();
+    let mutation_id = crate::sync::MutationId::default();
     orch.dispatch(AppAction::Sync(SyncAction::StartUpdateGithub {
         mutation_id,
     }))

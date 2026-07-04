@@ -18,9 +18,9 @@ use tokio_util::sync::CancellationToken;
 
 use bpmux::auth as auth_token;
 use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use bpmux::product_management::board::{RefreshDriver, SyncOrchestrator};
 use bpmux::product_management::story::{BoardState, Story, StoryId};
 use bpmux::session::Session;
+use bpmux::sync::{RefreshDriver, SyncOrchestrator};
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
 

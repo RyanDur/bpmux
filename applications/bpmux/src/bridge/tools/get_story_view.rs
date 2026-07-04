@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::iteration::section::{
     derive_iteration_member_section, substitute_member_stories_section,
 };
+use crate::sync::RefreshDriver;
 
 pub(super) const NOT_HYDRATED_PLACEHOLDER: &str =
     "(body not yet hydrated; no refresh driver available to live-fetch.)";

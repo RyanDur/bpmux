@@ -5,13 +5,13 @@ use crate::store::{AppAction, AppState};
 
 pub struct OutcomeBroadcast {
     session: Arc<crate::session::Session>,
-    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: Arc<dyn crate::sync::RefreshDriver>,
 }
 
 impl OutcomeBroadcast {
     pub fn new(
         session: Arc<crate::session::Session>,
-        refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+        refresh: Arc<dyn crate::sync::RefreshDriver>,
     ) -> Self {
         Self { session, refresh }
     }
@@ -33,13 +33,13 @@ impl Listener<AppState, AppAction> for OutcomeBroadcast {
 
 pub struct IterationBroadcast {
     session: Arc<crate::session::Session>,
-    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: Arc<dyn crate::sync::RefreshDriver>,
 }
 
 impl IterationBroadcast {
     pub fn new(
         session: Arc<crate::session::Session>,
-        refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+        refresh: Arc<dyn crate::sync::RefreshDriver>,
     ) -> Self {
         Self { session, refresh }
     }
@@ -62,13 +62,13 @@ impl Listener<AppState, AppAction> for IterationBroadcast {
 
 pub struct EpicBroadcast {
     session: Arc<crate::session::Session>,
-    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: Arc<dyn crate::sync::RefreshDriver>,
 }
 
 impl EpicBroadcast {
     pub fn new(
         session: Arc<crate::session::Session>,
-        refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+        refresh: Arc<dyn crate::sync::RefreshDriver>,
     ) -> Self {
         Self { session, refresh }
     }
@@ -89,13 +89,13 @@ impl Listener<AppState, AppAction> for EpicBroadcast {
 
 pub struct StoryBroadcast {
     session: Arc<crate::session::Session>,
-    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: Arc<dyn crate::sync::RefreshDriver>,
 }
 
 impl StoryBroadcast {
     pub fn new(
         session: Arc<crate::session::Session>,
-        refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+        refresh: Arc<dyn crate::sync::RefreshDriver>,
     ) -> Self {
         Self { session, refresh }
     }

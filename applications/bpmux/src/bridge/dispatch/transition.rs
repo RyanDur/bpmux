@@ -35,7 +35,7 @@ pub(super) fn broadcast_client_msg_via_session(
 pub(crate) async fn dispatch_deliver_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result = tools_stories::handle_deliver_story(&args, agent_name, refresh).await?;
@@ -54,7 +54,7 @@ pub(crate) async fn dispatch_deliver_story(
 pub(crate) async fn dispatch_start_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result = tools_stories::handle_start_story(&args, agent_name, refresh).await?;
@@ -71,7 +71,7 @@ pub(crate) async fn dispatch_start_story(
 pub(crate) async fn dispatch_accept_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result =
@@ -90,7 +90,7 @@ pub(crate) async fn dispatch_accept_story(
 pub(crate) async fn dispatch_fail_desk_check(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result = tools_stories::handle_fail_desk_check(&args, agent_name, refresh).await?;
@@ -111,7 +111,7 @@ pub(crate) async fn dispatch_fail_desk_check(
 pub(crate) async fn dispatch_pass_desk_check(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result =
@@ -129,7 +129,7 @@ pub(crate) async fn dispatch_pass_desk_check(
 pub(crate) async fn dispatch_reject_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let result = tools_stories::handle_reject_story(&args, agent_name, refresh).await?;

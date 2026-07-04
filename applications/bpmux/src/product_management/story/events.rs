@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::board::peer::PeerId;
 use crate::product_management::epic::EpicId;
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{
     Acceptor, BoardState, FreeComment, Gate, GateComment, Story, StoryId, StoryKind, Tag,
 };

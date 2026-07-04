@@ -2,8 +2,8 @@ use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::{decode_story_metadata, state_to_label};
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::SyncError;
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{BoardState, StoryId};
 
 async fn strip_state_labels(
@@ -53,7 +53,7 @@ pub(in crate::integrations::github) async fn push_story_closed(
     match inner.close_story(number).await {
         Ok(value) => Ok(
             decode_story_metadata(&value).map(|story| StoryEvent::StoryRefreshed {
-                meta: crate::product_management::board::orchestrator::cache_fill_meta(),
+                meta: crate::sync::cache_fill_meta(),
                 id: StoryId::new(number),
                 story: Box::new(story),
             }),
@@ -72,7 +72,7 @@ pub(in crate::integrations::github) async fn push_story_reopened(
     let value = inner.reopen_story(number).await.map_err(SyncError::Other)?;
     Ok(
         decode_story_metadata(&value).map(|story| StoryEvent::StoryRefreshed {
-            meta: crate::product_management::board::orchestrator::cache_fill_meta(),
+            meta: crate::sync::cache_fill_meta(),
             id: StoryId::new(number),
             story: Box::new(story),
         }),

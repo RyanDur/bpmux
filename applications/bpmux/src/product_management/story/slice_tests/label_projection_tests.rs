@@ -1,6 +1,6 @@
 use super::{apply, created, meta, minimal, seed, seeded, story_at};
-use crate::product_management::board::events::{LabelDerivedFields, StoryEvent};
 use crate::product_management::epic::EpicId;
+use crate::product_management::story::events::{LabelDerivedFields, StoryEvent};
 use crate::product_management::story::{Acceptor, BoardState, Stage, StoryId, StoryKind, Tag};
 
 #[test]

@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
 use crate::kernel::{Dispatch, Listener, ListenerFuture, Reaction};
-use crate::product_management::board::{DrainOneOutcome, MutationId, RefreshDriver};
 use crate::store::app::{AppAction, AppState};
+use crate::sync::{DrainOneOutcome, MutationId, RefreshDriver};
 
 use super::SyncAction;
 

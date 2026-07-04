@@ -2,7 +2,6 @@
 #![allow(clippy::expect_used)]
 
 use super::board::{board_iterations, board_roadmap};
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::{
     decode_iteration_from_story, decode_outcome_from_story,
 };
@@ -10,10 +9,11 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 

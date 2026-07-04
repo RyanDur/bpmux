@@ -171,30 +171,30 @@ pub async fn post_seed_stories(
                 _ => StoryKind::Feature,
             }
         };
-        let meta = crate::product_management::board::events::EventMeta {
+        let meta = crate::product_management::story::events::EventMeta {
             actor: "test-seed".to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::board::PeerId::local(),
+            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
-        if let Err(e) =
-            refresh.mutate_sync(crate::product_management::board::StoryEvent::StoryCreated {
+        if let Err(e) = refresh.mutate_sync(
+            crate::product_management::story::events::StoryEvent::StoryCreated {
                 meta,
                 id: crate::product_management::story::StoryId::new(s.id),
                 title: s.title.clone(),
                 body: s.body.clone(),
                 initial_state: initial_state.clone(),
                 story_type,
-            })
-        {
+            },
+        ) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_stories: StoryCreated #{} failed: {e}", s.id),
             );
         }
-        let type_label_meta = crate::product_management::board::events::EventMeta {
+        let type_label_meta = crate::product_management::story::events::EventMeta {
             actor: "test-seed".to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::board::PeerId::local(),
+            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
         let type_label = if is_iteration_seed {
             "iteration".to_string()
@@ -204,35 +204,37 @@ pub async fn post_seed_stories(
             crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
                 .encode_story_type(story_type)
         };
-        if let Err(e) =
-            refresh.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
+        if let Err(e) = refresh.mutate_sync(
+            crate::product_management::story::events::StoryEvent::TagAdded {
                 meta: type_label_meta,
                 id: crate::product_management::story::StoryId::new(s.id),
                 label: type_label,
-            })
-        {
+            },
+        ) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_stories: type-label TagAdded on #{} failed: {e}", s.id),
             );
         }
         for label in &s.labels {
-            let tag_meta = crate::product_management::board::events::EventMeta {
+            let tag_meta = crate::product_management::story::events::EventMeta {
                 actor: "test-seed".to_string(),
                 ts: chrono::Utc::now(),
-                peer_id: crate::product_management::board::PeerId::local(),
+                peer_id: crate::product_management::story::peer::PeerId::local(),
             };
             let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
             let event = match crate::product_management::iteration::label::parse_iteration_label(
                 &codec, label,
             ) {
-                Some(parts) => crate::product_management::board::StoryEvent::IterationSlotSet {
-                    meta: tag_meta,
-                    id: crate::product_management::story::StoryId::new(s.id),
-                    name: parts.name,
-                    position: parts.position,
-                },
-                None => crate::product_management::board::StoryEvent::TagAdded {
+                Some(parts) => {
+                    crate::product_management::story::events::StoryEvent::IterationSlotSet {
+                        meta: tag_meta,
+                        id: crate::product_management::story::StoryId::new(s.id),
+                        name: parts.name,
+                        position: parts.position,
+                    }
+                }
+                None => crate::product_management::story::events::StoryEvent::TagAdded {
                     meta: tag_meta,
                     id: crate::product_management::story::StoryId::new(s.id),
                     label: label.clone(),
@@ -246,18 +248,18 @@ pub async fn post_seed_stories(
             }
         }
         if s.is_closed {
-            let close_meta = crate::product_management::board::events::EventMeta {
+            let close_meta = crate::product_management::story::events::EventMeta {
                 actor: "test-seed".to_string(),
                 ts: chrono::Utc::now(),
-                peer_id: crate::product_management::board::PeerId::local(),
+                peer_id: crate::product_management::story::peer::PeerId::local(),
             };
-            if let Err(e) =
-                refresh.mutate_sync(crate::product_management::board::StoryEvent::StoryClosed {
+            if let Err(e) = refresh.mutate_sync(
+                crate::product_management::story::events::StoryEvent::StoryClosed {
                     meta: close_meta,
                     id: crate::product_management::story::StoryId::new(s.id),
                     reason: Some("test-seed: closed at seed time".to_string()),
-                })
-            {
+                },
+            ) {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("seed_stories: StoryClosed #{} failed: {e}", s.id),

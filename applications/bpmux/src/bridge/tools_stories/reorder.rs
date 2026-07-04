@@ -13,13 +13,13 @@ pub(crate) fn reorder_story_retired_error() -> String {
 pub(crate) async fn handle_reorder_story(
     _args: &serde_json::Map<String, serde_json::Value>,
     _agent_name: &str,
-    _refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    _refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     Err(reorder_story_retired_error())
 }
 
 pub(crate) fn reorder_icebox_story_via_labels(
-    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
     position: usize,
 ) -> Result<(), String> {
@@ -55,11 +55,11 @@ pub(crate) fn reorder_icebox_story_via_labels(
     }
     refresh
         .mutate_sync(
-            crate::product_management::board::StoryEvent::IterationSlotSet {
-                meta: crate::product_management::board::events::EventMeta {
+            crate::product_management::story::events::StoryEvent::IterationSlotSet {
+                meta: crate::product_management::story::events::EventMeta {
                     actor: "pm".to_string(),
                     ts: chrono::Utc::now(),
-                    peer_id: crate::product_management::board::PeerId::local(),
+                    peer_id: crate::product_management::story::peer::PeerId::local(),
                 },
                 id: target_id,
                 name,

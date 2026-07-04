@@ -10,7 +10,7 @@ pub(crate) struct IterationCloseBlocker {
 }
 
 pub(crate) async fn collect_ready_queue_blockers(
-    refresh: &dyn crate::product_management::board::RefreshDriver,
+    refresh: &dyn crate::sync::RefreshDriver,
 ) -> Vec<IterationCloseBlocker> {
     refresh
         .all_stories()

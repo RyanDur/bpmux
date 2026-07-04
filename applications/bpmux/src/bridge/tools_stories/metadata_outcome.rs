@@ -1,9 +1,10 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::events::EventMeta;
-use crate::product_management::board::{PeerId, RefreshDriver, StoryEvent};
 use crate::product_management::outcome::{Outcome, OutcomeAction};
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Horizon, StoryId};
+use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
 pub(crate) async fn handle_reprioritize_outcome(

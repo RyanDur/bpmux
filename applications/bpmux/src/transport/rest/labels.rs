@@ -48,31 +48,35 @@ pub async fn post_story_labels(
         );
     };
     for op in reorder_label_ops(&payload) {
-        let meta = crate::product_management::board::orchestrator::cache_fill_meta();
+        let meta = crate::sync::cache_fill_meta();
         let story_id = crate::product_management::story::StoryId::new(id);
         let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
         let (event, descriptor) = match op {
             LabelOp::Add(label) => {
                 let descriptor = format!("TagAdded {label} on #{id}");
                 let event = if let Some(tag) = codec.decode_tag(&label) {
-                    Some(crate::product_management::board::StoryEvent::TagSet {
-                        meta,
-                        id: story_id,
-                        tag,
-                    })
+                    Some(
+                        crate::product_management::story::events::StoryEvent::TagSet {
+                            meta,
+                            id: story_id,
+                            tag,
+                        },
+                    )
                 } else if let Some(blocker) = codec.decode_blocked_by(&label) {
-                    Some(crate::product_management::board::StoryEvent::BlockedBySet {
-                        meta,
-                        id: story_id,
-                        blocker: crate::product_management::story::StoryId::new(blocker),
-                    })
+                    Some(
+                        crate::product_management::story::events::StoryEvent::BlockedBySet {
+                            meta,
+                            id: story_id,
+                            blocker: crate::product_management::story::StoryId::new(blocker),
+                        },
+                    )
                 } else if let Some(parts) =
                     crate::product_management::iteration::label::parse_iteration_label(
                         &codec, &label,
                     )
                 {
                     Some(
-                        crate::product_management::board::StoryEvent::IterationSlotSet {
+                        crate::product_management::story::events::StoryEvent::IterationSlotSet {
                             meta,
                             id: story_id,
                             name: parts.name,
@@ -80,25 +84,29 @@ pub async fn post_story_labels(
                         },
                     )
                 } else {
-                    Some(crate::product_management::board::StoryEvent::TagAdded {
-                        meta,
-                        id: story_id,
-                        label,
-                    })
+                    Some(
+                        crate::product_management::story::events::StoryEvent::TagAdded {
+                            meta,
+                            id: story_id,
+                            label,
+                        },
+                    )
                 };
                 (event, descriptor)
             }
             LabelOp::Remove(label) => {
                 let descriptor = format!("TagRemoved {label} on #{id}");
                 let event = if let Some(tag) = codec.decode_tag(&label) {
-                    Some(crate::product_management::board::StoryEvent::TagUnset {
-                        meta,
-                        id: story_id,
-                        tag,
-                    })
+                    Some(
+                        crate::product_management::story::events::StoryEvent::TagUnset {
+                            meta,
+                            id: story_id,
+                            tag,
+                        },
+                    )
                 } else if codec.decode_blocked_by(&label).is_some() {
                     Some(
-                        crate::product_management::board::StoryEvent::BlockedByCleared {
+                        crate::product_management::story::events::StoryEvent::BlockedByCleared {
                             meta,
                             id: story_id,
                         },
@@ -110,7 +118,7 @@ pub async fn post_story_labels(
                     });
                     if current_chip.as_deref() == Some(label.as_str()) {
                         Some(
-                            crate::product_management::board::StoryEvent::IterationSlotCleared {
+                            crate::product_management::story::events::StoryEvent::IterationSlotCleared {
                                 meta,
                                 id: story_id,
                             },
@@ -119,11 +127,13 @@ pub async fn post_story_labels(
                         None
                     }
                 } else {
-                    Some(crate::product_management::board::StoryEvent::TagRemoved {
-                        meta,
-                        id: story_id,
-                        label,
-                    })
+                    Some(
+                        crate::product_management::story::events::StoryEvent::TagRemoved {
+                            meta,
+                            id: story_id,
+                            label,
+                        },
+                    )
                 };
                 (event, descriptor)
             }

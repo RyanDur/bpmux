@@ -37,7 +37,7 @@ pub async fn get_sync_status(
 ) -> impl IntoResponse {
     let status = match refresh {
         Some(r) => r.snapshot_status(),
-        None => crate::product_management::board::SyncStatus::default(),
+        None => crate::sync::SyncStatus::default(),
     };
     (
         StatusCode::OK,

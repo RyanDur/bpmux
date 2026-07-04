@@ -4,9 +4,9 @@ use chrono::Utc;
 
 use crate::message::{Message, MessageType};
 use crate::message::{StateDeltaPayload, StoryTransitionWire};
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::story::{BoardState, Story};
 use crate::session;
+use crate::sync::RefreshDriver;
 
 pub(crate) fn fire_view_backlog_marker(session: &Arc<session::Session>) {
     let msg = Message {

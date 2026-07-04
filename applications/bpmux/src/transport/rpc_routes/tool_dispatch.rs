@@ -4,8 +4,8 @@ use serde_json::Value;
 
 use super::validation::known_tools;
 use crate::bridge;
-use crate::product_management::board::RefreshDriver;
 use crate::session;
+use crate::sync::RefreshDriver;
 
 pub(super) async fn dispatch(
     refresh: &Arc<dyn RefreshDriver>,

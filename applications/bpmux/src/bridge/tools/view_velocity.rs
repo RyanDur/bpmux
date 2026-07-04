@@ -22,7 +22,7 @@ pub(in crate::bridge) async fn fetch_messages_via_http(
 pub(in crate::bridge) async fn handle_view_velocity<F, Fut>(
     fetch_messages: F,
     ws_tx: &Mutex<Option<WsSink>>,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String>
 where
     F: FnOnce() -> Fut,
@@ -74,7 +74,7 @@ where
 
 pub(in crate::bridge) fn is_feature_for_velocity(
     n: u64,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> bool {
     refresh.and_then(|r| r.story(n)).is_some_and(|s| {
         use crate::product_management::story::StoryKind;

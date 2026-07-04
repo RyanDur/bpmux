@@ -1,5 +1,5 @@
 pub(crate) async fn ensure_story_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
 ) -> Result<crate::product_management::story::Story, String> {
     if let Some(story) = refresh.story(id) {
@@ -20,7 +20,7 @@ pub(crate) async fn ensure_story_in_canonical_store(
 }
 
 pub(crate) async fn ensure_outcome_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
 ) -> Result<crate::product_management::outcome::Outcome, String> {
     if let Some(outcome) = find_outcome_in_store(refresh, id) {
@@ -48,7 +48,7 @@ pub(crate) async fn ensure_outcome_in_canonical_store(
 }
 
 fn find_outcome_in_store(
-    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
 ) -> Option<crate::product_management::outcome::Outcome> {
     refresh
@@ -62,7 +62,7 @@ fn not_an_outcome_message(id: u64) -> String {
 }
 
 pub(crate) async fn ensure_iteration_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
 ) -> Result<crate::product_management::iteration::Iteration, String> {
     if let Some(iteration) =
@@ -100,7 +100,7 @@ fn not_an_iteration_message(id: u64) -> String {
 }
 
 pub(crate) async fn ensure_epic_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
 ) -> Result<crate::product_management::epic::Epic, String> {
     let epic_id = crate::product_management::epic::EpicId::new(id);

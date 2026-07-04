@@ -5,19 +5,19 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{EventMeta, StoryEvent};
-use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::store::{AppAction, SeededStore, bind_seeded_refresh};
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 
 mod slice_7_2_mutation_id_dispatch {
     use super::*;
-    use crate::product_management::board::MutationId;
     use crate::store::{AppAction, SyncAction};
+    use crate::sync::MutationId;
 
     #[tokio::test]
     async fn mutate_dispatches_start_update_github_with_unique_id() {
@@ -114,8 +114,8 @@ mod slice_7_2_mutation_id_dispatch {
 
 mod slice_7_3_drain_one_by_id {
     use super::*;
-    use crate::product_management::board::DrainOneOutcome;
-    use crate::product_management::board::MutationId;
+    use crate::sync::DrainOneOutcome;
+    use crate::sync::MutationId;
 
     #[tokio::test]
     async fn drain_one_by_id_pushes_clean_event_returns_confirmed() {
@@ -213,7 +213,7 @@ mod slice_7_3_drain_one_by_id {
 
 mod slice_7_4_drain_one_by_id_falsifiers {
     use super::*;
-    use crate::product_management::board::DrainOneOutcome;
+    use crate::sync::DrainOneOutcome;
 
     #[tokio::test]
     async fn permanent_push_failure_drops_entry_returns_confirmed() {

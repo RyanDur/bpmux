@@ -9,9 +9,9 @@ use serde::Deserialize;
 
 use crate::bridge;
 use crate::message::{Message, MessageType};
-use crate::product_management::board::RefreshDriver;
 use crate::session;
 use crate::sync::OrchestratorHandle;
+use crate::sync::RefreshDriver;
 
 fn fire_board_invalidate(session: &Arc<session::Session>) {
     let delta = Message {
@@ -465,7 +465,7 @@ pub async fn post_test_fire_sync_status(
     let handle = refresh.status_handle();
     {
         let mut status = handle.lock().unwrap_or_else(|e| e.into_inner());
-        *status = crate::product_management::board::SyncStatus::default();
+        *status = crate::sync::SyncStatus::default();
         match req.status.as_str() {
             "conflict" => status.conflicts_pending = count,
             "stale" => status.stale = true,

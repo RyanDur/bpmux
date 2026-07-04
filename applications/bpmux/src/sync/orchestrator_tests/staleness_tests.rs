@@ -5,17 +5,17 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{EventMeta, StoryEvent};
-use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{BoardState, Story};
 use crate::store::bind_seeded_refresh;
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 
 mod staleness {
     use super::*;
-    use crate::product_management::board::orchestrator::is_stale;
+    use crate::sync::is_stale;
 
     #[test]
     fn no_ingest_yet_is_not_stale() {
@@ -84,13 +84,13 @@ mod staleness {
 
     #[test]
     fn startup_fail_when_no_ingest_yet_and_last_error_set() {
-        use crate::product_management::board::orchestrator::is_startup_fail;
+        use crate::sync::is_startup_fail;
         assert!(is_startup_fail(None, Some("rate-limited")));
     }
 
     #[test]
     fn no_startup_fail_when_ingest_succeeded_even_with_recent_error() {
-        use crate::product_management::board::orchestrator::is_startup_fail;
+        use crate::sync::is_startup_fail;
         let last = Utc.with_ymd_and_hms(2026, 5, 3, 12, 0, 0).unwrap();
         assert!(!is_startup_fail(
             Some(last),
@@ -100,7 +100,7 @@ mod staleness {
 
     #[test]
     fn no_startup_fail_when_no_ingest_yet_but_no_error_recorded() {
-        use crate::product_management::board::orchestrator::is_startup_fail;
+        use crate::sync::is_startup_fail;
         assert!(
             !is_startup_fail(None, None),
             "fresh-session-pre-first-tick is not startup-fail until an error has been recorded"

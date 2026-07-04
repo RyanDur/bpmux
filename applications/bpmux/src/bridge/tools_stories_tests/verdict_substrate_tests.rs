@@ -9,11 +9,11 @@ use crate::transport::protocol::ClientMessage;
 mod verdict_substrate_integration_1407 {
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story, StoryId};
     use crate::session::Session;
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use crate::workflow::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};
     use std::path::PathBuf;

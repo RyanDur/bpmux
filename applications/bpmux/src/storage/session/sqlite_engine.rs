@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use rusqlite::{Connection, OptionalExtension, Params, Row};
 
-use crate::product_management::board::PersistError;
+use crate::sync::PersistError;
 
 const DB_FILE: &str = "session.db";
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);

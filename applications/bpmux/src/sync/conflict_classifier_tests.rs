@@ -4,15 +4,15 @@ use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};
 
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{EventMeta, StoryEvent};
-use crate::product_management::board::orchestrator::{
-    ConflictKind, QueuedEvent, SyncOrchestrator, classify_conflict, load_outbox_from_disk,
-};
-use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::store::bind_seeded_refresh;
+use crate::sync::RefreshDriver;
+use crate::sync::{
+    ConflictKind, QueuedEvent, SyncOrchestrator, classify_conflict, load_outbox_from_disk,
+};
 
 fn meta() -> EventMeta {
     EventMeta {

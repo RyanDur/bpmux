@@ -11,11 +11,11 @@ fn td() -> crate::store::Dispatch {
 
 #[tokio::test]
 async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Gate, Stage, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -95,11 +95,11 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 
 #[tokio::test]
 async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_state_events() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Gate, Stage, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -168,11 +168,11 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
 
 #[tokio::test]
 async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Gate, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -250,11 +250,11 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
 
 #[tokio::test]
 async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -318,11 +318,11 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
 
 #[tokio::test]
 async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Gate, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -388,11 +388,11 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
 
 #[tokio::test]
 async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story, StoryKind};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -471,10 +471,10 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
 
 #[tokio::test]
 async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -530,10 +530,10 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
 
 #[tokio::test]
 async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Gate, GateComment, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -589,10 +589,10 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
 
 #[tokio::test]
 async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Gate, GateComment, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -656,10 +656,10 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
 #[cfg(test)]
 mod classify_for_pass_desk_check_tests {
     use super::*;
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

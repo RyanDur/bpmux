@@ -11,7 +11,7 @@ use crate::product_management::outcome::OutcomeId;
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -57,7 +57,7 @@ pub(crate) async fn handle_add_story_to_iteration(
 pub(crate) async fn handle_map_iteration_to_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "map an iteration to an outcome")?;

@@ -257,10 +257,10 @@ mod ingest_poll_loop_tests {
     use std::time::Duration;
 
     use crate::bridge::run_ingest_poll_loop;
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::events::StoryEvent;
-    use crate::product_management::board::orchestrator::{BoxedFuture, SyncStatus};
     use crate::product_management::board::sync::SyncError;
+    use crate::product_management::story::events::StoryEvent;
+    use crate::sync::RefreshDriver;
+    use crate::sync::{BoxedFuture, SyncStatus};
 
     struct CountingDriver {
         refresh_all: AtomicUsize,
@@ -334,9 +334,9 @@ mod ingest_poll_loop_tests {
         }
         fn drain_one_by_id(
             &self,
-            _id: crate::product_management::board::MutationId,
-        ) -> BoxedFuture<'_, crate::product_management::board::DrainOneOutcome> {
-            Box::pin(async { crate::product_management::board::DrainOneOutcome::NotFound })
+            _id: crate::sync::MutationId,
+        ) -> BoxedFuture<'_, crate::sync::DrainOneOutcome> {
+            Box::pin(async { crate::sync::DrainOneOutcome::NotFound })
         }
         fn apply_server_rollback(
             &self,
@@ -344,10 +344,7 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, ()> {
             Box::pin(async {})
         }
-        fn snapshot_pending_for_mutation(
-            &self,
-            _id: crate::product_management::board::MutationId,
-        ) -> Option<u64> {
+        fn snapshot_pending_for_mutation(&self, _id: crate::sync::MutationId) -> Option<u64> {
             None
         }
         fn issue_lock(

@@ -1,5 +1,5 @@
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError};
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId};
 

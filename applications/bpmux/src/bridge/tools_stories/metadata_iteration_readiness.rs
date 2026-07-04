@@ -7,7 +7,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_designate_current_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "designate current iteration")?;
@@ -22,10 +22,10 @@ pub(crate) async fn handle_designate_current_iteration(
             "iteration #{iteration_id} is closed; a closed iteration cannot be the current iteration"
         ));
     }
-    let meta = || crate::product_management::board::events::EventMeta {
+    let meta = || crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
+        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     let prior: Vec<crate::product_management::iteration::Iteration> = r
         .iterations()
@@ -34,7 +34,7 @@ pub(crate) async fn handle_designate_current_iteration(
         .collect();
     for it in &prior {
         r.mutate_sync(
-            crate::product_management::board::StoryEvent::CurrentIterationCleared {
+            crate::product_management::story::events::StoryEvent::CurrentIterationCleared {
                 meta: meta(),
                 id: StoryId::new(it.id.value()),
             },
@@ -47,7 +47,7 @@ pub(crate) async fn handle_designate_current_iteration(
         })?;
     }
     r.mutate_sync(
-        crate::product_management::board::StoryEvent::CurrentIterationDesignated {
+        crate::product_management::story::events::StoryEvent::CurrentIterationDesignated {
             meta: meta(),
             id: StoryId::new(iteration_id),
         },
@@ -73,7 +73,7 @@ pub(crate) async fn handle_designate_current_iteration(
 pub(crate) async fn handle_close_pre_pickup_review(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose_any(
@@ -90,16 +90,18 @@ pub(crate) async fn handle_close_pre_pickup_review(
     let role = role_from_name(agent_name).to_string();
     let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .encode_iteration_review_closed(&role);
-    let meta = crate::product_management::board::events::EventMeta {
+    let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
+        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
-        meta,
-        id: StoryId::new(iteration_id),
-        label,
-    })
+    r.mutate_sync(
+        crate::product_management::story::events::StoryEvent::TagAdded {
+            meta,
+            id: StoryId::new(iteration_id),
+            label,
+        },
+    )
     .map_err(|e| format!("#{iteration_id} review-close enqueue failed: {e}"))?;
     r.drain_pending()
         .await
@@ -122,7 +124,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
 pub(crate) async fn handle_dev_ok_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose_any(
@@ -139,16 +141,18 @@ pub(crate) async fn handle_dev_ok_iteration(
     let role = role_from_name(agent_name).to_string();
     let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
         .encode_iteration_dev_ok(&role);
-    let meta = crate::product_management::board::events::EventMeta {
+    let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
+        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
-        meta,
-        id: StoryId::new(iteration_id),
-        label,
-    })
+    r.mutate_sync(
+        crate::product_management::story::events::StoryEvent::TagAdded {
+            meta,
+            id: StoryId::new(iteration_id),
+            label,
+        },
+    )
     .map_err(|e| format!("#{iteration_id} dev-OK enqueue failed: {e}"))?;
     r.drain_pending()
         .await

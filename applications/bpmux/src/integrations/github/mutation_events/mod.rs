@@ -1,4 +1,4 @@
-use crate::product_management::board::events::StoryEvent;
+use crate::product_management::story::events::StoryEvent;
 
 mod acceptor;
 mod blocked;
@@ -27,7 +27,7 @@ pub(in crate::integrations::github) use lifecycle::{
 
 pub(super) fn labels_refreshed(number: u64, labels: Vec<String>) -> StoryEvent {
     StoryEvent::LabelsRefreshed {
-        meta: crate::product_management::board::orchestrator::cache_fill_meta(),
+        meta: crate::sync::cache_fill_meta(),
         id: crate::product_management::story::StoryId::new(number),
         fields: crate::product_management::board::adapters::github::project_labels(&labels),
     }

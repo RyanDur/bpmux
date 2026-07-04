@@ -254,13 +254,10 @@ contract!(
     }
 );
 
-fn seed_outbox_event(
-    number: u64,
-    label: &str,
-) -> crate::product_management::board::orchestrator::QueuedEvent {
-    use crate::product_management::board::events::{EventMeta, StoryEvent};
-    use crate::product_management::board::peer::PeerId;
+fn seed_outbox_event(number: u64, label: &str) -> crate::sync::QueuedEvent {
     use crate::product_management::story::StoryId;
+    use crate::product_management::story::events::{EventMeta, StoryEvent};
+    use crate::product_management::story::peer::PeerId;
     let event = StoryEvent::TagAdded {
         meta: EventMeta {
             actor: "dev".to_string(),
@@ -270,7 +267,7 @@ fn seed_outbox_event(
         id: StoryId::new(number),
         label: label.to_string(),
     };
-    crate::product_management::board::orchestrator::QueuedEvent::new(event, None)
+    crate::sync::QueuedEvent::new(event, None)
 }
 
 contract!(load_outbox_empty_when_unset, |storage: &dyn Storage| {

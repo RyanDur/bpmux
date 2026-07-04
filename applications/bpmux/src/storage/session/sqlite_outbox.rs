@@ -3,8 +3,8 @@ use std::collections::VecDeque;
 use rusqlite::Connection;
 
 use super::sqlite_engine as engine;
-use crate::product_management::board::PersistError;
-use crate::product_management::board::orchestrator::QueuedEvent;
+use crate::sync::PersistError;
+use crate::sync::QueuedEvent;
 
 pub fn load(conn: &Connection) -> Result<VecDeque<QueuedEvent>, PersistError> {
     engine::query(

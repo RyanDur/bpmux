@@ -1,5 +1,5 @@
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{SourceAdapter, SyncError, is_permanent_push_failure};
+use crate::product_management::story::events::StoryEvent;
 
 use super::super::{
     ConflictKind, ConflictResolveOrigin, SyncOrchestrator, cache_fill_meta, classify_conflict,

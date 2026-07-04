@@ -263,10 +263,10 @@ async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
 
 #[tokio::test]
 async fn label_story_rejects_invalid_operation_in_migrated_path() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story, StoryId};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::story::{
     BoardState, Gate, GateComment, Stage, most_recent_needs_work,
 };
+use crate::sync::RefreshDriver;
 
 use super::get_story_view::{
     NOT_HYDRATED_PLACEHOLDER, render_epic_detail, render_iteration_detail,

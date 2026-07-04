@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Utc};
 
 use super::{apply, created, meta, minimal, seed, seeded, story_at};
-use crate::product_management::board::events::StoryEvent;
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{BoardState, FreeComment, Gate, StoryId};
 
 #[test]

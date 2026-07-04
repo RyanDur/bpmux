@@ -8,8 +8,8 @@ mod write_path_tests;
 
 use chrono::{TimeZone, Utc};
 
-use crate::product_management::board::events::{EventMeta, StoryEvent};
-use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Story, StoryId, StoryKey};
 use crate::store::{AppAction, SeededStore};

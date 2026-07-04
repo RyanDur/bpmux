@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 pub(crate) fn ordered_board_stories(
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     let all = refresh.all_stories();
     let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
@@ -22,14 +22,12 @@ pub(crate) fn ordered_board_stories(
 }
 
 pub(crate) fn board_stories(
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     ordered_board_stories(refresh)
 }
 
-pub(crate) fn board_epics(
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
-) -> Vec<serde_json::Value> {
+pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<serde_json::Value> {
     let stories = refresh.all_stories();
     refresh
         .epics()
@@ -57,7 +55,7 @@ pub(crate) fn board_epics(
 }
 
 pub(crate) fn board_iterations(
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     use crate::product_management::board::view_model::IterationView;
     let outcomes = refresh.outcomes();
@@ -73,7 +71,7 @@ pub(crate) fn board_iterations(
 }
 
 pub(crate) fn board_roadmap(
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     crate::view::roadmap::roadmap_cards(refresh)
         .iter()
@@ -82,7 +80,7 @@ pub(crate) fn board_roadmap(
 }
 
 pub(crate) fn board_outcomes(
-    refresh: &Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     use crate::product_management::board::view_model::OutcomeView;
     let all_iterations = refresh.iterations();

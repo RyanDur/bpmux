@@ -8,11 +8,11 @@ use crate::transport::protocol::ClientMessage;
 mod reopen_on_state_transition_tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

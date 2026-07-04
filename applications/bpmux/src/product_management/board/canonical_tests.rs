@@ -4,12 +4,12 @@
 use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::adapters::github::decode_story_metadata;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{
-    PeerId, RefreshDriver, StoryEvent, SyncOrchestrator, events::EventMeta,
-};
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
 use crate::store::{AppAction, SeededStore};
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 use std::sync::Arc;

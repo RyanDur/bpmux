@@ -1,12 +1,12 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store, require_purpose,
 };
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::Outcome;
+use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
 async fn verify_iteration_mapped(

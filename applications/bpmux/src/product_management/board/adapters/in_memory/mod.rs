@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{Ingested, SourceAdapter, SyncError};
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
 
 mod ingest;

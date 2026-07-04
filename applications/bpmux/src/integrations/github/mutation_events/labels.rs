@@ -1,8 +1,8 @@
 use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::product_management::board::adapters::github::is_position_label;
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::SyncError;
+use crate::product_management::story::events::StoryEvent;
 
 pub(in crate::integrations::github) async fn push_tag_added(
     inner: &OctocrabStoryTracker,

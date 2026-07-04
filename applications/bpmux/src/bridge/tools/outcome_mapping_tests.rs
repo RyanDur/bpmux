@@ -4,7 +4,6 @@
 use crate::bridge::tools_stories::{
     handle_reorder_outcome_iteration, handle_unmap_outcome_iteration,
 };
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::github::{
     decode_iteration_from_story, decode_outcome_from_story,
 };
@@ -12,12 +11,13 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::board::orchestrator::SyncOrchestrator;
 use crate::product_management::board::sync::SourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;

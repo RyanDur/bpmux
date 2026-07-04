@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 #[cfg(test)]
 pub(crate) async fn run_ingest_poll_loop(
-    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: Arc<dyn crate::sync::RefreshDriver>,
     interval: std::time::Duration,
     observer: Option<crate::github::RateLimitObserver>,
 ) {
@@ -16,7 +16,7 @@ pub(crate) async fn run_ingest_poll_loop(
 }
 
 pub async fn run_ingest_poll_loop_cancellable(
-    refresh: Arc<dyn crate::product_management::board::RefreshDriver>,
+    refresh: Arc<dyn crate::sync::RefreshDriver>,
     interval: std::time::Duration,
     observer: Option<crate::github::RateLimitObserver>,
     ct: tokio_util::sync::CancellationToken,

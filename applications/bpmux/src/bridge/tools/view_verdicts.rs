@@ -17,7 +17,7 @@ struct VerdictView {
 }
 
 fn resolve_accept_window_secs(
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     story_id: StoryId,
 ) -> Option<u64> {
     let story = refresh?.story(story_id.value())?;
@@ -34,7 +34,7 @@ fn resolve_accept_window_secs(
 pub(in crate::bridge) async fn handle_view_verdicts(
     args: &serde_json::Map<String, serde_json::Value>,
     session: &Arc<crate::session::Session>,
-    refresh: Option<&Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let story_id = StoryId::new(
         args.get("story_id")

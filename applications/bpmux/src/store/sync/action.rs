@@ -1,4 +1,4 @@
-use crate::product_management::board::MutationId;
+use crate::sync::MutationId;
 
 #[derive(Clone, Debug)]
 pub enum SyncAction {

@@ -4,8 +4,8 @@ use crate::bridge::tracker::{
 use crate::product_management::board::adapters::github::{
     decode_free_comment, decode_gate_comments, decode_story_metadata,
 };
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment, Story};
 use crate::store::CiPollFetch;
 

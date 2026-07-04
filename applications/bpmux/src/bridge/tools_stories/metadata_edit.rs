@@ -3,7 +3,7 @@ use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 pub(crate) async fn handle_edit_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "edit story")?;
@@ -54,13 +54,13 @@ pub(crate) async fn handle_edit_story(
     }
     if let Some(acceptor) = acceptor {
         ensure_story_in_canonical_store(r, id).await?;
-        let meta = crate::product_management::board::events::EventMeta {
+        let meta = crate::product_management::story::events::EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::board::PeerId::local(),
+            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
         r.mutate_sync(
-            crate::product_management::board::StoryEvent::AcceptorAssigned {
+            crate::product_management::story::events::StoryEvent::AcceptorAssigned {
                 meta,
                 id: crate::product_management::story::StoryId::new(id),
                 acceptor,

@@ -1,6 +1,6 @@
 use super::{Stories, story_mut};
-use crate::product_management::board::events::EventMeta;
 use crate::product_management::epic::EpicId;
+use crate::product_management::story::events::EventMeta;
 use crate::product_management::story::{
     Acceptor, BoardState, Story, StoryId, StoryKey, StoryKind, Tag,
 };

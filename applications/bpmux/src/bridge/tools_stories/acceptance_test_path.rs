@@ -121,7 +121,7 @@ fn walk_for_git_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
 pub(crate) fn validate_acceptance_test_path_at_pickup(
     args: &serde_json::Map<String, serde_json::Value>,
     number: u64,
-    refresh: &dyn crate::product_management::board::RefreshDriver,
+    refresh: &dyn crate::sync::RefreshDriver,
 ) -> Result<(), String> {
     let Some(story) = refresh.story(number) else {
         return Ok(());
@@ -143,7 +143,7 @@ pub(crate) fn validate_acceptance_test_path_at_pickup(
 
 pub(crate) fn validate_acceptance_test_path_at_deliver(
     number: u64,
-    refresh: &dyn crate::product_management::board::RefreshDriver,
+    refresh: &dyn crate::sync::RefreshDriver,
 ) -> Result<(), String> {
     let Some(story) = refresh.story(number) else {
         return Ok(());

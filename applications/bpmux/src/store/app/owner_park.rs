@@ -62,7 +62,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         };
         let delivering = match story_action {
             crate::product_management::story::slice::StoryAction::Event(
-                crate::product_management::board::StoryEvent::StateTransitioned {
+                crate::product_management::story::events::StoryEvent::StateTransitioned {
                     meta,
                     new_state: BoardState::Acceptance,
                     ..

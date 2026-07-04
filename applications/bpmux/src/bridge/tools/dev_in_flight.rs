@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::story::{BoardState, Stage};
+use crate::sync::RefreshDriver;
 
 #[derive(Serialize)]
 struct DevInFlight {

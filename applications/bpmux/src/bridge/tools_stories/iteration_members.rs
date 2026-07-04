@@ -1,12 +1,12 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,
 };
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
 async fn member_of(

@@ -31,7 +31,7 @@ fn parse_acceptor_arg(
 pub(crate) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     session: Option<&std::sync::Arc<crate::session::Session>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -80,14 +80,14 @@ pub(crate) async fn handle_pass_desk_check(
         false
     };
     if let Some(r) = refresh {
-        let meta = crate::product_management::board::events::EventMeta {
+        let meta = crate::product_management::story::events::EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::board::PeerId::local(),
+            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
         if was_closed {
             r.mutate_sync(
-                crate::product_management::board::StoryEvent::StoryReopened {
+                crate::product_management::story::events::StoryEvent::StoryReopened {
                     meta: meta.clone(),
                     id: StoryId::new(id),
                 },
@@ -95,7 +95,7 @@ pub(crate) async fn handle_pass_desk_check(
             .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
         }
         r.mutate_sync(
-            crate::product_management::board::StoryEvent::AcceptorAssigned {
+            crate::product_management::story::events::StoryEvent::AcceptorAssigned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 acceptor,
@@ -103,7 +103,7 @@ pub(crate) async fn handle_pass_desk_check(
         )
         .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
         r.mutate_sync(
-            crate::product_management::board::StoryEvent::GateCommentAppended {
+            crate::product_management::story::events::StoryEvent::GateCommentAppended {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::PassDeskCheck,
@@ -112,7 +112,7 @@ pub(crate) async fn handle_pass_desk_check(
         )
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
         r.mutate_sync(
-            crate::product_management::board::StoryEvent::StateTransitioned {
+            crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
                 new_state: crate::product_management::story::BoardState::Acceptance,

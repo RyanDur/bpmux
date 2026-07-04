@@ -5,7 +5,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_create_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let workflow = crate::workflow::current_workflow();
@@ -55,23 +55,27 @@ pub(crate) async fn handle_create_iteration(
         .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
     let filed_by = crate::routing::short_name(agent_name).to_string();
     let filed_at = chrono::Utc::now();
-    let meta = crate::product_management::board::events::EventMeta {
+    let meta = crate::product_management::story::events::EventMeta {
         actor: filed_by.clone(),
         ts: filed_at,
-        peer_id: crate::product_management::board::PeerId::local(),
+        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
-        meta: meta.clone(),
-        id: StoryId::new(id),
-        label: "iteration".to_string(),
-    })
+    r.mutate_sync(
+        crate::product_management::story::events::StoryEvent::TagAdded {
+            meta: meta.clone(),
+            id: StoryId::new(id),
+            label: "iteration".to_string(),
+        },
+    )
     .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
-    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
-        meta,
-        id: StoryId::new(id),
-        label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .encode_iteration_order(next_order),
-    })
+    r.mutate_sync(
+        crate::product_management::story::events::StoryEvent::TagAdded {
+            meta,
+            id: StoryId::new(id),
+            label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                .encode_iteration_order(next_order),
+        },
+    )
     .map_err(|e| format!("#{id} iteration-order label enqueue failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
         crate::product_management::iteration::IterationAction::Upserted(vec![Iteration {

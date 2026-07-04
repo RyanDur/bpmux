@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::iteration::readiness::{
     OutcomeReadiness, building_iterations, outcome_readiness,
 };
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::Horizon;
+use crate::sync::RefreshDriver;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct OutcomeWhy {

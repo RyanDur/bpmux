@@ -1,6 +1,6 @@
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::board::sync::SourceAdapter;
 use crate::product_management::story::Story;
+use crate::product_management::story::events::StoryEvent;
 
 use super::SyncOrchestrator;
 

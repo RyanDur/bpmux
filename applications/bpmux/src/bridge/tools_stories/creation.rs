@@ -5,7 +5,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let title = args
@@ -121,7 +121,7 @@ fn validate_actor_role_can_create(
 }
 
 fn validate_parent_epic(
-    r: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    r: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     parent_epic: Option<EpicId>,
 ) -> Result<(), String> {
     let Some(epic) = parent_epic else {
@@ -142,7 +142,7 @@ fn validate_parent_epic(
 }
 
 async fn create_and_broadcast_story_events(
-    r: &std::sync::Arc<dyn crate::product_management::board::RefreshDriver>,
+    r: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     agent_name: &str,
     title: &str,
     composed_body: String,
@@ -154,23 +154,25 @@ async fn create_and_broadcast_story_events(
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
-    let meta = crate::product_management::board::events::EventMeta {
+    let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
+        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::StoryEvent::StoryCreated {
-        meta: meta.clone(),
-        id: StoryId::new(id),
-        title: title.to_string(),
-        body: composed_body,
-        initial_state: crate::product_management::story::BoardState::Icebox,
-        story_type,
-    })
+    r.mutate_sync(
+        crate::product_management::story::events::StoryEvent::StoryCreated {
+            meta: meta.clone(),
+            id: StoryId::new(id),
+            title: title.to_string(),
+            body: composed_body,
+            initial_state: crate::product_management::story::BoardState::Icebox,
+            story_type,
+        },
+    )
     .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
     if let Some(acceptor) = acceptor {
         r.mutate_sync(
-            crate::product_management::board::StoryEvent::AcceptorAssigned {
+            crate::product_management::story::events::StoryEvent::AcceptorAssigned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 acceptor,
@@ -180,7 +182,7 @@ async fn create_and_broadcast_story_events(
     }
     if let Some(epic_id) = parent_epic {
         r.mutate_sync(
-            crate::product_management::board::StoryEvent::ParentEpicSet {
+            crate::product_management::story::events::StoryEvent::ParentEpicSet {
                 meta,
                 id: StoryId::new(id),
                 epic_id,

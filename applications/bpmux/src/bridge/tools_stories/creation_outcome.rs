@@ -4,7 +4,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_create_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::product_management::board::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let workflow = crate::workflow::current_workflow();
@@ -51,17 +51,19 @@ pub(crate) async fn handle_create_outcome(
         .create_story(title.clone(), body.clone(), vec!["outcome".to_string()])
         .await
         .map_err(|e| format!("create_outcome adapter call failed: {e}"))?;
-    let meta = crate::product_management::board::events::EventMeta {
+    let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::board::PeerId::local(),
+        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(crate::product_management::board::StoryEvent::TagAdded {
-        meta,
-        id: StoryId::new(id),
-        label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .encode_horizon(horizon),
-    })
+    r.mutate_sync(
+        crate::product_management::story::events::StoryEvent::TagAdded {
+            meta,
+            id: StoryId::new(id),
+            label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                .encode_horizon(horizon),
+        },
+    )
     .map_err(|e| format!("#{id} outcome horizon label enqueue failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
         crate::product_management::outcome::OutcomeAction::Upserted(vec![

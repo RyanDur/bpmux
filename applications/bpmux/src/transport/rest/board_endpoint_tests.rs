@@ -8,10 +8,10 @@ use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 

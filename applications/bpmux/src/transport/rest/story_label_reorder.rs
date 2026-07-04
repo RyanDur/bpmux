@@ -2,9 +2,9 @@
 
 use super::labels::{LabelMutationPayload, post_story_labels};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::session::Session;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;

@@ -1,5 +1,5 @@
 use super::InMemorySourceAdapter;
-use crate::product_management::board::events::StoryEvent;
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment, Story};
 
 impl InMemorySourceAdapter {

@@ -11,9 +11,9 @@ use tower::ServiceExt;
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::integrations::github::GitHubSourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::sync::OrchestratorHandle;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 fn fresh_test_session() -> Arc<session::Session> {
     let dir = tempfile::tempdir().expect("tempdir");

@@ -1,5 +1,5 @@
 use super::Stories;
-use crate::product_management::board::events::LabelDerivedFields;
+use crate::product_management::story::events::LabelDerivedFields;
 use crate::product_management::story::{StoryId, StoryKey};
 
 pub(super) fn apply_labels_refreshed(w: &mut Stories, id: StoryId, fields: &LabelDerivedFields) {

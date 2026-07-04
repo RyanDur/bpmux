@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::product_management::board::RefreshDriver;
+use crate::sync::RefreshDriver;
 
 pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>) {
     tokio::spawn(async move {

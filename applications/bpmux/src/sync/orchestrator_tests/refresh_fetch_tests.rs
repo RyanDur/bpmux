@@ -5,13 +5,13 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::events::{EventMeta, StoryEvent};
-use crate::product_management::board::orchestrator::SyncOrchestrator;
-use crate::product_management::board::peer::PeerId;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::store::SeededStore;
+use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 
 #[tokio::test]
 async fn refresh_story_pulls_single_story_from_adapter_into_store() {

@@ -7,11 +7,11 @@ use crate::transport::protocol::ClientMessage;
 
 #[tokio::test]
 async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -56,11 +56,11 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
 
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_added_event() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story, Tag};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -107,11 +107,11 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
 
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_removed_event() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story, Tag};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -172,11 +172,11 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 
 #[tokio::test]
 async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Gate, Stage, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -249,11 +249,11 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
 
 #[tokio::test]
 async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events() {
-    use crate::product_management::board::RefreshDriver;
-    use crate::product_management::board::StoryEvent;
-    use crate::product_management::board::SyncOrchestrator;
     use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Gate, Stage, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 

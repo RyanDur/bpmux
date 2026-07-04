@@ -3,11 +3,11 @@
 use super::super::tools_stories::*;
 use crate::product_management::board::adapters::github::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::iteration::readiness::iteration_readiness;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;

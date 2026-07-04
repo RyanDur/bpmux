@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::product_management::board::RefreshDriver;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::Story;
+use crate::sync::RefreshDriver;
 
 pub(in crate::bridge) async fn handle_list_epic_children(
     args: &serde_json::Map<String, serde_json::Value>,

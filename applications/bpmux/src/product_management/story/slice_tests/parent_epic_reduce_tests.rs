@@ -1,6 +1,6 @@
 use super::{apply, created, meta, seeded, story_at};
-use crate::product_management::board::events::StoryEvent;
 use crate::product_management::epic::EpicId;
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{BoardState, StoryId};
 
 #[test]

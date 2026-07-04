@@ -6,10 +6,10 @@ use chrono::{TimeZone, Utc};
 
 use crate::bridge::tools::handle_get_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::{RefreshDriver, SyncOrchestrator};
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::store::{AppAction, SeededStore};
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 fn seed_minimal(id: u64, state: BoardState) -> Story {
     Story::new_minimal(
@@ -149,7 +149,7 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 
 #[tokio::test]
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
-    use crate::product_management::board::events::StoryEvent;
+    use crate::product_management::story::events::StoryEvent;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let seed = SeededStore::new(vec![], vec![], vec![]);
@@ -160,7 +160,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     )])));
     seed.dispatch(AppAction::Story(StoryAction::Event(
         StoryEvent::BodyFetched {
-            meta: crate::product_management::board::orchestrator::cache_fill_meta(),
+            meta: crate::sync::cache_fill_meta(),
             id: StoryId::new(9000),
             body: "hydrated body content".to_string(),
             etag: Some("W/\"deadbeef\"".to_string()),
@@ -173,8 +173,8 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 
 #[tokio::test]
 async fn local_body_mutate_invalidates_prior_etag() {
-    use crate::product_management::board::events::{EventMeta, StoryEvent};
-    use crate::product_management::board::peer::PeerId;
+    use crate::product_management::story::events::{EventMeta, StoryEvent};
+    use crate::product_management::story::peer::PeerId;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
@@ -206,8 +206,8 @@ async fn local_body_mutate_invalidates_prior_etag() {
 
 #[tokio::test]
 async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh() {
-    use crate::product_management::board::events::{EventMeta, StoryEvent};
-    use crate::product_management::board::peer::PeerId;
+    use crate::product_management::story::events::{EventMeta, StoryEvent};
+    use crate::product_management::story::peer::PeerId;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);

@@ -5,8 +5,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
 use crate::kernel;
-use crate::product_management::board::RefreshDriver;
 use crate::session;
+use crate::sync::RefreshDriver;
 use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
 };

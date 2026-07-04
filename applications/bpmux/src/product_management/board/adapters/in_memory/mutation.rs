@@ -1,5 +1,5 @@
 use super::{InnerState, typed_label_mirror};
-use crate::product_management::board::events::StoryEvent;
+use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment};
 
 pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
