@@ -1,4 +1,5 @@
 use crate::product_management::iteration::label::IterationLabelParts;
+use crate::product_management::story::{Acceptor, Tag};
 
 pub trait LabelCodec {
     fn decode_ready_order(&self, label: &str) -> Option<u32>;
@@ -22,4 +23,8 @@ pub trait LabelCodec {
     fn iteration_label_class(&self, label: &str) -> Option<String>;
 
     fn encode_parent_epic(&self, issue_number: u64) -> String;
+
+    fn encode_tag(&self, tag: Tag) -> &'static str;
+
+    fn encode_acceptor(&self, acceptor: Acceptor) -> &'static str;
 }

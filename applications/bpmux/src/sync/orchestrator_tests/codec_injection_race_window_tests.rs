@@ -18,6 +18,7 @@ mod codec_injection_substrate {
     use super::*;
     use crate::product_management::board::label_codec::LabelCodec;
     use crate::product_management::iteration::label::IterationLabelParts;
+    use crate::product_management::story::{Acceptor, Tag};
     use std::sync::Arc;
 
     struct StubLabelCodec;
@@ -57,6 +58,20 @@ mod codec_injection_substrate {
 
         fn encode_parent_epic(&self, issue_number: u64) -> String {
             format!("epic#{issue_number}")
+        }
+
+        fn encode_tag(&self, tag: Tag) -> &'static str {
+            match tag {
+                Tag::DeskCheckFail => "STUB-desk-check-fail",
+            }
+        }
+
+        fn encode_acceptor(&self, acceptor: Acceptor) -> &'static str {
+            match acceptor {
+                Acceptor::Team => "STUB-awaiting-team",
+                Acceptor::Owner => "STUB-awaiting-owner",
+                Acceptor::Dev => "STUB-awaiting-dev",
+            }
         }
     }
 

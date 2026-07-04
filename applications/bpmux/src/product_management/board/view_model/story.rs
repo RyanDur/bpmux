@@ -1,6 +1,5 @@
 use serde::Serialize;
 
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::{Story, most_recent_needs_work};
@@ -42,10 +41,10 @@ pub(crate) fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String
     let mut labels: Vec<String> = Vec::new();
     labels.push(story.story_type().as_label().to_string());
     for tag in story.tags() {
-        labels.push(GhLabelCodec.encode_tag(*tag).to_string());
+        labels.push(codec.encode_tag(*tag).to_string());
     }
     if let Some(acceptor) = story.acceptor() {
-        labels.push(GhLabelCodec.encode_acceptor(acceptor).to_string());
+        labels.push(codec.encode_acceptor(acceptor).to_string());
     }
     if let Some(epic) = story.parent_epic() {
         labels.push(codec.encode_parent_epic(epic.value()));

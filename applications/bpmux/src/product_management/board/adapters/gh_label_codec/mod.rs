@@ -1,5 +1,6 @@
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::iteration::label::IterationLabelParts;
+use crate::product_management::story::{Acceptor, Tag};
 
 mod iteration;
 mod outcome;
@@ -45,6 +46,20 @@ impl LabelCodec for GhLabelCodec {
 
     fn encode_parent_epic(&self, issue_number: u64) -> String {
         format!("parent-epic-#{issue_number}")
+    }
+
+    fn encode_tag(&self, tag: Tag) -> &'static str {
+        match tag {
+            Tag::DeskCheckFail => DESK_CHECK_FAIL_LABEL,
+        }
+    }
+
+    fn encode_acceptor(&self, acceptor: Acceptor) -> &'static str {
+        match acceptor {
+            Acceptor::Team => ACCEPTOR_TEAM_LABEL,
+            Acceptor::Owner => ACCEPTOR_OWNER_LABEL,
+            Acceptor::Dev => ACCEPTOR_DEV_LABEL,
+        }
     }
 }
 

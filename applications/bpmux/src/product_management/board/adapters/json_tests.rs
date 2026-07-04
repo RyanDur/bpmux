@@ -341,6 +341,21 @@ impl crate::product_management::board::label_codec::LabelCodec for StubLabelCode
         let parts = self.decode_iteration(label)?;
         Some(format!("iter|{}:", parts.name))
     }
+    fn encode_tag(&self, tag: crate::product_management::story::Tag) -> &'static str {
+        match tag {
+            crate::product_management::story::Tag::DeskCheckFail => "stub-desk-check-fail",
+        }
+    }
+    fn encode_acceptor(
+        &self,
+        acceptor: crate::product_management::story::Acceptor,
+    ) -> &'static str {
+        match acceptor {
+            crate::product_management::story::Acceptor::Team => "stub-team",
+            crate::product_management::story::Acceptor::Owner => "stub-owner",
+            crate::product_management::story::Acceptor::Dev => "stub-dev",
+        }
+    }
 }
 
 #[test]

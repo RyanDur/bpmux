@@ -18,25 +18,11 @@ impl GhLabelCodec {
         }
     }
 
-    pub fn encode_acceptor(&self, acceptor: Acceptor) -> &'static str {
-        match acceptor {
-            Acceptor::Team => ACCEPTOR_TEAM_LABEL,
-            Acceptor::Owner => ACCEPTOR_OWNER_LABEL,
-            Acceptor::Dev => ACCEPTOR_DEV_LABEL,
-        }
-    }
-
     pub fn decode_tag(&self, label: &str) -> Option<Tag> {
         if label.eq_ignore_ascii_case(DESK_CHECK_FAIL_LABEL) {
             Some(Tag::DeskCheckFail)
         } else {
             None
-        }
-    }
-
-    pub fn encode_tag(&self, tag: Tag) -> &'static str {
-        match tag {
-            Tag::DeskCheckFail => DESK_CHECK_FAIL_LABEL,
         }
     }
 
