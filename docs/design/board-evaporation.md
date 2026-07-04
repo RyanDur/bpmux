@@ -213,14 +213,30 @@ NOT part of this relocation.
    in slice 7. Verified: `cargo check --all-targets` clean; 168 targeted tests green.
    A `crate::view` production ↛ `crate::integrations`/`GhLabelCodec` fitness lock is a slice-8
    candidate (production is already clean; the tests inject the concrete legitimately).
-7. **PROJECTIONs → their per-consumer homes**; **`SourceAdapter` port + `in_memory`
-   adapter → domain/adapters home**. Each projection file's destination is decided
-   by the who-consumes-it test (below), file-by-file at execution, and recorded here.
-   (`in_memory/typed_label_mirror.rs` also names the concrete `GhLabelCodec` — an
-   adapter-side coupling, not a read-model leak; resolve when the in-memory adapter moves.)
-8. **Delete `board/mod.rs`.** Board has evaporated. Add a fitness test asserting the
-   `product_management::board` path no longer exists (a divisor-less husk left behind
-   is the regression to refuse).
+7. **PROJECTIONs + ports + in_memory → their per-consumer homes.** ✅ LANDED (2026-07-04),
+   4 CI-green sub-slices. The who-consumes-it test decided each home:
+   - **7a `arrangement` + `ready_order_label` → `crate::view::board`; `velocity` →
+     `crate::view::velocity`.** Pure projections (state→column, board-wire sort, delivery
+     metrics) join the read-model; consumed by presentation edges (bridge render, transport
+     rest). Renamed the mis-named `ready_order_label_codec` test → `ready_order_label_tests`.
+   - **7b `LabelCodec` port → `product_management::label_codec`.** The domain-level port (the
+     plan's "port stays in the domain"), cross-cutting (view/sync/integrations/iteration).
+   - **7c `SourceAdapter` port (`board/sync.rs`) → `crate::sync` as `sync/port.rs`.** The sync
+     engine owns and drives the port (~17 consumers); the move REMOVED the prior
+     `crate::sync → product_management::board::sync` support→feature edge.
+   - **7d `InMemorySourceAdapter` → `crate::integrations::in_memory`** (sibling to
+     `integrations::github`, the other `SourceAdapter` impl). Clean edges: integrations→sync
+     (port) + integrations::in_memory→github::mapper (faithful label decode). This took the
+     fake OUT of `product_management`, clearing the LAST `product_management → crate::integrations`
+     production edge. `canonical_tests` moved to `crate::view::board`; the emptied `board/mod.rs`
+     was deleted and `pub mod board` removed — **the board module has fully evaporated (zero
+     `product_management::board` references remain).** `typed_label_mirror` rode with the fake.
+8. **Delete `board/mod.rs` + fitness locks.** ✅ LANDED (2026-07-04). `board/mod.rs` deleted in
+   7d; slice 8 adds two `product_management::boundary_tests` locks, both proven-to-falsify:
+   `product_management_board_module_is_gone` (the husk directory must not exist) and
+   `product_management_production_imports_no_integrations` (domain production ↛
+   `crate::integrations` — it depends on the ports, never the concrete adapters). **The
+   board-evaporation arc is COMPLETE.**
 
 ## Key decisions (so they are not re-litigated)
 
