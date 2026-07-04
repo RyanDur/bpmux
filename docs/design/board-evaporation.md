@@ -61,14 +61,21 @@ NOT part of this relocation.
 
 ## Slices (each backend-pure, CI-green, fitness-locked where it caps a boundary)
 
-1. **Dissolve the façade + home `PeerId`.** Move `peer.rs` → `product_management/
-   story/peer.rs` (verbatim; it is `EventMeta`'s own field type, so it lives beside
-   `events.rs`), then rewrite consumers off the pass-through re-exports
+1. **Dissolve the façade + home `PeerId`.** ✅ LANDED `7f3b0f1c` (2026-07-03).
+   Moved `peer.rs` → `product_management/story/peer.rs` (verbatim 100% rename; it is
+   `EventMeta`'s own field type, so it lives beside `events.rs`), and rewrote every
+   consumer off the pass-through re-exports
    (`board::{StoryEvent, MutationId, RefreshDriver, SyncOrchestrator, PersistError, …}`)
    AND off `board::peer::PeerId`/`board::PeerId` to their real homes
-   (`crate::product_management::story::{events, peer}`, `crate::sync`). One
-   mechanical fan-out over the shared consumer set, zero behavior change — after
-   this slice, nothing outside `board/` imports it except genuine cluster consumers.
+   (`crate::product_management::story::{events, peer}`, `crate::sync`) — one mechanical
+   fan-out over the shared consumer set, zero behavior change, wire byte-identical
+   (174 files). `board/mod.rs` now declares only genuine content (adapters, arrangement,
+   label_codec, ready_order_label, sync, velocity, view_model + the SourceAdapter/SyncError
+   port re-export); every surviving `board::` reference names real board content. Two
+   execution notes: `sync/orchestrator_tests/*` had been reaching back through the façade
+   to `crate::sync` (where they already live) — that loop is cut; and the compiler caught
+   the one grep-invisible class — brace-grouped imports `board::{A, B, C}` spanning
+   multiple destination homes — which were split per-home.
 2. **Pin the wire.** Golden round-trip tests locking `StoryView`/`IterationView`/
    `OutcomeView`/`story_to_board_json` JSON (the message-split S1 move) so slices 4–5
    are provably byte-identical to the renderer.
