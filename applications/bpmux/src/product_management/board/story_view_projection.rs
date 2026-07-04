@@ -37,16 +37,10 @@ fn project_marks_a_closed_story_gh_state_closed() {
 fn project_encodes_badge_labels_from_typed_fields() {
     let mut s = story(11, "badged", BoardState::Acceptance);
     s.tags = vec![crate::product_management::story::Tag::DeskCheckFail];
-    s.blocked_by = Some(StoryId::new(9));
     let view = StoryView::project(&GhLabelCodec, &s);
     assert!(
         view.labels.iter().any(|l| l == "desk-check-fail"),
         "the rework badge label re-encodes from the typed DeskCheckFail tag; got {:?}",
-        view.labels
-    );
-    assert!(
-        view.labels.iter().any(|l| l == "blocked-by:9"),
-        "the blocker reference re-encodes from the typed blocked_by field; got {:?}",
         view.labels
     );
 }

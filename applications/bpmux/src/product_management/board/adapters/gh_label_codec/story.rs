@@ -1,6 +1,6 @@
 use super::{
-    ACCEPTOR_DEV_LABEL, ACCEPTOR_OWNER_LABEL, ACCEPTOR_TEAM_LABEL, BLOCKED_BY_PREFIX,
-    BLOCKED_LABEL, DESK_CHECK_FAIL_LABEL, GhLabelCodec, WORKFLOW_STATE_LABELS,
+    ACCEPTOR_DEV_LABEL, ACCEPTOR_OWNER_LABEL, ACCEPTOR_TEAM_LABEL, DESK_CHECK_FAIL_LABEL,
+    GhLabelCodec, WORKFLOW_STATE_LABELS,
 };
 use crate::product_management::story::{Acceptor, StoryKind, Tag};
 
@@ -27,9 +27,7 @@ impl GhLabelCodec {
     }
 
     pub fn decode_tag(&self, label: &str) -> Option<Tag> {
-        if label.eq_ignore_ascii_case(BLOCKED_LABEL) {
-            Some(Tag::Blocked)
-        } else if label.eq_ignore_ascii_case(DESK_CHECK_FAIL_LABEL) {
+        if label.eq_ignore_ascii_case(DESK_CHECK_FAIL_LABEL) {
             Some(Tag::DeskCheckFail)
         } else {
             None
@@ -38,22 +36,8 @@ impl GhLabelCodec {
 
     pub fn encode_tag(&self, tag: Tag) -> &'static str {
         match tag {
-            Tag::Blocked => BLOCKED_LABEL,
             Tag::DeskCheckFail => DESK_CHECK_FAIL_LABEL,
         }
-    }
-
-    pub fn decode_blocked_by(&self, label: &str) -> Option<u64> {
-        let raw = label.strip_prefix(BLOCKED_BY_PREFIX)?;
-        let id: u64 = raw.parse().ok()?;
-        if id == 0 {
-            return None;
-        }
-        Some(id)
-    }
-
-    pub fn encode_blocked_by(&self, blocker: u64) -> String {
-        format!("{BLOCKED_BY_PREFIX}{blocker}")
     }
 
     pub fn is_workflow_state_label(&self, label: &str) -> bool {

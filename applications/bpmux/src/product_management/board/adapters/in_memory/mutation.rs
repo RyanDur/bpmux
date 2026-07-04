@@ -42,12 +42,6 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
         }
         StoryEvent::TagSet { id, tag, .. } => typed_label_mirror::tag_set(s, id.value(), *tag),
         StoryEvent::TagUnset { id, tag, .. } => typed_label_mirror::tag_unset(s, id.value(), *tag),
-        StoryEvent::BlockedBySet { id, blocker, .. } => {
-            typed_label_mirror::blocked_by_set(s, id.value(), blocker.value())
-        }
-        StoryEvent::BlockedByCleared { id, .. } => {
-            typed_label_mirror::blocked_by_cleared(s, id.value())
-        }
         StoryEvent::IterationSlotSet {
             id, name, position, ..
         } => typed_label_mirror::iteration_slot_set(s, id.value(), name, *position),

@@ -80,7 +80,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(200));
-    args.insert("label".into(), serde_json::json!("blocked"));
+    args.insert("label".into(), serde_json::json!("desk-check-fail"));
     args.insert("operation".into(), serde_json::json!("add"));
     let result = handle_label_story(&args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
@@ -88,8 +88,8 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     let story = orchestrator.story(200).unwrap();
     assert_eq!(
         story.tags(),
-        [Tag::Blocked],
-        "the blocked label decodes to a typed Tag on the story field, not a raw label round-trip"
+        [Tag::DeskCheckFail],
+        "the desk-check-fail label decodes to a typed Tag on the story field, not a raw label round-trip"
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -101,7 +101,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
         &pushed[0],
-        StoryEvent::TagSet { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::Blocked
+        StoryEvent::TagSet { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::DeskCheckFail
     ));
 }
 
@@ -131,7 +131,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 
     let mut add_args = serde_json::Map::new();
     add_args.insert("id".into(), serde_json::json!(200));
-    add_args.insert("label".into(), serde_json::json!("blocked"));
+    add_args.insert("label".into(), serde_json::json!("desk-check-fail"));
     add_args.insert("operation".into(), serde_json::json!("add"));
     handle_label_story(&add_args, "pm:claude-code", Some(&orchestrator))
         .await
@@ -139,7 +139,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 
     let mut remove_args = serde_json::Map::new();
     remove_args.insert("id".into(), serde_json::json!(200));
-    remove_args.insert("label".into(), serde_json::json!("blocked"));
+    remove_args.insert("label".into(), serde_json::json!("desk-check-fail"));
     remove_args.insert("operation".into(), serde_json::json!("remove"));
     let result = handle_label_story(&remove_args, "pm:claude-code", Some(&orchestrator)).await;
     assert!(
@@ -162,11 +162,11 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     assert_eq!(pushed.len(), 2);
     assert!(matches!(
         &pushed[0],
-        StoryEvent::TagSet { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::Blocked
+        StoryEvent::TagSet { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::DeskCheckFail
     ));
     assert!(matches!(
         &pushed[1],
-        StoryEvent::TagUnset { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::Blocked
+        StoryEvent::TagUnset { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::DeskCheckFail
     ));
 }
 

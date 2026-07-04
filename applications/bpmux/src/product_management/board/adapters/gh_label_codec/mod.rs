@@ -49,9 +49,7 @@ impl LabelCodec for GhLabelCodec {
 }
 
 pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";
-pub const BLOCKED_LABEL: &str = "blocked";
 pub const DESK_CHECK_FAIL_LABEL: &str = "desk-check-fail";
-pub const BLOCKED_BY_PREFIX: &str = "blocked-by:";
 pub const LEGACY_STATE_LABELS: &[&str] = &["ready for accept", "needs fixes", "rejected"];
 pub const WORKFLOW_STATE_LABELS: &[&str] = &[
     "icebox",

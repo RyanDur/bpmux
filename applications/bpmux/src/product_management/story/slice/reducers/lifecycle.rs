@@ -30,7 +30,6 @@ pub(super) fn apply_story_created(
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
-        blocked_by: None,
         ready_order: None,
         iteration_slot: None,
     };
@@ -97,18 +96,6 @@ pub(super) fn apply_tag_set(w: &mut Stories, id: StoryId, tag: Tag) {
         && !story.tags.contains(&tag)
     {
         story.tags.push(tag);
-    }
-}
-
-pub(super) fn apply_blocked_by_set(w: &mut Stories, id: StoryId, blocker: StoryId) {
-    if let Some(story) = story_mut(w, id) {
-        story.blocked_by = Some(blocker);
-    }
-}
-
-pub(super) fn apply_blocked_by_cleared(w: &mut Stories, id: StoryId) {
-    if let Some(story) = story_mut(w, id) {
-        story.blocked_by = None;
     }
 }
 

@@ -24,8 +24,6 @@ pub struct LabelDerivedFields {
     #[serde(default)]
     pub tags: Vec<Tag>,
     #[serde(default)]
-    pub blocked_by: Option<StoryId>,
-    #[serde(default)]
     pub ready_order: Option<u32>,
     #[serde(default)]
     pub iteration_slot: Option<crate::product_management::story::IterationSlot>,
@@ -65,15 +63,6 @@ pub enum StoryEvent {
         meta: EventMeta,
         id: StoryId,
         tag: Tag,
-    },
-    BlockedBySet {
-        meta: EventMeta,
-        id: StoryId,
-        blocker: StoryId,
-    },
-    BlockedByCleared {
-        meta: EventMeta,
-        id: StoryId,
     },
     IterationSlotSet {
         meta: EventMeta,
@@ -190,8 +179,6 @@ impl StoryEvent {
             | StoryEvent::TagRemoved { meta, .. }
             | StoryEvent::TagSet { meta, .. }
             | StoryEvent::TagUnset { meta, .. }
-            | StoryEvent::BlockedBySet { meta, .. }
-            | StoryEvent::BlockedByCleared { meta, .. }
             | StoryEvent::IterationSlotSet { meta, .. }
             | StoryEvent::IterationSlotCleared { meta, .. }
             | StoryEvent::StoryClosed { meta, .. }
@@ -223,8 +210,6 @@ impl StoryEvent {
             | StoryEvent::TagRemoved { id, .. }
             | StoryEvent::TagSet { id, .. }
             | StoryEvent::TagUnset { id, .. }
-            | StoryEvent::BlockedBySet { id, .. }
-            | StoryEvent::BlockedByCleared { id, .. }
             | StoryEvent::IterationSlotSet { id, .. }
             | StoryEvent::IterationSlotCleared { id, .. }
             | StoryEvent::StoryClosed { id, .. }

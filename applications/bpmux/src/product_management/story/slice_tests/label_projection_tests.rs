@@ -50,7 +50,7 @@ fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
         StoryEvent::TagSet {
             meta: meta("pm", 2026, "local"),
             id: StoryId::new(1),
-            tag: Tag::Blocked,
+            tag: Tag::DeskCheckFail,
         },
     );
     apply(
@@ -71,7 +71,7 @@ fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     );
     assert_eq!(
         story_at(&store, 1).unwrap().tags(),
-        [Tag::Blocked],
+        [Tag::DeskCheckFail],
         "a generic raw-label add/remove must not re-project (clobber) the typed tags field"
     );
 }
@@ -150,7 +150,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                 acceptor: Some(Acceptor::Dev),
                 parent_epic: Some(EpicId::new(7)),
                 tags: Vec::new(),
-                blocked_by: None,
                 ready_order: None,
                 iteration_slot: None,
             },

@@ -83,7 +83,7 @@ async fn label_story_rejects_iteration_label_for_different_names_1402() {
 async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
     let orch = build_orchestrator().await;
     for label in [
-        "blocked",
+        "desk-check-fail",
         "deferred",
         "icebox",
         "ready",
@@ -102,8 +102,8 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
     assert!(
         story
             .tags
-            .contains(&crate::product_management::story::Tag::Blocked),
-        "the blocked label classifies into the typed tag at the tool edge; got {:?}",
+            .contains(&crate::product_management::story::Tag::DeskCheckFail),
+        "the desk-check-fail label classifies into the typed tag at the tool edge; got {:?}",
         story.tags
     );
     orch.refresh_all().await.unwrap();

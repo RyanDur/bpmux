@@ -34,12 +34,6 @@ describe('#1551 deriveBadge — acceptor-class from typed field, honest-neutral 
     expect(deriveBadge(baseStory({ state: 'acceptance', labels: ['feature'] }))).toBe('pending')
   })
 
-  test('blocked precedence overrides acceptor', () => {
-    expect(
-      deriveBadge(baseStory({ state: 'acceptance', acceptor: 'team', labels: ['blocked'] }))
-    ).toBe('blocked')
-  })
-
   test('rework precedence overrides acceptor', () => {
     expect(
       deriveBadge(baseStory({ state: 'acceptance', acceptor: 'team', labels: ['desk-check-fail'] }))

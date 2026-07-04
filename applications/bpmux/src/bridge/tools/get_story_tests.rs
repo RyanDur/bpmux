@@ -312,8 +312,6 @@ async fn surfaces_typed_label_chips_and_never_state_labels() {
     let labels = vec![
         "bug".to_string(),
         "ready".to_string(),
-        "blocked".to_string(),
-        "blocked-by:514".to_string(),
         "desk-check-fail".to_string(),
     ];
     let (_store, orch) = seeded_orchestrator(vec![(story, labels)], vec![]).await;
@@ -330,14 +328,6 @@ async fn surfaces_typed_label_chips_and_never_state_labels() {
     assert!(
         names.contains(&"bug"),
         "Type label 'bug' surfaces; got {names:?}"
-    );
-    assert!(
-        names.contains(&"blocked"),
-        "Block label 'blocked' surfaces; got {names:?}"
-    );
-    assert!(
-        names.contains(&"blocked-by:514"),
-        "Blocker-link label surfaces; got {names:?}"
     );
     assert!(
         names.contains(&"desk-check-fail"),

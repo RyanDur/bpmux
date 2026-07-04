@@ -14,14 +14,12 @@ const LIFECYCLE_LABELS: ReadonlySet<string> = new Set([
   'ready-for-accept',
   'desk-check-fail',
   'desk-check-pass',
-  'blocked',
   'rework',
   'rejected',
   'ready'
 ])
 
-const isLifecycleLabel = (label: string): boolean =>
-  LIFECYCLE_LABELS.has(label) || label.startsWith('blocked-by:')
+const isLifecycleLabel = (label: string): boolean => LIFECYCLE_LABELS.has(label)
 
 interface Props {
   story: Story

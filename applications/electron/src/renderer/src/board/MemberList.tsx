@@ -105,7 +105,7 @@ const MemberList = ({
           ) : null}
           <small className="board-story-number">#{story.id}</small>
           <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
-          <StoryBadge story={story} onOpenBlocker={onOpen} />
+          <StoryBadge story={story} />
           {activeStateLabel(story) !== null && (
             <small className="board-iteration-member-state" data-state={story.state}>
               {activeStateLabel(story)}

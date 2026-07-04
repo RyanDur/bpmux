@@ -19,19 +19,6 @@ pub(super) fn tag_unset(s: &mut InnerState, number: u64, tag: Tag) {
         .retain(|l| !l.eq_ignore_ascii_case(label));
 }
 
-pub(super) fn blocked_by_set(s: &mut InnerState, number: u64, blocker: u64) {
-    let labels = s.labels.entry(number).or_default();
-    labels.retain(|l| GhLabelCodec.decode_blocked_by(l).is_none());
-    labels.push(GhLabelCodec.encode_blocked_by(blocker));
-}
-
-pub(super) fn blocked_by_cleared(s: &mut InnerState, number: u64) {
-    s.labels
-        .entry(number)
-        .or_default()
-        .retain(|l| GhLabelCodec.decode_blocked_by(l).is_none());
-}
-
 pub(super) fn iteration_slot_set(s: &mut InnerState, number: u64, name: &str, position: u32) {
     let labels = s.labels.entry(number).or_default();
     labels.retain(|l| !GhLabelCodec.is_iteration_label_loose(l));

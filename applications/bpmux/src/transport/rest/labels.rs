@@ -62,14 +62,6 @@ pub async fn post_story_labels(
                             tag,
                         },
                     )
-                } else if let Some(blocker) = codec.decode_blocked_by(&label) {
-                    Some(
-                        crate::product_management::story::events::StoryEvent::BlockedBySet {
-                            meta,
-                            id: story_id,
-                            blocker: crate::product_management::story::StoryId::new(blocker),
-                        },
-                    )
                 } else if let Some(parts) =
                     crate::product_management::iteration::label::parse_iteration_label(
                         &codec, &label,
@@ -102,13 +94,6 @@ pub async fn post_story_labels(
                             meta,
                             id: story_id,
                             tag,
-                        },
-                    )
-                } else if codec.decode_blocked_by(&label).is_some() {
-                    Some(
-                        crate::product_management::story::events::StoryEvent::BlockedByCleared {
-                            meta,
-                            id: story_id,
                         },
                     )
                 } else if codec.is_iteration_label_loose(&label) {

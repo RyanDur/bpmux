@@ -36,9 +36,6 @@ pub(super) fn derive_typed_fields_from_labels(story: &mut Story, labels: &[Strin
     if story.parent_epic.is_none() {
         story.parent_epic = fields.parent_epic;
     }
-    if story.blocked_by.is_none() {
-        story.blocked_by = fields.blocked_by;
-    }
     if story.ready_order.is_none() {
         story.ready_order = fields.ready_order;
     }

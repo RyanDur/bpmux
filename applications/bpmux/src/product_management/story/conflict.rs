@@ -21,8 +21,6 @@ pub fn classify_conflict(
         | StoryEvent::TagRemoved { .. }
         | StoryEvent::TagSet { .. }
         | StoryEvent::TagUnset { .. }
-        | StoryEvent::BlockedBySet { .. }
-        | StoryEvent::BlockedByCleared { .. }
         | StoryEvent::IterationSlotSet { .. }
         | StoryEvent::IterationSlotCleared { .. }
         | StoryEvent::StateTransitioned { .. }

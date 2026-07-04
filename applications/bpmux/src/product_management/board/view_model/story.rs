@@ -44,9 +44,6 @@ pub(crate) fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String
     for tag in story.tags() {
         labels.push(GhLabelCodec.encode_tag(*tag).to_string());
     }
-    if let Some(blocker) = story.blocked_by() {
-        labels.push(GhLabelCodec.encode_blocked_by(blocker.value()));
-    }
     if let Some(acceptor) = story.acceptor() {
         labels.push(GhLabelCodec.encode_acceptor(acceptor).to_string());
     }

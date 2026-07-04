@@ -502,9 +502,9 @@ fn story_type_from_labels_is_some_only_for_a_type_label() {
 }
 
 #[test]
-fn tags_from_labels_picks_up_blocked() {
-    let labels = vec!["ready".to_string(), "blocked".to_string()];
-    assert_eq!(tags_from_labels(&labels), vec![Tag::Blocked]);
+fn tags_from_labels_picks_up_desk_check_fail() {
+    let labels = vec!["ready".to_string(), "desk-check-fail".to_string()];
+    assert_eq!(tags_from_labels(&labels), vec![Tag::DeskCheckFail]);
 }
 
 #[test]
@@ -514,9 +514,9 @@ fn tags_from_labels_ignores_unknown() {
 }
 
 #[test]
-fn tags_from_labels_deduplicates_blocked() {
-    let labels = vec!["blocked".to_string(), "Blocked".to_string()];
-    assert_eq!(tags_from_labels(&labels), vec![Tag::Blocked]);
+fn tags_from_labels_deduplicates_desk_check_fail() {
+    let labels = vec!["desk-check-fail".to_string(), "Desk-Check-Fail".to_string()];
+    assert_eq!(tags_from_labels(&labels), vec![Tag::DeskCheckFail]);
 }
 
 #[test]
@@ -527,11 +527,11 @@ fn decode_story_metadata_populates_story_type_and_tags_from_labels() {
         "state": "open",
         "created_at": "2026-04-20T00:00:00Z",
         "user": {"login": "pm"},
-        "labels": [{"name": "bug"}, {"name": "blocked"}],
+        "labels": [{"name": "bug"}, {"name": "desk-check-fail"}],
     });
     let story = decode_story_metadata(&v).unwrap();
     assert_eq!(story.story_type, StoryKind::Bug);
-    assert_eq!(story.tags, vec![Tag::Blocked]);
+    assert_eq!(story.tags, vec![Tag::DeskCheckFail]);
 }
 
 #[test]

@@ -54,7 +54,6 @@ pub(crate) async fn handle_label_story(
         };
         let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
         let tag = codec.decode_tag(label);
-        let blocker = codec.decode_blocked_by(label);
         let (event, ok_msg) = match operation {
             "add" => (
                 if let Some(tag) = tag {
@@ -62,12 +61,6 @@ pub(crate) async fn handle_label_story(
                         meta,
                         id: StoryId::new(id),
                         tag,
-                    }
-                } else if let Some(blocker) = blocker {
-                    crate::product_management::story::events::StoryEvent::BlockedBySet {
-                        meta,
-                        id: StoryId::new(id),
-                        blocker: StoryId::new(blocker),
                     }
                 } else {
                     crate::product_management::story::events::StoryEvent::TagAdded {
@@ -84,11 +77,6 @@ pub(crate) async fn handle_label_story(
                         meta,
                         id: StoryId::new(id),
                         tag,
-                    }
-                } else if blocker.is_some() {
-                    crate::product_management::story::events::StoryEvent::BlockedByCleared {
-                        meta,
-                        id: StoryId::new(id),
                     }
                 } else {
                     crate::product_management::story::events::StoryEvent::TagRemoved {

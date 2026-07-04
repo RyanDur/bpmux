@@ -23,7 +23,6 @@ fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> St
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
-        blocked_by: None,
         ready_order: None,
         iteration_slot: None,
     }
@@ -241,12 +240,12 @@ fn story_to_board_json_labels_include_story_type() {
 }
 
 #[test]
-fn story_to_board_json_labels_include_blocked_tag() {
+fn story_to_board_json_labels_include_desk_check_fail_tag() {
     let mut s = sample_story(BoardState::Icebox, StoryKind::Feature, false);
-    s.tags = vec![crate::product_management::story::Tag::Blocked];
+    s.tags = vec![crate::product_management::story::Tag::DeskCheckFail];
     let json = story_to_board_json(&GhLabelCodec, &s);
     let labels = json["labels"].as_array().expect("labels array");
-    assert!(labels.iter().any(|l| l.as_str() == Some("blocked")));
+    assert!(labels.iter().any(|l| l.as_str() == Some("desk-check-fail")));
 }
 
 #[test]

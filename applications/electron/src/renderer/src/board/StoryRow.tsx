@@ -1,7 +1,6 @@
 import { DragGrip } from './DragGrip'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
-import { deriveBadge } from './StoryBadge.utils'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { type GripDragProps, type RowDragProps } from './useDragReorder'
 import { storyNavigateLabel } from './storyNavigateLabel'
@@ -40,7 +39,6 @@ const StoryRow = ({
 }: StoryRowProps): React.JSX.Element => {
   const type = storyTypeFromLabels(story.labels)
   const classes = ['board-story-row']
-  if (deriveBadge(story) === 'blocked') classes.push('board-story-row--blocked')
   const reorderHint =
     onKeyboardReorder !== undefined
       ? ' — press Ctrl+Shift+Up to move up, Ctrl+Shift+Down to move down'
@@ -90,7 +88,7 @@ const StoryRow = ({
       ) : null}
       <small className="board-story-number">#{story.id}</small>
       <StoryTypeGlyph type={type} />
-      <StoryBadge story={story} onOpenTimeline={onOpenTimeline} onOpenBlocker={onOpen} />
+      <StoryBadge story={story} onOpenTimeline={onOpenTimeline} />
       <b className="board-story-title" data-test="story-title">
         {story.title}
       </b>

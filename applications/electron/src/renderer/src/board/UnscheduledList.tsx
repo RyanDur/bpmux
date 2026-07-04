@@ -44,7 +44,7 @@ const UnscheduledList = ({ stories, open, onToggle, onOpen }: Props): React.JSX.
               />
               <small className="board-story-number">#{story.id}</small>
               <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
-              <StoryBadge story={story} onOpenBlocker={onOpen} />
+              <StoryBadge story={story} />
               <b className="board-story-title" data-test="story-title">
                 {story.title}
               </b>

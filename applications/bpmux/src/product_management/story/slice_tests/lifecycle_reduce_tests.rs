@@ -92,12 +92,12 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
         StoryEvent::TagSet {
             meta: meta("pm", 2026, "local"),
             id: StoryId::new(15),
-            tag: Tag::Blocked,
+            tag: Tag::DeskCheckFail,
         },
     );
     assert_eq!(
         story_at(&store, 15).unwrap().tags(),
-        [Tag::Blocked],
+        [Tag::DeskCheckFail],
         "the TagSet event assigns the typed tag directly, not via a label round-trip"
     );
     apply(
@@ -105,12 +105,12 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
         StoryEvent::TagSet {
             meta: meta("pm", 2026, "local"),
             id: StoryId::new(15),
-            tag: Tag::Blocked,
+            tag: Tag::DeskCheckFail,
         },
     );
     assert_eq!(
         story_at(&store, 15).unwrap().tags(),
-        [Tag::Blocked],
+        [Tag::DeskCheckFail],
         "TagSet is idempotent — re-setting the same tag does not duplicate it"
     );
     apply(
@@ -118,60 +118,11 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
         StoryEvent::TagUnset {
             meta: meta("pm", 2026, "local"),
             id: StoryId::new(15),
-            tag: Tag::Blocked,
+            tag: Tag::DeskCheckFail,
         },
     );
     assert!(
         story_at(&store, 15).unwrap().tags().is_empty(),
         "the TagUnset event clears the typed tag directly"
-    );
-}
-
-#[test]
-fn blocked_by_events_set_and_clear_the_typed_blocker_reference_directly() {
-    let store = seeded();
-    created(&store, 16, "blockable", BoardState::Acceptance);
-    assert_eq!(
-        story_at(&store, 16).unwrap().blocked_by(),
-        None,
-        "a freshly created story references no blocker"
-    );
-    apply(
-        &store,
-        StoryEvent::BlockedBySet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(16),
-            blocker: StoryId::new(9),
-        },
-    );
-    assert_eq!(
-        story_at(&store, 16).unwrap().blocked_by(),
-        Some(StoryId::new(9)),
-        "BlockedBySet assigns the typed blocker reference directly, not via a label round-trip"
-    );
-    apply(
-        &store,
-        StoryEvent::BlockedBySet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(16),
-            blocker: StoryId::new(11),
-        },
-    );
-    assert_eq!(
-        story_at(&store, 16).unwrap().blocked_by(),
-        Some(StoryId::new(11)),
-        "a later BlockedBySet replaces the blocker reference"
-    );
-    apply(
-        &store,
-        StoryEvent::BlockedByCleared {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(16),
-        },
-    );
-    assert_eq!(
-        story_at(&store, 16).unwrap().blocked_by(),
-        None,
-        "BlockedByCleared drops the typed blocker reference"
     );
 }
