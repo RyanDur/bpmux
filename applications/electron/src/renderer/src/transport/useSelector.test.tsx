@@ -3,20 +3,20 @@ import { act, renderHook } from '@testing-library/react'
 import { useSelector } from './useSelector'
 import { dispatchSession, resetSessionForTest } from './session/store'
 import { mirrorDeltaReceived } from './session/actions'
-import { selectRoadmap, type RoadmapOutcomeData } from '../board/selectRoadmap'
+import { selectRoadmap, type RoadmapCard } from '../board/selectRoadmap'
 const ts = '2026-06-27T00:00:00Z'
-const nowOutcome: RoadmapOutcomeData = {
+const nowCard: RoadmapCard = {
   id: 1,
-  title: 'Now',
-  body: '',
+  name: 'Now',
+  why: {},
   horizon: 'now',
-  horizon_order: null,
-  outcome_readiness: null,
-  iterations: []
+  state: 'planned',
+  gap_count: 0,
+  tone: 'now'
 }
 
-const emitOutcomes = (outcomes: RoadmapOutcomeData[]): void =>
-  act(() => dispatchSession(mirrorDeltaReceived({ domain: 'outcomes', outcomes }, ts)))
+const emitRoadmap = (roadmap: RoadmapCard[]): void =>
+  act(() => dispatchSession(mirrorDeltaReceived({ domain: 'roadmap', roadmap }, ts)))
 
 afterEach(() => {
   act(() => resetSessionForTest())
@@ -28,16 +28,16 @@ describe('useSelector — selector over the local store', () => {
     expect(result.current).toBe(0)
   })
 
-  it('re-emits to the component when the backend emits an outcomes delta', () => {
+  it('re-emits to the component when the backend emits a roadmap delta', () => {
     const { result } = renderHook(() => useSelector(selectRoadmap))
     expect(result.current.bands).toEqual([])
-    emitOutcomes([nowOutcome])
+    emitRoadmap([nowCard])
     expect(result.current.bands.map((b) => b.horizon)).toEqual(['now'])
     expect(result.current.bands[0].outcomes[0].name).toBe('Now')
   })
 
   it('returns a referentially stable result across re-renders while state is unchanged', () => {
-    emitOutcomes([nowOutcome])
+    emitRoadmap([nowCard])
     const { result, rerender } = renderHook(() => useSelector(selectRoadmap))
     const first = result.current
     rerender()

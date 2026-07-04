@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
 import { roadmap } from './Roadmap.page'
-import { outcome, seedOutcomes } from './Roadmap.fixtures'
+import { card, seedRoadmap } from './Roadmap.fixtures'
 import { resetSessionForTest } from '../transport/session/store'
 import { startSentFrameCapture, stopSentFrameCapture } from '../transport/session/testCapture'
 
@@ -20,7 +20,7 @@ const bandPick = (outcomeTitle: string, band: string): HTMLElement => {
 
 describe('moving an outcome between horizon bands dispatches over the wire', () => {
   it('marks the current band and lets the user pick another', () => {
-    seedOutcomes([outcome({ id: 7, title: 'Coming soon', horizon: 'now' })])
+    seedRoadmap([card({ id: 7, name: 'Coming soon', horizon: 'now' })])
     render(<Roadmap />)
     expect(bandPick('Coming soon', 'Now').getAttribute('aria-pressed')).toBe('true')
     expect((bandPick('Coming soon', 'Now') as HTMLButtonElement).disabled).toBe(true)
@@ -28,7 +28,7 @@ describe('moving an outcome between horizon bands dispatches over the wire', () 
   })
 
   it('picking a new band sends a set_outcome_horizon frame for that outcome', async () => {
-    seedOutcomes([outcome({ id: 7, title: 'Coming soon', horizon: 'now' })])
+    seedRoadmap([card({ id: 7, name: 'Coming soon', horizon: 'now' })])
     render(<Roadmap />)
     const sent = startSentFrameCapture()
     await userEvent.click(bandPick('Coming soon', 'Next'))
@@ -36,7 +36,7 @@ describe('moving an outcome between horizon bands dispatches over the wire', () 
   })
 
   it('does not change the local band optimistically — the truth returns over the wire', async () => {
-    seedOutcomes([outcome({ id: 7, title: 'Coming soon', horizon: 'now' })])
+    seedRoadmap([card({ id: 7, name: 'Coming soon', horizon: 'now' })])
     render(<Roadmap />)
     await userEvent.click(bandPick('Coming soon', 'Later'))
     expect(within(roadmap.band('Now')).queryByText('Coming soon')).toBeTruthy()

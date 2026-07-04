@@ -65,68 +65,41 @@ const HORIZON_BANDS: { horizon: Horizon; label: string }[] = [
   { horizon: 'later', label: 'Later' }
 ]
 
-const WHY_FIELD_BY_LABEL: Record<string, keyof OutcomeWhy> = {
-  benefit: 'benefit',
-  'success-metric': 'metric',
-  metric: 'metric',
-  confidence: 'confidence',
-  value: 'value'
-}
-
-export const parseOutcomeWhy = (body: string): OutcomeWhy => {
-  const why: OutcomeWhy = {}
-  for (const rawLine of body.split('\n')) {
-    const line = rawLine.replace(/\*\*/g, '').trim()
-    const colon = line.indexOf(':')
-    if (colon === -1) continue
-    const field = WHY_FIELD_BY_LABEL[line.slice(0, colon).trim().toLowerCase()]
-    if (field === undefined || field in why) continue
-    why[field] = line.slice(colon + 1).trim()
-  }
-  return why
-}
-
-const readinessStateOf = (
-  readiness: OutcomeReadiness | null | undefined
-): RoadmapReadinessState => {
-  if (!readiness || readiness.iteration_count === 0) return 'none'
-  if (readiness.all_ready) return 'ready'
-  return 'gap'
-}
-
-const toneOf = (horizon: Horizon, state: RoadmapReadinessState): OutcomeCardTone => {
-  if (state === 'gap') return 'gap'
-  if (state === 'ready') return 'ready'
-  return horizon === 'now' ? 'now' : 'future'
-}
-
-const toRoadmapOutcome = (outcome: RoadmapOutcomeData): RoadmapOutcome => {
-  const horizon = outcome.horizon ?? 'later'
-  const readinessState = readinessStateOf(outcome.outcome_readiness)
-  return {
-    id: outcome.id,
-    name: outcome.title,
-    why: parseOutcomeWhy(outcome.body),
-    readinessState,
-    gapCount: outcome.outcome_readiness?.gap_count ?? 0,
-    tone: toneOf(horizon, readinessState),
-    iterations: outcome.iterations
+const chipStateOf = (state: OutcomeState): RoadmapReadinessState => {
+  switch (state) {
+    case 'ready':
+    case 'done':
+      return 'ready'
+    case 'needs-attention':
+      return 'gap'
+    case 'planned':
+      return 'none'
   }
 }
+
+const toRoadmapOutcome = (card: RoadmapCard, iterations: RoadmapIteration[]): RoadmapOutcome => ({
+  id: card.id,
+  name: card.name,
+  why: card.why,
+  readinessState: chipStateOf(card.state),
+  gapCount: card.gap_count,
+  tone: card.tone,
+  iterations
+})
 
 export interface RoadmapState {
+  roadmap: RoadmapCard[]
   outcomes: RoadmapOutcomeData[]
 }
 
 export const selectRoadmap = (state: RoadmapState): Roadmap => {
+  const iterationsById = new Map(state.outcomes.map((outcome) => [outcome.id, outcome.iterations]))
   const bands: RoadmapBand[] = []
   for (const { horizon, label } of HORIZON_BANDS) {
-    const orderOf = (o: RoadmapOutcomeData): number => o.horizon_order ?? Number.MAX_SAFE_INTEGER
-    const inBand = state.outcomes
-      .filter((o) => (o.horizon ?? 'later') === horizon)
-      .sort((a, b) => orderOf(a) - orderOf(b) || a.id - b.id)
-      .map(toRoadmapOutcome)
-    if (inBand.length > 0) bands.push({ horizon, label, outcomes: inBand })
+    const outcomes = state.roadmap
+      .filter((card) => card.horizon === horizon)
+      .map((card) => toRoadmapOutcome(card, iterationsById.get(card.id) ?? []))
+    if (outcomes.length > 0) bands.push({ horizon, label, outcomes })
   }
   return { bands }
 }

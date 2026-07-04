@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
-import { buildingIteration, checks, outcome, seedOutcomes } from './Roadmap.fixtures'
+import { buildingIteration, card, checks, outcome, seedRoadmap } from './Roadmap.fixtures'
 import { resetSessionForTest } from '../transport/session/store'
 import { startSentFrameCapture, stopSentFrameCapture } from '../transport/session/testCapture'
 
@@ -29,17 +29,20 @@ const dragTransfer = (): DataTransfer => {
 }
 
 const seedTwo = (): void =>
-  seedOutcomes([
-    outcome({
-      id: 5,
-      title: 'Outcome five',
-      horizon: 'now',
-      iterations: [
-        buildingIteration(710, 'Crux', 1, checks(true, true, false, false)),
-        buildingIteration(720, 'Lyra', 2, checks(false, false, false, false))
-      ]
-    })
-  ])
+  seedRoadmap(
+    [card({ id: 5, name: 'Outcome five', horizon: 'now' })],
+    [
+      outcome({
+        id: 5,
+        title: 'Outcome five',
+        horizon: 'now',
+        iterations: [
+          buildingIteration(710, 'Crux', 1, checks(true, true, false, false)),
+          buildingIteration(720, 'Lyra', 2, checks(false, false, false, false))
+        ]
+      })
+    ]
+  )
 
 describe('dragging an iteration in the drill-in dispatches a reorder over the wire', () => {
   it('drops the dragged iteration onto a sibling and sends its new 1-indexed position', async () => {

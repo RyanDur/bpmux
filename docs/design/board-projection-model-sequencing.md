@@ -22,14 +22,21 @@ slice claims pure re-expression: zero edits to existing tests.
   `view/board/arrangement.rs` (`board_position` / `board_columns` /
   `group_by_position` / `column_header`); wire byte-identical.
 - Doc regrounding ✅ `2f153ce4`.
-
-## Working-tree state (first pickup MUST resolve)
-
-The tree is deliberately RED: `view/mod.rs` registers a `backlog` module that
-was never written (parked mid-TDD when B2's home changed). Riding in the tree,
-uncommitted: `architecture-rules.md` (new), edits to this doc and
-`board-projection-model.md`, `view/backlog_tests.rs`. Nothing can commit until
-T0 lands.
+- **T0** ✅ `d4776f01` — backlog projection re-homed as a pm selector
+  (`product_management/backlog.rs`, self-contained fold — does NOT reach into
+  `view::board::arrangement::board_position`; C2 consolidates the transient
+  duplication when `is_closed` sheds). Unbroke the red tree; landed the riding
+  architecture-convergence doc edits.
+- **RF** ✅ — roadmap finish. `selectRoadmap` re-pointed to consume the shipped
+  `session.roadmap` cards + a join to `outcomes` for drill-in iterations; the TS
+  mirror (`parseOutcomeWhy` / `readinessStateOf` / `toneOf`) deleted (Rust
+  `view/roadmap_tests.rs` is the tested truth). `useRoadmap` + `Roadmap.tsx`
+  unchanged (hooks stay, derivation dies). Owner call (Ryan, 2026-07-04): the
+  authoritative `state` (`done|ready|needs-attention|planned`) is now on the
+  wire, but the chip maps `done → ready` — a distinct "done" treatment is a
+  future designer-owned UX slice. The e2e specs stayed green unchanged (the true
+  falsifier); RTL fixture seeding switched from an `outcomes` delta to `roadmap`
+  cards (the wire the renderer now consumes).
 
 ## Order at a glance
 

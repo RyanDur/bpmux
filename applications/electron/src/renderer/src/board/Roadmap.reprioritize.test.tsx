@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
-import { outcome, seedOutcomes } from './Roadmap.fixtures'
+import { card, seedRoadmap } from './Roadmap.fixtures'
 import { resetSessionForTest } from '../transport/session/store'
 import { startSentFrameCapture, stopSentFrameCapture } from '../transport/session/testCapture'
 
@@ -29,9 +29,9 @@ const dragTransfer = (): DataTransfer => {
 
 describe('dragging an outcome within a band dispatches a reprioritize over the wire', () => {
   it('drops the dragged outcome onto a peer and sends its new 1-indexed position', () => {
-    seedOutcomes([
-      outcome({ id: 10, title: 'Leads', horizon: 'now', horizon_order: 1 }),
-      outcome({ id: 20, title: 'Trails', horizon: 'now', horizon_order: 2 })
+    seedRoadmap([
+      card({ id: 10, name: 'Leads', horizon: 'now' }),
+      card({ id: 20, name: 'Trails', horizon: 'now' })
     ])
     render(<Roadmap />)
 
