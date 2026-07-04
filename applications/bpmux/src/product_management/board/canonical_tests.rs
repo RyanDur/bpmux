@@ -31,10 +31,7 @@ fn story_struct_has_no_iteration_id_field_in_board_json_projection() {
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    let json = crate::product_management::board::adapters::json::story_to_board_json(
-        &GhLabelCodec,
-        &story,
-    );
+    let json = crate::view::board::story_to_board_json(&GhLabelCodec, &story);
     let obj = json.as_object().expect("object");
     assert!(
         !obj.contains_key("iteration_id"),
@@ -55,10 +52,7 @@ fn iteration_label_decoder_does_not_populate_a_story_field() {
         "labels": [{"name": "ready"}, {"name": "iteration-#1338"}],
     });
     let story = decode_story_metadata(&v).expect("decode");
-    let json = crate::product_management::board::adapters::json::story_to_board_json(
-        &GhLabelCodec,
-        &story,
-    );
+    let json = crate::view::board::story_to_board_json(&GhLabelCodec, &story);
     let obj = json.as_object().expect("object");
     assert!(
         !obj.contains_key("iteration_id"),
@@ -95,8 +89,7 @@ fn create_story_event_does_not_seed_iteration_membership() {
         },
     )));
     let s = orch.story(200).expect("story present");
-    let json =
-        crate::product_management::board::adapters::json::story_to_board_json(&GhLabelCodec, &s);
+    let json = crate::view::board::story_to_board_json(&GhLabelCodec, &s);
     let obj = json.as_object().expect("object");
     assert!(
         !obj.contains_key("iteration_id"),

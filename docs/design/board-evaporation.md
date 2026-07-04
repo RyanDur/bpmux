@@ -191,12 +191,28 @@ NOT part of this relocation.
    (`board-as-slice-reshape.md`) still reworks the DATA model (membership → first-class
    container refs, body-encoding retired); this slice fixed only the misplacement.
    `typed_label_mirror` is part of the in-memory adapter and moves in slice 7, not here.
-6. **VIEW_MODELs → `crate::view`.** `StoryView`/`IterationView`/`OutcomeView` +
-   `json`. (`relationships` is NOT a view-model — it is GitHub issue-body encoding and
-   moved to `integrations/github/` in slice 5b, not here.) The view depends only on the
-   `LabelCodec` port (slice 4), which is domain-side — `crate::view` never names the GitHub
-   codec. Guarded by the
-   slice-3 wire goldens.
+6. **VIEW_MODELs → `crate::view::board`.** ✅ LANDED (2026-07-04). Moved
+   `StoryView`/`IterationView`/`OutcomeView` (+ `BuildingIterationView`, `wire_labels`) and
+   `story_to_board_json` from `product_management/board/{view_model, adapters/json}` to a new
+   `crate::view::board` module, sibling to `view::roadmap`. The board is a VIEW (the
+   projection the user sees), not a domain module — the evaporation retires board-as-domain-
+   god-module; its wire projection joins the read-model home where `roadmap` already lives.
+   (`relationships` is NOT a view-model — it is GitHub issue-body encoding and moved to
+   `integrations/github/` in slice 5b, not here.) The view depends only on the `LabelCodec`
+   *port* (slice 4, domain-side) + domain entities + `workflow::config` — production view code
+   is codec-generic and never names `GhLabelCodec`; only the moved tests inject the concrete
+   codec (as a composition does), which is correct. Byte-identical: the slice-3 wire goldens
+   (which travelled with the view-models) + `json_tests` + `story_view_projection` stay green.
+   8 renames + one-line consumer repoints (`transport/rest/board.rs`, `bridge/tools/get_story.rs`
+   `wire_labels`, board `canonical_tests`); two `::`-anchored substitutions
+   (`board::view_model::` → `view::board::`, `board::adapters::json::` → `view::board::`) —
+   the fully-qualified pm-board stem never matches the SEPARATE `crate::bridge::view_model`.
+   `product_management::board` now carries no view concern (only the `label_codec` port it
+   depends-upon stays). `canonical_tests.rs` is a board-json PIPELINE test (seeds via
+   `in_memory`+`sync`); it stays in `board/` for now (repointed) and relocates with `in_memory`
+   in slice 7. Verified: `cargo check --all-targets` clean; 168 targeted tests green.
+   A `crate::view` production ↛ `crate::integrations`/`GhLabelCodec` fitness lock is a slice-8
+   candidate (production is already clean; the tests inject the concrete legitimately).
 7. **PROJECTIONs → their per-consumer homes**; **`SourceAdapter` port + `in_memory`
    adapter → domain/adapters home**. Each projection file's destination is decided
    by the who-consumes-it test (below), file-by-file at execution, and recorded here.

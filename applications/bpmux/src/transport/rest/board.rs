@@ -7,7 +7,7 @@ pub(crate) fn ordered_board_stories(
     let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
     let items: Vec<serde_json::Value> = all
         .iter()
-        .map(|s| crate::product_management::board::adapters::json::story_to_board_json(&codec, s))
+        .map(|s| crate::view::board::story_to_board_json(&codec, s))
         .collect();
     let current_order: Vec<u64> = refresh
         .iterations()
@@ -57,7 +57,7 @@ pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<
 pub(crate) fn board_iterations(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    use crate::product_management::board::view_model::IterationView;
+    use crate::view::board::IterationView;
     let outcomes = refresh.outcomes();
     let workflow = crate::workflow::current_workflow();
     refresh
@@ -82,7 +82,7 @@ pub(crate) fn board_roadmap(
 pub(crate) fn board_outcomes(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    use crate::product_management::board::view_model::OutcomeView;
+    use crate::view::board::OutcomeView;
     let all_iterations = refresh.iterations();
     let workflow = crate::workflow::current_workflow();
     refresh
