@@ -1,110 +1,222 @@
-# Sequencing plan — board-projection-model remodel (#69)
+# Sequencing plan — board-projection remodel (#69) + architecture-rules execution
 
-Companion to `board-projection-model.md` (the model). This is the execution plan:
-the gated slices that carry today's code to that model. Grounded in two audits
-(verdict/transition machinery; state/projection/persistence surface), 2026-07-03.
-Re-grounded against substrate at HEAD `97979a6e` (2026-07-04, after the board
-evaporation): A1 was found already landed (`1685ab96`, 2026-07-02); all site paths
-below refreshed to their post-evaporation homes.
+Companion to `board-projection-model.md` (the domain model) and — GOVERNING for
+every rule referenced here — `architecture-rules.md` (state scopes, selectors,
+events, the GitHub edge; converged with Ryan 2026-07-04). Restructured
+2026-07-04 after that convergence: the original A/B/C/D ordering survives
+inside a larger queue that also carries the architecture ledger's slices.
 
-**Guardrails per slice:** behavior-preserving OR an intended change with tests updated
-to the new behavior; each gated (nextest + vitest + e2e) → commit → push → verify
-ls-remote. Every slice lands green against the bundled 2-stage workflow
-(in-progress → desk-check).
+**Guardrails per slice — the refactor constraint (Ryan, 2026-07-04):** every
+slice is behavior-preserving (performance gains excepted); the app works as-is
+throughout. The ONLY exceptions are the owner-approved shared-edge changes
+named below (the desk-check de-leak; the velocity metric redefinition), each
+marked ⚠. Each slice gated (nextest + vitest + e2e) → commit → push → verify
+ls-remote; CI-green gates the next pickup. The refactor falsifier wherever a
+slice claims pure re-expression: zero edits to existing tests.
+
+## Landed
+
+- **A1** ✅ `1685ab96` — ordinal apparatus deleted; `most_recent_needs_work`
+  seed in `story/rework.rs`; both consumers re-expressed.
+- **B1** ✅ `e241611d` — `ColumnBucket` dissolved into
+  `view/board/arrangement.rs` (`board_position` / `board_columns` /
+  `group_by_position` / `column_header`); wire byte-identical.
+- Doc regrounding ✅ `2f153ce4`.
+
+## Working-tree state (first pickup MUST resolve)
+
+The tree is deliberately RED: `view/mod.rs` registers a `backlog` module that
+was never written (parked mid-TDD when B2's home changed). Riding in the tree,
+uncommitted: `architecture-rules.md` (new), edits to this doc and
+`board-projection-model.md`, `view/backlog_tests.rs`. Nothing can commit until
+T0 lands.
 
 ## Order at a glance
 
-`A1` (✅ landed) → `B1` → `B2` (the visible board/backlog change) → `C2` →
-`A2`/`A3` (the deep verdict-first-class + Gate deletion) → `C1` → `D`. Rationale:
-delete dead weight first (A1); establish the projection spine before the write-path
-surgery (B before deep A, per the B-first call); give `retired`/`accepted` homes
-(B2's backlog) before shedding `is_closed` (C2); do the persistence-touching verdict
-collapse (A2/A3) last.
+`T0` (unbreak: B2 as a pm selector) → `RF` (roadmap finish) → `C2` (shed
+`is_closed`) → `BD1–BD3` (the board domain + de-leak) → `A2` (verdict
+collapse, two-grain-native; absorbs the handler cleanups) → `A3` (delete
+`Gate`) → `M1–M4` (metrics re-sourcing) → `C1` (shed `ready_order`) → `D`
+(order-on-lists) → `SC` (selector consolidation sweep + locks) → `WR`
+(write-path remainder) → `SR` (session renames, last — mechanical, least
+churn when nothing else is touching the files).
 
-## Block A — collapse the transition machinery to verdicts (write path)
+Rationale: unbreak first; the roadmap finish is the cheapest proof of
+wire-ships-selector-outputs and touches nothing else; C2 keeps the original
+B-before-deep-A order (the backlog selector gives `accepted`/`retired` their
+derivation homes); the board domain must exist BEFORE A2 so the verdict
+collapse is designed two-grain-native rather than retrofitted; metrics need
+the histories A2+BD create; the renames go last to avoid churn.
 
-- **A1 — delete the ordinal apparatus. ✅ LANDED `1685ab96` (2026-07-02), CI-green.**
-  Deleted `state_ordinal` / `is_backward` / `most_recent_backward_transition` /
-  `replay_transitions` / `StateTransition` (`product_management/story/transition.rs`,
-  whole file). Two consumers re-expressed (the audit had found one; the commit found a
-  second, wire-facing one): `bridge/tools/get_story.rs` AND the wire
-  `StoryView.rework_comment` (now `view/board/story.rs` post-evaporation). Both ride
-  `most_recent_needs_work(gates) = gates.last().filter(Rejected | FailDeskCheck)`
-  (`product_management/story/rework.rs`) — "the most recent NeedsWork verdict" by
-  another name, seeding A2's model. `workflow_state` keeps deriving the backward
-  TARGET for a carried-reject story whose issue is github-closed (a 2-arm gate→target
-  map that A2's verdicts formalize). Behavior-preserving; 73 affected tests green.
+## T0 — B2 as a product_management selector [unbreaks the tree]
 
-- **A2 — the Verdict as the transition primitive. [deep; persistence-touching.]**
-  `Verdict { Succeed, NeedsWork(target) }` fired by a state's judge; a single
-  `advance(position, verdict, workflow)` derives the next position (Succeed → next in
-  config order; at acceptance → accepted; NeedsWork → configured fail-target or the
-  agent's chosen target). Re-cast the 6 handlers: pickup = board entry (non-verdict),
-  deliver/pass-desk-check/accept = Succeed, fail-desk-check/reject = NeedsWork. Fold
-  today's split (evidence-verdict posted then consumed by a gate action) into the
-  verdict firing directly; the role / evidence-window / gate_class / CI checks survive
-  as verdict preconditions. This is also where `workflow/verdicts.rs` (+
-  `verdict_persistence.rs`) relocates INTO `product_management` — the evidence-verdict
-  store UNIFIES with the transition verdict (never a rival type), closing the last
-  `workflow↔pm` cycle arm; the `workflow → pm` fitness lock lands here, after that
-  final cut. RISK: `GateComment` is persisted (issue comments + fetched back) — needs
-  a back-compat decode as `gate` becomes `verdict + target`. Likely 2–3 sub-slices.
-  Sites: `bridge/tools_stories/transition.rs`, `bridge/tools_stories/acceptance/
-  {reject,accept,desk_check/*}.rs`, `story/events.rs` (`GateCommentAppended` /
-  `GateCommentsFetched` / `impl GateComment`), `integrations/github/mutation.rs`,
-  `workflow/{verdicts,verdict_persistence}.rs`.
+The backlog projection is a DOMAIN SELECTOR (per architecture-rules: selectors
+derive, surfaces format), not a `crate::view` module. Re-home the parked WIP:
+- `product_management/backlog.rs` (or beside the story slice — dev judgment;
+  NOT `view/`): `BacklogColumn { Icebox, ReadyForWork, Current, Accepted }`;
+  `backlog_column(story, iterations) -> Option<BacklogColumn>` (None =
+  archived/retired); `group_by_backlog_column`. Derivation rules and edge
+  cases exactly as pinned in the parked `view/backlog_tests.rs` — move +
+  re-point the tests, keep their behavior names.
+- Rules in order: `board_position` fold → Accepted→Accepted → Retired→None →
+  current-iteration member ∩ ready…acceptance→Current → any-iteration→
+  ReadyForWork → else→Icebox.
+- Remove the `view/mod.rs` backlog registration; register in pm instead.
+- Zero consumers change; the bridge `view_backlog` JSON stays byte-identical.
+- This commit also lands the riding doc edits.
 
-- **A3 — delete the `Gate` enum.** Once handlers speak verdicts:
-  `gate_as_str` (`bridge/tools/view_story_timeline.rs:6`), `gate_to_id`
-  (`bridge/tools_stories/acceptance/helpers.rs:32`), `reject_gate_label`
-  (`bridge/tools/rework_context.rs:14`) collapse. Enum at `story/enums.rs:147`.
+## RF — finish the roadmap migration [self-contained; no wire change]
 
-## Block B — projections (read path)
+Backend already ships `RoadmapOutcomeCard`s (`view/roadmap.rs:68`) on every
+snapshot; the renderer ignores them and re-derives in TS. Finish it:
+1. Parity-check TS `selectRoadmap` output vs the shipped cards field-by-field
+   (`name/why/horizon/state/gap_count/tone`, ordering). Rust is truth unless
+   the TS behavior is the wanted one — reconcile deliberately.
+2. `useRoadmap` returns the shipped cards. **The hooks STAY** — the hook
+   family is the renderer's consumption seam, backed by shipped selector
+   outputs; only the derivation inside dies; components never change.
+3. Delete the TS mirror (`selectRoadmap`, `parseOutcomeWhy`,
+   `readinessStateOf`, `toneOf`) + its tests.
+4. Falsifier: Roadmap RTL/e2e tests stay green UNCHANGED (same surface,
+   different source).
 
-- **B1 — board = group-by-state `Map<State,[StoryId]>`. [behavior-preserving.]**
-  Dissolve `ColumnBucket` + `column_for` (`view/board/arrangement.rs` — note
-  `column_for` also folds `is_closed` into a `Retired` bucket, a C2 entanglement to
-  preserve until C2 sheds it); render the same columns from the map. Consumers:
-  `bridge/tools_stories/board_render.rs`, `bridge/tools/view_backlog.rs`,
-  `bridge/tools_stories/view.rs:parse_bucket`, the TS `columnFor`
-  (`renderer/src/board/types.ts`), the `types.test.ts` "#514 columnFor" parity.
+## C2 — shed `is_closed` [as originally sequenced]
 
-- **B2 — narrow the board to `ready…acceptance` + introduce the 4-column backlog.
-  [INTENDED CHANGE — owner-visible.]**
-  `accepted` / `retired` / `icebox` leave the board. New backlog projection derived
-  from (position + iteration membership), reusing existing membership machinery
-  (`Iteration.stories`, `is_current`, `current_iteration_id`, `buildMembershipIndex`):
-  `accepted`→accepted, current-iteration→current, in-any-iteration→readyForWork,
-  else→icebox; `retired`→archived (off both). Update board/backlog tests + renderer.
-  This is the big visible slice — hold for a look before landing unattended.
+Re-express the read sites as `position ∈ {accepted, retired}`; `is_closed`
+becomes edge-derived at the github adapter (closed ↔ terminal position).
+Audit found 34 files (prod + tests). The backlog selector (T0) provides the
+derivation homes.
 
-## Block C — shed the derived story fields
+## BD — the board domain (three slices)
 
-- **C2 — shed `is_closed`. [after B2.]** Re-express the ~20 read sites as
-  `position ∈ {accepted, retired}`; `is_closed` becomes edge-derived at the adapter
-  (github-closed ↔ terminal position). `retired` stays a position; accept/close set
-  position and the edge closes the issue. Sites listed in the audit
-  (`column_for`, `state_from_labels`, acceptance/reject/desk-check guards, `move_story`,
-  `get_story`, wire `gh_state`); full grep spread at re-grounding = 34 files
-  (production + tests), so budget the test re-expression alongside the ~20 read sites.
+Per architecture-rules: the board is the instance's working arrangement.
+`Story.position` carries ONLY the shared coarse vocabulary; placements live
+in a type the SourceAdapter never sees.
+- **BD1 — the board slice.** New top-level `board` feature module (sibling to
+  `ci`/`roster` — NOT `product_management/board`; a proven-to-falsify fitness
+  lock asserts that path stays deleted). Slice owns placements
+  (`StoryId → StageId`), entry-sub-section default, invariant: placement
+  exists iff coarse = in-progress. Within-middle moves become board ACTIONS
+  (local — no outbox, no story event); selectors compose the two grains so
+  every existing surface renders identically. Falsifier: board render + e2e
+  unchanged.
+- **BD2 — placement persistence.** Refinery migration + repo port
+  (storage-ports pattern), write-behind listener, hydrate on boot.
+  **Loss-window call (sudden-death rule): decide explicitly whether losing
+  the last placement move on crash is acceptable** (default recommendation:
+  yes — placement is cheap to re-derive by working; document the choice).
+- **BD3 — ⚠ the desk-check de-leak (owner-approved shared-edge change).**
+  Encode: every `InProgress(_)` → the `"in progress"` label (the codec speaks
+  SECTION, never sub-section). Decode: `"in progress"` → In Progress +
+  placement from local storage (entry default). Migration decode: legacy
+  `"desk-check"` label → In Progress + desk-check placement seeded locally;
+  label rewritten to `"in progress"` on next push (lazy, not a sweep).
+  Cross-instance desk-check visibility ends BY DESIGN.
 
-- **C1 — shed `ready_order`. [low-risk.]** Already bypassed by membership-order sort
-  (`view/board/ready_order_label.rs` sorts by iteration index, not the field). Remove
-  field + codec (`product_management/label_codec.rs`,
-  `integrations/github/gh_label_codec/mod.rs`) + wire emission (`view/board/story.rs`)
-  + ingest decode (`integrations/github/mapper/story_decode.rs`); verify the renderer
-  orders by list index, not the `ready-order.N` label.
+## A2 — the verdict collapse, two-grain-native [deep]
 
-## Block D — finalize order-on-lists
+`Verdict { Succeed, NeedsWork(target) }` fired by a state's judge; one
+`advance` derives the next position. Designed against the grains:
+- Bookend crossings (pickup, enter-acceptance, accept, reject-to-ready) =
+  STORY EVENTS — shared plane, gated, evidenced, gate-commented.
+- Within-middle moves (deliver, desk-check pass/fail routing inside the
+  middle) = BOARD ACTIONS — local. (`pass_desk_check` crosses the acceptance
+  bookend, so its ceremony/evidence is unaffected.)
+- **Intents are atomic**: one intent = ONE action applied atomically by the
+  reducer — never the current 3-event dispatch sequences.
+- `workflow/verdicts.rs` (+`verdict_persistence.rs`) relocates INTO
+  `product_management` — the evidence verdict UNIFIES with the transition
+  verdict (never a rival type); dissolves the verdicts.json third-substrate
+  anomaly; closes the last workflow↔pm cycle arm; the workflow→pm fitness
+  lock lands after this final cut.
+- RISK: `GateComment` is persisted (issue comments, fetched back) — needs a
+  back-compat decode as `gate` becomes `verdict + target`. 2–3 sub-slices.
+- Absorbed handler cleanups (same files, avoid double-touching): remove
+  inline `drain_pending` calls (writes return optimistically; pending-ness =
+  a selector over the outbox — add `pending_operations_for` here); fold the
+  body/title write-through into the outbox; fix the `close_iteration`
+  double-dispatch.
+- Sub-slice 0 (structural prep): make the `EventMeta` envelope structural —
+  `StoryEvent { meta, id, kind }` — killing the 26-arm `meta()`/`story_id()`
+  double-match before A2 edits the enum. Serde-compat verified against
+  persisted shapes.
 
-Confirm order lives purely on `Iteration.stories` index; remove any `ready_order`
-remnants; the roadmap tree (outcome/iteration priority order) is the single order source.
+## A3 — delete the `Gate` enum
 
-## Executes autonomously overnight vs awaits review
+Once handlers speak verdicts: `gate_as_str`
+(`bridge/tools/view_story_timeline.rs`), `gate_to_id`
+(`acceptance/helpers.rs`), `reject_gate_label` (`bridge/tools/rework_context.rs`)
+collapse. Enum at `story/enums.rs:147`.
 
-- **Overnight (safe, invisible, gate-protected):** A1 — ✅ landed `1685ab96`; nothing
-  overnight-safe remains.
-- **Awaits Ryan's look at this plan** (owner-visible, persistence-touching, or
-  net-new derivation): B1, B2, C2, A2, A3, C1, D — every remaining slice. Sequenced
-  and grounded above; on "keep going" they run in the order at the top, resuming
-  at B1.
+## M — metrics re-sourcing (⚠ metric redefinition, owner-approved)
+
+Zero message parsing. Anti-confabulation guarantee (every number traces to an
+observable signal) rides the histories' timestamps/actors.
+- **M1** — write-time transition capture: the store records transitions as
+  they happen (shared history from verdict records; local history from board
+  placement moves).
+- **M2** — GitHub backfill on cold start (gate/verdict comments are the
+  durable source; thin metrics until backfill completes — accepted).
+- **M3** — the two selector families: **velocity = Tracker semantics**: count
+  of accepted business-value stories per iteration, each worth 1 (points mean
+  nothing; #251 features-only filter stays), rolling average — shared-plane,
+  identical on every instance. **Flow (DORA-shaped)**: lead time
+  pickup→accept + acceptance rejection rate (shared); sub-section timings +
+  desk-check rework (local, per-instance BY DESIGN).
+- **M4** — delete the chat-parse velocity (`view/velocity/`), re-point
+  `view_velocity` to the selectors.
+
+## C1 — shed `ready_order` [after firsthand consumer proof]
+
+Remove field + codec (`product_management/label_codec.rs`,
+`integrations/github/gh_label_codec/mod.rs`) + wire emission
+(`view/board/story.rs`) + ingest decode. Refactor constraint: the wire
+emission and label may only be removed after FIRSTHAND proof every consumer
+(renderer + agents) is dead.
+
+## D — finalize order-on-lists
+
+Order lives purely on `Iteration.stories` index; remove remnants; the
+roadmap tree is the single order source.
+
+## SC — selector consolidation sweep + locks
+
+- Stories get real named selectors (today: none — raw
+  `state.stories.values()` closures in `sync/slice_readers.rs`); migrate the
+  remaining `crate::view` derivations into domain selectors; surfaces
+  (bridge render fns, REST, WS snapshot) consume selectors and only format.
+- Fix the Rust-internal drifts en route: the `!complete` current-iteration
+  guard (`transport/rest/board.rs`); state-display-labels declared
+  per-surface presentation.
+- Fitness locks for the unowned seams: bridge→*, sync→store,
+  integrations→store, view scope, "surfaces don't touch raw slice state."
+
+## WR — write-path remainder
+
+- Drain trigger action→state (reconciler over "outbox non-empty";
+  `SyncAction` command-actions retire).
+- Conflict machinery retirement (LWW = ordering, not conflict; verify
+  `ConflictDetected/Resolved` consumers firsthand before deletion; GitHub
+  edit history is the prose recovery ledger).
+- Reactions dual-write → one source of truth (handler dispatches; a listener
+  persists).
+- Shadow-field sheds, one slice each: `Epic.state` (its own derivation
+  ignores it), `story_type` (derivable from title), `iteration_slot`
+  (mirrors membership; coordinates with C1/D).
+
+## SR — session renames [last; mechanical]
+
+"Session" is a dissolved concept; rename each referent for what it IS:
+renderer synced slice `session` → `state`; backend `Session` struct → derive
+from its responsibilities (the delivery hub); `session_dir` → `data_dir`
+(+ `BPMUX_SESSIONS_BASE`, traveling with its test-harness consumers).
+Internal renames first; any wire-visible "session" key needs the wire check.
+
+## Standing rules while executing (from architecture-rules.md)
+
+Env-config ≠ instance strategy (`workflow.toml` never moves to env). Sudden
+death is a supported input — every new write-behind listener chooses its
+loss-window explicitly. State lives only in the store; db + GitHub are
+listener-written durable projections, read only at hydrate/backfill. Events
+write; state triggers. One judge per state is load-bearing. The middle is
+silent externally.

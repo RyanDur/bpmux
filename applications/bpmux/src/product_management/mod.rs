@@ -39,6 +39,7 @@ macro_rules! entity_id {
     };
 }
 
+pub mod backlog;
 pub mod epic;
 pub mod iteration;
 pub mod label_codec;
@@ -46,6 +47,8 @@ pub mod outcome;
 pub mod roadmap;
 pub mod story;
 
+#[cfg(test)]
+mod backlog_tests;
 #[cfg(test)]
 mod boundary_tests;
 #[cfg(test)]

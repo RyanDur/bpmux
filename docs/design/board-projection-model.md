@@ -12,6 +12,14 @@ toward it (see "What this replaces" and "Status of prior slices").
 > The **workflow** (`.bpmux/workflow.toml`) is the guard rails that move a story's position.
 > The **board**, the **backlog**, and the **roadmap** are all **projections** of those two facts — they store nothing.
 
+**This remodel is a REFACTOR (Ryan, 2026-07-04).** No behavioral changes apart
+from any performance gains; the app works as-is throughout. The deliverable is
+organization — code that prompts future readers into better decisions: more
+readable, less unnecessary context when a file is opened, concerns homed in
+their proper domains, better patterns. The visible surface and the wire do not
+change under this arc; any deliberate wire or surface reshape is a separate,
+owner-approved arc, never a side-effect of a collapse slice.
+
 ## Two sources of truth — and nothing else is stored
 
 1. **A story's workflow position** — one field on the story.
@@ -149,6 +157,9 @@ rebuild into gated slices is the next planning step (not in this doc).
 - **Retired / closed** — `retired` is an off-board terminal position (the
   won't-do / superseded sibling of `accepted`'s succeeded). "Closed" is GitHub's word
   for a terminal, so `is_closed` is **edge-only** (github-closed iff `position ∈
-  {accepted, retired}`) and sheds from the domain. Working assumption (confirm):
+  {accepted, retired}`) and sheds from the domain. CONFIRMED (Ryan, 2026-07-04):
   a retired story is **archived** — queryable, absent from the active board and the
-  four backlog columns.
+  four backlog columns, not rendered ("archived work that I don't need to see").
+  The backlog's four visible columns, in Ryan's words: `icebox` = unplanned work;
+  `readyForWork` = planned work, in an iteration on the roadmap; `current` = what
+  work is on the board; `accepted` = completed work.
