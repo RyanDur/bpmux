@@ -109,7 +109,9 @@ in `routing/store.rs`); single-home it.
 With the orchestrator gone, **`board/` evaporates** — exactly what the projection
 model predicts (the board is a function, not a module): label codecs → the GitHub
 adapter; `view_model` → the read-model; `arrangement` / `story_view_projection` →
-projection functions in the domain.
+projection functions in the domain. Mapped firsthand in `board-evaporation.md`
+(the sequence, the destinations, and the finding that it is entirely backend-pure
+wire-preserving relocation — no renderer coordination for the moves themselves).
 
 ## github vs integrations — right split, wrong altitude
 
