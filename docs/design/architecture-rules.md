@@ -171,6 +171,18 @@ structural (the 26-arm double-match); fitness locks for unowned seams
 Decided, not behavior-preserving at the shared edge (owner-approved
 2026-07-04): the desk-check label de-leak + local middle placement storage.
 
+Found at C2 execution (2026-07-04) — **`is_closed` encodes TWO concepts, only
+one a shadow**: closed non-accepted STORY → retired (shadow of
+`position ∈ {accepted, retired}`; sheds via A2's handler recast) vs **closed
+ITERATION → icebox/badge/drag-rejection — a CONTAINER-lifecycle fact whose
+domain home already exists: `Iteration.complete`.** The renderer re-derives
+container completeness from `gh_state` on the iteration's story-shaped
+marker (a container fact read off a story wearing a costume — the
+label-decorated-container disease board-as-slice-reshape retires). Re-home in
+SC. C2 as a standalone slice was falsified by this + `gh_state` being on the
+consumed wire; dissolved into A2 (backend re-expression) + SC (field/wire
+shed, columnFor retirement, iteration-closed re-home).
+
 New from the 2026-07-04 close-out: velocity is a chat-text parse
 (`view/velocity/mod.rs:10` substring-scans announcements — phrasing-fragile,
 wrong source). WHY it reads messages (introducing commit `55f3bb69`): the

@@ -40,20 +40,22 @@ slice claims pure re-expression: zero edits to existing tests.
 
 ## Order at a glance
 
-`T0` (unbreak: B2 as a pm selector) → `RF` (roadmap finish) → `C2` (shed
-`is_closed`) → `BD1–BD3` (the board domain + de-leak) → `A2` (verdict
-collapse, two-grain-native; absorbs the handler cleanups) → `A3` (delete
-`Gate`) → `M1–M4` (metrics re-sourcing) → `C1` (shed `ready_order`) → `D`
-(order-on-lists) → `SC` (selector consolidation sweep + locks) → `WR`
-(write-path remainder) → `SR` (session renames, last — mechanical, least
-churn when nothing else is touching the files).
+`T0` ✅ → `RF` ✅ → `BD1–BD3` (the board domain + de-leak — NEXT PICKUP) →
+`A2` (verdict collapse, two-grain-native; absorbs the handler cleanups AND
+C2's story-terminal re-expression) → `A3` (delete `Gate`) → `M1–M4` (metrics
+re-sourcing) → `C1` (shed `ready_order`) → `D` (order-on-lists) → `SC`
+(selector consolidation sweep + locks; absorbs C2's field+wire shed and the
+iteration-closed re-home) → `WR` (write-path remainder) → `SR` (session
+renames, last — mechanical, least churn).
 
-Rationale: unbreak first; the roadmap finish is the cheapest proof of
-wire-ships-selector-outputs and touches nothing else; C2 keeps the original
-B-before-deep-A order (the backlog selector gives `accepted`/`retired` their
-derivation homes); the board domain must exist BEFORE A2 so the verdict
-collapse is designed two-grain-native rather than retrofitted; metrics need
-the histories A2+BD create; the renames go last to avoid churn.
+C2 no longer appears as a standalone slice — it was **falsified as scoped**
+(2026-07-04, mid-execution substrate check) and dissolved three ways; see the
+C2 section below for the record.
+
+Rationale: the board domain must exist BEFORE A2 so the verdict collapse is
+designed two-grain-native rather than retrofitted (BD-before-A2 also means
+the executor arrives at A2 with the grains fresh); metrics need the histories
+A2+BD create; the renames go last to avoid churn.
 
 ## T0 — B2 as a product_management selector [unbreaks the tree]
 
@@ -87,12 +89,31 @@ snapshot; the renderer ignores them and re-derives in TS. Finish it:
 4. Falsifier: Roadmap RTL/e2e tests stay green UNCHANGED (same surface,
    different source).
 
-## C2 — shed `is_closed` [as originally sequenced]
+## C2 — FALSIFIED AS SCOPED; dissolved three ways (2026-07-04)
 
-Re-express the read sites as `position ∈ {accepted, retired}`; `is_closed`
-becomes edge-derived at the github adapter (closed ↔ terminal position).
-Audit found 34 files (prod + tests). The backlog selector (T0) provides the
-derivation homes.
+The original scoping ("backend-only, refactor-safe, ~34 files") broke on a
+mid-execution substrate check: (a) `is_closed` is ON THE WIRE —
+`StoryView.gh_state` (`view/board/story.rs:28`), consumed by the renderer's
+`columnFor` and `isClosedIterationMarker`, so a shed is renderer-coordinated,
+not backend-only; (b) the field encodes TWO concepts, only one a shadow —
+closed non-accepted STORY → retired (a true shadow of
+`position ∈ {accepted, retired}`) vs closed ITERATION → icebox + badge +
+inbound-drag rejection (a CONTAINER-lifecycle fact, not a story position);
+(c) real blast radius ~54 files incl. the renderer stack; (d) the renderer
+consumption is exactly SC's `columnFor` mirror. Dissolution:
+- **Story-terminal re-expression → folded into A2** (the read sites are the
+  acceptance/reject/desk-check guards, `move_story`, and transition handlers
+  — the very files A2 recasts; doing it earlier is pure double-churn).
+- **Field + wire shed (`is_closed` off Story, `gh_state` off the wire) →
+  folded into SC**, where the `columnFor` mirror retires deliberately. Until
+  then `is_closed` is a documented, tolerated shadow.
+- **The closed-iteration concept → its own fact with an EXISTING home:
+  `Iteration.complete`.** The renderer today re-derives container
+  completeness from `gh_state` on the iteration's story-shaped marker — an
+  iteration fact read off a story wearing a costume. Re-home in SC (renderer
+  reads the container); any visible change to closed-iteration rendering is
+  designer-coordinated. Also further evidence for board-as-slice-reshape
+  (containers as real wire entities, not label-decorated stories).
 
 ## BD — the board domain (three slices)
 
@@ -142,7 +163,9 @@ in a type the SourceAdapter never sees.
   inline `drain_pending` calls (writes return optimistically; pending-ness =
   a selector over the outbox — add `pending_operations_for` here); fold the
   body/title write-through into the outbox; fix the `close_iteration`
-  double-dispatch.
+  double-dispatch; **re-express the backend story-terminal `is_closed` reads
+  as `position ∈ {accepted, retired}`** (ex-C2; the field itself and the wire
+  stay untouched until SC).
 - Sub-slice 0 (structural prep): make the `EventMeta` envelope structural —
   `StoryEvent { meta, id, kind }` — killing the 26-arm `meta()`/`story_id()`
   double-match before A2 edits the enum. Serde-compat verified against
@@ -192,6 +215,11 @@ roadmap tree is the single order source.
   `state.stories.values()` closures in `sync/slice_readers.rs`); migrate the
   remaining `crate::view` derivations into domain selectors; surfaces
   (bridge render fns, REST, WS snapshot) consume selectors and only format.
+- **Ex-C2 (absorbed):** shed `is_closed` off the Story struct + `gh_state`
+  off the wire as the `columnFor` mirror retires; re-home the
+  closed-iteration concept to `Iteration.complete` (renderer reads the
+  container, not the marker's `gh_state`). Renderer-coordinated; any visible
+  change to closed-iteration rendering is designer-owned.
 - Fix the Rust-internal drifts en route: the `!complete` current-iteration
   guard (`transport/rest/board.rs`); state-display-labels declared
   per-surface presentation.
