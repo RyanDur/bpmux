@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::ci::CiStateStore;
 use crate::room::{CommitmentStore, LivePtyRegistry};
 use crate::routing::RoutingStore;
 use crate::session;
@@ -7,7 +8,6 @@ use crate::store::Store;
 use crate::transport;
 use crate::transport::auth::AuthState;
 use crate::transport::ci_log_store::CiLogStore;
-use crate::transport::ci_state_store::CiStateStore;
 
 use super::OrchestratorHandle;
 

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use crate::ci::CiStateStore;
 use crate::ci::RunEntry;
 use crate::message::{CiSnapshotWire, StateDeltaPayload};
 use crate::session;
-use crate::transport::ci_state_store::CiStateStore;
 use crate::transport::state_delta::broadcast_state_delta;
 
 use super::{CiBroadcastListener, CiSnapshot};

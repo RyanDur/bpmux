@@ -3,9 +3,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 pub async fn get_ci(
-    axum::Extension(ci_state_store): axum::Extension<
-        crate::transport::ci_state_store::CiStateStore,
-    >,
+    axum::Extension(ci_state_store): axum::Extension<crate::ci::CiStateStore>,
 ) -> impl IntoResponse {
     let report = ci_state_store
         .read()

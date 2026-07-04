@@ -49,5 +49,3 @@ impl CiStateStore {
         guard.last_successful_poll_at
     }
 }
-
-pub type CiStateStoreHandle = CiStateStore;

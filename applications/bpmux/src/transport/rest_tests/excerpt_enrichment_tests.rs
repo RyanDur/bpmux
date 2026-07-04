@@ -200,7 +200,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     let orch = std::sync::Arc::new(crate::store::Store::new(
         session.clone(),
         None,
-        crate::transport::ci_state_store::CiStateStore::new(),
+        crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
     ));
     let router = axum::Router::new()
@@ -264,7 +264,7 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
     let orch = std::sync::Arc::new(crate::store::Store::new(
         session.clone(),
         None,
-        crate::transport::ci_state_store::CiStateStore::new(),
+        crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
     ));
     let router = axum::Router::new()
@@ -305,7 +305,7 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
 
 #[tokio::test]
 async fn get_ci_returns_unknown_when_store_empty() {
-    use crate::transport::ci_state_store::CiStateStore;
+    use crate::ci::CiStateStore;
     let store = CiStateStore::new();
     let router = axum::Router::new()
         .route(
@@ -345,7 +345,7 @@ async fn get_ci_returns_unknown_when_store_empty() {
 #[tokio::test]
 async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
     use crate::ci::CiStateReport;
-    use crate::transport::ci_state_store::CiStateStore;
+    use crate::ci::CiStateStore;
     let store = CiStateStore::new();
     let report = CiStateReport {
         conclusion: "success",
@@ -395,7 +395,7 @@ async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
 #[tokio::test]
 async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
     use crate::ci::CiStateReport;
-    use crate::transport::ci_state_store::CiStateStore;
+    use crate::ci::CiStateStore;
     let store = CiStateStore::new();
     store.write(CiStateReport {
         conclusion: "failure",

@@ -21,7 +21,7 @@ pub(super) fn race_window_barrier_from_env()
     ))
 }
 
-pub(super) fn seed_ci_green_for_tests(store: &crate::transport::ci_state_store::CiStateStore) {
+pub(super) fn seed_ci_green_for_tests(store: &crate::ci::CiStateStore) {
     let enabled = std::env::var("BPMUX_TEST_SEED_CI_GREEN")
         .map(|v| !v.is_empty() && v != "0")
         .unwrap_or(false);
@@ -46,7 +46,7 @@ pub(super) fn seed_ci_green_for_tests(store: &crate::transport::ci_state_store::
 pub(super) async fn build_test_orchestrator(
     session: Arc<session::Session>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
-    ci_state_store: crate::transport::ci_state_store::CiStateStore,
+    ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(
@@ -74,7 +74,7 @@ pub(super) fn build_prod_orchestrator(
     session: Arc<session::Session>,
     adapter: Arc<crate::integrations::github::GitHubSourceAdapter>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
-    ci_state_store: crate::transport::ci_state_store::CiStateStore,
+    ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::product_management::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let orch_concrete =

@@ -33,7 +33,7 @@ fn fresh_orchestrator() -> Arc<crate::store::Store> {
     Arc::new(crate::store::Store::new(
         session,
         None,
-        crate::transport::ci_state_store::CiStateStore::new(),
+        crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
     ))
 }

@@ -70,7 +70,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
     let app_store = Arc::new(bpmux::store::Store::new(
         session.clone(),
         None,
-        bpmux::transport::ci_state_store::CiStateStore::new(),
+        bpmux::ci::CiStateStore::new(),
         CancellationToken::new(),
     ));
     refresh.bind_select(app_store.selector());

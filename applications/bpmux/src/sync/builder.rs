@@ -28,10 +28,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
-    pub fn with_ci_state_store(
-        mut self,
-        store: crate::transport::ci_state_store::CiStateStore,
-    ) -> Self {
+    pub fn with_ci_state_store(mut self, store: crate::ci::CiStateStore) -> Self {
         self.ci_state_store = Some(store);
         self
     }

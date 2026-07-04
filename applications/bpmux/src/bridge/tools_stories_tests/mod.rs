@@ -22,8 +22,8 @@ mod verdict_substrate_tests;
 mod view_board_basic_tests;
 mod view_board_epic_tests;
 
-pub(super) fn test_ci_state_store_green() -> crate::transport::ci_state_store::CiStateStore {
-    let store = crate::transport::ci_state_store::CiStateStore::new();
+pub(super) fn test_ci_state_store_green() -> crate::ci::CiStateStore {
+    let store = crate::ci::CiStateStore::new();
     store.write(crate::ci::CiStateReport {
         conclusion: "success",
         last_run_id: None,

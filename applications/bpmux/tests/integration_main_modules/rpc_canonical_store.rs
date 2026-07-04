@@ -101,7 +101,7 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
     let app_store = Arc::new(bpmux::store::Store::new(
         session.clone(),
         None,
-        bpmux::transport::ci_state_store::CiStateStore::new(),
+        bpmux::ci::CiStateStore::new(),
         CancellationToken::new(),
     ));
     refresh.bind_select(app_store.selector());

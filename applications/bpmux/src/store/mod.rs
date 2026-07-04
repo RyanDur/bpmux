@@ -3,10 +3,10 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
+use crate::ci::CiStateStore;
 use crate::product_management::board::RefreshDriver;
 use crate::product_management::owner_park::OwnerParkListener;
 use crate::session;
-use crate::transport::ci_state_store::CiStateStore;
 use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
 };

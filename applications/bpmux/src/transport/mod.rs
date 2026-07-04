@@ -1,6 +1,5 @@
 pub mod auth;
 pub mod ci_log_store;
-pub mod ci_state_store;
 pub mod ci_watcher;
 pub mod crypto;
 
@@ -22,8 +21,6 @@ pub mod ws;
 mod auth_tests;
 #[cfg(test)]
 mod ci_log_persistence;
-#[cfg(test)]
-mod ci_state_serialization;
 #[cfg(test)]
 mod ci_watcher_tests;
 #[cfg(test)]

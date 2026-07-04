@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::ci_state_store::*;
+use super::state_store::*;
 use crate::ci::CiStateReport;
 
 fn sample(conclusion: &'static str) -> CiStateReport {

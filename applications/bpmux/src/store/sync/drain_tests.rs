@@ -7,11 +7,11 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
+use crate::ci::CiStateStore;
 use crate::message::Message;
 use crate::session::Session;
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, Store, SyncAction};
-use crate::transport::ci_state_store::CiStateStore;
 
 fn refresh_for_tests() -> Arc<dyn crate::product_management::board::RefreshDriver> {
     let adapter = Arc::new(

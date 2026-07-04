@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use crate::ci::CiStateStore;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
 use crate::session;
 use crate::store::Store;
-use crate::transport::ci_state_store::CiStateStore;
 
 pub(super) fn wire_store_listeners(
     store: &Arc<Store>,

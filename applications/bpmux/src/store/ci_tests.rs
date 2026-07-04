@@ -14,10 +14,10 @@ use super::test_support::eventually;
 use super::{AppAction, CiAction, PollKind, Store, SyncAction};
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
+use crate::ci::CiStateStore;
 use crate::github::RateLimitObserver;
 use crate::message::Message;
 use crate::session::Session;
-use crate::transport::ci_state_store::CiStateStore;
 
 fn fresh_session() -> (Arc<Session>, TempDir) {
     let dir = TempDir::new().expect("tempdir");

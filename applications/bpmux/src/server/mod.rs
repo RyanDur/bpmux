@@ -28,7 +28,7 @@ pub async fn run_server(
 
     let (action_tx, action_rx) = tokio::sync::mpsc::unbounded_channel::<crate::store::AppAction>();
 
-    let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
+    let ci_state_store = crate::ci::CiStateStore::new();
     let race_window_barrier = race_window_barrier_from_env();
 
     let orchestrator: OrchestratorHandle = if test_mode_enabled() {

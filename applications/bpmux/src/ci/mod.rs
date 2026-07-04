@@ -3,6 +3,9 @@ mod classify;
 mod state_report;
 #[cfg(test)]
 mod state_report_tests;
+mod state_store;
+#[cfg(test)]
+mod state_store_tests;
 
 #[cfg(test)]
 pub(crate) use crate::ci_link::resolve_ci_actions_url;
@@ -12,6 +15,7 @@ pub(crate) use broadcast::{
 };
 pub use classify::{RunEntry, classify_runs};
 pub(crate) use state_report::{CiStateReport, build_ci_state_report, unknown_ci_state_report};
+pub use state_store::CiStateStore;
 pub mod slice;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]

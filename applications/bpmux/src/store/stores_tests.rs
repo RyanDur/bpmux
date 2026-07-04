@@ -12,9 +12,9 @@ use super::{
     AggregatedReaction, AppAction, Presence, ReactionsAction, ReactionsBroadcastListener,
     RosterAction, RosterBroadcastListener, RosterMember, RosterRole, Store,
 };
+use crate::ci::CiStateStore;
 use crate::message::Message;
 use crate::session::Session;
-use crate::transport::ci_state_store::CiStateStore;
 
 fn fresh_orch() -> Arc<Store> {
     let dir = TempDir::new().expect("tempdir");
