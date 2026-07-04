@@ -13,6 +13,10 @@ const SELF_FILE: &str = "boundary_tests.rs";
 
 const FORBIDDEN_EDGE_TOKENS: &[&str] = &["crate::storage", "crate::transport"];
 
+const FORBIDDEN_STORE_COMPOSITION_TOKEN: &str = "crate::store::";
+
+const TEST_MODULE_PATH_MARKER: &str = "_tests";
+
 const REDUCER_DIR: &str = "src/product_management/story/slice/reducers";
 
 const REDUCER_FORBIDDEN_DECODE_TOKENS: &[&str] = &[
@@ -91,6 +95,35 @@ fn product_management_domain_imports_no_infrastructure_edge() {
     assert!(
         violations.is_empty(),
         "product_management is the domain: it does not reach the infrastructure edges (crate::storage persistence, crate::transport delivery) directly. State lives in the store; the synchronization engine (crate::sync) owns persistence and projects off the store; identity/name helpers live in crate::routing. Move the offending code into crate::sync, behind a store-owned port, or to a support module (crate::routing). Violations:\n{}",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn product_management_production_imports_no_store_composition() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/product_management");
+    let mut files = Vec::new();
+    collect_rs_files(&root, &mut files);
+    assert!(
+        !files.is_empty(),
+        "expected to find product_management source files under {}",
+        root.display()
+    );
+
+    let mut violations: Vec<String> = Vec::new();
+    for file in &files {
+        if file.display().to_string().contains(TEST_MODULE_PATH_MARKER) {
+            continue;
+        }
+        let contents = std::fs::read_to_string(file).expect("read source file");
+        if contents.contains(FORBIDDEN_STORE_COMPOSITION_TOKEN) {
+            violations.push(file.display().to_string());
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "product_management is a feature domain; crate::store is the redux composition that AGGREGATES the domain slices (AppState/AppAction name every domain). The domain must not depend on the composition that names it — that is the store<->pm cycle. A domain slice registers UP into the kernel (crate::kernel, a leaf) and owns its own actions/reducer/selectors; a cross-slice orchestration listener (e.g. owner_park) lives at the composition (store/app), not in the domain. Move the offending code to crate::store::app or express it via the kernel leaf. Production files reaching crate::store:\n{}",
         violations.join("\n")
     );
 }

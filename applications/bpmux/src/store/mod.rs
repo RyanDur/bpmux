@@ -6,11 +6,11 @@ use tokio_util::sync::CancellationToken;
 use crate::ci::CiStateStore;
 use crate::kernel;
 use crate::product_management::board::RefreshDriver;
-use crate::product_management::owner_park::OwnerParkListener;
 use crate::session;
 use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
 };
+use app::OwnerParkListener;
 
 pub use crate::ci::slice as ci;
 pub use crate::reactions::slice as reactions;

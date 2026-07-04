@@ -77,11 +77,18 @@ reaches up into `ci` and `store` (`message/state_payloads.rs:61,149,164`) — sp
    the build if any transport source names `crate::server`. Remaining #4 residue: the
    god-edge mesh itself (transport fanning out to bridge/integrations/github) — edges
    should be independent adapters over feature ports, not a mesh.
-5. **Kernel and policy cycles.** `store ↔ product_management` (the app-store
-   composition in `store/app/mod.rs:3-6` aggregates domain slices; the slices
-   import the kernel) and `workflow ↔ product_management` (shared value types —
-   `StageId` — live on the wrong side). Extract the slice-registration seam and
-   home the shared value types so both become acyclic.
+5. **Kernel and policy cycles.** ~~`store ↔ product_management`~~ **RESOLVED
+   (2026-07-03):** the redux kernel (generic `<S,A>` engine) is promoted to a
+   top-level `crate::kernel` leaf (domains register into it without importing the
+   composition), and `owner_park`'s cross-slice orchestration `Listener` moved from
+   the domain into the composition (`store/app`). A fitness test
+   (`product_management::boundary_tests::product_management_production_imports_no_store_composition`)
+   fails the build if pm production names `crate::store::`. The app-composition still
+   aggregates domain slices (store→pm) — the correct "composition depends on domains"
+   direction; the cycle (pm→store) is gone. The `workflow ↔ product_management` arm is
+   mostly homed (`StageId` → `crate::workflow` `883cae11`; acceptor→GateClass mappers →
+   pm `9b0c15ee`); its last strand (`workflow::verdicts` importing pm) relocates INTO
+   pm during the Phase-1 verdict collapse, not before.
 
 ## The orchestrator finding — a fossil, and the cheap fix for violation 2
 
@@ -151,7 +158,9 @@ the crate graph subsumes these tests.
 Landed boundary tests so far: `storage::boundary_tests` (persistence edge composes
 per-feature repo ports only — violation #3); `transport::boundary_tests`
 (`transport_edge_names_no_composition_root` — the transport edge names no
-`crate::server`, locking the OrchestratorHandle relocation — violation #4).
+`crate::server`, locking the OrchestratorHandle relocation — violation #4);
+`product_management::boundary_tests::product_management_production_imports_no_store_composition`
+(pm production names no `crate::store::`, locking the store↔pm cycle-cut — violation #5).
 
 ## Key decisions (so they are not re-litigated)
 
