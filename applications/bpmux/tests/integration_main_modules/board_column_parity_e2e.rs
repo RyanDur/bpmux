@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use bpmux::product_management::board::arrangement::{ColumnBucket, column_for};
 use bpmux::product_management::story::BoardState;
 use bpmux::product_management::story::Stage;
+use bpmux::view::board::arrangement::{ColumnBucket, column_for};
 
 /// Truth-table mirror of the renderer's `columnFor` from
 /// `applications/electron/src/renderer/src/board/types.ts`.

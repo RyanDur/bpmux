@@ -46,10 +46,7 @@ pub async fn get_board(
     match tracker.fetch_board_stories().await {
         Ok(stories) => {
             let ordered =
-                crate::product_management::board::ready_order_label::sort_board_ready_by_membership(
-                    stories,
-                    &[],
-                );
+                crate::view::board::ready_order_label::sort_board_ready_by_membership(stories, &[]);
             let body = serde_json::json!({
                 "stories": ordered,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),

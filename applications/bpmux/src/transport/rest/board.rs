@@ -15,10 +15,7 @@ pub(crate) fn ordered_board_stories(
         .find(|iteration| iteration.is_current)
         .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
         .unwrap_or_default();
-    crate::product_management::board::ready_order_label::sort_board_ready_by_membership(
-        items,
-        &current_order,
-    )
+    crate::view::board::ready_order_label::sort_board_ready_by_membership(items, &current_order)
 }
 
 pub(crate) fn board_stories(

@@ -39,6 +39,9 @@ enum Lifecycle {
 mod wip_history;
 pub use wip_history::WipPoint;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Serialize, Debug, PartialEq)]
 pub struct VelocityMetrics {
     pub window_days: i64,

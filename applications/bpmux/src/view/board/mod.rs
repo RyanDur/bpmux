@@ -1,10 +1,14 @@
+pub mod arrangement;
 mod iteration;
 mod json;
 mod outcome;
+pub mod ready_order_label;
 mod story;
 
 #[cfg(test)]
 mod json_tests;
+#[cfg(test)]
+mod ready_order_label_tests;
 #[cfg(test)]
 mod story_view_projection;
 #[cfg(test)]

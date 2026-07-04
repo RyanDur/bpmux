@@ -1,5 +1,5 @@
-use crate::product_management::board::arrangement::{ColumnBucket, column_for};
 use crate::product_management::story::Story;
+use crate::view::board::arrangement::{ColumnBucket, column_for};
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 

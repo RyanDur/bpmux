@@ -48,10 +48,9 @@ where
         }
     }
 
-    let metrics =
-        crate::product_management::board::velocity::compute(&messages, chrono::Utc::now(), |n| {
-            feature_numbers.contains(&n)
-        });
+    let metrics = crate::view::velocity::compute(&messages, chrono::Utc::now(), |n| {
+        feature_numbers.contains(&n)
+    });
 
     let marker_msg = crate::transport::protocol::ClientMessage::Send {
         text: VIEW_VELOCITY_MARKER.to_string(),

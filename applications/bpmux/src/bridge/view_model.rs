@@ -115,8 +115,8 @@ pub struct VelocityMetricsView {
     pub note: Option<String>,
 }
 
-impl From<&crate::product_management::board::velocity::VelocityMetrics> for VelocityMetricsView {
-    fn from(m: &crate::product_management::board::velocity::VelocityMetrics) -> Self {
+impl From<&crate::view::velocity::VelocityMetrics> for VelocityMetricsView {
+    fn from(m: &crate::view::velocity::VelocityMetrics) -> Self {
         Self {
             window_days: m.window_days,
             delivered_in_window: m.delivered_in_window,

@@ -67,8 +67,8 @@ pub(crate) async fn handle_view_board(
 fn parse_bucket(
     s: &str,
     middle: &[crate::workflow::StageId],
-) -> Option<crate::product_management::board::arrangement::ColumnBucket> {
-    use crate::product_management::board::arrangement::ColumnBucket;
+) -> Option<crate::view::board::arrangement::ColumnBucket> {
+    use crate::view::board::arrangement::ColumnBucket;
     let lower = s.to_ascii_lowercase();
     match lower.as_str() {
         "icebox" => return Some(ColumnBucket::Icebox),

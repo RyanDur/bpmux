@@ -1,6 +1,6 @@
 #[derive(Default)]
 pub(in crate::bridge) struct BoardScope {
-    pub state: Option<crate::product_management::board::arrangement::ColumnBucket>,
+    pub state: Option<crate::view::board::arrangement::ColumnBucket>,
     pub iteration: Option<u64>,
     pub row_limit: Option<usize>,
 }
@@ -34,7 +34,7 @@ pub(in crate::bridge) fn build_board_text(
             ),
         )
     };
-    use crate::product_management::board::arrangement::{ColumnBucket, column_for};
+    use crate::view::board::arrangement::{ColumnBucket, column_for};
     let in_scope_iteration = |s: &crate::product_management::story::Story| -> bool {
         match scope.iteration {
             Some(n) => {
