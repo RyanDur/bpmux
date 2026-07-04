@@ -79,16 +79,34 @@ NOT part of this relocation.
 2. **Pin the wire.** Golden round-trip tests locking `StoryView`/`IterationView`/
    `OutcomeView`/`story_to_board_json` JSON (the message-split S1 move) so slices 4–5
    are provably byte-identical to the renderer.
-3. **CODECs + MAPPERs → `integrations/github`.** The `GhLabelCodec` impl + the
+3. **Complete the `LabelCodec` port; de-couple the read-model from the concrete codec.**
+   The port is INCOMPLETE (`label_codec.rs`): it exposes `encode_ready_order`/
+   `encode_iteration`/`encode_parent_epic` but NOT `encode_tag`/`encode_blocked_by`/
+   `encode_acceptor` (those are inherent methods on `GhLabelCodec`). So `StoryView::
+   wire_labels` — a read-model, domain side — backdoors to the concrete `GhLabelCodec`
+   for those three (`view_model/story.rs:45,48,51`): GitHub on the WRONG side of the
+   adapter. Fix: promote the three `encode_*` methods from `GhLabelCodec`'s inherent
+   block onto the `LabelCodec` trait, and repoint `wire_labels` to the injected
+   `codec: &C` for ALL labels (drop the `GhLabelCodec` import). After this NO
+   production read-model names the concrete codec — the view is generic over the port.
+   Byte-identical (the method bodies move verbatim; goldens from slice 2 prove it).
+   MUST precede slice 4 — else moving `GhLabelCodec` to `integrations/github` while the
+   view still references it would turn a domain-internal smell into a domain→github edge.
+4. **CODECs + MAPPERs → `integrations/github`.** The `GhLabelCodec` impl + the
    `*_decode` mappers + `label_fields`/`comment_codec`/`relationship_block`/
    `typed_label_mirror`. The `LabelCodec` trait *port* stays in the domain. Aligns
-   with the existing `product_management ↛ crate::github` boundary test.
-4. **VIEW_MODELs → `crate::view`.** `StoryView`/`IterationView`/`OutcomeView` +
-   `json` + `relationships`. Guarded by the slice-2 wire goldens.
-5. **PROJECTIONs → their per-consumer homes**; **`SourceAdapter` port + `in_memory`
+   with the existing `product_management ↛ crate::github` boundary test. With slice 3
+   done, the read-model no longer references the concrete, so this move is clean.
+5. **VIEW_MODELs → `crate::view`.** `StoryView`/`IterationView`/`OutcomeView` +
+   `json` + `relationships`. The view depends only on the `LabelCodec` port (slice 3),
+   which is domain-side — `crate::view` never names the GitHub codec. Guarded by the
+   slice-2 wire goldens.
+6. **PROJECTIONs → their per-consumer homes**; **`SourceAdapter` port + `in_memory`
    adapter → domain/adapters home**. Each projection file's destination is decided
    by the who-consumes-it test (below), file-by-file at execution, and recorded here.
-6. **Delete `board/mod.rs`.** Board has evaporated. Add a fitness test asserting the
+   (`in_memory/typed_label_mirror.rs` also names the concrete `GhLabelCodec` — an
+   adapter-side coupling, not a read-model leak; resolve when the in-memory adapter moves.)
+7. **Delete `board/mod.rs`.** Board has evaporated. Add a fitness test asserting the
    `product_management::board` path no longer exists (a divisor-less husk left behind
    is the regression to refuse).
 
@@ -99,6 +117,14 @@ NOT part of this relocation.
   any view-model file moves. A reshape is a later, coordinated step.
 - **The port stays, the impl travels.** `SourceAdapter` and `LabelCodec` are ports the
   domain owns (gateway canon); their GitHub implementations move to `integrations/github`.
+- **GitHub stays on the far side of the adapter (Ryan, 2026-07-03, standing).** No
+  read-model / projection / view — anything the domain or `crate::view` owns — may name
+  the concrete `GhLabelCodec`; it depends only on the `LabelCodec` port. The concrete
+  codec is injected from an edge/composition (REST handlers, bridge tools, test seeds —
+  where naming it is correct). The port must be COMPLETE enough that no consumer needs
+  to backdoor to the impl (slice 3 closes the current gap). The existing
+  `product_management ↛ crate::github` fitness test guards the vendor mechanism; this
+  principle extends it to the concrete codec once it lands in `integrations/github`.
 - **Façade dissolution first.** Rewriting the pass-through re-exports (slice 1) is what
   turns a 100+-consumer fear into four small clusters; it is behavior-preserving and
   gates nothing downstream on it beyond legibility.
