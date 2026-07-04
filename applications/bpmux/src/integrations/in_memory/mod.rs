@@ -10,6 +10,9 @@ mod mutation;
 mod seed;
 mod typed_label_mirror;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Default)]
 pub struct InMemorySourceAdapter {
     state: Mutex<InnerState>,

@@ -1,5 +1,5 @@
 use crate::bridge::tools_stories::reorder_icebox_story_via_labels;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;

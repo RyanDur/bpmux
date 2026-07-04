@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::dev_in_flight::*;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::BoardState;
 use crate::product_management::story::Stage;
 use crate::product_management::story::Story;

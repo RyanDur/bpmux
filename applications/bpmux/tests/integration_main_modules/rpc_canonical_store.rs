@@ -29,7 +29,7 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use bpmux::auth as auth_token;
-use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use bpmux::integrations::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::story::{BoardState, Story, StoryId};
 use bpmux::session::Session;
 use bpmux::sync::{RefreshDriver, SyncOrchestrator};

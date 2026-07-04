@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::get_story::handle_get_story;
 use crate::integrations::github::mapper::decode_iteration_from_story;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::{BoardState, Gate, GateComment, Stage, Story, StoryId};
 use crate::store::SeededStore;

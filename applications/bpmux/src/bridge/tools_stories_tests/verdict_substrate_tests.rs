@@ -9,7 +9,7 @@ use crate::transport::protocol::ClientMessage;
 mod verdict_substrate_integration_1407 {
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story, StoryId};
     use crate::session::Session;
     use crate::sync::RefreshDriver;

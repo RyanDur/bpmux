@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 

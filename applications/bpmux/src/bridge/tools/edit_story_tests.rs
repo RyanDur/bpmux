@@ -3,7 +3,7 @@
 #![allow(clippy::panic)]
 
 use crate::bridge::tools_stories::handle_edit_story;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;

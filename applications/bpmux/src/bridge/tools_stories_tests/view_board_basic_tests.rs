@@ -14,7 +14,7 @@ async fn view_board_requires_refresh_after_5l_fallback_retirement() {
 
 #[tokio::test]
 async fn view_board_auto_reingests_when_store_is_empty() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -52,7 +52,7 @@ async fn view_board_auto_reingests_when_store_is_empty() {
 
 #[tokio::test]
 async fn view_board_handles_refresh_succeeding_with_empty_result_without_errors() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use std::sync::Arc;
@@ -80,7 +80,7 @@ async fn view_board_handles_refresh_succeeding_with_empty_result_without_errors(
 
 #[tokio::test]
 async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use std::sync::Arc;
@@ -106,7 +106,7 @@ async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log()
 
 #[tokio::test]
 async fn view_board_buckets_stories_by_story_state() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -181,7 +181,7 @@ async fn view_board_buckets_stories_by_story_state() {
 
 #[tokio::test]
 async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -239,7 +239,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
 
 #[tokio::test]
 async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story};
     use crate::sync::RefreshDriver;

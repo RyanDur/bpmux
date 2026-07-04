@@ -494,9 +494,7 @@ async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
 }
 
 fn refresh_for_tests() -> Arc<dyn crate::sync::RefreshDriver> {
-    let adapter = Arc::new(
-        crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
-    );
+    let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     Arc::new(crate::sync::SyncOrchestrator::new(adapter))
 }
 

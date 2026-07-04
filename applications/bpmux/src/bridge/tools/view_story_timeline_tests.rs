@@ -15,7 +15,7 @@ async fn handler_requires_refresh_as_the_canonical_read_handle() {
 
 #[tokio::test]
 async fn handler_errors_when_story_not_in_board() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use std::sync::Arc;
@@ -33,7 +33,7 @@ async fn handler_errors_when_story_not_in_board() {
 
 #[tokio::test]
 async fn handler_reads_gates_from_canonical_store() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::slice::StoryAction;
     use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
     use crate::sync::RefreshDriver;
@@ -80,7 +80,7 @@ async fn handler_reads_gates_from_canonical_store() {
 
 #[tokio::test]
 async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_missing() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::slice::StoryAction;
     use crate::product_management::story::{BoardState, Story, StoryId};
     use crate::sync::RefreshDriver;
@@ -201,7 +201,7 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
 
 #[tokio::test]
 async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;

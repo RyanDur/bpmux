@@ -3,7 +3,7 @@
 use super::super::tools_stories::*;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::decode_iteration_from_story;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};

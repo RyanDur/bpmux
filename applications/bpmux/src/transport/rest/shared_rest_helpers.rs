@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::message::StateDeltaPayload;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 

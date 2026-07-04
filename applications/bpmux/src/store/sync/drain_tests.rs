@@ -14,9 +14,7 @@ use crate::store::test_support::eventually;
 use crate::store::{AppAction, Store, SyncAction};
 
 fn refresh_for_tests() -> Arc<dyn crate::sync::RefreshDriver> {
-    let adapter = Arc::new(
-        crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
-    );
+    let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     Arc::new(crate::sync::SyncOrchestrator::new(adapter))
 }
 

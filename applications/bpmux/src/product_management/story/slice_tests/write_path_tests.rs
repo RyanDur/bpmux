@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;

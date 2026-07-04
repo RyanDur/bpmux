@@ -3,7 +3,7 @@
 
 mod gate_retire_1348 {
     use crate::bridge::tools_stories::{handle_deliver_story, handle_start_story};
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;

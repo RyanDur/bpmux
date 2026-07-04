@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};
 
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};

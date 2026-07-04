@@ -18,7 +18,7 @@ async fn accept_requires_refresh_after_5n_fallback_retirement() {
 
 #[tokio::test]
 async fn accept_rejects_unknown_role_via_handler() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::sync::{RefreshDriver, SyncOrchestrator};
     use std::sync::Arc;
 
@@ -128,7 +128,7 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
 
 #[tokio::test]
 async fn accept_force_bypass_with_reason_records_in_gate_payload() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story};
     use crate::sync::{RefreshDriver, SyncOrchestrator};
@@ -199,7 +199,7 @@ async fn reject_allows_pm_designer_dev_owner() {
 
 #[tokio::test]
 async fn reject_rejects_unknown_role_via_handler() {
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::sync::{RefreshDriver, SyncOrchestrator};
     use std::sync::Arc;
 

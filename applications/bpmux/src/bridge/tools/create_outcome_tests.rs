@@ -3,7 +3,7 @@
 
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
 use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};

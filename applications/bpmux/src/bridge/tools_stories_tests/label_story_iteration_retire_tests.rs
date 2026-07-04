@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;

@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::view_velocity::*;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;

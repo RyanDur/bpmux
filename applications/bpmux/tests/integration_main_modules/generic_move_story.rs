@@ -18,7 +18,7 @@
 
 use std::sync::Arc;
 
-use bpmux::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use bpmux::integrations::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::story::events::EventMeta;
 use bpmux::product_management::story::events::StoryEvent;
 use bpmux::product_management::story::peer::PeerId;

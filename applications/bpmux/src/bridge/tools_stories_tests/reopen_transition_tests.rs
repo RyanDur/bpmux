@@ -8,7 +8,7 @@ use crate::transport::protocol::ClientMessage;
 mod reopen_on_state_transition_tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
-    use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Stage, Story, StoryId};
     use crate::sync::RefreshDriver;

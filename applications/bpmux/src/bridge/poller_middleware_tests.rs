@@ -5,7 +5,7 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use crate::bridge::tools::handle_get_story;
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::store::{AppAction, SeededStore};

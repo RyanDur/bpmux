@@ -46,9 +46,7 @@ pub(super) async fn build_test_orchestrator(
     ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
-    let adapter = Arc::new(
-        crate::product_management::board::adapters::in_memory::InMemorySourceAdapter::new(),
-    );
+    let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     let orch_concrete =
         match SyncOrchestrator::with_storage(adapter.clone(), session.storage.clone()) {
             Ok(o) => o,

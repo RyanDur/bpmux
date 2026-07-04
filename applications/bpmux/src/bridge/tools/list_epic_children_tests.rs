@@ -5,7 +5,7 @@ use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::{
     decode_epic_from_story, decode_story_metadata, is_epic_story,
 };
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::Epic;
 use crate::product_management::story::{BoardState, Story, StoryKind};
 use crate::sync::{RefreshDriver, SyncOrchestrator};

@@ -8,7 +8,7 @@ use crate::integrations::github::mapper::{decode_iteration_from_story, decode_ou
 use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{BoardState, Story, StoryId};
