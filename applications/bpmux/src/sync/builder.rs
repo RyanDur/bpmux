@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::AtomicU64;
 
-use crate::product_management::board::sync::SourceAdapter;
+use crate::sync::SourceAdapter;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn new(adapter: Arc<A>) -> Self {

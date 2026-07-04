@@ -237,7 +237,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
 
 #[tokio::test]
 async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
-    use crate::product_management::board::sync::ConditionalBody;
+    use crate::sync::ConditionalBody;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_minimal(9001, BoardState::Ready)]);
     adapter.seed_body(9001, "real body".into());

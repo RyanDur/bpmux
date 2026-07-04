@@ -1,9 +1,9 @@
 use super::SyncOrchestrator;
-use crate::product_management::board::sync::SourceAdapter;
 use crate::product_management::epic::{self, Epic};
 use crate::product_management::iteration::{self, Iteration};
 use crate::product_management::outcome::{self, Outcome};
 use crate::product_management::story::{Story, StoryId, StoryKey};
+use crate::sync::SourceAdapter;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub(super) fn set_select(&self, select: crate::store::Select) {

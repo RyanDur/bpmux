@@ -7,7 +7,6 @@ use std::sync::atomic::AtomicU64;
 use chrono::Utc;
 
 pub use crate::persist::PersistError;
-use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment};
 
@@ -19,6 +18,7 @@ mod driver_ops;
 mod fetch;
 mod ingest;
 mod outbox;
+mod port;
 mod race_window;
 mod slice_readers;
 mod status;
@@ -31,6 +31,7 @@ pub use crate::product_management::story::conflict::{
 use coalesce::{coalesce_iteration_label_events, stale_state_labels_for};
 pub use driver::*;
 pub use outbox::{default_outbox_path, load_outbox_from_disk};
+pub use port::*;
 pub use race_window::*;
 pub use status::{
     DroppedEvent, SyncStatus, SyncTransition, acknowledge_dropped, is_stale, is_startup_fail,

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::product_management::board::sync::{Ingested, SourceAdapter, SyncError};
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
+use crate::sync::{Ingested, SourceAdapter, SyncError};
 
 mod ingest;
 mod mutation;

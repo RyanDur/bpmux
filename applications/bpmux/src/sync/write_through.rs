@@ -1,7 +1,7 @@
-use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId};
+use crate::sync::{SourceAdapter, SyncError};
 
 use super::{SyncOrchestrator, cache_fill_meta};
 

@@ -1,9 +1,9 @@
 use super::status::{record_error, record_ingest_success};
 use super::types::cache_fill_meta;
 use super::{FreeComment, GateComment, SyncOrchestrator};
-use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 use crate::product_management::story::StoryId;
 use crate::product_management::story::events::StoryEvent;
+use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_body(&self, number: u64) -> Result<String, SyncError> {

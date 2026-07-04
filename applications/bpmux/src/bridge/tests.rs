@@ -257,9 +257,9 @@ mod ingest_poll_loop_tests {
     use std::time::Duration;
 
     use crate::bridge::run_ingest_poll_loop;
-    use crate::product_management::board::sync::SyncError;
     use crate::product_management::story::events::StoryEvent;
     use crate::sync::RefreshDriver;
+    use crate::sync::SyncError;
     use crate::sync::{BoxedFuture, SyncStatus};
 
     struct CountingDriver {

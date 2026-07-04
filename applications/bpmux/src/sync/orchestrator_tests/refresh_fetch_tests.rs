@@ -128,10 +128,7 @@ async fn fetch_body_records_error_when_source_fails() {
     adapter.set_ingest_failures(true);
     let orchestrator = SyncOrchestrator::new(adapter);
     let err = orchestrator.fetch_body(7).await.unwrap_err();
-    assert!(matches!(
-        err,
-        crate::product_management::board::SyncError::SourceUnreachable(_)
-    ));
+    assert!(matches!(err, crate::sync::SyncError::SourceUnreachable(_)));
     let status = orchestrator.snapshot_status();
     assert!(status.last_error.unwrap().contains("fetch_body"));
 }
@@ -196,10 +193,7 @@ async fn fetch_gate_comments_records_error_when_source_fails() {
     adapter.set_ingest_failures(true);
     let orchestrator = SyncOrchestrator::new(adapter);
     let err = orchestrator.fetch_gate_comments(11).await.unwrap_err();
-    assert!(matches!(
-        err,
-        crate::product_management::board::SyncError::SourceUnreachable(_)
-    ));
+    assert!(matches!(err, crate::sync::SyncError::SourceUnreachable(_)));
     assert!(
         orchestrator
             .snapshot_status()

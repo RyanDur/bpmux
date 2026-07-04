@@ -4,10 +4,10 @@ use std::pin::Pin;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::board::sync::SyncError;
 use crate::product_management::story::Story;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
+use crate::sync::SyncError;
 
 use super::ConflictKind;
 

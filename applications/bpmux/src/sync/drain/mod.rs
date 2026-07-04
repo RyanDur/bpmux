@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
-use crate::product_management::board::sync::{SourceAdapter, SyncError};
 use crate::product_management::story::events::StoryEvent;
+use crate::sync::{SourceAdapter, SyncError};
 
 use super::{
     MutationId, QueuedEvent, SyncOrchestrator, coalesce_iteration_label_events, set_pending_events,

@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use crate::product_management::board::sync::{ConditionalBody, SyncError};
 use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{FreeComment, GateComment, Story};
+use crate::sync::{ConditionalBody, SyncError};
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
 

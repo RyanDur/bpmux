@@ -9,12 +9,12 @@ use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::sync::SourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
+use crate::sync::SourceAdapter;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use serde_json::{Map, Value, json};

@@ -1,8 +1,8 @@
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::integrations::github::mapper::encode_gate_comment;
-use crate::product_management::board::sync::SyncError;
 use crate::product_management::story::Gate;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::sync::SyncError;
 
 pub(in crate::integrations::github) async fn push_gate_comment_appended(
     inner: &OctocrabStoryTracker,

@@ -1,8 +1,8 @@
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::sync::SyncError;
 use crate::product_management::label_codec::LabelCodec;
 use crate::product_management::story::events::StoryEvent;
+use crate::sync::SyncError;
 
 use super::mutation_events::{
     push_acceptor_assigned, push_current_iteration_cleared, push_current_iteration_designated,

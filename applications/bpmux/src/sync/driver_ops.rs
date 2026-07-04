@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::product_management::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
+use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 
 use super::{
     BoxedFuture, DrainOneOutcome, MutationId, RefreshDriver, SyncOrchestrator, SyncStatus,
