@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use super::get_ci_state::*;
+use super::state_report::*;
 use crate::ci::RunEntry;
 use crate::transport::ci_watcher::{MAX_BACKOFF, POLL_INTERVAL};
 

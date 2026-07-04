@@ -28,7 +28,7 @@ pub(super) fn seed_ci_green_for_tests(store: &crate::transport::ci_state_store::
     if !enabled {
         return;
     }
-    store.write(crate::bridge::tools::CiStateReport {
+    store.write(crate::ci::CiStateReport {
         conclusion: "success",
         last_run_id: None,
         branch: "main",

@@ -9,7 +9,7 @@ pub async fn get_ci(
 ) -> impl IntoResponse {
     let report = ci_state_store
         .read()
-        .unwrap_or_else(crate::bridge::tools::unknown_ci_state_report);
+        .unwrap_or_else(crate::ci::unknown_ci_state_report);
     (
         StatusCode::OK,
         json_headers(),

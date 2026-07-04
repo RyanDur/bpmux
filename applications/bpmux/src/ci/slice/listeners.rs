@@ -29,7 +29,7 @@ impl CiBroadcastListener for CiStateStoreWriter {
             name: None,
             annotation_message: None,
         }];
-        let report = crate::bridge::tools::build_ci_state_report(&runs);
+        let report = crate::ci::build_ci_state_report(&runs);
         self.store.write(report);
     }
 }

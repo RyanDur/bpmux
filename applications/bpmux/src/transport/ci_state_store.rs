@@ -3,7 +3,7 @@ use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
 
-use crate::bridge::tools::CiStateReport;
+use crate::ci::CiStateReport;
 
 #[derive(Default)]
 struct CiStateInner {

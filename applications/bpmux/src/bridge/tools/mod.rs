@@ -29,8 +29,6 @@ mod get_briefing;
 mod get_briefing_tests;
 mod get_ci_log_for_run;
 mod get_ci_state;
-#[cfg(test)]
-mod get_ci_state_tests;
 mod get_identity;
 mod get_story;
 #[cfg(test)]
@@ -136,10 +134,7 @@ pub(crate) use get_ci_log_for_run::CiLogError;
 pub(crate) use get_ci_log_for_run::CiRunFailures;
 pub(crate) use get_ci_log_for_run::CiTestFailure;
 pub(in crate::bridge) use get_ci_log_for_run::handle_get_ci_log_for_run;
-pub(crate) use get_ci_state::CiStateReport;
-pub(crate) use get_ci_state::build_ci_state_report;
 pub(in crate::bridge) use get_ci_state::handle_get_ci_state;
-pub(crate) use get_ci_state::unknown_ci_state_report;
 pub(in crate::bridge) use get_identity::handle_get_identity;
 pub(in crate::bridge) use get_story::handle_get_story;
 pub(in crate::bridge) use get_sync_status::handle_get_sync_status;

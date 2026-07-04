@@ -1,5 +1,8 @@
 mod broadcast;
 mod classify;
+mod state_report;
+#[cfg(test)]
+mod state_report_tests;
 
 #[cfg(test)]
 pub(crate) use crate::ci_link::resolve_ci_actions_url;
@@ -8,6 +11,7 @@ pub(crate) use broadcast::{
     build_dev_ci_signal, build_multi_depth_for_transition, compute_broadcast_text,
 };
 pub use classify::{RunEntry, classify_runs};
+pub(crate) use state_report::{CiStateReport, build_ci_state_report, unknown_ci_state_report};
 pub mod slice;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]

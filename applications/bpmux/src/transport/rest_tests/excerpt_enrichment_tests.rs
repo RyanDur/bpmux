@@ -344,7 +344,7 @@ async fn get_ci_returns_unknown_when_store_empty() {
 
 #[tokio::test]
 async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
-    use crate::bridge::tools::CiStateReport;
+    use crate::ci::CiStateReport;
     use crate::transport::ci_state_store::CiStateStore;
     let store = CiStateStore::new();
     let report = CiStateReport {
@@ -394,7 +394,7 @@ async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
 
 #[tokio::test]
 async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
-    use crate::bridge::tools::CiStateReport;
+    use crate::ci::CiStateReport;
     use crate::transport::ci_state_store::CiStateStore;
     let store = CiStateStore::new();
     store.write(CiStateReport {
