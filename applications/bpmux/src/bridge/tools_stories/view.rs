@@ -32,7 +32,7 @@ pub(crate) async fn handle_view_board(
     let middle = crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow());
     let scope = BoardScope {
         state: match args.get("state").and_then(|v| v.as_str()) {
-            Some(s) => Some(parse_bucket(s, &middle).ok_or_else(|| {
+            Some(s) => Some(parse_state(s, &middle).ok_or_else(|| {
                 let middle_tokens = middle
                     .iter()
                     .map(|stage| stage.as_str())
@@ -64,23 +64,23 @@ pub(crate) async fn handle_view_board(
     ))
 }
 
-fn parse_bucket(
+fn parse_state(
     s: &str,
     middle: &[crate::workflow::StageId],
-) -> Option<crate::view::board::arrangement::ColumnBucket> {
-    use crate::view::board::arrangement::ColumnBucket;
+) -> Option<crate::product_management::story::BoardState> {
+    use crate::product_management::story::BoardState;
     let lower = s.to_ascii_lowercase();
     match lower.as_str() {
-        "icebox" => return Some(ColumnBucket::Icebox),
-        "ready" => return Some(ColumnBucket::Ready),
-        "acceptance" | "delivered" => return Some(ColumnBucket::Acceptance),
-        "accepted" => return Some(ColumnBucket::Accepted),
-        "retired" => return Some(ColumnBucket::Retired),
+        "icebox" => return Some(BoardState::Icebox),
+        "ready" => return Some(BoardState::Ready),
+        "acceptance" | "delivered" => return Some(BoardState::Acceptance),
+        "accepted" => return Some(BoardState::Accepted),
+        "retired" => return Some(BoardState::Retired),
         _ => {}
     }
     let normalized = lower.replace([' ', '_'], "-");
     middle
         .iter()
         .find(|stage| stage.as_str() == normalized)
-        .map(|stage| ColumnBucket::Middle(stage.clone()))
+        .map(|stage| BoardState::InProgress(stage.clone()))
 }

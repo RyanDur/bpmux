@@ -6,7 +6,6 @@ use crate::product_management::story::BoardState;
 use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
-use crate::view::board::arrangement::ColumnBucket;
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
 
@@ -92,14 +91,8 @@ fn default_scope_is_unchanged_full_board() {
     );
     assert!(out.contains("#1 ready one"));
     assert!(out.contains("#2 in-progress one"));
-    assert!(out.contains(ColumnBucket::Ready.header().as_str()));
-    assert!(
-        out.contains(
-            ColumnBucket::Middle(StageId::from("in-progress"))
-                .header()
-                .as_str()
-        )
-    );
+    assert!(out.contains("READY"));
+    assert!(out.contains("IN PROGRESS"));
 }
 
 #[test]
@@ -139,19 +132,13 @@ fn state_scope_renders_only_the_matching_bucket() {
         ),
     ];
     let scope = BoardScope {
-        state: Some(ColumnBucket::Ready),
+        state: Some(BoardState::Ready),
         ..BoardScope::default()
     };
     let out = build_board_text(&[], &stories, &[], &scope, &bundled_middle());
     assert!(out.contains("#1 ready one"));
     assert!(!out.contains("#2 in-progress one"));
-    assert!(
-        !out.contains(
-            ColumnBucket::Middle(StageId::from("in-progress"))
-                .header()
-                .as_str()
-        )
-    );
+    assert!(!out.contains("IN PROGRESS"));
 }
 
 #[test]
@@ -191,7 +178,7 @@ fn row_limit_caps_entries_but_count_reflects_full_total() {
         .map(|i| story(100 + i, &format!("ready {i}"), BoardState::Ready))
         .collect();
     let scope = BoardScope {
-        state: Some(ColumnBucket::Ready),
+        state: Some(BoardState::Ready),
         row_limit: Some(3),
         ..BoardScope::default()
     };
@@ -227,7 +214,7 @@ fn large_board_scoped_is_ingestible_while_full_is_not() {
         &stories,
         &[],
         &BoardScope {
-            state: Some(ColumnBucket::Ready),
+            state: Some(BoardState::Ready),
             row_limit: Some(20),
             ..BoardScope::default()
         },
@@ -243,5 +230,5 @@ fn large_board_scoped_is_ingestible_while_full_is_not() {
         "scoped board should be ingestible-whole: {}",
         scoped.len()
     );
-    assert!(!scoped.contains(ColumnBucket::Accepted.header().as_str()));
+    assert!(!scoped.contains("ACCEPTED"));
 }

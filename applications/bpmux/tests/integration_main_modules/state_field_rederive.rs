@@ -3,7 +3,7 @@
 use bpmux::integrations::github::mapper::state_from_labels;
 use bpmux::product_management::story::BoardState;
 use bpmux::product_management::story::Stage;
-use bpmux::view::board::arrangement::{ColumnBucket, column_for};
+use bpmux::view::board::arrangement::board_position;
 
 #[test]
 fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_ready() {
@@ -57,14 +57,14 @@ fn ready_state_buckets_to_ready_column() {
     // #1146 slice 3: post-collapse, stale rejected labels project to
     // Ready at parse-time, so the bucketing test now operates on the
     // surviving Ready state.
-    let bucket = column_for(BoardState::Ready, false);
-    assert_eq!(bucket, ColumnBucket::Ready);
+    let position = board_position(&BoardState::Ready, false);
+    assert_eq!(position, BoardState::Ready);
 }
 
 #[test]
 fn in_progress_state_buckets_to_in_progress_column() {
-    let bucket = column_for(BoardState::InProgress(Stage::Dev.id()), false);
-    assert_eq!(bucket, ColumnBucket::Middle(Stage::Dev.id()));
+    let position = board_position(&BoardState::InProgress(Stage::Dev.id()), false);
+    assert_eq!(position, BoardState::InProgress(Stage::Dev.id()));
 }
 
 #[test]
@@ -72,10 +72,10 @@ fn closed_ready_buckets_to_retired_column() {
     // #1146 slice 3: closed stories from any non-Accepted state project
     // to Retired. The pre-collapse Rejected variant becomes Ready at
     // parse-time and then Retired at column-projection when closed.
-    let bucket = column_for(BoardState::Ready, true);
+    let position = board_position(&BoardState::Ready, true);
     assert_eq!(
-        bucket,
-        ColumnBucket::Retired,
+        position,
+        BoardState::Retired,
         "Closed-non-Accepted projects to RETIRED so success-narrative stays in ACCEPTED"
     );
 }

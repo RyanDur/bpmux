@@ -2,29 +2,22 @@
 
 use bpmux::product_management::story::BoardState;
 use bpmux::product_management::story::Stage;
-use bpmux::view::board::arrangement::{ColumnBucket, column_for};
+use bpmux::view::board::arrangement::board_position;
 
 /// Truth-table mirror of the renderer's `columnFor` from
 /// `applications/electron/src/renderer/src/board/types.ts`.
 ///
 /// Encoded by hand from the TS source so this test catches drift on
 /// either side. Update both when the projection legitimately changes.
-fn renderer_column_for(state: BoardState, is_closed: bool) -> ColumnBucket {
+fn renderer_board_position(state: BoardState, is_closed: bool) -> BoardState {
     if is_closed && state != BoardState::Accepted && state != BoardState::Retired {
-        return ColumnBucket::Retired;
+        return BoardState::Retired;
     }
-    match state {
-        BoardState::Icebox => ColumnBucket::Icebox,
-        BoardState::Ready => ColumnBucket::Ready,
-        BoardState::InProgress(stage) => ColumnBucket::Middle(stage),
-        BoardState::Acceptance => ColumnBucket::Acceptance,
-        BoardState::Accepted => ColumnBucket::Accepted,
-        BoardState::Retired => ColumnBucket::Retired,
-    }
+    state
 }
 
 #[test]
-fn column_for_agrees_across_full_cross_product() {
+fn board_position_agrees_across_full_cross_product() {
     let states = [
         BoardState::Icebox,
         BoardState::Ready,
@@ -35,12 +28,12 @@ fn column_for_agrees_across_full_cross_product() {
     ];
     for state in states {
         for is_closed in [false, true] {
-            let rust_bucket = column_for(state.clone(), is_closed);
-            let renderer_bucket = renderer_column_for(state.clone(), is_closed);
+            let rust_position = board_position(&state, is_closed);
+            let renderer_position = renderer_board_position(state.clone(), is_closed);
             assert_eq!(
-                rust_bucket, renderer_bucket,
+                rust_position, renderer_position,
                 "drift: state={state:?} is_closed={is_closed} \
-                 — Rust column_for = {rust_bucket:?}, renderer columnFor (mirrored) = {renderer_bucket:?}"
+                 — Rust board_position = {rust_position:?}, renderer columnFor (mirrored) = {renderer_position:?}"
             );
         }
     }
@@ -60,8 +53,8 @@ fn closed_non_accepted_stories_project_to_retired() {
         BoardState::Acceptance,
     ] {
         assert_eq!(
-            column_for(state.clone(), true),
-            ColumnBucket::Retired,
+            board_position(&state, true),
+            BoardState::Retired,
             "closed + state={state:?} (non-Accepted) must project to RETIRED"
         );
     }
@@ -70,8 +63,8 @@ fn closed_non_accepted_stories_project_to_retired() {
 #[test]
 fn closed_accepted_stays_accepted() {
     assert_eq!(
-        column_for(BoardState::Accepted, true),
-        ColumnBucket::Accepted,
+        board_position(&BoardState::Accepted, true),
+        BoardState::Accepted,
         "closed + Accepted stays in ACCEPTED (user-story satisfied + closed = success-narrative)"
     );
 }
@@ -81,22 +74,25 @@ fn open_workflow_states_bucket_one_to_one() {
     // #1146 slice 3: post-collapse, the 6 enum states map 1:1 to
     // their display columns. Rework lives in transition history,
     // not in separate Rejected/NeedsFixes/ReadyForAccept variants.
-    assert_eq!(column_for(BoardState::Icebox, false), ColumnBucket::Icebox);
-    assert_eq!(column_for(BoardState::Ready, false), ColumnBucket::Ready);
     assert_eq!(
-        column_for(BoardState::InProgress(Stage::Dev.id()), false),
-        ColumnBucket::Middle(Stage::Dev.id())
+        board_position(&BoardState::Icebox, false),
+        BoardState::Icebox
+    );
+    assert_eq!(board_position(&BoardState::Ready, false), BoardState::Ready);
+    assert_eq!(
+        board_position(&BoardState::InProgress(Stage::Dev.id()), false),
+        BoardState::InProgress(Stage::Dev.id())
     );
     assert_eq!(
-        column_for(BoardState::InProgress(Stage::DeskCheck.id()), false),
-        ColumnBucket::Middle(Stage::DeskCheck.id())
+        board_position(&BoardState::InProgress(Stage::DeskCheck.id()), false),
+        BoardState::InProgress(Stage::DeskCheck.id())
     );
     assert_eq!(
-        column_for(BoardState::Acceptance, false),
-        ColumnBucket::Acceptance
+        board_position(&BoardState::Acceptance, false),
+        BoardState::Acceptance
     );
     assert_eq!(
-        column_for(BoardState::Accepted, false),
-        ColumnBucket::Accepted
+        board_position(&BoardState::Accepted, false),
+        BoardState::Accepted
     );
 }

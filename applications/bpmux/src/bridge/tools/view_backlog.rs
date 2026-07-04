@@ -1,5 +1,5 @@
-use crate::product_management::story::Story;
-use crate::view::board::arrangement::{ColumnBucket, column_for};
+use crate::product_management::story::{BoardState, Story};
+use crate::view::board::arrangement::board_position;
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
@@ -15,13 +15,13 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
 
     for story in stories {
         let entry = format!("{} {}", story.id, story.title);
-        match column_for(story.state.clone(), story.is_closed) {
-            ColumnBucket::Icebox => icebox.push(entry),
-            ColumnBucket::Ready => ready.push(entry),
-            ColumnBucket::Middle(_) => in_progress.push(entry),
-            ColumnBucket::Acceptance => acceptance.push(entry),
-            ColumnBucket::Accepted => accepted.push(entry),
-            ColumnBucket::Retired => retired.push(entry),
+        match board_position(&story.state, story.is_closed) {
+            BoardState::Icebox => icebox.push(entry),
+            BoardState::Ready => ready.push(entry),
+            BoardState::InProgress(_) => in_progress.push(entry),
+            BoardState::Acceptance => acceptance.push(entry),
+            BoardState::Accepted => accepted.push(entry),
+            BoardState::Retired => retired.push(entry),
         }
     }
 

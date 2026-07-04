@@ -1,6 +1,9 @@
+use crate::product_management::story::BoardState;
+use crate::view::board::arrangement::{board_columns, column_header, group_by_position};
+
 #[derive(Default)]
 pub(in crate::bridge) struct BoardScope {
-    pub state: Option<crate::view::board::arrangement::ColumnBucket>,
+    pub state: Option<BoardState>,
     pub iteration: Option<u64>,
     pub row_limit: Option<usize>,
 }
@@ -34,7 +37,6 @@ pub(in crate::bridge) fn build_board_text(
             ),
         )
     };
-    use crate::view::board::arrangement::{ColumnBucket, column_for};
     let in_scope_iteration = |s: &crate::product_management::story::Story| -> bool {
         match scope.iteration {
             Some(n) => {
@@ -46,12 +48,13 @@ pub(in crate::bridge) fn build_board_text(
             None => true,
         }
     };
-    let bucket_section = |bucket: ColumnBucket| -> (usize, Vec<String>) {
-        let mut entries: Vec<(u64, String)> = stories
-            .iter()
-            .filter(|s| in_scope_iteration(s))
-            .filter(|s| column_for(s.state.clone(), s.is_closed) == bucket)
-            .map(format_entry)
+    let board = group_by_position(stories.iter().filter(|s| in_scope_iteration(s)));
+    let column_section = |column: &BoardState| -> (usize, Vec<String>) {
+        let mut entries: Vec<(u64, String)> = board
+            .get(column)
+            .into_iter()
+            .flatten()
+            .map(|&s| format_entry(s))
             .collect();
         entries.sort_by_key(|(n, _)| *n);
         let full_count = entries.len();
@@ -99,20 +102,12 @@ pub(in crate::bridge) fn build_board_text(
         }
         out.push('\n');
     };
-    let mut buckets = vec![ColumnBucket::Icebox, ColumnBucket::Ready];
-    buckets.extend(middle.iter().cloned().map(ColumnBucket::Middle));
-    buckets.extend([
-        ColumnBucket::Acceptance,
-        ColumnBucket::Accepted,
-        ColumnBucket::Retired,
-    ]);
-    for bucket in buckets {
-        if scope.state.as_ref().is_some_and(|only| *only != bucket) {
+    for column in board_columns(middle) {
+        if scope.state.as_ref().is_some_and(|only| *only != column) {
             continue;
         }
-        let header = bucket.header();
-        let (full_count, items) = bucket_section(bucket);
-        section(&header, full_count, &items, &mut out);
+        let (full_count, items) = column_section(&column);
+        section(&column_header(&column), full_count, &items, &mut out);
     }
     out
 }
