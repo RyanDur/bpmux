@@ -1,7 +1,7 @@
 use crate::bridge::tracker::{
     ConditionalIssue, ConditionalRunEntry, OctocrabStoryTracker, StoryTracker,
 };
-use crate::product_management::board::adapters::github::{
+use crate::integrations::github::mapper::{
     decode_free_comment, decode_gate_comments, decode_story_metadata,
 };
 use crate::product_management::board::sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
@@ -10,7 +10,9 @@ use crate::product_management::story::{FreeComment, GateComment, Story};
 use crate::store::CiPollFetch;
 
 mod delegates;
+pub mod gh_label_codec;
 mod ingest;
+pub mod mapper;
 mod mutation;
 mod mutation_events;
 

@@ -30,8 +30,7 @@ fn make_story(id: u64, story_type: StoryKind) -> (Story, Vec<String>) {
     );
     s.story_type = story_type;
     let labels = vec![
-        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .encode_story_type(story_type),
+        crate::integrations::github::gh_label_codec::GhLabelCodec.encode_story_type(story_type),
     ];
     (s, labels)
 }

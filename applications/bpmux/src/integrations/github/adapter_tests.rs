@@ -2,9 +2,9 @@
 
 use chrono::{TimeZone, Utc};
 
-use crate::product_management::board::adapters::github::is_iteration_position_label_for_test as is_iteration_position_label;
-use crate::product_management::board::adapters::github::is_position_label_for_test as is_position_label;
-use crate::product_management::board::adapters::github::{
+use crate::integrations::github::mapper::is_iteration_position_label_for_test as is_iteration_position_label;
+use crate::integrations::github::mapper::is_position_label_for_test as is_position_label;
+use crate::integrations::github::mapper::{
     classify_gate, decode_gate_comments, decode_story_metadata, is_epic_issue, is_epic_story,
     iteration_order_from_labels, parent_epic_from_labels, state_from_labels, state_to_label,
     story_type_from_labels, story_type_from_labels_or_title, tags_from_labels,
@@ -630,9 +630,8 @@ fn decode_iteration_from_story_sets_iteration_order_from_label_1735() {
         "iteration-Fornax.100".to_string(),
         "iteration-order.200".to_string(),
     ];
-    let iteration = crate::product_management::board::adapters::github::decode_iteration_from_story(
-        &story, &labels,
-    );
+    let iteration =
+        crate::integrations::github::mapper::decode_iteration_from_story(&story, &labels);
     assert_eq!(iteration.iteration_order, Some(200));
 }
 

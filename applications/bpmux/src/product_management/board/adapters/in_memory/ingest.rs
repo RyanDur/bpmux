@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::product_management::board::adapters::github::{
+use crate::integrations::github::mapper::{
     decode_epic_from_story, decode_iteration_from_story, decode_outcome_from_story, is_epic_story,
 };
 use crate::product_management::epic::Epic;
@@ -16,12 +16,9 @@ pub(super) struct Classified {
 }
 
 pub(super) fn derive_typed_fields_from_labels(story: &mut Story, labels: &[String]) {
-    let fields = crate::product_management::board::adapters::github::project_labels(labels);
+    let fields = crate::integrations::github::mapper::project_labels(labels);
     let labeled_type =
-        crate::product_management::board::adapters::github::story_type_from_labels_or_title(
-            labels,
-            &story.title,
-        );
+        crate::integrations::github::mapper::story_type_from_labels_or_title(labels, &story.title);
     if labeled_type != story.story_type
         && crate::product_management::story::story_type_from_title(&story.title) == story.story_type
     {

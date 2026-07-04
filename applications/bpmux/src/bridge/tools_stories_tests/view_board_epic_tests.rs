@@ -2,7 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::board::adapters::github::{decode_epic_from_story, is_epic_story};
+use crate::integrations::github::mapper::{decode_epic_from_story, is_epic_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::story::{Story, StoryId};

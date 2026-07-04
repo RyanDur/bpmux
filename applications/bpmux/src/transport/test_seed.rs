@@ -201,8 +201,7 @@ pub async fn post_seed_stories(
         } else if is_epic_seed {
             "epic".to_string()
         } else {
-            crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-                .encode_story_type(story_type)
+            crate::integrations::github::gh_label_codec::GhLabelCodec.encode_story_type(story_type)
         };
         if let Err(e) = refresh.mutate_sync(
             crate::product_management::story::events::StoryEvent::TagAdded {
@@ -222,7 +221,7 @@ pub async fn post_seed_stories(
                 ts: chrono::Utc::now(),
                 peer_id: crate::product_management::story::peer::PeerId::local(),
             };
-            let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+            let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
             let event = match crate::product_management::iteration::label::parse_iteration_label(
                 &codec, label,
             ) {
@@ -279,18 +278,15 @@ pub async fn post_seed_stories(
             if is_iteration_seed {
                 dispatcher.dispatch(crate::store::AppAction::Iteration(
                     crate::product_management::iteration::IterationAction::Upserted(vec![
-                        crate::product_management::board::adapters::github::decode_iteration_from_story(
-                            &carrier,
-                            &s.labels,
+                        crate::integrations::github::mapper::decode_iteration_from_story(
+                            &carrier, &s.labels,
                         ),
                     ]),
                 ));
             } else {
                 dispatcher.dispatch(crate::store::AppAction::Epic(
                     crate::product_management::epic::EpicAction::Upserted(vec![
-                        crate::product_management::board::adapters::github::decode_epic_from_story(
-                            &carrier,
-                        ),
+                        crate::integrations::github::mapper::decode_epic_from_story(&carrier),
                     ]),
                 ));
             }

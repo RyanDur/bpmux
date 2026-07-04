@@ -4,7 +4,7 @@ pub(crate) fn ordered_board_stories(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     let all = refresh.all_stories();
-    let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+    let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
     let items: Vec<serde_json::Value> = all
         .iter()
         .map(|s| crate::product_management::board::adapters::json::story_to_board_json(&codec, s))

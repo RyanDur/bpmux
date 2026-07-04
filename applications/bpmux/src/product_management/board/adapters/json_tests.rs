@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::json::story_to_board_json;
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
 

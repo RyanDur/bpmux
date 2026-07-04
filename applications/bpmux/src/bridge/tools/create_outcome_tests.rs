@@ -2,9 +2,7 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
-use crate::product_management::board::adapters::github::{
-    decode_iteration_from_story, decode_outcome_from_story,
-};
+use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
@@ -62,8 +60,7 @@ fn typed_seed(id: u64, story_type: StoryKind, label: &str) -> (Story, Vec<String
     s.story_type = story_type;
     let labels = vec![
         label.to_string(),
-        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .encode_story_type(story_type),
+        crate::integrations::github::gh_label_codec::GhLabelCodec.encode_story_type(story_type),
     ];
     (s, labels)
 }

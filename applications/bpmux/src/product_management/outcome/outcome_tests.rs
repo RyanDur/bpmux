@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::OutcomeLifecycle;
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::mapper::decode_outcome_from_story;
 use crate::product_management::story::{BoardState, Horizon, Story, StoryId};
 
 fn outcome_story(state: BoardState) -> Story {

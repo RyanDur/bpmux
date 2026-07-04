@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use bpmux::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use bpmux::integrations::github::gh_label_codec::GhLabelCodec;
 use bpmux::product_management::board::label_codec::LabelCodec;
 use bpmux::product_management::iteration::label::iteration_name_from_title;
 

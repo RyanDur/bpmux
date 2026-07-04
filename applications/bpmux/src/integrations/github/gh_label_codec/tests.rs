@@ -1,4 +1,4 @@
-use super::gh_label_codec::GhLabelCodec;
+use super::GhLabelCodec;
 use crate::product_management::story::Acceptor;
 
 #[test]

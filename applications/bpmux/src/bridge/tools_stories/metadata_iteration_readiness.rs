@@ -88,7 +88,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
     let r = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let role = role_from_name(agent_name).to_string();
-    let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+    let label = crate::integrations::github::gh_label_codec::GhLabelCodec
         .encode_iteration_review_closed(&role);
     let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
@@ -139,8 +139,8 @@ pub(crate) async fn handle_dev_ok_iteration(
     let r = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let role = role_from_name(agent_name).to_string();
-    let label = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-        .encode_iteration_dev_ok(&role);
+    let label =
+        crate::integrations::github::gh_label_codec::GhLabelCodec.encode_iteration_dev_ok(&role);
     let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),

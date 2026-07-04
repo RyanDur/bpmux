@@ -1,5 +1,5 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::outcome::{Outcome, OutcomeAction};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;

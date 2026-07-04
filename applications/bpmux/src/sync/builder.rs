@@ -16,9 +16,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             pending: Arc::new(Mutex::new(VecDeque::new())),
             outbox_path: None,
             storage: None,
-            codec: Arc::new(
-                crate::product_management::board::adapters::gh_label_codec::GhLabelCodec,
-            ),
+            codec: Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
             next_mutation_id: AtomicU64::new(1),
             action_tx: None,
             select: std::sync::OnceLock::new(),
@@ -59,9 +57,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             pending: Arc::new(Mutex::new(pending)),
             outbox_path: Some(path),
             storage: None,
-            codec: Arc::new(
-                crate::product_management::board::adapters::gh_label_codec::GhLabelCodec,
-            ),
+            codec: Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
             select: std::sync::OnceLock::new(),
@@ -87,9 +83,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             pending: Arc::new(Mutex::new(pending)),
             outbox_path: None,
             storage: Some(storage),
-            codec: Arc::new(
-                crate::product_management::board::adapters::gh_label_codec::GhLabelCodec,
-            ),
+            codec: Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
             select: std::sync::OnceLock::new(),

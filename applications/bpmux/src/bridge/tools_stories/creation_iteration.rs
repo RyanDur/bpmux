@@ -72,7 +72,7 @@ pub(crate) async fn handle_create_iteration(
         crate::product_management::story::events::StoryEvent::TagAdded {
             meta,
             id: StoryId::new(id),
-            label: crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+            label: crate::integrations::github::gh_label_codec::GhLabelCodec
                 .encode_iteration_order(next_order),
         },
     )

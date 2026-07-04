@@ -223,7 +223,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
                 peer_id: PeerId::local(),
             },
             id: StoryId::new(9200),
-            fields: crate::product_management::board::adapters::github::project_labels(&labels),
+            fields: crate::integrations::github::mapper::project_labels(&labels),
         },
     )));
     let after = orch.story(9200).expect("story present");

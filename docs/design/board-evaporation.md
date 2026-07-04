@@ -135,11 +135,55 @@ NOT part of this relocation.
    verbatim; slice-3 goldens prove it). MUST precede slice 5 — else moving
    `GhLabelCodec` to `integrations/github` while the view still references it would
    turn a domain-internal smell into a domain→github edge.
-5. **CODECs + MAPPERs → `integrations/github`.** The `GhLabelCodec` impl + the
-   `*_decode` mappers + `label_fields`/`comment_codec`/`relationship_block`/
-   `typed_label_mirror`. The `LabelCodec` trait *port* stays in the domain. Aligns
-   with the existing `product_management ↛ crate::github` boundary test. With slice 4
-   done, the read-model no longer references the concrete, so this move is clean.
+5. **CODECs + MAPPERs → `integrations/github`.** ✅ LANDED (2026-07-04). Moved the
+   `GhLabelCodec` impl (`gh_label_codec/`, verbatim dir rename) and the whole vendor-format
+   translation cluster (`story/iteration/outcome/epic_decode` + `label_fields` +
+   `comment_codec`, was `board/adapters/github/`) into `integrations/github/`. The decode
+   cluster was renamed `github → mapper` (the plan's own word; a `github` submodule under
+   `integrations/github/` would read `integrations::github::github`; `mapper` is the honest
+   umbrella for a bidirectional label/field/comment translation layer and avoids the
+   `decode::decode_*` stutter). The `LabelCodec` trait *port* stays domain-side
+   (`board/label_codec.rs`); the moved impl imports it back (integration→domain, correct).
+   ~68 files: 13 renames + one-line consumer repoints (both `crate::` and the `bpmux::`
+   external-integration-test prefix); `cargo fmt` re-collapsed the now-shorter codec-path
+   lines (net −50 LOC). Repoint was two `::`-anchored path substitutions
+   (`adapters::gh_label_codec::` → `integrations::github::gh_label_codec::`,
+   `adapters::github::` → `integrations::github::mapper::`); the trailing `::` kept the
+   `gh_label_codec_tests`/`github_field_completeness_tests` declarations out of the sweep
+   (handled by hand in the mod.rs files). The composition/edge sites that legitimately name
+   the concrete codec (REST handlers, bridge tools, `test_seed`, `sync/builder`) just got
+   the new path. The reducer-decode guard token `adapters::github` → `integrations::github`
+   (proven to falsify: probe injection → red on both it and `project_labels`, reverted).
+   Verified: `cargo check --all-targets` clean, 45 targeted tests green (moved codec/mapper
+   tests, wire goldens, `StoryView` json, all four boundary tests).
+   - **Not caught by the vendor fitness test.** That test forbids `crate::github` (the
+     low-level octocrab client) + `crate::bridge::tracker`, NOT `crate::integrations`; the
+     move strengthens the *architecture* (vendor mapping now sits at the edge) but does not
+     trip/relax the existing lock. The moved files carried zero forbidden vendor token, so
+     the test outcome is unchanged.
+   - **Tolerated temporary edge:** the in-memory test adapter (`in_memory/ingest.rs`,
+     `typed_label_mirror.rs`), still in `product_management/board/adapters/`, now names
+     `crate::integrations::github::{mapper, gh_label_codec}` — an adapter-side coupling, not
+     a read-model leak, invisible to the fitness test. Slice 7 closes it when the in-memory
+     adapter moves out of the domain.
+   - **`relationship_block` + `relationships` deferred — substrate-verified refinement.**
+     The plan text listed `relationship_block` for this move; the substrate says otherwise.
+     `relationship_block` (the `<!-- bpmux-relationships: {json} -->` issue-body marker) is
+     consumed ONLY by `relationships`, and `relationships` (the typed `StoryRelationships`/
+     `IterationRelationships` structs + `Relationships` trait) is consumed by the DOMAIN
+     (`product_management::outcome`), bridge, and the mappers. Moving `relationship_block`
+     alone would force `relationships` (domain) → `integrations::github` — a wrong-direction
+     edge (and one the fitness test wouldn't even catch). Moving `relationships` too would
+     drag ~16 domain/bridge consumers into that edge. This is exactly what the successor arc
+     (`board-as-slice-reshape.md`) reworks: the relationship data becomes first-class
+     container refs (epics-hold-children) and only the body ENCODING is the integration
+     concern — a data/encoding split, not a blind relocation. Their correct evaporation
+     home is therefore the DOMAIN, not `integrations`: they relocate to a
+     `product_management` home in a later evaporation slice (6/7 — `board/` must be empty by
+     slice 8), as-is; the reshape then splits body-encoding from the relationship data. The
+     slice-5-original listing of `relationship_block` under `integrations` was the error.
+     (`typed_label_mirror`, also listed here originally, is part of the in-memory adapter
+     above and moves in slice 7, not here.)
 6. **VIEW_MODELs → `crate::view`.** `StoryView`/`IterationView`/`OutcomeView` +
    `json` + `relationships`. The view depends only on the `LabelCodec` port (slice 4),
    which is domain-side — `crate::view` never names the GitHub codec. Guarded by the

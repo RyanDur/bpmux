@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::list_epic_children::handle_list_epic_children;
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::{
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::mapper::{
     decode_epic_from_story, decode_story_metadata, is_epic_story,
 };
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;

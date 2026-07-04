@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::view_model::*;
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 

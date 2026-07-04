@@ -6,6 +6,9 @@ mod iteration;
 mod outcome;
 mod story;
 
+#[cfg(test)]
+mod tests;
+
 pub struct GhLabelCodec;
 
 impl LabelCodec for GhLabelCodec {

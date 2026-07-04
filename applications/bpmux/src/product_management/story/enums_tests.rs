@@ -102,10 +102,8 @@ fn story_state_github_label_round_trips_via_state_from_labels() {
         BoardState::Retired,
     ] {
         let label = state.github_label();
-        let parsed = crate::product_management::board::adapters::github::state_from_labels(
-            &[label.to_string()],
-            false,
-        );
+        let parsed =
+            crate::integrations::github::mapper::state_from_labels(&[label.to_string()], false);
         assert_eq!(parsed, state, "state_from_labels round-trip for {state:?}");
     }
 }

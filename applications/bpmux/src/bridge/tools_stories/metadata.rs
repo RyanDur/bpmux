@@ -3,7 +3,7 @@ use crate::product_management::story::StoryId;
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
     use crate::product_management::board::label_codec::LabelCodec;
-    crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+    crate::integrations::github::gh_label_codec::GhLabelCodec
         .decode_iteration(label)
         .is_some()
 }
@@ -52,7 +52,7 @@ pub(crate) async fn handle_label_story(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::story::peer::PeerId::local(),
         };
-        let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+        let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
         let tag = codec.decode_tag(label);
         let (event, ok_msg) = match operation {
             "add" => (

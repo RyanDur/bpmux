@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_iteration_in_canonical_store, require_purpose};
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::events::StoryEvent;

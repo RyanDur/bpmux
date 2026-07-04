@@ -1,6 +1,6 @@
 use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::board::sync::SyncError;
 use crate::product_management::story::events::StoryEvent;

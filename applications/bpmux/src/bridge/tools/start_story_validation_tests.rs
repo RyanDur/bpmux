@@ -28,7 +28,7 @@ mod gate_retire_1348 {
         adapter.seed_labels(
             id,
             vec![
-                crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
+                crate::integrations::github::gh_label_codec::GhLabelCodec
                     .encode_story_type(story_type),
             ],
         );

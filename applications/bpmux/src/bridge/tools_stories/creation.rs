@@ -70,7 +70,7 @@ pub(crate) async fn handle_create_story(
         acceptor,
     )
     .await?;
-    if crate::product_management::board::adapters::github::is_epic_title(title) {
+    if crate::integrations::github::mapper::is_epic_title(title) {
         dispatch.dispatch(crate::store::AppAction::Epic(
             crate::product_management::epic::EpicAction::Upserted(vec![
                 crate::product_management::epic::Epic {

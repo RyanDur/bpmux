@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{Outcome, OutcomeAction, OutcomeState, all, reduce};
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
+use crate::integrations::github::mapper::decode_outcome_from_story;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 

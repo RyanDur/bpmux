@@ -20,7 +20,7 @@ const TEST_MODULE_PATH_MARKER: &str = "_tests";
 const REDUCER_DIR: &str = "src/product_management/story/slice/reducers";
 
 const REDUCER_FORBIDDEN_DECODE_TOKENS: &[&str] = &[
-    "adapters::github",
+    "integrations::github",
     "gh_label_codec",
     "_from_labels",
     "project_labels",

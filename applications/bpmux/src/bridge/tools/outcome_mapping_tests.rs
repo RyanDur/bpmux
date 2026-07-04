@@ -4,9 +4,7 @@
 use crate::bridge::tools_stories::{
     handle_reorder_outcome_iteration, handle_unmap_outcome_iteration,
 };
-use crate::product_management::board::adapters::github::{
-    decode_iteration_from_story, decode_outcome_from_story,
-};
+use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,

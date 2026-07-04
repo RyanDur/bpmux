@@ -1,5 +1,5 @@
 use super::label::*;
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::{Iteration, IterationId};
 use chrono::{TimeZone, Utc};
 

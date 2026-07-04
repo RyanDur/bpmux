@@ -2,7 +2,7 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::handle_edit_outcome;
-use crate::product_management::board::adapters::github::decode_outcome_from_story;
+use crate::integrations::github::mapper::decode_outcome_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};
@@ -40,8 +40,7 @@ fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> (Story,
     s.story_type = story_type;
     let mut seed_labels: Vec<String> = labels.iter().map(ToString::to_string).collect();
     seed_labels.push(
-        crate::product_management::board::adapters::gh_label_codec::GhLabelCodec
-            .encode_story_type(story_type),
+        crate::integrations::github::gh_label_codec::GhLabelCodec.encode_story_type(story_type),
     );
     (s, seed_labels)
 }

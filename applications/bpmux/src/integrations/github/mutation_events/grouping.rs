@@ -40,7 +40,7 @@ pub(in crate::integrations::github) async fn push_current_iteration_designated(
     let labels = inner
         .add_label(
             number,
-            crate::product_management::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL,
+            crate::integrations::github::gh_label_codec::CURRENT_ITERATION_LABEL,
         )
         .await
         .map_err(SyncError::Other)?;
@@ -54,7 +54,7 @@ pub(in crate::integrations::github) async fn push_current_iteration_cleared(
     let labels = inner
         .remove_label(
             number,
-            crate::product_management::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL,
+            crate::integrations::github::gh_label_codec::CURRENT_ITERATION_LABEL,
         )
         .await
         .map_err(SyncError::Other)?;

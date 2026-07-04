@@ -1,9 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::board::{board_iterations, board_outcomes, ordered_board_stories};
-use crate::product_management::board::adapters::github::{
-    decode_iteration_from_story, decode_outcome_from_story,
-};
+use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,

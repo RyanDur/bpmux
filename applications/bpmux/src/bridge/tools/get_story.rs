@@ -124,7 +124,7 @@ pub(in crate::bridge) async fn handle_get_story(
     {
         body_out = enrich_body(&body_out, &ctx);
     }
-    let codec = crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
+    let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
     let labels: Vec<serde_json::Value> =
         crate::product_management::board::view_model::wire_labels(&codec, &story)
             .iter()

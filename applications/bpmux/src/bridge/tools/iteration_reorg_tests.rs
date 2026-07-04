@@ -6,8 +6,8 @@ use crate::bridge::tools_stories::{
     handle_move_iteration_member, handle_remove_iteration_member, handle_rename_iteration,
     handle_reorder_iteration,
 };
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::decode_iteration_from_story;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::board::adapters::relationships::{
     IterationRelationships, Relationships,

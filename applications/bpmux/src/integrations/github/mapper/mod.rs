@@ -5,6 +5,9 @@ mod label_fields;
 mod outcome_decode;
 mod story_decode;
 
+#[cfg(test)]
+mod field_completeness_tests;
+
 pub use comment_codec::*;
 pub use epic_decode::*;
 pub use iteration_decode::*;

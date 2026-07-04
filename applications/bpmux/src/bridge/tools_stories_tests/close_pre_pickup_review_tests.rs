@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use crate::product_management::board::adapters::github::decode_iteration_from_story;
+use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::readiness::iteration_readiness;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};

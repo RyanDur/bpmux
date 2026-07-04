@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use crate::product_management::board::adapters::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::adapters::github::decode_story_metadata;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::mapper::decode_story_metadata;
 use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;

@@ -1,4 +1,4 @@
-use crate::product_management::board::adapters::github::{
+use crate::integrations::github::mapper::{
     decode_epic, decode_iteration, decode_outcome, decode_story_metadata, is_epic_issue,
     is_iteration_issue, is_outcome_issue,
 };
