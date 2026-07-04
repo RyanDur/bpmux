@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use super::{AppAction, AppState};
+use crate::kernel::{Listener, ListenerFuture, Reaction};
 use crate::store::ci::{self, CiBroadcastListener};
-use crate::store::kernel::{Listener, ListenerFuture, Reaction};
 use crate::store::reactions::{self, ReactionsAction, ReactionsBroadcastListener};
 use crate::store::roster::{self, RosterBroadcastListener};
 

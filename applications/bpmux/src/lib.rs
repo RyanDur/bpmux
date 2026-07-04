@@ -24,6 +24,9 @@ pub mod diag;
 mod diag_tests;
 pub mod github;
 pub mod integrations;
+pub mod kernel;
+#[cfg(test)]
+mod kernel_tests;
 pub mod location;
 #[cfg(test)]
 mod location_tests;

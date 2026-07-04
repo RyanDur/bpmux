@@ -2,7 +2,7 @@ use std::sync::Weak;
 
 use super::AppAction;
 use super::app::AppState;
-use crate::store::kernel;
+use crate::kernel;
 
 #[derive(Clone)]
 pub struct Select {

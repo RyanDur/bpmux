@@ -4,9 +4,9 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::github::RateLimitObserver;
+use crate::kernel::{Listener, ListenerFuture, Reaction};
 use crate::product_management::board::RefreshDriver;
 use crate::store::app::{AppAction, AppState};
-use crate::store::kernel::{Listener, ListenerFuture, Reaction};
 
 use super::SyncAction;
 

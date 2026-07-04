@@ -5,9 +5,9 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
 use crate::github::RateLimitObserver;
+use crate::kernel::Dispatch;
 use crate::message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
 use crate::session::Session;
-use crate::store::kernel::Dispatch;
 use crate::store::{CiAction, CiPollFetch, CiSnapshot};
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);

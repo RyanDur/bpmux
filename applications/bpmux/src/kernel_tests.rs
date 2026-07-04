@@ -1,8 +1,19 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::panic)]
 
-use super::kernel::{Listener, ListenerFuture, Middleware, Reaction, Store};
-use super::test_support::eventually;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use crate::kernel::{Listener, ListenerFuture, Middleware, Reaction, Store};
+
+async fn eventually(label: &str, mut condition: impl FnMut() -> bool) {
+    for _ in 0..400 {
+        if condition() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    panic!("eventually({label}): condition not satisfied within 2s");
+}
 
 #[derive(Default)]
 struct Counter {

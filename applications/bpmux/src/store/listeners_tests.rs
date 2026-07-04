@@ -12,13 +12,13 @@ use super::{
     RosterSessionBroadcaster,
 };
 use crate::ci::CiState;
+use crate::kernel;
 use crate::message::{Message, MessageType, StateDeltaPayload};
 use crate::product_management::owner_park::OwnerParkListener;
 use crate::product_management::story::slice::StoryAction;
 use crate::session::Session;
 use crate::store::CiBroadcastListener;
 use crate::store::ci::CiSnapshot;
-use crate::store::kernel;
 
 fn owner_park_kernel(session: Arc<Session>) -> Arc<kernel::Store<AppState, AppAction>> {
     let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));

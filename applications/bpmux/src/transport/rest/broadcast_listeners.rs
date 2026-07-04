@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::store::kernel::{Listener, ListenerFuture, Reaction};
+use crate::kernel::{Listener, ListenerFuture, Reaction};
 use crate::store::{AppAction, AppState};
 
 pub struct OutcomeBroadcast {
