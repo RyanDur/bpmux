@@ -107,10 +107,14 @@ NOT part of this relocation.
    `blocked-by:N` labels on GitHub issues simply stop being decoded — no crash, no
    migration. Subtraction runs BEFORE the goldens/relocations so we never pin or move
    code scheduled to die.
-3. **Pin the wire.** Golden round-trip tests locking `StoryView`/`IterationView`/
-   `OutcomeView`/`story_to_board_json` JSON (the message-split S1 move) so slices 5–6
-   are provably byte-identical to the renderer. Pins the POST-subtraction wire (no
-   blocked labels).
+3. **Pin the wire.** ✅ LANDED `879b8b14` (2026-07-04). Golden round-trip tests locking
+   `StoryView`/`IterationView`/`OutcomeView`/`story_to_board_json` JSON (the message-split
+   S1 move) so slices 5–6 are provably byte-identical to the renderer. Pins the
+   POST-subtraction wire (no blocked labels). `StoryView` was already pinned (json_tests.rs:
+   full key-list + exact count 11); added `board/view_model/wire_golden_tests.rs` for
+   `IterationView`/`OutcomeView` (the two that had NO wire test) — full key-set + exact
+   count + nested `readiness`/`BuildingIterationView` shape, proven-to-falsify via a probe
+   field. These goldens travel WITH the view-models to `crate::view` in slice 6.
 4. **Complete the `LabelCodec` port; de-couple the read-model from the concrete codec.**
    The port is INCOMPLETE (`label_codec.rs`): it exposes `encode_ready_order`/
    `encode_iteration`/`encode_parent_epic` but NOT `encode_tag`/`encode_acceptor`
