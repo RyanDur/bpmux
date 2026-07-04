@@ -6,14 +6,14 @@ use crate::product_management::story::{BoardState, Stage, Story};
 use super::{MutationId, QueuedEvent};
 
 pub(super) fn iteration_prefix_class(
-    codec: &dyn crate::product_management::board::label_codec::LabelCodec,
+    codec: &dyn crate::product_management::label_codec::LabelCodec,
     label: &str,
 ) -> Option<String> {
     codec.iteration_label_class(label)
 }
 
 pub(super) fn coalesce_iteration_label_events(
-    codec: &dyn crate::product_management::board::label_codec::LabelCodec,
+    codec: &dyn crate::product_management::label_codec::LabelCodec,
     queue: &mut VecDeque<QueuedEvent>,
     new_event: &StoryEvent,
     new_id: MutationId,

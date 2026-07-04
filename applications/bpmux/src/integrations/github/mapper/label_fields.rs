@@ -28,7 +28,7 @@ pub fn iteration_order_from_labels(labels: &[String]) -> Option<u32> {
 }
 
 pub fn ready_order_from_labels(labels: &[String]) -> Option<u32> {
-    use crate::product_management::board::label_codec::LabelCodec;
+    use crate::product_management::label_codec::LabelCodec;
     labels
         .iter()
         .filter_map(|l| {
@@ -90,7 +90,7 @@ fn is_iteration_position_label(label: &str) -> bool {
 }
 
 pub(crate) fn is_position_label(label: &str) -> bool {
-    use crate::product_management::board::label_codec::LabelCodec;
+    use crate::product_management::label_codec::LabelCodec;
     is_iteration_position_label(label)
         || crate::integrations::github::gh_label_codec::GhLabelCodec.is_ready_order_label(label)
 }

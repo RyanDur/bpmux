@@ -1,4 +1,4 @@
-use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::label_codec::LabelCodec;
 use crate::product_management::story::Story;
 use crate::view::board::StoryView;
 

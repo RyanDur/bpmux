@@ -1,5 +1,5 @@
-use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::iteration::label::IterationLabelParts;
+use crate::product_management::label_codec::LabelCodec;
 use crate::product_management::story::{Acceptor, Tag};
 
 mod iteration;

@@ -7,7 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use super::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
-use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::label_codec::LabelCodec;
 use crate::session;
 
 #[derive(Deserialize)]

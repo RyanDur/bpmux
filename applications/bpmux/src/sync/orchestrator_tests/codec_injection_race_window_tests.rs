@@ -16,8 +16,8 @@ use crate::sync::SyncOrchestrator;
 
 mod codec_injection_substrate {
     use super::*;
-    use crate::product_management::board::label_codec::LabelCodec;
     use crate::product_management::iteration::label::IterationLabelParts;
+    use crate::product_management::label_codec::LabelCodec;
     use crate::product_management::story::{Acceptor, Tag};
     use std::sync::Arc;
 

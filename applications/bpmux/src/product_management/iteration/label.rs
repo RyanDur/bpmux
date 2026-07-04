@@ -1,5 +1,5 @@
-use crate::product_management::board::label_codec::LabelCodec;
 use crate::product_management::iteration::IterationId;
+use crate::product_management::label_codec::LabelCodec;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IterationLabelParts {

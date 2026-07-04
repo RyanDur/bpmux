@@ -42,6 +42,7 @@ macro_rules! entity_id {
 pub mod board;
 pub mod epic;
 pub mod iteration;
+pub mod label_codec;
 pub mod outcome;
 pub mod roadmap;
 pub mod story;

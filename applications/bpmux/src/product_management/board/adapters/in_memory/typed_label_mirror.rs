@@ -1,6 +1,6 @@
 use super::InnerState;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::product_management::board::label_codec::LabelCodec;
+use crate::product_management::label_codec::LabelCodec;
 use crate::product_management::story::{Acceptor, BoardState, Tag};
 
 pub(super) fn tag_set(s: &mut InnerState, number: u64, tag: Tag) {

@@ -304,7 +304,7 @@ fn json_str<'a>(json: &'a serde_json::Value, key: &str) -> &'a str {
 
 struct StubLabelCodec;
 
-impl crate::product_management::board::label_codec::LabelCodec for StubLabelCodec {
+impl crate::product_management::label_codec::LabelCodec for StubLabelCodec {
     fn decode_ready_order(&self, label: &str) -> Option<u32> {
         label.strip_prefix("rdy:")?.parse().ok()
     }

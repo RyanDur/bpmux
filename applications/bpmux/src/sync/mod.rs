@@ -56,8 +56,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
     pub(super) outbox_path: Option<PathBuf>,
     pub(super) storage: Option<Arc<dyn crate::storage::Storage>>,
-    pub(super) codec:
-        Arc<dyn crate::product_management::board::label_codec::LabelCodec + Send + Sync>,
+    pub(super) codec: Arc<dyn crate::product_management::label_codec::LabelCodec + Send + Sync>,
     pub(super) next_mutation_id: AtomicU64,
     pub(super) action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
     pub(super) select: std::sync::OnceLock<crate::store::Select>,

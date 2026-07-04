@@ -1,5 +1,4 @@
 pub mod adapters;
-pub mod label_codec;
 pub mod sync;
 
 #[cfg(test)]

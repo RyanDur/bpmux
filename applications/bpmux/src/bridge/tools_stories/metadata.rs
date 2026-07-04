@@ -2,7 +2,7 @@ use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 use crate::product_management::story::StoryId;
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
-    use crate::product_management::board::label_codec::LabelCodec;
+    use crate::product_management::label_codec::LabelCodec;
     crate::integrations::github::gh_label_codec::GhLabelCodec
         .decode_iteration(label)
         .is_some()
