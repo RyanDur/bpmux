@@ -140,7 +140,12 @@ design.
 `product_management`**; `bridge/tools_stories` dissolves; `bridge` becomes
 translation only. Ordering is deliberate: the orchestrator moves out (Phase 0)
 *before* the verdicts move in, so the new write path lands in a domain holding
-only entities, policy, and projections.
+only entities, policy, and projections. Runs WITH the board-as-slice reshape
+(`board-as-slice-reshape.md`, converged 2026-07-04): labels collapse to the
+GitHub adapter (the wire speaks typed facets; the renderer's mirror label-parser
+dies), containers own membership/order (epics gain children refs; `parent_epic`/
+`iteration_slot`/`ready_order` leave the story), and `Tag::DeskCheckFail`
+dissolves into the verdict model.
 
 **Phase 2 — the lift.** Components become crates under `components/`; the four
 applications become thin shells. Cargo then *enforces* what Phase 0 established:

@@ -76,45 +76,81 @@ NOT part of this relocation.
    to `crate::sync` (where they already live) — that loop is cut; and the compiler caught
    the one grep-invisible class — brace-grouped imports `board::{A, B, C}` spanning
    multiple destination homes — which were split per-home.
-2. **Pin the wire.** Golden round-trip tests locking `StoryView`/`IterationView`/
-   `OutcomeView`/`story_to_board_json` JSON (the message-split S1 move) so slices 4–5
-   are provably byte-identical to the renderer.
-3. **Complete the `LabelCodec` port; de-couple the read-model from the concrete codec.**
+2. **Remove the unfinished `blocked_by` mechanism (SUBTRACTION — Ryan, 2026-07-04).**
+   Verified at substrate: `blocked_by` has NO first-class affordance (settable only by
+   poking a raw `blocked-by:N` label through the generic label-edit paths —
+   `bridge/tools_stories/metadata.rs`, `transport/rest/labels.rs`); the bare
+   `Tag::Blocked` flag is produced by NO bpmux path at all (only hand-labeling the
+   GitHub issue) and renders degenerate ("blocked — (no blocker specified)"). A story
+   exists on the board to build blockers RIGHT (first-class block action + relation,
+   no labels) — carrying the half-built vestige through the refactor teaches the next
+   agent the wrong pattern. Remove, one vertical slice: `Story.blocked_by` +
+   `Tag::Blocked`; `BlockedBySet`/`BlockedByCleared` events + lifecycle reducer arms;
+   codec pair (`encode/decode_blocked_by`, `BLOCKED_LABEL`, `BLOCKED_BY_PREFIX`) +
+   `blocked_by_from_labels`; the label-edit set paths; `wire_labels` blocked entries;
+   `integrations/github/mutation_events/blocked.rs`; `typed_label_mirror`/`story_decode`/
+   `in_memory`/`sync/ingest`/`conflict.rs` arms; renderer board-side (`blocked` badge
+   kind + `BlockerGlyph`, `blockerIdFromLabels`, the `--blocked` row class,
+   `DrillIn`/`UnscheduledList` traces) + their tests. `Tag` shrinks to
+   `{DeskCheckFail}`. CAUTION: roster-presence `Blocked` (owner-park;
+   `usePresence.ts`, `Sidebar.tsx`, `MemberList.tsx`, `PresenceWire::Blocked`) is an
+   UNRELATED concept sharing the name — do not touch. Inert data: any live
+   `blocked-by:N` labels on GitHub issues simply stop being decoded — no crash, no
+   migration. Subtraction runs BEFORE the goldens/relocations so we never pin or move
+   code scheduled to die.
+3. **Pin the wire.** Golden round-trip tests locking `StoryView`/`IterationView`/
+   `OutcomeView`/`story_to_board_json` JSON (the message-split S1 move) so slices 5–6
+   are provably byte-identical to the renderer. Pins the POST-subtraction wire (no
+   blocked labels).
+4. **Complete the `LabelCodec` port; de-couple the read-model from the concrete codec.**
    The port is INCOMPLETE (`label_codec.rs`): it exposes `encode_ready_order`/
-   `encode_iteration`/`encode_parent_epic` but NOT `encode_tag`/`encode_blocked_by`/
-   `encode_acceptor` (those are inherent methods on `GhLabelCodec`). So `StoryView::
-   wire_labels` — a read-model, domain side — backdoors to the concrete `GhLabelCodec`
-   for those three (`view_model/story.rs:45,48,51`): GitHub on the WRONG side of the
-   adapter. Fix: promote the three `encode_*` methods from `GhLabelCodec`'s inherent
-   block onto the `LabelCodec` trait, and repoint `wire_labels` to the injected
-   `codec: &C` for ALL labels (drop the `GhLabelCodec` import). After this NO
-   production read-model names the concrete codec — the view is generic over the port.
-   Byte-identical (the method bodies move verbatim; goldens from slice 2 prove it).
-   MUST precede slice 4 — else moving `GhLabelCodec` to `integrations/github` while the
-   view still references it would turn a domain-internal smell into a domain→github edge.
-4. **CODECs + MAPPERs → `integrations/github`.** The `GhLabelCodec` impl + the
+   `encode_iteration`/`encode_parent_epic` but NOT `encode_tag`/`encode_acceptor`
+   (inherent methods on `GhLabelCodec`; the third backdoor, `encode_blocked_by`, dies
+   in slice 2). So `StoryView::wire_labels` — a read-model, domain side — backdoors to
+   the concrete `GhLabelCodec` (`view_model/story.rs`): GitHub on the WRONG side of
+   the adapter. Fix: promote `encode_tag` + `encode_acceptor` onto the `LabelCodec`
+   trait, and repoint `wire_labels` to the injected `codec: &C` for ALL labels (drop
+   the `GhLabelCodec` import). After this NO production read-model names the concrete
+   codec — the view is generic over the port. Byte-identical (method bodies move
+   verbatim; slice-3 goldens prove it). MUST precede slice 5 — else moving
+   `GhLabelCodec` to `integrations/github` while the view still references it would
+   turn a domain-internal smell into a domain→github edge.
+5. **CODECs + MAPPERs → `integrations/github`.** The `GhLabelCodec` impl + the
    `*_decode` mappers + `label_fields`/`comment_codec`/`relationship_block`/
    `typed_label_mirror`. The `LabelCodec` trait *port* stays in the domain. Aligns
-   with the existing `product_management ↛ crate::github` boundary test. With slice 3
+   with the existing `product_management ↛ crate::github` boundary test. With slice 4
    done, the read-model no longer references the concrete, so this move is clean.
-5. **VIEW_MODELs → `crate::view`.** `StoryView`/`IterationView`/`OutcomeView` +
-   `json` + `relationships`. The view depends only on the `LabelCodec` port (slice 3),
+6. **VIEW_MODELs → `crate::view`.** `StoryView`/`IterationView`/`OutcomeView` +
+   `json` + `relationships`. The view depends only on the `LabelCodec` port (slice 4),
    which is domain-side — `crate::view` never names the GitHub codec. Guarded by the
-   slice-2 wire goldens.
-6. **PROJECTIONs → their per-consumer homes**; **`SourceAdapter` port + `in_memory`
+   slice-3 wire goldens.
+7. **PROJECTIONs → their per-consumer homes**; **`SourceAdapter` port + `in_memory`
    adapter → domain/adapters home**. Each projection file's destination is decided
    by the who-consumes-it test (below), file-by-file at execution, and recorded here.
    (`in_memory/typed_label_mirror.rs` also names the concrete `GhLabelCodec` — an
    adapter-side coupling, not a read-model leak; resolve when the in-memory adapter moves.)
-7. **Delete `board/mod.rs`.** Board has evaporated. Add a fitness test asserting the
+8. **Delete `board/mod.rs`.** Board has evaporated. Add a fitness test asserting the
    `product_management::board` path no longer exists (a divisor-less husk left behind
    is the regression to refuse).
 
 ## Key decisions (so they are not re-litigated)
 
-- **Pure relocation, wire byte-identical.** No `StoryView` field is added, removed, or
+- **Subtraction precedes relocation (Ryan, 2026-07-04).** Never spend slices pinning
+  or carefully moving code that is scheduled to die. The `blocked_by` vestige comes
+  out (slice 2) BEFORE the goldens pin the wire and before the codec/view relocations
+  — every downstream slice moves less. Same reasoning killed the original slice-4 plan
+  to promote `encode_blocked_by` onto the port.
+- **`blocked_by` is removed, not finished (Ryan, 2026-07-04).** It was a GitHub-label
+  vestige: no first-class affordance, unreachable bare flag, degenerate rendering. The
+  board story for blockers builds the capability RIGHT later (a real block action +
+  relation + glyph, no labels). Removing ≠ rejecting the feature — it clears the
+  half-built mechanism so the future build starts clean. Successor design:
+  `board-as-slice-reshape.md` records the target model.
+- **Pure relocation, wire byte-identical.** Apart from the slice-2 subtraction (a
+  deliberate, Ryan-directed removal), no `StoryView` field is added, removed, or
   renamed in this arc; the renderer contract is frozen and pinned by goldens BEFORE
-  any view-model file moves. A reshape is a later, coordinated step.
+  any view-model file moves. The broader reshape is a later step —
+  `board-as-slice-reshape.md`.
 - **The port stays, the impl travels.** `SourceAdapter` and `LabelCodec` are ports the
   domain owns (gateway canon); their GitHub implementations move to `integrations/github`.
 - **GitHub stays on the far side of the adapter (Ryan, 2026-07-03, standing).** No
@@ -122,7 +158,7 @@ NOT part of this relocation.
   the concrete `GhLabelCodec`; it depends only on the `LabelCodec` port. The concrete
   codec is injected from an edge/composition (REST handlers, bridge tools, test seeds —
   where naming it is correct). The port must be COMPLETE enough that no consumer needs
-  to backdoor to the impl (slice 3 closes the current gap). The existing
+  to backdoor to the impl (slice 4 closes the current gap). The existing
   `product_management ↛ crate::github` fitness test guards the vendor mechanism; this
   principle extends it to the concrete codec once it lands in `integrations/github`.
 - **Façade dissolution first.** Rewriting the pass-through re-exports (slice 1) is what
@@ -135,16 +171,23 @@ NOT part of this relocation.
   outward (feeds `/api/board` or another wire snapshot) goes to `crate::view`; a
   projection consumed by domain policy (a reducer, a gate, workflow logic) is a
   domain selector and stays in `product_management`. Decide per-file against actual
-  consumers at slice 5, never by cluster-membership alone.
-- **`PeerId` travels with slice 1, not slice 5** — its consumer set overlaps the
+  consumers at slice 7, never by cluster-membership alone.
+- **`PeerId` travels with slice 1, not the projections slice** — its consumer set overlaps the
   façade's (rationale in the cluster table above); the timing is a substrate-verified
   decision, not a preference.
 
 ## Fitness functions
 
-- Extend the wire goldens (slice 2) — they refuse a silent `StoryView` reshape.
+- Extend the wire goldens (slice 3) — they refuse a silent `StoryView` reshape.
 - `product_management::boundary_tests` already forbids `crate::github`/`octocrab` in the
-  domain; the CODEC/MAPPER move (slice 3) is *toward* that boundary (out of the domain
+  domain; the CODEC/MAPPER move (slice 5) is *toward* that boundary (out of the domain
   edge-ward), so it strengthens, never weakens, the existing lock.
-- Slice 6 adds a "`product_management::board` is gone" existence check (mirrors the
+- Slice 8 adds a "`product_management::board` is gone" existence check (mirrors the
   storage/transport boundary-test pattern).
+
+## Successor arc
+
+`board-as-slice-reshape.md` — labels off the wire entirely (typed facets), containers
+own membership/order (epics-hold-children finish, iteration ordering), `DeskCheckFail`
+collapses into the Phase-1 verdict model. Converged with Ryan 2026-07-04; sequenced
+AFTER this evaporation (it is a wire reshape; this arc is wire-preserving).
