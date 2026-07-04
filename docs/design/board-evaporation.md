@@ -116,6 +116,13 @@ NOT part of this relocation.
    count + nested `readiness`/`BuildingIterationView` shape, proven-to-falsify via a probe
    field. These goldens travel WITH the view-models to `crate::view` in slice 6.
 4. **Complete the `LabelCodec` port; de-couple the read-model from the concrete codec.**
+   ✅ LANDED `ca67d034` (2026-07-04). `encode_tag` + `encode_acceptor` promoted onto the
+   `LabelCodec` trait; `StoryView::wire_labels` repointed to the injected `codec` for every
+   label facet — zero `GhLabelCodec` in the read-model. Byte-identical (wire goldens +
+   json_tests green). NB: THREE `LabelCodec` impls exist (GhLabelCodec + two test stubs,
+   one written with a fully-qualified `impl crate::...::LabelCodec for` that a plain
+   `impl LabelCodec for` grep misses) — enumerate impls with a loose pattern before
+   extending the trait.
    The port is INCOMPLETE (`label_codec.rs`): it exposes `encode_ready_order`/
    `encode_iteration`/`encode_parent_epic` but NOT `encode_tag`/`encode_acceptor`
    (inherent methods on `GhLabelCodec`; the third backdoor, `encode_blocked_by`, dies
