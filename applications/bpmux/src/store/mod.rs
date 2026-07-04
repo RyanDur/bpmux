@@ -12,6 +12,7 @@ use crate::transport::rest::broadcast_listeners::{
 };
 use app::OwnerParkListener;
 
+pub use crate::board;
 pub use crate::ci::slice as ci;
 pub use crate::reactions::slice as reactions;
 pub use crate::roster;

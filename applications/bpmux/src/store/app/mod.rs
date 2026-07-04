@@ -4,6 +4,7 @@ use crate::product_management::epic::{self, EpicAction, EpicState};
 use crate::product_management::iteration::{self, IterationAction, IterationState};
 use crate::product_management::outcome::{self, OutcomeAction, OutcomeState};
 use crate::product_management::story::slice::{self, Stories, StoryAction};
+use crate::store::board::{self, BoardAction, BoardPlacements};
 use crate::store::ci::{self, CiAction, CiState};
 use crate::store::reactions::{self, ReactionsAction, ReactionsState};
 use crate::store::roster::{self, RosterAction, RosterState};
@@ -23,6 +24,7 @@ pub struct AppState {
     pub iterations: Arc<IterationState>,
     pub epics: Arc<EpicState>,
     pub stories: Arc<Stories>,
+    pub board: Arc<BoardPlacements>,
 }
 
 #[derive(Clone)]
@@ -35,6 +37,7 @@ pub enum AppAction {
     Iteration(IterationAction),
     Epic(EpicAction),
     Story(StoryAction),
+    Board(BoardAction),
 }
 
 impl From<RosterAction> for AppAction {
@@ -82,6 +85,12 @@ impl From<EpicAction> for AppAction {
 impl From<StoryAction> for AppAction {
     fn from(action: StoryAction) -> Self {
         Self::Story(action)
+    }
+}
+
+impl From<BoardAction> for AppAction {
+    fn from(action: BoardAction) -> Self {
+        Self::Board(action)
     }
 }
 
@@ -134,6 +143,13 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             stories: Arc::new(slice::reduce(&state.stories, action)),
             ..state.clone()
         },
+        AppAction::Board(action) => match board::reduce(&state.board, action) {
+            Some(board) => AppState {
+                board: Arc::new(board),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
     }
 }
 
@@ -156,6 +172,7 @@ pub(super) fn validate_and_log(action: &AppAction) {
         AppAction::Iteration(_) => "Iteration",
         AppAction::Epic(_) => "Epic",
         AppAction::Story(_) => "Story",
+        AppAction::Board(_) => "Board",
     };
     crate::diag::log_diag(&format!("store: dispatch {label}"));
 }
