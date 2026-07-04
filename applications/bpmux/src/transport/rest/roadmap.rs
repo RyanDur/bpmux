@@ -14,7 +14,7 @@ pub struct RoadmapQuery {
 }
 
 pub async fn get_roadmap(
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     Query(query): Query<RoadmapQuery>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {

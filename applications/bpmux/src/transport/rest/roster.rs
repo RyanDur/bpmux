@@ -33,7 +33,7 @@ pub async fn get_roster(
 }
 
 pub async fn get_sync_status(
-    axum::Extension(refresh): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(refresh): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> impl IntoResponse {
     let status = match refresh {
         Some(r) => r.snapshot_status(),
@@ -47,7 +47,7 @@ pub async fn get_sync_status(
 }
 
 pub async fn post_force_sync(
-    axum::Extension(refresh): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(refresh): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> impl IntoResponse {
     let Some(r) = refresh else {
         return (
@@ -71,7 +71,7 @@ pub async fn post_force_sync(
 }
 
 pub async fn post_acknowledge_dropped(
-    axum::Extension(refresh): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(refresh): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> impl IntoResponse {
     let Some(r) = refresh else {
         return (

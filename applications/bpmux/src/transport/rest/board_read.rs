@@ -6,7 +6,7 @@ use super::shared::{TrackerHandle, err_body, json_headers};
 
 pub async fn get_board(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> impl IntoResponse {
     if let Some(refresh) = orchestrator.as_ref() {
         if refresh.store_is_empty() {
@@ -65,7 +65,7 @@ pub async fn get_board(
 }
 
 pub async fn get_iterations(
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {
         return (

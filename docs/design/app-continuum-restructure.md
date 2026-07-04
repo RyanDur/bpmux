@@ -67,10 +67,16 @@ reaches up into `ci` and `store` (`message/state_payloads.rs:61,149,164`) — sp
    modules (`storage/mod.rs:4-12`). Feature-first wants each feature to declare a
    repo port and storage to implement it — the arrow is backwards.
 4. **`transport` is a god-edge meshed with other edges.** It fans out to `bridge`,
-   `integrations`, `github`, and reaches into the composition root for
-   `OrchestratorHandle` (`server/mod.rs:9` — a domain type alias misplaced in
-   `server`; 15+ transport handlers name it). Edges should be independent adapters
-   over feature ports, not a mesh.
+   `integrations`, `github`. ~~and reaches into the composition root for
+   `OrchestratorHandle`.~~ **The composition-root reach is RESOLVED (2026-07-03):**
+   `OrchestratorHandle` now homes in `crate::sync` beside `RefreshDriver` (it is
+   `Option<Arc<dyn RefreshDriver>>`), reached via a two-move arc that first lifted
+   `CiStateStore`/`CiStateReport` out of `transport` into the `ci` feature — cutting
+   the `sync ↔ transport` cycle that had blocked the alias's move. A fitness test
+   (`transport::boundary_tests::transport_edge_names_no_composition_root`) now fails
+   the build if any transport source names `crate::server`. Remaining #4 residue: the
+   god-edge mesh itself (transport fanning out to bridge/integrations/github) — edges
+   should be independent adapters over feature ports, not a mesh.
 5. **Kernel and policy cycles.** `store ↔ product_management` (the app-store
    composition in `store/app/mod.rs:3-6` aggregates domain slices; the slices
    import the kernel) and `workflow ↔ product_management` (shared value types —
@@ -141,6 +147,11 @@ imports `octocrab` / `reqwest` / `crate::github` / `crate::bridge::tracker`.
 `crate::transport` and `crate::storage` join it. The structure doesn't just
 prompt the next agent; it refuses their regression at compile time. At Phase 2
 the crate graph subsumes these tests.
+
+Landed boundary tests so far: `storage::boundary_tests` (persistence edge composes
+per-feature repo ports only — violation #3); `transport::boundary_tests`
+(`transport_edge_names_no_composition_root` — the transport edge names no
+`crate::server`, locking the OrchestratorHandle relocation — violation #4).
 
 ## Key decisions (so they are not re-litigated)
 

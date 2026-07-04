@@ -37,7 +37,7 @@ pub async fn get_story_comments(
 
 pub async fn get_story_timeline(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
     let Some(tracker) = tracker else {

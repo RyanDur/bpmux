@@ -2,11 +2,9 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::product_management::board::RefreshDriver;
 use crate::session;
+use crate::sync::OrchestratorHandle;
 use crate::transport;
-
-pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
 
 fn startup_routing_id(routing: &crate::routing::RoutingStore, identity: &str) -> String {
     routing

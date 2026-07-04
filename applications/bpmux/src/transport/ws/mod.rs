@@ -42,7 +42,7 @@ struct WsDeps {
     pty_registry: Arc<crate::room::LivePtyRegistry>,
     routing: Arc<crate::routing::RoutingStore>,
     tracker: crate::transport::rest::TrackerHandle,
-    orchestrator: crate::server::OrchestratorHandle,
+    orchestrator: crate::sync::OrchestratorHandle,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -54,7 +54,7 @@ pub async fn ws_handler(
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
     axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
     axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> Response {
     let deps = WsDeps {
         session,

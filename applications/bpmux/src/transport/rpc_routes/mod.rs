@@ -6,8 +6,8 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use serde_json::Value;
 
-use crate::server::OrchestratorHandle;
 use crate::session;
+use crate::sync::OrchestratorHandle;
 
 mod state_delta;
 mod tool_dispatch;

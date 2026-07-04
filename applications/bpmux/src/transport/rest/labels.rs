@@ -35,7 +35,7 @@ fn reorder_label_ops(payload: &LabelMutationPayload) -> Vec<LabelOp> {
 
 pub async fn post_story_labels(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     axum::extract::Path(id): axum::extract::Path<u64>,
     Json(payload): Json<LabelMutationPayload>,

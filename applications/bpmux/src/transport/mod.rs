@@ -20,6 +20,8 @@ pub mod ws;
 #[cfg(test)]
 mod auth_tests;
 #[cfg(test)]
+mod boundary_tests;
+#[cfg(test)]
 mod ci_log_persistence;
 #[cfg(test)]
 mod ci_watcher_tests;

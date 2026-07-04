@@ -20,7 +20,7 @@ pub struct AcceptPayload {
 
 pub async fn post_accept_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<AcceptPayload>,
 ) -> impl IntoResponse {
@@ -84,7 +84,7 @@ pub struct RejectPayload {
 
 pub async fn post_reject_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<RejectPayload>,
 ) -> impl IntoResponse {

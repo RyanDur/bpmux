@@ -9,7 +9,7 @@ use crate::transport;
 use crate::transport::auth::AuthState;
 use crate::transport::ci_log_store::CiLogStore;
 
-use super::OrchestratorHandle;
+use crate::sync::OrchestratorHandle;
 
 pub(super) struct RouterDeps {
     pub auth_state: AuthState,

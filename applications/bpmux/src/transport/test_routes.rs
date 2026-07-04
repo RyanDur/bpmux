@@ -10,8 +10,8 @@ use serde::Deserialize;
 use crate::bridge;
 use crate::message::{Message, MessageType};
 use crate::product_management::board::RefreshDriver;
-use crate::server::OrchestratorHandle;
 use crate::session;
+use crate::sync::OrchestratorHandle;
 
 fn fire_board_invalidate(session: &Arc<session::Session>) {
     let delta = Message {

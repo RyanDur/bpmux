@@ -10,6 +10,8 @@ use crate::product_management::story::{FreeComment, GateComment, Story};
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
 
+pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
+
 pub trait RefreshDriver: Send + Sync {
     fn bind_select(&self, _select: crate::store::Select) {}
     fn bind_story_dispatch(&self, _dispatch: Box<dyn Fn(StoryAction) + Send + Sync>) {}

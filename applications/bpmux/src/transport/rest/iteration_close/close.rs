@@ -23,7 +23,7 @@ pub struct CloseIterationRequest {
 pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatch): axum::Extension<crate::store::Dispatch>,
     body: Option<axum::Json<CloseIterationRequest>>,
 ) -> impl IntoResponse {
@@ -43,7 +43,7 @@ pub async fn post_close_iteration(
 async fn post_close_iteration_canonical(
     session: Arc<session::Session>,
     tracker: TrackerHandle,
-    orchestrator: crate::server::OrchestratorHandle,
+    orchestrator: crate::sync::OrchestratorHandle,
     dispatch: crate::store::Dispatch,
     iteration_id: u64,
 ) -> (

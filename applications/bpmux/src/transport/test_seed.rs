@@ -71,7 +71,7 @@ pub async fn post_reset_messages(
 
 pub async fn post_reset_stories(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {
         return (
@@ -137,7 +137,7 @@ pub struct SeedStoriesBody {
 
 pub async fn post_seed_stories(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(orchestrator): axum::Extension<crate::server::OrchestratorHandle>,
+    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(body): Json<SeedStoriesBody>,
 ) -> impl IntoResponse {
