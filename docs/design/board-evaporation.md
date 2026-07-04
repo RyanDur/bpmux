@@ -77,6 +77,15 @@ NOT part of this relocation.
    the one grep-invisible class — brace-grouped imports `board::{A, B, C}` spanning
    multiple destination homes — which were split per-home.
 2. **Remove the unfinished `blocked_by` mechanism (SUBTRACTION — Ryan, 2026-07-04).**
+   ✅ LANDED `32842070` (2026-07-04). Net −557 LOC across 41 files, done on Opus.
+   Execution note: the removal maps (from read-only Explore agents) covered unit tests
+   but MISSED the Playwright e2e specs — the pre-push e2e gate caught 3 real failures in
+   `desk-check-390.spec.ts` (an entire spec dedicated to the blocked visual indicator,
+   incl. an assertion on the degenerate `/no blocker specified/` tooltip). That whole
+   file was deleted and folded into the slice (amend, unpushed → atomic). Lesson for the
+   remaining slices: enumerate `applications/electron/tests/*.spec.ts` too, not just
+   `*.test.ts`. The other blocked e2e refs (`real-backend.spec.ts`) are all
+   roster-presence — correctly kept.
    Verified at substrate: `blocked_by` has NO first-class affordance (settable only by
    poking a raw `blocked-by:N` label through the generic label-edit paths —
    `bridge/tools_stories/metadata.rs`, `transport/rest/labels.rs`); the bare
