@@ -30,7 +30,16 @@ So board/ is mostly a façade; its genuine content is four clusters:
 | **VIEW_MODELs** | `view_model/{story,iteration,outcome}.rs` (`StoryView`/`IterationView`/`OutcomeView`), `adapters/json.rs`, `adapters/relationships.rs` | read-model (`crate::view` — where `roadmap` already lives) | wire-FACING |
 | **PROJECTIONs** | `arrangement.rs` (`column_for`), `ready_order_label.rs` (`sort_board_ready_by_membership`), `velocity/*` | projection fns (`crate::view` / domain selectors) | backend-pure |
 | SYNC port + in-mem adapter | `sync.rs` (`SourceAdapter` port), `adapters/in_memory/*` | domain keeps the port; in-memory adapter → an adapters home | backend-pure |
-| entity | `peer.rs` (`PeerId`) | domain (`product_management`/`story`) | backend-pure |
+| entity | `peer.rs` (`PeerId`) | domain (`product_management/story/peer.rs`, beside `events.rs`) — **moves in slice 1**, see why below | backend-pure |
+
+**Why `PeerId` moves first, not last (verified at substrate 2026-07-03):**
+`story/events.rs:4` — the domain's own `EventMeta` — imports `board::peer::PeerId`,
+so the domain's event type reaches INTO the fossil, not just through it. And ~44
+references across ~30 files (all of `bridge/tools_stories`, all of `sync/`,
+transport, storage tests) name `board::PeerId`/`board::peer::PeerId` at `EventMeta`
+construction sites — largely the SAME files slice 1 rewrites off the pass-throughs.
+Deferring `PeerId` to slice 5 would run the same mechanical fan-out over the same
+file set twice and leave slice 1's endpoint dishonest. One fan-out, once.
 
 ## The classification: overwhelmingly backend-pure
 
@@ -52,11 +61,14 @@ NOT part of this relocation.
 
 ## Slices (each backend-pure, CI-green, fitness-locked where it caps a boundary)
 
-1. **Dissolve the façade.** Rewrite consumers off the pass-through re-exports
+1. **Dissolve the façade + home `PeerId`.** Move `peer.rs` → `product_management/
+   story/peer.rs` (verbatim; it is `EventMeta`'s own field type, so it lives beside
+   `events.rs`), then rewrite consumers off the pass-through re-exports
    (`board::{StoryEvent, MutationId, RefreshDriver, SyncOrchestrator, PersistError, …}`)
-   to their real homes (`crate::product_management::story::events`, `crate::sync`).
-   Large mechanical fan-out, zero behavior change — shrinks board to its genuine
-   content and makes every remaining board import name real board content.
+   AND off `board::peer::PeerId`/`board::PeerId` to their real homes
+   (`crate::product_management::story::{events, peer}`, `crate::sync`). One
+   mechanical fan-out over the shared consumer set, zero behavior change — after
+   this slice, nothing outside `board/` imports it except genuine cluster consumers.
 2. **Pin the wire.** Golden round-trip tests locking `StoryView`/`IterationView`/
    `OutcomeView`/`story_to_board_json` JSON (the message-split S1 move) so slices 4–5
    are provably byte-identical to the renderer.
@@ -66,8 +78,9 @@ NOT part of this relocation.
    with the existing `product_management ↛ crate::github` boundary test.
 4. **VIEW_MODELs → `crate::view`.** `StoryView`/`IterationView`/`OutcomeView` +
    `json` + `relationships`. Guarded by the slice-2 wire goldens.
-5. **PROJECTIONs → `crate::view`/selectors**; **`SourceAdapter` port + `in_memory`
-   adapter → domain/adapters home**; **`PeerId` → domain**.
+5. **PROJECTIONs → their per-consumer homes**; **`SourceAdapter` port + `in_memory`
+   adapter → domain/adapters home**. Each projection file's destination is decided
+   by the who-consumes-it test (below), file-by-file at execution, and recorded here.
 6. **Delete `board/mod.rs`.** Board has evaporated. Add a fitness test asserting the
    `product_management::board` path no longer exists (a divisor-less husk left behind
    is the regression to refuse).
@@ -84,6 +97,15 @@ NOT part of this relocation.
   gates nothing downstream on it beyond legibility.
 - **`crate::view` is the read-model home** — already true for `roadmap`; the view-models
   join it, not a new module.
+- **Projection destinations resolve by the who-consumes-it test.** "`crate::view` /
+  domain selectors" is two homes, not one: a projection whose output is serialized
+  outward (feeds `/api/board` or another wire snapshot) goes to `crate::view`; a
+  projection consumed by domain policy (a reducer, a gate, workflow logic) is a
+  domain selector and stays in `product_management`. Decide per-file against actual
+  consumers at slice 5, never by cluster-membership alone.
+- **`PeerId` travels with slice 1, not slice 5** — its consumer set overlaps the
+  façade's (rationale in the cluster table above); the timing is a substrate-verified
+  decision, not a preference.
 
 ## Fitness functions
 
