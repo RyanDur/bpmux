@@ -1,8 +1,5 @@
 use chrono::{DateTime, Utc};
 
-use crate::product_management::board::adapters::relationships::{
-    OutcomeRelationships, Relationships,
-};
 use crate::product_management::iteration::IterationId;
 use crate::product_management::story::Horizon;
 
@@ -79,16 +76,6 @@ impl Outcome {
         };
         Outcome {
             lifecycle,
-            ..self.clone()
-        }
-    }
-
-    pub fn with_body(&self, body: &str) -> Outcome {
-        Outcome {
-            body: Some(body.to_string()),
-            iterations: OutcomeRelationships::read_from_body(body)
-                .unwrap_or_default()
-                .iterations,
             ..self.clone()
         }
     }

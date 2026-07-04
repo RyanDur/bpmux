@@ -1,4 +1,5 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
+use crate::integrations::github::mapper::outcome_with_body;
 use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
@@ -34,7 +35,7 @@ pub(crate) async fn handle_edit_outcome(
         r.update_body(outcome_id, b.to_string())
             .await
             .map_err(|e| format!("#{outcome_id} why update failed: {e}"))?;
-        outcome = outcome.with_body(b);
+        outcome = outcome_with_body(&outcome, b);
         updated.push("why");
     }
     dispatch.dispatch(crate::store::AppAction::Outcome(

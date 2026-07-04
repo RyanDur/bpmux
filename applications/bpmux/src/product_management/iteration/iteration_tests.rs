@@ -2,9 +2,7 @@
 
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::decode_iteration_from_story;
-use crate::product_management::board::adapters::relationships::{
-    IterationRelationships, Relationships,
-};
+use crate::integrations::github::relationships::{IterationRelationships, Relationships};
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};

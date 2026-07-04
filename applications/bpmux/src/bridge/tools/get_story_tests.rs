@@ -459,9 +459,7 @@ fn make_iteration_with_members(
     body: &str,
     members: Vec<u64>,
 ) -> (Story, Vec<String>) {
-    use crate::product_management::board::adapters::relationships::{
-        IterationRelationships, Relationships,
-    };
+    use crate::integrations::github::relationships::{IterationRelationships, Relationships};
     let (mut s, labels) = make_iteration(id, name, body);
     s.body = Some(
         IterationRelationships {

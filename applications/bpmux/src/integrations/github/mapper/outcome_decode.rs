@@ -1,9 +1,7 @@
 use chrono::{DateTime, Utc};
 
 use super::story_decode::extract_label_names;
-use crate::product_management::board::adapters::relationships::{
-    OutcomeRelationships, Relationships,
-};
+use crate::integrations::github::relationships::{OutcomeRelationships, Relationships};
 use crate::product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
 use crate::product_management::story::{BoardState, Story};
 
@@ -92,5 +90,15 @@ fn assemble_outcome(
         filed_by,
         lifecycle,
         iterations,
+    }
+}
+
+pub fn outcome_with_body(outcome: &Outcome, body: &str) -> Outcome {
+    Outcome {
+        body: Some(body.to_string()),
+        iterations: OutcomeRelationships::read_from_body(body)
+            .unwrap_or_default()
+            .iterations,
+        ..outcome.clone()
     }
 }

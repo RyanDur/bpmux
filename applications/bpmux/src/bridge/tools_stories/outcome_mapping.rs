@@ -1,7 +1,8 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store, require_purpose,
 };
-use crate::product_management::board::adapters::relationships::{
+use crate::integrations::github::mapper::outcome_with_body;
+use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::iteration::IterationId;
@@ -52,7 +53,7 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .iterations
         .retain(|id| *id != IterationId::new(iteration_id));
     let outcome_body = parent.write_into_body(outcome.body.as_deref().unwrap_or_default());
-    let optimistic = outcome.with_body(&outcome_body);
+    let optimistic = outcome_with_body(&outcome, &outcome_body);
     r.update_body(outcome_id, outcome_body)
         .await
         .map_err(|e| format!("#{outcome_id} iteration-unmap body update failed: {e}"))?;
@@ -119,9 +120,9 @@ pub(crate) async fn handle_reorder_outcome_iteration(
     )
     .await?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
-        crate::product_management::outcome::OutcomeAction::Upserted(vec![
-            outcome.with_body(&new_body),
-        ]),
+        crate::product_management::outcome::OutcomeAction::Upserted(vec![outcome_with_body(
+            &outcome, &new_body,
+        )]),
     ));
     Ok(format!(
         "iteration #{iteration_id} reordered to priority {position} of {band_size} in outcome #{outcome_id}"

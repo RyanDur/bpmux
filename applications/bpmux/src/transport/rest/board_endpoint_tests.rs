@@ -2,10 +2,10 @@
 
 use super::board::{board_iterations, board_outcomes, ordered_board_stories};
 use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
-use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::product_management::board::adapters::relationships::{
+use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
+use crate::product_management::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};

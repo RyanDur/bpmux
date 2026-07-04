@@ -2,7 +2,8 @@ use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store,
     ensure_story_in_canonical_store, require_purpose, role_from_name,
 };
-use crate::product_management::board::adapters::relationships::{
+use crate::integrations::github::mapper::outcome_with_body;
+use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::product_management::iteration::IterationId;
@@ -90,7 +91,7 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .iterations
         .insert(insert_index, IterationId::new(iteration_id));
     let outcome_body = parent.write_into_body(outcome.body.as_deref().unwrap_or_default());
-    let optimistic = outcome.with_body(&outcome_body);
+    let optimistic = outcome_with_body(&outcome, &outcome_body);
     r.update_body(outcome_id, outcome_body)
         .await
         .map_err(|e| format!("#{outcome_id} iteration-map body update failed: {e}"))?;

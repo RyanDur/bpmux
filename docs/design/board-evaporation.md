@@ -166,27 +166,36 @@ NOT part of this relocation.
      `crate::integrations::github::{mapper, gh_label_codec}` — an adapter-side coupling, not
      a read-model leak, invisible to the fitness test. Slice 7 closes it when the in-memory
      adapter moves out of the domain.
-   - **`relationship_block` + `relationships` deferred — substrate-verified refinement.**
-     The plan text listed `relationship_block` for this move; the substrate says otherwise.
-     `relationship_block` (the `<!-- bpmux-relationships: {json} -->` issue-body marker) is
-     consumed ONLY by `relationships`, and `relationships` (the typed `StoryRelationships`/
-     `IterationRelationships` structs + `Relationships` trait) is consumed by the DOMAIN
-     (`product_management::outcome`), bridge, and the mappers. Moving `relationship_block`
-     alone would force `relationships` (domain) → `integrations::github` — a wrong-direction
-     edge (and one the fitness test wouldn't even catch). Moving `relationships` too would
-     drag ~16 domain/bridge consumers into that edge. This is exactly what the successor arc
-     (`board-as-slice-reshape.md`) reworks: the relationship data becomes first-class
-     container refs (epics-hold-children) and only the body ENCODING is the integration
-     concern — a data/encoding split, not a blind relocation. Their correct evaporation
-     home is therefore the DOMAIN, not `integrations`: they relocate to a
-     `product_management` home in a later evaporation slice (6/7 — `board/` must be empty by
-     slice 8), as-is; the reshape then splits body-encoding from the relationship data. The
-     slice-5-original listing of `relationship_block` under `integrations` was the error.
-     (`typed_label_mirror`, also listed here originally, is part of the in-memory adapter
-     above and moves in slice 7, not here.)
+5b. **`relationships` + `relationship_block` → `integrations/github`; remove the
+   `Outcome::with_body` parse leak.** ✅ LANDED (2026-07-04, follow-on to 5). Ryan's
+   correction (2026-07-04): *"the relationships would be parsed by that domain's adapter, but
+   stay on the integration side of the adapter."* My first pass had DEFERRED these, reasoning
+   that the domain consumes `relationships` so a move would force a wrong-direction edge —
+   WRONG. The substrate showed the sole domain-production consumer was `Outcome::with_body`,
+   which re-parsed the issue body (`OutcomeRelationships::read_from_body`) INSIDE a domain
+   entity method — a duplicate of the adapter's own `assemble_outcome` parse. That parse leak
+   WAS the defect, not a reason to keep `relationships` domain-side. Fix: moved
+   `relationships` (typed `*Relationships` structs + the `Relationships` trait) +
+   `relationship_block` (the `<!-- bpmux-relationships: {json} -->` marker) to
+   `integrations/github/`; relocated the `with_body` logic to a `mapper::outcome_with_body`
+   free fn; deleted `Outcome::with_body` and dropped `relationships` from the `Outcome`
+   entity entirely. The four callers are all in `bridge/tools_stories/` — the EDGE, which
+   already called `relationships` (`write_into_body`) to compose the body — so
+   bridge→integration is correct; they repoint to `outcome_with_body`. Wire byte-identical
+   (the optimistic `Outcome` gets the same `iterations`); 93 targeted tests green (fitness +
+   relationships/relationship_block + outcome + outcome-mapping/edit/reorg CLI e2e). After
+   this, `product_management` production has ZERO `relationships` dependency; the only
+   remaining `product_management → crate::integrations` edge is the in-memory test adapter
+   (2 files, tolerated above; slice 7 clears it, slice 8 locks it with a
+   `product_management ↛ crate::integrations` fitness test). The successor arc
+   (`board-as-slice-reshape.md`) still reworks the DATA model (membership → first-class
+   container refs, body-encoding retired); this slice fixed only the misplacement.
+   `typed_label_mirror` is part of the in-memory adapter and moves in slice 7, not here.
 6. **VIEW_MODELs → `crate::view`.** `StoryView`/`IterationView`/`OutcomeView` +
-   `json` + `relationships`. The view depends only on the `LabelCodec` port (slice 4),
-   which is domain-side — `crate::view` never names the GitHub codec. Guarded by the
+   `json`. (`relationships` is NOT a view-model — it is GitHub issue-body encoding and
+   moved to `integrations/github/` in slice 5b, not here.) The view depends only on the
+   `LabelCodec` port (slice 4), which is domain-side — `crate::view` never names the GitHub
+   codec. Guarded by the
    slice-3 wire goldens.
 7. **PROJECTIONs → their per-consumer homes**; **`SourceAdapter` port + `in_memory`
    adapter → domain/adapters home**. Each projection file's destination is decided
