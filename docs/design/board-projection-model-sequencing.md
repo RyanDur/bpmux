@@ -244,6 +244,20 @@ in a type the SourceAdapter never sees.
   **Loss-window call (sudden-death rule): decide explicitly whether losing
   the last placement move on crash is acceptable** (default recommendation:
   yes — placement is cheap to re-derive by working; document the choice).
+  **★ SEQUENCING DECISION (Ryan, 2026-07-05): BD2 is intentionally parked
+  behind the DB/storage-ports setup — do it AS PART OF that arc, not before.**
+  Rationale: BD2 *is* DB work (its whole content is a refinery migration + a
+  repo port on the storage-ports pattern), so it wants the finished storage
+  substrate to build against; doing it now would bolt a one-off persistence
+  path onto a half-built layer. And nothing is lost by waiting — after BD1b,
+  the desk-check placement is NOT yet locally persisted but it survives restart
+  by being **re-derived from the GitHub `"desk-check"` label on every ingest**
+  (deliver pushes the label out; boot re-ingest decodes it back via
+  `placement_from_labels` → placement dispatched into the store). So **the
+  GitHub label IS the persistence until BD2**, and there is no open correctness
+  gap. Consequence: **BD2 gates BD3** — you cannot stop writing the desk-check
+  label to GitHub (the de-leak) until placements persist locally, because that
+  label is the current recovery path. Chain: finish DB → BD2 → BD3.
 - **BD3 — ⚠ the desk-check de-leak (owner-approved shared-edge change).**
   Encode: every `InProgress(_)` → the `"in progress"` label (the codec speaks
   SECTION, never sub-section). Decode: `"in progress"` → In Progress +
