@@ -97,6 +97,7 @@ mod reopen_on_state_transition_tests {
         );
         let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
+        orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(

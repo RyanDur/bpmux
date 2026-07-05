@@ -85,9 +85,6 @@ pub(crate) async fn handle_start_story(
             placement: None,
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-        r.drain_pending()
-            .await
-            .map_err(|e| format!("#{id} start push failed: {e}"))?;
         return Ok(match reject_lead {
             Some(lead) => format!("{lead}\n#{id} marked as in progress"),
             None => format!("#{id} marked as in progress"),

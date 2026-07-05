@@ -128,9 +128,6 @@ pub(crate) async fn handle_pass_desk_check(
             },
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-        r.drain_pending()
-            .await
-            .map_err(|e| format!("#{id} drain after pass_desk_check failed: {e}"))?;
         return Ok(format!(
             "#{id} passed desk-check: signal sent, label applied"
         ));

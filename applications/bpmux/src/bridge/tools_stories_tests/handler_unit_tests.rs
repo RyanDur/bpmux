@@ -163,6 +163,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     .await;
     assert!(result.is_ok(), "force+reason should succeed: {result:?}");
 
+    orchestrator.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
     let gate_event = pushed
         .iter()

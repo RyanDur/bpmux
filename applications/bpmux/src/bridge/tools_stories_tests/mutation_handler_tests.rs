@@ -211,6 +211,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "gate_comments should contain PassDeskCheck entry: {gates:?}"
     );
 
+    orchestrator.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
@@ -290,6 +291,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "gate_comments should contain FailDeskCheck with payload: {gates:?}"
     );
 
+    orchestrator.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),

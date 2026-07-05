@@ -73,7 +73,7 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
 }
 
 #[tokio::test]
-async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return() {
+async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Story};
@@ -104,26 +104,34 @@ async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return()
         .await
         .unwrap();
 
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "reject_story returns optimistically — the GH push is deferred to the async drain, so nothing is pushed before the handler returns: {:?}",
+        adapter.pushed_events()
+    );
+
+    orch.drain_pending().await.unwrap();
+
     let pushed = adapter.pushed_events();
     assert!(
         pushed.iter().any(
             |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(4690))
         ),
-        "reject_story must drain StoryReopened to adapter BEFORE returning (#469 cascade-fix). Without internal drain, the GH-side reopen does not propagate until next handler triggers drain. Pushed: {pushed:?}"
+        "the async drain propagates StoryReopened to the adapter (#469 cascade-fix): {pushed:?}"
     );
     let labels = adapter.labels_for(4690);
     assert!(
         !labels.iter().any(|l| l == "accepted"),
-        "the state-transition export strips the stale accepted label at the adapter BEFORE the handler returns; got {labels:?}"
+        "the state-transition export strips the stale accepted label at the adapter on drain; got {labels:?}"
     );
     assert!(
         labels.iter().any(|l| l == "ready"),
-        "the state-transition export applies the new state label at the adapter; got {labels:?}"
+        "the state-transition export applies the new state label at the adapter on drain; got {labels:?}"
     );
 }
 
 #[tokio::test]
-async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_return() {
+async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
     use crate::product_management::story::{BoardState, Stage, Story};
@@ -153,13 +161,21 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
         .await
         .unwrap();
 
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "fail_desk_check returns optimistically — the GH push is deferred to the async drain: {:?}",
+        adapter.pushed_events()
+    );
+
+    orch.drain_pending().await.unwrap();
+
     let pushed = adapter.pushed_events();
     assert!(
         pushed.iter().any(|e| matches!(
             e,
             StoryEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == BoardState::InProgress
         )),
-        "fail_desk_check must drain StateTransitioned(InProgress) to adapter BEFORE returning. Pushed: {pushed:?}"
+        "the async drain propagates StateTransitioned(InProgress) to the adapter: {pushed:?}"
     );
 }
 
@@ -262,7 +278,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
 }
 
 #[tokio::test]
-async fn deliver_story_propagates_drain_failure_at_label_remove() {
+async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story};
     use crate::sync::RefreshDriver;
@@ -294,12 +310,13 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
     );
     let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
     assert!(
-        result.is_err(),
-        "deliver_story must surface drain failure load-bearing: {result:?}"
+        result.is_ok(),
+        "deliver_story returns optimistically — the write succeeds locally even when the GH push will fail; the failure is reconciled on the async drain, not surfaced at return: {result:?}"
     );
-    let err = result.unwrap_err();
+
+    let drain = orch.drain_pending().await;
     assert!(
-        err.contains("drain after deliver failed"),
-        "error must name the deliver-drain stage: {err}"
+        drain.is_err(),
+        "the deferred push failure surfaces on the async drain, not at deliver-return: {drain:?}"
     );
 }

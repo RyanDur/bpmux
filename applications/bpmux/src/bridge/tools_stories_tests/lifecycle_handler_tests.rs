@@ -60,8 +60,8 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(
-        drained, 0,
-        "post-#1292: start_story drains synchronously; pending is empty by return"
+        drained, 2,
+        "start_story returns optimistically — the pickup gate + state events stay pending and are pushed on the async drain, not before return"
     );
     let pushed = adapter.pushed_events();
     assert_eq!(
@@ -136,6 +136,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         "gate_comments should contain Delivered with the observation payload: {gates:?}"
     );
 
+    orchestrator.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
@@ -206,6 +207,7 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
         "gate_comments should contain Accepted with no payload: {gates:?}"
     );
 
+    orchestrator.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
@@ -286,6 +288,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
         .await
         .unwrap();
 
+    orch.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
@@ -356,6 +359,7 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
         "gate_comments should contain Rejected with reason payload: {gates:?}"
     );
 
+    orchestrator.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),

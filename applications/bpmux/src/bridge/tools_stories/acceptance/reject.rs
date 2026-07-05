@@ -119,9 +119,5 @@ pub(crate) async fn reject_via_canonical_store(
             },
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-    refresh
-        .drain_pending()
-        .await
-        .map_err(|e| format!("#{id} drain after reject failed: {e}"))?;
     Ok(())
 }

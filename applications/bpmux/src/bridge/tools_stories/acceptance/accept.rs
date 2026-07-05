@@ -158,9 +158,5 @@ pub(crate) async fn accept_via_canonical_store(
             },
         )
         .map_err(|e| format!("#{id} close enqueue failed: {e}"))?;
-    refresh
-        .drain_pending()
-        .await
-        .map_err(|e| format!("#{id} drain after accept failed: {e}"))?;
     Ok(())
 }

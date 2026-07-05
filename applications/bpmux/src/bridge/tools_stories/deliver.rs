@@ -94,9 +94,6 @@ pub(crate) async fn handle_deliver_story(
             placement,
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-        r.drain_pending()
-            .await
-            .map_err(|e| format!("#{id} drain after deliver failed: {e}"))?;
         return Ok(format!("#{id} delivered: signals sent, labels updated"));
     }
     Err(
