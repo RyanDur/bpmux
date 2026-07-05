@@ -1,8 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{
-    BoardAction, BoardPlacements, fine_stage, placement_of, reduce, state_label, story_position,
-};
+use super::{BoardAction, BoardPlacements, fine_stage, placement_of, reduce, state_label};
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
@@ -81,37 +79,6 @@ fn unplacing_an_absent_story_does_not_churn_the_store() {
 #[test]
 fn a_story_with_no_placement_is_not_in_the_middle() {
     assert_eq!(placed_stage(&BoardPlacements::default(), 1), None);
-}
-
-#[test]
-fn story_position_composes_the_fine_placement_over_the_coarse_position() {
-    let story = in_progress_story(1, Stage::Dev);
-    let board = board_with_desk_check(1);
-    assert_eq!(
-        story_position(&story, &board),
-        BoardState::InProgress(Stage::DeskCheck.id()),
-        "the fine placement wins over the story's own middle stage"
-    );
-}
-
-#[test]
-fn story_position_falls_back_to_the_story_stage_when_unplaced() {
-    let story = in_progress_story(1, Stage::DeskCheck);
-    assert_eq!(
-        story_position(&story, &BoardPlacements::default()),
-        BoardState::InProgress(Stage::DeskCheck.id()),
-        "with no placement the story's own stage stands (the transitional fallback)"
-    );
-}
-
-#[test]
-fn story_position_leaves_a_non_middle_position_untouched() {
-    let mut story = in_progress_story(1, Stage::Dev);
-    story.state = BoardState::Acceptance;
-    assert_eq!(
-        story_position(&story, &board_with_desk_check(1)),
-        BoardState::Acceptance
-    );
 }
 
 fn board_with_desk_check(story: u64) -> BoardPlacements {

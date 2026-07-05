@@ -5,7 +5,7 @@ use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, FreeComment, GateComment, Stage, Story};
+use crate::product_management::story::{FreeComment, GateComment, Stage, Story};
 use crate::sync::{ConditionalBody, SyncError};
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
@@ -54,9 +54,6 @@ pub trait RefreshDriver: Send + Sync {
         initial_labels: Vec<String>,
     ) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, id: u64) -> Option<Story>;
-    fn story_board_position(&self, story: &Story) -> BoardState {
-        story.state.clone()
-    }
     fn story_fine_stage(&self, story: &Story) -> Option<Stage> {
         crate::board::fine_stage(story, &crate::board::BoardPlacements::default())
     }

@@ -48,15 +48,6 @@ pub fn placed_story_ids(state: &BoardPlacements) -> Vec<StoryId> {
     state.placements.keys().copied().collect()
 }
 
-pub fn story_position(story: &Story, board: &BoardPlacements) -> BoardState {
-    match &story.state {
-        BoardState::InProgress(own_stage) => BoardState::InProgress(
-            placement_of(board, story.id).unwrap_or_else(|| own_stage.clone()),
-        ),
-        other => other.clone(),
-    }
-}
-
 pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {
     match &story.state {
         BoardState::InProgress(own_stage) => {
