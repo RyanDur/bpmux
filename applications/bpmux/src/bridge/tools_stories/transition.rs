@@ -4,7 +4,7 @@ use super::acceptance_test_path::{
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, Gate, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, Gate, Story, StoryId};
 use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_start_story(
@@ -175,11 +175,19 @@ pub(crate) async fn handle_deliver_story(
             payload: Some(verified_observation.to_string()),
         })
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
+        let (new_state, placement) =
+            crate::board::advance(&transition.from, &crate::board::Verdict::Succeed, workflow)
+                .ok_or_else(|| {
+                    format!(
+                        "#{id} deliver has no forward state from '{}'",
+                        transition.from
+                    )
+                })?;
         r.mutate_sync(StoryEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
-            new_state: BoardState::InProgress,
-            placement: Some(Stage::DeskCheck.id()),
+            new_state,
+            placement,
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()

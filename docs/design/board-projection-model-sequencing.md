@@ -385,12 +385,20 @@ zero edits to existing test assertions.
     (`bundled_default.rs:64-153`) — pin all six in unit tests.
   - **A2-2a** = the type + `advance` + tests, inert (pub, no dead-code, no handler
     wired) — BD1a-1 style foundation.
-  - **A2-2b** = rewire the six handlers to derive their emit-target via `advance`
-    from a constructed `Verdict` (the `Gate` value stays hardcoded — its derivation
-    from `(fine_from, verdict)` and the `Gate` enum deletion are A3). Backward =
-    NeedsWork read off the move (composes with A1's `most_recent_needs_work`,
-    `story/rework.rs`). SAME events emitted → falsifier: wire/GitHub/gating
-    byte-identical, existing test assertions unchanged.
+  - **A2-2b** = rewire the two single-function Succeed handlers — `deliver`
+    (`transition.rs`) and `pass-desk-check` (`pass.rs`) — to derive their
+    emit-target via `advance(&transition.from, &Verdict::Succeed, workflow)`,
+    replacing a genuine hardcode (`InProgress`+`DeskCheck` / `Acceptance`). The
+    `Gate` value stays hardcoded (its derivation from `(fine_from, verdict)` and the
+    `Gate` enum deletion are A3). Falsifier held: full nextest green, zero assertion
+    edits. The other verdict-handlers get their `Verdict` expression in A2-3, where
+    they restructure anyway: `accept` is split (`handle_accept_story` +
+    `accept_via_canonical_store`, with a REST twin in `board_acceptance.rs`) so it
+    needs target-threading; `fail`/`reject` already derive their target from
+    `transition.to` (they don't hardcode), so wrapping them in `NeedsWork` is folded
+    into the atomic-intent restructure, not double-touched here. Backward = NeedsWork
+    read off the move (composes with A1's `most_recent_needs_work`,
+    `story/rework.rs`).
 - **A2-3 — atomic intent (per bookend, may split per handler).** Collapse each
   handler's multi-event `mutate_sync` sequence into ONE atomic verdict action the
   reducer applies atomically, producing the SAME outbox ops + final state. Today:

@@ -111,12 +111,20 @@ pub(crate) async fn handle_pass_desk_check(
             },
         )
         .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
+        let (new_state, placement) =
+            crate::board::advance(&transition.from, &crate::board::Verdict::Succeed, workflow)
+                .ok_or_else(|| {
+                    format!(
+                        "#{id} pass-desk-check has no forward state from '{}'",
+                        transition.from
+                    )
+                })?;
         r.mutate_sync(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
-                new_state: crate::product_management::story::BoardState::Acceptance,
-                placement: None,
+                new_state,
+                placement,
             },
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
