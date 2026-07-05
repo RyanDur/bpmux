@@ -1,9 +1,12 @@
-use crate::product_management::story::BoardState;
-use crate::view::board::arrangement::{board_columns, column_header, group_by_position};
+use std::collections::HashMap;
+
+use crate::product_management::story::StoryId;
+use crate::view::board::arrangement::{Column, board_columns, column_header, group_by_column};
+use crate::workflow::StageId;
 
 #[derive(Default)]
 pub(in crate::bridge) struct BoardScope {
-    pub state: Option<BoardState>,
+    pub state: Option<Column>,
     pub iteration: Option<u64>,
     pub row_limit: Option<usize>,
 }
@@ -13,7 +16,8 @@ pub(in crate::bridge) fn build_board_text(
     stories: &[crate::product_management::story::Story],
     iterations: &[crate::product_management::iteration::Iteration],
     scope: &BoardScope,
-    middle: &[crate::workflow::StageId],
+    fine: &HashMap<StoryId, StageId>,
+    middle: &[StageId],
 ) -> String {
     let format_entry = |s: &crate::product_management::story::Story| -> (u64, String) {
         let parent_epic = s.parent_epic();
@@ -48,8 +52,13 @@ pub(in crate::bridge) fn build_board_text(
             None => true,
         }
     };
-    let board = group_by_position(stories.iter().filter(|s| in_scope_iteration(s)));
-    let column_section = |column: &BoardState| -> (usize, Vec<String>) {
+    let board = group_by_column(
+        stories
+            .iter()
+            .filter(|s| in_scope_iteration(s))
+            .map(|s| (s, fine.get(&s.id).cloned())),
+    );
+    let column_section = |column: &Column| -> (usize, Vec<String>) {
         let mut entries: Vec<(u64, String)> = board
             .get(column)
             .into_iter()

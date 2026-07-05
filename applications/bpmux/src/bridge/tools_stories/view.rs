@@ -55,11 +55,24 @@ pub(crate) async fn handle_view_board(
     };
     let epics = r.epics();
     let iterations = r.iterations();
+    let fine: std::collections::HashMap<
+        crate::product_management::story::StoryId,
+        crate::workflow::StageId,
+    > = stories
+        .iter()
+        .filter_map(|s| match &s.state {
+            crate::product_management::story::BoardState::InProgress(stage) => {
+                Some((s.id, stage.clone()))
+            }
+            _ => None,
+        })
+        .collect();
     Ok(build_board_text(
         &epics,
         &stories,
         &iterations,
         &scope,
+        &fine,
         &middle,
     ))
 }
@@ -67,20 +80,20 @@ pub(crate) async fn handle_view_board(
 fn parse_state(
     s: &str,
     middle: &[crate::workflow::StageId],
-) -> Option<crate::product_management::story::BoardState> {
-    use crate::product_management::story::BoardState;
+) -> Option<crate::view::board::arrangement::Column> {
+    use crate::view::board::arrangement::Column;
     let lower = s.to_ascii_lowercase();
     match lower.as_str() {
-        "icebox" => return Some(BoardState::Icebox),
-        "ready" => return Some(BoardState::Ready),
-        "acceptance" | "delivered" => return Some(BoardState::Acceptance),
-        "accepted" => return Some(BoardState::Accepted),
-        "retired" => return Some(BoardState::Retired),
+        "icebox" => return Some(Column::Icebox),
+        "ready" => return Some(Column::Ready),
+        "acceptance" | "delivered" => return Some(Column::Acceptance),
+        "accepted" => return Some(Column::Accepted),
+        "retired" => return Some(Column::Retired),
         _ => {}
     }
     let normalized = lower.replace([' ', '_'], "-");
     middle
         .iter()
         .find(|stage| stage.as_str() == normalized)
-        .map(|stage| BoardState::InProgress(stage.clone()))
+        .map(|stage| Column::Middle(stage.clone()))
 }
