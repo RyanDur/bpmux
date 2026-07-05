@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
-use crate::workflow::StageId;
+use crate::workflow::{StageId, WorkflowConfig};
 
 #[cfg(test)]
 mod boundary_tests;
 #[cfg(test)]
 mod placement_tests;
+#[cfg(test)]
+mod verdict_tests;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BoardAction {
@@ -95,5 +97,32 @@ pub fn state_label(coarse: &BoardState, fine: Option<Stage>) -> &'static str {
         Some(Stage::DeskCheck) => "desk-check",
         Some(Stage::Dev) => "in-progress",
         None => coarse.as_str(),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Verdict {
+    Succeed,
+    NeedsWork(BoardState),
+}
+
+fn next_state_id_in_order(from_id: &str, workflow: &WorkflowConfig) -> Option<String> {
+    let pos = workflow.state.iter().position(|s| s.id == from_id)?;
+    workflow.state.get(pos + 1).map(|s| s.id.clone())
+}
+
+pub fn advance(
+    from_fine_id: &str,
+    verdict: &Verdict,
+    workflow: &WorkflowConfig,
+) -> Option<(BoardState, Option<StageId>)> {
+    match verdict {
+        Verdict::Succeed => {
+            let next_id = next_state_id_in_order(from_fine_id, workflow)?;
+            let coarse = BoardState::parse(&next_id)?;
+            let middle = crate::workflow::board_middle_stage_ids(workflow);
+            Some((coarse, placement_from_target(&next_id, &middle)))
+        }
+        Verdict::NeedsWork(target) => Some((target.clone(), None)),
     }
 }

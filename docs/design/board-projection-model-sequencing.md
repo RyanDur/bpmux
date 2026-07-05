@@ -322,9 +322,27 @@ so they are not re-litigated:
   change response timing → not behavior-preserving until resolved). They defer
   WITHIN A2; the core does not depend on them. Raise when the bridge returns.
 
-The behavior-preserving core, sequenced (each gated → commit → push → verify
-`ls-remote` → CI-green gates the next; refactor falsifier = zero edits to
-existing test assertions):
+Third refinement, found while designing A2-2 against the substrate: **fully
+dissolving the `verdicts.json` third substrate into the store is NOT
+behavior-preserving and DEFERS to the DB arc (with BD2).** Dissolving it means
+a persisted store slice + a write-behind listener + hydrate-on-boot + an
+explicit loss-window choice (the evidence is written synchronously today; a
+listener introduces a crash-loss window) — that is exactly the DB/storage-ports
+work BD2 was parked behind, by the same logic. Typing `submit_verdict`'s
+free-text `verdict` arg into the outcome would additionally change a shared MCP
+tool contract (⚠, owner-gated). So A2 does the behavior-preserving verdict-MOVE
+collapse (introduce the move-`Verdict` + `advance`, rewire handlers, atomic
+intent, `GateComment` reshape); the evidence-verdict stays a pm-homed file
+side-channel (A2-1 positioned it there) until the DB arc dissolves it. The
+move-`Verdict` and the evidence `product_management::verdict::Verdict` coexist
+transitionally in distinct domains (board move vs pm evidence-grounding) — not
+a rival type, two honest concepts; they reconcile when the DB arc dissolves the
+evidence substrate into a store slice.
+
+Executor order (A2-0 reordered to the TAIL, see above):
+A2-1✅ → A2-2 → A2-3 → A2-4 → A2-5 → A2-6 → A2-0. Each gated → commit → push
+(keepalive) → verify `ls-remote` → CI-green gates the next; refactor falsifier =
+zero edits to existing test assertions.
 
 - **A2-1 — relocate the evidence-verdict into `product_management`; close the
   last workflow↔pm cycle arm.** Move `workflow/verdicts.rs` (`Verdict`,
@@ -350,16 +368,29 @@ existing test assertions):
   outbox (`sqlite_outbox.rs`) has NONE and there is NO event-level round-trip test.
   So: custom `Deserialize` reading BOTH shapes + ADD a legacy-decode round-trip test
   (new coverage). Falsifier: full suite green; existing assertions unchanged.
-- **A2-2 — unified `Verdict{Succeed, NeedsWork(target)}` outcome facet +
-  `advance` derivation (expand).** Add the outcome facet to the (now pm-homed)
-  verdict — "never a rival type" (model doc). `advance(position, verdict, workflow)
-  → next_position`: Succeed → next-in-order (deterministic); NeedsWork → configured
-  fail-target (`workflow.toml`), else judge-chosen. Re-express each transition
-  handler to derive next-state + gate FROM a computed verdict instead of the loose
-  hardcoded (`Gate` value ⟂ independently-resolved `Transition`) pair
-  (`bundled_default.rs:64-153` is the current table). Backward = NeedsWork read off
-  the move (lands A1's `most_recent_needs_work`, `story/rework.rs`). SAME events
-  emitted → falsifier: wire/GitHub/gating byte-identical, existing tests green.
+- **A2-2 — the move-`Verdict` + `advance`, two-grain-native (expand).** Homed in
+  the `board` slice (NOT pm): `advance` needs the fine state order AND the
+  projection to `(coarse BoardState, Option<placement>)` via
+  `board::placement_from_target`; that projection is board's, and `board` already
+  depends on `pm::story`, so homing here reuses it with NO new cycle (pm calling
+  board would recreate the pm↔board cycle the refactor kills).
+  - `enum Verdict { Succeed, NeedsWork(BoardState) }` (the move outcome; the
+    Gate-replacement, not the evidence type).
+  - `advance(from_fine_id, &Verdict, &WorkflowConfig) -> Option<(BoardState,
+    Option<StageId>)>`: Succeed → next fine state in `workflow.state` order,
+    projected (`BoardState::parse` folds coarse; `placement_from_target` yields the
+    sub-section — desk-check → `(InProgress, Some(DeskCheck))`, in-progress →
+    `(InProgress, None)`); NeedsWork(target) → `(target, None)` (backward lands at a
+    coarse entry). Reproduces every current handler target for the bundled config
+    (`bundled_default.rs:64-153`) — pin all six in unit tests.
+  - **A2-2a** = the type + `advance` + tests, inert (pub, no dead-code, no handler
+    wired) — BD1a-1 style foundation.
+  - **A2-2b** = rewire the six handlers to derive their emit-target via `advance`
+    from a constructed `Verdict` (the `Gate` value stays hardcoded — its derivation
+    from `(fine_from, verdict)` and the `Gate` enum deletion are A3). Backward =
+    NeedsWork read off the move (composes with A1's `most_recent_needs_work`,
+    `story/rework.rs`). SAME events emitted → falsifier: wire/GitHub/gating
+    byte-identical, existing test assertions unchanged.
 - **A2-3 — atomic intent (per bookend, may split per handler).** Collapse each
   handler's multi-event `mutate_sync` sequence into ONE atomic verdict action the
   reducer applies atomically, producing the SAME outbox ops + final state. Today:
