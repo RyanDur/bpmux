@@ -1,8 +1,19 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{BoardAction, BoardPlacements, placement_of, reduce};
-use crate::product_management::story::StoryId;
+use super::{BoardAction, BoardPlacements, placement_of, reduce, story_position};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::workflow::StageId;
+use chrono::{TimeZone, Utc};
+
+fn in_progress_story(id: u64, stage: Stage) -> Story {
+    Story::new_minimal(
+        StoryId::new(id),
+        format!("story {id}"),
+        BoardState::InProgress(stage.id()),
+        Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
+        "pm".to_string(),
+    )
+}
 
 fn place(story: u64, stage: &str) -> BoardAction {
     BoardAction::StoryPlaced {
@@ -68,4 +79,39 @@ fn unplacing_an_absent_story_does_not_churn_the_store() {
 #[test]
 fn a_story_with_no_placement_is_not_in_the_middle() {
     assert_eq!(placed_stage(&BoardPlacements::default(), 1), None);
+}
+
+#[test]
+fn story_position_composes_the_fine_placement_over_the_coarse_position() {
+    let story = in_progress_story(1, Stage::Dev);
+    let board = board_with_desk_check(1);
+    assert_eq!(
+        story_position(&story, &board),
+        BoardState::InProgress(Stage::DeskCheck.id()),
+        "the fine placement wins over the story's own middle stage"
+    );
+}
+
+#[test]
+fn story_position_falls_back_to_the_story_stage_when_unplaced() {
+    let story = in_progress_story(1, Stage::DeskCheck);
+    assert_eq!(
+        story_position(&story, &BoardPlacements::default()),
+        BoardState::InProgress(Stage::DeskCheck.id()),
+        "with no placement the story's own stage stands (the transitional fallback)"
+    );
+}
+
+#[test]
+fn story_position_leaves_a_non_middle_position_untouched() {
+    let mut story = in_progress_story(1, Stage::Dev);
+    story.state = BoardState::Acceptance;
+    assert_eq!(
+        story_position(&story, &board_with_desk_check(1)),
+        BoardState::Acceptance
+    );
+}
+
+fn board_with_desk_check(story: u64) -> BoardPlacements {
+    reduce(&BoardPlacements::default(), &place(story, "desk-check")).unwrap()
 }

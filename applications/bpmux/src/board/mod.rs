@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::product_management::story::StoryId;
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::workflow::StageId;
 
 #[cfg(test)]
@@ -46,4 +46,13 @@ pub fn placement_of(state: &BoardPlacements, story: StoryId) -> Option<StageId> 
 
 pub fn placed_story_ids(state: &BoardPlacements) -> Vec<StoryId> {
     state.placements.keys().copied().collect()
+}
+
+pub fn story_position(story: &Story, board: &BoardPlacements) -> BoardState {
+    match &story.state {
+        BoardState::InProgress(own_stage) => BoardState::InProgress(
+            placement_of(board, story.id).unwrap_or_else(|| own_stage.clone()),
+        ),
+        other => other.clone(),
+    }
 }
