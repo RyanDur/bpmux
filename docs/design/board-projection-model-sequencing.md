@@ -426,6 +426,39 @@ zero edits to existing test assertions.
   `BoardPlacementReconciler` reacts to `StateTransitioned` — the atomic action must
   still surface that effect). May split: atomicity (structural) vs optimistic-writes
   (behavioral, updates tests) as separate slices if cleaner.
+  - **★ SUB-DECOMPOSITION (2026-07-05, from a firsthand kernel/drain/listener map).**
+    The map surfaced the load-bearing fact: **optimism already exists structurally** —
+    every `mutate` (`sync/drain/mod.rs:28`) fires `StartUpdateGithub` → the async
+    `GithubDrain` listener (`store/sync/drain.rs`) pushes, and the 5s polling loop
+    (`bridge/polling/drain.rs`) drains the SAME outbox via the SAME `drain_once()`. So
+    the inline `drain_pending().await` in each handler is a pure SYNCHRONY device
+    (push-before-return + surface push-failure to the caller). Three orthogonal slices:
+    - **A2-3a — optimistic writes [Ryan's must-not-defer item; do FIRST].** Remove the
+      inline `drain_pending` from the six lifecycle-transition handlers (pickup/deliver/
+      pass/accept/reject/fail) so writes return immediately; the async drain already
+      covers them (no coverage gap — identical `drain_once` over the identical outbox).
+      Rewrite the synchronous-drain assertions (`integration_drain_tests.rs`) to DRIVE
+      the async drain then assert — incl. `deliver_story_propagates_drain_failure`,
+      which flips from "returns Err" to "returns Ok, failure surfaces via async
+      `MutationRolledBack`" (THE intended optimistic-failure behavior, not a regression).
+      TDD discriminator: assert `pushed_events` EMPTY at handler-return, populated only
+      after driving the drain (fails against inline-drain → red; green after removal).
+      `pending_operations_for` selector ONLY if a per-story pending consumer exists
+      (outside-in — today only a global `SyncStatus.pending_events` COUNT is surfaced;
+      do NOT build a per-story selector ahead of a consumer). VERIFY first: no
+      production consumer round-trips through GitHub synchronously post-write (map says
+      reads are store-optimistic — confirm).
+    - **A2-3b — atomic intent [structural, deep].** Add a batch-apply kernel primitive
+      (`mutate_batch(Vec<StoryEvent>)`): one store dispatch (listeners fire ONCE on the
+      final state, killing the sequential-`mutate_sync` reconciler race the map flagged)
+      + N `QueuedEvent`s enqueued in order. Rewire each handler to build its event Vec
+      and dispatch once. `BoardPlacementReconciler` must still see the `StateTransitioned`
+      placement edge in the folded state.
+    - **A2-3c — body/title into the outbox.** `write_through.rs` `update_body`/
+      `update_title` bypass the outbox entirely (synchronous adapter push, no `mutate`).
+      Enqueue `BodyUpdated`/`TitleUpdated` (variants already exist) through `mutate`, and
+      teach `drain_once`/`classify_conflict` to route them to `adapter.update_body`/
+      `update_title` (a DIFFERENT adapter method than `push_event`, `trait_def.rs:55,60`).
 - **A2-4 — `GateComment` carries verdict+target (back-compat, 2-3 sub-slices).**
   Reshape `GateComment.gate` → verdict+target internally (`story/mod.rs:38-44`) while
   keeping the GitHub comment-codec markers byte-identical (`comment_codec.rs`
