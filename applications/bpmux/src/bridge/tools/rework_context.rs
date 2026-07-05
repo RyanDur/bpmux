@@ -5,10 +5,7 @@ pub fn enrich_body(original_body: &str, context: &str) -> String {
 }
 
 pub fn latest_reject(gates: &[GateComment]) -> Option<&GateComment> {
-    gates
-        .iter()
-        .rev()
-        .find(|g| matches!(g.gate, Gate::Rejected | Gate::FailDeskCheck))
+    gates.iter().rev().find(|g| g.gate.is_fail())
 }
 
 pub fn reject_gate_label(gate: Gate) -> &'static str {

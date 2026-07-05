@@ -141,3 +141,9 @@ pub enum Gate {
     Rejected,
     Accepted,
 }
+
+impl Gate {
+    pub fn is_fail(&self) -> bool {
+        matches!(self, Gate::FailDeskCheck | Gate::Rejected)
+    }
+}
