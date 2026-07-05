@@ -86,6 +86,7 @@ async fn drain_once_pushes_pending_events_to_adapter() {
             meta: meta(),
             id: StoryId::new(1),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
     let drained = orchestrator.drain_once().await.unwrap();
@@ -111,6 +112,7 @@ async fn drain_once_requeues_event_on_adapter_failure() {
             meta: meta(),
             id: StoryId::new(1),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
     adapter.set_push_failures(true);
@@ -146,6 +148,7 @@ async fn drain_once_handles_multiple_events_in_order() {
             meta: meta(),
             id: StoryId::new(1),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
     orchestrator
@@ -153,6 +156,7 @@ async fn drain_once_handles_multiple_events_in_order() {
             meta: meta(),
             id: StoryId::new(2),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
     assert_eq!(orchestrator.snapshot_status().pending_events, 2);

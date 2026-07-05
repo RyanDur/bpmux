@@ -58,6 +58,15 @@ pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {
     }
 }
 
+pub fn placement_for(state: &BoardState) -> Option<StageId> {
+    match state {
+        BoardState::InProgress(stage) if Stage::from_id(stage) == Some(Stage::DeskCheck) => {
+            Some(stage.clone())
+        }
+        _ => None,
+    }
+}
+
 pub fn state_label(coarse: &BoardState, fine: Option<Stage>) -> &'static str {
     match fine {
         Some(Stage::DeskCheck) => "desk-check",

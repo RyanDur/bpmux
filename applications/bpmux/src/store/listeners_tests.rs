@@ -176,6 +176,7 @@ fn state_transitioned(
         },
         id: crate::product_management::story::StoryId::new(id),
         new_state,
+        placement: None,
     }
 }
 

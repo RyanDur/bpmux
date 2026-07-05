@@ -26,6 +26,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
             meta: meta(),
             id: StoryId::new(1),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
     let drained = orchestrator.drain_pending().await.unwrap();

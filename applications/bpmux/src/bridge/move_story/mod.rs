@@ -101,6 +101,7 @@ pub(in crate::bridge) async fn handle_move_story(
                 meta: meta.clone(),
                 id: story_id,
                 new_state: state.clone(),
+                placement: crate::board::placement_for(state),
             })
             .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
             if matches!(state, BoardState::Accepted) && !was_closed {

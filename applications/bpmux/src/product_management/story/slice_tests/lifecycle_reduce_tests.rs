@@ -33,6 +33,7 @@ fn state_transitioned_event_updates_existing_story() {
             meta: meta("dev", 2026, "local"),
             id: StoryId::new(1),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         },
     );
     assert_eq!(
@@ -50,6 +51,7 @@ fn state_transitioned_event_silently_drops_when_story_missing() {
             meta: meta("dev", 2026, "local"),
             id: StoryId::new(999),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         },
     );
     assert!(story_at(&store, 999).is_none());

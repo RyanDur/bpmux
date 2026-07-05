@@ -1,10 +1,11 @@
 use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::{decode_story_metadata, state_to_label};
+use crate::integrations::github::mapper::{decode_story_metadata, outbound_state_label};
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{BoardState, StoryId};
 use crate::sync::SyncError;
+use crate::workflow::StageId;
 
 async fn strip_state_labels(
     inner: &OctocrabStoryTracker,
@@ -28,8 +29,9 @@ pub(in crate::integrations::github) async fn push_state_transitioned(
     inner: &OctocrabStoryTracker,
     number: u64,
     new_state: BoardState,
+    placement: Option<StageId>,
 ) -> Result<Option<StoryEvent>, SyncError> {
-    let keep = state_to_label(new_state);
+    let keep = outbound_state_label(&new_state, placement.as_ref());
     strip_state_labels(inner, number, keep).await?;
     let labels = inner
         .add_label(number, keep)

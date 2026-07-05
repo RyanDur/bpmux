@@ -48,6 +48,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(10),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         assert!(path.exists(), "outbox file must exist after mutate");
@@ -72,6 +73,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(20),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
         let drained = orch.drain_once().await.unwrap();
@@ -98,6 +100,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(90),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
         assert_eq!(
@@ -133,6 +136,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(30),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
         adapter.set_push_failures(true);
@@ -159,6 +163,7 @@ mod outbox_persistence {
                 meta: meta(),
                 id: StoryId::new(40),
                 new_state: BoardState::Acceptance,
+                placement: None,
             })
             .unwrap();
         drop(orch_a_dyn);
@@ -191,6 +196,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(60),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -223,6 +229,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(65),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -252,6 +259,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(66),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -282,6 +290,7 @@ mod outbox_persistence {
                 meta: meta(),
                 id: StoryId::new(n),
                 new_state: BoardState::Acceptance,
+                placement: None,
             })
             .unwrap();
         }
@@ -314,6 +323,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(80),
             new_state: BoardState::Acceptance,
+            placement: None,
         })
         .unwrap();
         adapter.set_push_failures(true);
@@ -346,6 +356,7 @@ mod outbox_persistence {
                     meta: meta(),
                     id: StoryId::new(n),
                     new_state: BoardState::InProgress(Stage::Dev.id()),
+                    placement: None,
                 })
                 .unwrap();
         }
@@ -372,6 +383,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(999),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
 
@@ -394,6 +406,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(777),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         assert!(
@@ -411,6 +424,7 @@ mod outbox_persistence {
             meta: meta(),
             id: StoryId::new(777),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         assert_eq!(

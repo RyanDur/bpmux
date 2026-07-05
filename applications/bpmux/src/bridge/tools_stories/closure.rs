@@ -67,6 +67,7 @@ pub(crate) async fn handle_close_story(
                     meta: meta.clone(),
                     id: StoryId::new(id),
                     new_state: crate::product_management::story::BoardState::Retired,
+                    placement: None,
                 },
             )
             .map_err(|e| format!("#{id} retired-state enqueue failed: {e}"))?;

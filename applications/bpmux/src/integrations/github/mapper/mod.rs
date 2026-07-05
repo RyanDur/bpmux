@@ -7,6 +7,8 @@ mod story_decode;
 
 #[cfg(test)]
 mod field_completeness_tests;
+#[cfg(test)]
+mod outbound_label_tests;
 
 pub use comment_codec::*;
 pub use epic_decode::*;

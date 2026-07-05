@@ -6,6 +6,7 @@ use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{
     Acceptor, BoardState, FreeComment, Gate, GateComment, Story, StoryId, StoryKind, Tag,
 };
+use crate::workflow::StageId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EventMeta {
@@ -43,6 +44,8 @@ pub enum StoryEvent {
         meta: EventMeta,
         id: StoryId,
         new_state: BoardState,
+        #[serde(default)]
+        placement: Option<StageId>,
     },
     TagAdded {
         meta: EventMeta,

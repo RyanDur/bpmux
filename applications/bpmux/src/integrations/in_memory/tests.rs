@@ -93,6 +93,7 @@ async fn push_event_records_the_event() {
         meta: meta(),
         id: StoryId::new(10),
         new_state: BoardState::Acceptance,
+        placement: None,
     };
     adapter.push_event(&event).await.unwrap();
     let pushed = adapter.pushed_events();
@@ -108,6 +109,7 @@ async fn push_event_errs_when_configured_to_fail() {
         meta: meta(),
         id: StoryId::new(10),
         new_state: BoardState::Acceptance,
+        placement: None,
     };
     let result = adapter.push_event(&event).await;
     assert!(matches!(result, Err(SyncError::SourceUnreachable(_))));
@@ -124,11 +126,13 @@ async fn multiple_pushed_events_preserve_order() {
         meta: meta(),
         id: StoryId::new(1),
         new_state: BoardState::InProgress(Stage::Dev.id()),
+        placement: None,
     };
     let e2 = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(2),
         new_state: BoardState::Acceptance,
+        placement: None,
     };
     adapter.push_event(&e1).await.unwrap();
     adapter.push_event(&e2).await.unwrap();

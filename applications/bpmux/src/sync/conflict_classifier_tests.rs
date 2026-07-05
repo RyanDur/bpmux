@@ -47,6 +47,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
         meta: meta(),
         id: StoryId::new(500),
         new_state: BoardState::InProgress(Stage::Dev.id()),
+        placement: None,
     })
     .unwrap();
 
@@ -130,6 +131,7 @@ async fn outbox_round_trips_new_shape_through_disk() {
             meta: meta(),
             id: StoryId::new(7),
             new_state: BoardState::Accepted,
+            placement: None,
         },
         Some(pre.clone()),
     );
@@ -152,6 +154,7 @@ fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
         meta: meta(),
         id: StoryId::new(1),
         new_state: BoardState::InProgress(Stage::Dev.id()),
+        placement: None,
     };
     assert_eq!(classify_conflict(Some(&pre), &event, Some(&cur)), None);
 }
@@ -176,6 +179,7 @@ async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
         meta: meta(),
         id: StoryId::new(800),
         new_state: BoardState::InProgress(Stage::Dev.id()),
+        placement: None,
     })
     .unwrap();
 

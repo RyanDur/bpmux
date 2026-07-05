@@ -6,6 +6,7 @@ use crate::product_management::story::events::LabelDerivedFields;
 use crate::product_management::story::{
     BoardState, Stage, Story, StoryId, StoryKind, Tag, story_type_from_title,
 };
+use crate::workflow::StageId;
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryKind {
     story_type_from_labels(labels).unwrap_or_else(|| story_type_from_title(title))
@@ -173,4 +174,14 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> BoardState {
 
 pub fn state_to_label(state: BoardState) -> &'static str {
     state.github_label()
+}
+
+pub fn outbound_state_label(state: &BoardState, placement: Option<&StageId>) -> &'static str {
+    match state {
+        BoardState::InProgress(_) => {
+            let stage = placement.and_then(Stage::from_id).unwrap_or(Stage::Dev);
+            BoardState::InProgress(stage.id()).github_label()
+        }
+        other => other.github_label(),
+    }
 }

@@ -84,6 +84,7 @@ pub(crate) async fn handle_start_story(
             meta,
             id: StoryId::new(id),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()
@@ -178,6 +179,7 @@ pub(crate) async fn handle_deliver_story(
             meta,
             id: StoryId::new(id),
             new_state: BoardState::InProgress(Stage::DeskCheck.id()),
+            placement: Some(Stage::DeskCheck.id()),
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
         r.drain_pending()

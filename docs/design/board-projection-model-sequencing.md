@@ -154,17 +154,31 @@ in a type the SourceAdapter never sees.
       `build_board_text`; `view.rs::parse_state`). `BoardState` unchanged
       (stage redundant). Falsifier: wire + board render + those tool outputs + e2e
       byte-identical. (May split 1a per-story readers / 1b column model.)
-    - **BD1b-2 (writes + outbound → event-carried placement).** Add
-      `placement: Option<StageId>` to `StateTransitioned` (`#[serde(default)]` for
-      outbox back-compat). Populate at deliver (DeskCheck) / pickup (Dev).
-      `push_state_transitioned` composes the outbound label from
-      `(new_state, placement)`. Evolve `BoardPlacementReconciler` to apply the
-      event's placement (Place on `Some`, Unplace on `None`-in-middle) + retain
-      the level-triggered unplace (placed story whose coarse ≠ InProgress →
-      Unplace, covers ingest + bookend exits uniformly); ingest dispatches the
-      placement from the decoded stage. Retire the derive-from-`InProgress(stage)`
-      place-half. `BoardState` unchanged (stage redundant). Falsifier: outbound
-      labels + placement population + e2e byte-identical.
+    - **BD1b-2 (writes + outbound → event-carried placement).** Split 2a/2b
+      along the outbound vs. store axis (each a vertical slice of the
+      placement-on-event migration).
+      - **BD1b-2a (outbound → event placement) — DONE.** Add
+        `placement: Option<StageId>` to `StateTransitioned` (`#[serde(default)]`
+        for outbox back-compat). Populate at every producer: deliver → explicit
+        `Some(DeskCheck)`, pickup + all coarse targets → `None`; the three
+        dynamic-target producers (`fail`/`reject`/`move_story`) derive via the
+        transitional `board::placement_for(&state)` bridge (mirrors the target's
+        fine stage while `BoardState` still carries it). `push_state_transitioned`
+        composes the outbound label from `(new_state, placement)` via
+        `mapper::outbound_state_label`, reading the fine grain ONLY from placement
+        (the coarse state's own stage no longer decides the middle label). Reconciler
+        UNCHANGED (still derives placement from `story.state`, which still carries
+        the stage) → placement and the stage agree by construction, so outbound is
+        verifiable-identical for real inputs. Falsifier: `outbound_label_tests`
+        proves placement (not the embedded stage) drives the desk-check label;
+        survives the BD1b-3 unit flip.
+      - **BD1b-2b (store → event placement).** Evolve `BoardPlacementReconciler`
+        to apply the event's placement (Place on `Some`, Unplace on
+        `None`-in-middle) + retain the level-triggered unplace (placed story whose
+        coarse ≠ InProgress → Unplace, covers ingest + bookend exits uniformly);
+        ingest dispatches the placement from the decoded stage. Retire the
+        derive-from-`InProgress(stage)` place-half. `BoardState` unchanged (stage
+        redundant). Falsifier: placement population + e2e byte-identical.
     - **BD1b-3 (the flip).** `InProgress(StageId)` → unit. Fix ~140
       constructors/matches. `as_str`/`github_label` → coarse for InProgress;
       `parse` stops EMITTING desk-check but still TOLERATES `desk-check`/`desk_check`

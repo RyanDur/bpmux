@@ -36,12 +36,14 @@ mod slice_7_2_mutation_id_dispatch {
             meta: meta(),
             id: StoryId::new(101),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(102),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
 
@@ -71,6 +73,7 @@ mod slice_7_2_mutation_id_dispatch {
             meta: meta(),
             id: StoryId::new(201),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
     }
@@ -91,6 +94,7 @@ mod slice_7_2_mutation_id_dispatch {
             meta: meta(),
             id: StoryId::new(301),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
 
@@ -132,6 +136,7 @@ mod slice_7_3_drain_one_by_id {
             meta: meta(),
             id: StoryId::new(401),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
 
@@ -161,6 +166,7 @@ mod slice_7_3_drain_one_by_id {
             meta: meta(),
             id: StoryId::new(601),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         adapter.set_push_failures(true);
@@ -198,6 +204,7 @@ mod slice_7_3_drain_one_by_id {
             meta: meta(),
             id: StoryId::new(701),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         assert_eq!(
@@ -230,6 +237,7 @@ mod slice_7_4_drain_one_by_id_falsifiers {
             meta: meta(),
             id: StoryId::new(801),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         adapter.set_permanent_push_failures(true);
@@ -260,12 +268,14 @@ mod slice_7_4_drain_one_by_id_falsifiers {
             meta: meta(),
             id: StoryId::new(901),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(902),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
 
@@ -299,6 +309,7 @@ mod slice_7_4_drain_one_by_id_falsifiers {
             meta: meta(),
             id: StoryId::new(1001),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
         orch.mutate(StoryEvent::TagAdded {

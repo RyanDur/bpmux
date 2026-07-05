@@ -84,6 +84,7 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
             meta: meta(),
             id: StoryId::new(42),
             new_state: BoardState::InProgress(Stage::Dev.id()),
+            placement: None,
         })
         .unwrap();
     assert_eq!(

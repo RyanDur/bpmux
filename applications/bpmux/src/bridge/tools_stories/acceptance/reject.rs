@@ -105,6 +105,7 @@ pub(crate) async fn reject_via_canonical_store(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
+                placement: crate::board::placement_for(&target_state),
                 new_state: target_state,
             },
         )
