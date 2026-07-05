@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use crate::integrations::github::mapper::stage_github_label;
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{BoardState, Stage, Story};
 
@@ -97,8 +98,8 @@ pub(super) fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Ve
     };
     let canonical_state_labels = [
         BoardState::Ready.github_label(),
-        BoardState::InProgress(Stage::Dev.id()).github_label(),
-        BoardState::InProgress(Stage::DeskCheck.id()).github_label(),
+        stage_github_label(Stage::Dev),
+        stage_github_label(Stage::DeskCheck),
         BoardState::Acceptance.github_label(),
         BoardState::Accepted.github_label(),
     ];

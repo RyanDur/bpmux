@@ -1,11 +1,18 @@
 use crate::product_management::story::{BoardState, Stage};
 use crate::workflow::StageId;
 
+pub fn stage_github_label(stage: Stage) -> &'static str {
+    match stage {
+        Stage::Dev => "in progress",
+        Stage::DeskCheck => "desk-check",
+    }
+}
+
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     let state_labels = [
         BoardState::Ready.github_label(),
-        BoardState::InProgress(Stage::Dev.id()).github_label(),
-        BoardState::InProgress(Stage::DeskCheck.id()).github_label(),
+        stage_github_label(Stage::Dev),
+        stage_github_label(Stage::DeskCheck),
         BoardState::Acceptance.github_label(),
         BoardState::Accepted.github_label(),
         "ready for accept",
@@ -65,7 +72,7 @@ pub(super) fn resolve_state_and_placement(
             Some(Stage::DeskCheck.id()),
         );
     }
-    if has(BoardState::InProgress(Stage::Dev.id()).github_label()) {
+    if has(stage_github_label(Stage::Dev)) {
         return (BoardState::InProgress(Stage::Dev.id()), None);
     }
     if has(BoardState::Ready.github_label()) {
@@ -82,7 +89,7 @@ pub fn outbound_state_label(state: &BoardState, placement: Option<&StageId>) -> 
     match state {
         BoardState::InProgress(_) => {
             let stage = placement.and_then(Stage::from_id).unwrap_or(Stage::Dev);
-            BoardState::InProgress(stage.id()).github_label()
+            stage_github_label(stage)
         }
         other => other.github_label(),
     }
