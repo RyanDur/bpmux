@@ -10,10 +10,15 @@ use crate::store::reactions::{self, ReactionsAction, ReactionsState};
 use crate::store::roster::{self, RosterAction, RosterState};
 use crate::store::sync::SyncAction;
 
+mod board_placement;
 mod listeners;
 mod owner_park;
+pub use board_placement::BoardPlacementReconciler;
 pub use listeners::*;
 pub use owner_park::OwnerParkListener;
+
+#[cfg(test)]
+mod board_placement_tests;
 
 #[derive(Default, Clone)]
 pub struct AppState {

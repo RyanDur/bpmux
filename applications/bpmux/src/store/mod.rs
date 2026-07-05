@@ -142,6 +142,8 @@ impl Store {
             refresh.clone(),
         )));
         self.app_store.add_listener(Arc::new(OwnerParkListener));
+        self.app_store
+            .add_listener(Arc::new(app::BoardPlacementReconciler));
         let github_drain = Arc::new(sync::GithubDrain::new(refresh, self.parent_ct.clone()));
         self.app_store.add_listener(github_drain.clone());
         self.sync_poll = Some(sync_poll);

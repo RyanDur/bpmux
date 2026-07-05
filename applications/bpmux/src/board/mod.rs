@@ -43,3 +43,7 @@ pub fn reduce(state: &BoardPlacements, action: &BoardAction) -> Option<BoardPlac
 pub fn placement_of(state: &BoardPlacements, story: StoryId) -> Option<StageId> {
     state.placements.get(&story).cloned()
 }
+
+pub fn placed_story_ids(state: &BoardPlacements) -> Vec<StoryId> {
+    state.placements.keys().copied().collect()
+}
