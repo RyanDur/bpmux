@@ -459,13 +459,52 @@ zero edits to existing test assertions.
       Enqueue `BodyUpdated`/`TitleUpdated` (variants already exist) through `mutate`, and
       teach `drain_once`/`classify_conflict` to route them to `adapter.update_body`/
       `update_title` (a DIFFERENT adapter method than `push_event`, `trait_def.rs:55,60`).
-- **A2-4 — `GateComment` carries verdict+target (back-compat, 2-3 sub-slices).**
-  Reshape `GateComment.gate` → verdict+target internally (`story/mod.rs:38-44`) while
-  keeping the GitHub comment-codec markers byte-identical (`comment_codec.rs`
-  encode/`classify_gate` decode — incl. the `rejection_reason`+`desk-check-fail`
-  disambiguation) and serde `#[serde(default)]` back-compat for persisted snapshots
-  + `StoryEvent::GateCommentAppended`/`GateCommentsFetched` payloads. Falsifier:
-  comment wire byte-identical; legacy-comment decode unchanged.
+- **A2-4 — unify `GateComment` into `Verdict` (RE-SCOPED with Ryan 2026-07-05; folds
+  the old A2-4 reshape AND A3 delete-`Gate`).** The plan under-named this. `GateComment`
+  is the wrong name on two counts: "Gate" is the vocabulary the verdict-collapse deletes,
+  and "Comment" names the STORAGE (a GitHub issue comment), a persistence leak into the
+  domain. **What it IS: a `Verdict` — a judgment cast at a step, succeed/fail, by an
+  actor, with payload + ts.** There is ONE `Verdict` concept: it drives the move
+  (`advance`) AND is the audit record; the GitHub comment is just how the adapter
+  persists a shared-plane verdict.
+  **The model (Ryan):** three sections `ready → in-progress → acceptance`; `in-progress`
+  is a CONFIGURABLE 1..N-stage middle (today `[dev, desk-check]`). **Success always moves
+  FORWARD (next step); failure is configurable, DEFAULT = previous step.** So a verdict's
+  target is DERIVED from `(step, outcome, config)`, never stored per-gate (the old
+  "verdict+target" and `NeedsWork(target)` were both denormalized).
+  **Shape:** `Verdict { step, outcome: Succeed|Fail, actor, ts, payload }`. `advance`
+  reads `step+outcome` → target (Succeed→`next(step)`; Fail→`configured(step)` default
+  `prev(step)`). The 6 active gates are a bijection with `(step, outcome)`:
+  pickup=(ready,Succeed) deliver=(dev,Succeed) pass=(desk-check,Succeed)
+  accept=(acceptance,Succeed) fail=(desk-check,Fail) reject=(acceptance,Fail).
+  `Filed` is VESTIGIAL — never produced (create_story uses `filed_at`/`filed_by` on
+  `StoryCreated`); decode-only legacy.
+  **PLANE SPLIT (Ryan's key cut — GitHub sees only the SECTION, per the de-leak):** a
+  verdict whose `step→target` stays WITHIN a section is LOCAL (same plane as placement);
+  only section-CROSSINGS are shared. Bookend-crossing → GitHub comment: pickup, pass,
+  reject, accept. Within-middle → local: deliver, fail-desk-check. So "comment is
+  persistence" sharpens to "shared verdict = comment adapter; middle verdict = local
+  adapter," routed by whether `(step,target)` crosses a section.
+  **Decomposition — Phase A NOW (type unification), Phase B rides the persistence arc:**
+  - **V1** — introduce `Verdict{step,outcome,actor,ts,payload}`; derive from `Gate`;
+    reshape `advance` to read `step+outcome` and derive the target (retiring
+    `NeedsWork(target)`); migrate the DISCRIMINATOR consumers (`rework`/`rework_context`:
+    `matches!(gate, Fail|Reject)` → `outcome==Fail`). Additive, zero wire change.
+  - **V2** — migrate the DISPLAY/id consumers (`view_story_timeline`, `get_story`,
+    `gate_to_id`) to derive the ceremony name from `(step, outcome)`. Outputs byte-identical.
+  - **V3 (contract)** — flip the stored field `GateComment{gate}` → `Verdict{…}`; rename
+    the type + `StoryEvent::GateCommentAppended`→`VerdictCast` (+`…Fetched`); the
+    comment-codec becomes the Verdict↔comment ADAPTER (byte-identical markers via a
+    `(step,outcome)→marker` table + `Filed` decode-only); serde `#[serde(default)]`
+    back-compat for persisted records; **DELETE `Gate`.** Falsifier: comment wire +
+    legacy-comment decode byte-identical.
+  - **Phase B (V4) — DEFERRED to the persistence arc:** route within-middle verdicts
+    (deliver, fail) to LOCAL storage (VerdictRepo file adapter + store slice + write-behind
+    listener) instead of comments; bookend verdicts keep the comment adapter. This IS the
+    verdict half of the persistence arc, understood as a plane-split.
+  **Evidence verdicts (`verdicts.json`) stay SEPARATE (Ryan): a different axis — evidence
+  FOR a decision (role X's freshness at the accept gate) vs. the decision itself.** Not
+  unified into `Verdict`; the A2-1 relocation stays as-is.
 - **A2-5 — `is_closed` story-terminal recast (ex-C2).** Re-express the 4 core
   backend reads (`view/board/arrangement.rs:23` `board_position`;
   `product_management/backlog.rs:16`; `transport/rpc_routes/state_delta.rs:46`
@@ -481,12 +520,14 @@ zero edits to existing test assertions.
   fix is behavior-preserving, not behavior-changing; if the second announce carries
   distinct data, reconsider scope.
 
-## A3 — delete the `Gate` enum
+## A3 — delete the `Gate` enum — **FOLDED INTO A2-4 V3 (2026-07-05).**
 
-Once handlers speak verdicts: `gate_as_str`
-(`bridge/tools/view_story_timeline.rs`), `gate_to_id`
-(`acceptance/helpers.rs`), `reject_gate_label` (`bridge/tools/rework_context.rs`)
-collapse. Enum at `story/enums.rs:147`.
+No longer a standalone arc. The `Gate` deletion happens as the contract step of the
+`Verdict` unification (A2-4 V3): once `GateComment{gate}` flips to `Verdict{step,outcome}`
+and the display/id consumers (`gate_as_str` in `view_story_timeline.rs`, `gate_to_id` in
+`acceptance/helpers.rs`, `reject_gate_label` in `rework_context.rs`) derive the ceremony
+name from `(step, outcome)`, the enum (`story/enums.rs:135`) collapses. Deleting it in a
+separate later arc would be double-churn — it dies with V3.
 
 ## M — metrics re-sourcing (⚠ metric redefinition, owner-approved)
 
