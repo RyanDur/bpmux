@@ -126,6 +126,44 @@ fn building_iteration(id: u64, outcome_id: u64, stories: Vec<u64>) -> (Story, Ve
 }
 
 #[tokio::test]
+async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches_github() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_labels(9100, vec!["bug".into()]);
+    adapter.seed_stories(vec![Story::new_minimal(
+        StoryId::new(9100),
+        "[Bug] optimistic board visibility".to_string(),
+        BoardState::Acceptance,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    )]);
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
+    refresh.refresh_all().await.unwrap();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(9100));
+    args.insert(
+        "reason".into(),
+        serde_json::json!("scope mismatch — rework"),
+    );
+    crate::bridge::tools_stories::handle_reject_story(&args, "pm:human", Some(&refresh))
+        .await
+        .expect("pm rejects the story");
+
+    let stories = ordered_board_stories(&refresh);
+    assert_eq!(
+        find_story(&stories, 9100)["state"].as_str(),
+        Some("ready"),
+        "the board snapshot the renderer receives reflects the reject immediately — user-facing state moved acceptance -> ready"
+    );
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "and it is visible OPTIMISTICALLY — the board shows the reject before anything reaches GitHub (no drain driven): {:?}",
+        adapter.pushed_events()
+    );
+}
+
+#[tokio::test]
 async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738() {
     let orch = orchestrator(vec![
         outcome(3000, vec![3010]),
