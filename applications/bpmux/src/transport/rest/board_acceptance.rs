@@ -103,18 +103,11 @@ pub async fn post_reject_story(
             err_body("orchestrator not configured"),
         );
     };
-    let workflow = crate::workflow::current_workflow();
-    let target_state = workflow
-        .transition_for("reject", crate::workflow::GateClass::TeamVerifiable)
-        .or_else(|| workflow.transition_by_id("reject"))
-        .and_then(|t| crate::product_management::story::BoardState::parse(&t.to))
-        .unwrap_or(crate::product_management::story::BoardState::Ready);
     match crate::bridge::tools_stories::reject_via_canonical_store(
         &refresh,
         number,
         "ui-electron".to_string(),
         note,
-        target_state,
     )
     .await
     {

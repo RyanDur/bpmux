@@ -58,13 +58,24 @@ pub(crate) async fn handle_fail_desk_check(
         });
         return Err(err.to_string());
     }
-    let target_state = crate::product_management::story::BoardState::parse(transition.to.as_str())
+    let target = crate::product_management::story::BoardState::parse(transition.to.as_str())
         .ok_or_else(|| {
             format!(
                 "workflow.toml fail-desk-check transition.to='{}' is not a recognized BoardState",
                 transition.to
             )
         })?;
+    let (new_state, placement) = crate::board::advance(
+        &transition.from,
+        &crate::board::Verdict::NeedsWork(target),
+        workflow,
+    )
+    .ok_or_else(|| {
+        format!(
+            "#{id} fail-desk-check has no target from '{}'",
+            transition.from
+        )
+    })?;
     if let Some(r) = refresh {
         let meta = crate::product_management::story::events::EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
@@ -93,8 +104,8 @@ pub(crate) async fn handle_fail_desk_check(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
-                placement: None,
-                new_state: target_state,
+                placement,
+                new_state,
             },
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;

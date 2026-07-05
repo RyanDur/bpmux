@@ -53,15 +53,8 @@ pub(crate) async fn handle_reject_story(
         crate::workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
     }
-    let target_state = crate::product_management::story::BoardState::parse(&transition.to)
-        .ok_or_else(|| {
-            format!(
-                "workflow.toml reject.to '{}' is not a known state",
-                transition.to
-            )
-        })?;
     let actor = crate::routing::short_name(agent_name).to_string();
-    reject_via_canonical_store(r, id, actor, reason.clone(), target_state).await?;
+    reject_via_canonical_store(r, id, actor, reason.clone()).await?;
     Ok(format!("#{id} rejected: {reason}"))
 }
 
@@ -70,9 +63,25 @@ pub(crate) async fn reject_via_canonical_store(
     id: u64,
     actor: String,
     reason: String,
-    target_state: crate::product_management::story::BoardState,
 ) -> Result<(), String> {
     let prior = ensure_story_in_canonical_store(refresh, id).await?;
+    let workflow = crate::workflow::current_workflow();
+    let transition = workflow
+        .transition_by_id("reject")
+        .ok_or("workflow has no 'reject' transition")?;
+    let target =
+        crate::product_management::story::BoardState::parse(&transition.to).ok_or_else(|| {
+            format!(
+                "workflow.toml reject.to '{}' is not a known state",
+                transition.to
+            )
+        })?;
+    let (new_state, placement) = crate::board::advance(
+        &transition.from,
+        &crate::board::Verdict::NeedsWork(target),
+        workflow,
+    )
+    .ok_or_else(|| format!("#{id} reject has no target from '{}'", transition.from))?;
     let was_accepted =
         prior.is_closed || prior.state == crate::product_management::story::BoardState::Accepted;
     let meta = crate::product_management::story::events::EventMeta {
@@ -105,8 +114,8 @@ pub(crate) async fn reject_via_canonical_store(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
-                placement: None,
-                new_state: target_state,
+                placement,
+                new_state,
             },
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;

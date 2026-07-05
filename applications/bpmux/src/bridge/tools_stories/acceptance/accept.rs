@@ -112,6 +112,18 @@ pub(crate) async fn accept_via_canonical_store(
     bypass: Option<String>,
 ) -> Result<(), String> {
     ensure_story_in_canonical_store(refresh, id).await?;
+    let workflow = crate::workflow::current_workflow();
+    let transition = workflow
+        .transition_by_id("accept")
+        .ok_or("workflow has no 'accept' transition")?;
+    let (new_state, placement) =
+        crate::board::advance(&transition.from, &crate::board::Verdict::Succeed, workflow)
+            .ok_or_else(|| {
+                format!(
+                    "#{id} accept has no forward state from '{}'",
+                    transition.from
+                )
+            })?;
     let meta = crate::product_management::story::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),
@@ -132,8 +144,8 @@ pub(crate) async fn accept_via_canonical_store(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
-                new_state: crate::product_management::story::BoardState::Accepted,
-                placement: None,
+                new_state,
+                placement,
             },
         )
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
