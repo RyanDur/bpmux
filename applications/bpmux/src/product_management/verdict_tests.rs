@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-use super::verdicts::*;
+use super::verdict::*;
 use crate::product_management::story::StoryId;
 use chrono::Utc;
 use tempfile::TempDir;

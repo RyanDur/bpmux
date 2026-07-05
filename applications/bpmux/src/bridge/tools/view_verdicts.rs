@@ -1,5 +1,5 @@
 use crate::product_management::story::StoryId;
-use crate::workflow::verdicts::{Verdict, load, verdicts_for_story};
+use crate::product_management::verdict::{Verdict, load, verdicts_for_story};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::sync::Arc;

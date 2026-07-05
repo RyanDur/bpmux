@@ -11,10 +11,10 @@ mod verdict_substrate_integration_1407 {
     use crate::bridge::tools_stories::handle_accept_story;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Story, StoryId};
+    use crate::product_management::verdict::{load, verdicts_for_story};
     use crate::session::Session;
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
-    use crate::workflow::verdicts::{load, verdicts_for_story};
     use chrono::{TimeZone, Utc};
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -49,7 +49,7 @@ mod verdict_substrate_integration_1407 {
     }
 
     fn seed_expired_verdict(session: &Arc<Session>, id: u64, role: &str) {
-        use crate::workflow::verdicts::{Verdict, add_or_replace_verdict, save};
+        use crate::product_management::verdict::{Verdict, add_or_replace_verdict, save};
         let mut store = load(&session.dir);
         add_or_replace_verdict(
             &mut store,
@@ -66,7 +66,7 @@ mod verdict_substrate_integration_1407 {
     }
 
     fn seed_verdict_grounded_on(session: &Arc<Session>, id: u64, role: &str, head: &str) {
-        use crate::workflow::verdicts::{Verdict, add_or_replace_verdict, save};
+        use crate::product_management::verdict::{Verdict, add_or_replace_verdict, save};
         let mut store = load(&session.dir);
         add_or_replace_verdict(
             &mut store,

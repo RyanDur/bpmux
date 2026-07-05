@@ -2,8 +2,8 @@
 
 use super::submit_verdict::*;
 use crate::product_management::story::StoryId;
+use crate::product_management::verdict::{load, verdicts_for_story};
 use crate::session::Session;
-use crate::workflow::verdicts::{load, verdicts_for_story};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;

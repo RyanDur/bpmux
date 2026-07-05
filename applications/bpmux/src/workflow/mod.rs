@@ -3,16 +3,15 @@ pub mod config;
 pub mod gate;
 pub mod loader;
 pub mod stage_id;
-pub mod verdicts;
 
+#[cfg(test)]
+mod boundary_tests;
 #[cfg(test)]
 mod config_tests;
 #[cfg(test)]
 mod gate_tests;
 #[cfg(test)]
 mod loader_tests;
-#[cfg(test)]
-mod verdict_persistence;
 
 pub use config::{GateClass, Role, Section, State, Transition, WorkflowConfig};
 pub use gate::{
