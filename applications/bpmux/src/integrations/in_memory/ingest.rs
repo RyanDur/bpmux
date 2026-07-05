@@ -2,17 +2,20 @@ use std::collections::HashMap;
 
 use crate::integrations::github::mapper::{
     decode_epic_from_story, decode_iteration_from_story, decode_outcome_from_story, is_epic_story,
+    placement_from_labels,
 };
 use crate::product_management::epic::Epic;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::Story;
+use crate::product_management::story::{Story, StoryId};
+use crate::workflow::StageId;
 
 pub(super) struct Classified {
     pub items: Vec<Story>,
     pub outcomes: Vec<Outcome>,
     pub iterations: Vec<Iteration>,
     pub epics: Vec<Epic>,
+    pub placements: Vec<(StoryId, StageId)>,
 }
 
 pub(super) fn derive_typed_fields_from_labels(story: &mut Story, labels: &[String]) {
@@ -50,6 +53,7 @@ pub(super) fn classify_ingested(
         outcomes: Vec::new(),
         iterations: Vec::new(),
         epics: Vec::new(),
+        placements: Vec::new(),
     };
     for mut story in stories {
         let story_labels = labels.get(&story.id.value()).cloned().unwrap_or_default();
@@ -64,6 +68,9 @@ pub(super) fn classify_ingested(
         } else if is_epic_story(&story, &story_labels) {
             c.epics.push(decode_epic_from_story(&story));
         } else {
+            if let Some(stage) = placement_from_labels(&story_labels, story.is_closed) {
+                c.placements.push((story.id, stage));
+            }
             c.items.push(story);
         }
     }

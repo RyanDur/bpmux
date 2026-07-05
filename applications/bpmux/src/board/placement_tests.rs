@@ -149,24 +149,26 @@ fn state_label_passes_a_non_middle_position_through_to_its_coarse_token() {
 }
 
 #[test]
-fn ingest_places_a_desk_check_story() {
+fn ingest_places_the_story_the_desk_check_signal_names_even_when_state_says_dev() {
+    let desk_check = [(StoryId::new(1), Stage::DeskCheck.id())];
     assert_eq!(
-        placements_for_ingest(&[in_progress_story(1, Stage::DeskCheck)]),
+        placements_for_ingest(&[in_progress_story(1, Stage::Dev)], &desk_check),
         vec![BoardAction::StoryPlaced {
             story: StoryId::new(1),
             stage: Stage::DeskCheck.id(),
-        }]
+        }],
+        "the label-derived signal drives the placement — the story's own coarse stage does not"
     );
 }
 
 #[test]
-fn ingest_unplaces_a_dev_story_so_a_stale_desk_check_entry_clears() {
+fn ingest_unplaces_a_middle_story_absent_from_the_desk_check_signal() {
     assert_eq!(
-        placements_for_ingest(&[in_progress_story(1, Stage::Dev)]),
+        placements_for_ingest(&[in_progress_story(1, Stage::DeskCheck)], &[]),
         vec![BoardAction::StoryUnplaced {
             story: StoryId::new(1),
         }],
-        "a story ingested back at the entry sub-section must lose any prior desk-check entry"
+        "a middle story the signal does not name is the entry sub-section; a stale desk-check entry clears"
     );
 }
 
@@ -176,8 +178,12 @@ fn ingest_ignores_stories_outside_the_middle() {
     ready.state = BoardState::Ready;
     let mut accepted = in_progress_story(2, Stage::Dev);
     accepted.state = BoardState::Accepted;
+    let desk_check = [
+        (StoryId::new(1), Stage::DeskCheck.id()),
+        (StoryId::new(2), Stage::DeskCheck.id()),
+    ];
     assert!(
-        placements_for_ingest(&[ready, accepted]).is_empty(),
-        "coarse stories carry no middle placement; their exits are owned by events + the safety-net"
+        placements_for_ingest(&[ready, accepted], &desk_check).is_empty(),
+        "coarse stories carry no middle placement even if the signal names them"
     );
 }

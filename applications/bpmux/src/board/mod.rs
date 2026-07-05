@@ -67,16 +67,21 @@ pub fn placement_for(state: &BoardState) -> Option<StageId> {
     }
 }
 
-pub fn placements_for_ingest(stories: &[Story]) -> Vec<BoardAction> {
+pub fn placements_for_ingest(
+    stories: &[Story],
+    desk_check: &[(StoryId, StageId)],
+) -> Vec<BoardAction> {
+    let desk_check: HashMap<StoryId, &StageId> =
+        desk_check.iter().map(|(id, stage)| (*id, stage)).collect();
     stories
         .iter()
-        .filter_map(|story| match &story.state {
-            BoardState::InProgress(stage) => Some(match Stage::from_id(stage) {
-                Some(Stage::DeskCheck) => BoardAction::StoryPlaced {
+        .filter_map(|story| match story.state {
+            BoardState::InProgress(_) => Some(match desk_check.get(&story.id) {
+                Some(stage) => BoardAction::StoryPlaced {
                     story: story.id,
-                    stage: stage.clone(),
+                    stage: (*stage).clone(),
                 },
-                _ => BoardAction::StoryUnplaced { story: story.id },
+                None => BoardAction::StoryUnplaced { story: story.id },
             }),
             _ => None,
         })

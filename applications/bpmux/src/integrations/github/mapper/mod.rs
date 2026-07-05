@@ -3,6 +3,7 @@ mod epic_decode;
 mod iteration_decode;
 mod label_fields;
 mod outcome_decode;
+mod state_labels;
 mod story_decode;
 
 #[cfg(test)]
@@ -15,4 +16,5 @@ pub use epic_decode::*;
 pub use iteration_decode::*;
 pub use label_fields::*;
 pub use outcome_decode::*;
+pub use state_labels::*;
 pub use story_decode::*;

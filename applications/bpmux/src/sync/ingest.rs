@@ -9,8 +9,15 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.ingest_once_since(None).await
     }
 
-    fn seed_and_place(&self, items: Vec<crate::product_management::story::Story>) {
-        let board_actions = crate::board::placements_for_ingest(&items);
+    fn seed_and_place(
+        &self,
+        items: Vec<crate::product_management::story::Story>,
+        placements: Vec<(
+            crate::product_management::story::StoryId,
+            crate::workflow::StageId,
+        )>,
+    ) {
+        let board_actions = crate::board::placements_for_ingest(&items, &placements);
         self.dispatch_story(crate::product_management::story::slice::StoryAction::Seeded(items));
         if let Some(tx) = &self.action_tx {
             for action in board_actions {
@@ -30,6 +37,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     outcomes,
                     iterations,
                     epics,
+                    placements,
                 } = ingested;
                 let in_flight_label_stories = self.with_pending(|p| {
                     p.iter()
@@ -91,7 +99,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         ));
                     }
                 }
-                self.seed_and_place(items);
+                self.seed_and_place(items, placements);
                 record_ingest_success(&self.status);
                 Ok(())
             }
@@ -108,7 +116,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     ) -> Result<Option<crate::product_management::story::Story>, SyncError> {
         match self.adapter.fetch_story_metadata(number).await {
             Ok(Some(story)) => {
-                self.seed_and_place(vec![story.clone()]);
+                let placements = crate::board::placement_for(&story.state)
+                    .map(|stage| (story.id, stage))
+                    .into_iter()
+                    .collect::<Vec<_>>();
+                self.seed_and_place(vec![story.clone()], placements);
                 record_ingest_success(&self.status);
                 Ok(Some(story))
             }

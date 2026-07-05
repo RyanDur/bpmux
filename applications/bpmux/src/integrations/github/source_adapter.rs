@@ -27,6 +27,7 @@ impl SourceAdapter for GitHubSourceAdapter {
             outcomes,
             mut iterations,
             epics,
+            placements,
             dropped,
         } = ingest::classify_ingested(&values);
         let pre_filter = iterations.len();
@@ -44,6 +45,7 @@ impl SourceAdapter for GitHubSourceAdapter {
             outcomes,
             iterations,
             epics,
+            placements,
         })
     }
 

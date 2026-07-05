@@ -44,6 +44,7 @@ impl SourceAdapter for InMemorySourceAdapter {
             outcomes,
             mut iterations,
             epics,
+            placements,
         } = ingest::classify_ingested(s.stories.values().cloned(), &s.labels);
         iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
         Ok(Ingested {
@@ -51,6 +52,7 @@ impl SourceAdapter for InMemorySourceAdapter {
             outcomes,
             iterations,
             epics,
+            placements,
         })
     }
 

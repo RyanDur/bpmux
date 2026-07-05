@@ -1,8 +1,9 @@
 use crate::product_management::epic::Epic;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::product_management::story::Story;
 use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::{Story, StoryId};
+use crate::workflow::StageId;
 
 #[derive(Debug, Clone, Default)]
 pub struct Ingested {
@@ -10,6 +11,7 @@ pub struct Ingested {
     pub outcomes: Vec<Outcome>,
     pub iterations: Vec<Iteration>,
     pub epics: Vec<Epic>,
+    pub placements: Vec<(StoryId, StageId)>,
 }
 
 #[derive(Debug, Clone)]

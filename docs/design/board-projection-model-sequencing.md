@@ -192,16 +192,45 @@ in a type the SourceAdapter never sees.
         unchanged. Falsifier: `board_placement_tests` (edge reads placement not
         state; safety-net is coarse-only) + `placement_tests` (ingest placements) +
         full suite 2381 + e2e byte-identical.
-    - **BD1b-3 (the flip).** `InProgress(StageId)` → unit. Fix ~140
-      constructors/matches. `as_str`/`github_label` → coarse for InProgress;
-      `parse` stops EMITTING desk-check but still TOLERATES `desk-check`/`desk_check`
-      → coarse InProgress (migration-tolerant decode for legacy GitHub labels +
-      persisted outbox events). `state_from_labels` → coarse InProgress (the
-      desk-check→placement split now fully in the BD1b-2 ingest dispatch). Drop the
-      own-stage fallback in `fine_stage` → `placement.unwrap_or(Dev entry default)`;
-      retire `story_board_position`/`story_position` composing if it goes to
-      identity. Relocate `enums_tests` desk-check round-trips → board/placement
-      tests. Falsifier: wire + render + outbound + e2e byte-identical.
+    - **BD1b-3 (the flip).** `InProgress(StageId)` → unit is a variant-ARITY change
+      (atomic — all sites break in one compile-unit). Decomposed into 3 pre-flip
+      de-risk slices (each CI-green while the stage still exists, shrinking the flip)
+      + the flip.
+      - **BD1b-3 Slice A (decode-emit-fine) — DONE.** `state_from_labels` refactored
+        into `resolve_state_and_placement(labels, is_closed) -> (BoardState,
+        Option<StageId>)` — one precedence pass emits BOTH grains; `state_from_labels`
+        + new `placement_from_labels` are `.0`/`.1` wrappers (callers untouched). The
+        desk-check arm keys off `Stage::DeskCheck.id().as_str()` (flip-safe, no
+        `BoardState` construction). `decode_story_with_placement(v) -> (Story,
+        Option<StageId>)` surfaces the label-derived fine stage; `decode_story_metadata`
+        delegates. New `Ingested.placements: Vec<(StoryId, StageId)>` carries it —
+        populated by BOTH adapters from LABELS (github classify via
+        `decode_story_with_placement`; in-memory via `placement_from_labels`), consumed
+        by `seed_and_place`. `placements_for_ingest(items, desk_check)` now reads only
+        the COARSE `InProgress(_)` from story.state (survives the flip) + the passed
+        desk-check signal. Bulk ingest is fully decoupled from story.state's stage;
+        the single `refresh_story` path still derives via `placement_for(&story.state)`
+        (transitional — Slice D carries the fine stage on the fetch). Falsifier:
+        `placement_tests` (the signal drives placement, not the embedded stage). Full
+        suite 2381 + e2e byte-identical.
+      - **BD1b-3 Slice B (label maps stage→label directly).** `outbound_state_label`
+        (story_decode.rs:183), `coalesce.rs:100-101`, and the `resolve_state_and_placement`
+        dev arm (`InProgress(Dev).github_label()`) map `Stage`→label string directly
+        (DeskCheck→"desk-check", Dev→"in progress") instead of via `InProgress(stage).github_label()`.
+      - **BD1b-3 Slice C (column model StageId-keyed).** `board_columns` (arrangement.rs:8),
+        `column_header` (:41 binds stage), `parse_state` (view.rs:85). Key columns off
+        StageId, not `InProgress(stage)`. NOTE `group_by_position` buckets by whole
+        BoardState → post-flip all InProgress collapse to one bucket; verify.
+      - **BD1b-3 Slice D (the flip).** `InProgress(StageId)` → unit. `as_str`/`github_label`
+        → coarse for InProgress; `parse` stops EMITTING desk-check but still TOLERATES
+        `desk-check`/`desk_check`/`in-progress`/`in_progress` → unit InProgress
+        (migration-tolerant for legacy GitHub labels + persisted outbox). `resolve_state_and_placement`
+        `.0` desk-check arm → coarse InProgress (`.1` unchanged). Drop the own-stage
+        fallback in `fine_stage` → `placement.unwrap_or(Dev entry default)`. Retire
+        `placement_for`; carry the fine stage on `fetch_story_metadata` for refresh_story.
+        Fix ~17 prod + ~120 test constructions (drop payload) + coarse `InProgress(_)`→`InProgress`
+        matches. Relocate `enums_tests` desk-check round-trips → board/placement tests.
+        Falsifier: wire + render + outbound + e2e byte-identical.
 - **BD2 — placement persistence.** Refinery migration + repo port
   (storage-ports pattern), write-behind listener, hydrate on boot.
   **Loss-window call (sudden-death rule): decide explicitly whether losing

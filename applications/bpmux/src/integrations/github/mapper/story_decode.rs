@@ -1,11 +1,10 @@
 use chrono::{DateTime, Utc};
 
 use super::label_fields::story_type_from_labels;
+use super::state_labels::resolve_state_and_placement;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::LabelDerivedFields;
-use crate::product_management::story::{
-    BoardState, Stage, Story, StoryId, StoryKind, Tag, story_type_from_title,
-};
+use crate::product_management::story::{Story, StoryId, StoryKind, Tag, story_type_from_title};
 use crate::workflow::StageId;
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryKind {
@@ -37,30 +36,11 @@ pub fn iteration_slot_from_labels(
     })
 }
 
-pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
-    let state_labels = [
-        BoardState::Ready.github_label(),
-        BoardState::InProgress(Stage::Dev.id()).github_label(),
-        BoardState::InProgress(Stage::DeskCheck.id()).github_label(),
-        BoardState::Acceptance.github_label(),
-        BoardState::Accepted.github_label(),
-        "ready for accept",
-        "needs fixes",
-        "rejected",
-    ];
-    let present: Vec<&str> = state_labels
-        .iter()
-        .copied()
-        .filter(|needle| labels.iter().any(|l| l.eq_ignore_ascii_case(needle)))
-        .collect();
-    if present.len() >= 2 {
-        crate::diag::log_diag(&format!(
-            "decoder: inconsistent state-labels present {present:?} — priority decoder picks first per spec; expected: only one state-label per story"
-        ));
-    }
+pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
+    decode_story_with_placement(v).map(|(story, _)| story)
 }
 
-pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
+pub fn decode_story_with_placement(v: &serde_json::Value) -> Option<(Story, Option<StageId>)> {
     let number = v.get("number").and_then(|x| x.as_u64())?;
     let title = v
         .get("title")
@@ -75,7 +55,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
             Some("closed" | "CLOSED")
         ),
     };
-    let state = state_from_labels(&labels, is_closed);
+    let (state, placement) = resolve_state_and_placement(&labels, is_closed);
     let filed_at = v
         .get("created_at")
         .and_then(|x| x.as_str())
@@ -105,7 +85,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     if let Some(body) = v.get("body").and_then(|x| x.as_str()) {
         story.body = Some(body.to_string());
     }
-    Some(story)
+    Some((story, placement))
 }
 
 pub(super) fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
@@ -134,54 +114,4 @@ pub fn tags_from_labels(labels: &[String]) -> Vec<Tag> {
         }
     }
     out
-}
-
-pub fn state_from_labels(labels: &[String], is_closed: bool) -> BoardState {
-    let has = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
-    warn_on_inconsistent_state_labels(labels);
-    if has(BoardState::Accepted.github_label()) {
-        return BoardState::Accepted;
-    }
-    if has(BoardState::Retired.github_label()) {
-        return BoardState::Retired;
-    }
-    if is_closed {
-        return BoardState::Accepted;
-    }
-    if has("rejected") {
-        return BoardState::Ready;
-    }
-    if has("needs fixes") {
-        return BoardState::InProgress(Stage::Dev.id());
-    }
-    if has("ready for accept") {
-        return BoardState::Acceptance;
-    }
-    if has(BoardState::Acceptance.github_label()) {
-        return BoardState::Acceptance;
-    }
-    if has(BoardState::InProgress(Stage::DeskCheck.id()).github_label()) {
-        return BoardState::InProgress(Stage::DeskCheck.id());
-    }
-    if has(BoardState::InProgress(Stage::Dev.id()).github_label()) {
-        return BoardState::InProgress(Stage::Dev.id());
-    }
-    if has(BoardState::Ready.github_label()) {
-        return BoardState::Ready;
-    }
-    BoardState::Icebox
-}
-
-pub fn state_to_label(state: BoardState) -> &'static str {
-    state.github_label()
-}
-
-pub fn outbound_state_label(state: &BoardState, placement: Option<&StageId>) -> &'static str {
-    match state {
-        BoardState::InProgress(_) => {
-            let stage = placement.and_then(Stage::from_id).unwrap_or(Stage::Dev);
-            BoardState::InProgress(stage.id()).github_label()
-        }
-        other => other.github_label(),
-    }
 }
