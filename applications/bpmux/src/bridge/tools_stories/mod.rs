@@ -12,6 +12,7 @@ mod closure;
 mod creation;
 mod creation_iteration;
 mod creation_outcome;
+mod deliver;
 mod edit_outcome;
 mod event_meta;
 pub(crate) mod helpers;
@@ -46,6 +47,7 @@ pub(crate) use closure::{handle_close_iteration, handle_close_story};
 pub(crate) use creation::handle_create_story;
 pub(crate) use creation_iteration::handle_create_iteration;
 pub(crate) use creation_outcome::handle_create_outcome;
+pub(crate) use deliver::handle_deliver_story;
 pub(crate) use edit_outcome::handle_edit_outcome;
 pub(crate) use helpers::{ensure_story_in_canonical_store, role_from_name};
 pub(crate) use iteration_members::{handle_move_iteration_member, handle_remove_iteration_member};
@@ -75,5 +77,5 @@ pub(crate) use signals::{
     build_pass_desk_check_signals, build_reject_signal, build_start_signal,
     build_verdict_reprompt_signal, classify_for_pass_desk_check,
 };
-pub(crate) use transition::{handle_deliver_story, handle_start_story};
+pub(crate) use transition::handle_start_story;
 pub(crate) use view::handle_view_board;
