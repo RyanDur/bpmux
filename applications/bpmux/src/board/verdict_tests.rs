@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-use super::{Decision, Verdict, advance};
-use crate::product_management::story::{BoardState, Stage};
+use super::{Decision, advance};
+use crate::product_management::story::{BoardState, Stage, Verdict};
 use crate::workflow::bundled_default::bundled_default;
 
 fn succeed(step: &str) -> Verdict {

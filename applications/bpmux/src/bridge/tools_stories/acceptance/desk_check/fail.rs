@@ -62,7 +62,7 @@ pub(crate) async fn handle_fail_desk_check(
         coarse: new_state,
         placement,
     } = crate::board::advance(
-        &crate::board::Verdict::Fail {
+        &crate::product_management::story::Verdict::Fail {
             step: transition.from.as_str().into(),
         },
         workflow,

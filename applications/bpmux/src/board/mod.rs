@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, Stage, Story, StoryId, Verdict};
 use crate::workflow::{StageId, WorkflowConfig};
 
 #[cfg(test)]
@@ -98,12 +98,6 @@ pub fn state_label(coarse: &BoardState, fine: Option<Stage>) -> &'static str {
         Some(Stage::Dev) => "in-progress",
         None => coarse.as_str(),
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Verdict {
-    Succeed { step: StageId },
-    Fail { step: StageId },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

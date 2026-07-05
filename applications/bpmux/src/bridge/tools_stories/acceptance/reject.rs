@@ -73,7 +73,7 @@ pub(crate) async fn reject_via_canonical_store(
         coarse: new_state,
         placement,
     } = crate::board::advance(
-        &crate::board::Verdict::Fail {
+        &crate::product_management::story::Verdict::Fail {
             step: transition.from.as_str().into(),
         },
         workflow,

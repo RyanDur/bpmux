@@ -89,7 +89,7 @@ pub(crate) async fn handle_pass_desk_check(
             coarse: new_state,
             placement,
         } = crate::board::advance(
-            &crate::board::Verdict::Succeed {
+            &crate::product_management::story::Verdict::Succeed {
                 step: transition.from.as_str().into(),
             },
             workflow,

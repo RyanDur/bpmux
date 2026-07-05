@@ -120,7 +120,7 @@ pub(crate) async fn accept_via_canonical_store(
         coarse: new_state,
         placement,
     } = crate::board::advance(
-        &crate::board::Verdict::Succeed {
+        &crate::product_management::story::Verdict::Succeed {
             step: transition.from.as_str().into(),
         },
         workflow,
