@@ -40,13 +40,17 @@ slice claims pure re-expression: zero edits to existing tests.
 
 ## Order at a glance
 
-`T0` ✅ → `RF` ✅ → `BD1–BD3` (the board domain + de-leak — NEXT PICKUP) →
-`A2` (verdict collapse, two-grain-native; absorbs the handler cleanups AND
-C2's story-terminal re-expression) → `A3` (delete `Gate`) → `M1–M4` (metrics
-re-sourcing) → `C1` (shed `ready_order`) → `D` (order-on-lists) → `SC`
-(selector consolidation sweep + locks; absorbs C2's field+wire shed and the
-iteration-closed re-home) → `WR` (write-path remainder) → `SR` (session
-renames, last — mechanical, least churn).
+`T0` ✅ → `RF` ✅ → `BD1` ✅ (board domain landed CI-green — the two grains
+now exist: coarse position + fine `BoardPlacements`) → [`BD2` placement
+persistence + `BD3` desk-check de-leak — **relocated out of line to ride the
+DB/storage-ports arc**, Ryan 2026-07-05; see the BD2 note. No downstream
+dependency: A2–SR need only the board *domain* (BD1), not persistence or the
+de-leak] → `A2` (verdict collapse, two-grain-native; absorbs the handler
+cleanups AND C2's story-terminal re-expression — **NEXT PICKUP**) → `A3`
+(delete `Gate`) → `M1–M4` (metrics re-sourcing) → `C1` (shed `ready_order`) →
+`D` (order-on-lists) → `SC` (selector consolidation sweep + locks; absorbs
+C2's field+wire shed and the iteration-closed re-home) → `WR` (write-path
+remainder) → `SR` (session renames, last — mechanical, least churn).
 
 C2 no longer appears as a standalone slice — it was **falsified as scoped**
 (2026-07-04, mid-execution substrate check) and dissolved three ways; see the
