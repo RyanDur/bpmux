@@ -125,6 +125,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_story(StoryId::new(number))
     }
 
+    fn story_board_position(&self, story: &Story) -> crate::product_management::story::BoardState {
+        self.read_story_board_position(story)
+    }
+
     fn all_stories(&self) -> Vec<Story> {
         self.read_all_stories()
     }

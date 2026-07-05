@@ -7,7 +7,9 @@ pub(crate) fn ordered_board_stories(
     let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
     let items: Vec<serde_json::Value> = all
         .iter()
-        .map(|s| crate::view::board::story_to_board_json(&codec, s))
+        .map(|s| {
+            crate::view::board::story_to_board_json(&codec, s, &refresh.story_board_position(s))
+        })
         .collect();
     let current_order: Vec<u64> = refresh
         .iterations()

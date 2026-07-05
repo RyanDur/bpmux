@@ -18,7 +18,7 @@ fn story(id: u64, title: &str, state: BoardState) -> Story {
 #[test]
 fn project_mirrors_core_identity_fields() {
     let s = story(42, "[Feature] do the thing", BoardState::Ready);
-    let view = StoryView::project(&GhLabelCodec, &s);
+    let view = StoryView::project(&GhLabelCodec, &s, &s.state);
     assert_eq!(view.id, 42);
     assert_eq!(view.title, "[Feature] do the thing");
     assert_eq!(view.state, "ready");
@@ -29,7 +29,7 @@ fn project_mirrors_core_identity_fields() {
 fn project_marks_a_closed_story_gh_state_closed() {
     let mut s = story(7, "done", BoardState::Accepted);
     s.is_closed = true;
-    let view = StoryView::project(&GhLabelCodec, &s);
+    let view = StoryView::project(&GhLabelCodec, &s, &s.state);
     assert_eq!(view.gh_state, "closed");
 }
 
@@ -37,7 +37,7 @@ fn project_marks_a_closed_story_gh_state_closed() {
 fn project_encodes_badge_labels_from_typed_fields() {
     let mut s = story(11, "badged", BoardState::Acceptance);
     s.tags = vec![crate::product_management::story::Tag::DeskCheckFail];
-    let view = StoryView::project(&GhLabelCodec, &s);
+    let view = StoryView::project(&GhLabelCodec, &s, &s.state);
     assert!(
         view.labels.iter().any(|l| l == "desk-check-fail"),
         "the rework badge label re-encodes from the typed DeskCheckFail tag; got {:?}",
@@ -48,7 +48,7 @@ fn project_encodes_badge_labels_from_typed_fields() {
 #[test]
 fn project_leads_the_wire_labels_with_the_derived_type_label() {
     let s = story(20, "[Bug] broken thing", BoardState::Icebox);
-    let view = StoryView::project(&GhLabelCodec, &s);
+    let view = StoryView::project(&GhLabelCodec, &s, &s.state);
     assert_eq!(
         view.labels.first().map(String::as_str),
         Some("bug"),
@@ -59,7 +59,7 @@ fn project_leads_the_wire_labels_with_the_derived_type_label() {
 #[test]
 fn story_view_serializes_to_the_renderer_wire_shape() {
     let s = story(5, "wire", BoardState::Ready);
-    let view = StoryView::project(&GhLabelCodec, &s);
+    let view = StoryView::project(&GhLabelCodec, &s, &s.state);
     let json = serde_json::to_value(&view).expect("StoryView serializes");
     assert_eq!(json["id"], 5);
     assert_eq!(json["state"], "ready");

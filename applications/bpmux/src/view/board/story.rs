@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::product_management::epic::EpicId;
 use crate::product_management::label_codec::LabelCodec;
-use crate::product_management::story::{Story, most_recent_needs_work};
+use crate::product_management::story::{BoardState, Story, most_recent_needs_work};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StoryView {
@@ -20,11 +20,11 @@ pub struct StoryView {
 }
 
 impl StoryView {
-    pub fn project<C: LabelCodec>(codec: &C, story: &Story) -> Self {
+    pub fn project<C: LabelCodec>(codec: &C, story: &Story, position: &BoardState) -> Self {
         Self {
             id: story.id.value(),
             title: story.title().to_string(),
-            state: story.state().as_str(),
+            state: position.as_str(),
             gh_state: if story.is_closed { "closed" } else { "open" },
             labels: wire_labels(codec, story),
             parent_epic: story.parent_epic(),

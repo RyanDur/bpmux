@@ -2,7 +2,7 @@ use super::SyncOrchestrator;
 use crate::product_management::epic::{self, Epic};
 use crate::product_management::iteration::{self, Iteration};
 use crate::product_management::outcome::{self, Outcome};
-use crate::product_management::story::{Story, StoryId, StoryKey};
+use crate::product_management::story::{BoardState, Story, StoryId, StoryKey};
 use crate::sync::SourceAdapter;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -21,6 +21,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .get()
             .map(|s| s.select(|state| state.stories.values().cloned().collect()))
             .unwrap_or_default()
+    }
+
+    pub(super) fn read_story_board_position(&self, story: &Story) -> BoardState {
+        self.select
+            .get()
+            .and_then(|s| s.select(|state| Some(crate::board::story_position(story, &state.board))))
+            .unwrap_or_else(|| story.state.clone())
     }
 
     pub(super) fn read_store_is_empty(&self) -> bool {

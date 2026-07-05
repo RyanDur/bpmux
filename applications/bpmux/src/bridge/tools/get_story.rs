@@ -88,10 +88,11 @@ pub(in crate::bridge) async fn handle_get_story(
             }
         }
     }
-    let needs_gates = matches!(story.state, BoardState::Ready)
-        || matches!(&story.state, BoardState::InProgress(stage) if Stage::from_id(stage) == Some(Stage::Dev))
+    let position = r.story_board_position(&story);
+    let needs_gates = matches!(&position, BoardState::Ready)
+        || matches!(&position, BoardState::InProgress(stage) if Stage::from_id(stage) == Some(Stage::Dev))
         || story.is_closed
-        || matches!(story.state, BoardState::Accepted);
+        || matches!(&position, BoardState::Accepted);
     if needs_gates && story.gate_comments.is_none() {
         match r.fetch_gate_comments(id).await {
             Ok(_) => {
@@ -117,7 +118,7 @@ pub(in crate::bridge) async fn handle_get_story(
             Gate::FailDeskCheck => "in progress",
             _ => "ready",
         })
-        .unwrap_or_else(|| state_label(story.state.clone()));
+        .unwrap_or_else(|| state_label(position));
     if needs_gates
         && let Some(gates) = story.gate_comments.as_ref()
         && let Some(ctx) = rework_context_from_gates(gates)
