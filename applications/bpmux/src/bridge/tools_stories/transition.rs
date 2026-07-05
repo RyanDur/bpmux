@@ -64,27 +64,27 @@ pub(crate) async fn handle_start_story(
             ts: chrono::Utc::now(),
             peer_id: PeerId::local(),
         };
+        let mut events = Vec::new();
         if was_closed {
-            r.mutate_sync(StoryEvent::StoryReopened {
+            events.push(StoryEvent::StoryReopened {
                 meta: meta.clone(),
                 id: StoryId::new(id),
-            })
-            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
+            });
         }
-        r.mutate_sync(StoryEvent::GateCommentAppended {
+        events.push(StoryEvent::GateCommentAppended {
             meta: meta.clone(),
             id: StoryId::new(id),
             gate: Gate::Pickup,
             payload: Some(pickup_payload.clone()),
-        })
-        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
-        r.mutate_sync(StoryEvent::StateTransitioned {
+        });
+        events.push(StoryEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
             new_state: BoardState::InProgress,
             placement: None,
-        })
-        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
+        });
+        r.mutate_batch_sync(events)
+            .map_err(|e| format!("#{id} start enqueue failed: {e}"))?;
         return Ok(match reject_lead {
             Some(lead) => format!("{lead}\n#{id} marked as in progress"),
             None => format!("#{id} marked as in progress"),

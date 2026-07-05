@@ -130,33 +130,25 @@ pub(crate) async fn accept_via_canonical_store(
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     refresh
-        .mutate_sync(
+        .mutate_batch_sync(vec![
             crate::product_management::story::events::StoryEvent::GateCommentAppended {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::Accepted,
                 payload: bypass.map(format_bypass_payload),
             },
-        )
-        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
-    refresh
-        .mutate_sync(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 new_state,
                 placement,
             },
-        )
-        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-    refresh
-        .mutate_sync(
             crate::product_management::story::events::StoryEvent::StoryClosed {
                 meta,
                 id: StoryId::new(id),
                 reason: None,
             },
-        )
-        .map_err(|e| format!("#{id} close enqueue failed: {e}"))?;
+        ])
+        .map_err(|e| format!("#{id} accept enqueue failed: {e}"))?;
     Ok(())
 }

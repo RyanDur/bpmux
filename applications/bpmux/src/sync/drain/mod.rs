@@ -33,6 +33,44 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         Ok(())
     }
 
+    pub fn mutate_batch(&self, events: Vec<StoryEvent>) -> Result<(), SyncError> {
+        if events.is_empty() {
+            return Ok(());
+        }
+        let pre_states: Vec<Option<crate::product_management::story::Story>> = events
+            .iter()
+            .map(|event| self.read_story(event.story_id()))
+            .collect();
+        self.apply_story_events(&events);
+        let mut ids = Vec::with_capacity(events.len());
+        let queue_len = self.with_pending_mut(|p| {
+            for (event, pre_state) in events.iter().zip(pre_states.iter()) {
+                let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
+                ids.push(id);
+                let absorbed =
+                    coalesce_iteration_label_events(&*self.codec, p, event, id, pre_state);
+                if !absorbed {
+                    p.push_back(QueuedEvent::new_with_id(
+                        id,
+                        event.clone(),
+                        pre_state.clone(),
+                    ));
+                }
+            }
+            p.len()
+        });
+        self.persist_outbox();
+        set_pending_events(&self.status, queue_len);
+        if let Some(tx) = &self.action_tx {
+            for id in ids {
+                let _ = tx.send(crate::store::AppAction::Sync(
+                    crate::store::SyncAction::StartUpdateGithub { mutation_id: id },
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn remove_pending_by_id(&self, id: MutationId) {
         self.with_pending_mut(|p| {
             if let Some(idx) = p.iter().position(|q| q.id == id) {

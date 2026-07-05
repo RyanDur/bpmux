@@ -51,6 +51,23 @@ fn transition(id: u64, placement: Option<StageId>) -> StoryAction {
     })
 }
 
+fn batched_intent(id: u64, placement: Option<StageId>) -> StoryAction {
+    let StoryAction::Event(state) = transition(id, placement) else {
+        unreachable!()
+    };
+    let gate = StoryEvent::GateCommentAppended {
+        meta: EventMeta {
+            actor: "dev".to_string(),
+            ts: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
+            peer_id: PeerId::local(),
+        },
+        id: StoryId::new(id),
+        gate: crate::product_management::story::Gate::Delivered,
+        payload: None,
+    };
+    StoryAction::Events(vec![gate, state])
+}
+
 #[test]
 fn a_transition_carrying_a_placement_places_from_it_not_from_the_state() {
     let edge = placement_edge(
@@ -95,6 +112,34 @@ fn a_transition_placing_what_is_already_placed_is_a_no_op() {
 fn a_transition_unplacing_what_is_not_placed_is_a_no_op() {
     let edge = placement_edge(&BoardPlacements::default(), &transition(1, None));
     assert_eq!(edge, None);
+}
+
+#[test]
+fn a_batched_intent_places_from_the_state_transition_inside_it() {
+    let edge = placement_edge(
+        &BoardPlacements::default(),
+        &batched_intent(1, Some(Stage::DeskCheck.id())),
+    );
+    assert_eq!(
+        edge,
+        Some(BoardAction::StoryPlaced {
+            story: StoryId::new(1),
+            stage: Stage::DeskCheck.id(),
+        }),
+        "an atomic-intent batch projects the placement from its StateTransitioned event"
+    );
+}
+
+#[test]
+fn a_batched_intent_with_no_placement_unplaces() {
+    let edge = placement_edge(&board(&[(1, "desk-check")]), &batched_intent(1, None));
+    assert_eq!(
+        edge,
+        Some(BoardAction::StoryUnplaced {
+            story: StoryId::new(1),
+        }),
+        "a batched intent transitioning to the entry sub-section clears the placement"
+    );
 }
 
 #[test]

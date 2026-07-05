@@ -89,35 +89,33 @@ pub(crate) async fn reject_via_canonical_store(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
+    let mut events = Vec::new();
     if was_accepted {
-        refresh
-            .mutate_sync(
-                crate::product_management::story::events::StoryEvent::StoryReopened {
-                    meta: meta.clone(),
-                    id: StoryId::new(id),
-                },
-            )
-            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
-    }
-    refresh
-        .mutate_sync(
-            crate::product_management::story::events::StoryEvent::GateCommentAppended {
+        events.push(
+            crate::product_management::story::events::StoryEvent::StoryReopened {
                 meta: meta.clone(),
                 id: StoryId::new(id),
-                gate: crate::product_management::story::Gate::Rejected,
-                payload: Some(reason),
             },
-        )
-        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
+        );
+    }
+    events.push(
+        crate::product_management::story::events::StoryEvent::GateCommentAppended {
+            meta: meta.clone(),
+            id: StoryId::new(id),
+            gate: crate::product_management::story::Gate::Rejected,
+            payload: Some(reason),
+        },
+    );
+    events.push(
+        crate::product_management::story::events::StoryEvent::StateTransitioned {
+            meta,
+            id: StoryId::new(id),
+            placement,
+            new_state,
+        },
+    );
     refresh
-        .mutate_sync(
-            crate::product_management::story::events::StoryEvent::StateTransitioned {
-                meta,
-                id: StoryId::new(id),
-                placement,
-                new_state,
-            },
-        )
-        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
+        .mutate_batch_sync(events)
+        .map_err(|e| format!("#{id} reject enqueue failed: {e}"))?;
     Ok(())
 }

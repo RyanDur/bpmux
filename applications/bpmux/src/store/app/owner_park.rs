@@ -60,14 +60,22 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         let crate::store::AppAction::Story(story_action) = &reaction.action else {
             return Box::pin(async {});
         };
-        let delivering = match story_action {
-            crate::product_management::story::slice::StoryAction::Event(
+        let actor_if_delivered =
+            |event: &crate::product_management::story::events::StoryEvent| match event {
                 crate::product_management::story::events::StoryEvent::StateTransitioned {
                     meta,
                     new_state: BoardState::Acceptance,
                     ..
-                },
-            ) => Some(crate::routing::short_name(&meta.actor).to_string()),
+                } => Some(crate::routing::short_name(&meta.actor).to_string()),
+                _ => None,
+            };
+        let delivering = match story_action {
+            crate::product_management::story::slice::StoryAction::Event(event) => {
+                actor_if_delivered(event)
+            }
+            crate::product_management::story::slice::StoryAction::Events(events) => {
+                events.iter().rev().find_map(actor_if_delivered)
+            }
             _ => None,
         };
         let stories: Vec<Story> = reaction.current.stories.values().cloned().collect();

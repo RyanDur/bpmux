@@ -30,6 +30,11 @@ pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
     let mut stories = state.clone();
     match action {
         StoryAction::Event(event) => apply_event(&mut stories, event),
+        StoryAction::Events(events) => {
+            for event in events {
+                apply_event(&mut stories, event);
+            }
+        }
         StoryAction::Seeded(incoming) => {
             for item in incoming {
                 stories.insert(item.key(), item.clone());

@@ -65,20 +65,6 @@ pub(crate) async fn handle_deliver_story(
             ts: chrono::Utc::now(),
             peer_id: PeerId::local(),
         };
-        if was_closed {
-            r.mutate_sync(StoryEvent::StoryReopened {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-            })
-            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
-        }
-        r.mutate_sync(StoryEvent::GateCommentAppended {
-            meta: meta.clone(),
-            id: StoryId::new(id),
-            gate: Gate::Delivered,
-            payload: Some(verified_observation.to_string()),
-        })
-        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
         let (new_state, placement) =
             crate::board::advance(&transition.from, &crate::board::Verdict::Succeed, workflow)
                 .ok_or_else(|| {
@@ -87,13 +73,27 @@ pub(crate) async fn handle_deliver_story(
                         transition.from
                     )
                 })?;
-        r.mutate_sync(StoryEvent::StateTransitioned {
+        let mut events = Vec::new();
+        if was_closed {
+            events.push(StoryEvent::StoryReopened {
+                meta: meta.clone(),
+                id: StoryId::new(id),
+            });
+        }
+        events.push(StoryEvent::GateCommentAppended {
+            meta: meta.clone(),
+            id: StoryId::new(id),
+            gate: Gate::Delivered,
+            payload: Some(verified_observation.to_string()),
+        });
+        events.push(StoryEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
             new_state,
             placement,
-        })
-        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
+        });
+        r.mutate_batch_sync(events)
+            .map_err(|e| format!("#{id} deliver enqueue failed: {e}"))?;
         return Ok(format!("#{id} delivered: signals sent, labels updated"));
     }
     Err(

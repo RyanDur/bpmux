@@ -19,19 +19,22 @@ pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Ve
 }
 
 pub(super) fn placement_edge(board: &BoardPlacements, action: &StoryAction) -> Option<BoardAction> {
-    let StoryAction::Event(StoryEvent::StateTransitioned { id, placement, .. }) = action else {
-        return None;
+    let (id, placement) = match action {
+        StoryAction::Event(StoryEvent::StateTransitioned { id, placement, .. }) => (*id, placement),
+        StoryAction::Events(events) => events.iter().rev().find_map(|event| match event {
+            StoryEvent::StateTransitioned { id, placement, .. } => Some((*id, placement)),
+            _ => None,
+        })?,
+        _ => return None,
     };
     match placement {
-        Some(stage) if placement_of(board, *id).as_ref() != Some(stage) => {
+        Some(stage) if placement_of(board, id).as_ref() != Some(stage) => {
             Some(BoardAction::StoryPlaced {
-                story: *id,
+                story: id,
                 stage: stage.clone(),
             })
         }
-        None if placement_of(board, *id).is_some() => {
-            Some(BoardAction::StoryUnplaced { story: *id })
-        }
+        None if placement_of(board, id).is_some() => Some(BoardAction::StoryUnplaced { story: id }),
         _ => None,
     }
 }

@@ -29,6 +29,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.mutate(event)
     }
 
+    fn mutate_batch_sync(&self, events: Vec<StoryEvent>) -> Result<(), SyncError> {
+        self.mutate_batch(events)
+    }
+
     fn bind_select(&self, select: crate::store::Select) {
         self.set_select(select);
     }

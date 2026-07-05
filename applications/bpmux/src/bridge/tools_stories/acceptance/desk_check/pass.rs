@@ -85,32 +85,6 @@ pub(crate) async fn handle_pass_desk_check(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::story::peer::PeerId::local(),
         };
-        if was_closed {
-            r.mutate_sync(
-                crate::product_management::story::events::StoryEvent::StoryReopened {
-                    meta: meta.clone(),
-                    id: StoryId::new(id),
-                },
-            )
-            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
-        }
-        r.mutate_sync(
-            crate::product_management::story::events::StoryEvent::AcceptorAssigned {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-                acceptor,
-            },
-        )
-        .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
-        r.mutate_sync(
-            crate::product_management::story::events::StoryEvent::GateCommentAppended {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-                gate: crate::product_management::story::Gate::PassDeskCheck,
-                payload: bypass.clone().map(format_bypass_payload),
-            },
-        )
-        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
         let (new_state, placement) =
             crate::board::advance(&transition.from, &crate::board::Verdict::Succeed, workflow)
                 .ok_or_else(|| {
@@ -119,15 +93,40 @@ pub(crate) async fn handle_pass_desk_check(
                         transition.from
                     )
                 })?;
-        r.mutate_sync(
+        let mut events = Vec::new();
+        if was_closed {
+            events.push(
+                crate::product_management::story::events::StoryEvent::StoryReopened {
+                    meta: meta.clone(),
+                    id: StoryId::new(id),
+                },
+            );
+        }
+        events.push(
+            crate::product_management::story::events::StoryEvent::AcceptorAssigned {
+                meta: meta.clone(),
+                id: StoryId::new(id),
+                acceptor,
+            },
+        );
+        events.push(
+            crate::product_management::story::events::StoryEvent::GateCommentAppended {
+                meta: meta.clone(),
+                id: StoryId::new(id),
+                gate: crate::product_management::story::Gate::PassDeskCheck,
+                payload: bypass.clone().map(format_bypass_payload),
+            },
+        );
+        events.push(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
                 new_state,
                 placement,
             },
-        )
-        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
+        );
+        r.mutate_batch_sync(events)
+            .map_err(|e| format!("#{id} pass-desk-check enqueue failed: {e}"))?;
         return Ok(format!(
             "#{id} passed desk-check: signal sent, label applied"
         ));

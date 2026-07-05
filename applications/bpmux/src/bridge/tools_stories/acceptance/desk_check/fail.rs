@@ -82,33 +82,33 @@ pub(crate) async fn handle_fail_desk_check(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::story::peer::PeerId::local(),
         };
+        let mut events = Vec::new();
         if was_accepted {
-            r.mutate_sync(
+            events.push(
                 crate::product_management::story::events::StoryEvent::StoryReopened {
                     meta: meta.clone(),
                     id: StoryId::new(id),
                 },
-            )
-            .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
+            );
         }
-        r.mutate_sync(
+        events.push(
             crate::product_management::story::events::StoryEvent::GateCommentAppended {
                 meta: meta.clone(),
                 id: StoryId::new(id),
                 gate: crate::product_management::story::Gate::FailDeskCheck,
                 payload: Some(reason.to_string()),
             },
-        )
-        .map_err(|e| format!("#{id} gate enqueue failed: {e}"))?;
-        r.mutate_sync(
+        );
+        events.push(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
                 placement,
                 new_state,
             },
-        )
-        .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
+        );
+        r.mutate_batch_sync(events)
+            .map_err(|e| format!("#{id} fail-desk-check enqueue failed: {e}"))?;
         return Ok(format!(
             "#{id} failed desk-check: signal sent, label applied"
         ));
