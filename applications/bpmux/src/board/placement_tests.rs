@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{BoardAction, BoardPlacements, placement_of, reduce, story_position};
+use super::{
+    BoardAction, BoardPlacements, fine_stage, placement_of, reduce, state_label, story_position,
+};
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
@@ -114,4 +116,64 @@ fn story_position_leaves_a_non_middle_position_untouched() {
 
 fn board_with_desk_check(story: u64) -> BoardPlacements {
     reduce(&BoardPlacements::default(), &place(story, "desk-check")).unwrap()
+}
+
+#[test]
+fn fine_stage_reads_the_placement_over_the_story_own_stage() {
+    let story = in_progress_story(1, Stage::Dev);
+    assert_eq!(
+        fine_stage(&story, &board_with_desk_check(1)),
+        Some(Stage::DeskCheck),
+        "the fine placement wins over the story's own middle stage"
+    );
+}
+
+#[test]
+fn fine_stage_falls_back_to_the_story_stage_when_unplaced() {
+    let story = in_progress_story(1, Stage::DeskCheck);
+    assert_eq!(
+        fine_stage(&story, &BoardPlacements::default()),
+        Some(Stage::DeskCheck),
+        "with no placement the story's own stage stands (the transitional fallback)"
+    );
+}
+
+#[test]
+fn fine_stage_is_none_outside_the_middle() {
+    let mut story = in_progress_story(1, Stage::Dev);
+    story.state = BoardState::Ready;
+    assert_eq!(fine_stage(&story, &board_with_desk_check(1)), None);
+}
+
+#[test]
+fn fine_stage_defaults_an_unknown_placement_id_to_dev() {
+    let story = in_progress_story(1, Stage::Dev);
+    let board = reduce(&BoardPlacements::default(), &place(1, "qa")).unwrap();
+    assert_eq!(
+        fine_stage(&story, &board),
+        Some(Stage::Dev),
+        "an unrecognized stage id resolves to the entry sub-section, mirroring as_str"
+    );
+}
+
+#[test]
+fn state_label_composes_the_middle_sub_section_from_the_fine_stage() {
+    assert_eq!(
+        state_label(
+            &BoardState::InProgress(Stage::Dev.id()),
+            Some(Stage::DeskCheck)
+        ),
+        "desk-check"
+    );
+    assert_eq!(
+        state_label(&BoardState::InProgress(Stage::Dev.id()), Some(Stage::Dev)),
+        "in-progress"
+    );
+}
+
+#[test]
+fn state_label_passes_a_non_middle_position_through_to_its_coarse_token() {
+    assert_eq!(state_label(&BoardState::Ready, None), "ready");
+    assert_eq!(state_label(&BoardState::Acceptance, None), "acceptance");
+    assert_eq!(state_label(&BoardState::Accepted, None), "accepted");
 }

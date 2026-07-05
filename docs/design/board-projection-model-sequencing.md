@@ -128,6 +128,53 @@ in a type the SourceAdapter never sees.
   (local — no outbox, no story event); selectors compose the two grains so
   every existing surface renders identically. Falsifier: board render + e2e
   unchanged.
+  - **BD1a (EXPAND) — DONE** (`6a622020` `aece8a02` `4b79dfcb` `16d272b0`):
+    board slice foundation; reconciler derives placement from
+    `story.state == InProgress(stage)`; composing selector `board::story_position`
+    with own-stage fallback; readers thread the composed position.
+  - **BD1b (CONTRACT) — `BoardState::InProgress(StageId)` → unit; the fine
+    stage lives ONLY in the board slice.** The channel that carries the fine
+    grain today (inside `InProgress(stage)` on `Story.state`) closes, yet THREE
+    facts stay byte-identical: the `/api/board` wire `state` field
+    (`"desk-check"`), the OUTBOUND GitHub label (`"desk-check"` — the de-leak is
+    BD3, and BD2 persistence isn't landed to recover it on re-ingest), and the
+    board columns. The outbound label is computed from the EVENT's `new_state`
+    at drain (`integrations/github/mutation_events/lifecycle.rs::push_state_transitioned`,
+    race-free vs. the async placement listener), so the fine grain must ride the
+    EVENT, not be looked up from the store at drain time. Decomposed
+    expand/contract WITHIN the contract — migrate every reader and writer onto
+    placement while `BoardState` still (redundantly) carries the stage, so the
+    final type-flip is mechanical:
+    - **BD1b-1 (reads → placement).** `board::fine_stage(story,board)->Option<Stage>`
+      + `RefreshDriver::story_fine_stage`. Repoint every FINE reader off the inner
+      stage onto `fine_stage`: wire projection `state`; `get_story` `state_label`
+      + `needs_gates` Dev-check; `move_story` `current_state_display`;
+      `dev_in_flight`; the COLUMN model (`board_columns`/`column_header`/
+      `group_by_position` → StageId-keyed `BoardColumn`; `BoardScope` filter;
+      `build_board_text`; `view.rs::parse_state`). `BoardState` unchanged
+      (stage redundant). Falsifier: wire + board render + those tool outputs + e2e
+      byte-identical. (May split 1a per-story readers / 1b column model.)
+    - **BD1b-2 (writes + outbound → event-carried placement).** Add
+      `placement: Option<StageId>` to `StateTransitioned` (`#[serde(default)]` for
+      outbox back-compat). Populate at deliver (DeskCheck) / pickup (Dev).
+      `push_state_transitioned` composes the outbound label from
+      `(new_state, placement)`. Evolve `BoardPlacementReconciler` to apply the
+      event's placement (Place on `Some`, Unplace on `None`-in-middle) + retain
+      the level-triggered unplace (placed story whose coarse ≠ InProgress →
+      Unplace, covers ingest + bookend exits uniformly); ingest dispatches the
+      placement from the decoded stage. Retire the derive-from-`InProgress(stage)`
+      place-half. `BoardState` unchanged (stage redundant). Falsifier: outbound
+      labels + placement population + e2e byte-identical.
+    - **BD1b-3 (the flip).** `InProgress(StageId)` → unit. Fix ~140
+      constructors/matches. `as_str`/`github_label` → coarse for InProgress;
+      `parse` stops EMITTING desk-check but still TOLERATES `desk-check`/`desk_check`
+      → coarse InProgress (migration-tolerant decode for legacy GitHub labels +
+      persisted outbox events). `state_from_labels` → coarse InProgress (the
+      desk-check→placement split now fully in the BD1b-2 ingest dispatch). Drop the
+      own-stage fallback in `fine_stage` → `placement.unwrap_or(Dev entry default)`;
+      retire `story_board_position`/`story_position` composing if it goes to
+      identity. Relocate `enums_tests` desk-check round-trips → board/placement
+      tests. Falsifier: wire + render + outbound + e2e byte-identical.
 - **BD2 — placement persistence.** Refinery migration + repo port
   (storage-ports pattern), write-behind listener, hydrate on boot.
   **Loss-window call (sudden-death rule): decide explicitly whether losing
