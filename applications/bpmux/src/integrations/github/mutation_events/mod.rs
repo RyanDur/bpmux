@@ -8,9 +8,7 @@ mod labels;
 mod lifecycle;
 
 pub(in crate::integrations::github) use acceptor::push_acceptor_assigned;
-pub(in crate::integrations::github) use comments::{
-    push_free_comment_appended, push_gate_comment_appended,
-};
+pub(in crate::integrations::github) use comments::{push_free_comment_appended, push_verdict_cast};
 pub(in crate::integrations::github) use grouping::{
     push_current_iteration_cleared, push_current_iteration_designated, push_parent_epic_set,
     push_parent_epic_unset,

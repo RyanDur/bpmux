@@ -1,19 +1,19 @@
 use super::{Stories, story_mut};
 use crate::product_management::story::events::EventMeta;
-use crate::product_management::story::{FreeComment, Gate, GateComment, StoryId};
+use crate::product_management::story::{CastVerdict, FreeComment, StoryId, Verdict};
 
-pub(super) fn apply_gate_comment_appended(
+pub(super) fn apply_verdict_cast(
     w: &mut Stories,
     id: StoryId,
     meta: &EventMeta,
-    gate: Gate,
+    verdict: Verdict,
     payload: Option<String>,
 ) {
     if let Some(story) = story_mut(w, id) {
-        let entry = GateComment::from_event(gate, meta, payload);
-        match &mut story.gate_comments {
+        let entry = CastVerdict::from_event(verdict, meta, payload);
+        match &mut story.verdicts {
             Some(list) => list.push(entry),
-            None => story.gate_comments = Some(vec![entry]),
+            None => story.verdicts = Some(vec![entry]),
         }
     }
 }
@@ -39,8 +39,8 @@ pub(super) fn apply_free_comments_fetched(w: &mut Stories, id: StoryId, comments
     }
 }
 
-pub(super) fn apply_gate_comments_fetched(w: &mut Stories, id: StoryId, comments: &[GateComment]) {
+pub(super) fn apply_verdicts_fetched(w: &mut Stories, id: StoryId, verdicts: &[CastVerdict]) {
     if let Some(story) = story_mut(w, id) {
-        story.gate_comments = Some(comments.to_vec());
+        story.verdicts = Some(verdicts.to_vec());
     }
 }

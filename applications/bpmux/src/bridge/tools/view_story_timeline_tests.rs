@@ -35,7 +35,7 @@ async fn handler_errors_when_story_not_in_board() {
 async fn handler_reads_gates_from_canonical_store() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::slice::StoryAction;
-    use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
+    use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -50,8 +50,10 @@ async fn handler_reads_gates_from_canonical_store() {
         filed_at,
         "pm".into(),
     );
-    story.gate_comments = Some(vec![GateComment {
-        gate: Gate::Delivered,
+    story.verdicts = Some(vec![CastVerdict {
+        verdict: Verdict::Succeed {
+            step: "in-progress".into(),
+        },
         ts: Utc.with_ymd_and_hms(2026, 4, 22, 0, 0, 0).unwrap(),
         actor: "dev".into(),
         payload: Some("ran end-to-end".into()),
@@ -79,7 +81,7 @@ async fn handler_reads_gates_from_canonical_store() {
 }
 
 #[tokio::test]
-async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_missing() {
+async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::slice::StoryAction;
     use crate::product_management::story::{BoardState, Story, StoryId};
@@ -118,7 +120,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_gate_comments_miss
 #[test]
 fn build_timeline_from_board_sorts_chronologically() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
+    use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
@@ -129,14 +131,18 @@ fn build_timeline_from_board_sorts_chronologically() {
         "pm".into(),
     );
     let gates = vec![
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 4, 25, 0, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Pickup,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 4, 22, 0, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: None,
@@ -152,7 +158,7 @@ fn build_timeline_from_board_sorts_chronologically() {
 #[test]
 fn build_timeline_from_board_renders_full_rework_cycle() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
+    use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
@@ -163,26 +169,34 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
         "pm".into(),
     );
     let gates = vec![
-        GateComment {
-            gate: Gate::Pickup,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 4, 21, 0, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 4, 22, 0, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: Some("first delivery".into()),
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 4, 23, 0, 0, 0).unwrap(),
             actor: "owner".into(),
             payload: Some("not quite".into()),
         },
-        GateComment {
-            gate: Gate::Pickup,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 4, 24, 0, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: None,
@@ -202,7 +216,7 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
 #[tokio::test]
 async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
+    use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -218,10 +232,12 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
         "pm".into(),
     );
     adapter.seed_stories(vec![story]);
-    adapter.seed_gate_comments(
+    adapter.seed_verdicts(
         1524,
-        vec![GateComment {
-            gate: Gate::Rejected,
+        vec![CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
             actor: "owner".into(),
             payload: Some(reason.into()),

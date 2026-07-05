@@ -9,8 +9,8 @@ mod labels;
 mod lifecycle;
 
 use comments::{
-    apply_free_comment_appended, apply_free_comments_fetched, apply_gate_comment_appended,
-    apply_gate_comments_fetched,
+    apply_free_comment_appended, apply_free_comments_fetched, apply_verdict_cast,
+    apply_verdicts_fetched,
 };
 use labels::apply_labels_refreshed;
 use lifecycle::{
@@ -62,12 +62,12 @@ fn apply_event(w: &mut Stories, event: &StoryEvent) {
         StoryEvent::StateTransitioned { new_state, .. } => {
             apply_state_transitioned(w, id, new_state.clone())
         }
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             meta,
-            gate,
+            verdict,
             payload,
             ..
-        } => apply_gate_comment_appended(w, id, meta, *gate, payload.clone()),
+        } => apply_verdict_cast(w, id, meta, verdict.clone(), payload.clone()),
         StoryEvent::FreeCommentAppended { meta, body, .. } => {
             apply_free_comment_appended(w, id, meta, body)
         }
@@ -75,9 +75,7 @@ fn apply_event(w: &mut Stories, event: &StoryEvent) {
         StoryEvent::FreeCommentsFetched { comments, .. } => {
             apply_free_comments_fetched(w, id, comments)
         }
-        StoryEvent::GateCommentsFetched { comments, .. } => {
-            apply_gate_comments_fetched(w, id, comments)
-        }
+        StoryEvent::VerdictsFetched { verdicts, .. } => apply_verdicts_fetched(w, id, verdicts),
         StoryEvent::StoryClosed { .. } => apply_story_closed(w, id),
         StoryEvent::StoryReopened { .. } => apply_story_reopened(w, id),
         StoryEvent::AcceptorAssigned { acceptor, .. } => apply_acceptor_assigned(w, id, *acceptor),

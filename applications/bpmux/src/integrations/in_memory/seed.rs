@@ -1,6 +1,6 @@
 use super::InMemorySourceAdapter;
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{FreeComment, GateComment, Story};
+use crate::product_management::story::{CastVerdict, FreeComment, Story};
 
 impl InMemorySourceAdapter {
     pub fn new() -> Self {
@@ -40,9 +40,9 @@ impl InMemorySourceAdapter {
         s.free_comments.insert(number, comments);
     }
 
-    pub fn seed_gate_comments(&self, number: u64, comments: Vec<GateComment>) {
+    pub fn seed_verdicts(&self, number: u64, verdicts: Vec<CastVerdict>) {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        s.gate_comments.insert(number, comments);
+        s.verdicts.insert(number, verdicts);
     }
 
     pub fn pushed_events(&self) -> Vec<StoryEvent> {

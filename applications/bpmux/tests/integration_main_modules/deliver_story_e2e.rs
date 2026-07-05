@@ -29,7 +29,7 @@ fn deliver_story_dev_with_verified_observation_succeeds() {
         let target_id = create_target_story(
             &pm,
             "[Feature] deliver-target",
-            "reject if deliver_story doesn't fire signals + GateCommentAppended",
+            "reject if deliver_story doesn't fire signals + VerdictCast",
         )
         .await;
 

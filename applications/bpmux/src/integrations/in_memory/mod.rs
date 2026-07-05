@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
+use crate::product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 use crate::sync::{Ingested, SourceAdapter, SyncError};
 
 mod ingest;
@@ -24,7 +24,7 @@ struct InnerState {
     bodies: HashMap<u64, String>,
     labels: HashMap<u64, Vec<String>>,
     free_comments: HashMap<u64, Vec<FreeComment>>,
-    gate_comments: HashMap<u64, Vec<GateComment>>,
+    verdicts: HashMap<u64, Vec<CastVerdict>>,
     pushed_events: Vec<StoryEvent>,
     failures_on_push: bool,
     permanent_push_failures: bool,
@@ -54,8 +54,8 @@ impl SourceAdapter for InMemorySourceAdapter {
         if let Some(comments) = s.free_comments.get(&number) {
             story.free_comments = Some(comments.clone());
         }
-        if let Some(comments) = s.gate_comments.get(&number) {
-            story.gate_comments = Some(comments.clone());
+        if let Some(comments) = s.verdicts.get(&number) {
+            story.verdicts = Some(comments.clone());
         }
         if let Some(body) = s.bodies.get(&number) {
             story.body = Some(body.clone());
@@ -98,14 +98,14 @@ impl SourceAdapter for InMemorySourceAdapter {
         Ok(s.free_comments.get(&number).cloned().unwrap_or_default())
     }
 
-    async fn fetch_gate_comments(&self, number: u64) -> Result<Vec<GateComment>, SyncError> {
+    async fn fetch_verdicts(&self, number: u64) -> Result<Vec<CastVerdict>, SyncError> {
         let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_ingest {
             return Err(SyncError::SourceUnreachable(
                 "in-memory test failure".into(),
             ));
         }
-        Ok(s.gate_comments.get(&number).cloned().unwrap_or_default())
+        Ok(s.verdicts.get(&number).cloned().unwrap_or_default())
     }
 
     async fn push_event(&self, event: &StoryEvent) -> Result<Option<StoryEvent>, SyncError> {

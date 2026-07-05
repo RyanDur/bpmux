@@ -106,11 +106,11 @@ pub trait SourceAdapter: Send + Sync {
         Output = Result<Vec<crate::product_management::story::FreeComment>, SyncError>,
     > + Send;
 
-    fn fetch_gate_comments(
+    fn fetch_verdicts(
         &self,
         number: u64,
     ) -> impl std::future::Future<
-        Output = Result<Vec<crate::product_management::story::GateComment>, SyncError>,
+        Output = Result<Vec<crate::product_management::story::CastVerdict>, SyncError>,
     > + Send;
 
     fn push_event(

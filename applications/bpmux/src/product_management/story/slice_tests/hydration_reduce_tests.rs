@@ -2,35 +2,49 @@ use chrono::{TimeZone, Utc};
 
 use super::{apply, created, meta, minimal, seed, seeded, story_at};
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{BoardState, FreeComment, Gate, StoryId};
+use crate::product_management::story::{BoardState, FreeComment, StoryId, Verdict};
 
 #[test]
-fn gate_comment_appended_event_accumulates() {
+fn verdict_cast_event_accumulates() {
     let store = seeded();
     created(&store, 1, "t", BoardState::Ready);
     apply(
         &store,
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             meta: meta("dev", 2026, "local"),
             id: StoryId::new(1),
-            gate: Gate::Pickup,
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             payload: Some("scope".to_string()),
         },
     );
     apply(
         &store,
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             meta: meta("dev", 2026, "local"),
             id: StoryId::new(1),
-            gate: Gate::Delivered,
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             payload: Some("observation".to_string()),
         },
     );
     let story = story_at(&store, 1).unwrap();
-    let gates = story.gate_comments.as_ref().unwrap();
+    let gates = story.verdicts.as_ref().unwrap();
     assert_eq!(gates.len(), 2);
-    assert_eq!(gates[0].gate, Gate::Pickup);
-    assert_eq!(gates[1].gate, Gate::Delivered);
+    assert_eq!(
+        gates[0].verdict,
+        Verdict::Succeed {
+            step: "ready".into()
+        }
+    );
+    assert_eq!(
+        gates[1].verdict,
+        Verdict::Succeed {
+            step: "in-progress".into()
+        }
+    );
 }
 
 #[test]

@@ -1,5 +1,5 @@
 use super::helpers::{
-    BugGate, format_bypass_payload, gate_to_id, recent_evidence_for_story,
+    BugGate, format_bypass_payload, recent_evidence_for_story, verdict_to_id,
     verify_bug_question_or_bypass,
 };
 use crate::bridge::tools_stories::build_verdict_reprompt_signal;
@@ -82,11 +82,11 @@ pub(crate) async fn handle_accept_story(
     if let Some(story) = story_opt.as_ref() {
         crate::workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
-        if let Some(comments) = story.gate_comments.as_deref() {
+        if let Some(comments) = story.verdicts.as_deref() {
             let prior_fires: Vec<crate::workflow::PriorFire> = comments
                 .iter()
                 .map(|gc| crate::workflow::PriorFire {
-                    gate_id: gate_to_id(gc.gate).to_string(),
+                    gate_id: verdict_to_id(&gc.verdict).to_string(),
                     actor_role: gc.actor.clone(),
                 })
                 .collect();
@@ -138,10 +138,12 @@ pub(crate) async fn accept_via_canonical_store(
     };
     refresh
         .mutate_batch_sync(vec![
-            crate::product_management::story::events::StoryEvent::GateCommentAppended {
+            crate::product_management::story::events::StoryEvent::VerdictCast {
                 meta: meta.clone(),
                 id: StoryId::new(id),
-                gate: crate::product_management::story::Gate::Accepted,
+                verdict: crate::product_management::story::Verdict::Succeed {
+                    step: "acceptance".into(),
+                },
                 payload: bypass.map(format_bypass_payload),
             },
             crate::product_management::story::events::StoryEvent::StateTransitioned {

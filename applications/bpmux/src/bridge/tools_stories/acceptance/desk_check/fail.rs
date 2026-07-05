@@ -89,10 +89,12 @@ pub(crate) async fn handle_fail_desk_check(
             );
         }
         events.push(
-            crate::product_management::story::events::StoryEvent::GateCommentAppended {
+            crate::product_management::story::events::StoryEvent::VerdictCast {
                 meta: meta.clone(),
                 id: StoryId::new(id),
-                gate: crate::product_management::story::Gate::FailDeskCheck,
+                verdict: crate::product_management::story::Verdict::Fail {
+                    step: "desk-check".into(),
+                },
                 payload: Some(reason.to_string()),
             },
         );

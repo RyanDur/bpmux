@@ -5,13 +5,13 @@ use chrono::{TimeZone, Utc};
 use crate::integrations::github::mapper::is_iteration_position_label_for_test as is_iteration_position_label;
 use crate::integrations::github::mapper::is_position_label_for_test as is_position_label;
 use crate::integrations::github::mapper::{
-    classify_gate, decode_gate_comments, decode_story_metadata, is_epic_issue, is_epic_story,
+    classify_verdict, decode_story_metadata, decode_verdicts, is_epic_issue, is_epic_story,
     iteration_order_from_labels, parent_epic_from_labels, state_from_labels, state_to_label,
     story_type_from_labels, story_type_from_labels_or_title, tags_from_labels,
     warn_on_inconsistent_state_labels,
 };
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{BoardState, Gate, StoryId, StoryKind, Tag};
+use crate::product_management::story::{BoardState, StoryId, StoryKind, Tag, Verdict};
 use crate::sync::{SyncError, classify_close_error};
 
 #[test]
@@ -326,60 +326,90 @@ fn decode_story_metadata_gh_state_open_does_not_force_closed() {
 }
 
 #[test]
-fn classify_gate_pickup() {
+fn classify_verdict_pickup() {
     let body = "**pickup_paraphrase** (dev pickup-gate):\n\nscope statement";
-    let result = classify_gate(body).unwrap();
-    assert_eq!(result.0, Gate::Pickup);
+    let result = classify_verdict(body).unwrap();
+    assert_eq!(
+        result.0,
+        Verdict::Succeed {
+            step: "ready".into()
+        }
+    );
     assert_eq!(result.1.as_deref(), Some("scope statement"));
 }
 
 #[test]
-fn classify_gate_delivered_payload_preserved() {
+fn classify_verdict_delivered_payload_preserved() {
     let body = "**verified_observation** (dev deliver-gate):\n\nran end-to-end";
-    let result = classify_gate(body).unwrap();
-    assert_eq!(result.0, Gate::Delivered);
+    let result = classify_verdict(body).unwrap();
+    assert_eq!(
+        result.0,
+        Verdict::Succeed {
+            step: "in-progress".into()
+        }
+    );
     assert_eq!(result.1.as_deref(), Some("ran end-to-end"));
 }
 
 #[test]
-fn classify_gate_rejection_default_is_rejected() {
+fn classify_verdict_rejection_default_is_rejected() {
     let body = "**rejection_reason** (reject-gate by owner):\n\nno good";
-    let result = classify_gate(body).unwrap();
-    assert_eq!(result.0, Gate::Rejected);
+    let result = classify_verdict(body).unwrap();
+    assert_eq!(
+        result.0,
+        Verdict::Fail {
+            step: "acceptance".into()
+        }
+    );
     assert_eq!(result.1.as_deref(), Some("no good"));
 }
 
 #[test]
-fn classify_gate_rejection_with_desk_check_fail_is_fail_desk_check() {
+fn classify_verdict_rejection_with_desk_check_fail_is_fail_desk_check() {
     let body = "**rejection_reason** (desk-check-fail by designer):\n\nspec failed";
-    let result = classify_gate(body).unwrap();
-    assert_eq!(result.0, Gate::FailDeskCheck);
+    let result = classify_verdict(body).unwrap();
+    assert_eq!(
+        result.0,
+        Verdict::Fail {
+            step: "desk-check".into()
+        }
+    );
     assert_eq!(result.1.as_deref(), Some("spec failed"));
 }
 
 #[test]
-fn classify_gate_pass_desk_check_no_payload() {
+fn classify_verdict_pass_desk_check_no_payload() {
     let body = "**pass_desk_check** (desk-check-pass by designer)";
-    let result = classify_gate(body).unwrap();
-    assert_eq!(result.0, Gate::PassDeskCheck);
+    let result = classify_verdict(body).unwrap();
+    assert_eq!(
+        result.0,
+        Verdict::Succeed {
+            step: "desk-check".into()
+        }
+    );
     assert!(result.1.is_none());
 }
 
 #[test]
-fn classify_gate_accepted_no_payload() {
+fn classify_verdict_accepted_no_payload() {
     let body = "**accepted** (accept-gate by owner)";
-    let result = classify_gate(body).unwrap();
-    assert_eq!(result.0, Gate::Accepted);
+    let result = classify_verdict(body).unwrap();
+    assert_eq!(
+        result.0,
+        Verdict::Succeed {
+            step: "acceptance".into()
+        }
+    );
     assert!(result.1.is_none());
 }
 
 #[test]
-fn classify_gate_none_for_unstructured_comment() {
-    assert!(classify_gate("just a chat comment").is_none());
+fn classify_verdict_none_for_unstructured_comment() {
+    assert!(classify_verdict("just a chat comment").is_none());
 }
 
 #[test]
-fn decode_gate_comments_filters_unstructured_and_preserves_structured() {
+fn decode_verdicts_filters_unstructured_and_preserves_structured() {
     let comments = vec![
         serde_json::json!({
             "body": "**pickup_paraphrase** (dev pickup-gate):\n\nA",
@@ -397,20 +427,30 @@ fn decode_gate_comments_filters_unstructured_and_preserves_structured() {
             "created_at": "2026-04-23T00:00:00Z",
         }),
     ];
-    let gates = decode_gate_comments(&comments);
+    let gates = decode_verdicts(&comments);
     assert_eq!(gates.len(), 2);
-    assert_eq!(gates[0].gate, Gate::Pickup);
-    assert_eq!(gates[1].gate, Gate::Accepted);
+    assert_eq!(
+        gates[0].verdict,
+        Verdict::Succeed {
+            step: "ready".into()
+        }
+    );
+    assert_eq!(
+        gates[1].verdict,
+        Verdict::Succeed {
+            step: "acceptance".into()
+        }
+    );
 }
 
 #[test]
-fn decode_gate_comments_preserves_timestamps_from_source() {
+fn decode_verdicts_preserves_timestamps_from_source() {
     let comments = vec![serde_json::json!({
         "body": "**verified_observation** (dev deliver-gate):\n\nX",
         "author": "dev",
         "created_at": "2026-04-22T14:30:00+00:00",
     })];
-    let gates = decode_gate_comments(&comments);
+    let gates = decode_verdicts(&comments);
     assert_eq!(
         gates[0].ts,
         Utc.with_ymd_and_hms(2026, 4, 22, 14, 30, 0).unwrap()

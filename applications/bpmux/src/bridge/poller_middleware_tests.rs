@@ -306,7 +306,7 @@ async fn select_stories_to_revalidate_caps_at_limit() {
 }
 
 #[tokio::test]
-async fn get_story_returns_gate_comments_hydrated_flag_in_response() {
+async fn get_story_returns_hydrated_flag_in_response() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let seed = SeededStore::new(vec![], vec![], vec![]);

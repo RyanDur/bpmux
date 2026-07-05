@@ -29,14 +29,19 @@ impl BugGate {
     }
 }
 
-pub(crate) fn gate_to_id(gate: crate::product_management::story::Gate) -> &'static str {
-    match gate {
-        crate::product_management::story::Gate::Pickup => "pickup",
-        crate::product_management::story::Gate::Delivered => "deliver",
-        crate::product_management::story::Gate::PassDeskCheck => "pass-desk-check",
-        crate::product_management::story::Gate::FailDeskCheck => "fail-desk-check",
-        crate::product_management::story::Gate::Rejected => "reject",
-        crate::product_management::story::Gate::Accepted => "accept",
+pub(crate) fn verdict_to_id(verdict: &crate::product_management::story::Verdict) -> &'static str {
+    use crate::product_management::story::Verdict;
+    match verdict {
+        Verdict::Succeed { step } => match step.as_str() {
+            "ready" => "pickup",
+            "in-progress" => "deliver",
+            "desk-check" => "pass-desk-check",
+            _ => "accept",
+        },
+        Verdict::Fail { step } => match step.as_str() {
+            "desk-check" => "fail-desk-check",
+            _ => "reject",
+        },
     }
 }
 

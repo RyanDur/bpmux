@@ -174,7 +174,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Gate, Stage, Story};
+    use crate::product_management::story::{BoardState, Stage, Story, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -205,10 +205,13 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
 
     let story = orchestrator.story(201).unwrap();
     assert_eq!(story.state, BoardState::Acceptance);
-    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
-        gates.iter().any(|g| g.gate == Gate::PassDeskCheck),
-        "gate_comments should contain PassDeskCheck entry: {gates:?}"
+        gates.iter().any(|g| g.verdict
+            == Verdict::Succeed {
+                step: "desk-check".into()
+            }),
+        "verdicts should contain PassDeskCheck entry: {gates:?}"
     );
 
     orchestrator.drain_pending().await.unwrap();
@@ -226,12 +229,12 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     ));
     assert!(matches!(
         &pushed[1],
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             id,
-            gate: Gate::PassDeskCheck,
+            verdict: Verdict::Succeed { step },
             payload: None,
             ..
-        } if *id == StoryId::new(201)
+        } if *id == StoryId::new(201) && step.as_str() == "desk-check"
     ));
     assert!(matches!(
         &pushed[2],
@@ -252,7 +255,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
 async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Gate, Stage, Story};
+    use crate::product_management::story::{BoardState, Stage, Story, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -282,13 +285,14 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
 
     let story = orchestrator.story(202).unwrap();
     assert_eq!(story.state, BoardState::InProgress);
-    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
-        gates
-            .iter()
-            .any(|g| g.gate == Gate::FailDeskCheck
-                && g.payload.as_deref() == Some(substantive_reason)),
-        "gate_comments should contain FailDeskCheck with payload: {gates:?}"
+        gates.iter().any(|g| g.verdict
+            == Verdict::Fail {
+                step: "desk-check".into()
+            }
+            && g.payload.as_deref() == Some(substantive_reason)),
+        "verdicts should contain FailDeskCheck with payload: {gates:?}"
     );
 
     orchestrator.drain_pending().await.unwrap();
@@ -305,12 +309,12 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     );
     assert!(matches!(
         &pushed[0],
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             id,
-            gate: Gate::FailDeskCheck,
+            verdict: Verdict::Fail { step },
             payload: Some(p),
             ..
-        } if *id == StoryId::new(202) && p == substantive_reason
+        } if *id == StoryId::new(202) && p == substantive_reason && step.as_str() == "desk-check"
     ));
     assert!(matches!(
         &pushed[1],

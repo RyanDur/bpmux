@@ -1,17 +1,17 @@
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
-use crate::integrations::github::mapper::encode_gate_comment;
-use crate::product_management::story::Gate;
+use crate::integrations::github::mapper::encode_verdict;
+use crate::product_management::story::Verdict;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::sync::SyncError;
 
-pub(in crate::integrations::github) async fn push_gate_comment_appended(
+pub(in crate::integrations::github) async fn push_verdict_cast(
     inner: &OctocrabStoryTracker,
     number: u64,
     meta: &EventMeta,
-    gate: Gate,
+    verdict: &Verdict,
     payload: Option<&str>,
 ) -> Result<Option<StoryEvent>, SyncError> {
-    let body = encode_gate_comment(gate, meta, payload);
+    let body = encode_verdict(verdict, meta, payload);
     inner
         .comment_on_story(number, &body)
         .await

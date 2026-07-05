@@ -130,19 +130,3 @@ impl Horizon {
 pub enum Tag {
     DeskCheckFail,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Gate {
-    Pickup,
-    Delivered,
-    PassDeskCheck,
-    FailDeskCheck,
-    Rejected,
-    Accepted,
-}
-
-impl Gate {
-    pub fn is_fail(&self) -> bool {
-        matches!(self, Gate::FailDeskCheck | Gate::Rejected)
-    }
-}

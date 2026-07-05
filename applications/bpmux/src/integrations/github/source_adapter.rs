@@ -1,10 +1,10 @@
 use super::{GitHubSourceAdapter, ingest, mutation};
 use crate::bridge::tracker::{ConditionalIssue, StoryTracker};
 use crate::integrations::github::mapper::{
-    decode_free_comment, decode_gate_comments, decode_story_with_placement,
+    decode_free_comment, decode_story_with_placement, decode_verdicts,
 };
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{FreeComment, GateComment, Story};
+use crate::product_management::story::{CastVerdict, FreeComment, Story};
 use crate::sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
 
 impl SourceAdapter for GitHubSourceAdapter {
@@ -111,13 +111,13 @@ impl SourceAdapter for GitHubSourceAdapter {
         Ok(raw.iter().filter_map(decode_free_comment).collect())
     }
 
-    async fn fetch_gate_comments(&self, number: u64) -> Result<Vec<GateComment>, SyncError> {
+    async fn fetch_verdicts(&self, number: u64) -> Result<Vec<CastVerdict>, SyncError> {
         let raw = self
             .inner
             .list_story_comments(number)
             .await
             .map_err(SyncError::Other)?;
-        Ok(decode_gate_comments(&raw))
+        Ok(decode_verdicts(&raw))
     }
 
     async fn push_event(&self, event: &StoryEvent) -> Result<Option<StoryEvent>, SyncError> {

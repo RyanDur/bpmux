@@ -1,6 +1,6 @@
 use super::{InnerState, typed_label_mirror};
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{FreeComment, GateComment};
+use crate::product_management::story::{CastVerdict, FreeComment};
 
 pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
     match event {
@@ -12,19 +12,19 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
             };
             s.free_comments.entry(id.value()).or_default().push(entry);
         }
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             id,
-            gate,
+            verdict,
             payload,
             meta,
         } => {
-            let entry = GateComment {
-                gate: *gate,
+            let entry = CastVerdict {
+                verdict: verdict.clone(),
                 ts: meta.ts,
                 actor: meta.actor.clone(),
                 payload: payload.clone(),
             };
-            s.gate_comments.entry(id.value()).or_default().push(entry);
+            s.verdicts.entry(id.value()).or_default().push(entry);
         }
         StoryEvent::BodyFetched { id, body, .. } => {
             s.bodies.insert(id.value(), body.clone());

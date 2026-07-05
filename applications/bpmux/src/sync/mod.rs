@@ -8,7 +8,7 @@ use chrono::Utc;
 
 pub use crate::persist::PersistError;
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{FreeComment, GateComment};
+use crate::product_management::story::{CastVerdict, FreeComment};
 
 mod coalesce;
 mod dispatch;

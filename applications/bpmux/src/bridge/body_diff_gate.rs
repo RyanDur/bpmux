@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::deliver_story_body_diff_gate::*;
-use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
+use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
 use chrono::{DateTime, TimeZone, Utc};
 
 fn story_with_pickup(pickup_ts: DateTime<Utc>) -> Story {
@@ -12,8 +12,10 @@ fn story_with_pickup(pickup_ts: DateTime<Utc>) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap(),
         "dev".to_string(),
     );
-    s.gate_comments = Some(vec![GateComment {
-        gate: Gate::Pickup,
+    s.verdicts = Some(vec![CastVerdict {
+        verdict: Verdict::Succeed {
+            step: "ready".into(),
+        },
         ts: pickup_ts,
         actor: "dev".to_string(),
         payload: Some("pickup paraphrase".to_string()),
@@ -35,9 +37,11 @@ fn pickup_ts_picks_most_recent_pickup_gate() {
     let early = Utc.with_ymd_and_hms(2026, 5, 16, 10, 0, 0).unwrap();
     let late = Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap();
     let mut s = story_with_pickup(early);
-    if let Some(gc) = s.gate_comments.as_mut() {
-        gc.push(GateComment {
-            gate: Gate::Pickup,
+    if let Some(gc) = s.verdicts.as_mut() {
+        gc.push(CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: late,
             actor: "dev".to_string(),
             payload: None,
@@ -47,7 +51,7 @@ fn pickup_ts_picks_most_recent_pickup_gate() {
 }
 
 #[test]
-fn pickup_ts_returns_none_when_no_gate_comments() {
+fn pickup_ts_returns_none_when_no_verdicts() {
     let s = Story::new_minimal(
         StoryId::new(1),
         "t".to_string(),

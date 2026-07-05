@@ -96,10 +96,12 @@ pub(crate) async fn reject_via_canonical_store(
         );
     }
     events.push(
-        crate::product_management::story::events::StoryEvent::GateCommentAppended {
+        crate::product_management::story::events::StoryEvent::VerdictCast {
             meta: meta.clone(),
             id: StoryId::new(id),
-            gate: crate::product_management::story::Gate::Rejected,
+            verdict: crate::product_management::story::Verdict::Fail {
+                step: "acceptance".into(),
+            },
             payload: Some(reason),
         },
     );

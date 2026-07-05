@@ -168,7 +168,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     let gate_event = pushed
         .iter()
         .find_map(|e| match e {
-            StoryEvent::GateCommentAppended { id, payload, .. } if *id == StoryId::new(777) => {
+            StoryEvent::VerdictCast { id, payload, .. } if *id == StoryId::new(777) => {
                 Some(payload.clone())
             }
             _ => None,

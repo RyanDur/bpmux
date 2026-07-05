@@ -46,7 +46,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64, title: &str) {
         ),
         state: BoardState::Ready,
         is_closed: false,
-        gate_comments: None,
+        verdicts: None,
         free_comments: None,
         filed_by: "test".to_string(),
         filed_at: Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),

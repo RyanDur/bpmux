@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{FreeComment, GateComment, Story, StoryId};
+use crate::product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 
 use super::{
@@ -106,11 +106,8 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(self.fetch_free_comments(number))
     }
 
-    fn fetch_gate_comments(
-        &self,
-        number: u64,
-    ) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>> {
-        Box::pin(self.fetch_gate_comments(number))
+    fn fetch_verdicts(&self, number: u64) -> BoxedFuture<'_, Result<Vec<CastVerdict>, SyncError>> {
+        Box::pin(self.fetch_verdicts(number))
     }
 
     fn create_story(

@@ -10,7 +10,7 @@ pub mod stage;
 pub mod story_type;
 pub mod verdict;
 
-pub use enums::{Acceptor, BoardState, Gate, Horizon, Tag};
+pub use enums::{Acceptor, BoardState, Horizon, Tag};
 pub use gate_class::{gate_class_from_acceptor, gate_class_from_acceptor_and_story_type};
 pub use key::{StoryId, StoryKey};
 pub use rework::most_recent_needs_work;
@@ -38,8 +38,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GateComment {
-    pub gate: Gate,
+pub struct CastVerdict {
+    pub verdict: Verdict,
     pub ts: DateTime<Utc>,
     pub actor: String,
     pub payload: Option<String>,
@@ -67,7 +67,7 @@ pub struct Story {
     pub filed_by: String,
     pub body: Option<String>,
     pub free_comments: Option<Vec<FreeComment>>,
-    pub gate_comments: Option<Vec<GateComment>>,
+    pub verdicts: Option<Vec<CastVerdict>>,
     pub is_closed: bool,
     #[serde(default)]
     pub body_etag: Option<String>,
@@ -102,7 +102,7 @@ impl Story {
             filed_by,
             body: None,
             free_comments: None,
-            gate_comments: None,
+            verdicts: None,
             is_closed: false,
             body_etag: None,
             story_type,
@@ -166,7 +166,7 @@ impl Story {
         self.free_comments.as_deref()
     }
 
-    pub fn gate_comments(&self) -> Option<&[GateComment]> {
-        self.gate_comments.as_deref()
+    pub fn verdicts(&self) -> Option<&[CastVerdict]> {
+        self.verdicts.as_deref()
     }
 }

@@ -23,7 +23,7 @@ pub(super) fn apply_story_created(
         filed_by: meta.actor.clone(),
         body: Some(body.to_string()),
         free_comments: Some(Vec::new()),
-        gate_comments: Some(Vec::new()),
+        verdicts: Some(Vec::new()),
         is_closed: false,
         body_etag: None,
         story_type,

@@ -1,13 +1,13 @@
 use chrono::{DateTime, Utc};
 
-use crate::product_management::story::{Gate, Story};
+use crate::product_management::story::{Story, Verdict};
 
 pub(super) fn pickup_ts(story: &Story) -> Option<DateTime<Utc>> {
     story
-        .gate_comments
+        .verdicts
         .as_ref()?
         .iter()
-        .filter(|gc| matches!(gc.gate, Gate::Pickup))
+        .filter(|gc| matches!(&gc.verdict, Verdict::Succeed { step } if step.as_str() == "ready"))
         .map(|gc| gc.ts)
         .max()
 }

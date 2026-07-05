@@ -1,6 +1,6 @@
 use super::status::{record_error, record_ingest_success};
 use super::types::cache_fill_meta;
-use super::{FreeComment, GateComment, SyncOrchestrator};
+use super::{CastVerdict, FreeComment, SyncOrchestrator};
 use crate::product_management::story::StoryId;
 use crate::product_management::story::events::StoryEvent;
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
@@ -80,20 +80,20 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
-    pub async fn fetch_gate_comments(&self, number: u64) -> Result<Vec<GateComment>, SyncError> {
-        match self.adapter.fetch_gate_comments(number).await {
-            Ok(comments) => {
-                let event = StoryEvent::GateCommentsFetched {
+    pub async fn fetch_verdicts(&self, number: u64) -> Result<Vec<CastVerdict>, SyncError> {
+        match self.adapter.fetch_verdicts(number).await {
+            Ok(verdicts) => {
+                let event = StoryEvent::VerdictsFetched {
                     meta: cache_fill_meta(),
                     id: StoryId::new(number),
-                    comments: comments.clone(),
+                    verdicts: verdicts.clone(),
                 };
                 self.apply_story_event(&event);
                 record_ingest_success(&self.status);
-                Ok(comments)
+                Ok(verdicts)
             }
             Err(e) => {
-                record_error(&self.status, &format!("fetch_gate_comments({number}): {e}"));
+                record_error(&self.status, &format!("fetch_verdicts({number}): {e}"));
                 Err(e)
             }
         }

@@ -2,7 +2,7 @@ use super::acceptance_test_path::validate_acceptance_test_path_at_deliver;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{Gate, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Verdict};
 use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_deliver_story(
@@ -87,10 +87,12 @@ pub(crate) async fn handle_deliver_story(
                 id: StoryId::new(id),
             });
         }
-        events.push(StoryEvent::GateCommentAppended {
+        events.push(StoryEvent::VerdictCast {
             meta: meta.clone(),
             id: StoryId::new(id),
-            gate: Gate::Delivered,
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             payload: Some(verified_observation.to_string()),
         });
         events.push(StoryEvent::StateTransitioned {

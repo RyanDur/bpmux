@@ -55,14 +55,16 @@ fn batched_intent(id: u64, placement: Option<StageId>) -> StoryAction {
     let StoryAction::Event(state) = transition(id, placement) else {
         unreachable!()
     };
-    let gate = StoryEvent::GateCommentAppended {
+    let gate = StoryEvent::VerdictCast {
         meta: EventMeta {
             actor: "dev".to_string(),
             ts: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
             peer_id: PeerId::local(),
         },
         id: StoryId::new(id),
-        gate: crate::product_management::story::Gate::Delivered,
+        verdict: crate::product_management::story::Verdict::Succeed {
+            step: "in-progress".into(),
+        },
         payload: None,
     };
     StoryAction::Events(vec![gate, state])

@@ -50,7 +50,7 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
         filed_by,
         body,
         free_comments,
-        gate_comments,
+        verdicts,
         is_closed,
         body_etag,
         story_type,
@@ -144,7 +144,7 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
     );
 
     let _ = free_comments;
-    let _ = gate_comments;
+    let _ = verdicts;
     let _ = body_etag;
 }
 

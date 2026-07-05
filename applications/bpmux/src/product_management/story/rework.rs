@@ -1,5 +1,5 @@
-use super::GateComment;
+use super::CastVerdict;
 
-pub fn most_recent_needs_work(gates: &[GateComment]) -> Option<&GateComment> {
-    gates.last().filter(|g| g.gate.is_fail())
+pub fn most_recent_needs_work(verdicts: &[CastVerdict]) -> Option<&CastVerdict> {
+    verdicts.last().filter(|v| v.verdict.is_fail())
 }

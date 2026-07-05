@@ -117,10 +117,12 @@ pub(crate) async fn handle_pass_desk_check(
             },
         );
         events.push(
-            crate::product_management::story::events::StoryEvent::GateCommentAppended {
+            crate::product_management::story::events::StoryEvent::VerdictCast {
                 meta: meta.clone(),
                 id: StoryId::new(id),
-                gate: crate::product_management::story::Gate::PassDeskCheck,
+                verdict: crate::product_management::story::Verdict::Succeed {
+                    step: "desk-check".into(),
+                },
                 payload: bypass.clone().map(format_bypass_payload),
             },
         );

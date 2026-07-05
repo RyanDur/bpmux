@@ -60,7 +60,7 @@ pub(crate) fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String
 
 fn rework_comment(story: &Story) -> Option<String> {
     story
-        .gate_comments()
+        .verdicts()
         .and_then(most_recent_needs_work)
         .and_then(|g| g.payload.clone())
 }

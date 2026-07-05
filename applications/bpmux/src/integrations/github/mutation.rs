@@ -6,10 +6,10 @@ use crate::sync::SyncError;
 
 use super::mutation_events::{
     push_acceptor_assigned, push_body_updated, push_current_iteration_cleared,
-    push_current_iteration_designated, push_free_comment_appended, push_gate_comment_appended,
-    push_iteration_slot_cleared, push_iteration_slot_set, push_parent_epic_set,
-    push_parent_epic_unset, push_state_transitioned, push_story_closed, push_story_reopened,
-    push_tag_added, push_tag_removed, push_title_updated,
+    push_current_iteration_designated, push_free_comment_appended, push_iteration_slot_cleared,
+    push_iteration_slot_set, push_parent_epic_set, push_parent_epic_unset, push_state_transitioned,
+    push_story_closed, push_story_reopened, push_tag_added, push_tag_removed, push_title_updated,
+    push_verdict_cast,
 };
 
 pub(super) async fn apply_push_event(
@@ -28,12 +28,12 @@ pub(super) async fn apply_push_event(
             push_story_closed(inner, id.value(), reason).await
         }
         StoryEvent::StoryReopened { id, .. } => push_story_reopened(inner, id.value()).await,
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             meta,
             id,
-            gate,
+            verdict,
             payload,
-        } => push_gate_comment_appended(inner, id.value(), meta, *gate, payload.as_deref()).await,
+        } => push_verdict_cast(inner, id.value(), meta, verdict, payload.as_deref()).await,
         StoryEvent::FreeCommentAppended { id, body, .. } => {
             push_free_comment_appended(inner, id.value(), body).await
         }
@@ -74,7 +74,7 @@ pub(super) async fn apply_push_event(
         }
         StoryEvent::BodyFetched { .. }
         | StoryEvent::FreeCommentsFetched { .. }
-        | StoryEvent::GateCommentsFetched { .. }
+        | StoryEvent::VerdictsFetched { .. }
         | StoryEvent::StoryRefreshed { .. }
         | StoryEvent::LabelsRefreshed { .. }
         | StoryEvent::ConflictDetected { .. }

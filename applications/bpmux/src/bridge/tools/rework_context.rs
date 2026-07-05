@@ -1,25 +1,25 @@
-use crate::product_management::story::{Gate, GateComment};
+use crate::product_management::story::{CastVerdict, Verdict};
 
 pub fn enrich_body(original_body: &str, context: &str) -> String {
     format!("{context}\n{original_body}")
 }
 
-pub fn latest_reject(gates: &[GateComment]) -> Option<&GateComment> {
-    gates.iter().rev().find(|g| g.gate.is_fail())
+pub fn latest_reject(gates: &[CastVerdict]) -> Option<&CastVerdict> {
+    gates.iter().rev().find(|g| g.verdict.is_fail())
 }
 
-pub fn reject_gate_label(gate: Gate) -> &'static str {
-    match gate {
-        Gate::FailDeskCheck => "fail-desk-check",
+pub fn reject_label(verdict: &Verdict) -> &'static str {
+    match verdict {
+        Verdict::Fail { step } if step.as_str() == "desk-check" => "fail-desk-check",
         _ => "rejected",
     }
 }
 
-pub fn reject_lead(gc: &GateComment) -> Option<String> {
+pub fn reject_lead(gc: &CastVerdict) -> Option<String> {
     let reason = gc.payload.as_deref()?;
     Some(format!(
         "⚠ REWORK — {} by {} ({}):\n\n{reason}\n\n---\n",
-        reject_gate_label(gc.gate),
+        reject_label(&gc.verdict),
         gc.actor,
         gc.ts.to_rfc3339()
     ))

@@ -2,7 +2,7 @@ use super::acceptance_test_path::validate_acceptance_test_path_at_pickup;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, Gate, StoryId};
+use crate::product_management::story::{BoardState, StoryId, Verdict};
 use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_start_story(
@@ -28,10 +28,10 @@ pub(crate) async fn handle_start_story(
     let (was_closed, prior_state, reject_lead) = if let Some(r) = refresh {
         let prior = ensure_story_in_canonical_store(r, id).await?;
         let _ = r.fetch_body(id).await;
-        let _ = r.fetch_gate_comments(id).await;
+        let _ = r.fetch_verdicts(id).await;
         let lead = r
             .story(id)
-            .and_then(|s| s.gate_comments)
+            .and_then(|s| s.verdicts)
             .as_deref()
             .and_then(super::super::tools::rework_context::latest_reject)
             .and_then(super::super::tools::rework_context::reject_lead);
@@ -71,10 +71,12 @@ pub(crate) async fn handle_start_story(
                 id: StoryId::new(id),
             });
         }
-        events.push(StoryEvent::GateCommentAppended {
+        events.push(StoryEvent::VerdictCast {
             meta: meta.clone(),
             id: StoryId::new(id),
-            gate: Gate::Pickup,
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             payload: Some(pickup_payload.clone()),
         });
         events.push(StoryEvent::StateTransitioned {

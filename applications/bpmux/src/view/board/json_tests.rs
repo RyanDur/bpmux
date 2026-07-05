@@ -16,7 +16,7 @@ fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> St
         filed_by: "pm:test".to_string(),
         body: Some("body content".to_string()),
         free_comments: Some(Vec::new()),
-        gate_comments: Some(Vec::new()),
+        verdicts: Some(Vec::new()),
         is_closed,
         body_etag: None,
         story_type,
@@ -92,29 +92,37 @@ fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
 
 #[test]
 fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
-    use crate::product_management::story::{Gate, GateComment};
+    use crate::product_management::story::{CastVerdict, Verdict};
     let mut s = sample_story(BoardState::Ready, StoryKind::Feature, false);
-    s.gate_comments = Some(vec![
-        GateComment {
-            gate: Gate::Pickup,
+    s.verdicts = Some(vec![
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "dev".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "dev".into(),
             payload: Some("ATP green; user-job verified".into()),
         },
-        GateComment {
-            gate: Gate::PassDeskCheck,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "desk-check".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "designer".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "owner".into(),
             payload: Some("user-story not satisfied".into()),
@@ -130,35 +138,45 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
 
 #[test]
 fn story_to_board_json_rework_comment_clears_after_forward_edge() {
-    use crate::product_management::story::{Gate, GateComment};
+    use crate::product_management::story::{CastVerdict, Verdict};
     let mut s = sample_story(BoardState::InProgress, StoryKind::Feature, false);
-    s.gate_comments = Some(vec![
-        GateComment {
-            gate: Gate::Pickup,
+    s.verdicts = Some(vec![
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "dev".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "dev".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::PassDeskCheck,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "desk-check".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "designer".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "owner".into(),
             payload: Some("rework needed".into()),
         },
-        GateComment {
-            gate: Gate::Pickup,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: chrono::Utc::now(),
             actor: "dev".into(),
             payload: None,

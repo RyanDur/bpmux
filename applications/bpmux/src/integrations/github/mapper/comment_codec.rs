@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
 use crate::product_management::story::events::EventMeta;
-use crate::product_management::story::{FreeComment, Gate, GateComment};
+use crate::product_management::story::{CastVerdict, FreeComment, Verdict};
 
 pub(crate) fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> {
     let body = v.get("body").and_then(|x| x.as_str())?.to_string();
@@ -19,14 +19,18 @@ pub(crate) fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> 
     Some(FreeComment { body, author, ts })
 }
 
-pub(crate) fn encode_gate_comment(gate: Gate, meta: &EventMeta, payload: Option<&str>) -> String {
-    let (marker, tag) = match gate {
-        Gate::Pickup => ("pickup_paraphrase", "dev pickup-gate"),
-        Gate::Delivered => ("verified_observation", "dev deliver-gate"),
-        Gate::PassDeskCheck => ("pass_desk_check", "desk-check-pass"),
-        Gate::FailDeskCheck => ("rejection_reason", "desk-check-fail"),
-        Gate::Rejected => ("rejection_reason", "reject-gate"),
-        Gate::Accepted => ("accepted", "accept-gate"),
+pub(crate) fn encode_verdict(verdict: &Verdict, meta: &EventMeta, payload: Option<&str>) -> String {
+    let (marker, tag) = match verdict {
+        Verdict::Succeed { step } => match step.as_str() {
+            "ready" => ("pickup_paraphrase", "dev pickup-gate"),
+            "in-progress" => ("verified_observation", "dev deliver-gate"),
+            "desk-check" => ("pass_desk_check", "desk-check-pass"),
+            _ => ("accepted", "accept-gate"),
+        },
+        Verdict::Fail { step } => match step.as_str() {
+            "desk-check" => ("rejection_reason", "desk-check-fail"),
+            _ => ("rejection_reason", "reject-gate"),
+        },
     };
     match payload {
         Some(body) => format!("**{marker}** ({tag} by {}):\n\n{body}", meta.actor),
@@ -34,7 +38,7 @@ pub(crate) fn encode_gate_comment(gate: Gate, meta: &EventMeta, payload: Option<
     }
 }
 
-pub fn decode_gate_comments(comments: &[serde_json::Value]) -> Vec<GateComment> {
+pub fn decode_verdicts(comments: &[serde_json::Value]) -> Vec<CastVerdict> {
     comments
         .iter()
         .filter_map(|c| {
@@ -49,8 +53,8 @@ pub fn decode_gate_comments(comments: &[serde_json::Value]) -> Vec<GateComment> 
                 .and_then(|x| x.as_str())
                 .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
                 .map(|dt| dt.with_timezone(&Utc))?;
-            classify_gate(body).map(|(gate, payload)| GateComment {
-                gate,
+            classify_verdict(body).map(|(verdict, payload)| CastVerdict {
+                verdict,
                 ts,
                 actor: author,
                 payload,
@@ -59,26 +63,50 @@ pub fn decode_gate_comments(comments: &[serde_json::Value]) -> Vec<GateComment> 
         .collect()
 }
 
-pub fn classify_gate(body: &str) -> Option<(Gate, Option<String>)> {
+pub fn classify_verdict(body: &str) -> Option<(Verdict, Option<String>)> {
     if body.contains("**pickup_paraphrase**") {
-        return Some((Gate::Pickup, extract_marker_payload(body)));
+        return Some((
+            Verdict::Succeed {
+                step: "ready".into(),
+            },
+            extract_marker_payload(body),
+        ));
     }
     if body.contains("**verified_observation**") {
-        return Some((Gate::Delivered, extract_marker_payload(body)));
+        return Some((
+            Verdict::Succeed {
+                step: "in-progress".into(),
+            },
+            extract_marker_payload(body),
+        ));
     }
     if body.contains("**pass_desk_check**") {
-        return Some((Gate::PassDeskCheck, None));
+        return Some((
+            Verdict::Succeed {
+                step: "desk-check".into(),
+            },
+            None,
+        ));
     }
     if body.contains("**accepted**") {
-        return Some((Gate::Accepted, None));
+        return Some((
+            Verdict::Succeed {
+                step: "acceptance".into(),
+            },
+            None,
+        ));
     }
     if body.contains("**rejection_reason**") {
-        let gate = if body.contains("desk-check-fail") {
-            Gate::FailDeskCheck
+        let verdict = if body.contains("desk-check-fail") {
+            Verdict::Fail {
+                step: "desk-check".into(),
+            }
         } else {
-            Gate::Rejected
+            Verdict::Fail {
+                step: "acceptance".into(),
+            }
         };
-        return Some((gate, extract_marker_payload(body)));
+        return Some((verdict, extract_marker_payload(body)));
     }
     None
 }

@@ -13,7 +13,7 @@ fn td() -> crate::store::Dispatch {
 async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Gate, Stage, Story};
+    use crate::product_management::story::{BoardState, Stage, Story, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -49,13 +49,16 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 
     let story = orchestrator.story(203).unwrap();
     assert_eq!(story.state, BoardState::InProgress);
-    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
-        gates.iter().any(|g| g.gate == Gate::Pickup
+        gates.iter().any(|g| g.verdict
+            == Verdict::Succeed {
+                step: "ready".into()
+            }
             && g.payload.as_deref().is_some_and(
                 |p| p.contains("paraphrase content") && p.contains("reframing content")
             )),
-        "gate_comments should contain Pickup with both payload sections: {gates:?}"
+        "verdicts should contain Pickup with both payload sections: {gates:?}"
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -71,12 +74,12 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     );
     assert!(matches!(
         &pushed[0],
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             id,
-            gate: Gate::Pickup,
+            verdict: Verdict::Succeed { step },
             payload: Some(p),
             ..
-        } if *id == StoryId::new(203) && p.contains("paraphrase content") && p.contains("reframing content")
+        } if *id == StoryId::new(203) && step.as_str() == "ready" && p.contains("paraphrase content") && p.contains("reframing content")
     ));
     assert!(matches!(
         &pushed[1],
@@ -97,7 +100,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Gate, Stage, Story};
+    use crate::product_management::story::{BoardState, Stage, Story, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -129,11 +132,14 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
 
     let story = orchestrator.story(204).unwrap();
     assert_eq!(story.state, BoardState::InProgress);
-    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
-        gates.iter().any(|g| g.gate == Gate::Delivered
+        gates.iter().any(|g| g.verdict
+            == Verdict::Succeed {
+                step: "in-progress".into()
+            }
             && g.payload.as_deref() == Some("drove the falsifier scenario end-to-end")),
-        "gate_comments should contain Delivered with the observation payload: {gates:?}"
+        "verdicts should contain Delivered with the observation payload: {gates:?}"
     );
 
     orchestrator.drain_pending().await.unwrap();
@@ -145,12 +151,12 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     );
     assert!(matches!(
         &pushed[0],
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             id,
-            gate: Gate::Delivered,
+            verdict: Verdict::Succeed { step },
             payload: Some(p),
             ..
-        } if *id == StoryId::new(204) && p == "drove the falsifier scenario end-to-end"
+        } if *id == StoryId::new(204) && step.as_str() == "in-progress" && p == "drove the falsifier scenario end-to-end"
     ));
     assert!(matches!(
         &pushed[1],
@@ -171,7 +177,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
 async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Gate, Story};
+    use crate::product_management::story::{BoardState, Story, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -199,12 +205,14 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
 
     let story = orchestrator.story(205).unwrap();
     assert_eq!(story.state, BoardState::Accepted);
-    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
-        gates
-            .iter()
-            .any(|g| g.gate == Gate::Accepted && g.payload.is_none()),
-        "gate_comments should contain Accepted with no payload: {gates:?}"
+        gates.iter().any(|g| g.verdict
+            == Verdict::Succeed {
+                step: "acceptance".into()
+            }
+            && g.payload.is_none()),
+        "verdicts should contain Accepted with no payload: {gates:?}"
     );
 
     orchestrator.drain_pending().await.unwrap();
@@ -216,12 +224,12 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
     );
     assert!(matches!(
         &pushed[0],
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             id,
-            gate: Gate::Accepted,
+            verdict: Verdict::Succeed { step },
             payload: None,
             ..
-        } if *id == StoryId::new(205)
+        } if *id == StoryId::new(205) && step.as_str() == "acceptance"
     ));
     assert!(matches!(
         &pushed[1],
@@ -323,7 +331,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
 async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Gate, Story};
+    use crate::product_management::story::{BoardState, Story, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -351,12 +359,14 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
 
     let story = orchestrator.story(206).unwrap();
     assert_eq!(story.state, BoardState::Ready);
-    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
-        gates
-            .iter()
-            .any(|g| g.gate == Gate::Rejected && g.payload.as_deref() == Some("scope mismatch")),
-        "gate_comments should contain Rejected with reason payload: {gates:?}"
+        gates.iter().any(|g| g.verdict
+            == Verdict::Fail {
+                step: "acceptance".into()
+            }
+            && g.payload.as_deref() == Some("scope mismatch")),
+        "verdicts should contain Rejected with reason payload: {gates:?}"
     );
 
     orchestrator.drain_pending().await.unwrap();
@@ -368,12 +378,12 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     );
     assert!(matches!(
         &pushed[0],
-        StoryEvent::GateCommentAppended {
+        StoryEvent::VerdictCast {
             id,
-            gate: Gate::Rejected,
+            verdict: Verdict::Fail { step },
             payload: Some(p),
             ..
-        } if *id == StoryId::new(206) && p == "scope mismatch"
+        } if *id == StoryId::new(206) && step.as_str() == "acceptance" && p == "scope mismatch"
     ));
     assert!(matches!(
         &pushed[1],
@@ -535,7 +545,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
 #[tokio::test]
 async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Gate, GateComment, Story};
+    use crate::product_management::story::{BoardState, CastVerdict, Story, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -551,10 +561,12 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    adapter.seed_gate_comments(
+    adapter.seed_verdicts(
         1524,
-        vec![GateComment {
-            gate: Gate::Rejected,
+        vec![CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
             actor: "owner".into(),
             payload: Some(reason.into()),
@@ -594,7 +606,7 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
 #[tokio::test]
 async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Gate, GateComment, Story};
+    use crate::product_management::story::{BoardState, CastVerdict, Story, Verdict};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -611,23 +623,29 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    adapter.seed_gate_comments(
+    adapter.seed_verdicts(
         1525,
         vec![
-            GateComment {
-                gate: Gate::Rejected,
+            CastVerdict {
+                verdict: Verdict::Fail {
+                    step: "acceptance".into(),
+                },
                 ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
                 actor: "owner".into(),
                 payload: Some(older.into()),
             },
-            GateComment {
-                gate: Gate::Delivered,
+            CastVerdict {
+                verdict: Verdict::Succeed {
+                    step: "in-progress".into(),
+                },
                 ts: Utc.with_ymd_and_hms(2026, 6, 6, 10, 0, 0).unwrap(),
                 actor: "dev".into(),
                 payload: Some("re-delivered the rework".into()),
             },
-            GateComment {
-                gate: Gate::Rejected,
+            CastVerdict {
+                verdict: Verdict::Fail {
+                    step: "acceptance".into(),
+                },
                 ts: Utc.with_ymd_and_hms(2026, 6, 6, 11, 0, 0).unwrap(),
                 actor: "owner".into(),
                 payload: Some(latest.into()),

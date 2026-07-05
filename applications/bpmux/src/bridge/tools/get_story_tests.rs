@@ -8,17 +8,17 @@ use super::get_story::handle_get_story;
 use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
+use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
 use crate::store::SeededStore;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 async fn seeded_orchestrator(
     mut seeds: Vec<(Story, Vec<String>)>,
-    gates: Vec<(u64, Vec<GateComment>)>,
+    gates: Vec<(u64, Vec<CastVerdict>)>,
 ) -> (SeededStore, Arc<dyn RefreshDriver>) {
     for (n, gs) in &gates {
         if let Some((s, _)) = seeds.iter_mut().find(|(s, _)| s.id == StoryId::new(*n)) {
-            s.gate_comments = Some(gs.clone());
+            s.verdicts = Some(gs.clone());
         }
     }
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -27,7 +27,7 @@ async fn seeded_orchestrator(
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     for (n, gs) in &gates {
-        adapter.seed_gate_comments(*n, gs.clone());
+        adapter.seed_verdicts(*n, gs.clone());
     }
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let iterations: Vec<Iteration> = seeds
@@ -79,14 +79,18 @@ async fn handler_errors_when_story_not_in_board() {
 async fn enriches_body_for_rejected_story_via_typed_gates() {
     let story = make_story(443, BoardState::Ready, Some("original story body text"));
     let gates = vec![
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 4, 23, 0, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: Some("prior delivery ran end-to-end".into()),
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 4, 23, 1, 0, 0).unwrap(),
             actor: "owner".into(),
             payload: Some("channelKeyRef is not legitimate".into()),
@@ -108,8 +112,10 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
 #[tokio::test]
 async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
     let story = make_story(200, BoardState::InProgress, Some("original body"));
-    let gates = vec![GateComment {
-        gate: Gate::FailDeskCheck,
+    let gates = vec![CastVerdict {
+        verdict: Verdict::Fail {
+            step: "desk-check".into(),
+        },
         ts: Utc.with_ymd_and_hms(2026, 4, 23, 1, 0, 0).unwrap(),
         actor: "designer".into(),
         payload: Some("failed spec".into()),
@@ -142,26 +148,34 @@ async fn does_not_enrich_body_for_non_rework_story() {
 async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
     let story = make_story(700, BoardState::Ready, Some("original body"));
     let gates = vec![
-        GateComment {
-            gate: Gate::Pickup,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 1, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: Some("ATP green; dev verified user-job".into()),
         },
-        GateComment {
-            gate: Gate::PassDeskCheck,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "desk-check".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 2, 0, 0).unwrap(),
             actor: "designer".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 3, 0, 0).unwrap(),
             actor: "owner".into(),
             payload: Some("user-story not satisfied; reshape needed".into()),
@@ -186,32 +200,42 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
 async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
     let story = make_story(701, BoardState::InProgress, Some("clean body"));
     let gates = vec![
-        GateComment {
-            gate: Gate::Pickup,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 1, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: Some("first delivery".into()),
         },
-        GateComment {
-            gate: Gate::PassDeskCheck,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "desk-check".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 2, 0, 0).unwrap(),
             actor: "designer".into(),
             payload: None,
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 3, 0, 0).unwrap(),
             actor: "owner".into(),
             payload: Some("rework needed".into()),
         },
-        GateComment {
-            gate: Gate::Pickup,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "ready".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 5, 1, 4, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: None,
@@ -231,7 +255,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
 }
 
 #[tokio::test]
-async fn skips_enrichment_when_no_rework_gate_comments() {
+async fn skips_enrichment_when_no_rework_verdicts() {
     let story = make_story(50, BoardState::Ready, Some("plain body"));
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(50, vec![])]).await;
     let args = serde_json::json!({"id": 50});
@@ -612,14 +636,18 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
     let story = make_story(1524, BoardState::Ready, Some("base story body"));
     let reason = "drag srt does not persist and does not have the same drag css as the iteration";
     let gates = vec![
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 8, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: Some("delivered the drag-reorder".into()),
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
             actor: "owner".into(),
             payload: Some(reason.into()),
@@ -627,7 +655,7 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
     ];
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story]);
-    adapter.seed_gate_comments(1524, gates);
+    adapter.seed_verdicts(1524, gates);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
@@ -680,8 +708,10 @@ async fn non_rejected_story_carries_no_latest_reject() {
 async fn latest_reject_survives_an_iteration_move() {
     let story = make_story(1524, BoardState::Ready, Some("base body"));
     let reason = "drag srt does not persist and does not have the same drag css as the iteration";
-    let gates = vec![GateComment {
-        gate: Gate::Rejected,
+    let gates = vec![CastVerdict {
+        verdict: Verdict::Fail {
+            step: "acceptance".into(),
+        },
         ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 1, 0).unwrap(),
         actor: "owner".into(),
         payload: Some(reason.into()),
@@ -766,14 +796,18 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
     story.is_closed = true;
     let reason = "carried reject — the active rework";
     let gates = vec![
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 8, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: Some("delivered".into()),
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
             actor: "owner".into(),
             payload: Some(reason.into()),
@@ -781,7 +815,7 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
     ];
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story]);
-    adapter.seed_gate_comments(1700, gates);
+    adapter.seed_verdicts(1700, gates);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -806,26 +840,34 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
     let mut story = make_story(1701, BoardState::Accepted, Some("body"));
     story.is_closed = true;
     let gates = vec![
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 8, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: Some("first delivery".into()),
         },
-        GateComment {
-            gate: Gate::Rejected,
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 9, 0, 0).unwrap(),
             actor: "owner".into(),
             payload: Some("rework".into()),
         },
-        GateComment {
-            gate: Gate::Delivered,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 10, 0, 0).unwrap(),
             actor: "dev".into(),
             payload: Some("re-delivery".into()),
         },
-        GateComment {
-            gate: Gate::Accepted,
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "acceptance".into(),
+            },
             ts: Utc.with_ymd_and_hms(2026, 6, 6, 11, 0, 0).unwrap(),
             actor: "owner".into(),
             payload: None,
@@ -833,7 +875,7 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
     ];
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story]);
-    adapter.seed_gate_comments(1701, gates);
+    adapter.seed_verdicts(1701, gates);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();

@@ -383,10 +383,10 @@ mod ingest_poll_loop_tests {
         {
             Box::pin(async { Ok(Vec::new()) })
         }
-        fn fetch_gate_comments(
+        fn fetch_verdicts(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::story::GateComment>, SyncError>>
+        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::story::CastVerdict>, SyncError>>
         {
             Box::pin(async { Ok(Vec::new()) })
         }

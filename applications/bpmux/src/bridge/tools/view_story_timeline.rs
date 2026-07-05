@@ -1,20 +1,24 @@
 use std::sync::Arc;
 
-use crate::product_management::story::{Gate, GateComment, Story};
+use crate::product_management::story::{CastVerdict, Story, Verdict};
 use crate::sync::RefreshDriver;
 
-pub fn gate_as_str(gate: Gate) -> &'static str {
-    match gate {
-        Gate::Pickup => "pickup",
-        Gate::Delivered => "delivered",
-        Gate::PassDeskCheck => "pass_desk_check",
-        Gate::FailDeskCheck => "fail_desk_check",
-        Gate::Rejected => "rejected",
-        Gate::Accepted => "accepted",
+pub fn verdict_as_str(verdict: &Verdict) -> &'static str {
+    match verdict {
+        Verdict::Succeed { step } => match step.as_str() {
+            "ready" => "pickup",
+            "in-progress" => "delivered",
+            "desk-check" => "pass_desk_check",
+            _ => "accepted",
+        },
+        Verdict::Fail { step } => match step.as_str() {
+            "desk-check" => "fail_desk_check",
+            _ => "rejected",
+        },
     }
 }
 
-pub fn build_timeline_from_board(story: &Story, gates: &[GateComment]) -> Vec<serde_json::Value> {
+pub fn build_timeline_from_board(story: &Story, gates: &[CastVerdict]) -> Vec<serde_json::Value> {
     let mut events: Vec<serde_json::Value> = Vec::new();
     events.push(serde_json::json!({
         "gate": "filed",
@@ -24,7 +28,7 @@ pub fn build_timeline_from_board(story: &Story, gates: &[GateComment]) -> Vec<se
     }));
     for g in gates {
         events.push(serde_json::json!({
-            "gate": gate_as_str(g.gate),
+            "gate": verdict_as_str(&g.verdict),
             "ts": g.ts.to_rfc3339(),
             "actor": g.actor,
             "payload": g.payload.clone().map(serde_json::Value::String).unwrap_or(serde_json::Value::Null),
@@ -50,8 +54,8 @@ pub(in crate::bridge) async fn handle_view_story_timeline(
     let mut story = r
         .story(id)
         .ok_or_else(|| format!("story #{id} not found in board"))?;
-    if story.gate_comments.is_none() {
-        match r.fetch_gate_comments(id).await {
+    if story.verdicts.is_none() {
+        match r.fetch_verdicts(id).await {
             Ok(_) => {
                 story = r
                     .story(id)
@@ -59,13 +63,13 @@ pub(in crate::bridge) async fn handle_view_story_timeline(
             }
             Err(e) => {
                 crate::diag::log_diag(&format!(
-                    "view_story_timeline #{id} read-through fetch_gate_comments failed: {e}"
+                    "view_story_timeline #{id} read-through fetch_verdicts failed: {e}"
                 ));
             }
         }
     }
-    let hydrated = story.gate_comments.is_some();
-    let gates = story.gate_comments.clone().unwrap_or_default();
+    let hydrated = story.verdicts.is_some();
+    let gates = story.verdicts.clone().unwrap_or_default();
     let events = build_timeline_from_board(&story, &gates);
     let response = serde_json::json!({
         "events": events,

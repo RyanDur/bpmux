@@ -32,11 +32,11 @@ pub fn classify_conflict(
         | StoryEvent::CurrentIterationDesignated { .. }
         | StoryEvent::CurrentIterationCleared { .. } => None,
         StoryEvent::StoryCreated { .. }
-        | StoryEvent::GateCommentAppended { .. }
+        | StoryEvent::VerdictCast { .. }
         | StoryEvent::FreeCommentAppended { .. }
         | StoryEvent::BodyFetched { .. }
         | StoryEvent::FreeCommentsFetched { .. }
-        | StoryEvent::GateCommentsFetched { .. }
+        | StoryEvent::VerdictsFetched { .. }
         | StoryEvent::StoryRefreshed { .. }
         | StoryEvent::LabelsRefreshed { .. }
         | StoryEvent::TitleUpdated { .. }

@@ -5,7 +5,7 @@ use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{FreeComment, GateComment, Stage, Story};
+use crate::product_management::story::{CastVerdict, FreeComment, Stage, Story};
 use crate::sync::{ConditionalBody, SyncError};
 
 use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
@@ -49,7 +49,7 @@ pub trait RefreshDriver: Send + Sync {
         })
     }
     fn fetch_free_comments(&self, id: u64) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>>;
-    fn fetch_gate_comments(&self, id: u64) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>>;
+    fn fetch_verdicts(&self, id: u64) -> BoxedFuture<'_, Result<Vec<CastVerdict>, SyncError>>;
     fn create_story(
         &self,
         title: String,

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{
-    Acceptor, BoardState, FreeComment, Gate, GateComment, Story, StoryId, StoryKind, Tag,
+    Acceptor, BoardState, CastVerdict, FreeComment, Story, StoryId, StoryKind, Tag, Verdict,
 };
 use crate::workflow::StageId;
 
@@ -77,10 +77,10 @@ pub enum StoryEvent {
         meta: EventMeta,
         id: StoryId,
     },
-    GateCommentAppended {
+    VerdictCast {
         meta: EventMeta,
         id: StoryId,
-        gate: Gate,
+        verdict: Verdict,
         payload: Option<String>,
     },
     FreeCommentAppended {
@@ -100,10 +100,10 @@ pub enum StoryEvent {
         id: StoryId,
         comments: Vec<FreeComment>,
     },
-    GateCommentsFetched {
+    VerdictsFetched {
         meta: EventMeta,
         id: StoryId,
-        comments: Vec<GateComment>,
+        verdicts: Vec<CastVerdict>,
     },
     StoryClosed {
         meta: EventMeta,
@@ -173,11 +173,11 @@ impl StoryEvent {
         match self {
             StoryEvent::StoryCreated { meta, .. }
             | StoryEvent::StateTransitioned { meta, .. }
-            | StoryEvent::GateCommentAppended { meta, .. }
+            | StoryEvent::VerdictCast { meta, .. }
             | StoryEvent::FreeCommentAppended { meta, .. }
             | StoryEvent::BodyFetched { meta, .. }
             | StoryEvent::FreeCommentsFetched { meta, .. }
-            | StoryEvent::GateCommentsFetched { meta, .. }
+            | StoryEvent::VerdictsFetched { meta, .. }
             | StoryEvent::TagAdded { meta, .. }
             | StoryEvent::TagRemoved { meta, .. }
             | StoryEvent::TagSet { meta, .. }
@@ -204,11 +204,11 @@ impl StoryEvent {
         match self {
             StoryEvent::StoryCreated { id, .. }
             | StoryEvent::StateTransitioned { id, .. }
-            | StoryEvent::GateCommentAppended { id, .. }
+            | StoryEvent::VerdictCast { id, .. }
             | StoryEvent::FreeCommentAppended { id, .. }
             | StoryEvent::BodyFetched { id, .. }
             | StoryEvent::FreeCommentsFetched { id, .. }
-            | StoryEvent::GateCommentsFetched { id, .. }
+            | StoryEvent::VerdictsFetched { id, .. }
             | StoryEvent::TagAdded { id, .. }
             | StoryEvent::TagRemoved { id, .. }
             | StoryEvent::TagSet { id, .. }
@@ -240,10 +240,10 @@ pub fn event_wins(a: &EventMeta, b: &EventMeta) -> bool {
     resolve_order_key(a) > resolve_order_key(b)
 }
 
-impl GateComment {
-    pub fn from_event(gate: Gate, meta: &EventMeta, payload: Option<String>) -> Self {
+impl CastVerdict {
+    pub fn from_event(verdict: Verdict, meta: &EventMeta, payload: Option<String>) -> Self {
         Self {
-            gate,
+            verdict,
             ts: meta.ts,
             actor: meta.actor.clone(),
             payload,

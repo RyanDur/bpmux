@@ -161,45 +161,44 @@ async fn fetch_free_comments_caches_comments_on_the_story() {
 }
 
 #[tokio::test]
-async fn fetch_gate_comments_caches_comments_on_the_story() {
-    use crate::product_management::story::{Gate, GateComment};
+async fn fetch_verdicts_caches_comments_on_the_story() {
+    use crate::product_management::story::{CastVerdict, Verdict};
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(11, BoardState::Ready)]);
-    let seeded = vec![GateComment {
-        gate: Gate::Pickup,
+    let seeded = vec![CastVerdict {
+        verdict: Verdict::Succeed {
+            step: "ready".into(),
+        },
         ts: Utc.with_ymd_and_hms(2026, 4, 20, 10, 0, 0).unwrap(),
         actor: "dev".into(),
         payload: Some("paraphrase".into()),
     }];
-    adapter.seed_gate_comments(11, seeded.clone());
+    adapter.seed_verdicts(11, seeded.clone());
     let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(orchestrator.story(11).unwrap().gate_comments, None);
+    assert_eq!(orchestrator.story(11).unwrap().verdicts, None);
 
-    let returned = orchestrator.fetch_gate_comments(11).await.unwrap();
+    let returned = orchestrator.fetch_verdicts(11).await.unwrap();
     assert_eq!(returned, seeded);
-    assert_eq!(
-        orchestrator.story(11).unwrap().gate_comments.unwrap(),
-        seeded
-    );
+    assert_eq!(orchestrator.story(11).unwrap().verdicts.unwrap(), seeded);
 }
 
 #[tokio::test]
-async fn fetch_gate_comments_records_error_when_source_fails() {
+async fn fetch_verdicts_records_error_when_source_fails() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(11, BoardState::Ready)]);
     adapter.set_ingest_failures(true);
     let orchestrator = SyncOrchestrator::new(adapter);
-    let err = orchestrator.fetch_gate_comments(11).await.unwrap_err();
+    let err = orchestrator.fetch_verdicts(11).await.unwrap_err();
     assert!(matches!(err, crate::sync::SyncError::SourceUnreachable(_)));
     assert!(
         orchestrator
             .snapshot_status()
             .last_error
             .unwrap()
-            .contains("fetch_gate_comments")
+            .contains("fetch_verdicts")
     );
 }

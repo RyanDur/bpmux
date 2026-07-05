@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::story::{
-    BoardState, Gate, GateComment, Stage, most_recent_needs_work,
+    BoardState, CastVerdict, Stage, Verdict, most_recent_needs_work,
 };
 use crate::sync::RefreshDriver;
 
@@ -24,12 +24,12 @@ fn state_label(state: &BoardState, fine: Option<Stage>) -> &'static str {
     }
 }
 
-fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
+fn rework_context_from_gates(gates: &[CastVerdict]) -> Option<String> {
     let rejection = most_recent_needs_work(gates)?.payload.clone();
     let prior_delivery = gates
         .iter()
         .rev()
-        .find(|g| g.gate == Gate::Delivered)
+        .find(|g| matches!(&g.verdict, Verdict::Succeed { step } if step.as_str() == "in-progress"))
         .and_then(|g| g.payload.clone());
     let mut out = String::from("## Rework context\n\n");
     if let Some(r) = rejection {
@@ -44,14 +44,14 @@ fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
     Some(out)
 }
 
-fn latest_reject_json(gates: &[GateComment]) -> Option<serde_json::Value> {
+fn latest_reject_json(gates: &[CastVerdict]) -> Option<serde_json::Value> {
     let gc = super::rework_context::latest_reject(gates)?;
     let reason = gc.payload.clone()?;
     Some(serde_json::json!({
         "reason": reason,
         "by": gc.actor,
         "at": gc.ts.to_rfc3339(),
-        "gate": super::rework_context::reject_gate_label(gc.gate),
+        "gate": super::rework_context::reject_label(&gc.verdict),
     }))
 }
 
@@ -93,8 +93,8 @@ pub(in crate::bridge) async fn handle_get_story(
         || fine == Some(Stage::Dev)
         || story.is_closed
         || matches!(&story.state, BoardState::Accepted);
-    if needs_gates && story.gate_comments.is_none() {
-        match r.fetch_gate_comments(id).await {
+    if needs_gates && story.verdicts.is_none() {
+        match r.fetch_verdicts(id).await {
             Ok(_) => {
                 story = r
                     .story(id)
@@ -102,25 +102,25 @@ pub(in crate::bridge) async fn handle_get_story(
             }
             Err(e) => {
                 crate::diag::log_diag(&format!(
-                    "get_story #{id} read-through fetch_gate_comments failed: {e}"
+                    "get_story #{id} read-through fetch_verdicts failed: {e}"
                 ));
             }
         }
     }
     let body_cached = story.body.as_deref();
     let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
-    let latest_reject = story.gate_comments.as_deref().and_then(latest_reject_json);
+    let latest_reject = story.verdicts.as_deref().and_then(latest_reject_json);
     let workflow_state = story
-        .gate_comments
+        .verdicts
         .as_deref()
         .and_then(most_recent_needs_work)
-        .map(|g| match g.gate {
-            Gate::FailDeskCheck => "in progress",
+        .map(|g| match &g.verdict {
+            Verdict::Fail { step } if step.as_str() == "desk-check" => "in progress",
             _ => "ready",
         })
         .unwrap_or_else(|| state_label(&story.state, fine));
     if needs_gates
-        && let Some(gates) = story.gate_comments.as_ref()
+        && let Some(gates) = story.verdicts.as_ref()
         && let Some(ctx) = rework_context_from_gates(gates)
     {
         body_out = enrich_body(&body_out, &ctx);
@@ -139,7 +139,7 @@ pub(in crate::bridge) async fn handle_get_story(
         "labels": labels,
         "parent_epic": story.parent_epic(),
         "body_hydrated": body_cached.is_some(),
-        "gate_comments_hydrated": story.gate_comments.is_some(),
+        "gate_comments_hydrated": story.verdicts.is_some(),
         "latest_reject": latest_reject,
     });
     serde_json::to_string_pretty(&out).map_err(|e| format!("serialize story: {e}"))
