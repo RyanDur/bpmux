@@ -69,16 +69,13 @@ pub(crate) async fn reject_via_canonical_store(
     let transition = workflow
         .transition_by_id("reject")
         .ok_or("workflow has no 'reject' transition")?;
-    let target =
-        crate::product_management::story::BoardState::parse(&transition.to).ok_or_else(|| {
-            format!(
-                "workflow.toml reject.to '{}' is not a known state",
-                transition.to
-            )
-        })?;
-    let (new_state, placement) = crate::board::advance(
-        &transition.from,
-        &crate::board::Verdict::NeedsWork(target),
+    let crate::board::Decision {
+        coarse: new_state,
+        placement,
+    } = crate::board::advance(
+        &crate::board::Verdict::Fail {
+            step: transition.from.as_str().into(),
+        },
         workflow,
     )
     .ok_or_else(|| format!("#{id} reject has no target from '{}'", transition.from))?;

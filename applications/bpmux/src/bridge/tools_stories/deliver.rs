@@ -65,14 +65,21 @@ pub(crate) async fn handle_deliver_story(
             ts: chrono::Utc::now(),
             peer_id: PeerId::local(),
         };
-        let (new_state, placement) =
-            crate::board::advance(&transition.from, &crate::board::Verdict::Succeed, workflow)
-                .ok_or_else(|| {
-                    format!(
-                        "#{id} deliver has no forward state from '{}'",
-                        transition.from
-                    )
-                })?;
+        let crate::board::Decision {
+            coarse: new_state,
+            placement,
+        } = crate::board::advance(
+            &crate::board::Verdict::Succeed {
+                step: transition.from.as_str().into(),
+            },
+            workflow,
+        )
+        .ok_or_else(|| {
+            format!(
+                "#{id} deliver has no forward state from '{}'",
+                transition.from
+            )
+        })?;
         let mut events = Vec::new();
         if was_closed {
             events.push(StoryEvent::StoryReopened {

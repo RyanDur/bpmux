@@ -58,16 +58,13 @@ pub(crate) async fn handle_fail_desk_check(
         });
         return Err(err.to_string());
     }
-    let target = crate::product_management::story::BoardState::parse(transition.to.as_str())
-        .ok_or_else(|| {
-            format!(
-                "workflow.toml fail-desk-check transition.to='{}' is not a recognized BoardState",
-                transition.to
-            )
-        })?;
-    let (new_state, placement) = crate::board::advance(
-        &transition.from,
-        &crate::board::Verdict::NeedsWork(target),
+    let crate::board::Decision {
+        coarse: new_state,
+        placement,
+    } = crate::board::advance(
+        &crate::board::Verdict::Fail {
+            step: transition.from.as_str().into(),
+        },
         workflow,
     )
     .ok_or_else(|| {

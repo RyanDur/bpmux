@@ -102,27 +102,46 @@ pub fn state_label(coarse: &BoardState, fine: Option<Stage>) -> &'static str {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Verdict {
-    Succeed,
-    NeedsWork(BoardState),
+    Succeed { step: StageId },
+    Fail { step: StageId },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Decision {
+    pub coarse: BoardState,
+    pub placement: Option<StageId>,
+}
+
+fn state_position(id: &str, workflow: &WorkflowConfig) -> Option<usize> {
+    workflow.state.iter().position(|s| s.id == id)
 }
 
 fn next_state_id_in_order(from_id: &str, workflow: &WorkflowConfig) -> Option<String> {
-    let pos = workflow.state.iter().position(|s| s.id == from_id)?;
+    let pos = state_position(from_id, workflow)?;
     workflow.state.get(pos + 1).map(|s| s.id.clone())
 }
 
-pub fn advance(
-    from_fine_id: &str,
-    verdict: &Verdict,
-    workflow: &WorkflowConfig,
-) -> Option<(BoardState, Option<StageId>)> {
-    match verdict {
-        Verdict::Succeed => {
-            let next_id = next_state_id_in_order(from_fine_id, workflow)?;
-            let coarse = BoardState::parse(&next_id)?;
-            let middle = crate::workflow::board_middle_stage_ids(workflow);
-            Some((coarse, placement_from_target(&next_id, &middle)))
-        }
-        Verdict::NeedsWork(target) => Some((target.clone(), None)),
-    }
+fn backward_target_id(from_id: &str, workflow: &WorkflowConfig) -> Option<String> {
+    let from_pos = state_position(from_id, workflow)?;
+    workflow
+        .transition
+        .iter()
+        .find(|t| {
+            t.from == from_id
+                && state_position(&t.to, workflow).is_some_and(|to_pos| to_pos < from_pos)
+        })
+        .map(|t| t.to.clone())
+}
+
+pub fn advance(verdict: &Verdict, workflow: &WorkflowConfig) -> Option<Decision> {
+    let target_id = match verdict {
+        Verdict::Succeed { step } => next_state_id_in_order(step.as_str(), workflow)?,
+        Verdict::Fail { step } => backward_target_id(step.as_str(), workflow)?,
+    };
+    let coarse = BoardState::parse(&target_id)?;
+    let middle = crate::workflow::board_middle_stage_ids(workflow);
+    Some(Decision {
+        coarse,
+        placement: placement_from_target(&target_id, &middle),
+    })
 }

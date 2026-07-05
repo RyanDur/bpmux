@@ -85,14 +85,21 @@ pub(crate) async fn handle_pass_desk_check(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::story::peer::PeerId::local(),
         };
-        let (new_state, placement) =
-            crate::board::advance(&transition.from, &crate::board::Verdict::Succeed, workflow)
-                .ok_or_else(|| {
-                    format!(
-                        "#{id} pass-desk-check has no forward state from '{}'",
-                        transition.from
-                    )
-                })?;
+        let crate::board::Decision {
+            coarse: new_state,
+            placement,
+        } = crate::board::advance(
+            &crate::board::Verdict::Succeed {
+                step: transition.from.as_str().into(),
+            },
+            workflow,
+        )
+        .ok_or_else(|| {
+            format!(
+                "#{id} pass-desk-check has no forward state from '{}'",
+                transition.from
+            )
+        })?;
         let mut events = Vec::new();
         if was_closed {
             events.push(
