@@ -71,34 +71,15 @@ for_each_exit_check "e2e main (workers=4)" "$main_exit"
 MAX_LINES=200
 echo "Checking file sizes (max ${MAX_LINES} lines; hard fail)..."
 
-# Size-gate allowlist (#20 decompose; Ryan 2026-06-19: "set the gate at 200,
-# we can talk about the others after"). Each entry is ONE indivisible unit with
-# no honest vertical seam — a single trait-impl block, a match-dispatch /
-# state-machine, a declarative enum + its exhaustive matches, a catalog literal,
-# or crate-root/server wiring. Splitting any of these would scatter cohesion to
-# hit a number. Add here only with a one-line reason; prefer splitting.
-size_gate_allowlisted() {
-    case "$1" in
-        applications/bpmux/src/bridge/connection.rs) return 0 ;;              # run_ws_connection: one connect/identify/receive async state-machine loop over shared loop-state
-        applications/bpmux/src/transport/ws/mod.rs) return 0 ;;               # run_ws_session: one select! loop; branches share heavy mutable loop-state (cutting = param-threading noise)
-        applications/bpmux/src/storage/instrumented.rs) return 0 ;;   # single `impl Storage for InstrumentedStorage` block (decorator); Rust can't split one trait impl across files
-        applications/bpmux/src/storage/session/mod.rs) return 0 ;;    # single `impl Storage for FileStorage` block (file-backed prod store); Rust can't split one trait impl across files
-    esac
-    return 1
-}
-
 oversized=""
 while IFS= read -r f; do
-    if size_gate_allowlisted "$f"; then
-        continue
-    fi
     lines=$(wc -l < "$f")
     if [ "$lines" -gt "$MAX_LINES" ]; then
         oversized="${oversized}  ${f}: ${lines} lines (max ${MAX_LINES})\n"
     fi
 done < <(find applications/*/src -name "*.rs" -not -name "*test*" -not -path "*/target/*" -not -path "*/node_modules/*" -not -path "*_tests/*")
 if [ -n "$oversized" ]; then
-    echo "FAIL: files exceed the ${MAX_LINES}-line limit. Split by cohesion into capability submodules, or (only if genuinely indivisible) add to size_gate_allowlisted with a one-line reason:"
+    echo "FAIL: files exceed the ${MAX_LINES}-line limit. Split by cohesion into capability submodules:"
     echo -e "$oversized"
     exit 1
 fi
