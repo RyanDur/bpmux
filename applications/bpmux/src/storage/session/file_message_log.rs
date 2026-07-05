@@ -1,0 +1,31 @@
+use super::FileStorage;
+use crate::log::LogError;
+use crate::message::Message;
+
+impl crate::log::MessageLog for FileStorage {
+    fn append_message(&self, msg: &Message) -> Result<(), LogError> {
+        crate::log::append_message(&self.dir, msg)
+    }
+
+    fn read_messages(&self) -> Result<Vec<Message>, LogError> {
+        crate::log::read_messages(&self.dir)
+    }
+
+    fn read_recent(
+        &self,
+        limit: usize,
+        offset: usize,
+        matches: &dyn Fn(&Message) -> bool,
+    ) -> Result<Vec<Message>, LogError> {
+        crate::log::read_recent(&self.dir, limit, offset, matches)
+    }
+
+    fn clear_messages(&self) -> Result<(), std::io::Error> {
+        let log_path = self.dir.join("log.jsonl");
+        match std::fs::remove_file(&log_path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+}
