@@ -300,6 +300,97 @@ in a type the SourceAdapter never sees.
   double-match before A2 edits the enum. Serde-compat verified against
   persisted shapes.
 
+### A2 sub-decomposition (designed up-front 2026-07-05, executor queue)
+
+Substrate mapped firsthand this session (three Explore sweeps: story-event
+envelope; verdict+gate+GateComment machinery; transition handlers). Anchors
+below are from that map. Two scoping refinements fall out of the BD2/BD3
+deferral (Ryan 2026-07-05) + A2's behavior-preserving constraint — recorded
+so they are not re-litigated:
+
+- **The "within-middle moves go SILENT local board actions" transformation is
+  DEFERRED to ride BD3.** Today `deliver`/`fail-desk-check` post a `Delivered`
+  gate comment AND (via placement) the `desk-check` label to GitHub. Making the
+  middle silent removes shared-edge output — coupled to BD3's de-leak, which is
+  parked on the DB arc. So A2 keeps the middle's GitHub output BYTE-IDENTICAL;
+  the board-action reframing is INTERNAL only (the intent is expressed atomically
+  and its next-state derived from the verdict, but the same `GateCommentAppended`
+  + `StateTransitioned` still emit and still project to GitHub). This matches the
+  reorder premise: "A2–SR need only the board DOMAIN (BD1), not the de-leak."
+- **`drain_pending` removal + body/title write-through fold-in are BLOCKED** on
+  the still-open owner question *"write-verb response: wait-vs-queued"* (both
+  change response timing → not behavior-preserving until resolved). They defer
+  WITHIN A2; the core does not depend on them. Raise when the bridge returns.
+
+The behavior-preserving core, sequenced (each gated → commit → push → verify
+`ls-remote` → CI-green gates the next; refactor falsifier = zero edits to
+existing test assertions):
+
+- **A2-1 — relocate the evidence-verdict into `product_management`; close the
+  last workflow↔pm cycle arm.** Move `workflow/verdicts.rs` (`Verdict`,
+  `VerdictsStore`, `AddVerdictOutcome`, `verdicts_path`/`load`/`save`/
+  `add_or_replace_verdict`/`verdicts_for_story`) → `product_management/verdict.rs`;
+  the test module `workflow/verdict_persistence.rs` → `product_management/
+  verdict_tests.rs`. Re-point the ONLY two prod importers — `bridge/tools/
+  submit_verdict.rs` (writer) + `bridge/tools_stories/acceptance/helpers.rs`
+  (reader `recent_evidence_for_story`) — plus the three test importers. `verdicts.json`
+  persistence UNCHANGED (same file, same fns, just re-homed). VERIFY firsthand that
+  `workflow` production imports NO other `product_management` symbol, then land the
+  proven-to-falsify `workflow` ↛ `product_management` fitness lock. Pure relocation:
+  falsifier = import-path edits only, zero assertion changes.
+- **A2-0 — `EventMeta` envelope structural.** `StoryEvent { meta, id, kind:
+  StoryEventKind }` (all 26 variants carry `meta`+`id` uniformly today —
+  `events.rs:11-233`). Collapse the two 26-arm or-pattern accessors
+  (`meta()`/`story_id()`) to field access; add `StoryEvent::new(meta, id, kind)`
+  to absorb construction churn (~404 refs across ~70 files, ~half tests; five
+  total-match dispatchers: reducer, conflict classifier, github push, in-memory
+  push, +2 accessors). SERDE-COMPAT is the sharp edge: the on-disk `QueuedEvent.event`
+  shape changes (externally-tagged-per-variant → enveloped). The JSON-file outbox
+  has an untagged legacy arm (`OutboxEntryOnDisk`, `outbox.rs:23-28`) but the SQLite
+  outbox (`sqlite_outbox.rs`) has NONE and there is NO event-level round-trip test.
+  So: custom `Deserialize` reading BOTH shapes + ADD a legacy-decode round-trip test
+  (new coverage). Falsifier: full suite green; existing assertions unchanged.
+- **A2-2 — unified `Verdict{Succeed, NeedsWork(target)}` outcome facet +
+  `advance` derivation (expand).** Add the outcome facet to the (now pm-homed)
+  verdict — "never a rival type" (model doc). `advance(position, verdict, workflow)
+  → next_position`: Succeed → next-in-order (deterministic); NeedsWork → configured
+  fail-target (`workflow.toml`), else judge-chosen. Re-express each transition
+  handler to derive next-state + gate FROM a computed verdict instead of the loose
+  hardcoded (`Gate` value ⟂ independently-resolved `Transition`) pair
+  (`bundled_default.rs:64-153` is the current table). Backward = NeedsWork read off
+  the move (lands A1's `most_recent_needs_work`, `story/rework.rs`). SAME events
+  emitted → falsifier: wire/GitHub/gating byte-identical, existing tests green.
+- **A2-3 — atomic intent (per bookend, may split per handler).** Collapse each
+  handler's multi-event `mutate_sync` sequence into ONE atomic verdict action the
+  reducer applies atomically, producing the SAME outbox ops + final state. Today:
+  accept = `GateCommentAppended`+`StateTransitioned`+`StoryClosed` (3 `mutate_sync`,
+  `accept.rs:120-148`); pass_desk_check = 4 events (`pass.rs:89-114`); pickup/deliver/
+  reject/fail = 2-3 each. Keep the inline drain (removal is blocked, above). Verify
+  no listener depends on an intermediate half-applied state (the
+  `BoardPlacementReconciler` reacts to `StateTransitioned` — the atomic action must
+  still surface that effect).
+- **A2-4 — `GateComment` carries verdict+target (back-compat, 2-3 sub-slices).**
+  Reshape `GateComment.gate` → verdict+target internally (`story/mod.rs:38-44`) while
+  keeping the GitHub comment-codec markers byte-identical (`comment_codec.rs`
+  encode/`classify_gate` decode — incl. the `rejection_reason`+`desk-check-fail`
+  disambiguation) and serde `#[serde(default)]` back-compat for persisted snapshots
+  + `StoryEvent::GateCommentAppended`/`GateCommentsFetched` payloads. Falsifier:
+  comment wire byte-identical; legacy-comment decode unchanged.
+- **A2-5 — `is_closed` story-terminal recast (ex-C2).** Re-express the 4 core
+  backend reads (`view/board/arrangement.rs:23` `board_position`;
+  `product_management/backlog.rs:16`; `transport/rpc_routes/state_delta.rs:46`
+  `effective_state_label`; `bridge/move_story/target.rs:84`) + the 6 reopen-guards
+  (`transition.rs:40,157`; `pass.rs:78`; `fail.rs:44`; `reject.rs:77`;
+  `move_story/mod.rs:61`) as `position ∈ {accepted, retired}`. Field + wire stay
+  (shed in SC). Falsifier: behavior-identical.
+- **A2-6 — `close_iteration` double-dispatch fix.** The bridge handler
+  (`closure.rs:94`) fires its own WS `iteration_close_signal` AND self-HTTP-POSTs to
+  the REST path (`iteration_close/close.rs:23`) which independently broadcasts
+  `IterationClose`/board-invalidate/stories. Collapse to one in-process dispatch.
+  CARE: confirm the duplicate is observably redundant (renderer-idempotent) so the
+  fix is behavior-preserving, not behavior-changing; if the second announce carries
+  distinct data, reconsider scope.
+
 ## A3 — delete the `Gate` enum
 
 Once handlers speak verdicts: `gate_as_str`
