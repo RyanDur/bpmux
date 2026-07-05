@@ -133,7 +133,6 @@ pub enum Tag {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Gate {
-    Filed,
     Pickup,
     Delivered,
     PassDeskCheck,

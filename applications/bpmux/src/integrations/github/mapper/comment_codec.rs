@@ -27,7 +27,6 @@ pub(crate) fn encode_gate_comment(gate: Gate, meta: &EventMeta, payload: Option<
         Gate::FailDeskCheck => ("rejection_reason", "desk-check-fail"),
         Gate::Rejected => ("rejection_reason", "reject-gate"),
         Gate::Accepted => ("accepted", "accept-gate"),
-        Gate::Filed => ("filed", "file-gate"),
     };
     match payload {
         Some(body) => format!("**{marker}** ({tag} by {}):\n\n{body}", meta.actor),

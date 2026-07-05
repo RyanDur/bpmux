@@ -31,7 +31,6 @@ impl BugGate {
 
 pub(crate) fn gate_to_id(gate: crate::product_management::story::Gate) -> &'static str {
     match gate {
-        crate::product_management::story::Gate::Filed => "filed",
         crate::product_management::story::Gate::Pickup => "pickup",
         crate::product_management::story::Gate::Delivered => "deliver",
         crate::product_management::story::Gate::PassDeskCheck => "pass-desk-check",

@@ -5,7 +5,6 @@ use crate::sync::RefreshDriver;
 
 pub fn gate_as_str(gate: Gate) -> &'static str {
     match gate {
-        Gate::Filed => "filed",
         Gate::Pickup => "pickup",
         Gate::Delivered => "delivered",
         Gate::PassDeskCheck => "pass_desk_check",
