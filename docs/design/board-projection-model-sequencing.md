@@ -40,17 +40,37 @@ slice claims pure re-expression: zero edits to existing tests.
 
 ## Order at a glance
 
-`T0` ✅ → `RF` ✅ → `BD1` ✅ (board domain landed CI-green — the two grains
-now exist: coarse position + fine `BoardPlacements`) → [`BD2` placement
-persistence + `BD3` desk-check de-leak — **relocated out of line to ride the
-DB/storage-ports arc**, Ryan 2026-07-05; see the BD2 note. No downstream
-dependency: A2–SR need only the board *domain* (BD1), not persistence or the
-de-leak] → `A2` (verdict collapse, two-grain-native; absorbs the handler
-cleanups AND C2's story-terminal re-expression — **NEXT PICKUP**) → `A3`
-(delete `Gate`) → `M1–M4` (metrics re-sourcing) → `C1` (shed `ready_order`) →
-`D` (order-on-lists) → `SC` (selector consolidation sweep + locks; absorbs
-C2's field+wire shed and the iteration-closed re-home) → `WR` (write-path
-remainder) → `SR` (session renames, last — mechanical, least churn).
+`T0` ✅ → `RF` ✅ → `BD1` ✅ (board domain; two grains: coarse position + fine
+`BoardPlacements`) → **`A2`** (verdict-MOVE collapse, two-grain-native; A2-1 ✅
+A2-2 ✅, **NEXT = A2-2c** then A2-3 [+ optimistic writes] → A2-4 → A2-5 → A2-6 →
+A2-0) → **Persistence arc** (`PP` placement-persist + `VP` verdict-into-store,
+per-domain file-adapter ports + `BD3` de-leak riding the placement port —
+CONVERGED Ryan 2026-07-05: finish A2 first, then per-domain ports; NOT a DB arc,
+just port+file-adapter; the DB is a later adapter-only swap) → `A3` (delete
+`Gate`) → `M1–M4` (metrics) → `C1` (shed `ready_order`) → `D` (order-on-lists) →
+`SC` (selector sweep + locks) → `WR` (write-path remainder) → `SR` (renames).
+
+**★ Persistence arc — converged with Ryan 2026-07-05 (supersedes the earlier
+"park BD2/BD3 behind a DB arc" deferral, which was an over-escalation).** Both
+verdicts and board placement are (or become) STATE IN THE STORE, each with a
+listener → **per-domain repo port** → adapter that persists it. The adapter is a
+simple local JSON file NOW; the "DB arc" later swaps that adapter for a
+SQLite/refinery adapter and **touches only the adapter** — store slice, listener,
+port interface, and every selector stay untouched (the whole payoff of the
+pattern; consistent with the five existing repo ports OutboxRepo/UserRepo/…).
+- `PP` — board placement persistence: `PlacementRepo` port (board slice) + file
+  adapter + write-behind listener + hydrate-on-boot. `BoardPlacements` is already
+  store state (BD1) → pure addition. Loss-window: flush-before-ack (silent loss of
+  desk-check status on restart is a UX regression).
+- `VP` — verdict evidence into the store: TODAY `verdicts.json` is read/written
+  DIRECTLY at gate-time (submit_verdict writes; accept gate reads), bypassing the
+  store — that gate-time-file-read is the real anomaly. Promote to a pm store slice
+  (submit dispatches; gate reads a SELECTOR) + `VerdictRepo` port + file adapter +
+  listener + hydrate. Removes the anomaly (better than leaving the raw file).
+- `BD3` de-leak (⚠ owner-approved shared edge) rides `PP`: the local placement file
+  is the recovery path that replaces the GitHub `desk-check` label. Encode: middle →
+  `"in progress"` only. Decode: tolerate legacy `"desk-check"` → In Progress + local
+  desk-check placement, rewrite lazily.
 
 C2 no longer appears as a standalone slice — it was **falsified as scoped**
 (2026-07-04, mid-execution substrate check) and dissolved three ways; see the
@@ -243,32 +263,29 @@ in a type the SourceAdapter never sees.
         `board_dispatch` (a `RefreshDriver` bind mirroring `story_dispatch`) so ingest placements reach
         the seeded store and `story_fine_stage` sees desk-check. Falsifier: full suite 2381 + vitest 766
         + e2e all green; wire/render/outbound byte-identical. TS renderer untouched.
-- **BD2 — placement persistence.** Refinery migration + repo port
-  (storage-ports pattern), write-behind listener, hydrate on boot.
-  **Loss-window call (sudden-death rule): decide explicitly whether losing
-  the last placement move on crash is acceptable** (default recommendation:
-  yes — placement is cheap to re-derive by working; document the choice).
-  **★ SEQUENCING DECISION (Ryan, 2026-07-05): BD2 is intentionally parked
-  behind the DB/storage-ports setup — do it AS PART OF that arc, not before.**
-  Rationale: BD2 *is* DB work (its whole content is a refinery migration + a
-  repo port on the storage-ports pattern), so it wants the finished storage
-  substrate to build against; doing it now would bolt a one-off persistence
-  path onto a half-built layer. And nothing is lost by waiting — after BD1b,
-  the desk-check placement is NOT yet locally persisted but it survives restart
-  by being **re-derived from the GitHub `"desk-check"` label on every ingest**
-  (deliver pushes the label out; boot re-ingest decodes it back via
-  `placement_from_labels` → placement dispatched into the store). So **the
-  GitHub label IS the persistence until BD2**, and there is no open correctness
-  gap. Consequence: **BD2 gates BD3** — you cannot stop writing the desk-check
-  label to GitHub (the de-leak) until placements persist locally, because that
-  label is the current recovery path. Chain: finish DB → BD2 → BD3.
-- **BD3 — ⚠ the desk-check de-leak (owner-approved shared-edge change).**
-  Encode: every `InProgress(_)` → the `"in progress"` label (the codec speaks
-  SECTION, never sub-section). Decode: `"in progress"` → In Progress +
-  placement from local storage (entry default). Migration decode: legacy
-  `"desk-check"` label → In Progress + desk-check placement seeded locally;
-  label rewritten to `"in progress"` on next push (lazy, not a sweep).
-  Cross-instance desk-check visibility ends BY DESIGN.
+- **BD2 — placement persistence, as a SIMPLE LOCAL FILE (NOT a DB migration).**
+  **★ CORRECTED (Ryan, 2026-07-05): the earlier "park BD2 behind the DB/storage-
+  ports arc" decision was an over-escalation and is REVERSED.** A `StoryId →
+  StageId` map is instance-local state that belongs in a simple local file —
+  exactly the `verdicts.json` precedent — not a refinery migration behind a
+  per-feature repo port. So BD2 has NO DB-arc dependency and is doable now: a
+  board-slice listener writes `BoardPlacements` to a small JSON file on change;
+  hydrate reads it at boot. The one improvement over `verdicts.json`: keep it
+  store-integrated (listener-written, boot-read only) so it is a proper
+  hydrate-only projection, not a gate-time side-channel. **Loss-window call
+  (sudden-death rule): write synchronously enough that a crash does not silently
+  lose the last placement move** (placement is cheap to re-derive, but silent
+  loss on restart is a UX regression — prefer flush-before-ack like the outbox;
+  finalize in implementation). Because BD2 is now cheap and immediate, **it no
+  longer gates BD3** — the two land together.
+- **BD3 — ⚠ the desk-check de-leak (owner-approved shared-edge change; UNBLOCKED
+  by simple-file BD2).** Encode: every `InProgress(_)` → the `"in progress"`
+  label (the codec speaks SECTION, never sub-section). Decode: `"in progress"` →
+  In Progress + placement from the local file (entry default). Migration decode:
+  legacy `"desk-check"` label → In Progress + desk-check placement seeded
+  locally; label rewritten to `"in progress"` on next push (lazy, not a sweep).
+  Cross-instance desk-check visibility ends BY DESIGN. Lands with BD2 (simple
+  file is the recovery path that replaces the GitHub `"desk-check"` label).
 
 ## A2 — the verdict collapse, two-grain-native [deep]
 
@@ -281,11 +298,13 @@ in a type the SourceAdapter never sees.
   bookend, so its ceremony/evidence is unaffected.)
 - **Intents are atomic**: one intent = ONE action applied atomically by the
   reducer — never the current 3-event dispatch sequences.
-- `workflow/verdicts.rs` (+`verdict_persistence.rs`) relocates INTO
-  `product_management` — the evidence verdict UNIFIES with the transition
-  verdict (never a rival type); dissolves the verdicts.json third-substrate
-  anomaly; closes the last workflow↔pm cycle arm; the workflow→pm fitness
-  lock lands after this final cut.
+- `workflow/verdicts.rs` (+`verdict_persistence.rs`) relocated INTO
+  `product_management` (A2-1 ✅) — closing the last workflow↔pm cycle arm; the
+  workflow→pm fitness lock landed. **The evidence verdict STAYS in `verdicts.json`,
+  off the story (CORRECTED, Ryan 2026-07-05): there is no "dissolve into the store"
+  requirement — that was an invented goal. `verdicts.json` is instance-local
+  evidence, fine as a simple file.** The move-`Verdict` (board slice, A2-2) is a
+  SEPARATE concept (the Gate-replacement), not a merge of the evidence struct.
 - RISK: `GateComment` is persisted (issue comments, fetched back) — needs a
   back-compat decode as `gate` becomes `verdict + target`. 2–3 sub-slices.
 - Absorbed handler cleanups (same files, avoid double-touching): remove
@@ -304,40 +323,35 @@ in a type the SourceAdapter never sees.
 
 Substrate mapped firsthand this session (three Explore sweeps: story-event
 envelope; verdict+gate+GateComment machinery; transition handlers). Anchors
-below are from that map. Two scoping refinements fall out of the BD2/BD3
-deferral (Ryan 2026-07-05) + A2's behavior-preserving constraint — recorded
-so they are not re-litigated:
+below are from that map.
 
-- **The "within-middle moves go SILENT local board actions" transformation is
-  DEFERRED to ride BD3.** Today `deliver`/`fail-desk-check` post a `Delivered`
-  gate comment AND (via placement) the `desk-check` label to GitHub. Making the
-  middle silent removes shared-edge output — coupled to BD3's de-leak, which is
-  parked on the DB arc. So A2 keeps the middle's GitHub output BYTE-IDENTICAL;
-  the board-action reframing is INTERNAL only (the intent is expressed atomically
-  and its next-state derived from the verdict, but the same `GateCommentAppended`
-  + `StateTransitioned` still emit and still project to GitHub). This matches the
-  reorder premise: "A2–SR need only the board DOMAIN (BD1), not the de-leak."
-- **`drain_pending` removal + body/title write-through fold-in are BLOCKED** on
-  the still-open owner question *"write-verb response: wait-vs-queued"* (both
-  change response timing → not behavior-preserving until resolved). They defer
-  WITHIN A2; the core does not depend on them. Raise when the bridge returns.
+**★ SCOPE CORRECTED (Ryan, 2026-07-05) — I had over-escalated local-persistence
+needs into fake DB-arc deferrals; reversed:**
 
-Third refinement, found while designing A2-2 against the substrate: **fully
-dissolving the `verdicts.json` third substrate into the store is NOT
-behavior-preserving and DEFERS to the DB arc (with BD2).** Dissolving it means
-a persisted store slice + a write-behind listener + hydrate-on-boot + an
-explicit loss-window choice (the evidence is written synchronously today; a
-listener introduces a crash-loss window) — that is exactly the DB/storage-ports
-work BD2 was parked behind, by the same logic. Typing `submit_verdict`'s
-free-text `verdict` arg into the outcome would additionally change a shared MCP
-tool contract (⚠, owner-gated). So A2 does the behavior-preserving verdict-MOVE
-collapse (introduce the move-`Verdict` + `advance`, rewire handlers, atomic
-intent, `GateComment` reshape); the evidence-verdict stays a pm-homed file
-side-channel (A2-1 positioned it there) until the DB arc dissolves it. The
-move-`Verdict` and the evidence `product_management::verdict::Verdict` coexist
-transitionally in distinct domains (board move vs pm evidence-grounding) — not
-a rival type, two honest concepts; they reconcile when the DB arc dissolves the
-evidence substrate into a store slice.
+- **Optimistic writes are IN A2-3, not deferred.** Writes returning optimistically
+  (per `architecture-rules.md`) was always the intended design; today's blocking
+  inline `drain_pending` is the *accident*, not the spec (existing-code-is-not-the-
+  spec). A2-3 removes inline `drain_pending`, folds the body/title write-through
+  into the outbox, and adds the `pending_operations_for` selector. The async push
+  already has a home (the polling drain, `bridge/polling/drain.rs`) so removing the
+  inline drain does not strand the GitHub update — verify that path covers every
+  verb. Rewrite the tests that assert synchronous propagation (e.g.
+  `..._drains_synchronously_so_gh_side_propagates_before_return`) — they pin the
+  accident.
+- **`verdicts.json` STAYS, off the story — no dissolution, no DB arc.** The
+  "dissolve the third substrate into the store" requirement was invented; keeping
+  verdict evidence in a simple local file is fine (it is instance-local evidence).
+  A2 already keeps it off the story: the move-`Verdict` (board slice) is a SEPARATE
+  concept from the evidence `product_management::verdict::Verdict`, not a merge.
+  The two coexist as two honest concepts (board move vs evidence-grounding).
+- **The desk-check de-leak (middle goes silent to GitHub) is UNBLOCKED — it never
+  needed the DB arc.** Placement persists as a SIMPLE LOCAL FILE (the `verdicts.json`
+  precedent), so BD2/BD3 land together, downgraded from "refinery migration" to
+  "file + de-leak" (see the corrected BD2/BD3 entries above). Until BD3 lands, A2
+  keeps the middle's GitHub output byte-identical (the `Delivered` comment + the
+  placement-sourced label still emit); the board-action reframing inside A2 is
+  internal only. BD2/BD3 can be sequenced right after the A2 verdict slices — no
+  arc dependency.
 
 Executor order (A2-0 reordered to the TAIL, see above):
 A2-1✅ → A2-2 → A2-3 → A2-4 → A2-5 → A2-6 → A2-0. Each gated → commit → push
@@ -404,10 +418,14 @@ zero edits to existing test assertions.
   reducer applies atomically, producing the SAME outbox ops + final state. Today:
   accept = `GateCommentAppended`+`StateTransitioned`+`StoryClosed` (3 `mutate_sync`,
   `accept.rs:120-148`); pass_desk_check = 4 events (`pass.rs:89-114`); pickup/deliver/
-  reject/fail = 2-3 each. Keep the inline drain (removal is blocked, above). Verify
-  no listener depends on an intermediate half-applied state (the
+  reject/fail = 2-3 each. **A2-3 also lands optimistic writes (corrected scope):
+  remove inline `drain_pending`, fold the body/title write-through into the outbox,
+  add `pending_operations_for`; the polling drain (`bridge/polling/drain.rs`) is the
+  async push path — verify it covers every verb, then rewrite the synchronous-drain
+  assertions.** Verify no listener depends on an intermediate half-applied state (the
   `BoardPlacementReconciler` reacts to `StateTransitioned` — the atomic action must
-  still surface that effect).
+  still surface that effect). May split: atomicity (structural) vs optimistic-writes
+  (behavioral, updates tests) as separate slices if cleaner.
 - **A2-4 — `GateComment` carries verdict+target (back-compat, 2-3 sub-slices).**
   Reshape `GateComment.gate` → verdict+target internally (`story/mod.rs:38-44`) while
   keeping the GitHub comment-codec markers byte-identical (`comment_codec.rs`
