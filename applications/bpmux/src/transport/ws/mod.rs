@@ -1,12 +1,8 @@
 use std::sync::Arc;
 
-use axum::extract::State;
-use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
-use axum::response::Response;
-use base64::Engine;
+use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
-use tokio::sync::broadcast;
 
 use crate::routing::short_name;
 use crate::session;
@@ -15,27 +11,31 @@ use crate::transport::protocol::ServerMessage;
 mod client;
 mod client_handlers;
 mod delivery;
+mod handler;
 mod hydrate;
+mod loop_handlers;
 mod peer_lag;
 mod roadmap_write_handlers;
 mod roster;
 mod session_io;
 mod snapshot;
+mod startup;
 
 #[cfg(test)]
 mod roster_projection;
 
 pub(crate) use client::*;
 pub(crate) use delivery::*;
+pub use handler::ws_handler;
 pub use peer_lag::*;
 pub(crate) use roster::*;
 pub(crate) use session_io::send_json;
 use session_io::wait_for_identify;
-use snapshot::{build_state_snapshot_message, system_announcement};
+use snapshot::system_announcement;
 
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
-struct WsDeps {
+pub(super) struct WsDeps {
     session: Arc<session::Session>,
     store: Arc<crate::store::Store>,
     dispatch: crate::store::Dispatch,
@@ -45,37 +45,7 @@ struct WsDeps {
     orchestrator: crate::sync::OrchestratorHandle,
 }
 
-#[allow(clippy::too_many_arguments)]
-pub async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(session): State<Arc<session::Session>>,
-    axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
-    axum::Extension(dispatch): axum::Extension<crate::store::Dispatch>,
-    axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
-    axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
-    axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
-    axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
-) -> Response {
-    let deps = WsDeps {
-        session,
-        store,
-        dispatch,
-        pty_registry,
-        routing,
-        tracker,
-        orchestrator,
-    };
-    ws.on_upgrade(move |socket| handle_ws(socket, deps))
-}
-
-async fn handle_ws(socket: WebSocket, deps: WsDeps) {
-    let (tx, rx) = socket.split();
-    if let Err(e) = run_ws_session(tx, rx, deps).await {
-        crate::diag::log_diag(&format!("ws: session error: {e}"));
-    }
-}
-
-async fn run_ws_session(
+pub(super) async fn run_ws_session(
     mut tx: SplitSink<WebSocket, WsMessage>,
     mut rx: SplitStream<WebSocket>,
     deps: WsDeps,
@@ -99,64 +69,15 @@ async fn run_ws_session(
     let mut broadcast_rx = session.subscribe();
     let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
     heartbeat.tick().await;
-    send_json(
+    startup::send_startup_frames(
         &mut tx,
-        &ServerMessage::Welcome {
-            session_id: session.id.clone(),
-        },
+        &session,
+        &store,
+        &orchestrator,
+        &identity,
+        replay_cursor,
     )
     .await?;
-    let snapshot_msg = build_state_snapshot_message(&store);
-    send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
-    if let Some(refresh) = orchestrator.as_ref() {
-        let stories = serde_json::Value::Array(crate::transport::rest::board_stories(refresh));
-        send_json(
-            &mut tx,
-            &ServerMessage::from(crate::transport::rest::stories_message(stories)),
-        )
-        .await?;
-        let epics = serde_json::Value::Array(crate::transport::rest::board_epics(refresh));
-        send_json(
-            &mut tx,
-            &ServerMessage::from(crate::transport::rest::epics_message(epics)),
-        )
-        .await?;
-        let outcomes = serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
-        send_json(
-            &mut tx,
-            &ServerMessage::from(crate::transport::rest::outcomes_message(outcomes)),
-        )
-        .await?;
-        let iterations =
-            serde_json::Value::Array(crate::transport::rest::board_iterations(refresh));
-        send_json(
-            &mut tx,
-            &ServerMessage::from(crate::transport::rest::iterations_message(iterations)),
-        )
-        .await?;
-        let roadmap = serde_json::Value::Array(crate::transport::rest::board_roadmap(refresh));
-        send_json(
-            &mut tx,
-            &ServerMessage::from(crate::transport::rest::roadmap_message(roadmap)),
-        )
-        .await?;
-    }
-    let join_msg = system_announcement(&format!("{identity} joined"));
-    session.broadcast(&join_msg)?;
-    const REPLAY_SCAN_WINDOW: usize = 500;
-    if let Some(cursor) = replay_cursor
-        && let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(&cursor)
-        && let Ok(mut messages) =
-            session.read_recent(REPLAY_SCAN_WINDOW, 0, &|m| m.state_delta.is_some())
-    {
-        messages.reverse();
-        let cursor_ts = parsed.with_timezone(&chrono::Utc);
-        for msg in messages {
-            if msg.state_delta.is_some() && msg.ts > cursor_ts && should_deliver(&msg, &identity) {
-                send_json(&mut tx, &ServerMessage::from(msg)).await?;
-            }
-        }
-    }
     let (pty_tx, mut pty_rx) = tokio::sync::mpsc::unbounded_channel::<(String, Vec<u8>)>();
     let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<ServerMessage>();
     let mut pty_readers: std::collections::HashMap<String, Arc<std::sync::atomic::AtomicBool>> =
@@ -166,32 +87,8 @@ async fn run_ws_session(
         loop {
             tokio::select! {
                 broadcast_result = broadcast_rx.recv() => {
-                    match broadcast_result {
-                        Ok(msg) => {
-                            if should_deliver(&msg, &identity) {
-                                send_json(&mut tx, &ServerMessage::from(msg)).await?;
-                            }
-                        }
-                        Err(broadcast::error::RecvError::Lagged(n)) => {
-                            crate::diag::log_diag(&format!(
-                                "ws: client {identity} lagged by {n} messages"
-                            ));
-                            let lag_notice = ServerMessage::Error {
-                                reason: format!("lagged: {n} messages dropped"),
-                            };
-                            let _ = send_json(&mut tx, &lag_notice).await;
-                            let lag_broadcast = build_peer_lag_message(
-                                &identity,
-                                n,
-                                chrono::Utc::now(),
-                            );
-                            if let Err(e) = session.broadcast(&lag_broadcast) {
-                                crate::diag::log_diag(&format!(
-                                    "ws: peer-lag broadcast failed for {identity}: {e}"
-                                ));
-                            }
-                        }
-                        Err(broadcast::error::RecvError::Closed) => break,
+                    if !loop_handlers::handle_broadcast(&mut tx, broadcast_result, &identity, &session).await? {
+                        break;
                     }
                 }
                 _ = heartbeat.tick() => {
@@ -200,31 +97,7 @@ async fn run_ws_session(
                     }
                 }
                 pty_chunk = pty_rx.recv() => {
-                    if let Some((terminal_id, bytes)) = pty_chunk {
-                        if bytes.is_empty() {
-                            pty_readers.remove(&terminal_id);
-                            pty_modes.remove(&terminal_id);
-                            send_json(&mut tx, &ServerMessage::PtyExit { terminal_id }).await?;
-                        } else {
-                            let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
-                            send_json(&mut tx, &ServerMessage::PtyOutput {
-                                terminal_id: terminal_id.clone(),
-                                data,
-                            })
-                            .await?;
-                            if let Some(bracketed_paste) =
-                                pty_registry.current_bracketed_paste(&terminal_id)
-                                && pty_modes.get(&terminal_id) != Some(&bracketed_paste)
-                            {
-                                pty_modes.insert(terminal_id.clone(), bracketed_paste);
-                                send_json(&mut tx, &ServerMessage::PtyMode {
-                                    terminal_id,
-                                    bracketed_paste,
-                                })
-                                .await?;
-                            }
-                        }
-                    }
+                    loop_handlers::handle_pty_chunk(&mut tx, pty_chunk, &pty_registry, &mut pty_readers, &mut pty_modes).await?;
                 }
                 reply = reply_rx.recv() => {
                     if let Some(msg) = reply {
