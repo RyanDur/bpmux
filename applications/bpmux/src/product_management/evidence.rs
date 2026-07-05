@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use crate::product_management::story::StoryId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Verdict {
+pub struct Evidence {
     pub story_id: StoryId,
     pub from_role: String,
     pub verdict: String,
@@ -17,47 +17,50 @@ pub struct Verdict {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct VerdictsStore {
-    pub stories: BTreeMap<StoryId, Vec<Verdict>>,
+pub struct EvidenceStore {
+    pub stories: BTreeMap<StoryId, Vec<Evidence>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AddVerdictOutcome {
+pub enum AddEvidenceOutcome {
     Inserted,
     Replaced,
 }
 
-pub fn verdicts_path(session_dir: &Path) -> PathBuf {
+pub fn evidence_path(session_dir: &Path) -> PathBuf {
     session_dir.join("verdicts.json")
 }
 
-pub fn load(session_dir: &Path) -> VerdictsStore {
-    let path = verdicts_path(session_dir);
+pub fn load(session_dir: &Path) -> EvidenceStore {
+    let path = evidence_path(session_dir);
     match std::fs::read_to_string(&path) {
         Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-        Err(_) => VerdictsStore::default(),
+        Err(_) => EvidenceStore::default(),
     }
 }
 
-pub fn save(session_dir: &Path, store: &VerdictsStore) -> Result<(), std::io::Error> {
+pub fn save(session_dir: &Path, store: &EvidenceStore) -> Result<(), std::io::Error> {
     std::fs::create_dir_all(session_dir)?;
-    let path = verdicts_path(session_dir);
+    let path = evidence_path(session_dir);
     let json = serde_json::to_string_pretty(store)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(&path, json)
 }
 
-pub fn add_or_replace_verdict(store: &mut VerdictsStore, verdict: Verdict) -> AddVerdictOutcome {
-    let list = store.stories.entry(verdict.story_id).or_default();
-    if let Some(existing) = list.iter_mut().find(|v| v.from_role == verdict.from_role) {
-        *existing = verdict;
-        AddVerdictOutcome::Replaced
+pub fn add_or_replace_evidence(
+    store: &mut EvidenceStore,
+    evidence: Evidence,
+) -> AddEvidenceOutcome {
+    let list = store.stories.entry(evidence.story_id).or_default();
+    if let Some(existing) = list.iter_mut().find(|v| v.from_role == evidence.from_role) {
+        *existing = evidence;
+        AddEvidenceOutcome::Replaced
     } else {
-        list.push(verdict);
-        AddVerdictOutcome::Inserted
+        list.push(evidence);
+        AddEvidenceOutcome::Inserted
     }
 }
 
-pub fn verdicts_for_story(store: &VerdictsStore, story_id: StoryId) -> Vec<Verdict> {
+pub fn evidence_for_story(store: &EvidenceStore, story_id: StoryId) -> Vec<Evidence> {
     store.stories.get(&story_id).cloned().unwrap_or_default()
 }

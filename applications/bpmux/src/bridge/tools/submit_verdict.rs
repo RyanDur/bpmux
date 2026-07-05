@@ -1,8 +1,8 @@
 use crate::message::{Message, MessageType};
-use crate::product_management::story::StoryId;
-use crate::product_management::verdict::{
-    AddVerdictOutcome, Verdict, add_or_replace_verdict, load, save,
+use crate::product_management::evidence::{
+    AddEvidenceOutcome, Evidence, add_or_replace_evidence, load, save,
 };
+use crate::product_management::story::StoryId;
 use std::sync::Arc;
 
 pub(in crate::bridge) async fn handle_submit_verdict(
@@ -41,7 +41,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         .to_string();
 
     let ts = chrono::Utc::now();
-    let entry = Verdict {
+    let entry = Evidence {
         story_id: StoryId::new(story_id),
         from_role: role.to_string(),
         verdict: verdict_value.clone(),
@@ -51,7 +51,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
     };
 
     let mut store = load(&session.dir);
-    let outcome = add_or_replace_verdict(&mut store, entry);
+    let outcome = add_or_replace_evidence(&mut store, entry);
     save(&session.dir, &store).map_err(|e| format!("save verdicts: {e}"))?;
 
     let pm_id = workflow.role_id_for_purpose("pm").unwrap_or("pm");
@@ -70,8 +70,8 @@ pub(in crate::bridge) async fn handle_submit_verdict(
     }
 
     let outcome_label = match outcome {
-        AddVerdictOutcome::Inserted => "new",
-        AddVerdictOutcome::Replaced => "replaced prior",
+        AddEvidenceOutcome::Inserted => "new",
+        AddEvidenceOutcome::Replaced => "replaced prior",
     };
     Ok(format!(
         "verdict recorded on #{story_id} from {role} ({outcome_label})"

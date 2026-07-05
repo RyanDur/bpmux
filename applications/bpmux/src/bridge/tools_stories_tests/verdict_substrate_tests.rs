@@ -10,8 +10,8 @@ mod verdict_substrate_integration_1407 {
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
     use crate::integrations::in_memory::InMemorySourceAdapter;
+    use crate::product_management::evidence::{evidence_for_story, load};
     use crate::product_management::story::{BoardState, Story, StoryId};
-    use crate::product_management::verdict::{load, verdicts_for_story};
     use crate::session::Session;
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -49,11 +49,11 @@ mod verdict_substrate_integration_1407 {
     }
 
     fn seed_expired_verdict(session: &Arc<Session>, id: u64, role: &str) {
-        use crate::product_management::verdict::{Verdict, add_or_replace_verdict, save};
+        use crate::product_management::evidence::{Evidence, add_or_replace_evidence, save};
         let mut store = load(&session.dir);
-        add_or_replace_verdict(
+        add_or_replace_evidence(
             &mut store,
-            Verdict {
+            Evidence {
                 story_id: StoryId::new(id),
                 from_role: role.to_string(),
                 verdict: "verified".to_string(),
@@ -66,11 +66,11 @@ mod verdict_substrate_integration_1407 {
     }
 
     fn seed_verdict_grounded_on(session: &Arc<Session>, id: u64, role: &str, head: &str) {
-        use crate::product_management::verdict::{Verdict, add_or_replace_verdict, save};
+        use crate::product_management::evidence::{Evidence, add_or_replace_evidence, save};
         let mut store = load(&session.dir);
-        add_or_replace_verdict(
+        add_or_replace_evidence(
             &mut store,
-            Verdict {
+            Evidence {
                 story_id: StoryId::new(id),
                 from_role: role.to_string(),
                 verdict: "verified".to_string(),
@@ -111,7 +111,7 @@ mod verdict_substrate_integration_1407 {
             .await
             .expect("dev submit_verdict");
         let store = load(&session.dir);
-        let stored = verdicts_for_story(&store, StoryId::new(42));
+        let stored = evidence_for_story(&store, StoryId::new(42));
         assert_eq!(stored.len(), 2);
         let roles: Vec<&str> = stored.iter().map(|v| v.from_role.as_str()).collect();
         assert!(roles.contains(&"designer"));
@@ -533,7 +533,7 @@ mod verdict_substrate_integration_1407 {
         .await
         .unwrap();
         let before = load(&session.dir);
-        let count_before = verdicts_for_story(&before, StoryId::new(42)).len();
+        let count_before = evidence_for_story(&before, StoryId::new(42)).len();
 
         crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
             .await
@@ -546,7 +546,7 @@ mod verdict_substrate_integration_1407 {
             .unwrap();
 
         let after = load(&session.dir);
-        let count_after = verdicts_for_story(&after, StoryId::new(42)).len();
+        let count_after = evidence_for_story(&after, StoryId::new(42)).len();
         assert_eq!(
             count_before, count_after,
             "view_verdicts must not mutate the store"

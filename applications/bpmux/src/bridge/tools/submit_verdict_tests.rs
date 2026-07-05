@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::submit_verdict::*;
+use crate::product_management::evidence::{evidence_for_story, load};
 use crate::product_management::story::StoryId;
-use crate::product_management::verdict::{load, verdicts_for_story};
 use crate::session::Session;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -77,7 +77,7 @@ async fn dev_writes_verdict_to_store_at_session_dir() {
         .expect("dev fire should succeed");
     assert!(result.contains("verdict recorded on #42 from dev"));
     let store = load(&session.dir);
-    let stored = verdicts_for_story(&store, StoryId::new(42));
+    let stored = evidence_for_story(&store, StoryId::new(42));
     assert_eq!(stored.len(), 1);
     assert_eq!(stored[0].from_role, "dev");
     assert_eq!(stored[0].verdict, "verified");
@@ -93,7 +93,7 @@ async fn designer_writes_verdict_to_store() {
         .await
         .expect("designer fire should succeed");
     let store = load(&session.dir);
-    let stored = verdicts_for_story(&store, StoryId::new(99));
+    let stored = evidence_for_story(&store, StoryId::new(99));
     assert_eq!(stored.len(), 1);
     assert_eq!(stored[0].from_role, "designer");
 }
@@ -148,7 +148,7 @@ async fn replay_from_same_role_replaces_prior() {
         .expect("replay should succeed");
     assert!(result.contains("replaced prior"));
     let store = load(&session.dir);
-    let stored = verdicts_for_story(&store, StoryId::new(42));
+    let stored = evidence_for_story(&store, StoryId::new(42));
     assert_eq!(stored.len(), 1);
     assert_eq!(stored[0].verdict, "rejected");
     assert_eq!(

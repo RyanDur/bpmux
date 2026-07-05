@@ -1,5 +1,5 @@
+use crate::product_management::evidence::{Evidence, evidence_for_story, load};
 use crate::product_management::story::StoryId;
-use crate::product_management::verdict::{Verdict, load, verdicts_for_story};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[derive(Serialize)]
 struct VerdictView {
     #[serde(flatten)]
-    verdict: Verdict,
+    verdict: Evidence,
     #[serde(skip_serializing_if = "Option::is_none")]
     fresh: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -43,7 +43,7 @@ pub(in crate::bridge) async fn handle_view_verdicts(
     );
 
     let store = load(&session.dir);
-    let records = verdicts_for_story(&store, story_id);
+    let records = evidence_for_story(&store, story_id);
     let window_secs = resolve_accept_window_secs(refresh, story_id);
     let current_head = crate::bridge::tools::git_repo::current_head_sha();
     let now = chrono::Utc::now();
