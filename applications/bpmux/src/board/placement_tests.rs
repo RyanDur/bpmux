@@ -1,6 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{BoardAction, BoardPlacements, fine_stage, placement_of, reduce, state_label};
+use super::{
+    BoardAction, BoardPlacements, fine_stage, placement_of, placements_for_ingest, reduce,
+    state_label,
+};
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
@@ -143,4 +146,38 @@ fn state_label_passes_a_non_middle_position_through_to_its_coarse_token() {
     assert_eq!(state_label(&BoardState::Ready, None), "ready");
     assert_eq!(state_label(&BoardState::Acceptance, None), "acceptance");
     assert_eq!(state_label(&BoardState::Accepted, None), "accepted");
+}
+
+#[test]
+fn ingest_places_a_desk_check_story() {
+    assert_eq!(
+        placements_for_ingest(&[in_progress_story(1, Stage::DeskCheck)]),
+        vec![BoardAction::StoryPlaced {
+            story: StoryId::new(1),
+            stage: Stage::DeskCheck.id(),
+        }]
+    );
+}
+
+#[test]
+fn ingest_unplaces_a_dev_story_so_a_stale_desk_check_entry_clears() {
+    assert_eq!(
+        placements_for_ingest(&[in_progress_story(1, Stage::Dev)]),
+        vec![BoardAction::StoryUnplaced {
+            story: StoryId::new(1),
+        }],
+        "a story ingested back at the entry sub-section must lose any prior desk-check entry"
+    );
+}
+
+#[test]
+fn ingest_ignores_stories_outside_the_middle() {
+    let mut ready = in_progress_story(1, Stage::Dev);
+    ready.state = BoardState::Ready;
+    let mut accepted = in_progress_story(2, Stage::Dev);
+    accepted.state = BoardState::Accepted;
+    assert!(
+        placements_for_ingest(&[ready, accepted]).is_empty(),
+        "coarse stories carry no middle placement; their exits are owned by events + the safety-net"
+    );
 }

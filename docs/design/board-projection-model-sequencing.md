@@ -172,13 +172,26 @@ in a type the SourceAdapter never sees.
         verifiable-identical for real inputs. Falsifier: `outbound_label_tests`
         proves placement (not the embedded stage) drives the desk-check label;
         survives the BD1b-3 unit flip.
-      - **BD1b-2b (store → event placement).** Evolve `BoardPlacementReconciler`
-        to apply the event's placement (Place on `Some`, Unplace on
-        `None`-in-middle) + retain the level-triggered unplace (placed story whose
-        coarse ≠ InProgress → Unplace, covers ingest + bookend exits uniformly);
-        ingest dispatches the placement from the decoded stage. Retire the
-        derive-from-`InProgress(stage)` place-half. `BoardState` unchanged (stage
-        redundant). Falsifier: placement population + e2e byte-identical.
+      - **BD1b-2b (store → event placement) — DONE.** `BoardPlacementReconciler`
+        rewritten to two coarse-only concerns: (1) an EVENT edge — on
+        `StateTransitioned{placement}`, Place on `Some` / Unplace on `None`
+        (`placement_edge`, reads the event's placement, NOT `story.state`); (2) a
+        level SAFETY-NET — `unplace_departed` unplaces any placement whose story
+        vanished or left the middle (`matches!(state, InProgress(_))`, a coarse
+        variant check that survives the unit flip). The derive-from-`InProgress(stage)`
+        place-half is RETIRED. Ingest (both `ingest_once_since` bulk + `refresh_story`
+        single, via `seed_and_place`) dispatches `board::placements_for_ingest`
+        through `action_tx`: desk-check → Place, Dev-in-middle → Unplace (clears a
+        stale desk-check on re-ingest), coarse → skip. `placements_for_ingest` reads
+        the decoded `story.state` stage TRANSITIONALLY (the BD1b-3 decode-emit-fine
+        split replaces it — deferred, since the decoded Story still carries the stage
+        in 2b). The `fine_stage` own-stage fallback is the parallel-change overlap:
+        an unplaced desk-check story STILL renders desk-check via the fallback, so
+        wire/render is byte-identical whether or not the placement lands — 2b
+        pre-populates so BD1b-3 can drop the fallback mechanically. `BoardState`
+        unchanged. Falsifier: `board_placement_tests` (edge reads placement not
+        state; safety-net is coarse-only) + `placement_tests` (ingest placements) +
+        full suite 2381 + e2e byte-identical.
     - **BD1b-3 (the flip).** `InProgress(StageId)` → unit. Fix ~140
       constructors/matches. `as_str`/`github_label` → coarse for InProgress;
       `parse` stops EMITTING desk-check but still TOLERATES `desk-check`/`desk_check`

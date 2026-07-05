@@ -1,8 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::board_placement::reconcile_placements;
+use super::board_placement::{placement_edge, unplace_departed};
 use crate::board::{BoardAction, BoardPlacements, reduce};
-use crate::product_management::story::slice::Stories;
+use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::peer::PeerId;
+use crate::product_management::story::slice::{Stories, StoryAction};
 use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
@@ -36,57 +38,80 @@ fn board(placements: &[(u64, &str)]) -> BoardPlacements {
     board
 }
 
+fn transition(id: u64, placement: Option<StageId>) -> StoryAction {
+    StoryAction::Event(StoryEvent::StateTransitioned {
+        meta: EventMeta {
+            actor: "dev".to_string(),
+            ts: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
+            peer_id: PeerId::local(),
+        },
+        id: StoryId::new(id),
+        new_state: BoardState::InProgress(Stage::Dev.id()),
+        placement,
+    })
+}
+
 #[test]
-fn an_in_progress_story_with_no_placement_is_placed_at_its_stage() {
-    let changes = reconcile_placements(
-        &stories(vec![story(1, BoardState::InProgress(Stage::Dev.id()))]),
+fn a_transition_carrying_a_placement_places_from_it_not_from_the_state() {
+    let edge = placement_edge(
         &BoardPlacements::default(),
+        &transition(1, Some(Stage::DeskCheck.id())),
     );
     assert_eq!(
-        changes,
-        vec![BoardAction::StoryPlaced {
-            story: StoryId::new(1),
-            stage: Stage::Dev.id(),
-        }]
-    );
-}
-
-#[test]
-fn a_correctly_placed_story_reconciles_to_no_change() {
-    let changes = reconcile_placements(
-        &stories(vec![story(
-            1,
-            BoardState::InProgress(Stage::DeskCheck.id()),
-        )]),
-        &board(&[(1, "desk-check")]),
-    );
-    assert!(
-        changes.is_empty(),
-        "a placement that already matches must not churn"
-    );
-}
-
-#[test]
-fn a_story_moved_to_a_new_stage_is_re_placed() {
-    let changes = reconcile_placements(
-        &stories(vec![story(
-            1,
-            BoardState::InProgress(Stage::DeskCheck.id()),
-        )]),
-        &board(&[(1, "in-progress")]),
-    );
-    assert_eq!(
-        changes,
-        vec![BoardAction::StoryPlaced {
+        edge,
+        Some(BoardAction::StoryPlaced {
             story: StoryId::new(1),
             stage: Stage::DeskCheck.id(),
-        }]
+        }),
+        "the fine placement rides the event — the coarse new_state (Dev) does not decide it"
     );
 }
 
 #[test]
-fn a_story_that_left_the_middle_is_unplaced() {
-    let changes = reconcile_placements(
+fn a_transition_with_no_placement_unplaces_a_placed_story() {
+    let edge = placement_edge(&board(&[(1, "desk-check")]), &transition(1, None));
+    assert_eq!(
+        edge,
+        Some(BoardAction::StoryUnplaced {
+            story: StoryId::new(1),
+        }),
+        "a transition to the entry sub-section (placement None) clears the middle placement"
+    );
+}
+
+#[test]
+fn a_transition_placing_what_is_already_placed_is_a_no_op() {
+    let edge = placement_edge(
+        &board(&[(1, "desk-check")]),
+        &transition(1, Some(Stage::DeskCheck.id())),
+    );
+    assert_eq!(
+        edge, None,
+        "an idempotent placement must not churn the board"
+    );
+}
+
+#[test]
+fn a_transition_unplacing_what_is_not_placed_is_a_no_op() {
+    let edge = placement_edge(&BoardPlacements::default(), &transition(1, None));
+    assert_eq!(edge, None);
+}
+
+#[test]
+fn a_non_transition_story_action_yields_no_edge() {
+    let edge = placement_edge(
+        &board(&[(1, "desk-check")]),
+        &StoryAction::Removed(StoryId::new(1)),
+    );
+    assert_eq!(
+        edge, None,
+        "only StateTransitioned carries a placement; other story actions are handled by the safety-net"
+    );
+}
+
+#[test]
+fn a_placement_whose_story_left_the_middle_is_unplaced() {
+    let changes = unplace_departed(
         &stories(vec![story(1, BoardState::Acceptance)]),
         &board(&[(1, "desk-check")]),
     );
@@ -100,7 +125,7 @@ fn a_story_that_left_the_middle_is_unplaced() {
 
 #[test]
 fn a_placement_whose_story_is_gone_is_unplaced() {
-    let changes = reconcile_placements(&stories(vec![]), &board(&[(1, "desk-check")]));
+    let changes = unplace_departed(&stories(vec![]), &board(&[(1, "desk-check")]));
     assert_eq!(
         changes,
         vec![BoardAction::StoryUnplaced {
@@ -110,29 +135,28 @@ fn a_placement_whose_story_is_gone_is_unplaced() {
 }
 
 #[test]
-fn a_story_outside_the_middle_with_no_placement_needs_no_change() {
-    let changes = reconcile_placements(
-        &stories(vec![story(1, BoardState::Ready)]),
-        &BoardPlacements::default(),
+fn a_story_still_in_the_middle_is_left_placed_by_the_safety_net() {
+    let changes = unplace_departed(
+        &stories(vec![story(
+            1,
+            BoardState::InProgress(Stage::DeskCheck.id()),
+        )]),
+        &board(&[(1, "desk-check")]),
     );
-    assert!(changes.is_empty());
+    assert!(
+        changes.is_empty(),
+        "the coarse-only safety-net never touches a story still in the middle"
+    );
 }
 
 #[test]
-fn a_mixed_board_places_the_unplaced_and_unplaces_the_departed() {
-    let changes = reconcile_placements(
-        &stories(vec![
-            story(1, BoardState::InProgress(Stage::Dev.id())),
-            story(2, BoardState::Accepted),
-        ]),
-        &board(&[(2, "desk-check")]),
+fn the_safety_net_is_coarse_only_a_placed_dev_story_is_not_its_concern() {
+    let changes = unplace_departed(
+        &stories(vec![story(1, BoardState::InProgress(Stage::Dev.id()))]),
+        &board(&[(1, "in-progress")]),
     );
-    assert_eq!(changes.len(), 2);
-    assert!(changes.contains(&BoardAction::StoryPlaced {
-        story: StoryId::new(1),
-        stage: Stage::Dev.id(),
-    }));
-    assert!(changes.contains(&BoardAction::StoryUnplaced {
-        story: StoryId::new(2),
-    }));
+    assert!(
+        changes.is_empty(),
+        "reshaping a placed Dev story off the map is ingest's job, not the coarse safety-net's"
+    );
 }

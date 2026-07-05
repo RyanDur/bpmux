@@ -1,37 +1,39 @@
 use std::collections::HashSet;
 
 use crate::board::{BoardAction, BoardPlacements, placed_story_ids, placement_of};
-use crate::product_management::story::BoardState;
-use crate::product_management::story::slice::Stories;
+use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::slice::{Stories, StoryAction};
+use crate::product_management::story::{BoardState, StoryId};
 
-pub(super) fn reconcile_placements(stories: &Stories, board: &BoardPlacements) -> Vec<BoardAction> {
-    let desired: Vec<(
-        crate::product_management::story::StoryId,
-        crate::workflow::StageId,
-    )> = stories
+pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Vec<BoardAction> {
+    let in_middle: HashSet<StoryId> = stories
         .values()
-        .filter_map(|story| match &story.state {
-            BoardState::InProgress(stage) => Some((story.id, stage.clone())),
-            _ => None,
-        })
+        .filter(|story| matches!(story.state, BoardState::InProgress(_)))
+        .map(|story| story.id)
         .collect();
-    let desired_ids: HashSet<_> = desired.iter().map(|(id, _)| *id).collect();
+    placed_story_ids(board)
+        .into_iter()
+        .filter(|story| !in_middle.contains(story))
+        .map(|story| BoardAction::StoryUnplaced { story })
+        .collect()
+}
 
-    let mut changes = Vec::new();
-    for (story, stage) in &desired {
-        if placement_of(board, *story).as_ref() != Some(stage) {
-            changes.push(BoardAction::StoryPlaced {
-                story: *story,
+pub(super) fn placement_edge(board: &BoardPlacements, action: &StoryAction) -> Option<BoardAction> {
+    let StoryAction::Event(StoryEvent::StateTransitioned { id, placement, .. }) = action else {
+        return None;
+    };
+    match placement {
+        Some(stage) if placement_of(board, *id).as_ref() != Some(stage) => {
+            Some(BoardAction::StoryPlaced {
+                story: *id,
                 stage: stage.clone(),
-            });
+            })
         }
-    }
-    for story in placed_story_ids(board) {
-        if !desired_ids.contains(&story) {
-            changes.push(BoardAction::StoryUnplaced { story });
+        None if placement_of(board, *id).is_some() => {
+            Some(BoardAction::StoryUnplaced { story: *id })
         }
+        _ => None,
     }
-    changes
 }
 
 pub struct BoardPlacementReconciler;
@@ -43,10 +45,14 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         &self,
         reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
     ) -> crate::kernel::ListenerFuture {
-        let crate::store::AppAction::Story(_) = &reaction.action else {
+        let crate::store::AppAction::Story(story_action) = &reaction.action else {
             return Box::pin(async {});
         };
-        let changes = reconcile_placements(&reaction.current.stories, &reaction.current.board);
+        let board = &reaction.current.board;
+        let mut changes = placement_edge(board, story_action)
+            .into_iter()
+            .collect::<Vec<_>>();
+        changes.extend(unplace_departed(&reaction.current.stories, board));
         if changes.is_empty() {
             return Box::pin(async {});
         }

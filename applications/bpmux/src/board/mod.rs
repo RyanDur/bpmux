@@ -67,6 +67,22 @@ pub fn placement_for(state: &BoardState) -> Option<StageId> {
     }
 }
 
+pub fn placements_for_ingest(stories: &[Story]) -> Vec<BoardAction> {
+    stories
+        .iter()
+        .filter_map(|story| match &story.state {
+            BoardState::InProgress(stage) => Some(match Stage::from_id(stage) {
+                Some(Stage::DeskCheck) => BoardAction::StoryPlaced {
+                    story: story.id,
+                    stage: stage.clone(),
+                },
+                _ => BoardAction::StoryUnplaced { story: story.id },
+            }),
+            _ => None,
+        })
+        .collect()
+}
+
 pub fn state_label(coarse: &BoardState, fine: Option<Stage>) -> &'static str {
     match fine {
         Some(Stage::DeskCheck) => "desk-check",

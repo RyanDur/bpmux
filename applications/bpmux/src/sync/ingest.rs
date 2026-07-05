@@ -9,6 +9,16 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.ingest_once_since(None).await
     }
 
+    fn seed_and_place(&self, items: Vec<crate::product_management::story::Story>) {
+        let board_actions = crate::board::placements_for_ingest(&items);
+        self.dispatch_story(crate::product_management::story::slice::StoryAction::Seeded(items));
+        if let Some(tx) = &self.action_tx {
+            for action in board_actions {
+                let _ = tx.send(crate::store::AppAction::Board(action));
+            }
+        }
+    }
+
     pub async fn ingest_once_since(
         &self,
         since: Option<chrono::DateTime<chrono::Utc>>,
@@ -81,9 +91,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         ));
                     }
                 }
-                self.dispatch_story(
-                    crate::product_management::story::slice::StoryAction::Seeded(items),
-                );
+                self.seed_and_place(items);
                 record_ingest_success(&self.status);
                 Ok(())
             }
@@ -100,11 +108,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     ) -> Result<Option<crate::product_management::story::Story>, SyncError> {
         match self.adapter.fetch_story_metadata(number).await {
             Ok(Some(story)) => {
-                self.dispatch_story(
-                    crate::product_management::story::slice::StoryAction::Seeded(vec![
-                        story.clone(),
-                    ]),
-                );
+                self.seed_and_place(vec![story.clone()]);
                 record_ingest_success(&self.status);
                 Ok(Some(story))
             }
