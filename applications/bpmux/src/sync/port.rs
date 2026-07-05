@@ -124,20 +124,4 @@ pub trait SourceAdapter: Send + Sync {
         body: &str,
         initial_labels: &[&str],
     ) -> impl std::future::Future<Output = Result<u64, SyncError>> + Send;
-
-    fn update_body(
-        &self,
-        number: u64,
-        body: &str,
-    ) -> impl std::future::Future<
-        Output = Result<crate::product_management::story::Story, SyncError>,
-    > + Send;
-
-    fn update_title(
-        &self,
-        number: u64,
-        title: &str,
-    ) -> impl std::future::Future<
-        Output = Result<crate::product_management::story::Story, SyncError>,
-    > + Send;
 }

@@ -20,7 +20,8 @@ pub(in crate::integrations::github) use iteration_slot::{
 };
 pub(in crate::integrations::github) use labels::{push_tag_added, push_tag_removed};
 pub(in crate::integrations::github) use lifecycle::{
-    push_state_transitioned, push_story_closed, push_story_reopened,
+    push_body_updated, push_state_transitioned, push_story_closed, push_story_reopened,
+    push_title_updated,
 };
 
 pub(super) fn labels_refreshed(number: u64, labels: Vec<String>) -> StoryEvent {

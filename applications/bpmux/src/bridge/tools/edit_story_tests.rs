@@ -113,6 +113,45 @@ async fn edit_story_with_both_title_and_body_updates_both() {
 }
 
 #[tokio::test]
+async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
+    use crate::product_management::story::events::StoryEvent;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(1234, "[Feature] t", "old body")]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    orch.refresh_all().await.unwrap();
+
+    let args = args_obj(json!({ "id": 1234, "body": "## What\n\nnew body content" }));
+    handle_edit_story(&args, "pm:claude-code", Some(&orch), &dispatch())
+        .await
+        .expect("edit_story body succeeds");
+
+    assert_eq!(
+        orch.story(1234).unwrap().body.as_deref(),
+        Some("## What\n\nnew body content"),
+        "the store reflects the edit optimistically"
+    );
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "the body edit returns optimistically — the GitHub push is deferred to the async drain: {:?}",
+        adapter.pushed_events()
+    );
+
+    orch.drain_pending().await.unwrap();
+
+    assert!(
+        adapter.pushed_events().iter().any(|e| matches!(
+            e,
+            StoryEvent::BodyUpdated { id, body, .. }
+                if *id == StoryId::new(1234) && body == "## What\n\nnew body content"
+        )),
+        "the async drain pushes BodyUpdated to the adapter: {:?}",
+        adapter.pushed_events()
+    );
+}
+
+#[tokio::test]
 async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
     use crate::product_management::story::Acceptor;
     use crate::product_management::story::events::EventMeta;

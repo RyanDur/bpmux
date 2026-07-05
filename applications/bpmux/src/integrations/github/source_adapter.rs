@@ -1,7 +1,7 @@
 use super::{GitHubSourceAdapter, ingest, mutation};
 use crate::bridge::tracker::{ConditionalIssue, StoryTracker};
 use crate::integrations::github::mapper::{
-    decode_free_comment, decode_gate_comments, decode_story_metadata, decode_story_with_placement,
+    decode_free_comment, decode_gate_comments, decode_story_with_placement,
 };
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment, Story};
@@ -138,32 +138,6 @@ impl SourceAdapter for GitHubSourceAdapter {
         issue.get("number").and_then(|v| v.as_u64()).ok_or_else(|| {
             SyncError::Other(format!(
                 "create_story succeeded but issue number missing from response: {issue}"
-            ))
-        })
-    }
-
-    async fn update_body(&self, number: u64, body: &str) -> Result<Story, SyncError> {
-        let value = self
-            .inner
-            .update_body(number, body)
-            .await
-            .map_err(SyncError::Other)?;
-        decode_story_metadata(&value).ok_or_else(|| {
-            SyncError::Other(format!(
-                "update_body succeeded but response unparseable as Story: {value}"
-            ))
-        })
-    }
-
-    async fn update_title(&self, number: u64, title: &str) -> Result<Story, SyncError> {
-        let value = self
-            .inner
-            .update_title(number, title)
-            .await
-            .map_err(SyncError::Other)?;
-        decode_story_metadata(&value).ok_or_else(|| {
-            SyncError::Other(format!(
-                "update_title succeeded but response unparseable as Story: {value}"
             ))
         })
     }

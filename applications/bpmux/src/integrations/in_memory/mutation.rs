@@ -104,6 +104,17 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
         StoryEvent::ParentEpicUnset { id, .. } => {
             typed_label_mirror::parent_epic_unset(s, id.value())
         }
+        StoryEvent::BodyUpdated { id, body, .. } => {
+            s.bodies.insert(id.value(), body.clone());
+            if let Some(story) = s.stories.get_mut(&id.value()) {
+                story.body = Some(body.clone());
+            }
+        }
+        StoryEvent::TitleUpdated { id, title, .. } => {
+            if let Some(story) = s.stories.get_mut(&id.value()) {
+                story.title = title.clone();
+            }
+        }
         _ => {}
     }
 }

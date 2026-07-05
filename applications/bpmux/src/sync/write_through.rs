@@ -16,23 +16,19 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.dispatch_story(StoryAction::Cleared);
     }
 
-    pub(super) async fn update_body(&self, number: u64, body: String) -> Result<(), SyncError> {
-        self.adapter.update_body(number, &body).await?;
-        self.apply_story_event(&StoryEvent::BodyUpdated {
+    pub(super) fn update_body(&self, number: u64, body: String) -> Result<(), SyncError> {
+        self.mutate(StoryEvent::BodyUpdated {
             meta: cache_fill_meta(),
             id: StoryId::new(number),
             body,
-        });
-        Ok(())
+        })
     }
 
-    pub(super) async fn update_title(&self, number: u64, title: String) -> Result<(), SyncError> {
-        self.adapter.update_title(number, &title).await?;
-        self.apply_story_event(&StoryEvent::TitleUpdated {
+    pub(super) fn update_title(&self, number: u64, title: String) -> Result<(), SyncError> {
+        self.mutate(StoryEvent::TitleUpdated {
             meta: cache_fill_meta(),
             id: StoryId::new(number),
             title,
-        });
-        Ok(())
+        })
     }
 }

@@ -5,10 +5,11 @@ use crate::product_management::story::events::StoryEvent;
 use crate::sync::SyncError;
 
 use super::mutation_events::{
-    push_acceptor_assigned, push_current_iteration_cleared, push_current_iteration_designated,
-    push_free_comment_appended, push_gate_comment_appended, push_iteration_slot_cleared,
-    push_iteration_slot_set, push_parent_epic_set, push_parent_epic_unset, push_state_transitioned,
-    push_story_closed, push_story_reopened, push_tag_added, push_tag_removed,
+    push_acceptor_assigned, push_body_updated, push_current_iteration_cleared,
+    push_current_iteration_designated, push_free_comment_appended, push_gate_comment_appended,
+    push_iteration_slot_cleared, push_iteration_slot_set, push_parent_epic_set,
+    push_parent_epic_unset, push_state_transitioned, push_story_closed, push_story_reopened,
+    push_tag_added, push_tag_removed, push_title_updated,
 };
 
 pub(super) async fn apply_push_event(
@@ -65,13 +66,17 @@ pub(super) async fn apply_push_event(
         StoryEvent::CurrentIterationCleared { id, .. } => {
             push_current_iteration_cleared(inner, id.value()).await
         }
+        StoryEvent::BodyUpdated { id, body, .. } => {
+            push_body_updated(inner, id.value(), body).await
+        }
+        StoryEvent::TitleUpdated { id, title, .. } => {
+            push_title_updated(inner, id.value(), title).await
+        }
         StoryEvent::BodyFetched { .. }
         | StoryEvent::FreeCommentsFetched { .. }
         | StoryEvent::GateCommentsFetched { .. }
         | StoryEvent::StoryRefreshed { .. }
         | StoryEvent::LabelsRefreshed { .. }
-        | StoryEvent::TitleUpdated { .. }
-        | StoryEvent::BodyUpdated { .. }
         | StoryEvent::ConflictDetected { .. }
         | StoryEvent::ConflictResolved { .. } => Ok(None),
     }

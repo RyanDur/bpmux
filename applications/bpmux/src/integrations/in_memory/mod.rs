@@ -153,33 +153,4 @@ impl SourceAdapter for InMemorySourceAdapter {
         }
         Ok(number)
     }
-
-    async fn update_body(&self, number: u64, body: &str) -> Result<Story, SyncError> {
-        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        if s.failures_on_push {
-            return Err(SyncError::SourceUnreachable("push test failure".into()));
-        }
-        s.bodies.insert(number, body.to_string());
-        let mut story =
-            s.stories.get(&number).cloned().ok_or_else(|| {
-                SyncError::Other(format!("update_body: story #{number} not seeded"))
-            })?;
-        story.body = Some(body.to_string());
-        s.stories.insert(number, story.clone());
-        Ok(story)
-    }
-
-    async fn update_title(&self, number: u64, title: &str) -> Result<Story, SyncError> {
-        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        if s.failures_on_push {
-            return Err(SyncError::SourceUnreachable("push test failure".into()));
-        }
-        let mut story =
-            s.stories.get(&number).cloned().ok_or_else(|| {
-                SyncError::Other(format!("update_title: story #{number} not seeded"))
-            })?;
-        story.title = title.to_string();
-        s.stories.insert(number, story.clone());
-        Ok(story)
-    }
 }

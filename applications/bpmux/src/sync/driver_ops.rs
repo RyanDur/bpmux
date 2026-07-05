@@ -165,11 +165,11 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     }
 
     fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>> {
-        Box::pin(self.update_body(number, body))
+        Box::pin(std::future::ready(self.update_body(number, body)))
     }
 
     fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>> {
-        Box::pin(self.update_title(number, title))
+        Box::pin(std::future::ready(self.update_title(number, title)))
     }
 
     fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {

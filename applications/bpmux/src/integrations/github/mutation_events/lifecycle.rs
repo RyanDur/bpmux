@@ -80,3 +80,27 @@ pub(in crate::integrations::github) async fn push_story_reopened(
         }),
     )
 }
+
+pub(in crate::integrations::github) async fn push_body_updated(
+    inner: &OctocrabStoryTracker,
+    number: u64,
+    body: &str,
+) -> Result<Option<StoryEvent>, SyncError> {
+    inner
+        .update_body(number, body)
+        .await
+        .map_err(SyncError::Other)?;
+    Ok(None)
+}
+
+pub(in crate::integrations::github) async fn push_title_updated(
+    inner: &OctocrabStoryTracker,
+    number: u64,
+    title: &str,
+) -> Result<Option<StoryEvent>, SyncError> {
+    inner
+        .update_title(number, title)
+        .await
+        .map_err(SyncError::Other)?;
+    Ok(None)
+}

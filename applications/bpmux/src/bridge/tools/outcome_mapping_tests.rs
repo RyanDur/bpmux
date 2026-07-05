@@ -174,6 +174,8 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
     .await
     .expect("pm unmaps the iteration from the outcome");
 
+    refresh.drain_pending().await.unwrap();
+
     assert_eq!(
         outcome_iterations(&adapter, 700).await,
         vec![720],
@@ -230,6 +232,9 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
     handle_reorder_outcome_iteration(&reorder, "pm:claude-code", Some(&refresh), &dispatch())
         .await
         .expect("pm reorders the iteration");
+
+    refresh.drain_pending().await.unwrap();
+
     assert_eq!(
         outcome_iterations(&adapter, 700).await,
         vec![720, 710],
