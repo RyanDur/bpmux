@@ -8,7 +8,8 @@ pub(crate) fn ordered_board_stories(
     let items: Vec<serde_json::Value> = all
         .iter()
         .map(|s| {
-            crate::view::board::story_to_board_json(&codec, s, &refresh.story_board_position(s))
+            let state = crate::board::state_label(&s.state, refresh.story_fine_stage(s));
+            crate::view::board::story_to_board_json(&codec, s, state)
         })
         .collect();
     let current_order: Vec<u64> = refresh

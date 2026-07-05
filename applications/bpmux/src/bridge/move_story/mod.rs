@@ -56,7 +56,8 @@ pub(in crate::bridge) async fn handle_move_story(
     let r = refresh
         .ok_or("move_story requires refresh (RefreshDriver) — tracker fallback not supported")?;
     let prior = Some(crate::bridge::tools_stories::ensure_story_in_canonical_store(r, id).await?);
-    let from_display = current_state_display(prior.as_ref()).to_string();
+    let from_fine = prior.as_ref().and_then(|s| r.story_fine_stage(s));
+    let from_display = current_state_display(prior.as_ref(), from_fine).to_string();
     let was_closed = prior.as_ref().map(|s| s.is_closed).unwrap_or(false);
 
     let actor_short = crate::routing::short_name(agent_name).to_string();

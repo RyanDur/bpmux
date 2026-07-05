@@ -78,15 +78,16 @@ pub(super) fn require_nonempty(
 
 pub(super) fn current_state_display(
     story: Option<&crate::product_management::story::Story>,
+    fine: Option<Stage>,
 ) -> &'static str {
     match story {
         Some(s) if s.is_closed => "retired-or-accepted",
         Some(s) => match &s.state {
             BoardState::Icebox => "icebox",
             BoardState::Ready => "ready",
-            BoardState::InProgress(stage) => match Stage::from_id(stage) {
+            BoardState::InProgress(_) => match fine {
                 Some(Stage::DeskCheck) => "desk-check",
-                Some(Stage::Dev) | None => "in-progress",
+                _ => "in-progress",
             },
             BoardState::Acceptance => "acceptance",
             BoardState::Accepted => "accepted",

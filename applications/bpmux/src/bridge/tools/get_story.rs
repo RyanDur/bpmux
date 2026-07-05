@@ -10,13 +10,13 @@ use super::get_story_view::{
 };
 use super::rework_context::enrich_body;
 
-fn state_label(state: BoardState) -> &'static str {
+fn state_label(state: &BoardState, fine: Option<Stage>) -> &'static str {
     match state {
         BoardState::Icebox => "icebox",
         BoardState::Ready => "ready",
-        BoardState::InProgress(stage) => match Stage::from_id(&stage) {
+        BoardState::InProgress(_) => match fine {
             Some(Stage::DeskCheck) => "desk-check",
-            Some(Stage::Dev) | None => "in progress",
+            _ => "in progress",
         },
         BoardState::Acceptance => "acceptance",
         BoardState::Accepted => "accepted",
@@ -88,11 +88,11 @@ pub(in crate::bridge) async fn handle_get_story(
             }
         }
     }
-    let position = r.story_board_position(&story);
-    let needs_gates = matches!(&position, BoardState::Ready)
-        || matches!(&position, BoardState::InProgress(stage) if Stage::from_id(stage) == Some(Stage::Dev))
+    let fine = r.story_fine_stage(&story);
+    let needs_gates = matches!(&story.state, BoardState::Ready)
+        || fine == Some(Stage::Dev)
         || story.is_closed
-        || matches!(&position, BoardState::Accepted);
+        || matches!(&story.state, BoardState::Accepted);
     if needs_gates && story.gate_comments.is_none() {
         match r.fetch_gate_comments(id).await {
             Ok(_) => {
@@ -118,7 +118,7 @@ pub(in crate::bridge) async fn handle_get_story(
             Gate::FailDeskCheck => "in progress",
             _ => "ready",
         })
-        .unwrap_or_else(|| state_label(position));
+        .unwrap_or_else(|| state_label(&story.state, fine));
     if needs_gates
         && let Some(gates) = story.gate_comments.as_ref()
         && let Some(ctx) = rework_context_from_gates(gates)
