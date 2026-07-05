@@ -15,6 +15,7 @@ pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
 pub trait RefreshDriver: Send + Sync {
     fn bind_select(&self, _select: crate::store::Select) {}
     fn bind_story_dispatch(&self, _dispatch: Box<dyn Fn(StoryAction) + Send + Sync>) {}
+    fn bind_board_dispatch(&self, _dispatch: Box<dyn Fn(crate::store::AppAction) + Send + Sync>) {}
     fn refresh_story(&self, id: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn refresh_all_since(

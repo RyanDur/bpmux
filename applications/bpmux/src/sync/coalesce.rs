@@ -91,9 +91,14 @@ pub(super) fn coalesce_iteration_label_events(
     true
 }
 
-pub(super) fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Vec<String> {
+pub(super) fn stale_state_labels_for(
+    story: &Story,
+    raw_labels: &[String],
+    fine: Option<Stage>,
+) -> Vec<String> {
     let expected = match &story.state {
         BoardState::Icebox => "",
+        BoardState::InProgress => stage_github_label(fine.unwrap_or(Stage::Dev)),
         other => other.github_label(),
     };
     let canonical_state_labels = [

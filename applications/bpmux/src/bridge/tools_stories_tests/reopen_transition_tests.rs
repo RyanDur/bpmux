@@ -87,7 +87,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn deliver_story_reopens_when_prior_is_closed_true() {
-        let seeded = seeded_closed_chore(7120, BoardState::InProgress(Stage::Dev.id()));
+        let seeded = seeded_closed_chore(7120, BoardState::InProgress);
         let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7120));
@@ -108,7 +108,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn pass_desk_check_reopens_when_prior_is_closed_true() {
-        let seeded = seeded_closed_chore(7130, BoardState::InProgress(Stage::DeskCheck.id()));
+        let seeded = seeded_closed_chore(7130, BoardState::InProgress);
         let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7130));

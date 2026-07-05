@@ -8,7 +8,7 @@ use crate::product_management::story::{BoardState, StoryId};
 pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Vec<BoardAction> {
     let in_middle: HashSet<StoryId> = stories
         .values()
-        .filter(|story| matches!(story.state, BoardState::InProgress(_)))
+        .filter(|story| matches!(story.state, BoardState::InProgress))
         .map(|story| story.id)
         .collect();
     placed_story_ids(board)

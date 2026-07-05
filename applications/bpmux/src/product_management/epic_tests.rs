@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::product_management::epic::{derive_epic_counts, derive_epic_state};
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 
 fn epic_child(id: u64, state: BoardState) -> Story {
@@ -54,8 +54,8 @@ fn derive_epic_state_returns_ready_for_one_ready_no_active_1450() {
 #[test]
 fn derive_epic_state_returns_in_progress_for_active_child_1450() {
     for active_state in [
-        BoardState::InProgress(Stage::Dev.id()),
-        BoardState::InProgress(Stage::DeskCheck.id()),
+        BoardState::InProgress,
+        BoardState::InProgress,
         BoardState::Acceptance,
     ] {
         let kids = [
@@ -65,7 +65,7 @@ fn derive_epic_state_returns_in_progress_for_active_child_1450() {
         let refs: Vec<&Story> = kids.iter().collect();
         assert_eq!(
             derive_epic_state(BoardState::Icebox, &refs),
-            BoardState::InProgress(Stage::Dev.id()),
+            BoardState::InProgress,
             "active-state {active_state:?} child derives InProgress at Epic-axis"
         );
     }
@@ -116,16 +116,16 @@ fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted_1450(
 
 #[test]
 fn derive_epic_state_ignores_explicit_state_when_children_present_1450() {
-    let kids = [epic_child(1, BoardState::InProgress(Stage::Dev.id()))];
+    let kids = [epic_child(1, BoardState::InProgress)];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Accepted, &refs),
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         "post-1450: explicit_state is ignored — substrate IS source-of-truth (META-CANON #1)"
     );
     assert_eq!(
         derive_epic_state(BoardState::Retired, &refs),
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         "Retired explicit_state also ignored when active children present"
     );
 }
@@ -135,12 +135,12 @@ fn derive_epic_state_active_dominates_terminal_at_in_progress_axis_1450() {
     let kids = [
         epic_child(1, BoardState::Accepted),
         epic_child(2, BoardState::Retired),
-        epic_child(3, BoardState::InProgress(Stage::Dev.id())),
+        epic_child(3, BoardState::InProgress),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Accepted, &refs),
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         "1+ active child dominates Accepted/Retired siblings"
     );
 }
@@ -180,7 +180,7 @@ fn derive_epic_state_1189_paradox_regression_1450() {
 #[test]
 fn derive_epic_state_does_not_return_non_epic_states_1450() {
     let kids = [
-        epic_child(1, BoardState::InProgress(Stage::DeskCheck.id())),
+        epic_child(1, BoardState::InProgress),
         epic_child(2, BoardState::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
@@ -190,7 +190,7 @@ fn derive_epic_state_does_not_return_non_epic_states_1450() {
             derived,
             BoardState::Icebox
                 | BoardState::Ready
-                | BoardState::InProgress(_)
+                | BoardState::InProgress
                 | BoardState::Accepted
                 | BoardState::Retired
         ),
@@ -198,7 +198,7 @@ fn derive_epic_state_does_not_return_non_epic_states_1450() {
     );
     assert_eq!(
         derived,
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         "DeskCheck/Delivered children roll up to InProgress"
     );
 }
@@ -236,8 +236,8 @@ fn derive_epic_counts_single_axis_per_state_1451() {
 fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
     let kids = [
         epic_child(1, BoardState::Ready),
-        epic_child(2, BoardState::InProgress(Stage::Dev.id())),
-        epic_child(3, BoardState::InProgress(Stage::DeskCheck.id())),
+        epic_child(2, BoardState::InProgress),
+        epic_child(3, BoardState::InProgress),
         epic_child(4, BoardState::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
@@ -306,7 +306,7 @@ fn derive_epic_counts_progress_denominator_mixed_excludes_retired_only_1451_cano
     let kids = [
         epic_child(1, BoardState::Accepted),
         epic_child(2, BoardState::Accepted),
-        epic_child(3, BoardState::InProgress(Stage::Dev.id())),
+        epic_child(3, BoardState::InProgress),
         epic_child(4, BoardState::Icebox),
         epic_child(5, BoardState::Icebox),
         epic_child(6, BoardState::Retired),
@@ -334,7 +334,7 @@ fn derive_epic_counts_1189_paradox_regression_1451() {
         kids.push(epic_child(n, BoardState::Retired));
     }
     for n in 31..=36 {
-        kids.push(epic_child(n, BoardState::InProgress(Stage::Dev.id())));
+        kids.push(epic_child(n, BoardState::InProgress));
     }
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs);
@@ -396,7 +396,7 @@ fn derive_epic_counts_total_equals_sum_of_axes_1451() {
         epic_child(1, BoardState::Accepted),
         epic_child(2, BoardState::Retired),
         epic_child(3, BoardState::Ready),
-        epic_child(4, BoardState::InProgress(Stage::Dev.id())),
+        epic_child(4, BoardState::InProgress),
         epic_child(5, BoardState::Icebox),
     ];
     let refs: Vec<&Story> = kids.iter().collect();

@@ -6,7 +6,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, FreeComment, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, FreeComment, Story, StoryId};
 use crate::sync::{SourceAdapter, SyncError};
 
 fn meta() -> EventMeta {
@@ -125,7 +125,7 @@ async fn multiple_pushed_events_preserve_order() {
     let e1 = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: BoardState::InProgress(Stage::Dev.id()),
+        new_state: BoardState::InProgress,
         placement: None,
     };
     let e2 = StoryEvent::StateTransitioned {
@@ -255,7 +255,7 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
     );
     let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
     assert_eq!(
-        fetched.parent_epic,
+        fetched.0.parent_epic,
         Some(EpicId::new(7)),
         "ParentEpicSet must also surface via fetch_story_metadata"
     );
@@ -288,7 +288,7 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
     );
     let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
     assert_eq!(
-        fetched.parent_epic, None,
+        fetched.0.parent_epic, None,
         "ParentEpicUnset must also clear via fetch_story_metadata"
     );
 }

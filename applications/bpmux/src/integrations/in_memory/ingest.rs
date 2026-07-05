@@ -8,6 +8,7 @@ use crate::product_management::epic::Epic;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::{Story, StoryId};
+use crate::sync::{Ingested, SyncError};
 use crate::workflow::StageId;
 
 pub(super) struct Classified {
@@ -42,6 +43,32 @@ pub(super) fn derive_typed_fields_from_labels(story: &mut Story, labels: &[Strin
     if story.iteration_slot.is_none() {
         story.iteration_slot = fields.iteration_slot;
     }
+}
+
+pub(super) fn ingest_metadata(
+    state: &std::sync::Mutex<super::InnerState>,
+) -> Result<Ingested, SyncError> {
+    let s = state.lock().unwrap_or_else(|e| e.into_inner());
+    if s.failures_on_ingest {
+        return Err(SyncError::SourceUnreachable(
+            "in-memory test failure".into(),
+        ));
+    }
+    let Classified {
+        items,
+        outcomes,
+        mut iterations,
+        epics,
+        placements,
+    } = classify_ingested(s.stories.values().cloned(), &s.labels);
+    iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
+    Ok(Ingested {
+        items,
+        outcomes,
+        iterations,
+        epics,
+        placements,
+    })
 }
 
 pub(super) fn classify_ingested(

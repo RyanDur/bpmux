@@ -18,7 +18,7 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
         match board_position(&story.state, story.is_closed) {
             BoardState::Icebox => icebox.push(entry),
             BoardState::Ready => ready.push(entry),
-            BoardState::InProgress(_) => in_progress.push(entry),
+            BoardState::InProgress => in_progress.push(entry),
             BoardState::Acceptance => acceptance.push(entry),
             BoardState::Accepted => accepted.push(entry),
             BoardState::Retired => retired.push(entry),

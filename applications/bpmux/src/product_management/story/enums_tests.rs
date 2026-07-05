@@ -8,8 +8,7 @@ fn story_state_parse_round_trips_via_as_str() {
     for state in [
         BoardState::Icebox,
         BoardState::Ready,
-        BoardState::InProgress(Stage::Dev.id()),
-        BoardState::InProgress(Stage::DeskCheck.id()),
+        BoardState::InProgress,
         BoardState::Acceptance,
         BoardState::Accepted,
     ] {
@@ -22,11 +21,11 @@ fn story_state_parse_round_trips_via_as_str() {
 fn story_state_parse_accepts_underscore_variants() {
     assert_eq!(
         BoardState::parse("in_progress"),
-        Some(BoardState::InProgress(Stage::Dev.id()))
+        Some(BoardState::InProgress)
     );
     assert_eq!(
         BoardState::parse("desk_check"),
-        Some(BoardState::InProgress(Stage::DeskCheck.id()))
+        Some(BoardState::InProgress)
     );
 }
 
@@ -42,8 +41,7 @@ fn story_state_serde_round_trips_via_canonical_string() {
     for state in [
         BoardState::Icebox,
         BoardState::Ready,
-        BoardState::InProgress(Stage::Dev.id()),
-        BoardState::InProgress(Stage::DeskCheck.id()),
+        BoardState::InProgress,
         BoardState::Acceptance,
         BoardState::Accepted,
         BoardState::Retired,
@@ -58,7 +56,7 @@ fn story_state_serde_round_trips_via_canonical_string() {
 #[test]
 fn story_state_serde_emits_canonical_kebab_not_variant_name() {
     assert_eq!(
-        serde_json::to_string(&BoardState::InProgress(Stage::Dev.id())).unwrap(),
+        serde_json::to_string(&BoardState::InProgress).unwrap(),
         "\"in-progress\""
     );
     assert!(serde_json::from_str::<BoardState>("\"InProgress\"").is_err());
@@ -78,14 +76,7 @@ fn story_state_acceptance_wire_vocab_parses_and_keeps_legacy_delivered_alias() {
 fn story_state_github_label_canonical_form_per_variant() {
     assert_eq!(BoardState::Icebox.github_label(), "icebox");
     assert_eq!(BoardState::Ready.github_label(), "ready");
-    assert_eq!(
-        BoardState::InProgress(Stage::Dev.id()).github_label(),
-        "in progress"
-    );
-    assert_eq!(
-        BoardState::InProgress(Stage::DeskCheck.id()).github_label(),
-        "desk-check"
-    );
+    assert_eq!(BoardState::InProgress.github_label(), "in progress");
     assert_eq!(BoardState::Acceptance.github_label(), "delivered");
     assert_eq!(BoardState::Accepted.github_label(), "accepted");
     assert_eq!(BoardState::Retired.github_label(), "retired");
@@ -95,8 +86,7 @@ fn story_state_github_label_canonical_form_per_variant() {
 fn story_state_github_label_round_trips_via_state_from_labels() {
     for state in [
         BoardState::Ready,
-        BoardState::InProgress(Stage::Dev.id()),
-        BoardState::InProgress(Stage::DeskCheck.id()),
+        BoardState::InProgress,
         BoardState::Acceptance,
         BoardState::Accepted,
         BoardState::Retired,
@@ -111,8 +101,8 @@ fn story_state_github_label_round_trips_via_state_from_labels() {
 #[test]
 fn story_state_github_label_diverges_from_as_str_for_in_progress_and_acceptance() {
     assert_ne!(
-        BoardState::InProgress(Stage::Dev.id()).github_label(),
-        BoardState::InProgress(Stage::Dev.id()).as_str(),
+        BoardState::InProgress.github_label(),
+        BoardState::InProgress.as_str(),
         "InProgress(Dev): github_label uses spaces, as_str uses kebab"
     );
     assert_ne!(
@@ -123,7 +113,6 @@ fn story_state_github_label_diverges_from_as_str_for_in_progress_and_acceptance(
     for state in [
         BoardState::Icebox,
         BoardState::Ready,
-        BoardState::InProgress(Stage::DeskCheck.id()),
         BoardState::Accepted,
         BoardState::Retired,
     ] {

@@ -2,7 +2,6 @@
 
 use super::view_backlog::*;
 use crate::product_management::story::BoardState;
-use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
 use chrono::{TimeZone, Utc};
@@ -44,8 +43,8 @@ fn ready_state_populates_samples() {
 #[test]
 fn in_progress_state_counted_correctly() {
     let stories = vec![
-        story(102, "a", BoardState::InProgress(Stage::Dev.id())),
-        story(103, "b", BoardState::InProgress(Stage::Dev.id())),
+        story(102, "a", BoardState::InProgress),
+        story(103, "b", BoardState::InProgress),
     ];
     assert_eq!(build_backlog_summary(&stories)["in_progress_count"], 2);
 }
@@ -54,7 +53,7 @@ fn in_progress_state_counted_correctly() {
 fn in_work_middle_stages_count_as_in_progress_acceptance_is_the_rail_only() {
     let stories = vec![
         story(104, "d", BoardState::Acceptance),
-        story(105, "dc", BoardState::InProgress(Stage::DeskCheck.id())),
+        story(105, "dc", BoardState::InProgress),
     ];
     let summary = build_backlog_summary(&stories);
     assert_eq!(summary["acceptance_count"], 1);

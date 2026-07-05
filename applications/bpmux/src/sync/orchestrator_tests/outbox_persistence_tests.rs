@@ -47,7 +47,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(10),
-            new_state: BoardState::InProgress(Stage::Dev.id()),
+            new_state: BoardState::InProgress,
             placement: None,
         })
         .unwrap();
@@ -355,7 +355,7 @@ mod outbox_persistence {
                 .mutate(StoryEvent::StateTransitioned {
                     meta: meta(),
                     id: StoryId::new(n),
-                    new_state: BoardState::InProgress(Stage::Dev.id()),
+                    new_state: BoardState::InProgress,
                     placement: None,
                 })
                 .unwrap();
@@ -382,7 +382,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(999),
-            new_state: BoardState::InProgress(Stage::Dev.id()),
+            new_state: BoardState::InProgress,
             placement: None,
         })
         .unwrap();
@@ -405,7 +405,7 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
-            new_state: BoardState::InProgress(Stage::Dev.id()),
+            new_state: BoardState::InProgress,
             placement: None,
         })
         .unwrap();
@@ -423,13 +423,13 @@ mod outbox_persistence {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(777),
-            new_state: BoardState::InProgress(Stage::Dev.id()),
+            new_state: BoardState::InProgress,
             placement: None,
         })
         .unwrap();
         assert_eq!(
             orch.story(777).map(|s| s.state),
-            Some(BoardState::InProgress(Stage::Dev.id())),
+            Some(BoardState::InProgress),
             "post-refresh mutate lands"
         );
     }

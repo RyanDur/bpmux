@@ -1,6 +1,6 @@
 use super::{apply, created, meta, seeded, story_at};
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{Acceptor, BoardState, Stage, StoryId, StoryKind, Tag};
+use crate::product_management::story::{Acceptor, BoardState, StoryId, StoryKind, Tag};
 
 #[test]
 fn story_created_event_populates_the_central_store() {
@@ -32,14 +32,11 @@ fn state_transitioned_event_updates_existing_story() {
         StoryEvent::StateTransitioned {
             meta: meta("dev", 2026, "local"),
             id: StoryId::new(1),
-            new_state: BoardState::InProgress(Stage::Dev.id()),
+            new_state: BoardState::InProgress,
             placement: None,
         },
     );
-    assert_eq!(
-        story_at(&store, 1).unwrap().state,
-        BoardState::InProgress(Stage::Dev.id())
-    );
+    assert_eq!(story_at(&store, 1).unwrap().state, BoardState::InProgress);
 }
 
 #[test]
@@ -50,7 +47,7 @@ fn state_transitioned_event_silently_drops_when_story_missing() {
         StoryEvent::StateTransitioned {
             meta: meta("dev", 2026, "local"),
             id: StoryId::new(999),
-            new_state: BoardState::InProgress(Stage::Dev.id()),
+            new_state: BoardState::InProgress,
             placement: None,
         },
     );

@@ -31,7 +31,7 @@ pub fn column_of(story: &Story, fine: Option<StageId>) -> Column {
     match board_position(&story.state, story.is_closed) {
         BoardState::Icebox => Column::Icebox,
         BoardState::Ready => Column::Ready,
-        BoardState::InProgress(_) => Column::Middle(fine.unwrap_or_else(|| Stage::Dev.id())),
+        BoardState::InProgress => Column::Middle(fine.unwrap_or_else(|| Stage::Dev.id())),
         BoardState::Acceptance => Column::Acceptance,
         BoardState::Accepted => Column::Accepted,
         BoardState::Retired => Column::Retired,

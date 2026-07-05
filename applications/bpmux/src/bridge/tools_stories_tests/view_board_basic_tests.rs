@@ -133,7 +133,7 @@ async fn view_board_buckets_stories_by_story_state() {
         Story::new_minimal(
             StoryId::new(103),
             "in-progress-story".into(),
-            BoardState::InProgress(Stage::Dev.id()),
+            BoardState::InProgress,
             ts,
             "dev".into(),
         ),
@@ -193,7 +193,7 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     let mut closed_in_progress = Story::new_minimal(
         StoryId::new(201),
         "abandoned-mid-flight".into(),
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         ts,
         "pm".into(),
     );

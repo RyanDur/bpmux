@@ -48,7 +48,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(203).unwrap();
-    assert_eq!(story.state, BoardState::InProgress(Stage::Dev.id()));
+    assert_eq!(story.state, BoardState::InProgress);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates.iter().any(|g| g.gate == Gate::Pickup
@@ -82,7 +82,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         &pushed[1],
         StoryEvent::StateTransitioned {
             id,
-            new_state: BoardState::InProgress(_),
+            new_state: BoardState::InProgress,
             ..
         } if *id == StoryId::new(203)
     ));
@@ -107,7 +107,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     let seeded = Story::new_minimal(
         StoryId::new(204),
         "t".into(),
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -128,7 +128,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(204).unwrap();
-    assert_eq!(story.state, BoardState::InProgress(Stage::DeskCheck.id()));
+    assert_eq!(story.state, BoardState::InProgress);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates.iter().any(|g| g.gate == Gate::Delivered
@@ -155,7 +155,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         &pushed[1],
         StoryEvent::StateTransitioned {
             id,
-            new_state: BoardState::InProgress(_),
+            new_state: BoardState::InProgress,
             ..
         } if *id == StoryId::new(204)
     ));
@@ -482,7 +482,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     let seeded = Story::new_minimal(
         StoryId::new(207),
         "store-titled-207".into(),
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );

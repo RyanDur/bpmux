@@ -19,10 +19,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     ) {
         let board_actions = crate::board::placements_for_ingest(&items, &placements);
         self.dispatch_story(crate::product_management::story::slice::StoryAction::Seeded(items));
-        if let Some(tx) = &self.action_tx {
-            for action in board_actions {
-                let _ = tx.send(crate::store::AppAction::Board(action));
-            }
+        for action in board_actions {
+            self.dispatch_board(crate::store::AppAction::Board(action));
         }
     }
 
@@ -115,8 +113,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         number: u64,
     ) -> Result<Option<crate::product_management::story::Story>, SyncError> {
         match self.adapter.fetch_story_metadata(number).await {
-            Ok(Some(story)) => {
-                let placements = crate::board::placement_for(&story.state)
+            Ok(Some((story, placement))) => {
+                let placements = placement
                     .map(|stage| (story.id, stage))
                     .into_iter()
                     .collect::<Vec<_>>();

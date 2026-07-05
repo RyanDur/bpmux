@@ -50,21 +50,23 @@ pub fn placed_story_ids(state: &BoardPlacements) -> Vec<StoryId> {
 
 pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {
     match &story.state {
-        BoardState::InProgress(own_stage) => {
-            let stage_id = placement_of(board, story.id).unwrap_or_else(|| own_stage.clone());
-            Some(Stage::from_id(&stage_id).unwrap_or(Stage::Dev))
-        }
+        BoardState::InProgress => Some(
+            placement_of(board, story.id)
+                .and_then(|stage_id| Stage::from_id(&stage_id))
+                .unwrap_or(Stage::Dev),
+        ),
         _ => None,
     }
 }
 
-pub fn placement_for(state: &BoardState) -> Option<StageId> {
-    match state {
-        BoardState::InProgress(stage) if Stage::from_id(stage) == Some(Stage::DeskCheck) => {
-            Some(stage.clone())
-        }
-        _ => None,
+pub fn placement_from_target(target: &str, middle: &[StageId]) -> Option<StageId> {
+    if middle.first().is_some_and(|entry| entry.as_str() == target) {
+        return None;
     }
+    middle
+        .iter()
+        .find(|stage| stage.as_str() == target)
+        .cloned()
 }
 
 pub fn placements_for_ingest(
@@ -76,7 +78,7 @@ pub fn placements_for_ingest(
     stories
         .iter()
         .filter_map(|story| match story.state {
-            BoardState::InProgress(_) => Some(match desk_check.get(&story.id) {
+            BoardState::InProgress => Some(match desk_check.get(&story.id) {
                 Some(stage) => BoardAction::StoryPlaced {
                     story: story.id,
                     stage: (*stage).clone(),

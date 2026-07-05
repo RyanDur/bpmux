@@ -3,7 +3,7 @@
 use super::json::story_to_board_json;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
+use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
 
 fn sample_story(state: BoardState, story_type: StoryKind, is_closed: bool) -> Story {
     Story {
@@ -131,11 +131,7 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
 #[test]
 fn story_to_board_json_rework_comment_clears_after_forward_edge() {
     use crate::product_management::story::{Gate, GateComment};
-    let mut s = sample_story(
-        BoardState::InProgress(Stage::Dev.id()),
-        StoryKind::Feature,
-        false,
-    );
+    let mut s = sample_story(BoardState::InProgress, StoryKind::Feature, false);
     s.gate_comments = Some(vec![
         GateComment {
             gate: Gate::Pickup,
@@ -180,10 +176,10 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
     for (state, expected) in &[
         (BoardState::Icebox, "icebox"),
         (BoardState::Ready, "ready"),
-        (BoardState::InProgress(Stage::Dev.id()), "in-progress"),
-        (BoardState::InProgress(Stage::DeskCheck.id()), "desk-check"),
+        (BoardState::InProgress, "in-progress"),
         (BoardState::Acceptance, "acceptance"),
         (BoardState::Accepted, "accepted"),
+        (BoardState::Retired, "retired"),
     ] {
         let s = sample_story(state.clone(), StoryKind::Feature, false);
         assert_eq!(

@@ -1,5 +1,4 @@
 use super::*;
-use crate::product_management::story::Stage;
 
 #[test]
 fn target_state_parses_canonical_spellings() {
@@ -9,7 +8,7 @@ fn target_state_parses_canonical_spellings() {
     );
     assert_eq!(
         TargetState::parse("In-Progress").unwrap(),
-        TargetState::Workflow(BoardState::InProgress(Stage::Dev.id()))
+        TargetState::Workflow(BoardState::InProgress)
     );
     assert_eq!(TargetState::parse("retired").unwrap(), TargetState::Retired);
     assert_eq!(

@@ -46,7 +46,7 @@ fn transition(id: u64, placement: Option<StageId>) -> StoryAction {
             peer_id: PeerId::local(),
         },
         id: StoryId::new(id),
-        new_state: BoardState::InProgress(Stage::Dev.id()),
+        new_state: BoardState::InProgress,
         placement,
     })
 }
@@ -137,10 +137,7 @@ fn a_placement_whose_story_is_gone_is_unplaced() {
 #[test]
 fn a_story_still_in_the_middle_is_left_placed_by_the_safety_net() {
     let changes = unplace_departed(
-        &stories(vec![story(
-            1,
-            BoardState::InProgress(Stage::DeskCheck.id()),
-        )]),
+        &stories(vec![story(1, BoardState::InProgress)]),
         &board(&[(1, "desk-check")]),
     );
     assert!(
@@ -152,7 +149,7 @@ fn a_story_still_in_the_middle_is_left_placed_by_the_safety_net() {
 #[test]
 fn the_safety_net_is_coarse_only_a_placed_dev_story_is_not_its_concern() {
     let changes = unplace_departed(
-        &stories(vec![story(1, BoardState::InProgress(Stage::Dev.id()))]),
+        &stories(vec![story(1, BoardState::InProgress)]),
         &board(&[(1, "in-progress")]),
     );
     assert!(

@@ -4,10 +4,7 @@ use crate::product_management::story::{BoardState, Stage};
 #[test]
 fn desk_check_placement_wins_over_the_states_own_dev_stage() {
     assert_eq!(
-        outbound_state_label(
-            &BoardState::InProgress(Stage::Dev.id()),
-            Some(&Stage::DeskCheck.id())
-        ),
+        outbound_state_label(&BoardState::InProgress, Some(&Stage::DeskCheck.id())),
         "desk-check",
         "the fine sub-section rides placement — the coarse state's own stage does not decide it"
     );
@@ -16,7 +13,7 @@ fn desk_check_placement_wins_over_the_states_own_dev_stage() {
 #[test]
 fn absent_placement_is_the_entry_sub_section_over_the_states_own_desk_check_stage() {
     assert_eq!(
-        outbound_state_label(&BoardState::InProgress(Stage::DeskCheck.id()), None),
+        outbound_state_label(&BoardState::InProgress, None),
         "in progress",
         "no placement entry means the entry sub-section (dev), independent of the coarse state"
     );

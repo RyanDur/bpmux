@@ -151,12 +151,9 @@ pub async fn post_seed_stories(
         let initial_state = match s.initial_state.as_str() {
             "icebox" => crate::product_management::story::BoardState::Icebox,
             "ready" => crate::product_management::story::BoardState::Ready,
-            "in-progress" => crate::product_management::story::BoardState::InProgress(
-                crate::product_management::story::Stage::Dev.id(),
-            ),
-            "desk-check" => crate::product_management::story::BoardState::InProgress(
-                crate::product_management::story::Stage::DeskCheck.id(),
-            ),
+            "in-progress" | "desk-check" => {
+                crate::product_management::story::BoardState::InProgress
+            }
             "delivered" | "acceptance" => crate::product_management::story::BoardState::Acceptance,
             "accepted" => crate::product_management::story::BoardState::Accepted,
             _ => crate::product_management::story::BoardState::Icebox,
@@ -190,6 +187,14 @@ pub async fn post_seed_stories(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_stories: StoryCreated #{} failed: {e}", s.id),
             );
+        }
+        if s.initial_state == "desk-check" {
+            dispatcher.dispatch(crate::store::AppAction::Board(
+                crate::board::BoardAction::StoryPlaced {
+                    story: crate::product_management::story::StoryId::new(s.id),
+                    stage: crate::product_management::story::Stage::DeskCheck.id(),
+                },
+            ));
         }
         let type_label_meta = crate::product_management::story::events::EventMeta {
             actor: "test-seed".to_string(),

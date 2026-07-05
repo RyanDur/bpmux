@@ -14,7 +14,7 @@ fn state_label(state: &BoardState, fine: Option<Stage>) -> &'static str {
     match state {
         BoardState::Icebox => "icebox",
         BoardState::Ready => "ready",
-        BoardState::InProgress(_) => match fine {
+        BoardState::InProgress => match fine {
             Some(Stage::DeskCheck) => "desk-check",
             _ => "in progress",
         },

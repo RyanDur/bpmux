@@ -24,7 +24,7 @@ pub fn backlog_column(story: &Story, iterations: &[Iteration]) -> Option<Backlog
         on_board_position => {
             let on_board = matches!(
                 on_board_position,
-                BoardState::Ready | BoardState::InProgress(_) | BoardState::Acceptance
+                BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
             );
             if on_board && member_of_current_iteration(story.id, iterations) {
                 Some(BacklogColumn::Current)

@@ -2,7 +2,6 @@
 
 use bpmux::integrations::github::mapper::state_from_labels;
 use bpmux::product_management::story::BoardState;
-use bpmux::product_management::story::Stage;
 use bpmux::view::board::arrangement::board_position;
 
 #[test]
@@ -29,19 +28,13 @@ fn stacked_accepted_rejected_decodes_accepted() {
 fn stacked_needs_fixes_in_progress_decodes_in_progress() {
     // #1146 slice 3: stale "needs fixes" projects to InProgress.
     let stacked = vec!["in progress".to_string(), "needs fixes".to_string()];
-    assert_eq!(
-        state_from_labels(&stacked, false),
-        BoardState::InProgress(Stage::Dev.id())
-    );
+    assert_eq!(state_from_labels(&stacked, false), BoardState::InProgress);
 }
 
 #[test]
 fn stacked_ready_in_progress_decodes_in_progress() {
     let stacked = vec!["ready".to_string(), "in progress".to_string()];
-    assert_eq!(
-        state_from_labels(&stacked, false),
-        BoardState::InProgress(Stage::Dev.id())
-    );
+    assert_eq!(state_from_labels(&stacked, false), BoardState::InProgress);
 }
 
 #[test]
@@ -63,8 +56,8 @@ fn ready_state_buckets_to_ready_column() {
 
 #[test]
 fn in_progress_state_buckets_to_in_progress_column() {
-    let position = board_position(&BoardState::InProgress(Stage::Dev.id()), false);
-    assert_eq!(position, BoardState::InProgress(Stage::Dev.id()));
+    let position = board_position(&BoardState::InProgress, false);
+    assert_eq!(position, BoardState::InProgress);
 }
 
 #[test]

@@ -11,7 +11,7 @@ use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::github::relationships::{IterationRelationships, Relationships};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -148,7 +148,7 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
 async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_1762() {
     let refresh = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
-        member_story(710, BoardState::InProgress(Stage::Dev.id())),
+        member_story(710, BoardState::InProgress),
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();

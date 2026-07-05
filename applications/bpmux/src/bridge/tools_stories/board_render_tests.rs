@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use super::board_render::*;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::BoardState;
-use crate::product_management::story::Stage;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
 use crate::view::board::arrangement::Column;
@@ -26,13 +25,10 @@ fn story(num: u64, title: &str, state: BoardState) -> Story {
     )
 }
 
-fn fine(stories: &[Story]) -> HashMap<StoryId, StageId> {
-    stories
+fn fine(placed: &[(u64, &str)]) -> HashMap<StoryId, StageId> {
+    placed
         .iter()
-        .filter_map(|s| match &s.state {
-            BoardState::InProgress(stage) => Some((s.id, stage.clone())),
-            _ => None,
-        })
+        .map(|(id, stage)| (StoryId::new(*id), StageId::from(*stage)))
         .collect()
 }
 
@@ -60,17 +56,13 @@ fn a_config_defined_third_middle_stage_renders_as_its_own_column_in_order() {
         StageId::from("code-review"),
         StageId::from("desk-check"),
     ];
-    let stories = vec![story(
-        42,
-        "under review",
-        BoardState::InProgress(StageId::from("code-review")),
-    )];
+    let stories = vec![story(42, "under review", BoardState::InProgress)];
     let out = build_board_text(
         &[],
         &stories,
         &[],
         &BoardScope::default(),
-        &fine(&stories),
+        &fine(&[(42, "code-review")]),
         &middle,
     );
     assert!(
@@ -96,18 +88,14 @@ fn a_config_defined_third_middle_stage_renders_as_its_own_column_in_order() {
 fn default_scope_is_unchanged_full_board() {
     let stories = vec![
         story(1, "ready one", BoardState::Ready),
-        story(
-            2,
-            "in-progress one",
-            BoardState::InProgress(Stage::Dev.id()),
-        ),
+        story(2, "in-progress one", BoardState::InProgress),
     ];
     let out = build_board_text(
         &[],
         &stories,
         &[],
         &BoardScope::default(),
-        &fine(&stories),
+        &fine(&[]),
         &bundled_middle(),
     );
     assert!(out.contains("#1 ready one"));
@@ -126,7 +114,7 @@ fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
         &stories,
         &[],
         &BoardScope::default(),
-        &fine(&stories),
+        &fine(&[]),
         &bundled_middle(),
     );
     assert!(
@@ -143,7 +131,7 @@ fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
         &stories,
         &[],
         &BoardScope::default(),
-        &fine(&stories),
+        &fine(&[]),
         &bundled_middle(),
     );
     assert!(
@@ -156,24 +144,13 @@ fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
 fn state_scope_renders_only_the_matching_bucket() {
     let stories = vec![
         story(1, "ready one", BoardState::Ready),
-        story(
-            2,
-            "in-progress one",
-            BoardState::InProgress(Stage::Dev.id()),
-        ),
+        story(2, "in-progress one", BoardState::InProgress),
     ];
     let scope = BoardScope {
         state: Some(Column::Ready),
         ..BoardScope::default()
     };
-    let out = build_board_text(
-        &[],
-        &stories,
-        &[],
-        &scope,
-        &fine(&stories),
-        &bundled_middle(),
-    );
+    let out = build_board_text(&[], &stories, &[], &scope, &fine(&[]), &bundled_middle());
     assert!(out.contains("#1 ready one"));
     assert!(!out.contains("#2 in-progress one"));
     assert!(!out.contains("IN PROGRESS"));
@@ -195,7 +172,7 @@ fn iteration_scope_excludes_other_iterations() {
         &stories,
         &iterations,
         &scope,
-        &fine(&stories),
+        &fine(&[]),
         &bundled_middle(),
     );
     assert!(out.contains("#10 iter-one story"));
@@ -215,7 +192,7 @@ fn iteration_scope_derives_membership_from_the_container_not_the_story() {
         &stories,
         &iterations,
         &scope,
-        &fine(&stories),
+        &fine(&[]),
         &bundled_middle(),
     );
     assert!(
@@ -234,14 +211,7 @@ fn row_limit_caps_entries_but_count_reflects_full_total() {
         row_limit: Some(3),
         ..BoardScope::default()
     };
-    let out = build_board_text(
-        &[],
-        &stories,
-        &[],
-        &scope,
-        &fine(&stories),
-        &bundled_middle(),
-    );
+    let out = build_board_text(&[], &stories, &[], &scope, &fine(&[]), &bundled_middle());
     assert_eq!(out.matches("ready ").count(), 3);
     assert!(out.contains("(10)"));
 }
@@ -266,7 +236,7 @@ fn large_board_scoped_is_ingestible_while_full_is_not() {
         &stories,
         &[],
         &BoardScope::default(),
-        &fine(&stories),
+        &fine(&[]),
         &bundled_middle(),
     );
     let scoped = build_board_text(
@@ -278,7 +248,7 @@ fn large_board_scoped_is_ingestible_while_full_is_not() {
             row_limit: Some(20),
             ..BoardScope::default()
         },
-        &fine(&stories),
+        &fine(&[]),
         &bundled_middle(),
     );
     assert!(

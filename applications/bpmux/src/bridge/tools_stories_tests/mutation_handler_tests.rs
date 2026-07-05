@@ -184,7 +184,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let seeded = Story::new_minimal(
         StoryId::new(201),
         "t".into(),
-        BoardState::InProgress(Stage::DeskCheck.id()),
+        BoardState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -261,11 +261,12 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     let seeded = Story::new_minimal(
         StoryId::new(202),
         "t".into(),
-        BoardState::InProgress(Stage::DeskCheck.id()),
+        BoardState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(202, vec!["desk-check".to_string()]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -279,7 +280,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(202).unwrap();
-    assert_eq!(story.state, BoardState::InProgress(Stage::Dev.id()));
+    assert_eq!(story.state, BoardState::InProgress);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates
@@ -313,7 +314,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         &pushed[1],
         StoryEvent::StateTransitioned {
             id,
-            new_state: BoardState::InProgress(_),
+            new_state: BoardState::InProgress,
             ..
         } if *id == StoryId::new(202)
     ));

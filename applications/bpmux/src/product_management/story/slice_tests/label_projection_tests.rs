@@ -1,7 +1,7 @@
 use super::{apply, created, meta, minimal, seed, seeded, story_at};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::{LabelDerivedFields, StoryEvent};
-use crate::product_management::story::{Acceptor, BoardState, Stage, StoryId, StoryKind, Tag};
+use crate::product_management::story::{Acceptor, BoardState, StoryId, StoryKind, Tag};
 
 #[test]
 fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
@@ -130,11 +130,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     let store = seeded();
     seed(
         &store,
-        vec![minimal(
-            77,
-            "membered",
-            BoardState::InProgress(Stage::Dev.id()),
-        )],
+        vec![minimal(77, "membered", BoardState::InProgress)],
     );
     apply(
         &store,
@@ -160,7 +156,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     assert_eq!(s.acceptor(), Some(Acceptor::Dev));
     assert_eq!(
         s.state,
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         "LabelsRefreshed is a pure typed assign; workflow state flows via StateTransitioned, not the label echo"
     );
 }

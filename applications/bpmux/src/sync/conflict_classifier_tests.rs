@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::bind_seeded_refresh;
 use crate::sync::RefreshDriver;
 use crate::sync::{
@@ -46,7 +46,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     orch.mutate(StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(500),
-        new_state: BoardState::InProgress(Stage::Dev.id()),
+        new_state: BoardState::InProgress,
         placement: None,
     })
     .unwrap();
@@ -66,7 +66,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     assert!(matches!(
         entry.event,
         StoryEvent::StateTransitioned {
-            new_state: BoardState::InProgress(_),
+            new_state: BoardState::InProgress,
             ..
         }
     ));
@@ -149,11 +149,11 @@ async fn outbox_round_trips_new_shape_through_disk() {
 #[test]
 fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
     let pre = seed_story(1, BoardState::Ready);
-    let cur = seed_story(1, BoardState::InProgress(Stage::Dev.id()));
+    let cur = seed_story(1, BoardState::InProgress);
     let event = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: BoardState::InProgress(Stage::Dev.id()),
+        new_state: BoardState::InProgress,
         placement: None,
     };
     assert_eq!(classify_conflict(Some(&pre), &event, Some(&cur)), None);
@@ -178,7 +178,7 @@ async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     orch.mutate_sync(StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(800),
-        new_state: BoardState::InProgress(Stage::Dev.id()),
+        new_state: BoardState::InProgress,
         placement: None,
     })
     .unwrap();

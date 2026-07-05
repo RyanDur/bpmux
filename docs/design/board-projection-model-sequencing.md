@@ -221,16 +221,24 @@ in a type the SourceAdapter never sees.
         `column_header` (:41 binds stage), `parse_state` (view.rs:85). Key columns off
         StageId, not `InProgress(stage)`. NOTE `group_by_position` buckets by whole
         BoardState → post-flip all InProgress collapse to one bucket; verify.
-      - **BD1b-3 Slice D (the flip).** `InProgress(StageId)` → unit. `as_str`/`github_label`
-        → coarse for InProgress; `parse` stops EMITTING desk-check but still TOLERATES
-        `desk-check`/`desk_check`/`in-progress`/`in_progress` → unit InProgress
-        (migration-tolerant for legacy GitHub labels + persisted outbox). `resolve_state_and_placement`
-        `.0` desk-check arm → coarse InProgress (`.1` unchanged). Drop the own-stage
-        fallback in `fine_stage` → `placement.unwrap_or(Dev entry default)`. Retire
-        `placement_for`; carry the fine stage on `fetch_story_metadata` for refresh_story.
-        Fix ~17 prod + ~120 test constructions (drop payload) + coarse `InProgress(_)`→`InProgress`
-        matches. Relocate `enums_tests` desk-check round-trips → board/placement tests.
-        Falsifier: wire + render + outbound + e2e byte-identical.
+      - **BD1b-3 Slice D (the flip) — DONE.** `InProgress(StageId)` → unit. `as_str`/`github_label`
+        → coarse for InProgress; `parse` tolerates `desk-check`/`desk_check`/`in-progress`/
+        `in_progress` → unit InProgress (migration-tolerant for legacy labels + persisted outbox).
+        `resolve_state_and_placement` `.0` desk-check arm → coarse InProgress (`.1` unchanged, so
+        decode still emits the fine stage). `fine_stage` fallback → `placement.unwrap_or(Dev)`.
+        Retired `placement_for` (→ `board::placement_from_target` for move_story, deviation-from-entry).
+        `fetch_story_metadata` now returns `(Story, Option<StageId>)` so refresh_story places from the
+        fetch. ~17 prod + ~120 test constructions dropped the payload; coarse `InProgress(_)`→`InProgress`
+        matches; enums_tests desk-check round-trips retired (desk-check is a placement concern, no longer
+        a BoardState wire vocab). **Non-obvious consequences handled:** (1) the workflow GATE
+        `check_target_state_valid` for fail-desk-check needs the FINE state — `fail.rs` composes
+        `board::state_label(&state, r.story_fine_stage(story))` instead of coarse `as_str`; (2) the
+        in-memory adapter's `typed_label_mirror::state_transitioned` must compose the outbound label
+        from `(new_state, placement)` via `outbound_state_label` (mirror of the github push); (3) the
+        seeded test harness (`bind_seeded_refresh`) never wired the Board-action path — added
+        `board_dispatch` (a `RefreshDriver` bind mirroring `story_dispatch`) so ingest placements reach
+        the seeded store and `story_fine_stage` sees desk-check. Falsifier: full suite 2381 + vitest 766
+        + e2e all green; wire/render/outbound byte-identical. TS renderer untouched.
 - **BD2 — placement persistence.** Refinery migration + repo port
   (storage-ports pattern), write-behind listener, hydrate on boot.
   **Loss-window call (sudden-death rule): decide explicitly whether losing

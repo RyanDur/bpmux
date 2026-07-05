@@ -58,7 +58,7 @@ pub(super) fn resolve_state_and_placement(
         return (BoardState::Ready, None);
     }
     if has("needs fixes") {
-        return (BoardState::InProgress(Stage::Dev.id()), None);
+        return (BoardState::InProgress, None);
     }
     if has("ready for accept") {
         return (BoardState::Acceptance, None);
@@ -67,13 +67,10 @@ pub(super) fn resolve_state_and_placement(
         return (BoardState::Acceptance, None);
     }
     if has(Stage::DeskCheck.id().as_str()) {
-        return (
-            BoardState::InProgress(Stage::DeskCheck.id()),
-            Some(Stage::DeskCheck.id()),
-        );
+        return (BoardState::InProgress, Some(Stage::DeskCheck.id()));
     }
     if has(stage_github_label(Stage::Dev)) {
-        return (BoardState::InProgress(Stage::Dev.id()), None);
+        return (BoardState::InProgress, None);
     }
     if has(BoardState::Ready.github_label()) {
         return (BoardState::Ready, None);
@@ -87,7 +84,7 @@ pub fn state_to_label(state: BoardState) -> &'static str {
 
 pub fn outbound_state_label(state: &BoardState, placement: Option<&StageId>) -> &'static str {
     match state {
-        BoardState::InProgress(_) => {
+        BoardState::InProgress => {
             let stage = placement.and_then(Stage::from_id).unwrap_or(Stage::Dev);
             stage_github_label(stage)
         }

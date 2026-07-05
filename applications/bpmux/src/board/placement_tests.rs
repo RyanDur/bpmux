@@ -8,11 +8,11 @@ use crate::product_management::story::{BoardState, Stage, Story, StoryId};
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
 
-fn in_progress_story(id: u64, stage: Stage) -> Story {
+fn in_progress_story(id: u64) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("story {id}"),
-        BoardState::InProgress(stage.id()),
+        BoardState::InProgress,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -89,35 +89,35 @@ fn board_with_desk_check(story: u64) -> BoardPlacements {
 }
 
 #[test]
-fn fine_stage_reads_the_placement_over_the_story_own_stage() {
-    let story = in_progress_story(1, Stage::Dev);
+fn fine_stage_reads_the_placement() {
+    let story = in_progress_story(1);
     assert_eq!(
         fine_stage(&story, &board_with_desk_check(1)),
         Some(Stage::DeskCheck),
-        "the fine placement wins over the story's own middle stage"
+        "the fine sub-section is read from the placement map"
     );
 }
 
 #[test]
-fn fine_stage_falls_back_to_the_story_stage_when_unplaced() {
-    let story = in_progress_story(1, Stage::DeskCheck);
+fn fine_stage_defaults_to_dev_when_unplaced() {
+    let story = in_progress_story(1);
     assert_eq!(
         fine_stage(&story, &BoardPlacements::default()),
-        Some(Stage::DeskCheck),
-        "with no placement the story's own stage stands (the transitional fallback)"
+        Some(Stage::Dev),
+        "a middle story with no placement is the entry sub-section (dev), not desk-check"
     );
 }
 
 #[test]
 fn fine_stage_is_none_outside_the_middle() {
-    let mut story = in_progress_story(1, Stage::Dev);
+    let mut story = in_progress_story(1);
     story.state = BoardState::Ready;
     assert_eq!(fine_stage(&story, &board_with_desk_check(1)), None);
 }
 
 #[test]
 fn fine_stage_defaults_an_unknown_placement_id_to_dev() {
-    let story = in_progress_story(1, Stage::Dev);
+    let story = in_progress_story(1);
     let board = reduce(&BoardPlacements::default(), &place(1, "qa")).unwrap();
     assert_eq!(
         fine_stage(&story, &board),
@@ -129,14 +129,11 @@ fn fine_stage_defaults_an_unknown_placement_id_to_dev() {
 #[test]
 fn state_label_composes_the_middle_sub_section_from_the_fine_stage() {
     assert_eq!(
-        state_label(
-            &BoardState::InProgress(Stage::Dev.id()),
-            Some(Stage::DeskCheck)
-        ),
+        state_label(&BoardState::InProgress, Some(Stage::DeskCheck)),
         "desk-check"
     );
     assert_eq!(
-        state_label(&BoardState::InProgress(Stage::Dev.id()), Some(Stage::Dev)),
+        state_label(&BoardState::InProgress, Some(Stage::Dev)),
         "in-progress"
     );
 }
@@ -152,7 +149,7 @@ fn state_label_passes_a_non_middle_position_through_to_its_coarse_token() {
 fn ingest_places_the_story_the_desk_check_signal_names_even_when_state_says_dev() {
     let desk_check = [(StoryId::new(1), Stage::DeskCheck.id())];
     assert_eq!(
-        placements_for_ingest(&[in_progress_story(1, Stage::Dev)], &desk_check),
+        placements_for_ingest(&[in_progress_story(1)], &desk_check),
         vec![BoardAction::StoryPlaced {
             story: StoryId::new(1),
             stage: Stage::DeskCheck.id(),
@@ -164,7 +161,7 @@ fn ingest_places_the_story_the_desk_check_signal_names_even_when_state_says_dev(
 #[test]
 fn ingest_unplaces_a_middle_story_absent_from_the_desk_check_signal() {
     assert_eq!(
-        placements_for_ingest(&[in_progress_story(1, Stage::DeskCheck)], &[]),
+        placements_for_ingest(&[in_progress_story(1)], &[]),
         vec![BoardAction::StoryUnplaced {
             story: StoryId::new(1),
         }],
@@ -174,9 +171,9 @@ fn ingest_unplaces_a_middle_story_absent_from_the_desk_check_signal() {
 
 #[test]
 fn ingest_ignores_stories_outside_the_middle() {
-    let mut ready = in_progress_story(1, Stage::Dev);
+    let mut ready = in_progress_story(1);
     ready.state = BoardState::Ready;
-    let mut accepted = in_progress_story(2, Stage::Dev);
+    let mut accepted = in_progress_story(2);
     accepted.state = BoardState::Accepted;
     let desk_check = [
         (StoryId::new(1), Stage::DeskCheck.id()),

@@ -33,30 +33,13 @@ struct InnerState {
 
 impl SourceAdapter for InMemorySourceAdapter {
     async fn ingest_metadata(&self) -> Result<Ingested, SyncError> {
-        let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        if s.failures_on_ingest {
-            return Err(SyncError::SourceUnreachable(
-                "in-memory test failure".into(),
-            ));
-        }
-        let ingest::Classified {
-            items,
-            outcomes,
-            mut iterations,
-            epics,
-            placements,
-        } = ingest::classify_ingested(s.stories.values().cloned(), &s.labels);
-        iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
-        Ok(Ingested {
-            items,
-            outcomes,
-            iterations,
-            epics,
-            placements,
-        })
+        ingest::ingest_metadata(&self.state)
     }
 
-    async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {
+    async fn fetch_story_metadata(
+        &self,
+        number: u64,
+    ) -> Result<Option<(Story, Option<crate::workflow::StageId>)>, SyncError> {
         let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_ingest {
             return Err(SyncError::SourceUnreachable(
@@ -77,7 +60,9 @@ impl SourceAdapter for InMemorySourceAdapter {
         if let Some(body) = s.bodies.get(&number) {
             story.body = Some(body.clone());
         }
-        Ok(Some(story))
+        let placement =
+            crate::integrations::github::mapper::placement_from_labels(&labels, story.is_closed);
+        Ok(Some((story, placement)))
     }
 
     async fn fetch_story_body(&self, number: u64) -> Result<String, SyncError> {

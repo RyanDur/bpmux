@@ -83,20 +83,20 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(42),
-            new_state: BoardState::InProgress(Stage::Dev.id()),
+            new_state: BoardState::InProgress,
             placement: None,
         })
         .unwrap();
     assert_eq!(
         orchestrator.story(42).unwrap().state,
-        BoardState::InProgress(Stage::Dev.id())
+        BoardState::InProgress
     );
     orchestrator.drain_once().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     match &pushed[0] {
         StoryEvent::StateTransitioned { new_state, .. } => {
-            assert_eq!(*new_state, BoardState::InProgress(Stage::Dev.id()));
+            assert_eq!(*new_state, BoardState::InProgress);
         }
         other => panic!("unexpected event: {other:?}"),
     }

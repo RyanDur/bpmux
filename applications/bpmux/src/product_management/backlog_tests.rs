@@ -2,7 +2,7 @@
 
 use super::backlog::{BacklogColumn, backlog_column, group_by_backlog_column};
 use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 
 fn story(num: u64, state: BoardState) -> Story {
@@ -37,7 +37,7 @@ fn a_board_position_story_in_the_current_iteration_is_current_work() {
     let iterations = [iteration(1, true, &[10, 11, 12])];
     for state in [
         BoardState::Ready,
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
         BoardState::Acceptance,
     ] {
         assert_eq!(

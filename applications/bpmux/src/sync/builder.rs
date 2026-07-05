@@ -11,6 +11,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn new(adapter: Arc<A>) -> Self {
         Self {
             story_dispatch: std::sync::OnceLock::new(),
+            board_dispatch: std::sync::OnceLock::new(),
             adapter,
             status: Arc::new(Mutex::new(SyncStatus::default())),
             pending: Arc::new(Mutex::new(VecDeque::new())),
@@ -49,6 +50,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let next = pending.iter().map(|e| e.id.0).max().unwrap_or(0) + 1;
         Ok(Self {
             story_dispatch: std::sync::OnceLock::new(),
+            board_dispatch: std::sync::OnceLock::new(),
             adapter,
             status: Arc::new(Mutex::new(SyncStatus {
                 pending_events: pending.len(),
@@ -75,6 +77,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let next = pending.iter().map(|e| e.id.0).max().unwrap_or(0) + 1;
         Ok(Self {
             story_dispatch: std::sync::OnceLock::new(),
+            board_dispatch: std::sync::OnceLock::new(),
             adapter,
             status: Arc::new(Mutex::new(SyncStatus {
                 pending_events: pending.len(),

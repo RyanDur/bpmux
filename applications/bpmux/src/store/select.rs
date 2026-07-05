@@ -61,10 +61,16 @@ impl SeededStore {
 
     pub(crate) fn bind_refresh(&self, refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>) {
         refresh.bind_select(self.select());
-        let weak = std::sync::Arc::downgrade(&self.store);
+        let story_weak = std::sync::Arc::downgrade(&self.store);
         refresh.bind_story_dispatch(Box::new(move |action| {
-            if let Some(store) = weak.upgrade() {
+            if let Some(store) = story_weak.upgrade() {
                 store.dispatch(AppAction::Story(action));
+            }
+        }));
+        let board_weak = std::sync::Arc::downgrade(&self.store);
+        refresh.bind_board_dispatch(Box::new(move |action| {
+            if let Some(store) = board_weak.upgrade() {
+                store.dispatch(action);
             }
         }));
     }

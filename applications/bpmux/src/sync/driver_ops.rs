@@ -148,6 +148,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.bind_story_dispatch(dispatch);
     }
 
+    fn bind_board_dispatch(&self, dispatch: Box<dyn Fn(crate::store::AppAction) + Send + Sync>) {
+        self.bind_board_dispatch(dispatch);
+    }
+
     fn remove_story(&self, id: u64) -> Option<Story> {
         self.remove_story(StoryId::new(id))
     }

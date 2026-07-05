@@ -32,7 +32,11 @@ pub(crate) async fn handle_fail_desk_check(
         None
     };
     if let Some(story) = prior.as_ref() {
-        crate::workflow::check_target_state_valid(transition, story.state.as_str())
+        let current_state = match refresh {
+            Some(r) => crate::board::state_label(&story.state, r.story_fine_stage(story)),
+            None => story.state.as_str(),
+        };
+        crate::workflow::check_target_state_valid(transition, current_state)
             .map_err(|e| e.as_json_string())?;
     }
     let was_accepted = prior
@@ -89,7 +93,7 @@ pub(crate) async fn handle_fail_desk_check(
             crate::product_management::story::events::StoryEvent::StateTransitioned {
                 meta,
                 id: StoryId::new(id),
-                placement: crate::board::placement_for(&target_state),
+                placement: None,
                 new_state: target_state,
             },
         )

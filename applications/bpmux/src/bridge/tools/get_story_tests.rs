@@ -8,7 +8,7 @@ use super::get_story::handle_get_story;
 use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{BoardState, Gate, GateComment, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, Gate, GateComment, Story, StoryId};
 use crate::store::SeededStore;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
@@ -107,11 +107,7 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
 
 #[tokio::test]
 async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
-    let story = make_story(
-        200,
-        BoardState::InProgress(Stage::Dev.id()),
-        Some("original body"),
-    );
+    let story = make_story(200, BoardState::InProgress, Some("original body"));
     let gates = vec![GateComment {
         gate: Gate::FailDeskCheck,
         ts: Utc.with_ymd_and_hms(2026, 4, 23, 1, 0, 0).unwrap(),
@@ -188,11 +184,7 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
 
 #[tokio::test]
 async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
-    let story = make_story(
-        701,
-        BoardState::InProgress(Stage::Dev.id()),
-        Some("clean body"),
-    );
+    let story = make_story(701, BoardState::InProgress, Some("clean body"));
     let gates = vec![
         GateComment {
             gate: Gate::Pickup,

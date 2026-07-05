@@ -75,7 +75,7 @@ pub trait SourceAdapter: Send + Sync {
     fn fetch_story_metadata(
         &self,
         number: u64,
-    ) -> impl std::future::Future<Output = Result<Option<Story>, SyncError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Option<(Story, Option<StageId>)>, SyncError>> + Send;
 
     fn fetch_story_body(
         &self,

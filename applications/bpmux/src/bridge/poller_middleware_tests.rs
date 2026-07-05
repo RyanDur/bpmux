@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use crate::bridge::tools::handle_get_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
@@ -85,7 +85,7 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8003,
-        BoardState::InProgress(Stage::Dev.id()),
+        BoardState::InProgress,
     )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8003));
@@ -101,7 +101,7 @@ async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
     use crate::bridge::select_stories_to_hydrate;
     let mut active = seed_minimal(100, BoardState::Ready);
     active.body = None;
-    let mut hydrated = seed_minimal(101, BoardState::InProgress(Stage::Dev.id()));
+    let mut hydrated = seed_minimal(101, BoardState::InProgress);
     hydrated.body = Some("already-cached".to_string());
     let mut accepted = seed_minimal(102, BoardState::Accepted);
     accepted.body = None;
@@ -212,7 +212,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
-    let seed = seed_minimal(9200, BoardState::InProgress(Stage::Dev.id()));
+    let seed = seed_minimal(9200, BoardState::InProgress);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
     let labels = vec!["in progress".to_string(), "ready-order.300".to_string()];
     handle.dispatch(AppAction::Story(StoryAction::Event(
@@ -258,7 +258,7 @@ async fn select_stories_to_revalidate_picks_already_hydrated_active_stories() {
     let mut active_with_body = seed_minimal(700, BoardState::Ready);
     active_with_body.body = Some("body".to_string());
     active_with_body.body_etag = Some("etag-700".to_string());
-    let mut active_no_body = seed_minimal(701, BoardState::InProgress(Stage::Dev.id()));
+    let mut active_no_body = seed_minimal(701, BoardState::InProgress);
     active_no_body.body = None;
     let mut accepted_with_body = seed_minimal(702, BoardState::Accepted);
     accepted_with_body.body = Some("body".to_string());

@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bpmux::product_management::story::BoardState;
-use bpmux::product_management::story::Stage;
 use bpmux::view::board::arrangement::board_position;
 
 /// Truth-table mirror of the renderer's `columnFor` from
@@ -21,8 +20,8 @@ fn board_position_agrees_across_full_cross_product() {
     let states = [
         BoardState::Icebox,
         BoardState::Ready,
-        BoardState::InProgress(Stage::Dev.id()),
-        BoardState::InProgress(Stage::DeskCheck.id()),
+        BoardState::InProgress,
+        BoardState::InProgress,
         BoardState::Acceptance,
         BoardState::Accepted,
     ];
@@ -48,8 +47,8 @@ fn closed_non_accepted_stories_project_to_retired() {
     for state in [
         BoardState::Icebox,
         BoardState::Ready,
-        BoardState::InProgress(Stage::Dev.id()),
-        BoardState::InProgress(Stage::DeskCheck.id()),
+        BoardState::InProgress,
+        BoardState::InProgress,
         BoardState::Acceptance,
     ] {
         assert_eq!(
@@ -80,12 +79,12 @@ fn open_workflow_states_bucket_one_to_one() {
     );
     assert_eq!(board_position(&BoardState::Ready, false), BoardState::Ready);
     assert_eq!(
-        board_position(&BoardState::InProgress(Stage::Dev.id()), false),
-        BoardState::InProgress(Stage::Dev.id())
+        board_position(&BoardState::InProgress, false),
+        BoardState::InProgress
     );
     assert_eq!(
-        board_position(&BoardState::InProgress(Stage::DeskCheck.id()), false),
-        BoardState::InProgress(Stage::DeskCheck.id())
+        board_position(&BoardState::InProgress, false),
+        BoardState::InProgress
     );
     assert_eq!(
         board_position(&BoardState::Acceptance, false),

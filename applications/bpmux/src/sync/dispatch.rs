@@ -24,6 +24,24 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
+    pub fn bind_board_dispatch(
+        &self,
+        dispatch: impl Fn(crate::store::AppAction) + Send + Sync + 'static,
+    ) {
+        let _ = self.board_dispatch.set(Box::new(dispatch));
+    }
+
+    pub(super) fn dispatch_board(&self, action: crate::store::AppAction) {
+        match self.board_dispatch.get() {
+            Some(dispatch) => dispatch(action),
+            None => {
+                if let Some(tx) = &self.action_tx {
+                    let _ = tx.send(action);
+                }
+            }
+        }
+    }
+
     pub(super) fn apply_story_event(&self, event: &StoryEvent) {
         self.dispatch_story(crate::product_management::story::slice::StoryAction::Event(
             event.clone(),

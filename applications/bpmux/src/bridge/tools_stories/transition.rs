@@ -83,7 +83,7 @@ pub(crate) async fn handle_start_story(
         r.mutate_sync(StoryEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
-            new_state: BoardState::InProgress(Stage::Dev.id()),
+            new_state: BoardState::InProgress,
             placement: None,
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
@@ -178,7 +178,7 @@ pub(crate) async fn handle_deliver_story(
         r.mutate_sync(StoryEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
-            new_state: BoardState::InProgress(Stage::DeskCheck.id()),
+            new_state: BoardState::InProgress,
             placement: Some(Stage::DeskCheck.id()),
         })
         .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;

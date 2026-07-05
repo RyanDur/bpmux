@@ -1,7 +1,7 @@
 use super::{GitHubSourceAdapter, ingest, mutation};
 use crate::bridge::tracker::{ConditionalIssue, StoryTracker};
 use crate::integrations::github::mapper::{
-    decode_free_comment, decode_gate_comments, decode_story_metadata,
+    decode_free_comment, decode_gate_comments, decode_story_metadata, decode_story_with_placement,
 };
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{FreeComment, GateComment, Story};
@@ -49,9 +49,12 @@ impl SourceAdapter for GitHubSourceAdapter {
         })
     }
 
-    async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {
+    async fn fetch_story_metadata(
+        &self,
+        number: u64,
+    ) -> Result<Option<(Story, Option<crate::workflow::StageId>)>, SyncError> {
         match self.inner.get_story(number).await {
-            Ok(Some(v)) => Ok(decode_story_metadata(&v)),
+            Ok(Some(v)) => Ok(decode_story_with_placement(&v)),
             Ok(None) => Ok(None),
             Err(e) => Err(SyncError::Other(e)),
         }

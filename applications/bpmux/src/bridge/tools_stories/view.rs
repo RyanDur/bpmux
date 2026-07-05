@@ -60,12 +60,7 @@ pub(crate) async fn handle_view_board(
         crate::workflow::StageId,
     > = stories
         .iter()
-        .filter_map(|s| match &s.state {
-            crate::product_management::story::BoardState::InProgress(stage) => {
-                Some((s.id, stage.clone()))
-            }
-            _ => None,
-        })
+        .filter_map(|s| r.story_fine_stage(s).map(|stage| (s.id, stage.id())))
         .collect();
     Ok(build_board_text(
         &epics,
