@@ -18,12 +18,9 @@ pub(super) async fn apply_push_event(
 ) -> Result<Option<StoryEvent>, SyncError> {
     match event {
         StoryEvent::StoryCreated { .. } => Ok(None),
-        StoryEvent::StateTransitioned {
-            id,
-            new_state,
-            placement,
-            ..
-        } => push_state_transitioned(inner, id.value(), new_state.clone(), placement.clone()).await,
+        StoryEvent::StateTransitioned { id, new_state, .. } => {
+            push_state_transitioned(inner, id.value(), new_state.clone()).await
+        }
         StoryEvent::StoryClosed { id, reason, .. } => {
             push_story_closed(inner, id.value(), reason).await
         }

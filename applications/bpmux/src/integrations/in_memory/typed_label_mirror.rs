@@ -77,14 +77,8 @@ pub(super) fn current_iteration_cleared(s: &mut InnerState, number: u64) {
         .retain(|l| !GhLabelCodec.is_current_iteration_label(l));
 }
 
-pub(super) fn state_transitioned(
-    s: &mut InnerState,
-    number: u64,
-    new_state: BoardState,
-    placement: Option<crate::workflow::StageId>,
-) {
-    let keep =
-        crate::integrations::github::mapper::outbound_state_label(&new_state, placement.as_ref());
+pub(super) fn state_transitioned(s: &mut InnerState, number: u64, new_state: BoardState) {
+    let keep = crate::integrations::github::mapper::outbound_state_label(&new_state);
     let keep_or_other =
         |l: &String| !GhLabelCodec.is_workflow_state_label(l) || l.eq_ignore_ascii_case(keep);
     let labels = s.labels.entry(number).or_default();

@@ -54,17 +54,9 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
                 story.is_closed = false;
             }
         }
-        StoryEvent::StateTransitioned {
-            id,
-            new_state,
-            placement,
-            ..
-        } => typed_label_mirror::state_transitioned(
-            s,
-            id.value(),
-            new_state.clone(),
-            placement.clone(),
-        ),
+        StoryEvent::StateTransitioned { id, new_state, .. } => {
+            typed_label_mirror::state_transitioned(s, id.value(), new_state.clone())
+        }
         StoryEvent::CurrentIterationDesignated { id, .. } => {
             typed_label_mirror::current_iteration_designated(s, id.value())
         }

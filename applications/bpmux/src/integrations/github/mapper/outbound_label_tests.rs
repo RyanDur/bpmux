@@ -1,34 +1,15 @@
 use super::outbound_state_label;
-use crate::product_management::story::{BoardState, Stage};
+use crate::product_management::story::BoardState;
 
 #[test]
-fn the_fine_middle_stage_is_not_leaked_to_the_github_label() {
+fn the_outbound_label_is_the_coarse_position_never_a_fine_stage() {
     assert_eq!(
-        outbound_state_label(&BoardState::InProgress, Some(&Stage::DeskCheck.id())),
+        outbound_state_label(&BoardState::InProgress),
         "in progress",
-        "de-leak: GitHub carries only the coarse position; the fine dev/desk-check stage stays local in placements.json, never on the label"
+        "de-leak: in-progress goes out coarse; the fine dev/desk-check stage stays local in placements.json, never on the label"
     );
-}
-
-#[test]
-fn in_progress_is_coarse_regardless_of_placement() {
-    assert_eq!(
-        outbound_state_label(&BoardState::InProgress, None),
-        "in progress",
-        "the outbound label is coarse whether or not a fine stage exists locally"
-    );
-}
-
-#[test]
-fn coarse_states_pass_through_to_their_github_label_ignoring_placement() {
-    assert_eq!(outbound_state_label(&BoardState::Ready, None), "ready");
-    assert_eq!(
-        outbound_state_label(&BoardState::Acceptance, Some(&Stage::DeskCheck.id())),
-        "delivered"
-    );
-    assert_eq!(
-        outbound_state_label(&BoardState::Accepted, None),
-        "accepted"
-    );
-    assert_eq!(outbound_state_label(&BoardState::Retired, None), "retired");
+    assert_eq!(outbound_state_label(&BoardState::Ready), "ready");
+    assert_eq!(outbound_state_label(&BoardState::Acceptance), "delivered");
+    assert_eq!(outbound_state_label(&BoardState::Accepted), "accepted");
+    assert_eq!(outbound_state_label(&BoardState::Retired), "retired");
 }

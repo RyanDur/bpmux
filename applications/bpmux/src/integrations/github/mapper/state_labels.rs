@@ -82,6 +82,6 @@ pub fn state_to_label(state: BoardState) -> &'static str {
     state.github_label()
 }
 
-pub fn outbound_state_label(state: &BoardState, _placement: Option<&StageId>) -> &'static str {
+pub fn outbound_state_label(state: &BoardState) -> &'static str {
     state.github_label()
 }
