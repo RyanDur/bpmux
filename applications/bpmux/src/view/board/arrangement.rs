@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::product_management::story::{BoardState, Stage, Story};
+use crate::product_management::story::lifecycle::{Conclusion, Lifecycle, OnBoard};
+use crate::product_management::story::{BoardState, Story};
 use crate::workflow::StageId;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -28,13 +29,13 @@ pub fn board_position(state: &BoardState, is_closed: bool) -> BoardState {
 }
 
 pub fn column_of(story: &Story, fine: Option<StageId>) -> Column {
-    match board_position(&story.state, story.is_closed) {
-        BoardState::Icebox => Column::Icebox,
-        BoardState::Ready => Column::Ready,
-        BoardState::InProgress => Column::Middle(fine.unwrap_or_else(|| Stage::Dev.id())),
-        BoardState::Acceptance => Column::Acceptance,
-        BoardState::Accepted => Column::Accepted,
-        BoardState::Retired => Column::Retired,
+    match Lifecycle::from_fields(&story.state, story.is_closed, fine, story.acceptor) {
+        Lifecycle::Backlog => Column::Icebox,
+        Lifecycle::OnBoard(OnBoard::Ready) => Column::Ready,
+        Lifecycle::OnBoard(OnBoard::InProgress(stage)) => Column::Middle(stage),
+        Lifecycle::OnBoard(OnBoard::Acceptance(_)) => Column::Acceptance,
+        Lifecycle::Concluded(Conclusion::Accepted(_)) => Column::Accepted,
+        Lifecycle::Concluded(Conclusion::Retired) => Column::Retired,
     }
 }
 
