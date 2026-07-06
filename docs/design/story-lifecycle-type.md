@@ -1,6 +1,62 @@
+# Story state: the backlog and the board
+
+Status: **SETTLED — model corrected 2026-07-06 (Ryan).** Everything below the
+"— superseded —" line is the earlier "lifecycle type" framing and drifted; it is
+kept only for history. Read this section as the ground truth.
+
+## The settled model
+
+There is **no grand `Lifecycle`/`State` type, no denormalized field on every
+story, and no dissolving the board slice.** A story's life *is* the **backlog**;
+the **board** is a window nested inside its `Current` bucket:
+
+```
+Backlog = Icebox | ReadyForDevelopment | Current(Board) | Concluded(Accepted | Retired)
+Board   =  Ready | InProgress(Stage)   | Acceptance(Acceptor)
+```
+
+- **Icebox** — filed, unscheduled.
+- **ReadyForDevelopment** — slated for a *future* iteration.
+- **Current** — in the *current* iteration = on the board → carries a `Board`.
+- **Concluded** — done. `is_closed` **derives** from `position ∈ Concluded`; it is
+  not a stored flag.
+
+The **board is exactly three work states**. The *only* genuinely-new data — the
+whole point of the refactor — is moving the floating facets into the variant that
+owns them: the fine `stage` into `InProgress`, the `acceptor` into `Acceptance`.
+That kills the illegal states (a `Ready` story with an acceptor, an `Acceptance`
+story with a stray placement). Icebox and Concluded carry no board data.
+
+Why the old model kept bulging: `BoardState` (`Icebox | Ready | InProgress |
+Acceptance | Accepted | Retired`) smears **three axes** into one flat enum — work
+progress (the board's three), scheduling (backlog/iteration membership), and
+conclusion (done). Separating those three *is* the refactor. `Icebox` is not a
+board column (it's "not scheduled"); `Accepted`/`Retired` are not board columns
+(they're "concluded", a backlog bucket).
+
+Board and Backlog are **projections** over the existing slices + iteration
+membership — not fields copied onto each story. The **board slice** already *is*
+the Board's data (its `Current` work-detail); it stays.
+
+### What stands, what refines, what to avoid
+
+- **Stands (do not undo):** the reducer refactor (`cf0595ee` — the board slice's
+  placement is derived in the reduce cycle, an `extraReducer`, which is exactly
+  the board-slice mechanics this model relies on); the held-stage `deliver`
+  (`aa8c0ae3`).
+- **Refines (not undo):** slice-1's `Lifecycle` type is really the Backlog
+  projection — rename it, add `ReadyForDevelopment`; the slice-2a reader
+  migrations re-point (board-column readers → the 3-state `Board`; the backlog
+  reader → `Backlog`). Behavior-preserving.
+- **Avoid (the drift):** no board-slice dissolution, no `Story.lifecycle` field,
+  no six-state grand enum, and not the "slice-4 contract / field-flip" plan in
+  the superseded section.
+
+--- superseded — earlier "lifecycle type" framing, kept for history ---
+
 # Story lifecycle as a type (Designing with Types)
 
-Status: **owner-directed, ready to build** (2026-07-06). This is the core-model
+This is the core-model
 arc that replaces the flat `BoardState` enum + the `is_closed` flag with a
 lifecycle type that makes the illegal states unrepresentable. Read
 `architecture-rules.md` (two grains, shared-coarse vs local-fine) first; this is
