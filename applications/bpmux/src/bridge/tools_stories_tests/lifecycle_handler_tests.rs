@@ -158,14 +158,18 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
             ..
         } if *id == StoryId::new(204) && step.as_str() == "in-progress" && p == "drove the falsifier scenario end-to-end"
     ));
-    assert!(matches!(
-        &pushed[1],
-        StoryEvent::StateTransitioned {
-            id,
-            new_state: BoardState::InProgress,
-            ..
-        } if *id == StoryId::new(204)
-    ));
+    assert!(
+        matches!(
+            &pushed[1],
+            StoryEvent::StateTransitioned {
+                id,
+                new_state: BoardState::InProgress,
+                placement: Some(stage),
+                ..
+            } if *id == StoryId::new(204) && stage.as_str() == "desk-check"
+        ),
+        "deliver carries the desk-check fine placement on the transition (the fine stage is set even though the coarse state stays InProgress): {pushed:?}"
+    );
     let labels = adapter.labels_for(204);
     assert!(
         labels.iter().any(|l| l == "in progress") && !labels.iter().any(|l| l == "desk-check"),

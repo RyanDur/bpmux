@@ -204,3 +204,25 @@ fn the_safety_net_is_coarse_only_a_placed_dev_story_is_not_its_concern() {
         "reshaping a placed Dev story off the map is ingest's job, not the coarse safety-net's"
     );
 }
+
+#[test]
+fn a_cold_start_hydrates_the_desk_check_placement_from_the_file() {
+    let dir = std::env::temp_dir().join(format!("bpmux-hydrate-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let placed = reduce(
+        &BoardPlacements::default(),
+        &BoardAction::StoryPlaced {
+            story: StoryId::new(9),
+            stage: Stage::DeskCheck.id(),
+        },
+    )
+    .unwrap();
+    crate::board::persistence::save(&dir, &placed).unwrap();
+    let state = crate::store::AppState::with_board(crate::board::persistence::load(&dir));
+    assert_eq!(
+        crate::board::placement_of(&state.board, StoryId::new(9)),
+        Some(Stage::DeskCheck.id()),
+        "a backend restart recovers the fine desk-check stage from placements.json, with no GitHub label involved"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
