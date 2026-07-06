@@ -6,51 +6,67 @@ kept only for history. Read this section as the ground truth.
 
 ## The settled model
 
-There is **no grand `Lifecycle`/`State` type, no denormalized field on every
-story, and no dissolving the board slice.** A story's life *is* the **backlog**;
-the **board** is a window nested inside its `Current` bucket:
+A story stores three **orthogonal** facts; everything a user sees — the board and
+the backlog — is a **projection** of them. Nothing about the backlog or the board
+is stored as its own state.
 
 ```
-Backlog = Icebox | ReadyForDevelopment | Current(Board) | Concluded(Accepted | Retired)
-Board   =  Ready | InProgress(Stage)   | Acceptance(Acceptor)
+stored on the story (shared)  = work: NotStarted | InProgress | Acceptance | Accepted | Retired
+                                iteration membership
+                                acceptor (a per-story field)
+stored locally (board slice)  = the fine middle stage (which sub-stage within InProgress)
+derived (projections)         = the board view, and the backlog view
 ```
 
-- **Icebox** — filed, unscheduled.
-- **ReadyForDevelopment** — slated for a *future* iteration.
-- **Current** — in the *current* iteration = on the board → carries a `Board`.
-- **Concluded** — done. `is_closed` **derives** from `position ∈ Concluded`; it is
-  not a stored flag.
+- **`work`** is the only progress state, and it is minimal. `Icebox` and `Ready`
+  collapse into `NotStarted` — they differ only by iteration membership, which is
+  a separate fact. `is_closed` is gone: "concluded" is `work ∈ {Accepted, Retired}`.
+- **board view** — a projection over `work`, for the current iteration:
+  `Ready` (NotStarted) | `InProgress` (+ its local fine stage) | `Acceptance`
+  (+ acceptor). Acceptance may render as one list per acceptor.
+- **backlog view** — a projection over `work` + iteration membership:
+  - `Icebox` — not in an iteration
+  - `ReadyForDevelopment` — in a (future) iteration, not started
+  - `Current` — in the current iteration
+  - `Concluded` — `Accepted` / `Retired`
 
-The **board is exactly three work states**. The *only* genuinely-new data — the
-whole point of the refactor — is moving the floating facets into the variant that
-owns them: the fine `stage` into `InProgress`, the `acceptor` into `Acceptance`.
-That kills the illegal states (a `Ready` story with an acceptor, an `Acceptance`
-story with a stray placement). Icebox and Concluded carry no board data.
+Why derive rather than store: the scheduling buckets are iteration-*relative*
+(a story is `Current` vs `ReadyForDevelopment` only relative to which iteration is
+current — it changes with no change to the story), so storing them would go stale.
+And keeping `work`, `iteration`, `acceptor` as three orthogonal facts means each
+question reads exactly one axis instead of untangling three out of one enum. The
+types then forbid the illegal states outright — no "Icebox in an iteration", no
+"closed-and-Ready" — which is the point: the structure prompts the next reader
+correctly instead of the way `BoardState` misled this one.
 
-Why the old model kept bulging: `BoardState` (`Icebox | Ready | InProgress |
-Acceptance | Accepted | Retired`) smears **three axes** into one flat enum — work
-progress (the board's three), scheduling (backlog/iteration membership), and
-conclusion (done). Separating those three *is* the refactor. `Icebox` is not a
-board column (it's "not scheduled"); `Accepted`/`Retired` are not board columns
-(they're "concluded", a backlog bucket).
+The **acceptor stays a plain field**, because *when* it's chosen is a team-process
+question, not a data constraint (so it must not be locked into an `Acceptance`
+variant). The **fine middle stage stays local** — instance strategy, never shared.
 
-Board and Backlog are **projections** over the existing slices + iteration
-membership — not fields copied onto each story. The **board slice** already *is*
-the Board's data (its `Current` work-detail); it stays.
+## Slice plan
 
-### What stands, what refines, what to avoid
+Small; expand/contract; each behavior-preserving and gated. The reducer refactor
+(`cf0595ee`) and the held-stage `deliver` (`aa8c0ae3`) stand; the fine stage stays
+local and the acceptor stays a field throughout.
 
-- **Stands (do not undo):** the reducer refactor (`cf0595ee` — the board slice's
-  placement is derived in the reduce cycle, an `extraReducer`, which is exactly
-  the board-slice mechanics this model relies on); the held-stage `deliver`
-  (`aa8c0ae3`).
-- **Refines (not undo):** slice-1's `Lifecycle` type is really the Backlog
-  projection — rename it, add `ReadyForDevelopment`; the slice-2a reader
-  migrations re-point (board-column readers → the 3-state `Board`; the backlog
-  reader → `Backlog`). Behavior-preserving.
-- **Avoid (the drift):** no board-slice dissolution, no `Story.lifecycle` field,
-  no six-state grand enum, and not the "slice-4 contract / field-flip" plan in
-  the superseded section.
+- **R-1 — retire the `Lifecycle` drift type.** Delete the slice-1 `Lifecycle` /
+  `OnBoard` / `Conclusion` types and re-point the slice-2a readers to the direct
+  projections (`board_position` / `column_of` for the board, `backlog_column` for
+  the backlog, direct `work` checks for the predicates). This reverts slice-2a's
+  "read via `Lifecycle`" — drift-correction, not lost work; the reducer refactor
+  and slice-3 are untouched.
+- **R-2 — shed `is_closed`.** Derive it from `work ∈ {Accepted, Retired}` and
+  remove the `Story.is_closed` bool (the wire `gh_state`, decode, and readers all
+  derive). Keep `Iteration.complete` — a distinct container fact, not story
+  is_closed.
+- **R-3 — collapse `Icebox` + `Ready` → `NotStarted`.** Drop both from the stored
+  work state; the backlog projection derives `Icebox` / `ReadyForDevelopment` /
+  `Current` from iteration membership, the board projection derives the `Ready`
+  column from (current iteration + NotStarted). The meatier one — touches pickup,
+  the ready gate, decode, and the wire; validate the exact collapse during build.
+- **R-4 — rename to the honest domain.** `BoardState` → `Work`; backlog
+  `ReadyForWork` → `ReadyForDevelopment`, fold `Retired` into `Concluded`; the two
+  projections named `board` / `backlog`. Cosmetic; last.
 
 --- superseded — earlier "lifecycle type" framing, kept for history ---
 
