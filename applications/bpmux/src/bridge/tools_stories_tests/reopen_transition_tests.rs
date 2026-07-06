@@ -126,4 +126,164 @@ mod reopen_on_state_transition_tests {
             "pass_desk_check on closed-state must emit StoryReopened: {pushed:?}"
         );
     }
+
+    async fn place_at_desk_check(adapter: &InMemorySourceAdapter, orch: &Arc<dyn RefreshDriver>) {
+        adapter.seed_labels(7200, vec!["chore".to_string(), "desk-check".to_string()]);
+        orch.refresh_all().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn the_full_lifecycle_walks_success_fail_reject_and_re_entry() {
+        let seeded_story = Story::new_minimal(
+            StoryId::new(7200),
+            "t".into(),
+            BoardState::Ready,
+            Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+            "dev".into(),
+        );
+        let (orch, adapter) = build_orchestrator((seeded_story, vec!["chore".to_string()])).await;
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
+        args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
+        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
+        assert!(result.is_ok(), "start_story should succeed: {result:?}");
+        orch.drain_pending().await.unwrap();
+        orch.refresh_all().await.unwrap();
+        let story = orch.story(7200).unwrap();
+        assert_eq!(story.state, BoardState::InProgress);
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert(
+            "verified_observation".into(),
+            serde_json::json!("drove the chore end-to-end"),
+        );
+        let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
+        assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
+        orch.drain_pending().await.unwrap();
+        place_at_desk_check(&adapter, &orch).await;
+        let story = orch.story(7200).unwrap();
+        assert_eq!(story.state, BoardState::InProgress);
+        assert_eq!(orch.story_fine_stage(&story), Some(Stage::DeskCheck));
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert(
+            "reason".into(),
+            serde_json::json!("the drill-in header still overlaps the avatar at 320px"),
+        );
+        let result = handle_fail_desk_check(&args, "designer:claude-code", Some(&orch)).await;
+        assert!(result.is_ok(), "fail_desk_check should succeed: {result:?}");
+        orch.drain_pending().await.unwrap();
+        let story = orch.story(7200).unwrap();
+        assert_eq!(story.state, BoardState::InProgress);
+        let rework_placement = adapter.pushed_events().iter().rev().find_map(|e| match e {
+            StoryEvent::StateTransitioned { id, placement, .. } if *id == StoryId::new(7200) => {
+                Some(placement.clone())
+            }
+            _ => None,
+        });
+        assert_eq!(
+            rework_placement,
+            Some(None),
+            "fail_desk_check must clear the desk-check placement, sending the story back to the dev entry stage"
+        );
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert(
+            "verified_observation".into(),
+            serde_json::json!("reworked the header overlap and drove it end-to-end"),
+        );
+        let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
+        assert!(
+            result.is_ok(),
+            "re-entry deliver_story should succeed: {result:?}"
+        );
+        orch.drain_pending().await.unwrap();
+        place_at_desk_check(&adapter, &orch).await;
+        let story = orch.story(7200).unwrap();
+        assert_eq!(story.state, BoardState::InProgress);
+        assert_eq!(orch.story_fine_stage(&story), Some(Stage::DeskCheck));
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert("acceptor".into(), serde_json::json!("owner"));
+        args.insert("would_file_bug".into(), serde_json::json!(false));
+        let result = handle_pass_desk_check(&args, "designer:claude-code", Some(&orch), None).await;
+        assert!(result.is_ok(), "pass_desk_check should succeed: {result:?}");
+        orch.drain_pending().await.unwrap();
+        orch.refresh_all().await.unwrap();
+        let story = orch.story(7200).unwrap();
+        assert_eq!(story.state, BoardState::Acceptance);
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert(
+            "reason".into(),
+            serde_json::json!("scope drifted from the accepted falsifier"),
+        );
+        let result = handle_reject_story(&args, "pm:claude-code", Some(&orch)).await;
+        assert!(result.is_ok(), "reject_story should succeed: {result:?}");
+        orch.drain_pending().await.unwrap();
+        orch.refresh_all().await.unwrap();
+        let story = orch.story(7200).unwrap();
+        assert_eq!(story.state, BoardState::Ready);
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert(
+            "pickup_paraphrase".into(),
+            serde_json::json!("paraphrase, take two"),
+        );
+        args.insert(
+            "falsifier_reframing".into(),
+            serde_json::json!("reframing, take two"),
+        );
+        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
+        let ok = result.expect("re-entry start_story should succeed");
+        assert!(
+            ok.contains("REWORK") && ok.contains("scope drifted from the accepted falsifier"),
+            "re-entry start_story should surface the prior-reject rework context: {ok}"
+        );
+        orch.drain_pending().await.unwrap();
+        orch.refresh_all().await.unwrap();
+        let story = orch.story(7200).unwrap();
+        assert_eq!(story.state, BoardState::InProgress);
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert(
+            "verified_observation".into(),
+            serde_json::json!("drove the accepted fix end-to-end after rework"),
+        );
+        handle_deliver_story(&args, "dev:claude-code", Some(&orch))
+            .await
+            .unwrap();
+        orch.drain_pending().await.unwrap();
+        orch.refresh_all().await.unwrap();
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert("acceptor".into(), serde_json::json!("team"));
+        args.insert("would_file_bug".into(), serde_json::json!(false));
+        handle_pass_desk_check(&args, "designer:claude-code", Some(&orch), None)
+            .await
+            .unwrap();
+        orch.drain_pending().await.unwrap();
+        orch.refresh_all().await.unwrap();
+
+        let mut args = serde_json::Map::new();
+        args.insert("id".into(), serde_json::json!(7200));
+        args.insert("would_file_bug".into(), serde_json::json!(false));
+        let result = handle_accept_story(&args, "pm:claude-code", Some(&orch), None).await;
+        assert!(result.is_ok(), "accept_story should succeed: {result:?}");
+        orch.drain_pending().await.unwrap();
+        orch.refresh_all().await.unwrap();
+        let story = orch.story(7200).unwrap();
+        assert_eq!(story.state, BoardState::Accepted);
+        assert!(story.is_closed, "accepted story should be closed");
+    }
 }
