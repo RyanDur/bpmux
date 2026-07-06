@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Stage, Story, StoryId, Verdict};
 use crate::workflow::{StageId, WorkflowConfig};
 
@@ -63,6 +65,31 @@ pub fn placement_of(state: &BoardPlacements, story: StoryId) -> Option<StageId> 
 
 pub fn placed_story_ids(state: &BoardPlacements) -> Vec<StoryId> {
     state.placements.keys().copied().collect()
+}
+
+pub fn react_to_story(state: &BoardPlacements, action: &StoryAction) -> Option<BoardPlacements> {
+    reduce(state, &placement_edge(state, action)?)
+}
+
+pub(crate) fn placement_edge(state: &BoardPlacements, action: &StoryAction) -> Option<BoardAction> {
+    let (id, placement) = match action {
+        StoryAction::Event(StoryEvent::StateTransitioned { id, placement, .. }) => (*id, placement),
+        StoryAction::Events(events) => events.iter().rev().find_map(|event| match event {
+            StoryEvent::StateTransitioned { id, placement, .. } => Some((*id, placement)),
+            _ => None,
+        })?,
+        _ => return None,
+    };
+    match placement {
+        Some(stage) if placement_of(state, id).as_ref() != Some(stage) => {
+            Some(BoardAction::StoryPlaced {
+                story: id,
+                stage: stage.clone(),
+            })
+        }
+        None if placement_of(state, id).is_some() => Some(BoardAction::StoryUnplaced { story: id }),
+        _ => None,
+    }
 }
 
 pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {

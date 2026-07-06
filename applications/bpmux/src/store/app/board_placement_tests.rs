@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::board_placement::{placement_edge, unplace_departed};
-use crate::board::{BoardAction, BoardPlacements, reduce};
+use super::board_placement::unplace_departed;
+use crate::board::{BoardAction, BoardPlacements, placement_edge, reduce};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::{Stories, StoryAction};

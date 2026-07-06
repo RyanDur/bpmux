@@ -1,9 +1,8 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use crate::board::{BoardAction, BoardPlacements, placed_story_ids, placement_of};
-use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::slice::{Stories, StoryAction};
+use crate::board::{BoardAction, BoardPlacements, placed_story_ids};
+use crate::product_management::story::slice::Stories;
 use crate::product_management::story::{BoardState, StoryId};
 
 pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Vec<BoardAction> {
@@ -19,27 +18,6 @@ pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Ve
         .collect()
 }
 
-pub(super) fn placement_edge(board: &BoardPlacements, action: &StoryAction) -> Option<BoardAction> {
-    let (id, placement) = match action {
-        StoryAction::Event(StoryEvent::StateTransitioned { id, placement, .. }) => (*id, placement),
-        StoryAction::Events(events) => events.iter().rev().find_map(|event| match event {
-            StoryEvent::StateTransitioned { id, placement, .. } => Some((*id, placement)),
-            _ => None,
-        })?,
-        _ => return None,
-    };
-    match placement {
-        Some(stage) if placement_of(board, id).as_ref() != Some(stage) => {
-            Some(BoardAction::StoryPlaced {
-                story: id,
-                stage: stage.clone(),
-            })
-        }
-        None if placement_of(board, id).is_some() => Some(BoardAction::StoryUnplaced { story: id }),
-        _ => None,
-    }
-}
-
 pub struct BoardPlacementReconciler;
 
 impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
@@ -49,14 +27,10 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         &self,
         reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
     ) -> crate::kernel::ListenerFuture {
-        let crate::store::AppAction::Story(story_action) = &reaction.action else {
+        let crate::store::AppAction::Story(_) = &reaction.action else {
             return Box::pin(async {});
         };
-        let board = &reaction.current.board;
-        let mut changes = placement_edge(board, story_action)
-            .into_iter()
-            .collect::<Vec<_>>();
-        changes.extend(unplace_departed(&reaction.current.stories, board));
+        let changes = unplace_departed(&reaction.current.stories, &reaction.current.board);
         if changes.is_empty() {
             return Box::pin(async {});
         }
@@ -86,9 +60,9 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         &self,
         reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
     ) -> crate::kernel::ListenerFuture {
-        let crate::store::AppAction::Board(_) = &reaction.action else {
+        if Arc::ptr_eq(&reaction.previous.board, &reaction.current.board) {
             return Box::pin(async {});
-        };
+        }
         let placements = reaction.current.board.clone();
         let dir = self.session.dir.clone();
         Box::pin(async move {

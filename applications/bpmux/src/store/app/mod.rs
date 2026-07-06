@@ -153,10 +153,17 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
-        AppAction::Story(action) => AppState {
-            stories: Arc::new(slice::reduce(&state.stories, action)),
-            ..state.clone()
-        },
+        AppAction::Story(action) => {
+            let stories = Arc::new(slice::reduce(&state.stories, action));
+            let board = board::react_to_story(&state.board, action)
+                .map(Arc::new)
+                .unwrap_or_else(|| state.board.clone());
+            AppState {
+                stories,
+                board,
+                ..state.clone()
+            }
+        }
         AppAction::Board(action) => match board::reduce(&state.board, action) {
             Some(board) => AppState {
                 board: Arc::new(board),
