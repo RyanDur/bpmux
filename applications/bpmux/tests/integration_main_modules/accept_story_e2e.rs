@@ -125,7 +125,7 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
     let issue = issue_json(600, "Pre-seeded delivered", &["delivered"], None);
-    mock_story_full(&server, 600, &issue);
+    let issue_state = mock_story_full(&server, 600, &issue);
 
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
@@ -135,6 +135,26 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
 
         harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 600)
             .await;
+
+        let mut pushed = false;
+        for _ in 0..50 {
+            if issue_state
+                .lock()
+                .unwrap()
+                .labels
+                .iter()
+                .any(|l| l == "awaiting team")
+            {
+                pushed = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        assert!(
+            pushed,
+            "the team-verifiable acceptor-label reached the GitHub mock (read-your-writes) before accept, so a slow-runner re-ingest cannot clobber the seeded acceptor"
+        );
+        tokio::time::sleep(Duration::from_millis(1500)).await;
 
         pm.call_tool(
             "accept_story",
