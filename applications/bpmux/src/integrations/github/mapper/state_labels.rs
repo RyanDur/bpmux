@@ -82,12 +82,6 @@ pub fn state_to_label(state: BoardState) -> &'static str {
     state.github_label()
 }
 
-pub fn outbound_state_label(state: &BoardState, placement: Option<&StageId>) -> &'static str {
-    match state {
-        BoardState::InProgress => {
-            let stage = placement.and_then(Stage::from_id).unwrap_or(Stage::Dev);
-            stage_github_label(stage)
-        }
-        other => other.github_label(),
-    }
+pub fn outbound_state_label(state: &BoardState, _placement: Option<&StageId>) -> &'static str {
+    state.github_label()
 }

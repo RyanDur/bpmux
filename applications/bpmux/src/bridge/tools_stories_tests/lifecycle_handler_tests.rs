@@ -168,8 +168,8 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     ));
     let labels = adapter.labels_for(204);
     assert!(
-        !labels.iter().any(|l| l == "in progress") && labels.iter().any(|l| l == "desk-check"),
-        "the transition export strips the stale in-progress label and applies desk-check at the adapter; got {labels:?}"
+        labels.iter().any(|l| l == "in progress") && !labels.iter().any(|l| l == "desk-check"),
+        "de-leak: GitHub carries only the coarse 'in progress' label; the fine desk-check stage stays local in placements.json, never on GitHub; got {labels:?}"
     );
 }
 

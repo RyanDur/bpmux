@@ -95,13 +95,14 @@ pub fn placements_for_ingest(
     stories
         .iter()
         .filter_map(|story| match story.state {
-            BoardState::InProgress => Some(match desk_check.get(&story.id) {
-                Some(stage) => BoardAction::StoryPlaced {
-                    story: story.id,
-                    stage: (*stage).clone(),
-                },
-                None => BoardAction::StoryUnplaced { story: story.id },
-            }),
+            BoardState::InProgress => {
+                desk_check
+                    .get(&story.id)
+                    .map(|stage| BoardAction::StoryPlaced {
+                        story: story.id,
+                        stage: (*stage).clone(),
+                    })
+            }
             _ => None,
         })
         .collect()

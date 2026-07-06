@@ -32,6 +32,15 @@ pub struct AppState {
     pub board: Arc<BoardPlacements>,
 }
 
+impl AppState {
+    pub fn with_board(board: BoardPlacements) -> Self {
+        Self {
+            board: Arc::new(board),
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum AppAction {
     Roster(RosterAction),

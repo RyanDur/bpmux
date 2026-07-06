@@ -80,7 +80,10 @@ impl Store {
         let roster_listeners: app::RosterListeners = Arc::new(Mutex::new(Vec::new()));
         let reactions_listeners: app::ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
         let ci_listeners: app::CiListeners = Arc::new(Mutex::new(Vec::new()));
-        let app_store = kernel::Store::new(app::AppState::default(), Box::new(app::app_reduce));
+        let app_store = kernel::Store::new(
+            app::AppState::with_board(crate::board::persistence::load(&session.dir)),
+            Box::new(app::app_reduce),
+        );
         app_store.add_listener(Arc::new(app::RosterBroadcast::new(
             roster_listeners.clone(),
         )));

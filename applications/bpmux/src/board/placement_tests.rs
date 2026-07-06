@@ -159,13 +159,10 @@ fn ingest_places_the_story_the_desk_check_signal_names_even_when_state_says_dev(
 }
 
 #[test]
-fn ingest_unplaces_a_middle_story_absent_from_the_desk_check_signal() {
-    assert_eq!(
-        placements_for_ingest(&[in_progress_story(1)], &[]),
-        vec![BoardAction::StoryUnplaced {
-            story: StoryId::new(1),
-        }],
-        "a middle story the signal does not name is the entry sub-section; a stale desk-check entry clears"
+fn ingest_leaves_a_middle_story_absent_from_the_signal_alone() {
+    assert!(
+        placements_for_ingest(&[in_progress_story(1)], &[]).is_empty(),
+        "post de-leak the label no longer carries the stage, so a middle story the ingest signal does not name keeps its locally-persisted placement — ingest never unplaces it"
     );
 }
 

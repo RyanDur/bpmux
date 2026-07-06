@@ -2,20 +2,20 @@ use super::outbound_state_label;
 use crate::product_management::story::{BoardState, Stage};
 
 #[test]
-fn desk_check_placement_wins_over_the_states_own_dev_stage() {
+fn the_fine_middle_stage_is_not_leaked_to_the_github_label() {
     assert_eq!(
         outbound_state_label(&BoardState::InProgress, Some(&Stage::DeskCheck.id())),
-        "desk-check",
-        "the fine sub-section rides placement — the coarse state's own stage does not decide it"
+        "in progress",
+        "de-leak: GitHub carries only the coarse position; the fine dev/desk-check stage stays local in placements.json, never on the label"
     );
 }
 
 #[test]
-fn absent_placement_is_the_entry_sub_section_over_the_states_own_desk_check_stage() {
+fn in_progress_is_coarse_regardless_of_placement() {
     assert_eq!(
         outbound_state_label(&BoardState::InProgress, None),
         "in progress",
-        "no placement entry means the entry sub-section (dev), independent of the coarse state"
+        "the outbound label is coarse whether or not a fine stage exists locally"
     );
 }
 
