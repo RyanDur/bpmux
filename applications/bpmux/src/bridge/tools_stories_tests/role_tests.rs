@@ -3,7 +3,6 @@
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
 use crate::store::Dispatch;
-use crate::transport::protocol::ClientMessage;
 
 fn no_dispatch() -> Dispatch {
     Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
@@ -86,35 +85,6 @@ fn require_role_rejects_designer_from_close_iteration() {
 #[test]
 fn require_role_lets_owner_bypass_close_iteration_via_the_1548_superset() {
     assert!(require_role("owner:human", &["pm"], "close iteration").is_ok());
-}
-
-#[test]
-fn build_iteration_close_signal_broadcasts_to_all() {
-    let signal = build_iteration_close_signal();
-    let ClientMessage::Send {
-        to,
-        addressee,
-        text,
-        message_type,
-    } = signal
-    else {
-        panic!("expected Send variant");
-    };
-    assert!(to.is_none(), "to should be None for full broadcast");
-    assert_eq!(
-        addressee.as_deref(),
-        Some("all"),
-        "addressee must be 'all' so every agent treats it as their turn"
-    );
-    assert!(
-        text.contains("[iteration-close]"),
-        "text must carry the [iteration-close] marker so agents can recognize the signal: got {text}"
-    );
-    assert!(
-        text.contains("flush unsaved findings"),
-        "text must name the externalize action: got {text}"
-    );
-    assert!(message_type.is_none());
 }
 
 #[test]

@@ -4,7 +4,7 @@ use rmcp::model::{CallToolRequestParams, CallToolResult, Content};
 use tokio::sync::Mutex;
 
 use super::event_subscription::SubscriptionRegistry;
-use super::{McpError, WsSink, rpc_client, tools, tools_stories};
+use super::{McpError, WsSink, rpc_client, tools};
 
 pub(super) async fn dispatch_tool_call(
     port: u16,
@@ -108,6 +108,7 @@ pub(super) async fn dispatch_tool_call(
         | "close_story"
         | "create_story"
         | "create_iteration"
+        | "close_iteration"
         | "comment_on_story"
         | "label_story"
         | "move_story"
@@ -129,10 +130,6 @@ pub(super) async fn dispatch_tool_call(
         | "view_verdicts" => {
             let current_name = name.lock().await.clone();
             rpc_client::dispatch_via_rpc(port, request.name.as_ref(), &current_name, &args).await
-        }
-        "close_iteration" => {
-            let current_name = name.lock().await;
-            tools_stories::handle_close_iteration(&current_name, &args, &ws_tx, port).await
         }
         "get_usage" => tools::handle_get_usage(&args).await,
         "view_tokens" => tools::handle_view_tokens(&ws_tx).await,

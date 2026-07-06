@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use super::super::tools_stories;
+use crate::transport::rest::iteration_close::CloseIterationError;
 
 pub(crate) async fn dispatch_create_iteration(
     args: serde_json::Map<String, serde_json::Value>,
@@ -24,33 +25,24 @@ pub(crate) async fn dispatch_close_iteration(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("close_iteration requires iteration_id (canonical Iteration issue#).")?;
-    let iteration = r
-        .iteration(crate::product_management::iteration::IterationId::new(
-            iteration_id,
-        ))
-        .ok_or_else(|| {
-            if r.story(iteration_id).is_some() {
-                format!("close_iteration: #{iteration_id} is not an Iteration")
-            } else {
-                format!("close_iteration: iteration_id #{iteration_id} not found")
+    crate::transport::rest::iteration_close::close_iteration(session, r, dispatch, iteration_id)
+        .await
+        .map_err(|e| match e {
+            CloseIterationError::NotAnIteration(id) => {
+                format!("close_iteration: #{id} is not an Iteration")
             }
+            CloseIterationError::NotFound(id) => {
+                format!("close_iteration: iteration_id #{id} not found")
+            }
+            CloseIterationError::AlreadyClosed(id) => {
+                format!("close_iteration: iteration #{id} is already closed")
+            }
+            CloseIterationError::ReadyQueueBlocked(_) => {
+                "close_iteration blocked: ready queue must be empty before iteration close (#1258 guard)."
+                    .to_string()
+            }
+            CloseIterationError::Canonical(msg) => msg,
         })?;
-    if iteration.complete {
-        return Err(format!(
-            "close_iteration: iteration #{iteration_id} is already closed"
-        ));
-    }
-    let blockers =
-        crate::transport::rest::iteration_close::collect_ready_queue_blockers(r.as_ref()).await;
-    if !blockers.is_empty() {
-        return Err(
-            "close_iteration blocked: ready queue must be empty before iteration close (#1258 guard)."
-                .to_string(),
-        );
-    }
-    crate::transport::rest::iteration_close::close_iteration_canonical(r, dispatch, iteration_id)
-        .await?;
-    crate::transport::rest::shared::broadcast_board_invalidate(session);
     Ok(format!("iteration #{iteration_id} closed"))
 }
 

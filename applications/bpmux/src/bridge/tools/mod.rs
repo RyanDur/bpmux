@@ -114,8 +114,6 @@ mod view_verdicts;
 #[cfg(test)]
 mod view_verdicts_render;
 
-pub(in crate::bridge) use helpers::{WsSink, ws_send};
-
 pub(in crate::bridge) use add_principle::handle_add_principle;
 pub(in crate::bridge) use add_value::handle_add_value;
 pub(in crate::bridge) use capture_electron_window::handle_capture_electron_window;

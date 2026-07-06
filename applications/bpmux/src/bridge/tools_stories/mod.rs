@@ -43,7 +43,7 @@ pub use acceptance_test_path::parse_acceptance_test_path;
 pub(crate) use acceptance_test_path::{find_repo_root, resolve_acceptance_test_path};
 #[cfg(test)]
 pub(crate) use authorization::require_role;
-pub(crate) use closure::{handle_close_iteration, handle_close_story};
+pub(crate) use closure::handle_close_story;
 pub(crate) use creation::handle_create_story;
 pub(crate) use creation_iteration::handle_create_iteration;
 pub(crate) use creation_outcome::handle_create_outcome;
@@ -69,8 +69,8 @@ pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
 pub(crate) use retire_outcome::handle_retire_outcome;
 #[cfg(test)]
 pub(crate) use signals::{
-    addressee_for_pass_desk_check, build_iteration_close_signal,
-    build_pass_desk_check_pm_present_signal, build_pass_desk_check_signal,
+    addressee_for_pass_desk_check, build_pass_desk_check_pm_present_signal,
+    build_pass_desk_check_signal,
 };
 pub(crate) use signals::{
     build_accept_signal, build_delivery_signals, build_fail_desk_check_signal,

@@ -140,15 +140,3 @@ pub(crate) fn build_fail_desk_check_signal(id: u64, reason: &str) -> ClientMessa
         message_type: None,
     }
 }
-
-pub(crate) fn build_iteration_close_signal() -> ClientMessage {
-    ClientMessage::Send {
-        text: "[iteration-close] iteration closing — flush unsaved findings now via \
-               Write / save_lesson / add_principle / doc edit. pre-close context is \
-               still available."
-            .to_string(),
-        to: None,
-        addressee: Some("all".to_string()),
-        message_type: None,
-    }
-}
