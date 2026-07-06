@@ -127,11 +127,6 @@ mod reopen_on_state_transition_tests {
         );
     }
 
-    async fn place_at_desk_check(adapter: &InMemorySourceAdapter, orch: &Arc<dyn RefreshDriver>) {
-        adapter.seed_labels(7200, vec!["chore".to_string(), "desk-check".to_string()]);
-        orch.refresh_all().await.unwrap();
-    }
-
     #[tokio::test]
     async fn the_full_lifecycle_walks_success_fail_reject_and_re_entry() {
         let seeded_story = Story::new_minimal(
@@ -163,7 +158,6 @@ mod reopen_on_state_transition_tests {
         let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
-        place_at_desk_check(&adapter, &orch).await;
         let story = orch.story(7200).unwrap();
         assert_eq!(story.state, BoardState::InProgress);
         assert_eq!(orch.story_fine_stage(&story), Some(Stage::DeskCheck));
@@ -203,7 +197,6 @@ mod reopen_on_state_transition_tests {
             "re-entry deliver_story should succeed: {result:?}"
         );
         orch.drain_pending().await.unwrap();
-        place_at_desk_check(&adapter, &orch).await;
         let story = orch.story(7200).unwrap();
         assert_eq!(story.state, BoardState::InProgress);
         assert_eq!(orch.story_fine_stage(&story), Some(Stage::DeskCheck));

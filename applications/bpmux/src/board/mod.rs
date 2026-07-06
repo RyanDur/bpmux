@@ -103,6 +103,15 @@ pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {
     }
 }
 
+pub fn held_stage(story: &Story, board: &BoardPlacements) -> Option<StageId> {
+    match &story.state {
+        BoardState::InProgress => {
+            Some(placement_of(board, story.id).unwrap_or_else(|| Stage::Dev.id()))
+        }
+        _ => None,
+    }
+}
+
 pub fn placement_from_target(target: &str, middle: &[StageId]) -> Option<StageId> {
     if middle.first().is_some_and(|entry| entry.as_str() == target) {
         return None;

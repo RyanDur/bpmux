@@ -60,6 +60,9 @@ pub trait RefreshDriver: Send + Sync {
     fn story_fine_stage(&self, story: &Story) -> Option<Stage> {
         crate::board::fine_stage(story, &crate::board::BoardPlacements::default())
     }
+    fn story_held_stage(&self, story: &Story) -> Option<crate::workflow::StageId> {
+        crate::board::held_stage(story, &crate::board::BoardPlacements::default())
+    }
     fn all_stories(&self) -> Vec<Story>;
     fn outcomes(&self) -> Vec<Outcome> {
         Vec::new()

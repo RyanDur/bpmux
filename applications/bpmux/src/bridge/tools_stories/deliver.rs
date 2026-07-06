@@ -65,19 +65,24 @@ pub(crate) async fn handle_deliver_story(
             ts: chrono::Utc::now(),
             peer_id: PeerId::local(),
         };
+        let held_step = refreshed
+            .as_ref()
+            .and_then(|s| s.as_ref())
+            .and_then(|story| r.story_held_stage(story))
+            .unwrap_or_else(|| crate::product_management::story::Stage::Dev.id());
         let crate::board::Decision {
             coarse: new_state,
             placement,
         } = crate::board::advance(
             &crate::product_management::story::Verdict::Succeed {
-                step: transition.from.as_str().into(),
+                step: held_step.clone(),
             },
             workflow,
         )
         .ok_or_else(|| {
             format!(
                 "#{id} deliver has no forward state from '{}'",
-                transition.from
+                held_step.as_str()
             )
         })?;
         let mut events = Vec::new();

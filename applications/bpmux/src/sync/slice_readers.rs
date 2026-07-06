@@ -32,6 +32,15 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             })
     }
 
+    pub(super) fn read_story_held_stage(&self, story: &Story) -> Option<crate::workflow::StageId> {
+        self.select
+            .get()
+            .and_then(|s| s.select(|state| Some(crate::board::held_stage(story, &state.board))))
+            .unwrap_or_else(|| {
+                crate::board::held_stage(story, &crate::board::BoardPlacements::default())
+            })
+    }
+
     pub(super) fn read_store_is_empty(&self) -> bool {
         self.select
             .get()
