@@ -1,10 +1,32 @@
 # Story lifecycle as a type (Designing with Types)
 
-Status: **design, converging with the owner** (2026-07-05). Not yet built.
-This is the core-model arc that replaces the flat `BoardState` enum + the
-`is_closed` flag with a lifecycle type that makes the illegal states
-unrepresentable. Read `architecture-rules.md` (two grains, shared-coarse vs
-local-fine) first; this is downstream of it.
+Status: **owner-directed, ready to build** (2026-07-06). This is the core-model
+arc that replaces the flat `BoardState` enum + the `is_closed` flag with a
+lifecycle type that makes the illegal states unrepresentable. Read
+`architecture-rules.md` (two grains, shared-coarse vs local-fine) first; this is
+downstream of it.
+
+## Owner direction (2026-07-06)
+
+- **This is a full-stack refactor, not backend-only.** The renderer is in scope.
+  We have been working backend domains/structure, but "all is up for refactor."
+- **`workflow.toml` is the single source of the middle, top to bottom.** The
+  renderer becomes *driven* by the workflow's middle-stage config instead of
+  hardcoding dev/desk-check — so an N-stage middle just renders. There must be
+  **no visible difference** for the current 2-stage config: that visual
+  invariance is the falsifier, and it makes the renderer work a *refactor*, not
+  a UX decision (dev-owned, not designer-gated — the designer's UX is preserved
+  by construction).
+- **A configurable N>2 middle is a real requirement (owner: "yes").** So the arc
+  generalizes the transition verbs to advance from a story's *held* stage rather
+  than a hardcoded config source — what makes an N-stage middle *drivable*, not
+  merely representable.
+- **The projection surfaces the current model's gaps.** `(BoardState, is_closed,
+  placement, acceptor)` does not fully determine the lifecycle: the retire reason
+  has no field home (it rides the `StoryClosed` event) and acceptance's acceptor
+  is an emptyable `Option`. These are exactly the illegal states the type removes
+  — so the migration also gives the retire reason a home (sourced from where
+  `StoryClosed.reason` is today); it is not a pure field reshape.
 
 ## Why
 
@@ -151,21 +173,26 @@ reshape:
 4. **Contract**: `Story.lifecycle` becomes the source of truth; `BoardState` +
    `is_closed` + `placement: Option` + `acceptor: Option` removed; persistence
    splits the grains at the edge (coarse → GitHub, fine stage → placements.json).
-5. **Wire + decode + renderer** — a deliberate reshape. **Owner + designer
-   review required** (role boundary: designer owns UX). The wire currently
-   composes coarse+fine into a `state` string and emits `gh_state`/`acceptor`;
-   the renderer mirrors `columnFor`. This is the only slice that changes what
-   the renderer consumes, and it is explicitly held for review.
+5. **Wire + decode + renderer, config-driven.** The renderer stops hardcoding
+   dev/desk-check and renders the middle from the workflow config (the backend
+   exposes the middle-stage list; the wire carries the composed fine stage as
+   today). Falsifier: for the current 2-stage config the rendered board is
+   visually identical (the e2e + RTL board tests pass unchanged). No UX decision
+   — the visual is preserved by construction — so this is dev-owned refactor
+   work, not designer-gated.
 
-Guardrail during autonomous work: steps 1–3 (additive/backend, behavior-
-preserving) are safe to build; steps 4–5 (removal + wire/renderer) are held for
-owner/designer review — they are irreversible and cross the UX boundary.
+Guardrail: each slice gated + CI-green. Steps 1–3 are additive/behavior-
+preserving; step 4 (removal) and step 5 (renderer) change structure, not
+observable behavior — the full test suite and (step 5) visual invariance are the
+falsifiers.
 
 ## Open items for the owner
 
-- Confirm the type shape above (esp. `Concluded::Accepted(Acceptor)` vs an
-  acceptance-only acceptor — resolved here as riding into Accepted, per the
-  badge; flag if you disagree).
+- `Concluded::Accepted(Acceptor)` — resolved here as the acceptor riding into
+  Accepted (per the dev-accepted badge on accepted stories); flag if that badge
+  behavior itself should change.
 - `RetireReason` — keep as `String`, or model it (e.g. a retire-class enum)?
-- Whether to fold the N>2-middle verb fix into this arc (recommended — the
-  `InProgress(StageId)` shape is what makes it clean) or ship it separately.
+
+Resolved by the owner (2026-07-06): the N>2-middle verb generalization is folded
+into this arc (N-stage is real); the renderer is config-driven with no visible
+change (dev-owned refactor). See "Owner direction" above.
