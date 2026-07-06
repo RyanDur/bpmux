@@ -1,5 +1,5 @@
-use crate::product_management::story::Story;
-use crate::product_management::story::lifecycle::{Conclusion, Lifecycle, OnBoard};
+use crate::product_management::story::{BoardState, Story};
+use crate::view::board::arrangement::board_position;
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
@@ -15,13 +15,13 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
 
     for story in stories {
         let entry = format!("{} {}", story.id, story.title);
-        match Lifecycle::from_fields(&story.state, story.is_closed, None, story.acceptor) {
-            Lifecycle::Backlog => icebox.push(entry),
-            Lifecycle::OnBoard(OnBoard::Ready) => ready.push(entry),
-            Lifecycle::OnBoard(OnBoard::InProgress(_)) => in_progress.push(entry),
-            Lifecycle::OnBoard(OnBoard::Acceptance(_)) => acceptance.push(entry),
-            Lifecycle::Concluded(Conclusion::Accepted(_)) => accepted.push(entry),
-            Lifecycle::Concluded(Conclusion::Retired) => retired.push(entry),
+        match board_position(&story.state, story.is_closed) {
+            BoardState::Icebox => icebox.push(entry),
+            BoardState::Ready => ready.push(entry),
+            BoardState::InProgress => in_progress.push(entry),
+            BoardState::Acceptance => acceptance.push(entry),
+            BoardState::Accepted => accepted.push(entry),
+            BoardState::Retired => retired.push(entry),
         }
     }
 

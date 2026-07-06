@@ -6,29 +6,33 @@ pub(crate) fn select_stories_to_hydrate(
     stories: &[crate::product_management::story::Story],
     limit: usize,
 ) -> Vec<u64> {
+    use crate::product_management::story::BoardState;
     stories
         .iter()
-        .filter(|s| on_board(s) && s.body.is_none())
+        .filter(|s| {
+            matches!(
+                s.state,
+                BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
+            ) && s.body.is_none()
+        })
         .take(limit)
         .map(|s| u64::from(s.id))
         .collect()
-}
-
-fn on_board(story: &crate::product_management::story::Story) -> bool {
-    use crate::product_management::story::lifecycle::Lifecycle;
-    matches!(
-        Lifecycle::from_fields(&story.state, story.is_closed, None, story.acceptor),
-        Lifecycle::OnBoard(_)
-    )
 }
 
 pub(crate) fn select_stories_to_revalidate(
     stories: &[crate::product_management::story::Story],
     limit: usize,
 ) -> Vec<(u64, Option<String>)> {
+    use crate::product_management::story::BoardState;
     stories
         .iter()
-        .filter(|s| on_board(s) && s.body.is_some())
+        .filter(|s| {
+            matches!(
+                s.state,
+                BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
+            ) && s.body.is_some()
+        })
         .take(limit)
         .map(|s| (u64::from(s.id), s.body_etag.clone()))
         .collect()

@@ -3,7 +3,6 @@ pub mod enums;
 pub mod events;
 mod gate_class;
 pub mod key;
-pub mod lifecycle;
 pub mod peer;
 pub mod rework;
 pub(crate) mod slice;
@@ -27,8 +26,6 @@ mod events_tests;
 mod gate_class_tests;
 #[cfg(test)]
 mod key_tests;
-#[cfg(test)]
-mod lifecycle_tests;
 #[cfg(test)]
 mod peer_tests;
 #[cfg(test)]

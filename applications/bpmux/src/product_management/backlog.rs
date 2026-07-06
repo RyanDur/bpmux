@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::lifecycle::{Conclusion, Lifecycle};
-use crate::product_management::story::{Story, StoryId};
+use crate::product_management::story::{BoardState, Story, StoryId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BacklogColumn {
@@ -13,18 +12,21 @@ pub enum BacklogColumn {
 }
 
 pub fn backlog_column(story: &Story, iterations: &[Iteration]) -> Option<BacklogColumn> {
-    match Lifecycle::from_fields(&story.state, story.is_closed, None, story.acceptor) {
-        Lifecycle::Concluded(Conclusion::Accepted(_)) => Some(BacklogColumn::Accepted),
-        Lifecycle::Concluded(Conclusion::Retired) => None,
-        Lifecycle::Backlog => {
-            if member_of_any_iteration(story.id, iterations) {
-                Some(BacklogColumn::ReadyForWork)
-            } else {
-                Some(BacklogColumn::Icebox)
-            }
-        }
-        Lifecycle::OnBoard(_) => {
-            if member_of_current_iteration(story.id, iterations) {
+    let position =
+        if story.is_closed && !matches!(story.state, BoardState::Accepted | BoardState::Retired) {
+            BoardState::Retired
+        } else {
+            story.state.clone()
+        };
+    match position {
+        BoardState::Accepted => Some(BacklogColumn::Accepted),
+        BoardState::Retired => None,
+        on_board_position => {
+            let on_board = matches!(
+                on_board_position,
+                BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
+            );
+            if on_board && member_of_current_iteration(story.id, iterations) {
                 Some(BacklogColumn::Current)
             } else if member_of_any_iteration(story.id, iterations) {
                 Some(BacklogColumn::ReadyForWork)
