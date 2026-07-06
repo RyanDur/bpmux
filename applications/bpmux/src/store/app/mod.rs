@@ -13,7 +13,7 @@ use crate::store::sync::SyncAction;
 mod board_placement;
 mod listeners;
 mod owner_park;
-pub use board_placement::BoardPlacementReconciler;
+pub use board_placement::{BoardPlacementPersister, BoardPlacementReconciler};
 pub use listeners::*;
 pub use owner_park::OwnerParkListener;
 

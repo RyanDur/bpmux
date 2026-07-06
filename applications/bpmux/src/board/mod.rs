@@ -1,10 +1,16 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 use crate::product_management::story::{BoardState, Stage, Story, StoryId, Verdict};
 use crate::workflow::{StageId, WorkflowConfig};
 
+pub mod persistence;
+
 #[cfg(test)]
 mod boundary_tests;
+#[cfg(test)]
+mod persistence_tests;
 #[cfg(test)]
 mod placement_tests;
 #[cfg(test)]
@@ -16,9 +22,18 @@ pub enum BoardAction {
     StoryUnplaced { story: StoryId },
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct BoardPlacements {
     placements: HashMap<StoryId, StageId>,
+}
+
+impl BoardPlacements {
+    pub fn pairs(&self) -> Vec<(StoryId, StageId)> {
+        self.placements
+            .iter()
+            .map(|(story, stage)| (*story, stage.clone()))
+            .collect()
+    }
 }
 
 pub fn reduce(state: &BoardPlacements, action: &BoardAction) -> Option<BoardPlacements> {
