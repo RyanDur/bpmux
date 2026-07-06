@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{BoardState, Story};
+use crate::product_management::story::Story;
+use crate::product_management::story::lifecycle::{Lifecycle, OnBoard};
 use crate::sync::RefreshDriver;
 
 pub(in crate::bridge) async fn handle_list_ready(
@@ -16,7 +17,12 @@ pub(in crate::bridge) async fn handle_list_ready(
     let ready: Vec<Story> = refresh
         .all_stories()
         .into_iter()
-        .filter(|story| story.state() == BoardState::Ready)
+        .filter(|story| {
+            matches!(
+                Lifecycle::from_fields(&story.state, story.is_closed, None, story.acceptor),
+                Lifecycle::OnBoard(OnBoard::Ready)
+            )
+        })
         .collect();
     let mut queue: Vec<&Story> = current_order
         .iter()
