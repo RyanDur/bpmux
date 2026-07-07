@@ -16,7 +16,10 @@ pub(in crate::bridge) async fn handle_list_ready(
     let ready: Vec<Story> = refresh
         .all_stories()
         .into_iter()
-        .filter(|story| story.state() == BoardState::Ready)
+        .filter(|story| {
+            crate::product_management::scheduling::projected_state(story, iterations)
+                == BoardState::Ready
+        })
         .collect();
     let mut queue: Vec<&Story> = current_order
         .iter()

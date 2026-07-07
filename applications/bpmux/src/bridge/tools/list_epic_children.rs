@@ -15,6 +15,7 @@ pub(in crate::bridge) async fn handle_list_epic_children(
     refresh
         .epic(EpicId::new(epic_id))
         .ok_or_else(|| format!("list_epic_children: epic_id {epic_id} not found or not an Epic"))?;
+    let iterations = refresh.iterations();
     let mut children: Vec<Story> = refresh
         .all_stories()
         .into_iter()
@@ -28,7 +29,10 @@ pub(in crate::bridge) async fn handle_list_epic_children(
             .map(|s| serde_json::json!({
                 "id": s.id,
                 "title": s.title,
-                "state": format!("{:?}", s.state).to_lowercase(),
+                "state": format!(
+                    "{:?}",
+                    crate::product_management::scheduling::projected_state(s, &iterations)
+                ).to_lowercase(),
                 "story_type": s.story_type().as_label(),
                 "is_closed": s.is_concluded(),
             }))

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::product_management::iteration::Iteration;
+use crate::product_management::scheduling::projected_state;
 use crate::product_management::story::{BoardState, Stage, Story};
 use crate::workflow::StageId;
 
@@ -20,8 +22,8 @@ pub fn board_columns(middle: &[StageId]) -> Vec<Column> {
     columns
 }
 
-pub fn column_of(story: &Story, fine: Option<StageId>) -> Column {
-    match &story.state {
+pub fn column_of(story: &Story, fine: Option<StageId>, iterations: &[Iteration]) -> Column {
+    match projected_state(story, iterations) {
         BoardState::Icebox => Column::Icebox,
         BoardState::Ready => Column::Ready,
         BoardState::InProgress => Column::Middle(fine.unwrap_or_else(|| Stage::Dev.id())),
@@ -33,10 +35,14 @@ pub fn column_of(story: &Story, fine: Option<StageId>) -> Column {
 
 pub fn group_by_column<'a>(
     stories: impl IntoIterator<Item = (&'a Story, Option<StageId>)>,
+    iterations: &[Iteration],
 ) -> HashMap<Column, Vec<&'a Story>> {
     let mut board: HashMap<Column, Vec<&Story>> = HashMap::new();
     for (story, fine) in stories {
-        board.entry(column_of(story, fine)).or_default().push(story);
+        board
+            .entry(column_of(story, fine, iterations))
+            .or_default()
+            .push(story);
     }
     board
 }

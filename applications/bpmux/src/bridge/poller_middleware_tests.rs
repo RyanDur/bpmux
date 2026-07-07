@@ -6,6 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use crate::bridge::tools::handle_get_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, SeededStore};
@@ -19,6 +20,23 @@ fn seed_minimal(id: u64, state: BoardState) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
+}
+
+fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
+    vec![Iteration {
+        id: IterationId::new(9000),
+        title: String::new(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: members.iter().map(|n| StoryId::new(*n)).collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    }]
 }
 
 #[tokio::test]
@@ -110,7 +128,7 @@ async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
     let mut delivered = seed_minimal(104, BoardState::Acceptance);
     delivered.body = None;
     let stories = vec![active, hydrated, accepted, icebox, delivered];
-    let picks = select_stories_to_hydrate(&stories, 10);
+    let picks = select_stories_to_hydrate(&stories, 10, &current_iteration_of(&[100]));
     assert!(picks.contains(&100), "active+missing picked: {picks:?}");
     assert!(picks.contains(&104), "delivered+missing picked: {picks:?}");
     assert!(!picks.contains(&101), "hydrated stories skipped: {picks:?}");
@@ -134,7 +152,8 @@ async fn select_stories_to_hydrate_caps_at_limit() {
             s
         })
         .collect();
-    let picks = select_stories_to_hydrate(&stories, 3);
+    let members: Vec<u64> = (0..10).map(|i| 200 + i).collect();
+    let picks = select_stories_to_hydrate(&stories, 3, &current_iteration_of(&members));
     assert_eq!(picks.len(), 3, "limit caps per-tick fetch volume");
 }
 
@@ -143,7 +162,7 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
     use crate::bridge::select_stories_to_hydrate;
     let mut s = seed_minimal(300, BoardState::Ready);
     s.body = Some("already".to_string());
-    let picks = select_stories_to_hydrate(&[s], 5);
+    let picks = select_stories_to_hydrate(&[s], 5, &current_iteration_of(&[300]));
     assert!(picks.is_empty(), "no missing-body stories = empty picks");
 }
 
@@ -270,7 +289,7 @@ async fn select_stories_to_revalidate_picks_already_hydrated_active_stories() {
         accepted_with_body,
         icebox_with_body,
     ];
-    let picks = select_stories_to_revalidate(&stories, 10);
+    let picks = select_stories_to_revalidate(&stories, 10, &current_iteration_of(&[700]));
     assert!(
         picks
             .iter()
@@ -301,7 +320,8 @@ async fn select_stories_to_revalidate_caps_at_limit() {
             s
         })
         .collect();
-    let picks = select_stories_to_revalidate(&stories, 2);
+    let members: Vec<u64> = (0..10).map(|i| 800 + i).collect();
+    let picks = select_stories_to_revalidate(&stories, 2, &current_iteration_of(&members));
     assert_eq!(picks.len(), 2, "limit caps revalidation volume");
 }
 
@@ -309,7 +329,7 @@ async fn select_stories_to_revalidate_caps_at_limit() {
 async fn get_story_returns_hydrated_flag_in_response() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
-    let seed = SeededStore::new(vec![], vec![], vec![]);
+    let seed = SeededStore::new(vec![], current_iteration_of(&[8004]), vec![]);
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8004,

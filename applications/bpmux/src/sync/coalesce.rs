@@ -95,8 +95,9 @@ pub(super) fn stale_state_labels_for(
     story: &Story,
     raw_labels: &[String],
     fine: Option<Stage>,
+    iterations: &[crate::product_management::iteration::Iteration],
 ) -> Vec<String> {
-    let expected = match &story.state {
+    let expected = match crate::product_management::scheduling::projected_state(story, iterations) {
         BoardState::Icebox => "",
         BoardState::InProgress => stage_github_label(fine.unwrap_or(Stage::Dev)),
         other => other.github_label(),

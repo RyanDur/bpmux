@@ -124,22 +124,23 @@ async fn burst_reorder_lands_each_story_at_its_own_position() {
 }
 
 #[tokio::test]
-async fn loose_ready_non_members_sort_after_positioned_members_by_issue_id() {
+async fn positioned_members_return_in_membership_order_and_a_stored_ready_non_member_is_absent() {
     let (orch, seed) = build_orchestrator(vec![
         current_iteration_story(7000),
-        ready_story(5002),
         ready_story(5001),
+        ready_story(5002),
+        ready_story(5003),
     ])
     .await;
 
     move_to_ready_position(&orch, &seed, 5002, 1).await;
+    move_to_ready_position(&orch, &seed, 5003, 1).await;
 
     let queue = ready_queue_ids(&orch).await;
     assert_eq!(
         queue,
-        vec![5002, 5001],
-        "#1579: a positioned current-iteration member (5002) sorts before a loose ready \
-         non-member (5001) even though its issue-id is higher; loose-ready falls to \
-         issue-id after members; got {queue:?}"
+        vec![5003, 5002],
+        "the queue is exactly the current-iteration members in membership order; a stored-Ready \
+         non-member (5001) derives Icebox and never appears in the ready queue; got {queue:?}"
     );
 }

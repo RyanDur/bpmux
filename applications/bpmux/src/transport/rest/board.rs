@@ -4,16 +4,17 @@ pub(crate) fn ordered_board_stories(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     let all = refresh.all_stories();
+    let iterations = refresh.iterations();
     let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
     let items: Vec<serde_json::Value> = all
         .iter()
         .map(|s| {
-            let state = crate::board::wire_state(&s.state, refresh.story_held_stage(s).as_ref());
+            let projected = crate::product_management::scheduling::projected_state(s, &iterations);
+            let state = crate::board::wire_state(&projected, refresh.story_held_stage(s).as_ref());
             crate::view::board::story_to_board_json(&codec, s, &state)
         })
         .collect();
-    let current_order: Vec<u64> = refresh
-        .iterations()
+    let current_order: Vec<u64> = iterations
         .iter()
         .find(|iteration| iteration.is_current)
         .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
@@ -66,6 +67,7 @@ fn title_case(id: &str) -> String {
 
 pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<serde_json::Value> {
     let stories = refresh.all_stories();
+    let iterations = refresh.iterations();
     refresh
         .epics()
         .iter()
@@ -74,8 +76,11 @@ pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<
                 .iter()
                 .filter(|s| s.parent_epic() == Some(epic.id))
                 .collect();
-            let derived =
-                crate::product_management::epic::derive_epic_state(epic.state.clone(), &children);
+            let derived = crate::product_management::epic::derive_epic_state(
+                epic.state.clone(),
+                &children,
+                &iterations,
+            );
             serde_json::json!({
                 "id": epic.id.value(),
                 "title": epic.title,

@@ -68,6 +68,32 @@ mod canonical_via_gh_1300 {
         (s, vec!["iteration".to_string()])
     }
 
+    fn seed_current_iteration_issue_with_members(
+        id: u64,
+        name: &str,
+        members: &[u64],
+    ) -> (Story, Vec<String>) {
+        use crate::integrations::github::relationships::{IterationRelationships, Relationships};
+        let mut s = Story::new_minimal(
+            StoryId::new(id),
+            format!("Iteration {name}"),
+            BoardState::Icebox,
+            Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
+            "pm".to_string(),
+        );
+        s.body = Some(
+            IterationRelationships {
+                outcome: None,
+                stories: members.iter().map(|n| StoryId::new(*n)).collect(),
+            }
+            .write_into_body(""),
+        );
+        (
+            s,
+            vec!["iteration".to_string(), "current-iteration".to_string()],
+        )
+    }
+
     async fn build_refresh(
         seeds: Vec<(Story, Vec<String>)>,
     ) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
@@ -150,17 +176,34 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
-    async fn ready_queue_empty_guard_blocks_close_when_stories_in_ready() {
+    async fn ready_queue_empty_guard_blocks_close_when_a_current_iteration_member_is_ready() {
         let (refresh, _adapter) = build_refresh(vec![
-            seed_iteration_issue(1400, "Pegasus"),
+            seed_current_iteration_issue_with_members(1400, "Pegasus", &[900]),
             seed_member(900, BoardState::Ready, None),
-            seed_member(200, BoardState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
-        assert_eq!(blockers.len(), 1, "ready-queue blocker surfaces");
+        assert_eq!(
+            blockers.len(),
+            1,
+            "a not-started current-iteration member projects Ready and surfaces as a blocker"
+        );
         assert_eq!(blockers[0].id, 900);
         assert_eq!(blockers[0].state, "ready");
+    }
+
+    #[tokio::test]
+    async fn ready_queue_empty_guard_excludes_a_stored_ready_non_member() {
+        let (refresh, _adapter) = build_refresh(vec![
+            seed_current_iteration_issue_with_members(1400, "Pegasus", &[]),
+            seed_member(900, BoardState::Ready, None),
+        ])
+        .await;
+        let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
+        assert!(
+            blockers.is_empty(),
+            "a stored-Ready story that is not a current-iteration member derives Icebox and never blocks close: {blockers:?}"
+        );
     }
 
     #[tokio::test]

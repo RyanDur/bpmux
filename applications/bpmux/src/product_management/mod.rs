@@ -46,6 +46,7 @@ pub mod iteration;
 pub mod label_codec;
 pub mod outcome;
 pub mod roadmap;
+pub mod scheduling;
 pub mod story;
 
 #[cfg(test)]
@@ -56,3 +57,5 @@ mod boundary_tests;
 mod epic_tests;
 #[cfg(test)]
 mod evidence_tests;
+#[cfg(test)]
+mod scheduling_tests;

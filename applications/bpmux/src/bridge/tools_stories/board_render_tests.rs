@@ -49,6 +49,12 @@ fn iteration_with(id: u64, story_ids: &[u64]) -> Iteration {
     }
 }
 
+fn current_iteration_with(id: u64, story_ids: &[u64]) -> Vec<Iteration> {
+    let mut iteration = iteration_with(id, story_ids);
+    iteration.is_current = true;
+    vec![iteration]
+}
+
 #[test]
 fn a_config_defined_third_middle_stage_renders_as_its_own_column_in_order() {
     let middle = vec![
@@ -150,7 +156,14 @@ fn state_scope_renders_only_the_matching_bucket() {
         state: Some(Column::Ready),
         ..BoardScope::default()
     };
-    let out = build_board_text(&[], &stories, &[], &scope, &fine(&[]), &bundled_middle());
+    let out = build_board_text(
+        &[],
+        &stories,
+        &current_iteration_with(500, &[1]),
+        &scope,
+        &fine(&[]),
+        &bundled_middle(),
+    );
     assert!(out.contains("#1 ready one"));
     assert!(!out.contains("#2 in-progress one"));
     assert!(!out.contains("IN PROGRESS"));
@@ -206,12 +219,20 @@ fn row_limit_caps_entries_but_count_reflects_full_total() {
     let stories: Vec<Story> = (0..10)
         .map(|i| story(100 + i, &format!("ready {i}"), BoardState::Ready))
         .collect();
+    let members: Vec<u64> = (0..10).map(|i| 100 + i).collect();
     let scope = BoardScope {
         state: Some(Column::Ready),
         row_limit: Some(3),
         ..BoardScope::default()
     };
-    let out = build_board_text(&[], &stories, &[], &scope, &fine(&[]), &bundled_middle());
+    let out = build_board_text(
+        &[],
+        &stories,
+        &current_iteration_with(500, &members),
+        &scope,
+        &fine(&[]),
+        &bundled_middle(),
+    );
     assert_eq!(out.matches("ready ").count(), 3);
     assert!(out.contains("(10)"));
 }

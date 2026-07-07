@@ -1,3 +1,5 @@
+use crate::product_management::iteration::Iteration;
+use crate::product_management::scheduling::projected_state;
 use crate::product_management::story::{BoardState, Story};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -73,7 +75,7 @@ impl EpicCounts {
     }
 }
 
-pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
+pub fn derive_epic_counts(children: &[&Story], iterations: &[Iteration]) -> EpicCounts {
     let mut counts = EpicCounts {
         accepted_count: 0,
         retired_count: 0,
@@ -82,7 +84,7 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
         total_count: children.len(),
     };
     for child in children {
-        match child.state() {
+        match projected_state(child, iterations) {
             BoardState::Accepted => counts.accepted_count += 1,
             BoardState::Retired => counts.retired_count += 1,
             BoardState::Icebox => counts.icebox_count += 1,
@@ -94,30 +96,44 @@ pub fn derive_epic_counts(children: &[&Story]) -> EpicCounts {
     counts
 }
 
-pub fn derive_epic_state(_epic_explicit_state: BoardState, children: &[&Story]) -> BoardState {
-    if children.is_empty() || children.iter().all(|c| c.state() == BoardState::Icebox) {
+pub fn derive_epic_state(
+    _epic_explicit_state: BoardState,
+    children: &[&Story],
+    iterations: &[Iteration],
+) -> BoardState {
+    if children.is_empty()
+        || children
+            .iter()
+            .all(|c| projected_state(c, iterations) == BoardState::Icebox)
+    {
         return BoardState::Icebox;
     }
-    let any_active = children
-        .iter()
-        .any(|c| matches!(c.state(), BoardState::InProgress | BoardState::Acceptance));
+    let any_active = children.iter().any(|c| {
+        matches!(
+            projected_state(c, iterations),
+            BoardState::InProgress | BoardState::Acceptance
+        )
+    });
     if any_active {
         return BoardState::InProgress;
     }
     let non_retired: Vec<&&Story> = children
         .iter()
-        .filter(|c| c.state() != BoardState::Retired)
+        .filter(|c| projected_state(c, iterations) != BoardState::Retired)
         .collect();
     if non_retired.is_empty() {
         return BoardState::Retired;
     }
     if non_retired
         .iter()
-        .all(|c| c.state() == BoardState::Accepted)
+        .all(|c| projected_state(c, iterations) == BoardState::Accepted)
     {
         return BoardState::Accepted;
     }
-    if children.iter().any(|c| c.state() == BoardState::Ready) {
+    if children
+        .iter()
+        .any(|c| projected_state(c, iterations) == BoardState::Ready)
+    {
         return BoardState::Ready;
     }
     BoardState::Icebox

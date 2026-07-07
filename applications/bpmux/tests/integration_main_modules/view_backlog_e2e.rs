@@ -69,12 +69,19 @@ fn view_backlog_returns_zero_counts_for_empty_board() {
 
 #[test]
 fn view_backlog_reflects_seeded_states_via_fixture() {
+    use bpmux::integrations::github::relationships::{IterationRelationships, Relationships};
+    use bpmux::product_management::story::StoryId;
     use harness::mock_gh::issue_json;
     use httpmock::{Method, MockServer};
     use serde_json::Value;
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
+    let iteration_body = IterationRelationships {
+        outcome: None,
+        stories: vec![StoryId::new(801)],
+    }
+    .write_into_body("## Iteration Vela\n");
     server.mock(|when, then| {
         when.method(Method::GET).path("/repos/acme/bpmux/issues");
         then.status(200)
@@ -84,6 +91,12 @@ fn view_backlog_reflects_seeded_states_via_fixture() {
                     issue_json(801, "Pre-seeded ready", &["ready"], None),
                     issue_json(802, "Pre-seeded in-progress", &["in progress"], None),
                     issue_json(803, "Pre-seeded delivered", &["delivered"], None),
+                    issue_json(
+                        900,
+                        "Iteration Vela",
+                        &["iteration", "current-iteration"],
+                        Some(&iteration_body),
+                    ),
                 ])
                 .to_string(),
             );

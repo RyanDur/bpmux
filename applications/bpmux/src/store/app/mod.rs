@@ -19,6 +19,8 @@ pub use owner_park::OwnerParkListener;
 
 #[cfg(test)]
 mod board_placement_tests;
+#[cfg(test)]
+mod owner_park_tests;
 
 #[derive(Default, Clone)]
 pub struct AppState {

@@ -7,14 +7,39 @@ use chrono::{TimeZone, Utc};
 use super::get_story::handle_get_story;
 use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::Iteration;
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
 use crate::store::SeededStore;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
+fn current_iteration_of(members: &[u64]) -> Iteration {
+    Iteration {
+        id: IterationId::new(9000),
+        title: String::new(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: members.iter().map(|n| StoryId::new(*n)).collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    }
+}
+
 async fn seeded_orchestrator(
+    seeds: Vec<(Story, Vec<String>)>,
+    gates: Vec<(u64, Vec<CastVerdict>)>,
+) -> (SeededStore, Arc<dyn RefreshDriver>) {
+    seeded_orchestrator_membered(seeds, gates, &[]).await
+}
+
+async fn seeded_orchestrator_membered(
     mut seeds: Vec<(Story, Vec<String>)>,
     gates: Vec<(u64, Vec<CastVerdict>)>,
+    members: &[u64],
 ) -> (SeededStore, Arc<dyn RefreshDriver>) {
     for (n, gs) in &gates {
         if let Some((s, _)) = seeds.iter_mut().find(|(s, _)| s.id == StoryId::new(*n)) {
@@ -30,11 +55,14 @@ async fn seeded_orchestrator(
         adapter.seed_verdicts(*n, gs.clone());
     }
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    let iterations: Vec<Iteration> = seeds
+    let mut iterations: Vec<Iteration> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
+    if !members.is_empty() {
+        iterations.push(current_iteration_of(members));
+    }
     let handle = SeededStore::new(vec![], iterations, vec![]);
     handle.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
@@ -96,7 +124,8 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
             payload: Some("channelKeyRef is not legitimate".into()),
         },
     ];
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(443, gates)]).await;
+    let (_store, orch) =
+        seeded_orchestrator_membered(vec![(story, Vec::new())], vec![(443, gates)], &[443]).await;
     let args = serde_json::json!({"id": 443});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -181,7 +210,8 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
             payload: Some("user-story not satisfied; reshape needed".into()),
         },
     ];
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(700, gates)]).await;
+    let (_store, orch) =
+        seeded_orchestrator_membered(vec![(story, Vec::new())], vec![(700, gates)], &[700]).await;
     let args = serde_json::json!({"id": 700});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -290,7 +320,8 @@ async fn output_derives_is_closed_from_workflow_conclusion() {
 #[tokio::test]
 async fn stored_gh_mirror_never_reaches_the_wire_for_an_active_story() {
     let story = make_story(102, BoardState::Ready, Some("body"));
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
+    let (_store, orch) =
+        seeded_orchestrator_membered(vec![(story, Vec::new())], vec![], &[102]).await;
     let args = serde_json::json!({"id": 102});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -327,7 +358,7 @@ async fn surfaces_typed_label_chips_and_never_state_labels() {
         "ready".to_string(),
         "desk-check-fail".to_string(),
     ];
-    let (_store, orch) = seeded_orchestrator(vec![(story, labels)], vec![]).await;
+    let (_store, orch) = seeded_orchestrator_membered(vec![(story, labels)], vec![], &[1207]).await;
     let args = serde_json::json!({"id": 1207});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
         .await
@@ -654,7 +685,12 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
     adapter.seed_stories(vec![story]);
     adapter.seed_verdicts(1524, gates);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    crate::store::bind_seeded_refresh(
+        &orchestrator,
+        vec![],
+        vec![current_iteration_of(&[1524])],
+        vec![],
+    );
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 1524});

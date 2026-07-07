@@ -90,9 +90,10 @@ pub(in crate::bridge) async fn handle_get_story(
         }
     }
     let fine = r.story_fine_stage(&story);
-    let needs_gates = matches!(&story.state, BoardState::Ready)
-        || fine == Some(Stage::Dev)
-        || story.is_concluded();
+    let iterations = r.iterations();
+    let projected = crate::product_management::scheduling::projected_state(&story, &iterations);
+    let needs_gates =
+        matches!(projected, BoardState::Ready) || fine == Some(Stage::Dev) || story.is_concluded();
     if needs_gates && story.verdicts.is_none() {
         match r.fetch_verdicts(id).await {
             Ok(_) => {
@@ -119,7 +120,7 @@ pub(in crate::bridge) async fn handle_get_story(
             Verdict::Fail { step } if step.as_str() == "desk-check" => "in progress".to_string(),
             _ => "ready".to_string(),
         })
-        .unwrap_or_else(|| state_label(&story.state, held.as_ref()));
+        .unwrap_or_else(|| state_label(&projected, held.as_ref()));
     if needs_gates
         && let Some(gates) = story.verdicts.as_ref()
         && let Some(ctx) = rework_context_from_gates(gates)

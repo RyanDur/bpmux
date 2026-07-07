@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use bpmux::integrations::github::mapper::state_from_labels;
+use bpmux::product_management::iteration::{Iteration, IterationId};
 use bpmux::product_management::story::{BoardState, Stage, Story, StoryId};
 use bpmux::view::board::arrangement::{Column, column_of};
 use chrono::Utc;
@@ -13,6 +14,23 @@ fn story_in(state: BoardState) -> Story {
         Utc::now(),
         "pm".to_string(),
     )
+}
+
+fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
+    vec![Iteration {
+        id: IterationId::new(9000),
+        title: String::new(),
+        body: None,
+        filed_at: Utc::now(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: members.iter().map(|n| StoryId::new(*n)).collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    }]
 }
 
 #[test]
@@ -58,13 +76,20 @@ fn stacked_delivered_ready_for_accept_decodes_to_delivered() {
 
 #[test]
 fn ready_state_buckets_to_ready_column() {
-    assert_eq!(column_of(&story_in(BoardState::Ready), None), Column::Ready);
+    assert_eq!(
+        column_of(
+            &story_in(BoardState::Ready),
+            None,
+            &current_iteration_of(&[1])
+        ),
+        Column::Ready
+    );
 }
 
 #[test]
 fn in_progress_state_buckets_to_in_progress_column() {
     assert_eq!(
-        column_of(&story_in(BoardState::InProgress), None),
+        column_of(&story_in(BoardState::InProgress), None, &[]),
         Column::Middle(Stage::Dev.id())
     );
 }
@@ -72,7 +97,7 @@ fn in_progress_state_buckets_to_in_progress_column() {
 #[test]
 fn retired_state_buckets_to_retired_column() {
     assert_eq!(
-        column_of(&story_in(BoardState::Retired), None),
+        column_of(&story_in(BoardState::Retired), None, &[]),
         Column::Retired,
         "concluded work lands in the RETIRED column so the ACCEPTED success-narrative stays clean"
     );

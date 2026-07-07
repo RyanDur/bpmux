@@ -85,7 +85,8 @@ pub(crate) async fn dispatch_view_backlog(
 ) -> Result<String, String> {
     let r = require_refresh(refresh, "view_backlog")?;
     let stories = r.all_stories();
-    let summary = tools::build_backlog_summary(&stories);
+    let iterations = r.iterations();
+    let summary = tools::build_backlog_summary(&stories, &iterations);
     serde_json::to_string(&summary).map_err(|e| format!("serialize summary: {e}"))
 }
 

@@ -143,6 +143,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     pub async fn reconcile_dual_state_labels(&self) -> Result<usize, SyncError> {
         let stories = self.read_all_stories();
+        let iterations = self.read_iterations();
         let mut repairs = 0usize;
         for story in stories {
             let labels = match self.adapter.fetch_story_labels(story.id.value()).await {
@@ -150,7 +151,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 Err(_) => continue,
             };
             let fine = self.read_story_fine_stage(&story);
-            let stale = stale_state_labels_for(&story, &labels, fine);
+            let stale = stale_state_labels_for(&story, &labels, fine, &iterations);
             for stale_label in stale {
                 let meta = crate::product_management::story::events::EventMeta {
                     actor: "bpmux:reconcile".to_string(),

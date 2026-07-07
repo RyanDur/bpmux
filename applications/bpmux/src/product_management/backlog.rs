@@ -22,7 +22,8 @@ pub fn backlog_column(story: &Story, iterations: &[Iteration]) -> Option<Backlog
             );
             if on_board && member_of_current_iteration(story.id, iterations) {
                 Some(BacklogColumn::Current)
-            } else if member_of_any_iteration(story.id, iterations) {
+            } else if crate::product_management::scheduling::in_any_iteration(story.id, iterations)
+            {
                 Some(BacklogColumn::ReadyForWork)
             } else {
                 Some(BacklogColumn::Icebox)
@@ -48,11 +49,5 @@ fn member_of_current_iteration(id: StoryId, iterations: &[Iteration]) -> bool {
     iterations
         .iter()
         .filter(|iteration| iteration.is_current)
-        .any(|iteration| iteration.stories.contains(&id))
-}
-
-fn member_of_any_iteration(id: StoryId, iterations: &[Iteration]) -> bool {
-    iterations
-        .iter()
         .any(|iteration| iteration.stories.contains(&id))
 }

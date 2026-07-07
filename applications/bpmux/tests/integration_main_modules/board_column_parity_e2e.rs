@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use bpmux::product_management::iteration::{Iteration, IterationId};
 use bpmux::product_management::story::{BoardState, Stage, Story, StoryId};
 use bpmux::view::board::arrangement::{Column, column_of};
 use chrono::Utc;
@@ -12,6 +13,23 @@ fn story_in(state: BoardState) -> Story {
         Utc::now(),
         "pm".to_string(),
     )
+}
+
+fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
+    vec![Iteration {
+        id: IterationId::new(9000),
+        title: String::new(),
+        body: None,
+        filed_at: Utc::now(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: members.iter().map(|n| StoryId::new(*n)).collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    }]
 }
 
 /// Truth-table mirror of the renderer's `columnFor` from
@@ -55,20 +73,35 @@ fn derived_gh_closed(state: &BoardState) -> bool {
 
 #[test]
 fn renderer_column_projection_agrees_with_rust_over_the_reachable_wire_space() {
-    let reachable: [(BoardState, Option<Stage>, &str); 7] = [
-        (BoardState::Icebox, None, "icebox"),
-        (BoardState::Ready, None, "ready"),
-        (BoardState::InProgress, Some(Stage::Dev), "in-progress"),
-        (BoardState::InProgress, Some(Stage::DeskCheck), "desk-check"),
-        (BoardState::Acceptance, None, "acceptance"),
-        (BoardState::Accepted, None, "accepted"),
-        (BoardState::Retired, None, "retired"),
+    let non_member: Vec<Iteration> = Vec::new();
+    let member = current_iteration_of(&[1]);
+    let reachable: [(BoardState, Option<Stage>, &[Iteration], &str); 7] = [
+        (BoardState::Icebox, None, &non_member, "icebox"),
+        (BoardState::Ready, None, &member, "ready"),
+        (
+            BoardState::InProgress,
+            Some(Stage::Dev),
+            &non_member,
+            "in-progress",
+        ),
+        (
+            BoardState::InProgress,
+            Some(Stage::DeskCheck),
+            &non_member,
+            "desk-check",
+        ),
+        (BoardState::Acceptance, None, &non_member, "acceptance"),
+        (BoardState::Accepted, None, &non_member, "accepted"),
+        (BoardState::Retired, None, &non_member, "retired"),
     ];
-    for (state, fine, wire_state) in reachable {
+    for (state, fine, iterations, wire_state) in reachable {
         let is_closed = derived_gh_closed(&state);
         let renderer = renderer_column_for(wire_state, is_closed);
-        let rust =
-            rust_column_as_wire_str(&column_of(&story_in(state.clone()), fine.map(Stage::id)));
+        let rust = rust_column_as_wire_str(&column_of(
+            &story_in(state.clone()),
+            fine.map(Stage::id),
+            iterations,
+        ));
         assert_eq!(
             rust, renderer,
             "drift: wire state={wire_state:?} gh_closed={is_closed} — Rust column_of = {rust:?}, renderer columnFor (mirrored) = {renderer:?}"
@@ -86,28 +119,53 @@ fn renderer_legacy_wire_states_still_bucket_into_live_columns() {
 #[test]
 fn open_workflow_states_bucket_one_to_one_to_their_columns() {
     assert_eq!(
-        column_of(&story_in(BoardState::Icebox), None),
+        column_of(&story_in(BoardState::Icebox), None, &[]),
         Column::Icebox
     );
-    assert_eq!(column_of(&story_in(BoardState::Ready), None), Column::Ready);
     assert_eq!(
-        column_of(&story_in(BoardState::InProgress), None),
+        column_of(
+            &story_in(BoardState::Ready),
+            None,
+            &current_iteration_of(&[1])
+        ),
+        Column::Ready
+    );
+    assert_eq!(
+        column_of(&story_in(BoardState::InProgress), None, &[]),
         Column::Middle(Stage::Dev.id())
     );
     assert_eq!(
-        column_of(&story_in(BoardState::Acceptance), None),
+        column_of(&story_in(BoardState::Acceptance), None, &[]),
         Column::Acceptance
+    );
+}
+
+#[test]
+fn a_stored_ready_story_outside_the_current_iteration_buckets_to_icebox() {
+    assert_eq!(
+        column_of(
+            &story_in(BoardState::Ready),
+            None,
+            &current_iteration_of(&[])
+        ),
+        Column::Icebox,
+        "ready-ness derives from current-iteration membership — a stored-Ready non-member is icebox on the board"
+    );
+    assert_eq!(
+        column_of(&story_in(BoardState::Ready), None, &[]),
+        Column::Icebox,
+        "with no iteration at all, nothing is ready"
     );
 }
 
 #[test]
 fn terminal_states_bucket_to_their_own_columns() {
     assert_eq!(
-        column_of(&story_in(BoardState::Accepted), None),
+        column_of(&story_in(BoardState::Accepted), None, &[]),
         Column::Accepted
     );
     assert_eq!(
-        column_of(&story_in(BoardState::Retired), None),
+        column_of(&story_in(BoardState::Retired), None, &[]),
         Column::Retired
     );
 }

@@ -1,5 +1,7 @@
 use crate::harness::mock_gh::issue_json;
 use crate::harness::pty::TestBpmux;
+use bpmux::integrations::github::relationships::{IterationRelationships, Relationships};
+use bpmux::product_management::story::StoryId;
 use httpmock::{Method, MockServer};
 use serde_json::Value;
 
@@ -7,11 +9,22 @@ fn seeded_bpmux() -> (TestBpmux, MockServer) {
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
     let issue = issue_json(1234, "[Feature] test ready story", &["ready"], None);
+    let iteration_body = IterationRelationships {
+        outcome: None,
+        stories: vec![StoryId::new(1234)],
+    }
+    .write_into_body("## Iteration Vela\n");
+    let iteration_issue = issue_json(
+        900,
+        "Iteration Vela",
+        &["iteration", "current-iteration"],
+        Some(&iteration_body),
+    );
     server.mock(|when, then| {
         when.method(Method::GET).path("/repos/acme/bpmux/issues");
         then.status(200)
             .header("content-type", "application/json")
-            .body(Value::Array(vec![issue]).to_string());
+            .body(Value::Array(vec![issue, iteration_issue]).to_string());
     });
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     (bpmux, server)

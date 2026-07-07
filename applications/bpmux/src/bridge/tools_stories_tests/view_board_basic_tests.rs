@@ -107,6 +107,7 @@ async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log()
 #[tokio::test]
 async fn view_board_buckets_stories_by_story_state() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
+    use crate::product_management::iteration::{Iteration, IterationId};
     use crate::product_management::story::{BoardState, Stage, Story};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -154,7 +155,21 @@ async fn view_board_buckets_stories_by_story_state() {
     ];
     adapter.seed_stories(stories);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let current = Iteration {
+        id: IterationId::new(900),
+        title: String::new(),
+        body: None,
+        filed_at: ts,
+        filed_by: "pm".into(),
+        outcome: None,
+        iteration_order: None,
+        stories: vec![StoryId::new(102)],
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    };
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![current], vec![]);
     orch.refresh_all().await.unwrap();
 
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))

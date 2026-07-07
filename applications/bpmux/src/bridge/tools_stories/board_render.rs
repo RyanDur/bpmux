@@ -57,6 +57,7 @@ pub(in crate::bridge) fn build_board_text(
             .iter()
             .filter(|s| in_scope_iteration(s))
             .map(|s| (s, fine.get(&s.id).cloned())),
+        iterations,
     );
     let column_section = |column: &Column| -> (usize, Vec<String>) {
         let mut entries: Vec<(u64, String)> = board
@@ -84,10 +85,12 @@ pub(in crate::bridge) fn build_board_text(
                     .iter()
                     .filter(|c| c.parent_epic() == Some(epic.id))
                     .collect();
-                let counts = crate::product_management::epic::derive_epic_counts(&children);
+                let counts =
+                    crate::product_management::epic::derive_epic_counts(&children, iterations);
                 let derived = crate::product_management::epic::derive_epic_state(
                     epic.state.clone(),
                     &children,
+                    iterations,
                 );
                 out.push_str(&format!(
                     "  #{} [{}] {} ({total} children: {accepted} accepted, {retired} retired, {active} active, {icebox} icebox)\n",

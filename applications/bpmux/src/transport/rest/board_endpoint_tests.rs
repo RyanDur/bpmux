@@ -137,7 +137,21 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
         "pm".into(),
     )]);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
-    crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
+    let current = Iteration {
+        id: IterationId::new(9000),
+        title: "Iteration Vela".to_string(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        filed_by: "pm".into(),
+        outcome: None,
+        iteration_order: None,
+        stories: vec![StoryId::new(9100)],
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    };
+    crate::store::bind_seeded_refresh(&refresh, vec![], vec![current], vec![]);
     refresh.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();

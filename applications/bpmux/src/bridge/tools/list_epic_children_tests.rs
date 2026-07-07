@@ -7,8 +7,10 @@ use crate::integrations::github::mapper::{
 };
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::Epic;
-use crate::product_management::story::{BoardState, Story, StoryKind};
+use crate::product_management::iteration::{Iteration, IterationId};
+use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
+use chrono::{TimeZone, Utc};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -50,6 +52,33 @@ fn child_without_parent(number: u64) -> (Story, Vec<String>) {
 }
 
 async fn store_with(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+    store_with_current_members(seeds, &[]).await
+}
+
+fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
+    if members.is_empty() {
+        return Vec::new();
+    }
+    vec![Iteration {
+        id: IterationId::new(9000),
+        title: String::new(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: members.iter().map(|n| StoryId::new(*n)).collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    }]
+}
+
+async fn store_with_current_members(
+    seeds: Vec<(Story, Vec<String>)>,
+    members: &[u64],
+) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -61,7 +90,7 @@ async fn store_with(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> 
         .filter(|(story, labels)| is_epic_story(story, labels))
         .map(|(story, _)| decode_epic_from_story(story, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], epics);
+    crate::store::bind_seeded_refresh(&orch, vec![], current_iteration_of(members), epics);
     orch.refresh_all().await.unwrap();
     orch
 }
@@ -83,10 +112,13 @@ async fn returns_zero_children_for_empty_epic() {
 
 #[tokio::test]
 async fn returns_single_child_with_parent_epic_match() {
-    let store = store_with(vec![
-        epic(100),
-        child(101, 100, StoryKind::Feature, BoardState::Ready),
-    ])
+    let store = store_with_current_members(
+        vec![
+            epic(100),
+            child(101, 100, StoryKind::Feature, BoardState::Ready),
+        ],
+        &[101],
+    )
     .await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();

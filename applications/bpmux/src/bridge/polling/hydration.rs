@@ -5,13 +5,14 @@ const HYDRATION_MAX_PER_TICK: usize = 3;
 pub(crate) fn select_stories_to_hydrate(
     stories: &[crate::product_management::story::Story],
     limit: usize,
+    iterations: &[crate::product_management::iteration::Iteration],
 ) -> Vec<u64> {
     use crate::product_management::story::BoardState;
     stories
         .iter()
         .filter(|s| {
             matches!(
-                s.state,
+                crate::product_management::scheduling::projected_state(s, iterations),
                 BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
             ) && s.body.is_none()
         })
@@ -23,13 +24,14 @@ pub(crate) fn select_stories_to_hydrate(
 pub(crate) fn select_stories_to_revalidate(
     stories: &[crate::product_management::story::Story],
     limit: usize,
+    iterations: &[crate::product_management::iteration::Iteration],
 ) -> Vec<(u64, Option<String>)> {
     use crate::product_management::story::BoardState;
     stories
         .iter()
         .filter(|s| {
             matches!(
-                s.state,
+                crate::product_management::scheduling::projected_state(s, iterations),
                 BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
             ) && s.body.is_some()
         })
@@ -66,8 +68,10 @@ pub async fn run_hydration_loop_cancellable(
             continue;
         }
         let stories = refresh.all_stories();
-        let to_hydrate = select_stories_to_hydrate(&stories, HYDRATION_MAX_PER_TICK);
-        let to_revalidate = select_stories_to_revalidate(&stories, HYDRATION_MAX_PER_TICK);
+        let iterations = refresh.iterations();
+        let to_hydrate = select_stories_to_hydrate(&stories, HYDRATION_MAX_PER_TICK, &iterations);
+        let to_revalidate =
+            select_stories_to_revalidate(&stories, HYDRATION_MAX_PER_TICK, &iterations);
         if to_hydrate.is_empty() && to_revalidate.is_empty() {
             crate::diag::log_diag("bridge: hydration tick: nothing to hydrate or revalidate");
             continue;

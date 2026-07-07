@@ -6,12 +6,30 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
+use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::bind_seeded_refresh;
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
+
+fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
+    vec![Iteration {
+        id: IterationId::new(9000),
+        title: String::new(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: members.iter().map(|n| StoryId::new(*n)).collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    }]
+}
 
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
@@ -73,4 +91,42 @@ async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
     let repairs = orch.reconcile_dual_state_labels().await.unwrap();
     assert_eq!(repairs, 0, "clean labels should fire 0 repairs");
     assert_eq!(adapter.pushed_events().len(), 0);
+}
+
+#[tokio::test]
+async fn reconcile_keeps_the_ready_label_for_a_projected_ready_member_stored_icebox() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(452, BoardState::Icebox)]);
+    adapter.seed_labels(452, vec!["ready".to_string(), "feature".to_string()]);
+    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+    bind_seeded_refresh(&orch_dyn, vec![], current_iteration_of(&[452]), vec![]);
+    orch.ingest_once().await.unwrap();
+    let repairs = orch.reconcile_dual_state_labels().await.unwrap();
+    assert_eq!(
+        repairs, 0,
+        "a current-iteration member projects Ready, so its 'ready' label is canonical, not stale — stripping it here would flap the label a transition just pushed"
+    );
+    assert_eq!(adapter.pushed_events().len(), 0);
+}
+
+#[tokio::test]
+async fn reconcile_marks_the_ready_label_stale_for_a_stored_ready_non_member() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(453, BoardState::Ready)]);
+    adapter.seed_labels(453, vec!["ready".to_string(), "feature".to_string()]);
+    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+    bind_seeded_refresh(&orch_dyn, vec![], current_iteration_of(&[]), vec![]);
+    orch.ingest_once().await.unwrap();
+    let repairs = orch.reconcile_dual_state_labels().await.unwrap();
+    assert_eq!(
+        repairs, 1,
+        "a stored-Ready non-member projects Icebox, so its 'ready' label is stale and gets swept — self-healing per design-doc divergence #1"
+    );
+    let pushed = adapter.pushed_events();
+    assert!(matches!(
+        &pushed[0],
+        StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(453) && label == "ready"
+    ));
 }
