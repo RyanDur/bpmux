@@ -110,36 +110,6 @@ fn story_created_event_carries_story_type() {
 }
 
 #[test]
-fn labels_refreshed_assigns_the_ready_order_field_from_adapter_decoded_fields() {
-    let store = seeded();
-    created(&store, 18, "orderable", Work::NotStarted);
-    assert_eq!(
-        story_at(&store, 18).unwrap().ready_order(),
-        None,
-        "a freshly created story has no ready-order yet"
-    );
-    apply(
-        &store,
-        StoryEvent::new(
-            meta("pm", 2026, "local"),
-            StoryId::new(18),
-            StoryEventKind::LabelsRefreshed {
-                fields: LabelDerivedFields {
-                    raw_labels: vec!["ready-order.3".to_string()],
-                    ready_order: Some(3),
-                    ..Default::default()
-                },
-            },
-        ),
-    );
-    assert_eq!(
-        story_at(&store, 18).unwrap().ready_order(),
-        Some(3),
-        "the adapter-decoded ready-order lands in the typed field via the LabelsRefreshed resync; apply_raw_labels no longer re-derives it from raw_labels"
-    );
-}
-
-#[test]
 fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transitioned() {
     let store = seeded();
     seed(&store, vec![minimal(77, "membered", Work::InProgress)]);
@@ -158,7 +128,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                     acceptor: Some(Acceptor::Dev),
                     parent_epic: Some(EpicId::new(7)),
                     tags: Vec::new(),
-                    ready_order: None,
                     iteration_slot: None,
                 },
             },

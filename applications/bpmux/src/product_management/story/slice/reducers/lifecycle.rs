@@ -27,7 +27,6 @@ pub(super) fn apply_story_created(
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
-        ready_order: None,
         iteration_slot: None,
     };
     w.insert(StoryKey::Saved(id), story);

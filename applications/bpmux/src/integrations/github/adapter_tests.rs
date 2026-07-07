@@ -45,11 +45,10 @@ fn is_iteration_position_label_rejects_iteration_without_position_suffix() {
 }
 
 #[test]
-fn is_position_label_covers_ready_order_and_iteration_position() {
+fn is_position_label_drops_legacy_ready_order_and_iteration_position_labels() {
     assert!(is_position_label("ready-order.100"));
     assert!(is_position_label("ready-order.42"));
     assert!(is_position_label("iteration-Cassiopeia.100"));
-    assert!(!is_position_label("ready-order.foo"));
     assert!(!is_position_label("ready"));
     assert!(!is_position_label("blocked"));
 }

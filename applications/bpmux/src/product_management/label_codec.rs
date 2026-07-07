@@ -2,14 +2,6 @@ use crate::product_management::iteration::label::IterationLabelParts;
 use crate::product_management::story::{Acceptor, Tag};
 
 pub trait LabelCodec {
-    fn decode_ready_order(&self, label: &str) -> Option<u32>;
-
-    fn is_ready_order_label(&self, label: &str) -> bool {
-        self.decode_ready_order(label).is_some()
-    }
-
-    fn encode_ready_order(&self, position: u32) -> String;
-
     fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts>;
 
     fn is_iteration_label(&self, label: &str) -> bool {

@@ -16,8 +16,8 @@ use crate::sync::{MutationId, QueuedEvent, load_outbox_from_disk};
 const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":null,"last_classification":null}"#;
 const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":"desk-check"}},"pre_state":null,"last_classification":null}"#;
 const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}},"pre_state":null,"last_classification":null}"#;
-const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"ready_order":null,"iteration_slot":null}}},"pre_state":null,"last_classification":null}"#;
-const FIX_QUEUED_WITH_PRESTATE: &str = r#"{"id":42,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"ready_order":null,"iteration_slot":null},"last_classification":null}"#;
+const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"iteration_slot":null}}},"pre_state":null,"last_classification":null}"#;
+const FIX_QUEUED_WITH_PRESTATE: &str = r#"{"id":42,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"iteration_slot":null},"last_classification":null}"#;
 const FIX_LEGACY_BARE_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}"#;
 
 const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress"}},"pre_state":null,"last_classification":null}"#;
@@ -86,6 +86,17 @@ fn queued_story_refreshed_row_round_trips_byte_identically() {
 #[test]
 fn queued_row_with_pre_state_round_trips_byte_identically() {
     assert_byte_round_trip(FIX_QUEUED_WITH_PRESTATE);
+}
+
+#[test]
+fn a_legacy_row_carrying_the_retired_ready_order_key_still_deserializes_into_a_story() {
+    let legacy = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"ready_order":100,"iteration_slot":null}}},"pre_state":null,"last_classification":null}"#;
+    let parsed: QueuedEvent =
+        serde_json::from_str(legacy).expect("a legacy row carrying the retired key still loads");
+    match &parsed.event.kind {
+        StoryEventKind::StoryRefreshed { story } => assert_eq!(**story, fixture_story()),
+        other => panic!("fixture is a StoryRefreshed row; got {other:?}"),
+    }
 }
 
 #[test]
@@ -352,7 +363,6 @@ fn every_variant() -> Vec<StoryEvent> {
                     acceptor: Some(Acceptor::Team),
                     parent_epic: Some(EpicId::new(9)),
                     tags: vec![Tag::DeskCheckFail],
-                    ready_order: Some(100),
                     iteration_slot: None,
                 },
             },

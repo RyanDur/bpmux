@@ -12,14 +12,6 @@ mod tests;
 pub struct GhLabelCodec;
 
 impl LabelCodec for GhLabelCodec {
-    fn decode_ready_order(&self, label: &str) -> Option<u32> {
-        label.strip_prefix("ready-order.")?.parse().ok()
-    }
-
-    fn encode_ready_order(&self, position: u32) -> String {
-        format!("ready-order.{position}")
-    }
-
     fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts> {
         let rest = label.strip_prefix("iteration-")?;
         let dot_idx = rest.rfind('.')?;

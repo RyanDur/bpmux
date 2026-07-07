@@ -24,14 +24,6 @@ mod codec_injection_substrate {
     struct StubLabelCodec;
 
     impl LabelCodec for StubLabelCodec {
-        fn decode_ready_order(&self, label: &str) -> Option<u32> {
-            label.strip_prefix("rdy:").and_then(|s| s.parse().ok())
-        }
-
-        fn encode_ready_order(&self, position: u32) -> String {
-            format!("rdy:{position}")
-        }
-
         fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts> {
             let rest = label.strip_prefix("STUB|")?;
             let (name, pos) = rest.split_once(':')?;

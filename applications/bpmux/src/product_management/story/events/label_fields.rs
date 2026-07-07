@@ -13,7 +13,5 @@ pub struct LabelDerivedFields {
     #[serde(default)]
     pub tags: Vec<Tag>,
     #[serde(default)]
-    pub ready_order: Option<u32>,
-    #[serde(default)]
     pub iteration_slot: Option<IterationSlot>,
 }

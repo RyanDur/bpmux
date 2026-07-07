@@ -24,7 +24,6 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
             {"name": "iteration-dev-ok.dev"},
             {"name": "horizon.next"},
             {"name": "parent-outcome-#700.2"},
-            {"name": "ready-order.5"},
             {"name": "iteration-Unscheduled.7"},
         ],
         "created_at": "2026-05-15T01:00:00+00:00",
@@ -56,7 +55,6 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
         acceptor,
         parent_epic,
         tags,
-        ready_order,
         iteration_slot,
     } = decoded;
 
@@ -80,11 +78,6 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
         *tags,
         vec![crate::product_management::story::Tag::DeskCheckFail],
         "tags must decode from the desk-check-fail label into the stored domain field at ingest"
-    );
-    assert_eq!(
-        *ready_order,
-        Some(5),
-        "ready_order must decode from the ready-order.N label into the stored domain field at ingest"
     );
     assert_eq!(
         *iteration_slot,

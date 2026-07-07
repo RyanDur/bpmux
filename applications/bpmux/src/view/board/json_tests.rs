@@ -22,7 +22,6 @@ fn sample_story(state: Work, story_type: StoryKind) -> Story {
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
-        ready_order: None,
         iteration_slot: None,
     }
 }
@@ -272,6 +271,36 @@ fn story_to_board_json_labels_include_desk_check_fail_tag() {
 }
 
 #[test]
+fn a_legacy_ready_order_label_ingested_does_not_resurface_on_the_board_wire() {
+    let json = serde_json::json!({
+        "number": 8,
+        "title": "[Feature] legacy ready-order carrier",
+        "state": "open",
+        "gh_state": "open",
+        "labels": [{"name": "feature"}, {"name": "ready-order.5"}],
+        "created_at": "2026-07-07T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    let story = crate::integrations::github::mapper::decode_story_metadata(&json)
+        .expect("issue JSON must decode");
+    assert!(
+        story.tags().is_empty(),
+        "a legacy ready-order label must never land in the typed tags surface"
+    );
+    let wire = story_to_board_json(&GhLabelCodec, &story, story.state.as_str());
+    let labels: Vec<&str> = wire["labels"]
+        .as_array()
+        .expect("labels array")
+        .iter()
+        .filter_map(|l| l.as_str())
+        .collect();
+    assert!(
+        !labels.iter().any(|l| l.starts_with("ready-order.")),
+        "a legacy ready-order label is dropped at ingest and never round-trips back onto the board wire: {labels:?}"
+    );
+}
+
+#[test]
 fn story_to_board_json_parent_epic_emits_field_and_label() {
     let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
     s.parent_epic = Some(EpicId::new(7));
@@ -328,9 +357,6 @@ fn json_str<'a>(json: &'a serde_json::Value, key: &str) -> &'a str {
 struct StubLabelCodec;
 
 impl crate::product_management::label_codec::LabelCodec for StubLabelCodec {
-    fn decode_ready_order(&self, label: &str) -> Option<u32> {
-        label.strip_prefix("rdy:")?.parse().ok()
-    }
     fn decode_iteration(
         &self,
         label: &str,
@@ -353,9 +379,6 @@ impl crate::product_management::label_codec::LabelCodec for StubLabelCodec {
     }
     fn encode_parent_epic(&self, issue_number: u64) -> String {
         format!("parent|{issue_number}")
-    }
-    fn encode_ready_order(&self, position: u32) -> String {
-        format!("rdy:{position}")
     }
     fn encode_iteration(&self, name: &str, position: u32) -> String {
         format!("iter|{name}:{position}")
@@ -385,7 +408,6 @@ impl crate::product_management::label_codec::LabelCodec for StubLabelCodec {
 fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
     let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
     s.parent_epic = Some(EpicId::new(42));
-    s.ready_order = Some(100);
     s.iteration_slot = Some(crate::product_management::story::IterationSlot {
         name: "Pegasus".to_string(),
         position: 200,
@@ -404,9 +426,5 @@ fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
     assert!(
         labels.contains(&"iter|Pegasus:200"),
         "stub-iteration-like label forwarded: {labels:?}"
-    );
-    assert!(
-        labels.contains(&"rdy:100"),
-        "stub ready-order forwarded: {labels:?}"
     );
 }

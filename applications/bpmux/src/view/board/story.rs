@@ -53,9 +53,6 @@ pub(crate) fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String
     if let Some(epic) = story.parent_epic() {
         labels.push(codec.encode_parent_epic(epic.value()));
     }
-    if let Some(position) = story.ready_order() {
-        labels.push(codec.encode_ready_order(position));
-    }
     if let Some(slot) = story.iteration_slot() {
         labels.push(codec.encode_iteration(&slot.name, slot.position));
     }

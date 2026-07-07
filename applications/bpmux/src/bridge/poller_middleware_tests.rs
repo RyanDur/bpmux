@@ -233,7 +233,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     handle.bind_refresh(&orch);
     let seed = seed_minimal(9200, Work::InProgress);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
-    let labels = vec!["in progress".to_string(), "ready-order.300".to_string()];
+    let labels = vec!["in progress".to_string(), "awaiting owner".to_string()];
     handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
         EventMeta {
             actor: "test".to_string(),
@@ -247,10 +247,10 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     ))));
     let after = orch.story(9200).expect("story present");
     assert_eq!(
-        after.ready_order(),
-        Some(300),
+        after.acceptor(),
+        Some(crate::product_management::story::Acceptor::Owner),
         "a label refresh must adopt the adapter-decoded typed fields so derived selectors read fresh values, not the stale pre-refresh story; got {:?}",
-        after.ready_order()
+        after.acceptor()
     );
 }
 

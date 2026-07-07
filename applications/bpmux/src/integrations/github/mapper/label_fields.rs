@@ -27,16 +27,6 @@ pub fn iteration_order_from_labels(labels: &[String]) -> Option<u32> {
         .min()
 }
 
-pub fn ready_order_from_labels(labels: &[String]) -> Option<u32> {
-    use crate::product_management::label_codec::LabelCodec;
-    labels
-        .iter()
-        .filter_map(|l| {
-            crate::integrations::github::gh_label_codec::GhLabelCodec.decode_ready_order(l)
-        })
-        .min()
-}
-
 pub fn iteration_review_closers_from_labels(labels: &[String]) -> Vec<String> {
     labels
         .iter()
@@ -90,9 +80,7 @@ fn is_iteration_position_label(label: &str) -> bool {
 }
 
 pub(crate) fn is_position_label(label: &str) -> bool {
-    use crate::product_management::label_codec::LabelCodec;
-    is_iteration_position_label(label)
-        || crate::integrations::github::gh_label_codec::GhLabelCodec.is_ready_order_label(label)
+    is_iteration_position_label(label) || label.starts_with("ready-order.")
 }
 
 #[cfg(test)]

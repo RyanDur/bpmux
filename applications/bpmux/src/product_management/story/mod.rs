@@ -81,8 +81,6 @@ pub struct Story {
     #[serde(default)]
     pub tags: Vec<Tag>,
     #[serde(default)]
-    pub ready_order: Option<u32>,
-    #[serde(default)]
     pub iteration_slot: Option<IterationSlot>,
 }
 
@@ -109,7 +107,6 @@ impl Story {
             acceptor: None,
             parent_epic: None,
             tags: Vec::new(),
-            ready_order: None,
             iteration_slot: None,
         }
     }
@@ -144,10 +141,6 @@ impl Story {
 
     pub fn tags(&self) -> &[Tag] {
         &self.tags
-    }
-
-    pub fn ready_order(&self) -> Option<u32> {
-        self.ready_order
     }
 
     pub fn iteration_slot(&self) -> Option<&IterationSlot> {
