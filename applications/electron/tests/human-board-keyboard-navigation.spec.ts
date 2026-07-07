@@ -33,6 +33,7 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
         )
         expect(createResp.status).toBe(200)
       }
+      const iterationId = await seedCurrentIterationViaRpc(rpc, 'KbdNavRoving')
       for (const id of [1, 2]) {
         const moveResp = await rpc(
           'move_story',
@@ -42,7 +43,6 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
         expect(moveResp.status).toBe(200)
       }
 
-      const iterationId = await seedCurrentIterationViaRpc(rpc, 'KbdNavRoving')
       await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
       await addStoryToIterationViaRpc(rpc, 2, iterationId, 2)
 

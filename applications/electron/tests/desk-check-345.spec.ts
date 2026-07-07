@@ -47,13 +47,13 @@ const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
     'pm'
   )
   expect(createResp.status).toBe(200)
+  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck345')
   const moveResp = await rpc(
     'move_story',
     { id: 1, target_state: 'ready', rationale: 'desk-check-345 comment fixture' },
     'pm'
   )
   expect(moveResp.status).toBe(200)
-  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck345')
   await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
   mockGh.on({
     method: 'GET',

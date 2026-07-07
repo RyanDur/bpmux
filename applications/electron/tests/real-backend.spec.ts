@@ -601,6 +601,7 @@ test.describe('real-backend', () => {
         )
         expect(createResp.status).toBe(200)
       }
+      const iterationId = await seedCurrentIterationViaRpc(rpc, 'KeyboardDragHarness')
       for (const id of [1, 2, 3]) {
         const moveResp = await rpc(
           'move_story',
@@ -609,7 +610,6 @@ test.describe('real-backend', () => {
         )
         expect(moveResp.status).toBe(200)
       }
-      const iterationId = await seedCurrentIterationViaRpc(rpc, 'KeyboardDragHarness')
       await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
       await addStoryToIterationViaRpc(rpc, 2, iterationId, 2)
       await addStoryToIterationViaRpc(rpc, 3, iterationId, 3)

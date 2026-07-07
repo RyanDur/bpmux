@@ -121,10 +121,10 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
 
       await createStory(rpc, '[Epic] Lone epic in ready')
       await createStory(rpc, 'Plain ready feature')
+      const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice6')
       await moveTo(rpc, 1, 'ready')
       await moveTo(rpc, 2, 'ready')
 
-      const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice6')
       await addStoryToIterationViaRpc(rpc, 2, iterationId, 1)
 
       await win.reload()

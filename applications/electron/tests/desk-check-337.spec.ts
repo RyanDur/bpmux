@@ -52,13 +52,13 @@ const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
     'pm'
   )
   expect(createResp.status).toBe(200)
+  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck337')
   const moveResp = await rpc(
     'move_story',
     { id: 1, target_state: 'ready', rationale: 'desk-check-337 scroll fixture' },
     'pm'
   )
   expect(moveResp.status).toBe(200)
-  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck337')
   await addStoryToIterationViaRpc(rpc, 1, iterationId, 1)
   mockGh.on({
     method: 'GET',

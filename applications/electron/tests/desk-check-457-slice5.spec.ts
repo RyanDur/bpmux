@@ -50,11 +50,11 @@ const seedEpicFixture = async (result: MockGhLaunchResult): Promise<void> => {
   await createStory(rpc, 'Child story under epic — accepted feature', EPIC)
   await createStory(rpc, 'Standalone (no epic) story')
 
+  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice5')
   await moveTo(rpc, CHILD_READY, 'ready')
   await moveTo(rpc, CHILD_ACCEPTED, 'accepted')
   await moveTo(rpc, STANDALONE, 'ready')
 
-  const iterationId = await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice5')
   await addStoryToIterationViaRpc(rpc, CHILD_READY, iterationId, 1)
   await addStoryToIterationViaRpc(rpc, STANDALONE, iterationId, 2)
 }
@@ -133,6 +133,7 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
       const board = new BoardPage(win)
       await expect(board.region()).toBeVisible()
       await createStory(rpc, 'No epic on this board')
+      await seedCurrentIterationViaRpc(rpc, 'DeskCheck457Slice5NoEpic')
       await moveTo(rpc, 1, 'ready')
       await win.reload()
       await expect(board.tabBar()).toBeVisible()
