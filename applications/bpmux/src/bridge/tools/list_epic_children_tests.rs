@@ -185,12 +185,14 @@ async fn handles_large_epic_with_ten_children() {
 }
 
 #[tokio::test]
-async fn surfaces_is_closed_state() {
-    let (mut accepted, accepted_labels) = child(101, 100, StoryKind::Feature, BoardState::Accepted);
-    accepted.is_closed = true;
+async fn derives_is_closed_from_workflow_conclusion() {
+    let (accepted, accepted_labels) = child(101, 100, StoryKind::Feature, BoardState::Accepted);
     let store = store_with(vec![epic(100), (accepted, accepted_labels)]).await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
-    assert_eq!(parsed["children"][0]["is_closed"], true);
+    assert_eq!(
+        parsed["children"][0]["is_closed"], true,
+        "is_closed derives from the workflow conclusion (Accepted|Retired), not from a stored GH mirror"
+    );
     assert_eq!(parsed["children"][0]["state"], "accepted");
 }

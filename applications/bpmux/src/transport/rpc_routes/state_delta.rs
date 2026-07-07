@@ -4,7 +4,6 @@ use chrono::Utc;
 
 use crate::message::{Message, MessageType};
 use crate::message::{StateDeltaPayload, StoryTransitionWire};
-use crate::product_management::story::{BoardState, Story};
 use crate::session;
 use crate::sync::RefreshDriver;
 
@@ -43,21 +42,11 @@ pub(crate) fn fire_stories(session: &Arc<session::Session>, refresh: &Arc<dyn Re
     crate::transport::rest::shared::broadcast_stories(session, refresh);
 }
 
-fn effective_state_label(story: &Story) -> &'static str {
-    if story.is_closed {
-        if story.state() == BoardState::Retired {
-            return BoardState::Retired.as_str();
-        }
-        return BoardState::Accepted.as_str();
-    }
-    story.state().as_str()
-}
-
 pub(crate) fn story_state_label(
     refresh: &Arc<dyn RefreshDriver>,
     number: u64,
 ) -> Option<&'static str> {
-    refresh.story(number).as_ref().map(effective_state_label)
+    refresh.story(number).map(|story| story.state().as_str())
 }
 
 pub(crate) fn fire_story_transition(

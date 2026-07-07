@@ -212,7 +212,7 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
 }
 
 #[test]
-fn story_to_board_json_is_closed_emits_gh_state_closed_independent_of_state() {
+fn story_to_board_json_gh_state_derives_from_workflow_conclusion_not_the_stored_mirror() {
     let s = sample_story(BoardState::Icebox, StoryKind::Feature, true);
     assert_eq!(
         json_str(
@@ -227,7 +227,8 @@ fn story_to_board_json_is_closed_emits_gh_state_closed_independent_of_state() {
             &story_to_board_json(&GhLabelCodec, &s, s.state.as_str()),
             "gh_state"
         ),
-        "closed"
+        "open",
+        "one truth: an active workflow state serializes gh_state=open even if a stored GH mirror says closed — a genuinely-closed issue reconciles at ingest before it can reach this projection"
     );
 }
 

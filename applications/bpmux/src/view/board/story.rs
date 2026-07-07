@@ -25,7 +25,11 @@ impl StoryView {
             id: story.id.value(),
             title: story.title().to_string(),
             state,
-            gh_state: if story.is_closed { "closed" } else { "open" },
+            gh_state: if story.is_concluded() {
+                "closed"
+            } else {
+                "open"
+            },
             labels: wire_labels(codec, story),
             parent_epic: story.parent_epic(),
             acceptor: story.acceptor().map(|a| a.as_str()),

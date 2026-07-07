@@ -30,7 +30,7 @@ pub(in crate::bridge) async fn handle_list_epic_children(
                 "title": s.title,
                 "state": format!("{:?}", s.state).to_lowercase(),
                 "story_type": s.story_type().as_label(),
-                "is_closed": s.is_closed,
+                "is_closed": s.is_concluded(),
             }))
             .collect::<Vec<_>>(),
     });

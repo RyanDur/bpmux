@@ -134,7 +134,7 @@ pub(in crate::bridge) async fn handle_get_story(
         "title": story.title,
         "body": body_out,
         "workflow_state": workflow_state,
-        "is_closed": story.is_closed,
+        "is_closed": matches!(workflow_state, "accepted" | "retired"),
         "labels": labels,
         "parent_epic": story.parent_epic(),
         "body_hydrated": body_cached.is_some(),

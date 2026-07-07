@@ -268,9 +268,8 @@ async fn skips_enrichment_when_no_rework_verdicts() {
 }
 
 #[tokio::test]
-async fn output_exposes_workflow_state_and_is_closed_separately() {
-    let mut story = make_story(101, BoardState::Accepted, Some("body"));
-    story.is_closed = true;
+async fn output_derives_is_closed_from_workflow_conclusion() {
+    let story = make_story(101, BoardState::Accepted, Some("body"));
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 101});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -278,7 +277,10 @@ async fn output_exposes_workflow_state_and_is_closed_separately() {
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     assert_eq!(parsed["workflow_state"], "accepted");
-    assert_eq!(parsed["is_closed"], true);
+    assert_eq!(
+        parsed["is_closed"], true,
+        "is_closed derives from workflow conclusion (Accepted|Retired), not from a stored GH mirror"
+    );
     assert!(
         parsed.get("state").is_none(),
         "post-#1144: legacy `state` field is removed; only workflow_state + is_closed appear"
@@ -286,7 +288,7 @@ async fn output_exposes_workflow_state_and_is_closed_separately() {
 }
 
 #[tokio::test]
-async fn divergent_case_workflow_ready_but_gh_closed_observable() {
+async fn stored_gh_mirror_never_reaches_the_wire_for_an_active_story() {
     let mut story = make_story(102, BoardState::Ready, Some("body"));
     story.is_closed = true;
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
@@ -295,18 +297,15 @@ async fn divergent_case_workflow_ready_but_gh_closed_observable() {
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    assert_eq!(parsed["workflow_state"], "ready");
     assert_eq!(
-        parsed["workflow_state"], "ready",
-        "workflow axis reports Ready independent of GH-state"
-    );
-    assert_eq!(
-        parsed["is_closed"], true,
-        "GH-state axis reports is_closed=true even though workflow != Accepted"
+        parsed["is_closed"], false,
+        "one truth: an active workflow state reports open regardless of the stored GH mirror; a genuinely-closed GH issue reconciles at ingest, where the decode forces closed to a terminal state"
     );
 }
 
 #[tokio::test]
-async fn divergent_case_workflow_accepted_but_gh_open_observable() {
+async fn concluded_story_reports_closed_while_the_gh_close_is_still_pending() {
     let mut story = make_story(103, BoardState::Accepted, Some("body"));
     story.is_closed = false;
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
@@ -317,8 +316,8 @@ async fn divergent_case_workflow_accepted_but_gh_open_observable() {
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     assert_eq!(parsed["workflow_state"], "accepted");
     assert_eq!(
-        parsed["is_closed"], false,
-        "GH-state axis reports is_closed=false even though workflow == Accepted (the 2026-05-02 false-success class)"
+        parsed["is_closed"], true,
+        "the 2026-05-02 false-success divergence re-homed: accepted reads closed optimistically; the GH close travels via the outbox (lifecycle_handler_tests pins accept pushing StoryClosed on drain), so an un-landed close is a pending outbox entry, not a wire axis"
     );
 }
 
@@ -830,8 +829,8 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
         "carried-reject (last gate = backward Rejected) must derive rework, NOT phantom-accepted from the stale closed-state"
     );
     assert_eq!(
-        parsed["is_closed"], true,
-        "is_closed (GH-state axis) still reflects the stale closed issue; only workflow_state derives from the gate-history"
+        parsed["is_closed"], false,
+        "is_closed follows the RESOLVED workflow_state so the wire stays coherent: a story in rework is open, never rework-yet-closed; the stale GH close reconciles via the reopen guards on pickup"
     );
 }
 

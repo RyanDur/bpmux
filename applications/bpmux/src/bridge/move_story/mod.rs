@@ -117,24 +117,19 @@ pub(in crate::bridge) async fn handle_move_story(
             }
         }
         TargetState::Retired => {
+            r.mutate_sync(StoryEvent::StateTransitioned {
+                meta: meta.clone(),
+                id: story_id,
+                new_state: BoardState::Retired,
+                placement: None,
+            })
+            .map_err(|e| format!("#{id} retire-state enqueue failed: {e}"))?;
             r.mutate_sync(StoryEvent::StoryClosed {
                 meta: meta.clone(),
                 id: story_id,
                 reason: Some(format!("retired: {rationale}")),
             })
             .map_err(|e| format!("#{id} retire enqueue failed: {e}"))?;
-            let already_retired = prior
-                .as_ref()
-                .map(|s| s.state() == BoardState::Retired)
-                .unwrap_or(false);
-            if !already_retired {
-                r.mutate_sync(StoryEvent::TagAdded {
-                    meta: meta.clone(),
-                    id: story_id,
-                    label: "retired".to_string(),
-                })
-                .map_err(|e| format!("#{id} retire-tag enqueue failed: {e}"))?;
-            }
         }
     }
 

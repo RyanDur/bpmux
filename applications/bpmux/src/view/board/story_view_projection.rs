@@ -26,11 +26,13 @@ fn project_mirrors_core_identity_fields() {
 }
 
 #[test]
-fn project_marks_a_closed_story_gh_state_closed() {
-    let mut s = story(7, "done", BoardState::Accepted);
-    s.is_closed = true;
+fn project_derives_gh_state_closed_from_workflow_conclusion() {
+    let s = story(7, "done", BoardState::Accepted);
     let view = StoryView::project(&GhLabelCodec, &s, s.state.as_str());
-    assert_eq!(view.gh_state, "closed");
+    assert_eq!(
+        view.gh_state, "closed",
+        "gh_state derives from the workflow conclusion (Accepted|Retired), not from a stored GH mirror"
+    );
 }
 
 #[test]
