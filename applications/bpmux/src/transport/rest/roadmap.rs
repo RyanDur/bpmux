@@ -59,14 +59,18 @@ pub async fn get_roadmap(
             let state = query
                 .state
                 .as_deref()
-                .and_then(crate::view::roadmap::OutcomeState::from_cli);
+                .and_then(crate::product_management::roadmap::selectors::OutcomeState::from_cli);
             let order = query
                 .order
                 .as_deref()
-                .and_then(crate::view::roadmap_filter::RoadmapOrder::from_cli)
-                .unwrap_or(crate::view::roadmap_filter::RoadmapOrder::Priority);
-            let filtered = crate::view::roadmap_filter::filter_roadmap(
-                crate::view::roadmap::roadmap_cards(refresh),
+                .and_then(crate::product_management::roadmap::filter::RoadmapOrder::from_cli)
+                .unwrap_or(crate::product_management::roadmap::filter::RoadmapOrder::Priority);
+            let filtered = crate::product_management::roadmap::filter::filter_roadmap(
+                crate::product_management::roadmap::selectors::roadmap_cards(
+                    &refresh.outcomes(),
+                    &refresh.iterations(),
+                    crate::workflow::current_workflow(),
+                ),
                 state,
                 order,
                 query.limit,

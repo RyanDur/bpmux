@@ -5,6 +5,7 @@ use crate::bridge::tools_stories::handle_reprioritize_outcome;
 use crate::integrations::github::mapper::decode_outcome_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
+use crate::product_management::roadmap::selectors::RoadmapOutcomeCard;
 use crate::product_management::story::{Horizon, Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
@@ -87,8 +88,16 @@ fn args_full(outcome: u64, to: Option<&str>, position: Option<u32>) -> Map<Strin
     m
 }
 
+fn roadmap_cards(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeCard> {
+    crate::product_management::roadmap::selectors::roadmap_cards(
+        &refresh.outcomes(),
+        &refresh.iterations(),
+        crate::workflow::current_workflow(),
+    )
+}
+
 fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
-    crate::view::roadmap::roadmap_cards(refresh)
+    roadmap_cards(refresh)
         .into_iter()
         .filter(|c| c.horizon == horizon)
         .map(|c| c.id.value())
@@ -165,7 +174,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
         &["outcome", "horizon.later"],
     )])
     .await;
-    let before = crate::view::roadmap::roadmap_cards(&refresh);
+    let before = roadmap_cards(&refresh);
     assert!(
         before
             .iter()
@@ -184,7 +193,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
     .expect("pm reprioritizes the outcome");
 
     let after_refresh = refresh_with_outcomes(upserted(&mut rx)).await;
-    let after = crate::view::roadmap::roadmap_cards(&after_refresh);
+    let after = roadmap_cards(&after_refresh);
     assert!(
         after
             .iter()

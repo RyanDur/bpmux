@@ -130,10 +130,14 @@ fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
 }
 
 fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
-    crate::view::roadmap::roadmap_cards(refresh)
-        .into_iter()
-        .map(|c| c.id.value())
-        .collect()
+    crate::product_management::roadmap::selectors::roadmap_cards(
+        &refresh.outcomes(),
+        &refresh.iterations(),
+        crate::workflow::current_workflow(),
+    )
+    .into_iter()
+    .map(|c| c.id.value())
+    .collect()
 }
 
 #[tokio::test]

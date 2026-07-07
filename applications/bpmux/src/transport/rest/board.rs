@@ -114,10 +114,14 @@ pub(crate) fn board_iterations(
 pub(crate) fn board_roadmap(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    crate::view::roadmap::roadmap_cards(refresh)
-        .iter()
-        .filter_map(|card| serde_json::to_value(card).ok())
-        .collect()
+    crate::product_management::roadmap::selectors::roadmap_cards(
+        &refresh.outcomes(),
+        &refresh.iterations(),
+        crate::workflow::current_workflow(),
+    )
+    .iter()
+    .filter_map(|card| serde_json::to_value(card).ok())
+    .collect()
 }
 
 pub(crate) fn board_outcomes(

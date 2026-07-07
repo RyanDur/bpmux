@@ -1,13 +1,12 @@
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
 
+use crate::product_management::iteration::Iteration;
 use crate::product_management::iteration::readiness::{
     OutcomeReadiness, building_iterations, outcome_readiness,
 };
-use crate::product_management::outcome::OutcomeId;
+use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::Horizon;
-use crate::sync::RefreshDriver;
+use crate::workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct OutcomeWhy {
@@ -75,29 +74,33 @@ pub struct RoadmapOutcomeCard {
     pub tone: OutcomeCardTone,
 }
 
-pub fn roadmap_cards(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeCard> {
-    derive_roadmap(&roadmap_inputs(refresh))
+pub fn roadmap_cards(
+    outcomes: &[Outcome],
+    iterations: &[Iteration],
+    workflow: &WorkflowConfig,
+) -> Vec<RoadmapOutcomeCard> {
+    derive_roadmap(&roadmap_inputs(outcomes, iterations, workflow))
 }
 
-fn roadmap_inputs(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeInput> {
-    let all_iterations = refresh.iterations();
-    let workflow = crate::workflow::current_workflow();
-    refresh
-        .outcomes()
+fn roadmap_inputs(
+    outcomes: &[Outcome],
+    iterations: &[Iteration],
+    workflow: &WorkflowConfig,
+) -> Vec<RoadmapOutcomeInput> {
+    outcomes
         .iter()
         .filter(|outcome| !outcome.is_retired())
         .map(|outcome| {
-            let id = outcome.id;
-            let building = building_iterations(outcome, &all_iterations);
+            let building = building_iterations(outcome, iterations);
             let done = !building.is_empty() && building.iter().all(|iteration| iteration.complete);
             RoadmapOutcomeInput {
-                id,
+                id: outcome.id,
                 title: outcome.title.clone(),
                 body: outcome.body.clone().unwrap_or_default(),
                 horizon: outcome.horizon(),
                 horizon_order: outcome.horizon_order(),
                 done,
-                readiness: Some(outcome_readiness(outcome, &all_iterations, workflow)),
+                readiness: Some(outcome_readiness(outcome, iterations, workflow)),
             }
         })
         .collect()

@@ -1,4 +1,4 @@
-use super::roadmap::{OutcomeState, RoadmapOutcomeCard};
+use crate::product_management::roadmap::selectors::{OutcomeState, RoadmapOutcomeCard};
 use crate::product_management::story::Horizon;
 
 pub fn render_overview_layer(value: &serde_json::Value) -> String {

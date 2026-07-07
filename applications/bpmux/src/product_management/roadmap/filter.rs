@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use super::roadmap::{OutcomeState, RoadmapOutcomeCard, horizon_rank};
+use super::selectors::{OutcomeState, RoadmapOutcomeCard, horizon_rank};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoadmapOrder {
