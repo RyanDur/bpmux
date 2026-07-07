@@ -15,7 +15,47 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
+use harness::story_helpers::create_target_story;
 use std::time::Duration;
+
+#[test]
+fn consecutive_creates_yield_distinct_stories() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let first = create_target_story(
+            &pm,
+            "[Feature] first-of-two",
+            "reject if a second create silently lands on the first story's number",
+        )
+        .await;
+        let second = create_target_story(
+            &pm,
+            "[Feature] second-of-two",
+            "reject if a second create silently lands on the first story's number",
+        )
+        .await;
+        assert_ne!(
+            first, second,
+            "each create allocates its own number — colliding numbers silently merge two stories"
+        );
+
+        let view = pm
+            .call_tool("view_board", serde_json::json!({}))
+            .await
+            .expect("view_board should succeed");
+        let view_text = view.as_str().unwrap_or("").to_string();
+        assert!(
+            view_text.contains("first-of-two") && view_text.contains("second-of-two"),
+            "both created stories exist side by side on the board; got:\n{view_text}"
+        );
+
+        pm.close().await;
+    });
+}
 
 #[test]
 fn create_story_pm_returns_assigned_number_in_message() {

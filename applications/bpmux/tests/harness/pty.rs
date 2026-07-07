@@ -6,19 +6,13 @@ use std::time::{Duration, Instant};
 
 use httpmock::{Method, MockServer};
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-use serde_json::Value;
 
-use super::mock_gh::{MockIssueState, issue_json, mock_story_mutations_with_state};
+use super::mock_gh::{
+    MockIssueState, mock_issue_creation_allocates_sequential_numbers,
+    mock_story_mutations_with_state,
+};
 use super::port::free_port;
 use std::sync::Mutex as StdMutex;
-
-fn default_issue_json(number: u64, title: &str) -> Value {
-    let body = format!(
-        "## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n",
-        env!("CARGO_MANIFEST_DIR")
-    );
-    issue_json(number, title, &[], Some(&body))
-}
 
 pub struct TestBpmux {
     child: Box<dyn portable_pty::Child + Send + Sync>,
@@ -158,12 +152,7 @@ impl TestBpmux {
                     .header("content-type", "application/json")
                     .body("[]");
             });
-            server.mock(|when, then| {
-                when.method(Method::POST).path("/repos/acme/bpmux/issues");
-                then.status(201)
-                    .header("content-type", "application/json")
-                    .body(default_issue_json(1, "test-target").to_string());
-            });
+            mock_issue_creation_allocates_sequential_numbers(&server);
             for n in 1..=8u64 {
                 let body = format!(
                     "## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n",

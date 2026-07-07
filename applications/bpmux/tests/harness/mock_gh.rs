@@ -191,6 +191,27 @@ fn labels_from_issue(issue: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
+pub fn mock_issue_creation_allocates_sequential_numbers(server: &MockServer) {
+    let next = Arc::new(std::sync::atomic::AtomicU64::new(1));
+    server.mock(|when, then| {
+        when.method(Method::POST).path("/repos/acme/bpmux/issues");
+        then.respond_with(move |req: &HttpMockRequest| {
+            let number = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let posted = parse_json_body(req).unwrap_or_default();
+            let title = posted
+                .get("title")
+                .and_then(|v| v.as_str())
+                .unwrap_or("test-target");
+            let body = posted.get("body").and_then(|v| v.as_str());
+            HttpMockResponse::builder()
+                .status(201)
+                .header("content-type", "application/json")
+                .body(issue_json(number, title, &[], body).to_string())
+                .build()
+        });
+    });
+}
+
 fn parse_json_body(req: &HttpMockRequest) -> Option<Value> {
     let body = req.body();
     serde_json::from_slice::<Value>(body.as_ref()).ok()
