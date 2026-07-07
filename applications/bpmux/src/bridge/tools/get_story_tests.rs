@@ -33,7 +33,7 @@ async fn seeded_orchestrator(
     let iterations: Vec<Iteration> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
-        .map(|(story, labels)| decode_iteration_from_story(story, labels))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
     let handle = SeededStore::new(vec![], iterations, vec![]);
     handle.bind_refresh(&orchestrator);
@@ -289,8 +289,7 @@ async fn output_derives_is_closed_from_workflow_conclusion() {
 
 #[tokio::test]
 async fn stored_gh_mirror_never_reaches_the_wire_for_an_active_story() {
-    let mut story = make_story(102, BoardState::Ready, Some("body"));
-    story.is_closed = true;
+    let story = make_story(102, BoardState::Ready, Some("body"));
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 102});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -306,8 +305,7 @@ async fn stored_gh_mirror_never_reaches_the_wire_for_an_active_story() {
 
 #[tokio::test]
 async fn concluded_story_reports_closed_while_the_gh_close_is_still_pending() {
-    let mut story = make_story(103, BoardState::Accepted, Some("body"));
-    story.is_closed = false;
+    let story = make_story(103, BoardState::Accepted, Some("body"));
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 103});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -791,8 +789,7 @@ async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
 
 #[tokio::test]
 async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
-    let mut story = make_story(1700, BoardState::Accepted, Some("body"));
-    story.is_closed = true;
+    let story = make_story(1700, BoardState::Accepted, Some("body"));
     let reason = "carried reject — the active rework";
     let gates = vec![
         CastVerdict {
@@ -836,8 +833,7 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
 
 #[tokio::test]
 async fn re_accepted_after_reject_workflow_state_stays_accepted() {
-    let mut story = make_story(1701, BoardState::Accepted, Some("body"));
-    story.is_closed = true;
+    let story = make_story(1701, BoardState::Accepted, Some("body"));
     let gates = vec![
         CastVerdict {
             verdict: Verdict::Succeed {

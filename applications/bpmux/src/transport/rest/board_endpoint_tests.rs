@@ -28,7 +28,7 @@ async fn orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver
     let iterations: Vec<Iteration> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
-        .map(|(story, labels)| decode_iteration_from_story(story, labels))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
     crate::store::bind_seeded_refresh(&orch, seeded, iterations, vec![]);
     orch.refresh_all().await.unwrap();

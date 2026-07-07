@@ -12,13 +12,7 @@ pub enum BacklogColumn {
 }
 
 pub fn backlog_column(story: &Story, iterations: &[Iteration]) -> Option<BacklogColumn> {
-    let position =
-        if story.is_closed && !matches!(story.state, BoardState::Accepted | BoardState::Retired) {
-            BoardState::Retired
-        } else {
-            story.state.clone()
-        };
-    match position {
+    match story.state.clone() {
         BoardState::Accepted => Some(BacklogColumn::Accepted),
         BoardState::Retired => None,
         on_board_position => {

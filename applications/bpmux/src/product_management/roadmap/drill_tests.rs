@@ -55,7 +55,11 @@ fn decode_iterations(
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| {
-            crate::integrations::github::mapper::decode_iteration_from_story(story, labels)
+            crate::integrations::github::mapper::decode_iteration_from_story(
+                story,
+                labels,
+                story.is_concluded(),
+            )
         })
         .collect()
 }
@@ -142,7 +146,7 @@ fn the_first_partially_done_gap_holder_reads_next_and_others_read_gap() {
 #[test]
 fn a_closed_iteration_reads_done_excluded_from_convene_with_no_checks() {
     let (mut done, done_labels) = iteration(20, 11);
-    done.is_closed = true;
+    done.state = BoardState::Accepted;
     let outcome = outcome_with(11, vec![20, 21]);
     let stories = vec![(done, done_labels), iteration(21, 11)];
     let drill = derive_outcome_drill_in(&outcome, &decode_iterations(&stories), &bundled_default());

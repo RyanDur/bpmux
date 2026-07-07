@@ -15,7 +15,7 @@ use chrono::Utc;
 
 fn readiness(seed: &(Story, Vec<String>), workflow: &WorkflowConfig) -> IterationReadiness {
     let (story, labels) = seed;
-    iteration_readiness(&decode_iteration_from_story(story, labels), workflow)
+    iteration_readiness(&decode_iteration_from_story(story, labels, false), workflow)
 }
 
 fn decode_iterations(
@@ -24,7 +24,7 @@ fn decode_iterations(
     seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
-        .map(|(story, labels)| decode_iteration_from_story(story, labels))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect()
 }
 

@@ -274,7 +274,10 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = orch.story(7200).unwrap();
-        assert_eq!(story.state, BoardState::Accepted);
-        assert!(story.is_closed, "accepted story should be closed");
+        assert_eq!(
+            story.state,
+            BoardState::Accepted,
+            "accepted story is concluded — the close rides the state"
+        );
     }
 }

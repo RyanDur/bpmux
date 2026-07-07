@@ -26,7 +26,7 @@ fn bind_epics(
     let epics: Vec<Epic> = seeded
         .iter()
         .filter(|(story, labels)| is_epic_story(story, labels))
-        .map(|(story, _)| decode_epic_from_story(story))
+        .map(|(story, _)| decode_epic_from_story(story, false))
         .collect();
     crate::store::bind_seeded_refresh(orch, vec![], vec![], epics);
 }
@@ -348,7 +348,6 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "pm".into(),
     );
     child_a.parent_epic = Some(EpicId::new(700));
-    child_a.is_closed = true;
     let mut child_b = Story::new_minimal(
         StoryId::new(702),
         "child b".into(),

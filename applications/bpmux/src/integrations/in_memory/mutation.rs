@@ -50,9 +50,7 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
         }
         StoryEvent::StoryClosed { id, .. } => typed_label_mirror::story_closed(s, id.value()),
         StoryEvent::StoryReopened { id, .. } => {
-            if let Some(story) = s.stories.get_mut(&id.value()) {
-                story.is_closed = false;
-            }
+            s.closed.remove(&id.value());
         }
         StoryEvent::StateTransitioned { id, new_state, .. } => {
             typed_label_mirror::state_transitioned(s, id.value(), new_state.clone())

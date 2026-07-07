@@ -67,9 +67,8 @@ fn icebox_state_counted_as_icebox() {
 }
 
 #[test]
-fn closed_non_accepted_story_lands_in_retired_count() {
-    let mut s = story(109, "retired", BoardState::Ready);
-    s.is_closed = true;
+fn retired_story_lands_in_retired_count() {
+    let s = story(109, "retired", BoardState::Retired);
     let summary = build_backlog_summary(&[s]);
     assert_eq!(summary["retired_count"], 1);
     assert_eq!(summary["ready_count"], 0);

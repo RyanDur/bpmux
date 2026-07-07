@@ -24,7 +24,7 @@ fn iterations_from(seeds: &[(Story, Vec<String>)]) -> Vec<Iteration> {
     seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
-        .map(|(story, labels)| decode_iteration_from_story(story, labels))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect()
 }
 

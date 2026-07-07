@@ -99,25 +99,23 @@ fn a_retired_story_is_archived_off_every_column() {
 }
 
 #[test]
-fn a_closed_non_accepted_story_is_archived_even_when_in_the_current_iteration() {
+fn a_retired_story_is_archived_even_when_in_the_current_iteration() {
     let iterations = [iteration(1, true, &[10])];
-    let mut closed = story(10, BoardState::Ready);
-    closed.is_closed = true;
+    let retired = story(10, BoardState::Retired);
     assert_eq!(
-        backlog_column(&closed, &iterations),
+        backlog_column(&retired, &iterations),
         None,
-        "the edge's closed fold projects to retired, and retired is archived"
+        "a retired story is archived even when it sits in the current iteration"
     );
 }
 
 #[test]
-fn a_closed_accepted_story_stays_accepted() {
-    let mut closed = story(10, BoardState::Accepted);
-    closed.is_closed = true;
+fn an_accepted_story_stays_in_the_accepted_column() {
+    let accepted = story(10, BoardState::Accepted);
     assert_eq!(
-        backlog_column(&closed, &[]),
+        backlog_column(&accepted, &[]),
         Some(BacklogColumn::Accepted),
-        "closed + accepted = legitimate completion, not archival"
+        "accepted = legitimate completion, not archival"
     );
 }
 

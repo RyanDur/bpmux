@@ -211,7 +211,7 @@ async fn external_comment_appears_via_fetch_free_comments_after_refresh() {
 }
 
 #[tokio::test]
-async fn external_re_open_clears_is_closed_after_refresh() {
+async fn external_re_open_returns_the_story_to_the_label_derived_state_after_refresh() {
     let server = MockServer::start();
 
     server.mock(|when, then| {
@@ -233,7 +233,11 @@ async fn external_re_open_clears_is_closed_after_refresh() {
 
     refresh.refresh_story(505).await.expect("first refresh");
     let initial = refresh.story(505).expect("seeded story");
-    assert!(initial.is_closed, "starts closed");
+    assert_eq!(
+        initial.state,
+        crate::product_management::story::BoardState::Accepted,
+        "closed with no labels forces the terminal Accepted state at decode"
+    );
 
     closed_mock.delete();
     server.mock(|when, then| {
@@ -249,9 +253,10 @@ async fn external_re_open_clears_is_closed_after_refresh() {
         .await
         .expect("second refresh after external re-open");
     let updated = refresh.story(505).expect("story still present");
-    assert!(
-        !updated.is_closed,
-        "post-refresh, bpmux observes externally-reopened issue"
+    assert_eq!(
+        updated.state,
+        crate::product_management::story::BoardState::Icebox,
+        "post-refresh, an externally-reopened issue with no labels returns to icebox"
     );
 }
 
@@ -392,8 +397,8 @@ async fn external_close_propagates_to_bpmux_accepted_state_after_refresh() {
     refresh.refresh_story(303).await.expect("first refresh");
     let initial = refresh.story(303).expect("seeded story");
     assert!(
-        !initial.is_closed,
-        "fresh story is open before external close"
+        !initial.is_concluded(),
+        "fresh story is not concluded before external close"
     );
 
     open_mock.delete();
@@ -410,13 +415,9 @@ async fn external_close_propagates_to_bpmux_accepted_state_after_refresh() {
         .await
         .expect("second refresh after external close");
     let updated = refresh.story(303).expect("story still present");
-    assert!(
-        updated.is_closed,
-        "post-refresh, bpmux observes externally-closed issue (renderer maps is_closed → accepted)"
-    );
     assert_eq!(
         updated.state,
         crate::product_management::story::BoardState::Accepted,
-        "is_closed forces Accepted state per state_from_labels"
+        "post-refresh, an externally-closed issue forces Accepted state per state_from_labels"
     );
 }

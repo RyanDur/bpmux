@@ -15,9 +15,7 @@ pub(crate) async fn collect_ready_queue_blockers(
     refresh
         .all_stories()
         .into_iter()
-        .filter(|s| {
-            matches!(s.state, crate::product_management::story::BoardState::Ready) && !s.is_closed
-        })
+        .filter(|s| matches!(s.state, crate::product_management::story::BoardState::Ready))
         .map(|s| IterationCloseBlocker {
             id: s.id.value(),
             title: s.title,

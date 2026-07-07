@@ -31,31 +31,33 @@ fn created(rx: &mut UnboundedReceiver<AppAction>) -> Iteration {
     found.expect("create_iteration dispatches the new iteration onto the slice")
 }
 
-fn seed_iteration_story(id: u64, name: &str, is_closed: bool) -> (Story, Vec<String>) {
-    let mut s = Story::new_minimal(
+fn seed_iteration_story(id: u64, name: &str, is_closed: bool) -> (Story, Vec<String>, bool) {
+    let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
         BoardState::Icebox,
         Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    s.is_closed = is_closed;
-    (s, vec!["iteration".to_string()])
+    (s, vec!["iteration".to_string()], is_closed)
 }
 
 async fn build_refresh_with_stories(
-    seeds: Vec<(Story, Vec<String>)>,
+    seeds: Vec<(Story, Vec<String>, bool)>,
 ) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    for (story, labels) in &seeds {
+    for (story, labels, closed) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
+        if *closed {
+            adapter.seed_closed(story.id.value());
+        }
     }
-    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
+    adapter.seed_stories(seeds.iter().map(|(s, _, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let iterations: Vec<Iteration> = seeds
         .iter()
-        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
-        .map(|(story, labels)| decode_iteration_from_story(story, labels))
+        .filter(|(_, labels, _)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
+        .map(|(story, labels, closed)| decode_iteration_from_story(story, labels, *closed))
         .collect();
     crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
     orch.refresh_all().await.unwrap();
@@ -196,9 +198,11 @@ async fn create_iteration_assigns_order_at_birth_1735() {
 
 #[tokio::test]
 async fn create_iteration_appends_order_after_existing_1735() {
-    let (existing, mut existing_labels) = seed_iteration_story(42, "Aquila", false);
+    let (existing, mut existing_labels, existing_closed) =
+        seed_iteration_story(42, "Aquila", false);
     existing_labels.push("iteration-order.100".to_string());
-    let (refresh, _adapter) = build_refresh_with_stories(vec![(existing, existing_labels)]).await;
+    let (refresh, _adapter) =
+        build_refresh_with_stories(vec![(existing, existing_labels, existing_closed)]).await;
     let aquila_order = refresh
         .iterations()
         .iter()

@@ -1,5 +1,4 @@
 use crate::product_management::story::{BoardState, Story};
-use crate::view::board::arrangement::board_position;
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
@@ -15,7 +14,7 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
 
     for story in stories {
         let entry = format!("{} {}", story.id, story.title);
-        match board_position(&story.state, story.is_closed) {
+        match &story.state {
             BoardState::Icebox => icebox.push(entry),
             BoardState::Ready => ready.push(entry),
             BoardState::InProgress => in_progress.push(entry),

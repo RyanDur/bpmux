@@ -60,7 +60,7 @@ pub(super) fn ingest_metadata(
         mut iterations,
         epics,
         placements,
-    } = classify_ingested(s.stories.values().cloned(), &s.labels);
+    } = classify_ingested(s.stories.values().cloned(), &s.labels, &s.closed);
     iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
     Ok(Ingested {
         items,
@@ -74,6 +74,7 @@ pub(super) fn ingest_metadata(
 pub(super) fn classify_ingested(
     stories: impl Iterator<Item = Story>,
     labels: &HashMap<u64, Vec<String>>,
+    closed: &std::collections::HashSet<u64>,
 ) -> Classified {
     let mut c = Classified {
         items: Vec::new(),
@@ -85,17 +86,21 @@ pub(super) fn classify_ingested(
     for mut story in stories {
         let story_labels = labels.get(&story.id.value()).cloned().unwrap_or_default();
         derive_typed_fields_from_labels(&mut story, &story_labels);
+        let is_closed = closed.contains(&story.id.value());
         let has_label = |needle: &str| story_labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
         if has_label("outcome") {
             c.outcomes
                 .push(decode_outcome_from_story(&story, &story_labels));
         } else if has_label("iteration") {
-            c.iterations
-                .push(decode_iteration_from_story(&story, &story_labels));
+            c.iterations.push(decode_iteration_from_story(
+                &story,
+                &story_labels,
+                is_closed,
+            ));
         } else if is_epic_story(&story, &story_labels) {
-            c.epics.push(decode_epic_from_story(&story));
+            c.epics.push(decode_epic_from_story(&story, is_closed));
         } else {
-            if let Some(stage) = placement_from_labels(&story_labels, story.is_closed) {
+            if let Some(stage) = placement_from_labels(&story_labels, is_closed) {
                 c.placements.push((story.id, stage));
             }
             c.items.push(story);

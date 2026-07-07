@@ -256,10 +256,6 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
         !labels.iter().any(|l| l == "delivered") && labels.iter().any(|l| l == "accepted"),
         "the transition export strips the stale delivered label and applies accepted at the adapter (and the close keeps accepted); got {labels:?}"
     );
-    assert!(
-        orchestrator.story(205).expect("story exists").is_closed,
-        "is_closed flag must be set after StoryClosed event applies"
-    );
 }
 
 #[tokio::test]

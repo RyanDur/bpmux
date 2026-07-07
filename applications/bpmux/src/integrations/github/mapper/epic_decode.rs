@@ -24,10 +24,17 @@ pub fn is_epic_story(story: &Story, labels: &[String]) -> bool {
 }
 
 pub fn decode_epic(v: &serde_json::Value) -> Option<Epic> {
-    decode_story_metadata(v).map(|story| decode_epic_from_story(&story))
+    let is_closed = match v.get("gh_state").and_then(|x| x.as_str()) {
+        Some(s) => matches!(s, "closed" | "CLOSED"),
+        None => matches!(
+            v.get("state").and_then(|x| x.as_str()),
+            Some("closed" | "CLOSED")
+        ),
+    };
+    decode_story_metadata(v).map(|story| decode_epic_from_story(&story, is_closed))
 }
 
-pub fn decode_epic_from_story(story: &Story) -> Epic {
+pub fn decode_epic_from_story(story: &Story, is_closed: bool) -> Epic {
     Epic {
         id: EpicId::new(story.id.value()),
         title: story.title().to_string(),
@@ -35,6 +42,6 @@ pub fn decode_epic_from_story(story: &Story) -> Epic {
         filed_at: story.filed_at(),
         filed_by: story.filed_by().to_string(),
         state: story.state(),
-        is_closed: story.is_closed,
+        is_closed,
     }
 }

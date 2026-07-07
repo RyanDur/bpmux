@@ -25,6 +25,7 @@ struct InnerState {
     labels: HashMap<u64, Vec<String>>,
     free_comments: HashMap<u64, Vec<FreeComment>>,
     verdicts: HashMap<u64, Vec<CastVerdict>>,
+    closed: std::collections::HashSet<u64>,
     pushed_events: Vec<StoryEvent>,
     failures_on_push: bool,
     permanent_push_failures: bool,
@@ -60,8 +61,10 @@ impl SourceAdapter for InMemorySourceAdapter {
         if let Some(body) = s.bodies.get(&number) {
             story.body = Some(body.clone());
         }
-        let placement =
-            crate::integrations::github::mapper::placement_from_labels(&labels, story.is_closed);
+        let placement = crate::integrations::github::mapper::placement_from_labels(
+            &labels,
+            s.closed.contains(&number),
+        );
         Ok(Some((story, placement)))
     }
 

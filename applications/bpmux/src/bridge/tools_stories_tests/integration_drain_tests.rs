@@ -83,14 +83,13 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(4690),
         "[Bug] cascade-drain-on-reject".into(),
         BoardState::Accepted,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.is_closed = true;
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(4690, vec!["bug".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
@@ -190,14 +189,13 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
+    let seeded = Story::new_minimal(
         StoryId::new(469),
         "[Bug] rework-after-accept".into(),
         BoardState::Accepted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "owner".into(),
     );
-    seeded.is_closed = true;
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(469, vec!["bug".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
@@ -228,10 +226,6 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     );
 
     let story = orch.story(469).unwrap();
-    assert!(
-        !story.is_closed,
-        "store must reflect re-opened state post-reject"
-    );
     assert_eq!(story.state, BoardState::Ready);
 }
 

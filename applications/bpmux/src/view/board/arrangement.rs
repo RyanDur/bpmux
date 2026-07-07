@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::product_management::story::{BoardState, Stage, Story};
 use crate::workflow::StageId;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Column {
     Icebox,
     Ready,
@@ -20,15 +20,8 @@ pub fn board_columns(middle: &[StageId]) -> Vec<Column> {
     columns
 }
 
-pub fn board_position(state: &BoardState, is_closed: bool) -> BoardState {
-    if is_closed && !matches!(state, BoardState::Accepted | BoardState::Retired) {
-        return BoardState::Retired;
-    }
-    state.clone()
-}
-
 pub fn column_of(story: &Story, fine: Option<StageId>) -> Column {
-    match board_position(&story.state, story.is_closed) {
+    match &story.state {
         BoardState::Icebox => Column::Icebox,
         BoardState::Ready => Column::Ready,
         BoardState::InProgress => Column::Middle(fine.unwrap_or_else(|| Stage::Dev.id())),

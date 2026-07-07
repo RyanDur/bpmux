@@ -68,7 +68,6 @@ pub struct Story {
     pub body: Option<String>,
     pub free_comments: Option<Vec<FreeComment>>,
     pub verdicts: Option<Vec<CastVerdict>>,
-    pub is_closed: bool,
     #[serde(default)]
     pub body_etag: Option<String>,
     #[serde(default)]
@@ -103,7 +102,6 @@ impl Story {
             body: None,
             free_comments: None,
             verdicts: None,
-            is_closed: false,
             body_etag: None,
             story_type,
             acceptor: None,

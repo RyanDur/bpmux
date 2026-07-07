@@ -75,7 +75,6 @@ pub fn decode_story_with_placement(v: &serde_json::Value) -> Option<(Story, Opti
         filed_at,
         filed_by,
     );
-    story.is_closed = is_closed;
     story.story_type = story_type_from_labels_or_title(&labels, &title);
     story.acceptor = super::label_fields::acceptor_from_labels(&labels);
     story.parent_epic = super::label_fields::parent_epic_from_labels(&labels).map(EpicId::new);

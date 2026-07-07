@@ -180,7 +180,7 @@ async fn view_board_buckets_stories_by_story_state() {
 }
 
 #[tokio::test]
-async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
+async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::{BoardState, Stage, Story};
     use crate::sync::RefreshDriver;
@@ -190,23 +190,21 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
-    let mut closed_in_progress = Story::new_minimal(
+    let retired_story = Story::new_minimal(
         StoryId::new(201),
         "abandoned-mid-flight".into(),
-        BoardState::InProgress,
+        BoardState::Retired,
         ts,
         "pm".into(),
     );
-    closed_in_progress.is_closed = true;
-    let mut accepted_closed = Story::new_minimal(
+    let accepted_story = Story::new_minimal(
         StoryId::new(202),
         "accepted-closed".into(),
         BoardState::Accepted,
         ts,
         "pm".into(),
     );
-    accepted_closed.is_closed = true;
-    adapter.seed_stories(vec![closed_in_progress, accepted_closed]);
+    adapter.seed_stories(vec![retired_story, accepted_story]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -217,19 +215,19 @@ async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
 
     assert!(
         out.contains("IN PROGRESS (0)"),
-        "is_closed InProgress story must NOT appear in IN PROGRESS bucket: {out}"
+        "a concluded story must NOT appear in the IN PROGRESS bucket: {out}"
     );
     assert!(
         out.contains("RETIRED (1)"),
-        "closed-non-Accepted story projects to RETIRED bucket: {out}"
+        "a Retired story projects to the RETIRED bucket: {out}"
     );
     assert!(
         out.contains("ACCEPTED (1)"),
-        "only Accepted story stays in ACCEPTED bucket: {out}"
+        "only the Accepted story stays in the ACCEPTED bucket: {out}"
     );
     assert!(
         out.contains("#201 abandoned-mid-flight"),
-        "closed-non-Accepted story visible under RETIRED: {out}"
+        "the Retired story is visible under RETIRED: {out}"
     );
     assert!(
         out.contains("#202 accepted-closed"),
@@ -272,7 +270,6 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(301).expect("story exists");
-    assert!(story.is_closed, "is_closed flag must be set");
     assert_eq!(
         story.state,
         BoardState::Retired,

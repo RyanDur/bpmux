@@ -1,97 +1,113 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use bpmux::product_management::story::BoardState;
-use bpmux::view::board::arrangement::board_position;
+use bpmux::product_management::story::{BoardState, Stage, Story, StoryId};
+use bpmux::view::board::arrangement::{Column, column_of};
+use chrono::Utc;
+
+fn story_in(state: BoardState) -> Story {
+    Story::new_minimal(
+        StoryId::new(1),
+        "sample".to_string(),
+        state,
+        Utc::now(),
+        "pm".to_string(),
+    )
+}
 
 /// Truth-table mirror of the renderer's `columnFor` from
 /// `applications/electron/src/renderer/src/board/types.ts`.
 ///
 /// Encoded by hand from the TS source so this test catches drift on
 /// either side. Update both when the projection legitimately changes.
-fn renderer_board_position(state: BoardState, is_closed: bool) -> BoardState {
-    if is_closed && state != BoardState::Accepted && state != BoardState::Retired {
-        return BoardState::Retired;
+fn renderer_column_for(state: &str, is_closed: bool) -> &'static str {
+    if is_closed && state != "accepted" {
+        return "retired";
     }
-    state
+    match state {
+        "ready-for-accept" => "acceptance",
+        "needs-fixes" => "in-progress",
+        "rejected" => "ready",
+        "icebox" => "icebox",
+        "ready" => "ready",
+        "in-progress" => "in-progress",
+        "desk-check" => "desk-check",
+        "acceptance" => "acceptance",
+        "accepted" => "accepted",
+        "retired" => "retired",
+        other => panic!("renderer mirror got unknown wire state {other:?}"),
+    }
+}
+
+fn rust_column_as_wire_str(column: &Column) -> String {
+    match column {
+        Column::Icebox => "icebox".to_string(),
+        Column::Ready => "ready".to_string(),
+        Column::Middle(stage) => stage.as_str().to_string(),
+        Column::Acceptance => "acceptance".to_string(),
+        Column::Accepted => "accepted".to_string(),
+        Column::Retired => "retired".to_string(),
+    }
+}
+
+fn derived_gh_closed(state: &BoardState) -> bool {
+    story_in(state.clone()).is_concluded()
 }
 
 #[test]
-fn board_position_agrees_across_full_cross_product() {
-    let states = [
-        BoardState::Icebox,
-        BoardState::Ready,
-        BoardState::InProgress,
-        BoardState::InProgress,
-        BoardState::Acceptance,
-        BoardState::Accepted,
+fn renderer_column_projection_agrees_with_rust_over_the_reachable_wire_space() {
+    let reachable: [(BoardState, Option<Stage>, &str); 7] = [
+        (BoardState::Icebox, None, "icebox"),
+        (BoardState::Ready, None, "ready"),
+        (BoardState::InProgress, Some(Stage::Dev), "in-progress"),
+        (BoardState::InProgress, Some(Stage::DeskCheck), "desk-check"),
+        (BoardState::Acceptance, None, "acceptance"),
+        (BoardState::Accepted, None, "accepted"),
+        (BoardState::Retired, None, "retired"),
     ];
-    for state in states {
-        for is_closed in [false, true] {
-            let rust_position = board_position(&state, is_closed);
-            let renderer_position = renderer_board_position(state.clone(), is_closed);
-            assert_eq!(
-                rust_position, renderer_position,
-                "drift: state={state:?} is_closed={is_closed} \
-                 — Rust board_position = {rust_position:?}, renderer columnFor (mirrored) = {renderer_position:?}"
-            );
-        }
-    }
-}
-
-#[test]
-fn closed_non_accepted_stories_project_to_retired() {
-    // #1146 slice 2b: close_story for retire/dedupe/won't-fix lands in
-    // the Retired column rather than polluting Accepted's success-
-    // narrative. Closed + Accepted stays in Accepted (user-story
-    // satisfied + closed = legitimate completion).
-    for state in [
-        BoardState::Icebox,
-        BoardState::Ready,
-        BoardState::InProgress,
-        BoardState::InProgress,
-        BoardState::Acceptance,
-    ] {
+    for (state, fine, wire_state) in reachable {
+        let is_closed = derived_gh_closed(&state);
+        let renderer = renderer_column_for(wire_state, is_closed);
+        let rust =
+            rust_column_as_wire_str(&column_of(&story_in(state.clone()), fine.map(Stage::id)));
         assert_eq!(
-            board_position(&state, true),
-            BoardState::Retired,
-            "closed + state={state:?} (non-Accepted) must project to RETIRED"
+            rust, renderer,
+            "drift: wire state={wire_state:?} gh_closed={is_closed} — Rust column_of = {rust:?}, renderer columnFor (mirrored) = {renderer:?}"
         );
     }
 }
 
 #[test]
-fn closed_accepted_stays_accepted() {
+fn renderer_legacy_wire_states_still_bucket_into_live_columns() {
+    assert_eq!(renderer_column_for("ready-for-accept", false), "acceptance");
+    assert_eq!(renderer_column_for("needs-fixes", false), "in-progress");
+    assert_eq!(renderer_column_for("rejected", false), "ready");
+}
+
+#[test]
+fn open_workflow_states_bucket_one_to_one_to_their_columns() {
     assert_eq!(
-        board_position(&BoardState::Accepted, true),
-        BoardState::Accepted,
-        "closed + Accepted stays in ACCEPTED (user-story satisfied + closed = success-narrative)"
+        column_of(&story_in(BoardState::Icebox), None),
+        Column::Icebox
+    );
+    assert_eq!(column_of(&story_in(BoardState::Ready), None), Column::Ready);
+    assert_eq!(
+        column_of(&story_in(BoardState::InProgress), None),
+        Column::Middle(Stage::Dev.id())
+    );
+    assert_eq!(
+        column_of(&story_in(BoardState::Acceptance), None),
+        Column::Acceptance
     );
 }
 
 #[test]
-fn open_workflow_states_bucket_one_to_one() {
-    // #1146 slice 3: post-collapse, the 6 enum states map 1:1 to
-    // their display columns. Rework lives in transition history,
-    // not in separate Rejected/NeedsFixes/ReadyForAccept variants.
+fn terminal_states_bucket_to_their_own_columns() {
     assert_eq!(
-        board_position(&BoardState::Icebox, false),
-        BoardState::Icebox
-    );
-    assert_eq!(board_position(&BoardState::Ready, false), BoardState::Ready);
-    assert_eq!(
-        board_position(&BoardState::InProgress, false),
-        BoardState::InProgress
+        column_of(&story_in(BoardState::Accepted), None),
+        Column::Accepted
     );
     assert_eq!(
-        board_position(&BoardState::InProgress, false),
-        BoardState::InProgress
-    );
-    assert_eq!(
-        board_position(&BoardState::Acceptance, false),
-        BoardState::Acceptance
-    );
-    assert_eq!(
-        board_position(&BoardState::Accepted, false),
-        BoardState::Accepted
+        column_of(&story_in(BoardState::Retired), None),
+        Column::Retired
     );
 }

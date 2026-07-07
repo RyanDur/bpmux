@@ -35,6 +35,11 @@ impl InMemorySourceAdapter {
         s.labels.insert(number, labels);
     }
 
+    pub fn seed_closed(&self, number: u64) {
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        s.closed.insert(number);
+    }
+
     pub fn seed_free_comments(&self, number: u64, comments: Vec<FreeComment>) {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         s.free_comments.insert(number, comments);

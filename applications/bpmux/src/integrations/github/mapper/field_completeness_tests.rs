@@ -51,7 +51,6 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
         body,
         free_comments,
         verdicts,
-        is_closed,
         body_etag,
         story_type,
         acceptor,
@@ -110,7 +109,6 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
         Some("## Acceptance test path\n\ntests/field_completeness_sentinel.rs\n"),
         "body must roundtrip from JSON (closes 5ae7266a cascade-fix gap)"
     );
-    assert!(!*is_closed, "is_closed must decode from gh_state");
     assert_eq!(
         *parent_epic,
         Some(EpicId::new(100)),

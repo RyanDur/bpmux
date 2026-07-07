@@ -279,19 +279,23 @@ pub async fn post_seed_stories(
                 "test-seed".to_string(),
             );
             carrier.body = Some(s.body.clone());
-            carrier.is_closed = s.is_closed;
             if is_iteration_seed {
                 dispatcher.dispatch(crate::store::AppAction::Iteration(
                     crate::product_management::iteration::IterationAction::Upserted(vec![
                         crate::integrations::github::mapper::decode_iteration_from_story(
-                            &carrier, &s.labels,
+                            &carrier,
+                            &s.labels,
+                            s.is_closed,
                         ),
                     ]),
                 ));
             } else {
                 dispatcher.dispatch(crate::store::AppAction::Epic(
                     crate::product_management::epic::EpicAction::Upserted(vec![
-                        crate::integrations::github::mapper::decode_epic_from_story(&carrier),
+                        crate::integrations::github::mapper::decode_epic_from_story(
+                            &carrier,
+                            s.is_closed,
+                        ),
                     ]),
                 ));
             }

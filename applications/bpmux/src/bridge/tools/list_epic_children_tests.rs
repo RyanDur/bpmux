@@ -59,7 +59,7 @@ async fn store_with(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> 
     let epics: Vec<Epic> = seeds
         .iter()
         .filter(|(story, labels)| is_epic_story(story, labels))
-        .map(|(story, _)| decode_epic_from_story(story))
+        .map(|(story, _)| decode_epic_from_story(story, false))
         .collect();
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], epics);
     orch.refresh_all().await.unwrap();

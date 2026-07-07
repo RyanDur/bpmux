@@ -241,7 +241,7 @@ fn decode_story_metadata_returns_none_when_number_missing() {
 }
 
 #[test]
-fn decode_story_metadata_sets_is_closed_from_gh_state() {
+fn decode_story_metadata_forces_terminal_state_from_gh_state() {
     let open = serde_json::json!({
         "number": 10,
         "title": "open",
@@ -258,8 +258,16 @@ fn decode_story_metadata_sets_is_closed_from_gh_state() {
         "created_at": "2026-04-20T00:00:00Z",
         "user": {"login": "pm"},
     });
-    assert!(!decode_story_metadata(&open).unwrap().is_closed);
-    assert!(decode_story_metadata(&closed).unwrap().is_closed);
+    assert_eq!(
+        decode_story_metadata(&open).unwrap().state,
+        BoardState::Icebox,
+        "an open issue with no state labels decodes to a non-terminal state"
+    );
+    assert_eq!(
+        decode_story_metadata(&closed).unwrap().state,
+        BoardState::Accepted,
+        "a closed issue forces the terminal Accepted state at decode"
+    );
 }
 
 #[test]
@@ -274,10 +282,6 @@ fn decode_story_metadata_closed_without_retired_collapses_to_accepted() {
         "user": {"login": "owner"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert!(
-        story.is_closed,
-        "gh_state=closed still drives is_closed=true regardless of label priority"
-    );
     assert_eq!(
         story.state,
         BoardState::Accepted,
@@ -296,9 +300,10 @@ fn decode_story_metadata_falls_back_to_state_field_when_gh_state_absent() {
         "user": {"login": "pm"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert!(
-        story.is_closed,
-        "decode must fall back to state field for envelopes without gh_state (raw octocrab JSON shape)"
+    assert_eq!(
+        story.state,
+        BoardState::Accepted,
+        "decode must fall back to the state field for envelopes without gh_state (raw octocrab JSON shape): closed forces Accepted"
     );
 }
 
@@ -314,10 +319,6 @@ fn decode_story_metadata_gh_state_open_does_not_force_closed() {
         "user": {"login": "dev"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert!(
-        !story.is_closed,
-        "gh_state=open must drive is_closed=false; renderer-state delivered must NOT trigger is_closed"
-    );
     assert_eq!(
         story.state,
         BoardState::Acceptance,
@@ -662,7 +663,7 @@ fn decode_iteration_from_story_sets_iteration_order_from_label_1735() {
         "iteration-order.200".to_string(),
     ];
     let iteration =
-        crate::integrations::github::mapper::decode_iteration_from_story(&story, &labels);
+        crate::integrations::github::mapper::decode_iteration_from_story(&story, &labels, false);
     assert_eq!(iteration.iteration_order, Some(200));
 }
 

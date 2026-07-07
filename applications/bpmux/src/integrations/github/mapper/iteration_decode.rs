@@ -57,7 +57,7 @@ pub fn decode_iteration(v: &serde_json::Value) -> Option<Iteration> {
     ))
 }
 
-pub fn decode_iteration_from_story(story: &Story, labels: &[String]) -> Iteration {
+pub fn decode_iteration_from_story(story: &Story, labels: &[String], complete: bool) -> Iteration {
     assemble_iteration(
         IterationId::new(story.id.value()),
         story.title().to_string(),
@@ -65,7 +65,7 @@ pub fn decode_iteration_from_story(story: &Story, labels: &[String]) -> Iteratio
         story.filed_at(),
         story.filed_by().to_string(),
         labels,
-        story.is_closed,
+        complete,
     )
 }
 

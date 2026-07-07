@@ -24,7 +24,6 @@ pub(super) fn apply_story_created(
         body: Some(body.to_string()),
         free_comments: Some(Vec::new()),
         verdicts: Some(Vec::new()),
-        is_closed: false,
         body_etag: None,
         story_type,
         acceptor: None,
@@ -58,18 +57,6 @@ pub(super) fn apply_title_updated(w: &mut Stories, id: StoryId, title: &str) {
 pub(super) fn apply_body_updated(w: &mut Stories, id: StoryId, body: &str) {
     if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.body = Some(body.to_string());
-    }
-}
-
-pub(super) fn apply_story_closed(w: &mut Stories, id: StoryId) {
-    if let Some(story) = story_mut(w, id) {
-        story.is_closed = true;
-    }
-}
-
-pub(super) fn apply_story_reopened(w: &mut Stories, id: StoryId) {
-    if let Some(story) = story_mut(w, id) {
-        story.is_closed = false;
     }
 }
 
@@ -126,7 +113,6 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story)
         Some(existing) => {
             existing.title = story.title.clone();
             existing.state = story.state.clone();
-            existing.is_closed = story.is_closed;
             if story.body.is_some() {
                 existing.body = story.body.clone();
                 existing.body_etag = None;

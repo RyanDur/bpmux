@@ -56,7 +56,7 @@ async fn build_orchestrator(
     let iterations: Vec<Iteration> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
-        .map(|(story, labels)| decode_iteration_from_story(story, labels))
+        .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
     let seed = SeededStore::new(vec![], iterations, vec![]);
     seed.bind_refresh(&orch);

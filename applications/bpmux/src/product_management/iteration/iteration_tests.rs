@@ -7,7 +7,7 @@ use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
 use crate::product_management::story::{BoardState, Story, StoryId};
 
-fn iteration_story(body: Option<String>, closed: bool) -> Story {
+fn iteration_story(body: Option<String>) -> Story {
     let mut story = Story::new_minimal(
         StoryId::new(710),
         "Iteration Crux".to_string(),
@@ -16,7 +16,6 @@ fn iteration_story(body: Option<String>, closed: bool) -> Story {
         "pm".to_string(),
     );
     story.body = body;
-    story.is_closed = closed;
     story
 }
 
@@ -33,7 +32,7 @@ fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
         codec.encode_iteration_dev_ok("dev"),
         codec.encode_current_iteration(),
     ];
-    let iteration = decode_iteration_from_story(&iteration_story(Some(body), false), &labels);
+    let iteration = decode_iteration_from_story(&iteration_story(Some(body)), &labels, false);
     assert_eq!(iteration.id, IterationId::new(710));
     assert_eq!(iteration.title, "Iteration Crux");
     assert_eq!(iteration.outcome, Some(OutcomeId::new(900)));
@@ -50,7 +49,7 @@ fn decode_reads_attributes_from_labels_and_the_tree_from_body_json() {
 
 #[test]
 fn decode_leaves_an_unannotated_iteration_empty_and_reads_closed_as_complete() {
-    let iteration = decode_iteration_from_story(&iteration_story(None, true), &[]);
+    let iteration = decode_iteration_from_story(&iteration_story(None), &[], true);
     assert_eq!(iteration.outcome, None);
     assert_eq!(iteration.builds_outcome(), None);
     assert!(iteration.stories.is_empty());

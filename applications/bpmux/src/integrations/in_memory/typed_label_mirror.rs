@@ -98,7 +98,5 @@ pub(super) fn story_closed(s: &mut InnerState, number: u64) {
     if let Some(labels) = s.labels.get_mut(&number) {
         labels.retain(keep_terminal);
     }
-    if let Some(story) = s.stories.get_mut(&number) {
-        story.is_closed = true;
-    }
+    s.closed.insert(number);
 }

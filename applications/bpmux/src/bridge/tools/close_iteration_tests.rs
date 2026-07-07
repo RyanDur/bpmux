@@ -80,7 +80,7 @@ mod canonical_via_gh_1300 {
         let iterations: Vec<Iteration> = seeds
             .iter()
             .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
-            .map(|(story, labels)| decode_iteration_from_story(story, labels))
+            .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
             .collect();
         crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
         orch.refresh_all().await.unwrap();
