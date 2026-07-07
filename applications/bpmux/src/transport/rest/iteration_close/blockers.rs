@@ -18,7 +18,7 @@ pub(crate) async fn collect_ready_queue_blockers(
         .into_iter()
         .filter(|s| {
             crate::product_management::scheduling::projected_state(s, &iterations)
-                == crate::product_management::story::BoardState::Ready
+                == crate::product_management::scheduling::ProjectedState::Ready
         })
         .map(|s| IterationCloseBlocker {
             id: s.id.value(),

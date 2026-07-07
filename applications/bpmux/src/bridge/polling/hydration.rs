@@ -7,13 +7,13 @@ pub(crate) fn select_stories_to_hydrate(
     limit: usize,
     iterations: &[crate::product_management::iteration::Iteration],
 ) -> Vec<u64> {
-    use crate::product_management::story::BoardState;
+    use crate::product_management::scheduling::ProjectedState;
     stories
         .iter()
         .filter(|s| {
             matches!(
                 crate::product_management::scheduling::projected_state(s, iterations),
-                BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
+                ProjectedState::Ready | ProjectedState::InProgress | ProjectedState::Acceptance
             ) && s.body.is_none()
         })
         .take(limit)
@@ -26,13 +26,13 @@ pub(crate) fn select_stories_to_revalidate(
     limit: usize,
     iterations: &[crate::product_management::iteration::Iteration],
 ) -> Vec<(u64, Option<String>)> {
-    use crate::product_management::story::BoardState;
+    use crate::product_management::scheduling::ProjectedState;
     stories
         .iter()
         .filter(|s| {
             matches!(
                 crate::product_management::scheduling::projected_state(s, iterations),
-                BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
+                ProjectedState::Ready | ProjectedState::InProgress | ProjectedState::Acceptance
             ) && s.body.is_some()
         })
         .take(limit)

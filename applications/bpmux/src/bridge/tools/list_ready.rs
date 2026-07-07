@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{BoardState, Story};
+use crate::product_management::scheduling::ProjectedState;
+use crate::product_management::story::Story;
 use crate::sync::RefreshDriver;
 
 pub(in crate::bridge) async fn handle_list_ready(
@@ -18,7 +19,7 @@ pub(in crate::bridge) async fn handle_list_ready(
         .into_iter()
         .filter(|story| {
             crate::product_management::scheduling::projected_state(story, iterations)
-                == BoardState::Ready
+                == ProjectedState::Ready
         })
         .collect();
     let mut queue: Vec<&Story> = current_order

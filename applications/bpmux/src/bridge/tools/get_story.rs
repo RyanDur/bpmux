@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use crate::product_management::story::{
-    BoardState, CastVerdict, Stage, Verdict, most_recent_needs_work,
-};
+use crate::product_management::scheduling::ProjectedState;
+use crate::product_management::story::{CastVerdict, Stage, Verdict, most_recent_needs_work};
 use crate::sync::RefreshDriver;
 use crate::workflow::StageId;
 
@@ -11,17 +10,17 @@ use super::get_story_view::{
 };
 use super::rework_context::enrich_body;
 
-fn state_label(state: &BoardState, held: Option<&StageId>) -> String {
+fn state_label(state: &ProjectedState, held: Option<&StageId>) -> String {
     match state {
-        BoardState::Icebox => "icebox".to_string(),
-        BoardState::Ready => "ready".to_string(),
-        BoardState::InProgress => match held.map(StageId::as_str) {
+        ProjectedState::Icebox => "icebox".to_string(),
+        ProjectedState::Ready => "ready".to_string(),
+        ProjectedState::InProgress => match held.map(StageId::as_str) {
             Some("in-progress") | None => "in progress".to_string(),
             Some(stage) => stage.to_string(),
         },
-        BoardState::Acceptance => "acceptance".to_string(),
-        BoardState::Accepted => "accepted".to_string(),
-        BoardState::Retired => "retired".to_string(),
+        ProjectedState::Acceptance => "acceptance".to_string(),
+        ProjectedState::Accepted => "accepted".to_string(),
+        ProjectedState::Retired => "retired".to_string(),
     }
 }
 
@@ -92,8 +91,9 @@ pub(in crate::bridge) async fn handle_get_story(
     let fine = r.story_fine_stage(&story);
     let iterations = r.iterations();
     let projected = crate::product_management::scheduling::projected_state(&story, &iterations);
-    let needs_gates =
-        matches!(projected, BoardState::Ready) || fine == Some(Stage::Dev) || story.is_concluded();
+    let needs_gates = matches!(projected, ProjectedState::Ready)
+        || fine == Some(Stage::Dev)
+        || story.is_concluded();
     if needs_gates && story.verdicts.is_none() {
         match r.fetch_verdicts(id).await {
             Ok(_) => {

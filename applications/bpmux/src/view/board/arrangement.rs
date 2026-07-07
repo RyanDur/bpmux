@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::product_management::iteration::Iteration;
-use crate::product_management::scheduling::projected_state;
-use crate::product_management::story::{BoardState, Stage, Story};
+use crate::product_management::scheduling::{ProjectedState, projected_state};
+use crate::product_management::story::{Stage, Story};
 use crate::workflow::StageId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -24,12 +24,12 @@ pub fn board_columns(middle: &[StageId]) -> Vec<Column> {
 
 pub fn column_of(story: &Story, fine: Option<StageId>, iterations: &[Iteration]) -> Column {
     match projected_state(story, iterations) {
-        BoardState::Icebox => Column::Icebox,
-        BoardState::Ready => Column::Ready,
-        BoardState::InProgress => Column::Middle(fine.unwrap_or_else(|| Stage::Dev.id())),
-        BoardState::Acceptance => Column::Acceptance,
-        BoardState::Accepted => Column::Accepted,
-        BoardState::Retired => Column::Retired,
+        ProjectedState::Icebox => Column::Icebox,
+        ProjectedState::Ready => Column::Ready,
+        ProjectedState::InProgress => Column::Middle(fine.unwrap_or_else(|| Stage::Dev.id())),
+        ProjectedState::Acceptance => Column::Acceptance,
+        ProjectedState::Accepted => Column::Accepted,
+        ProjectedState::Retired => Column::Retired,
     }
 }
 

@@ -147,7 +147,10 @@ pub fn placements_for_ingest(
         .collect()
 }
 
-pub fn state_label(coarse: &BoardState, fine: Option<Stage>) -> &'static str {
+pub fn state_label(
+    coarse: &crate::product_management::scheduling::ProjectedState,
+    fine: Option<Stage>,
+) -> &'static str {
     match fine {
         Some(Stage::DeskCheck) => "desk-check",
         Some(Stage::Dev) => "in-progress",
@@ -155,9 +158,13 @@ pub fn state_label(coarse: &BoardState, fine: Option<Stage>) -> &'static str {
     }
 }
 
-pub fn wire_state(coarse: &BoardState, held: Option<&StageId>) -> String {
+pub fn wire_state(
+    coarse: &crate::product_management::scheduling::ProjectedState,
+    held: Option<&StageId>,
+) -> String {
+    use crate::product_management::scheduling::ProjectedState;
     match (coarse, held) {
-        (BoardState::InProgress, Some(stage)) => stage.as_str().to_string(),
+        (ProjectedState::InProgress, Some(stage)) => stage.as_str().to_string(),
         _ => coarse.as_str().to_string(),
     }
 }

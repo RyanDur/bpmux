@@ -1,12 +1,12 @@
 use crate::product_management::iteration::Iteration;
-use crate::product_management::scheduling::projected_state;
+use crate::product_management::scheduling::{ProjectedState, projected_state};
 use crate::product_management::story::{Acceptor, BoardState, Story};
 use crate::store::{Presence, RosterMember};
 
 fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
     !stories
         .iter()
-        .any(|s| projected_state(s, iterations) == BoardState::Ready)
+        .any(|s| projected_state(s, iterations) == ProjectedState::Ready)
 }
 
 fn any_owner_parked_delivery(stories: &[Story]) -> bool {

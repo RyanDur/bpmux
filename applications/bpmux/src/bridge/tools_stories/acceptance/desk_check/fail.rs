@@ -33,7 +33,10 @@ pub(crate) async fn handle_fail_desk_check(
     };
     if let Some(story) = prior.as_ref() {
         let current_state = match refresh {
-            Some(r) => crate::board::state_label(&story.state, r.story_fine_stage(story)),
+            Some(r) => crate::board::state_label(
+                &crate::product_management::scheduling::projected_state(story, &r.iterations()),
+                r.story_fine_stage(story),
+            ),
             None => story.state.as_str(),
         };
         crate::workflow::check_target_state_valid(transition, current_state)

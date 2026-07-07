@@ -1,6 +1,6 @@
 use crate::product_management::iteration::Iteration;
-use crate::product_management::scheduling::projected_state;
-use crate::product_management::story::{BoardState, Story};
+use crate::product_management::scheduling::{ProjectedState, projected_state};
+use crate::product_management::story::Story;
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
@@ -20,12 +20,12 @@ pub(in crate::bridge) fn build_backlog_summary(
     for story in stories {
         let entry = format!("{} {}", story.id, story.title);
         match projected_state(story, iterations) {
-            BoardState::Icebox => icebox.push(entry),
-            BoardState::Ready => ready.push(entry),
-            BoardState::InProgress => in_progress.push(entry),
-            BoardState::Acceptance => acceptance.push(entry),
-            BoardState::Accepted => accepted.push(entry),
-            BoardState::Retired => retired.push(entry),
+            ProjectedState::Icebox => icebox.push(entry),
+            ProjectedState::Ready => ready.push(entry),
+            ProjectedState::InProgress => in_progress.push(entry),
+            ProjectedState::Acceptance => acceptance.push(entry),
+            ProjectedState::Accepted => accepted.push(entry),
+            ProjectedState::Retired => retired.push(entry),
         }
     }
 

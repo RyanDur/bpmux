@@ -1,5 +1,5 @@
 use crate::product_management::iteration::Iteration;
-use crate::product_management::scheduling::projected_state;
+use crate::product_management::scheduling::{ProjectedState, projected_state};
 use crate::product_management::story::{BoardState, Story};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -85,10 +85,10 @@ pub fn derive_epic_counts(children: &[&Story], iterations: &[Iteration]) -> Epic
     };
     for child in children {
         match projected_state(child, iterations) {
-            BoardState::Accepted => counts.accepted_count += 1,
-            BoardState::Retired => counts.retired_count += 1,
-            BoardState::Icebox => counts.icebox_count += 1,
-            BoardState::Ready | BoardState::InProgress | BoardState::Acceptance => {
+            ProjectedState::Accepted => counts.accepted_count += 1,
+            ProjectedState::Retired => counts.retired_count += 1,
+            ProjectedState::Icebox => counts.icebox_count += 1,
+            ProjectedState::Ready | ProjectedState::InProgress | ProjectedState::Acceptance => {
                 counts.active_count += 1
             }
         }
@@ -100,41 +100,41 @@ pub fn derive_epic_state(
     _epic_explicit_state: BoardState,
     children: &[&Story],
     iterations: &[Iteration],
-) -> BoardState {
+) -> ProjectedState {
     if children.is_empty()
         || children
             .iter()
-            .all(|c| projected_state(c, iterations) == BoardState::Icebox)
+            .all(|c| projected_state(c, iterations) == ProjectedState::Icebox)
     {
-        return BoardState::Icebox;
+        return ProjectedState::Icebox;
     }
     let any_active = children.iter().any(|c| {
         matches!(
             projected_state(c, iterations),
-            BoardState::InProgress | BoardState::Acceptance
+            ProjectedState::InProgress | ProjectedState::Acceptance
         )
     });
     if any_active {
-        return BoardState::InProgress;
+        return ProjectedState::InProgress;
     }
     let non_retired: Vec<&&Story> = children
         .iter()
-        .filter(|c| projected_state(c, iterations) != BoardState::Retired)
+        .filter(|c| projected_state(c, iterations) != ProjectedState::Retired)
         .collect();
     if non_retired.is_empty() {
-        return BoardState::Retired;
+        return ProjectedState::Retired;
     }
     if non_retired
         .iter()
-        .all(|c| projected_state(c, iterations) == BoardState::Accepted)
+        .all(|c| projected_state(c, iterations) == ProjectedState::Accepted)
     {
-        return BoardState::Accepted;
+        return ProjectedState::Accepted;
     }
     if children
         .iter()
-        .any(|c| projected_state(c, iterations) == BoardState::Ready)
+        .any(|c| projected_state(c, iterations) == ProjectedState::Ready)
     {
-        return BoardState::Ready;
+        return ProjectedState::Ready;
     }
-    BoardState::Icebox
+    ProjectedState::Icebox
 }

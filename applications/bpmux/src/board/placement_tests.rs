@@ -128,21 +128,23 @@ fn fine_stage_defaults_an_unknown_placement_id_to_dev() {
 
 #[test]
 fn state_label_composes_the_middle_sub_section_from_the_fine_stage() {
+    use crate::product_management::scheduling::ProjectedState;
     assert_eq!(
-        state_label(&BoardState::InProgress, Some(Stage::DeskCheck)),
+        state_label(&ProjectedState::InProgress, Some(Stage::DeskCheck)),
         "desk-check"
     );
     assert_eq!(
-        state_label(&BoardState::InProgress, Some(Stage::Dev)),
+        state_label(&ProjectedState::InProgress, Some(Stage::Dev)),
         "in-progress"
     );
 }
 
 #[test]
 fn state_label_passes_a_non_middle_position_through_to_its_coarse_token() {
-    assert_eq!(state_label(&BoardState::Ready, None), "ready");
-    assert_eq!(state_label(&BoardState::Acceptance, None), "acceptance");
-    assert_eq!(state_label(&BoardState::Accepted, None), "accepted");
+    use crate::product_management::scheduling::ProjectedState;
+    assert_eq!(state_label(&ProjectedState::Ready, None), "ready");
+    assert_eq!(state_label(&ProjectedState::Acceptance, None), "acceptance");
+    assert_eq!(state_label(&ProjectedState::Accepted, None), "accepted");
 }
 
 #[test]

@@ -2,6 +2,7 @@
 
 use crate::product_management::epic::{derive_epic_counts, derive_epic_state};
 use crate::product_management::iteration::{Iteration, IterationId};
+use crate::product_management::scheduling::ProjectedState;
 use crate::product_management::story::{BoardState, Story, StoryId};
 use chrono::{TimeZone, Utc};
 
@@ -36,7 +37,7 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 fn derive_epic_state_returns_icebox_for_empty_children_1450() {
     assert_eq!(
         derive_epic_state(BoardState::Ready, &[], &[]),
-        BoardState::Icebox,
+        ProjectedState::Icebox,
         "empty children must derive Icebox regardless of explicit state"
     );
 }
@@ -50,7 +51,7 @@ fn derive_epic_state_returns_icebox_when_all_children_icebox_1450() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Ready, &refs, &[]),
-        BoardState::Icebox,
+        ProjectedState::Icebox,
         "all-Icebox children derive Icebox"
     );
 }
@@ -64,7 +65,7 @@ fn derive_epic_state_returns_ready_for_one_ready_no_active_1450() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Icebox, &refs, &current_iteration_of(&[1])),
-        BoardState::Ready,
+        ProjectedState::Ready,
         "1+ Ready child + no active children derives Ready"
     );
 }
@@ -83,7 +84,7 @@ fn derive_epic_state_returns_in_progress_for_active_child_1450() {
         let refs: Vec<&Story> = kids.iter().collect();
         assert_eq!(
             derive_epic_state(BoardState::Icebox, &refs, &current_iteration_of(&[1])),
-            BoardState::InProgress,
+            ProjectedState::InProgress,
             "active-state {active_state:?} child derives InProgress at Epic-axis"
         );
     }
@@ -98,7 +99,7 @@ fn derive_epic_state_returns_accepted_when_all_non_retired_accepted_1450() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Icebox, &refs, &[]),
-        BoardState::Accepted,
+        ProjectedState::Accepted,
         "all-Accepted children derive Accepted"
     );
 }
@@ -112,7 +113,7 @@ fn derive_epic_state_returns_retired_when_all_retired_1450() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Accepted, &refs, &[]),
-        BoardState::Retired,
+        ProjectedState::Retired,
         "all-Retired children derive Retired (overrides explicit Accepted)"
     );
 }
@@ -127,7 +128,7 @@ fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted_1450(
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Icebox, &refs, &[]),
-        BoardState::Accepted,
+        ProjectedState::Accepted,
         "mixed Accepted + Retired (no active) derives Accepted — retired don't block accept"
     );
 }
@@ -138,12 +139,12 @@ fn derive_epic_state_ignores_explicit_state_when_children_present_1450() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Accepted, &refs, &[]),
-        BoardState::InProgress,
+        ProjectedState::InProgress,
         "post-1450: explicit_state is ignored — substrate IS source-of-truth (META-CANON #1)"
     );
     assert_eq!(
         derive_epic_state(BoardState::Retired, &refs, &[]),
-        BoardState::InProgress,
+        ProjectedState::InProgress,
         "Retired explicit_state also ignored when active children present"
     );
 }
@@ -158,7 +159,7 @@ fn derive_epic_state_active_dominates_terminal_at_in_progress_axis_1450() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Accepted, &refs, &[]),
-        BoardState::InProgress,
+        ProjectedState::InProgress,
         "1+ active child dominates Accepted/Retired siblings"
     );
 }
@@ -172,7 +173,7 @@ fn derive_epic_state_stored_ready_non_member_child_derives_icebox() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Ready, &refs, &current_iteration_of(&[])),
-        BoardState::Icebox,
+        ProjectedState::Icebox,
         "a stored-Ready child outside the current iteration projects Icebox, so the epic's only non-terminal child cannot make it Ready"
     );
 }
@@ -187,7 +188,7 @@ fn derive_epic_state_ready_with_terminal_children_derives_ready_1450() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Icebox, &refs, &current_iteration_of(&[1])),
-        BoardState::Ready,
+        ProjectedState::Ready,
         "Ready + terminal-only siblings (no active) derives Ready — terminal don't block Ready"
     );
 }
@@ -204,7 +205,7 @@ fn derive_epic_state_1189_paradox_regression_1450() {
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(BoardState::Icebox, &refs, &[]),
-        BoardState::Accepted,
+        ProjectedState::Accepted,
         "#1189 paradox: Epic with 30 Accepted + 6 Retired children derives Accepted, NOT Icebox (owner-canon 2026-05-19 01:47 UTC)"
     );
 }
@@ -220,17 +221,17 @@ fn derive_epic_state_does_not_return_non_epic_states_1450() {
     assert!(
         matches!(
             derived,
-            BoardState::Icebox
-                | BoardState::Ready
-                | BoardState::InProgress
-                | BoardState::Accepted
-                | BoardState::Retired
+            ProjectedState::Icebox
+                | ProjectedState::Ready
+                | ProjectedState::InProgress
+                | ProjectedState::Accepted
+                | ProjectedState::Retired
         ),
         "Epic state must be one of {{Icebox, Ready, InProgress, Accepted, Retired}}; never DeskCheck/Delivered; got {derived:?}"
     );
     assert_eq!(
         derived,
-        BoardState::InProgress,
+        ProjectedState::InProgress,
         "DeskCheck/Delivered children roll up to InProgress"
     );
 }
