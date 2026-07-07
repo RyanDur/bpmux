@@ -165,7 +165,7 @@ fn derive_epic_state_active_dominates_terminal_at_in_progress_axis_1450() {
 }
 
 #[test]
-fn derive_epic_state_stored_ready_non_member_child_derives_icebox() {
+fn derive_epic_state_not_started_non_member_child_derives_icebox() {
     let kids = [
         epic_child(1, BoardState::NotStarted),
         epic_child(2, BoardState::Accepted),
@@ -174,7 +174,7 @@ fn derive_epic_state_stored_ready_non_member_child_derives_icebox() {
     assert_eq!(
         derive_epic_state(BoardState::NotStarted, &refs, &current_iteration_of(&[])),
         ProjectedState::Icebox,
-        "a stored-Ready child outside the current iteration projects Icebox, so the epic's only non-terminal child cannot make it Ready"
+        "a not-started child outside the current iteration projects Icebox, so the epic's only non-terminal child cannot make it Ready"
     );
 }
 

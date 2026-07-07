@@ -32,12 +32,10 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
     }]
 }
 
-/// Truth-table mirror of the renderer's `columnFor` from
-/// `applications/electron/src/renderer/src/board/types.ts`.
-///
-/// Encoded by hand from the TS source so this test catches drift on
-/// either side. Update both when the projection legitimately changes.
-fn renderer_column_for(state: &str, is_closed: bool) -> &'static str {
+fn renderer_column_for_mirrored_by_hand_from_types_ts(
+    state: &str,
+    is_closed: bool,
+) -> &'static str {
     if is_closed && state != "accepted" {
         return "retired";
     }
@@ -72,10 +70,10 @@ fn derived_gh_closed(state: &BoardState) -> bool {
 }
 
 #[test]
-fn renderer_column_projection_agrees_with_rust_over_the_reachable_wire_space() {
+fn every_reachable_wire_state_derives_from_the_projection_and_agrees_with_the_renderer_mirror() {
     let non_member: Vec<Iteration> = Vec::new();
     let member = current_iteration_of(&[1]);
-    let reachable: [(BoardState, Option<Stage>, &[Iteration], &str); 7] = [
+    let projection_input_to_wire: [(BoardState, Option<Stage>, &[Iteration], &str); 7] = [
         (BoardState::NotStarted, None, &non_member, "icebox"),
         (BoardState::NotStarted, None, &member, "ready"),
         (
@@ -94,9 +92,9 @@ fn renderer_column_projection_agrees_with_rust_over_the_reachable_wire_space() {
         (BoardState::Accepted, None, &non_member, "accepted"),
         (BoardState::Retired, None, &non_member, "retired"),
     ];
-    for (state, fine, iterations, wire_state) in reachable {
+    for (state, fine, iterations, wire_state) in projection_input_to_wire {
         let is_closed = derived_gh_closed(&state);
-        let renderer = renderer_column_for(wire_state, is_closed);
+        let renderer = renderer_column_for_mirrored_by_hand_from_types_ts(wire_state, is_closed);
         let rust = rust_column_as_wire_str(&column_of(
             &story_in(state.clone()),
             fine.map(Stage::id),
@@ -104,16 +102,25 @@ fn renderer_column_projection_agrees_with_rust_over_the_reachable_wire_space() {
         ));
         assert_eq!(
             rust, renderer,
-            "drift: wire state={wire_state:?} gh_closed={is_closed} — Rust column_of = {rust:?}, renderer columnFor (mirrored) = {renderer:?}"
+            "drift: wire state={wire_state:?} gh_closed={is_closed} — Rust column_of = {rust:?}, renderer columnFor (mirrored from types.ts; update BOTH sides when the projection legitimately changes) = {renderer:?}"
         );
     }
 }
 
 #[test]
 fn renderer_legacy_wire_states_still_bucket_into_live_columns() {
-    assert_eq!(renderer_column_for("ready-for-accept", false), "acceptance");
-    assert_eq!(renderer_column_for("needs-fixes", false), "in-progress");
-    assert_eq!(renderer_column_for("rejected", false), "ready");
+    assert_eq!(
+        renderer_column_for_mirrored_by_hand_from_types_ts("ready-for-accept", false),
+        "acceptance"
+    );
+    assert_eq!(
+        renderer_column_for_mirrored_by_hand_from_types_ts("needs-fixes", false),
+        "in-progress"
+    );
+    assert_eq!(
+        renderer_column_for_mirrored_by_hand_from_types_ts("rejected", false),
+        "ready"
+    );
 }
 
 #[test]
@@ -141,7 +148,7 @@ fn open_workflow_states_bucket_one_to_one_to_their_columns() {
 }
 
 #[test]
-fn a_stored_ready_story_outside_the_current_iteration_buckets_to_icebox() {
+fn a_not_started_non_member_buckets_to_icebox() {
     assert_eq!(
         column_of(
             &story_in(BoardState::NotStarted),
@@ -149,7 +156,7 @@ fn a_stored_ready_story_outside_the_current_iteration_buckets_to_icebox() {
             &current_iteration_of(&[])
         ),
         Column::Icebox,
-        "ready-ness derives from current-iteration membership — a stored-Ready non-member is icebox on the board"
+        "ready-ness derives from current-iteration membership — a not-started non-member is icebox on the board"
     );
     assert_eq!(
         column_of(&story_in(BoardState::NotStarted), None, &[]),

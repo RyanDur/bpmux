@@ -34,17 +34,17 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 }
 
 #[test]
-fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_ready() {
-    // #1146 slice 3: stale "rejected" label projects to Ready (where
-    // reject_story now transitions per slice 1). Pre-collapse stories
-    // with stacked workflow-state labels still decode to a sensible
-    // current-state until the next reap.
+fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_not_started_rework() {
     let stacked = vec![
         "ready for accept".to_string(),
         "needs fixes".to_string(),
         "rejected".to_string(),
     ];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::NotStarted);
+    assert_eq!(
+        state_from_labels(&stacked, false),
+        BoardState::NotStarted,
+        "the rejected rework-signal wins the stacked-label priority and lands not-started; the projection supplies scheduling from membership"
+    );
 }
 
 #[test]
@@ -55,7 +55,6 @@ fn stacked_accepted_rejected_decodes_accepted() {
 
 #[test]
 fn stacked_needs_fixes_in_progress_decodes_in_progress() {
-    // #1146 slice 3: stale "needs fixes" projects to InProgress.
     let stacked = vec!["in progress".to_string(), "needs fixes".to_string()];
     assert_eq!(state_from_labels(&stacked, false), BoardState::InProgress);
 }
@@ -63,19 +62,21 @@ fn stacked_needs_fixes_in_progress_decodes_in_progress() {
 #[test]
 fn stacked_ready_in_progress_decodes_in_progress() {
     let stacked = vec!["ready".to_string(), "in progress".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::InProgress);
+    assert_eq!(
+        state_from_labels(&stacked, false),
+        BoardState::InProgress,
+        "a stale outbound ready mirror-label never outranks a real work-state label"
+    );
 }
 
 #[test]
-fn stacked_delivered_ready_for_accept_decodes_to_delivered() {
-    // #1146 slice 3: stale "ready for accept" projects to Delivered
-    // (was display-equivalent to Delivered pre-collapse).
+fn stacked_delivered_ready_for_accept_decodes_to_acceptance() {
     let stacked = vec!["delivered".to_string(), "ready for accept".to_string()];
     assert_eq!(state_from_labels(&stacked, false), BoardState::Acceptance);
 }
 
 #[test]
-fn ready_state_buckets_to_ready_column() {
+fn a_not_started_member_of_the_current_iteration_buckets_to_the_ready_column() {
     assert_eq!(
         column_of(
             &story_in(BoardState::NotStarted),
@@ -104,7 +105,7 @@ fn retired_state_buckets_to_retired_column() {
 }
 
 #[test]
-fn empty_labels_open_decodes_icebox() {
+fn empty_labels_open_decodes_not_started() {
     assert_eq!(state_from_labels(&[], false), BoardState::NotStarted);
 }
 
@@ -115,8 +116,6 @@ fn empty_labels_closed_decodes_accepted() {
 
 #[test]
 fn case_insensitive_label_matching() {
-    // #1146 slice 3: stale "REJECTED" label projects to Ready
-    // (post-collapse semantics; case-insensitivity preserved).
     let stacked = vec!["REJECTED".to_string(), "Ready For Accept".to_string()];
     assert_eq!(state_from_labels(&stacked, false), BoardState::NotStarted);
 }

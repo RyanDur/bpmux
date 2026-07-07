@@ -94,7 +94,7 @@ async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
 }
 
 #[tokio::test]
-async fn reconcile_keeps_the_ready_label_for_a_projected_ready_member_stored_icebox() {
+async fn reconcile_keeps_the_ready_label_for_a_current_iteration_member() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(452, BoardState::NotStarted)]);
     adapter.seed_labels(452, vec!["ready".to_string(), "feature".to_string()]);
@@ -111,7 +111,7 @@ async fn reconcile_keeps_the_ready_label_for_a_projected_ready_member_stored_ice
 }
 
 #[tokio::test]
-async fn reconcile_marks_the_ready_label_stale_for_a_stored_ready_non_member() {
+async fn reconcile_marks_the_ready_label_stale_for_a_not_started_non_member() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(453, BoardState::NotStarted)]);
     adapter.seed_labels(453, vec!["ready".to_string(), "feature".to_string()]);
@@ -122,7 +122,7 @@ async fn reconcile_marks_the_ready_label_stale_for_a_stored_ready_non_member() {
     let repairs = orch.reconcile_dual_state_labels().await.unwrap();
     assert_eq!(
         repairs, 1,
-        "a stored-Ready non-member projects Icebox, so its 'ready' label is stale and gets swept — self-healing per design-doc divergence #1"
+        "a not-started non-member projects Icebox, so its 'ready' label is stale and gets swept — the reconciler self-heals the mirror"
     );
     let pushed = adapter.pushed_events();
     assert!(matches!(

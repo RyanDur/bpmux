@@ -50,12 +50,12 @@ fn a_member_of_a_complete_but_still_current_iteration_is_not_current_work() {
 }
 
 #[test]
-fn a_stored_icebox_member_of_the_current_iteration_derives_ready_and_is_current() {
+fn a_not_started_member_of_the_current_iteration_derives_ready_and_is_current() {
     let iterations = [iteration(1, true, &[10])];
     assert_eq!(
         backlog_column(&story(10, BoardState::NotStarted), &iterations),
         Some(BacklogColumn::Current),
-        "design-doc divergence #3: membership in the current iteration IS the scheduling truth — a stored-Icebox member projects Ready and belongs to the current board"
+        "membership in the current iteration IS the scheduling truth — a not-started member projects Ready and belongs to the current board"
     );
 }
 

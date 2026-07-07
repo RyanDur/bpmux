@@ -193,7 +193,7 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
-    async fn ready_queue_empty_guard_excludes_a_stored_ready_non_member() {
+    async fn ready_queue_empty_guard_excludes_a_not_started_non_member() {
         let (refresh, _adapter) = build_refresh(vec![
             seed_current_iteration_issue_with_members(1400, "Pegasus", &[]),
             seed_member(900, BoardState::NotStarted, None),
@@ -202,7 +202,7 @@ mod canonical_via_gh_1300 {
         let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
         assert!(
             blockers.is_empty(),
-            "a stored-Ready story that is not a current-iteration member derives Icebox and never blocks close: {blockers:?}"
+            "a not-started story outside the current iteration derives Icebox and never blocks close: {blockers:?}"
         );
     }
 

@@ -30,7 +30,7 @@ fn ready_stories_sort_by_current_iteration_stories_order() {
 }
 
 #[test]
-fn loose_ready_non_members_sort_after_members_by_issue_number() {
+fn wire_ready_rows_absent_from_the_membership_order_sort_last_by_issue_number() {
     let stories = vec![
         ready_json(5050),
         ready_json(5001),
@@ -42,18 +42,18 @@ fn loose_ready_non_members_sort_after_members_by_issue_number() {
     assert_eq!(
         ready_numbers_in_order(&sorted),
         vec![5002, 5001, 5040, 5050],
-        "current-iteration members first by stories-order, then loose-ready by issue-number"
+        "rows found in the membership order come first in that order; rows absent from it fall back to issue-number"
     );
 }
 
 #[test]
-fn a_story_not_in_the_current_iteration_is_loose() {
+fn a_wire_ready_row_absent_from_the_membership_order_sorts_after_members() {
     let stories = vec![ready_json(5001), ready_json(5002)];
     let current_order = [5002];
     let sorted = sort_board_ready_by_membership(stories, &current_order);
     assert_eq!(
         ready_numbers_in_order(&sorted),
         vec![5002, 5001],
-        "a story not in the current iteration's stories list is loose (sorts after members)"
+        "a row the membership order does not name sorts after the ordered members"
     );
 }

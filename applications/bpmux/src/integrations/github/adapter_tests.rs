@@ -6,7 +6,7 @@ use crate::integrations::github::mapper::is_iteration_position_label_for_test as
 use crate::integrations::github::mapper::is_position_label_for_test as is_position_label;
 use crate::integrations::github::mapper::{
     classify_verdict, decode_story_metadata, decode_verdicts, is_epic_issue, is_epic_story,
-    iteration_order_from_labels, parent_epic_from_labels, state_from_labels, state_to_label,
+    iteration_order_from_labels, outbound_state_label, parent_epic_from_labels, state_from_labels,
     story_type_from_labels, story_type_from_labels_or_title, tags_from_labels,
     warn_on_inconsistent_state_labels,
 };
@@ -171,18 +171,19 @@ fn state_from_labels_is_case_insensitive() {
 }
 
 #[test]
-fn state_to_label_ready_is_outbound_only_the_decoder_ignores_it() {
-    let labels = vec![state_to_label(BoardState::NotStarted).to_string()];
+fn the_derived_ready_label_is_outbound_only_the_decoder_ignores_it() {
+    let ready_label = outbound_state_label(&BoardState::NotStarted, true)
+        .expect("a not-started current-iteration member derives the ready mirror label");
     assert_eq!(
-        state_from_labels(&labels, false),
+        state_from_labels(&[ready_label.to_string()], false),
         BoardState::NotStarted,
         "the outbound ready label is a human-readable mirror, never a decode input — scheduling decodes from iteration membership"
     );
 }
 
 #[test]
-fn state_to_label_roundtrips_in_progress_space() {
-    let labels = vec![state_to_label(BoardState::InProgress).to_string()];
+fn the_in_progress_github_label_round_trips_with_its_space_through_decode() {
+    let labels = vec![BoardState::InProgress.github_label().to_string()];
     assert_eq!(state_from_labels(&labels, false), BoardState::InProgress);
 }
 

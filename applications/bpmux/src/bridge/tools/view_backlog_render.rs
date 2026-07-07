@@ -54,28 +54,28 @@ async fn backlog_summary_via_dispatch(
 }
 
 #[tokio::test]
-async fn a_stored_ready_story_outside_the_current_iteration_reports_in_icebox_not_ready() {
+async fn a_not_started_non_member_reports_in_icebox_not_ready() {
     let summary = backlog_summary_via_dispatch(
-        vec![story(300, "loose ready", BoardState::NotStarted)],
+        vec![story(300, "unscheduled work", BoardState::NotStarted)],
         current_iteration_of(&[]),
     )
     .await;
     assert_eq!(
         summary["icebox_count"], 1,
-        "a stored-Ready non-member derives Icebox in the backlog summary, agreeing with board/list_ready/close-blockers; got {summary}"
+        "a not-started non-member derives Icebox in the backlog summary, agreeing with board/list_ready/close-blockers; got {summary}"
     );
     assert_eq!(
         summary["ready_count"], 0,
-        "a stored-Ready non-member never counts ready; got {summary}"
+        "a not-started non-member never counts ready; got {summary}"
     );
     assert!(
         summary["ready_samples"].as_array().unwrap().is_empty(),
-        "a stored-Ready non-member never appears in ready_samples; got {summary}"
+        "a not-started non-member never appears in ready_samples; got {summary}"
     );
 }
 
 #[tokio::test]
-async fn a_stored_icebox_current_iteration_member_reports_in_ready() {
+async fn a_not_started_current_iteration_member_reports_in_ready() {
     let summary = backlog_summary_via_dispatch(
         vec![story(301, "scheduled member", BoardState::NotStarted)],
         current_iteration_of(&[301]),

@@ -75,10 +75,6 @@ pub(super) fn resolve_state_and_placement(
     (BoardState::NotStarted, None)
 }
 
-pub fn state_to_label(state: BoardState) -> &'static str {
-    state.github_label()
-}
-
 pub fn outbound_state_label(
     state: &BoardState,
     member_of_current_iteration: bool,

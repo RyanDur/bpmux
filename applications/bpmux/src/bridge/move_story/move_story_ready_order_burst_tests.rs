@@ -124,7 +124,7 @@ async fn burst_reorder_lands_each_story_at_its_own_position() {
 }
 
 #[tokio::test]
-async fn positioned_members_return_in_membership_order_and_a_stored_ready_non_member_is_absent() {
+async fn positioned_members_return_in_membership_order_and_a_not_started_non_member_is_absent() {
     let (orch, seed) = build_orchestrator(vec![
         current_iteration_story(7000),
         ready_story(5001),
@@ -140,7 +140,7 @@ async fn positioned_members_return_in_membership_order_and_a_stored_ready_non_me
     assert_eq!(
         queue,
         vec![5003, 5002],
-        "the queue is exactly the current-iteration members in membership order; a stored-Ready \
+        "the queue is exactly the current-iteration members in membership order; a not-started \
          non-member (5001) derives Icebox and never appears in the ready queue; got {queue:?}"
     );
 }
