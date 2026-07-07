@@ -4,7 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, ensure_current_iteration};
 use serde_json::Value;
 
 async fn drain_pending_events(agent: &TestBridge, subscription_id: &str) {
@@ -29,6 +29,8 @@ fn subscribe_then_non_create_board_mutation_delivers_board_invalidated() {
     rt.block_on(async {
         let agent = TestBridge::connect(&bpmux, "dev").await;
         let mutator = TestBridge::connect(&bpmux, "pm").await;
+
+        ensure_current_iteration(&mutator).await;
 
         let target = create_target_story(
             &mutator,

@@ -4,6 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
+use harness::story_helpers::ensure_current_iteration;
 use std::time::Duration;
 
 #[test]
@@ -54,6 +55,7 @@ fn move_story_with_same_target_state_preserves_reorder_semantic_1403() {
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let result = pm
             .call_tool(

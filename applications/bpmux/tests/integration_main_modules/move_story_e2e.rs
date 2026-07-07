@@ -27,7 +27,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, ensure_current_iteration};
 use std::time::Duration;
 
 #[test]
@@ -37,6 +37,7 @@ fn move_story_happy_path_returns_message_naming_target_state() {
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,
@@ -78,6 +79,7 @@ fn move_story_rejects_blank_rationale_per_falsifier_b() {
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,
@@ -114,6 +116,7 @@ fn move_story_rejects_zero_position_per_falsifier_d() {
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,
@@ -188,6 +191,7 @@ fn move_story_dev_caller_with_position_in_ready_rejected_per_pm_lane() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,
@@ -236,6 +240,7 @@ fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,
@@ -331,6 +336,7 @@ fn move_story_audit_comment_surfaces_via_view_comments_per_falsifier_f() {
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,

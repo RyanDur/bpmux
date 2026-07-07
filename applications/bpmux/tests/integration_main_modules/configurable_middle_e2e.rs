@@ -4,7 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, ensure_current_iteration};
 use std::time::Duration;
 
 const THREE_STAGE_WORKFLOW: &str = r#"
@@ -141,6 +141,7 @@ fn a_three_stage_middle_drives_end_to_end_with_per_stage_judges() {
         let dev = TestBridge::connect(&bpmux, "dev").await;
         let designer = TestBridge::connect(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let board = pm
             .call_tool("view_board", serde_json::json!({}))
@@ -271,6 +272,7 @@ fn without_a_workflow_file_the_board_is_the_default_three_states() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let board = pm
             .call_tool("view_board", serde_json::json!({}))

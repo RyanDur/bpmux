@@ -4,7 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, ensure_current_iteration};
 use serde_json::json;
 
 async fn run_verb(bpmux: &TestBpmux, role: &str, args: &[&str]) -> std::process::Output {
@@ -158,6 +158,7 @@ async fn bpmux_reject_owner_bypasses_the_reject_role_guard() {
 async fn bpmux_start_then_deliver_drive_the_dev_lifecycle_off_mcp() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
+    ensure_current_iteration(&pm).await;
     let id = create_target_story(
         &pm,
         "[Feature] cli-dev-lifecycle-target",

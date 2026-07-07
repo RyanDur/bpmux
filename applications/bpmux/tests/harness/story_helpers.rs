@@ -18,6 +18,27 @@ pub fn extract_story_id(create_msg: &str) -> u64 {
     tail[..end].parse().expect("parse story number")
 }
 
+pub async fn ensure_current_iteration(pm: &TestBridge) -> u64 {
+    let created = pm
+        .call_tool(
+            "create_iteration",
+            serde_json::json!({"name": "Scheduling"}),
+        )
+        .await;
+    let iteration_id = match created {
+        Ok(msg) => extract_story_id(msg.as_str().unwrap_or_default()),
+        Err(err) if err.contains("already open as #") => extract_story_id(&err),
+        Err(err) => panic!("create scheduling iteration failed: {err}"),
+    };
+    pm.call_tool(
+        "designate_current_iteration",
+        serde_json::json!({"iteration_id": iteration_id}),
+    )
+    .await
+    .expect("designate the scheduling iteration current");
+    iteration_id
+}
+
 /// Drive a story through pickup + deliver so it lands in the
 /// Delivered state, satisfying the #1385 slice-4 target-state-check
 /// (accept requires Delivered). Caller passes a separate dev bridge
@@ -30,6 +51,7 @@ pub async fn drive_to_delivered(
     story_id: u64,
     acceptance_test_path: &str,
 ) {
+    ensure_current_iteration(pm).await;
     pm.call_tool(
         "move_story",
         serde_json::json!({

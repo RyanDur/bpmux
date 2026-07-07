@@ -5,7 +5,7 @@ use crate::harness;
 use bpmux::room::{BridgeWiring, terminal_provisioning};
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, ensure_current_iteration};
 use serde_json::Value;
 
 async fn drain_pending_events(agent: &TestBridge, subscription_id: &str) {
@@ -58,6 +58,8 @@ fn provisioned_agent_receives_live_state_delta_push_not_just_rpc_tools() {
         )
         .await;
         let mutator = TestBridge::connect(&bpmux, "pm").await;
+
+        ensure_current_iteration(&mutator).await;
 
         let target = create_target_story(
             &mutator,

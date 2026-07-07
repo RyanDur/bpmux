@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use crate::harness::bridge::TestBridge;
 use crate::harness::pty::TestBpmux;
-use crate::harness::story_helpers::create_target_story;
+use crate::harness::story_helpers::{create_target_story, ensure_current_iteration};
 
 #[test]
 fn move_story_via_mcp_reflects_in_get_story_immediately() {
@@ -25,6 +25,7 @@ fn move_story_via_mcp_reflects_in_get_story_immediately() {
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,
@@ -75,6 +76,7 @@ fn start_story_via_mcp_reflects_in_get_story_immediately() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,

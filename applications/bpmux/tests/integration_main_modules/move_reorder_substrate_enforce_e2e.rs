@@ -4,7 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, ensure_current_iteration};
 use std::time::Duration;
 
 #[test]
@@ -107,6 +107,7 @@ fn dev_firing_move_with_position_returns_structured_409() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+        ensure_current_iteration(&pm).await;
 
         let target_id = create_target_story(
             &pm,

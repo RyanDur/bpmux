@@ -4,7 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, ensure_current_iteration};
 use std::time::Duration;
 
 async fn drain_pending_events(agent: &TestBridge, subscription_id: &str) {
@@ -29,6 +29,8 @@ fn reconnect_replays_state_deltas_but_never_auto_replays_chat() {
     rt.block_on(async {
         let mutator = TestBridge::connect(&bpmux, "pm").await;
         let agent = TestBridge::connect(&bpmux, "dev").await;
+
+        ensure_current_iteration(&mutator).await;
 
         let target = create_target_story(
             &mutator,
