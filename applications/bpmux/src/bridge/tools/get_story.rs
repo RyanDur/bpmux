@@ -4,23 +4,24 @@ use crate::product_management::story::{
     BoardState, CastVerdict, Stage, Verdict, most_recent_needs_work,
 };
 use crate::sync::RefreshDriver;
+use crate::workflow::StageId;
 
 use super::get_story_view::{
     NOT_HYDRATED_PLACEHOLDER, render_epic_detail, render_iteration_detail,
 };
 use super::rework_context::enrich_body;
 
-fn state_label(state: &BoardState, fine: Option<Stage>) -> &'static str {
+fn state_label(state: &BoardState, held: Option<&StageId>) -> String {
     match state {
-        BoardState::Icebox => "icebox",
-        BoardState::Ready => "ready",
-        BoardState::InProgress => match fine {
-            Some(Stage::DeskCheck) => "desk-check",
-            _ => "in progress",
+        BoardState::Icebox => "icebox".to_string(),
+        BoardState::Ready => "ready".to_string(),
+        BoardState::InProgress => match held.map(StageId::as_str) {
+            Some("in-progress") | None => "in progress".to_string(),
+            Some(stage) => stage.to_string(),
         },
-        BoardState::Acceptance => "acceptance",
-        BoardState::Accepted => "accepted",
-        BoardState::Retired => "retired",
+        BoardState::Acceptance => "acceptance".to_string(),
+        BoardState::Accepted => "accepted".to_string(),
+        BoardState::Retired => "retired".to_string(),
     }
 }
 
@@ -109,15 +110,16 @@ pub(in crate::bridge) async fn handle_get_story(
     let body_cached = story.body.as_deref();
     let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
     let latest_reject = story.verdicts.as_deref().and_then(latest_reject_json);
+    let held = r.story_held_stage(&story);
     let workflow_state = story
         .verdicts
         .as_deref()
         .and_then(most_recent_needs_work)
         .map(|g| match &g.verdict {
-            Verdict::Fail { step } if step.as_str() == "desk-check" => "in progress",
-            _ => "ready",
+            Verdict::Fail { step } if step.as_str() == "desk-check" => "in progress".to_string(),
+            _ => "ready".to_string(),
         })
-        .unwrap_or_else(|| state_label(&story.state, fine));
+        .unwrap_or_else(|| state_label(&story.state, held.as_ref()));
     if needs_gates
         && let Some(gates) = story.verdicts.as_ref()
         && let Some(ctx) = rework_context_from_gates(gates)
@@ -133,8 +135,8 @@ pub(in crate::bridge) async fn handle_get_story(
         "id": story.id,
         "title": story.title,
         "body": body_out,
+        "is_closed": matches!(workflow_state.as_str(), "accepted" | "retired"),
         "workflow_state": workflow_state,
-        "is_closed": matches!(workflow_state, "accepted" | "retired"),
         "labels": labels,
         "parent_epic": story.parent_epic(),
         "body_hydrated": body_cached.is_some(),

@@ -194,6 +194,16 @@ fn a_three_stage_middle_drives_end_to_end_with_per_stage_judges() {
             .await
             .expect("dev judges build");
 
+        let story = pm
+            .call_tool("get_story", serde_json::json!({"id": id}))
+            .await
+            .expect("get_story mid-walk");
+        assert_eq!(
+            story.get("workflow_state").and_then(|v| v.as_str()),
+            Some("review"),
+            "a story at a configured stage reports THAT stage, not a collapsed 'in progress'; full={story}"
+        );
+
         let refused = dev.call_tool("pass_stage", pass_args(id)).await;
         let err = refused.expect_err("dev is not review's judge — the story sits at review");
         assert!(
