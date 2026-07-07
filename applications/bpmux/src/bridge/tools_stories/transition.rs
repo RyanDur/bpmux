@@ -28,7 +28,9 @@ pub(crate) async fn handle_start_story(
     let (was_closed, prior_state, reject_lead) = if let Some(r) = refresh {
         let prior = ensure_story_in_canonical_store(r, id).await?;
         let _ = r.fetch_body(id).await;
-        let _ = r.fetch_verdicts(id).await;
+        if prior.verdicts.is_none() {
+            let _ = r.fetch_verdicts(id).await;
+        }
         let lead = r
             .story(id)
             .and_then(|s| s.verdicts)

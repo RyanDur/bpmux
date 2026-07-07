@@ -73,6 +73,107 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
 }
 
 #[tokio::test]
+async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdicts_lag_the_drain() {
+    use crate::integrations::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::{BoardState, CastVerdict, Story, Verdict};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        StoryId::new(884),
+        "[Chore] rework-lead survives undrained mirror".into(),
+        BoardState::NotStarted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.verdicts = Some(vec![
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
+            ts: Utc.with_ymd_and_hms(2026, 4, 1, 1, 0, 0).unwrap(),
+            actor: "dev".into(),
+            payload: Some("delivered the slice".into()),
+        },
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
+            ts: Utc.with_ymd_and_hms(2026, 4, 1, 2, 0, 0).unwrap(),
+            actor: "owner".into(),
+            payload: Some("the walk never covered the narrow viewport".into()),
+        },
+    ]);
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(884, vec!["chore".to_string()]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    orch.refresh_all().await.unwrap();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(884));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    let msg = handle_start_story(&args, "dev:claude-code", Some(&orch))
+        .await
+        .expect("pickup succeeds");
+    assert!(
+        msg.contains("REWORK") && msg.contains("the walk never covered the narrow viewport"),
+        "the store's optimistic reject is the freshest truth — a stale adapter fetch racing the comment drain must never clobber it out of the pickup banner; got {msg}"
+    );
+}
+
+#[tokio::test]
+async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdicts() {
+    use crate::integrations::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::{BoardState, CastVerdict, Story, Verdict};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(885),
+        "[Chore] rework-lead read-through survives".into(),
+        BoardState::NotStarted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(885, vec!["chore".to_string()]);
+    adapter.seed_verdicts(
+        885,
+        vec![CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
+            ts: Utc.with_ymd_and_hms(2026, 4, 1, 2, 0, 0).unwrap(),
+            actor: "owner".into(),
+            payload: Some("rejected while the cache was cold".into()),
+        }],
+    );
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    orch.refresh_all().await.unwrap();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(885));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    let msg = handle_start_story(&args, "dev:claude-code", Some(&orch))
+        .await
+        .expect("pickup succeeds");
+    assert!(
+        msg.contains("REWORK") && msg.contains("rejected while the cache was cold"),
+        "with no cached verdicts the read-through still fetches the reject from the adapter and surfaces the rework lead; got {msg}"
+    );
+}
+
+#[tokio::test]
 async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
