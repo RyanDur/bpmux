@@ -12,7 +12,7 @@ use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
 
 fn bundled_middle() -> Vec<StageId> {
-    crate::workflow::board_middle_stage_ids(&crate::workflow::bundled_default::bundled_default())
+    crate::workflow::board_middle_stage_ids(&crate::workflow::test_support::repo_workflow())
 }
 
 fn story(num: u64, title: &str, state: BoardState) -> Story {

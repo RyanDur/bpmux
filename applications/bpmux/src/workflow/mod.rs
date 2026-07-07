@@ -21,7 +21,8 @@ pub use gate::{
 };
 pub use loader::{
     CANONICAL_SECTIONS, WorkflowLoadError, current_workflow, install_workflow,
-    load_project_root_or_cwd, load_workflow, validate_section_skeleton, workflow_path,
+    load_project_root_or_cwd, load_workflow, load_workflow_file, load_workflow_from_process_env,
+    load_workflow_with_override, validate_section_skeleton, workflow_path,
 };
 pub use stage_id::StageId;
 
@@ -34,4 +35,22 @@ pub fn board_middle_stage_ids(config: &WorkflowConfig) -> Vec<StageId> {
         .filter(|s| s.section == IN_WORK_SECTION)
         .map(|s| StageId::from(s.id.as_str()))
         .collect()
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+pub mod test_support {
+    use std::path::Path;
+
+    use super::config::WorkflowConfig;
+
+    pub fn repo_workflow() -> WorkflowConfig {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let repo_root = manifest
+            .parent()
+            .and_then(Path::parent)
+            .expect("crate lives two levels under the repo root");
+        super::loader::load_workflow(repo_root)
+            .expect("the repo's .bpmux/workflow.toml is the team config and must load")
+    }
 }

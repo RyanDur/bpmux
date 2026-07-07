@@ -1,0 +1,166 @@
+# bpmux's own team workflow.
+#
+# This file IS the team's process: a two-stage middle (dev work, then a
+# designer desk-check) inside the ready → in-work → acceptance skeleton.
+# Without this file bpmux runs the bundled default: a single undivided
+# in-progress middle. The board renders whatever this file declares.
+#
+# judges: who may pass/fail a stage's judgment (role id or agent id).
+# Omit for "anyone". fail_to: where a failed judgment sends the story.
+# Omit for "previous stage" (a failure at the FIRST middle stage stays
+# in that stage).
+
+[[role]]
+id = "owner"
+purposes = ["owner"]
+
+[[role]]
+id = "pm"
+purposes = ["pm"]
+
+[[role]]
+id = "designer"
+purposes = ["designer", "iteration-reviewer"]
+
+[[role]]
+id = "dev"
+purposes = ["dev", "iteration-builder"]
+
+[[section]]
+id = "pre-work"
+
+[[section]]
+id = "in-work"
+
+[[section]]
+id = "post-work"
+
+[[state]]
+id = "icebox"
+section = "pre-work"
+
+[[state]]
+id = "ready"
+section = "pre-work"
+
+[[state]]
+id = "in-progress"
+section = "in-work"
+judges = ["dev"]
+
+[[state]]
+id = "desk-check"
+section = "in-work"
+judges = ["designer"]
+
+[[state]]
+id = "acceptance"
+section = "post-work"
+
+[[state]]
+id = "accepted"
+section = "post-work"
+
+[[state]]
+id = "retired"
+section = "post-work"
+
+[[transition]]
+id = "pickup"
+from = "ready"
+to = "in-progress"
+actor_roles = ["dev"]
+
+[[transition]]
+id = "deliver"
+from = "in-progress"
+to = "desk-check"
+actor_roles = ["dev"]
+
+[[transition]]
+id = "pass-desk-check"
+from = "desk-check"
+to = "acceptance"
+actor_roles = ["designer"]
+gate_class = "team-verifiable"
+evidence_window_seconds = 600
+required_evidence_roles = ["designer"]
+
+[[transition]]
+id = "pass-desk-check"
+from = "desk-check"
+to = "acceptance"
+actor_roles = ["designer"]
+gate_class = "owner-walk"
+evidence_window_seconds = 600
+required_evidence_roles = ["designer"]
+
+[[transition]]
+id = "pass-desk-check"
+from = "desk-check"
+to = "acceptance"
+actor_roles = ["designer"]
+gate_class = "dev-verifiable"
+evidence_window_seconds = 600
+required_evidence_roles = ["designer"]
+
+[[transition]]
+id = "fail-desk-check"
+from = "desk-check"
+to = "in-progress"
+actor_roles = ["pm", "designer"]
+
+[[transition]]
+id = "reject"
+from = "acceptance"
+to = "ready"
+actor_roles = ["pm"]
+
+[[transition]]
+id = "accept"
+from = "acceptance"
+to = "accepted"
+actor_roles = ["pm"]
+gate_class = "team-verifiable"
+evidence_window_seconds = 600
+required_evidence_roles = ["designer", "dev"]
+
+[[transition]]
+id = "accept"
+from = "acceptance"
+to = "accepted"
+actor_roles = []
+gate_class = "owner-walk"
+
+[[transition]]
+id = "accept"
+from = "acceptance"
+to = "accepted"
+actor_roles = ["dev"]
+gate_class = "dev-verifiable"
+evidence_window_seconds = 600
+required_evidence_roles = ["designer"]
+
+[[transition]]
+id = "close"
+from = "any"
+to = "retired"
+actor_roles = ["pm"]
+
+[[transition]]
+id = "reorder"
+from = "any"
+to = "any"
+actor_roles = ["pm"]
+
+[[transition]]
+id = "move-with-position"
+from = "any"
+to = "any"
+actor_roles = ["pm"]
+
+[[transition]]
+id = "add-to-iteration"
+from = "any"
+to = "any"
+actor_roles = ["pm"]

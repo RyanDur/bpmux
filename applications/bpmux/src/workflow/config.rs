@@ -28,6 +28,10 @@ pub struct Section {
 pub struct State {
     pub id: String,
     pub section: String,
+    #[serde(default)]
+    pub judges: Vec<String>,
+    #[serde(default)]
+    pub fail_to: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,6 +73,21 @@ impl GateClass {
 impl WorkflowConfig {
     pub fn transition_by_id(&self, id: &str) -> Option<&Transition> {
         self.transition.iter().find(|t| t.id == id)
+    }
+
+    pub fn state_by_id(&self, id: &str) -> Option<&State> {
+        self.state.iter().find(|s| s.id == id)
+    }
+
+    pub fn judges_of(&self, state_id: &str) -> &[String] {
+        self.state_by_id(state_id)
+            .map(|s| s.judges.as_slice())
+            .unwrap_or(&[])
+    }
+
+    pub fn fail_to_of(&self, state_id: &str) -> Option<&str> {
+        self.state_by_id(state_id)
+            .and_then(|s| s.fail_to.as_deref())
     }
 
     pub fn transition_for(&self, id: &str, class: GateClass) -> Option<&Transition> {

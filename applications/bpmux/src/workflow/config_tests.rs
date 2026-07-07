@@ -122,18 +122,31 @@ mod role_resolver_tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod board_middle_stage_ids_tests {
-    use crate::workflow::{board_middle_stage_ids, bundled_default::bundled_default};
+    use crate::workflow::{board_middle_stage_ids, bundled_default::bundled_default, test_support};
 
     #[test]
-    fn middle_stages_derive_from_the_in_work_section_in_config_order() {
+    fn bundled_default_middle_is_a_single_undivided_in_progress_stage() {
         let ids: Vec<String> = board_middle_stage_ids(&bundled_default())
             .iter()
             .map(|id| id.as_str().to_string())
             .collect();
         assert_eq!(
             ids,
+            vec!["in-progress".to_string()],
+            "without a workflow.toml the board is the default three states: ready, one undivided in-progress, acceptance"
+        );
+    }
+
+    #[test]
+    fn middle_stages_derive_from_the_in_work_section_in_config_order() {
+        let ids: Vec<String> = board_middle_stage_ids(&test_support::repo_workflow())
+            .iter()
+            .map(|id| id.as_str().to_string())
+            .collect();
+        assert_eq!(
+            ids,
             vec!["in-progress".to_string(), "desk-check".to_string()],
-            "the board's configurable middle is exactly the in-work section, in config order"
+            "the board's configurable middle is exactly the configured in-work section, in config order — the repo's own workflow.toml declares the team's two stages"
         );
     }
 }

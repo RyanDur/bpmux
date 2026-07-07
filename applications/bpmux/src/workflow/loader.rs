@@ -14,7 +14,47 @@ pub fn install_workflow(config: WorkflowConfig) {
 }
 
 pub fn current_workflow() -> &'static WorkflowConfig {
-    WORKFLOW.get_or_init(bundled_default)
+    WORKFLOW.get_or_init(|| match load_workflow_from_process_env() {
+        Ok(config) => config,
+        Err(e) => {
+            crate::diag::log_diag(&format!(
+                "workflow config load failed at lazy init; falling back to bundled default: {e}"
+            ));
+            bundled_default()
+        }
+    })
+}
+
+pub fn load_workflow_from_process_env() -> Result<WorkflowConfig, WorkflowLoadError> {
+    let override_path = std::env::var_os("BPMUX_WORKFLOW_CONFIG").map(PathBuf::from);
+    let project_root = std::env::var_os("BPMUX_PROJECT_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(load_project_root_or_cwd);
+    load_workflow_with_override(override_path.as_deref(), &project_root)
+}
+
+pub fn load_workflow_with_override(
+    override_path: Option<&Path>,
+    project_root: &Path,
+) -> Result<WorkflowConfig, WorkflowLoadError> {
+    match override_path {
+        Some(path) => load_workflow_file(path),
+        None => load_workflow(project_root),
+    }
+}
+
+pub fn load_workflow_file(path: &Path) -> Result<WorkflowConfig, WorkflowLoadError> {
+    let content = std::fs::read_to_string(path).map_err(|e| WorkflowLoadError::ReadFailed {
+        path: path.display().to_string(),
+        message: e.to_string(),
+    })?;
+    let config: WorkflowConfig =
+        toml::from_str(&content).map_err(|e| WorkflowLoadError::ParseFailed {
+            path: path.display().to_string(),
+            parse_error: e.to_string(),
+        })?;
+    validate_section_skeleton(&config)?;
+    Ok(config)
 }
 
 pub const CANONICAL_SECTIONS: &[&str] = &["pre-work", "in-work", "post-work"];
@@ -65,17 +105,7 @@ pub fn load_workflow(project_root: &Path) -> Result<WorkflowConfig, WorkflowLoad
     if !path.exists() {
         return Ok(bundled_default());
     }
-    let content = std::fs::read_to_string(&path).map_err(|e| WorkflowLoadError::ReadFailed {
-        path: path.display().to_string(),
-        message: e.to_string(),
-    })?;
-    let config: WorkflowConfig =
-        toml::from_str(&content).map_err(|e| WorkflowLoadError::ParseFailed {
-            path: path.display().to_string(),
-            parse_error: e.to_string(),
-        })?;
-    validate_section_skeleton(&config)?;
-    Ok(config)
+    load_workflow_file(&path)
 }
 
 pub fn validate_section_skeleton(config: &WorkflowConfig) -> Result<(), WorkflowLoadError> {

@@ -123,6 +123,7 @@ impl TestBpmux {
             .expect("workspace root two parents up from CARGO_MANIFEST_DIR")
             .to_path_buf();
         cmd.env("BPMUX_ROOT", &workspace_root);
+        cmd.env("BPMUX_PROJECT_ROOT", &workspace_root);
         cmd.env("BPMUX_USAGE_PATH", session_dir.path().join("usage.json"));
         cmd.env(
             "BPMUX_AUTH_TOKEN_PATH",
