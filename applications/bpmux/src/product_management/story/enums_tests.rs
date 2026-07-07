@@ -85,13 +85,13 @@ fn story_state_acceptance_wire_vocab_parses_and_keeps_legacy_delivered_alias() {
 fn story_state_github_label_canonical_form_per_variant() {
     assert_eq!(
         Work::NotStarted.github_label(),
-        "",
-        "not-started has NO static GitHub label — the outbound mirror derives ready-vs-absence from membership"
+        None,
+        "not-started has NO GitHub label at the type level — the outbound mirror derives ready-vs-absence from membership, and an empty-label push is unrepresentable"
     );
-    assert_eq!(Work::InProgress.github_label(), "in progress");
-    assert_eq!(Work::Acceptance.github_label(), "delivered");
-    assert_eq!(Work::Accepted.github_label(), "accepted");
-    assert_eq!(Work::Retired.github_label(), "retired");
+    assert_eq!(Work::InProgress.github_label(), Some("in progress"));
+    assert_eq!(Work::Acceptance.github_label(), Some("delivered"));
+    assert_eq!(Work::Accepted.github_label(), Some("accepted"));
+    assert_eq!(Work::Retired.github_label(), Some("retired"));
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn story_state_github_labels_round_trip_except_not_started_which_is_membership_d
         Work::Accepted,
         Work::Retired,
     ] {
-        let label = state.github_label();
+        let label = state.github_label().expect("labeled variant");
         let parsed =
             crate::integrations::github::mapper::state_from_labels(&[label.to_string()], false);
         assert_eq!(parsed, state, "state_from_labels round-trip for {state:?}");
@@ -117,18 +117,18 @@ fn story_state_github_labels_round_trip_except_not_started_which_is_membership_d
 #[test]
 fn story_state_github_label_diverges_from_as_str_for_in_progress_and_acceptance() {
     assert_ne!(
-        Work::InProgress.github_label(),
+        Work::InProgress.github_label().expect("labeled variant"),
         Work::InProgress.as_str(),
         "InProgress(Dev): github_label uses spaces, as_str uses kebab"
     );
     assert_ne!(
-        Work::Acceptance.github_label(),
+        Work::Acceptance.github_label().expect("labeled variant"),
         Work::Acceptance.as_str(),
         "Acceptance: the domain wire says `acceptance`, the GitHub edge keeps the historical `delivered` label"
     );
     for state in [Work::Accepted, Work::Retired] {
         assert_eq!(
-            state.github_label(),
+            state.github_label().expect("labeled variant"),
             state.as_str(),
             "github_label and as_str agree for {state:?}"
         );

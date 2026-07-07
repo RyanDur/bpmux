@@ -57,8 +57,8 @@ impl TargetState {
             Self::Ready => {
                 Some(crate::product_management::scheduling::ProjectedState::Ready.github_label())
             }
-            Self::Workflow(state) => Some(state.github_label()),
-            Self::Retired => Some(Work::Retired.github_label()),
+            Self::Workflow(state) => state.github_label(),
+            Self::Retired => Work::Retired.github_label(),
         }
     }
 

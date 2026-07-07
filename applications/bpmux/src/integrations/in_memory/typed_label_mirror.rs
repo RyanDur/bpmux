@@ -103,7 +103,7 @@ pub(super) fn state_transitioned(
 }
 
 pub(super) fn story_closed(s: &mut InnerState, number: u64) {
-    let accepted = Work::Accepted.github_label();
+    let accepted = crate::product_management::scheduling::ProjectedState::Accepted.github_label();
     let keep_terminal =
         |l: &String| !GhLabelCodec.is_workflow_state_label(l) || l.eq_ignore_ascii_case(accepted);
     if let Some(labels) = s.labels.get_mut(&number) {

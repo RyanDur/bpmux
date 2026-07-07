@@ -54,7 +54,12 @@ pub(in crate::integrations::github) async fn push_story_closed(
             .await
             .map_err(SyncError::Other)?;
     }
-    strip_state_labels(inner, number, Work::Accepted.github_label()).await?;
+    strip_state_labels(
+        inner,
+        number,
+        crate::product_management::scheduling::ProjectedState::Accepted.github_label(),
+    )
+    .await?;
     match inner.close_story(number).await {
         Ok(value) => Ok(
             decode_story_metadata(&value).map(|story| StoryEvent::StoryRefreshed {

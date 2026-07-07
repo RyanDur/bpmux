@@ -1,3 +1,4 @@
+use crate::product_management::scheduling::ProjectedState;
 use crate::product_management::story::{Stage, Work};
 use crate::workflow::StageId;
 
@@ -10,11 +11,11 @@ pub fn stage_github_label(stage: Stage) -> &'static str {
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     let state_labels = [
-        crate::product_management::scheduling::ProjectedState::Ready.github_label(),
+        ProjectedState::Ready.github_label(),
         stage_github_label(Stage::Dev),
         stage_github_label(Stage::DeskCheck),
-        Work::Acceptance.github_label(),
-        Work::Accepted.github_label(),
+        ProjectedState::Acceptance.github_label(),
+        ProjectedState::Accepted.github_label(),
         "ready for accept",
         "needs fixes",
         "rejected",
@@ -45,10 +46,10 @@ pub(super) fn resolve_state_and_placement(
 ) -> (Work, Option<StageId>) {
     let has = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
     warn_on_inconsistent_state_labels(labels);
-    if has(Work::Accepted.github_label()) {
+    if has(ProjectedState::Accepted.github_label()) {
         return (Work::Accepted, None);
     }
-    if has(Work::Retired.github_label()) {
+    if has(ProjectedState::Retired.github_label()) {
         return (Work::Retired, None);
     }
     if is_closed {
@@ -63,7 +64,7 @@ pub(super) fn resolve_state_and_placement(
     if has("ready for accept") {
         return (Work::Acceptance, None);
     }
-    if has(Work::Acceptance.github_label()) {
+    if has(ProjectedState::Acceptance.github_label()) {
         return (Work::Acceptance, None);
     }
     if has(Stage::DeskCheck.id().as_str()) {
@@ -81,9 +82,8 @@ pub fn outbound_state_label(
 ) -> Option<&'static str> {
     match state {
         Work::NotStarted if member_of_current_iteration => {
-            Some(crate::product_management::scheduling::ProjectedState::Ready.github_label())
+            Some(ProjectedState::Ready.github_label())
         }
-        Work::NotStarted => None,
-        other => Some(other.github_label()),
+        other => other.github_label(),
     }
 }

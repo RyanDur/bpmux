@@ -36,8 +36,8 @@ fn child(number: u64, parent: u64, story_type: StoryKind, state: Work) -> (Story
     let parent_label = format!("parent-epic-#{parent}");
     let type_label = GhLabelCodec.encode_story_type(story_type);
     let mut labels = vec![parent_label.as_str(), type_label.as_str()];
-    if state != Work::NotStarted {
-        labels.push(state.github_label());
+    if let Some(state_label) = state.github_label() {
+        labels.push(state_label);
     }
     decoded(number, &format!("child #{number}"), &labels)
 }

@@ -33,13 +33,13 @@ impl Work {
         }
     }
 
-    pub fn github_label(&self) -> &'static str {
+    pub fn github_label(&self) -> Option<&'static str> {
         match self {
-            Work::NotStarted => "",
-            Work::InProgress => "in progress",
-            Work::Acceptance => "delivered",
-            Work::Accepted => "accepted",
-            Work::Retired => "retired",
+            Work::NotStarted => None,
+            Work::InProgress => Some("in progress"),
+            Work::Acceptance => Some("delivered"),
+            Work::Accepted => Some("accepted"),
+            Work::Retired => Some("retired"),
         }
     }
 

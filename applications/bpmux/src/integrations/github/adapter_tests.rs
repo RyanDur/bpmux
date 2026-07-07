@@ -183,7 +183,12 @@ fn the_derived_ready_label_is_outbound_only_the_decoder_ignores_it() {
 
 #[test]
 fn the_in_progress_github_label_round_trips_with_its_space_through_decode() {
-    let labels = vec![Work::InProgress.github_label().to_string()];
+    let labels = vec![
+        Work::InProgress
+            .github_label()
+            .expect("labeled variant")
+            .to_string(),
+    ];
     assert_eq!(state_from_labels(&labels, false), Work::InProgress);
 }
 
