@@ -73,6 +73,23 @@ pub(crate) async fn set_member_position(
     rewrite_members(r, dispatch, &iteration, stories).await
 }
 
+pub(crate) async fn remove_member_everywhere(
+    r: &Arc<dyn RefreshDriver>,
+    dispatch: &crate::store::Dispatch,
+    story_id: u64,
+) -> Result<(), String> {
+    let target = StoryId::new(story_id);
+    for iteration in r.iterations() {
+        if !iteration.stories.contains(&target) {
+            continue;
+        }
+        let mut stories = iteration.stories.clone();
+        stories.retain(|n| *n != target);
+        rewrite_members(r, dispatch, &iteration, stories).await?;
+    }
+    Ok(())
+}
+
 pub(crate) async fn handle_remove_iteration_member(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

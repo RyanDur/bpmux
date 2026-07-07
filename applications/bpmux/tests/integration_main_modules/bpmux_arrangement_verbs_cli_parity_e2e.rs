@@ -4,7 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, ensure_current_iteration};
 
 async fn run_verb(bpmux: &TestBpmux, role: &str, args: &[&str]) -> std::process::Output {
     let bin = env!("CARGO_BIN_EXE_bpmux");
@@ -86,6 +86,7 @@ async fn bpmux_move_succeeds_for_pm_off_mcp() {
         "pm moves it to ready via the bpmux CLI, off MCP",
     )
     .await;
+    ensure_current_iteration(&pm).await;
     pm.close().await;
     let out = run_verb(
         &bpmux,

@@ -60,6 +60,21 @@ pub(in crate::bridge) async fn handle_move_story(
     let from_display = current_state_display(prior.as_ref(), from_fine).to_string();
     let was_closed = prior.as_ref().map(|s| s.is_concluded()).unwrap_or(false);
 
+    let scheduling_target = if matches!(target, TargetState::Workflow(BoardState::Ready)) {
+        match current_iteration_id(&r.iterations()) {
+            Some(iteration_id) => Some(iteration_id),
+            None => {
+                return Err(format!(
+                    "#{id} cannot move to ready: no current iteration designated — ready IS the \
+                     current iteration's queue. create_iteration + designate_current_iteration, \
+                     then schedule."
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
     let actor_short = crate::routing::short_name(agent_name).to_string();
     let meta = EventMeta {
         actor: actor_short.clone(),
@@ -134,23 +149,37 @@ pub(in crate::bridge) async fn handle_move_story(
     }
 
     let target_is_icebox = matches!(target, TargetState::Workflow(BoardState::Icebox));
-    let target_is_ready = matches!(target, TargetState::Workflow(BoardState::Ready));
-    if target_is_icebox && let Some(pos) = position {
-        crate::bridge::tools_stories::reorder_icebox_story_via_labels(r, id, pos)?;
+    if target_is_icebox {
+        crate::bridge::tools_stories::iteration_members::remove_member_everywhere(r, dispatch, id)
+            .await
+            .map_err(|e| format!("#{id} unschedule (iteration-member removal) failed: {e}"))?;
+        if let Some(pos) = position {
+            crate::bridge::tools_stories::reorder_icebox_story_via_labels(r, id, pos)?;
+        }
     }
-    if target_is_ready
-        && let Some(pos) = position
-        && let Some(iteration_id) = current_iteration_id(&r.iterations())
-    {
-        crate::bridge::tools_stories::iteration_members::set_member_position(
-            r,
-            dispatch,
-            iteration_id.value(),
-            id,
-            pos as u32,
-        )
-        .await
-        .map_err(|e| format!("#{id} ready-order (iteration-member) set failed: {e}"))?;
+    if let Some(iteration_id) = scheduling_target {
+        let members = r
+            .iterations()
+            .into_iter()
+            .find(|it| it.id == iteration_id)
+            .map(|it| it.stories)
+            .unwrap_or_default();
+        let join_position = match position {
+            Some(pos) => Some(pos as u32),
+            None if !members.contains(&story_id) => Some(members.len() as u32 + 1),
+            None => None,
+        };
+        if let Some(pos) = join_position {
+            crate::bridge::tools_stories::iteration_members::set_member_position(
+                r,
+                dispatch,
+                iteration_id.value(),
+                id,
+                pos,
+            )
+            .await
+            .map_err(|e| format!("#{id} schedule (iteration-member position) failed: {e}"))?;
+        }
     }
 
     let body = audit_comment_body(&actor_short, &from_display, &target, position, &rationale);
@@ -184,3 +213,7 @@ mod move_story_icebox_label_substrate_tests_1301;
 #[cfg(test)]
 #[path = "move_story_ready_order_burst_tests.rs"]
 mod move_story_ready_order_burst_tests;
+
+#[cfg(test)]
+#[path = "move_story_scheduling_tests.rs"]
+mod move_story_scheduling_tests;
