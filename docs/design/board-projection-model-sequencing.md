@@ -37,18 +37,51 @@ slice claims pure re-expression: zero edits to existing tests.
   future designer-owned UX slice. The e2e specs stayed green unchanged (the true
   falsifier); RTL fixture seeding switched from an `outcomes` delta to `roadmap`
   cards (the wire the renderer now consumes).
+- **BD1 arc** ✅ complete — BD1a-1/2/3 (`6a622020`, `aece8a02`, `4b79dfcb`,
+  `16d272b0`), BD1b slices through the flip (`2ec30c46`…`6357216c`). The fine
+  middle grain lives wholly in the board slice; wire byte-identical.
+- **A2 arc** ✅ COMPLETE — A2-1 `e524becb`; A2-2a/b/c `a73e0c95` / `65c7da7b`
+  / `0f5ff348`; A2-3a/b/c (optimistic writes / atomic batch / body-title into
+  outbox) `c437893f` / `a7cac5c6` / `d6eb48cc`; A2-4 full V-arc `10c2846b`,
+  `f2318120` (evidence type renamed `Verdict`→`Evidence`), `1ad08fd3`,
+  `b803a6bb` (`Verdict{Succeed,Fail}` + `Decision`), `0563474b`, V3 flip
+  `05cffc9f` (GateComment→CastVerdict, **`Gate` DELETED — A3 done here**);
+  A2-6 `3ea6e9ef` (one close_iteration core). A2-5 was ABSORBED by the
+  story-state arc (below): `is_closed` died via `is_concluded()` +
+  R-2.3 `8034769b` field removal.
+- **Persistence/de-leak** ✅ — PP landed as de-leak slice 1 `ff42efc4`
+  (placements.json + hydrate; simpler than the described PlacementRepo port);
+  BD3 landed as de-leak slice 2 `e2ef533d` (GitHub carries only the coarse
+  position). VP was DISSOLVED by the owner's store-reversal — but its named
+  anomaly (the gate-time evidence file-read, `acceptance/helpers.rs`
+  `evidence::load` at accept-gate time) is STILL LIVE and re-queued under SC/WR
+  consideration rather than silently dropped.
+- **Arcs landed that this queue never carried** (recorded so the ledger is
+  whole): configurable-middle CM-1..CM-7 (`3bf64de3`…`72174bfc` — the middle is
+  a config-driven 1..N ladder; `advance` owns the fail ladder);
+  the story-state settled-model arc R-1..R-4 (`887825ac` … `632c85c8` — Icebox
+  +Ready collapsed to `NotStarted`, scheduling derives from membership, and
+  the VOCABULARY RENAMED: **`BoardState` is now `Work`** `76bb580a`,
+  `ReadyForWork`→`ReadyForDevelopment` `25b1ecb6`, `Work::github_label` is
+  Option `632c85c8` — this doc's older A2 prose using `NeedsWork(BoardState)`
+  signatures is historical vocabulary); allowlist-kill E1..E4 (`8cba5f5e`,
+  `e72b331c`, `2b7cdccd`) + the events.rs decomposition `83f8f7dc`.
 
 ## Order at a glance
 
-`T0` ✅ → `RF` ✅ → `BD1` ✅ (board domain; two grains: coarse position + fine
-`BoardPlacements`) → **`A2`** (verdict-MOVE collapse, two-grain-native; A2-1 ✅
-A2-2 ✅, **NEXT = A2-2c** then A2-3 [+ optimistic writes] → A2-4 → A2-5 → A2-6 →
-A2-0) → **Persistence arc** (`PP` placement-persist + `VP` verdict-into-store,
-per-domain file-adapter ports + `BD3` de-leak riding the placement port —
-CONVERGED Ryan 2026-07-05: finish A2 first, then per-domain ports; NOT a DB arc,
-just port+file-adapter; the DB is a later adapter-only swap) → `A3` (delete
-`Gate`) → `M1–M4` (metrics) → `C1` (shed `ready_order`) → `D` (order-on-lists) →
-`SC` (selector sweep + locks) → `WR` (write-path remainder) → `SR` (renames).
+Everything through the persistence/de-leak arc is LANDED (see the ledger
+above; reconciled against the substrate 2026-07-07 at `632c85c8`). The
+remaining queue:
+
+**`A2-0`** (EventMeta envelope tail — serde-risky, design-first with
+round-trip pins over persisted fixtures) → `M1–M4` (⚠ metrics re-sourcing,
+owner-approved semantics) → `C1` (shed `ready_order`) → `D` (order-on-lists;
+`iteration_slot` remnant) → `SC` (selector sweep + locks; ex-C2 field/wire
+shed incl. renderer `columnFor` mirror + `gh_state`; candidate home for the
+gate-time evidence file-read fix) → `WR` (write-path remainder: Conflict
+events retirement, ingest pending-window protection, echo-ordering class;
+wait-vs-queued owner question still gates the drain_pending/write-through
+pieces that A2-3 did not absorb) → `SR` (session renames, last).
 
 **★ Persistence arc — converged with Ryan 2026-07-05 (supersedes the earlier
 "park BD2/BD3 behind a DB arc" deferral, which was an over-escalation).** Both
