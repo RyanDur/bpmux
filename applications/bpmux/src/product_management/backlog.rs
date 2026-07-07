@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::scheduling::{
+    ProjectedState, in_any_iteration, in_current_iteration, projected_state,
+};
+use crate::product_management::story::Story;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BacklogColumn {
@@ -12,18 +15,17 @@ pub enum BacklogColumn {
 }
 
 pub fn backlog_column(story: &Story, iterations: &[Iteration]) -> Option<BacklogColumn> {
-    match story.state.clone() {
-        BoardState::Accepted => Some(BacklogColumn::Accepted),
-        BoardState::Retired => None,
-        on_board_position => {
+    match projected_state(story, iterations) {
+        ProjectedState::Accepted => Some(BacklogColumn::Accepted),
+        ProjectedState::Retired => None,
+        projected => {
             let on_board = matches!(
-                on_board_position,
-                BoardState::Ready | BoardState::InProgress | BoardState::Acceptance
+                projected,
+                ProjectedState::Ready | ProjectedState::InProgress | ProjectedState::Acceptance
             );
-            if on_board && member_of_current_iteration(story.id, iterations) {
+            if on_board && in_current_iteration(story.id, iterations) {
                 Some(BacklogColumn::Current)
-            } else if crate::product_management::scheduling::in_any_iteration(story.id, iterations)
-            {
+            } else if in_any_iteration(story.id, iterations) {
                 Some(BacklogColumn::ReadyForWork)
             } else {
                 Some(BacklogColumn::Icebox)
@@ -43,11 +45,4 @@ pub fn group_by_backlog_column<'a>(
         }
     }
     columns
-}
-
-fn member_of_current_iteration(id: StoryId, iterations: &[Iteration]) -> bool {
-    iterations
-        .iter()
-        .filter(|iteration| iteration.is_current)
-        .any(|iteration| iteration.stories.contains(&id))
 }

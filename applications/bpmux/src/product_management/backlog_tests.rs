@@ -32,6 +32,33 @@ fn iteration(id: u64, is_current: bool, story_ids: &[u64]) -> Iteration {
     }
 }
 
+fn complete_but_still_current_iteration(id: u64, story_ids: &[u64]) -> Iteration {
+    Iteration {
+        complete: true,
+        ..iteration(id, true, story_ids)
+    }
+}
+
+#[test]
+fn a_member_of_a_complete_but_still_current_iteration_is_not_current_work() {
+    let iterations = [complete_but_still_current_iteration(1, &[10])];
+    assert_eq!(
+        backlog_column(&story(10, BoardState::InProgress), &iterations),
+        Some(BacklogColumn::ReadyForWork),
+        "after close and before the next designation, a complete iteration's members are planned work, not the current board — the canonical current-predicate excludes complete iterations"
+    );
+}
+
+#[test]
+fn a_stored_icebox_member_of_the_current_iteration_derives_ready_and_is_current() {
+    let iterations = [iteration(1, true, &[10])];
+    assert_eq!(
+        backlog_column(&story(10, BoardState::Icebox), &iterations),
+        Some(BacklogColumn::Current),
+        "design-doc divergence #3: membership in the current iteration IS the scheduling truth — a stored-Icebox member projects Ready and belongs to the current board"
+    );
+}
+
 #[test]
 fn a_board_position_story_in_the_current_iteration_is_current_work() {
     let iterations = [iteration(1, true, &[10, 11, 12])];
@@ -65,16 +92,6 @@ fn an_unplanned_story_is_icebox() {
         backlog_column(&story(99, BoardState::Ready), &iterations),
         Some(BacklogColumn::Icebox),
         "unplanned work — referenced by no iteration"
-    );
-}
-
-#[test]
-fn an_icebox_position_story_planned_into_the_current_iteration_is_not_yet_current() {
-    let iterations = [iteration(1, true, &[10])];
-    assert_eq!(
-        backlog_column(&story(10, BoardState::Icebox), &iterations),
-        Some(BacklogColumn::ReadyForWork),
-        "current = the board set (ready…acceptance); an icebox-position member is planned, not on the board"
     );
 }
 
