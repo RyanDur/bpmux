@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod backfill_tests;
 mod codec_injection_race_window_tests;
 mod ingest_drain_tests;
 mod outbox_coalesce_tests;

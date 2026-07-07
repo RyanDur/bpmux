@@ -10,6 +10,7 @@ pub use crate::persist::PersistError;
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{CastVerdict, FreeComment};
 
+mod backfill;
 mod coalesce;
 mod dispatch;
 mod drain;
@@ -28,6 +29,7 @@ mod write_through;
 pub use crate::product_management::story::conflict::{
     ConflictKind, ConflictResolveOrigin, classify_conflict,
 };
+pub(crate) use backfill::backfill_shared_history;
 use coalesce::{coalesce_iteration_label_events, stale_state_labels_for};
 pub use driver::*;
 pub use outbox::{default_outbox_path, load_outbox_from_disk};

@@ -22,7 +22,8 @@ async fn ingest_runs_in_background_not_inline() {
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
 
-    spawn_background_ingest(orch.clone());
+    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+    spawn_background_ingest(orch.clone(), crate::store::Dispatch::new(tx));
 
     assert!(
         orch.all_stories().is_empty(),

@@ -2,7 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::history::{SharedHistory, react_to_story};
+use super::history::{SharedHistory, SharedHistoryAction, VerdictRecord, react_to_story, reduce};
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
@@ -120,6 +120,114 @@ fn cache_fill_and_lifecycle_events_append_nothing_to_the_shared_grain() {
             "cache fills and non-verdict lifecycle events are not gate observations — the shared grain stays untouched and the state pointer survives"
         );
     }
+}
+
+fn record(story: u64, actor: &str, hour: u32, step: &str) -> VerdictRecord {
+    VerdictRecord {
+        story: StoryId::new(story),
+        verdict: Verdict::Succeed { step: step.into() },
+        ts: Utc.with_ymd_and_hms(2026, 7, 7, hour, 0, 0).unwrap(),
+        actor: actor.to_string(),
+    }
+}
+
+#[test]
+fn backfill_replaces_only_the_named_storys_records() {
+    let provisional = react_to_story(
+        &SharedHistory::default(),
+        &StoryAction::Events(vec![
+            verdict_cast(700, "dev", 8, "ready"),
+            verdict_cast(701, "dev", 8, "ready"),
+        ]),
+    )
+    .expect("two provisional write-time records land");
+    let backfilled = reduce(
+        &provisional,
+        &SharedHistoryAction::Backfilled {
+            story: StoryId::new(700),
+            records: vec![
+                record(700, "owner", 9, "ready"),
+                record(700, "owner", 10, "acceptance"),
+            ],
+        },
+    )
+    .expect("backfilling story 700 changes the grain");
+    let for_700: Vec<&VerdictRecord> = backfilled
+        .records()
+        .iter()
+        .filter(|r| r.story == StoryId::new(700))
+        .collect();
+    let for_701: Vec<&VerdictRecord> = backfilled
+        .records()
+        .iter()
+        .filter(|r| r.story == StoryId::new(701))
+        .collect();
+    assert_eq!(
+        for_700.len(),
+        2,
+        "700's records are the durable backfill set wholesale, not the single provisional one"
+    );
+    assert_eq!(for_700[0].actor, "owner");
+    assert_eq!(
+        for_701.len(),
+        1,
+        "701 is left untouched by a backfill scoped to 700"
+    );
+    assert_eq!(for_701[0].actor, "dev");
+}
+
+#[test]
+fn backfill_supersedes_provisional_write_time_records() {
+    let provisional = react_to_story(
+        &SharedHistory::default(),
+        &StoryAction::Event(verdict_cast(700, "dev", 8, "ready")),
+    )
+    .expect("a write-time record lands at the local clock");
+    assert_eq!(
+        provisional.records()[0].ts,
+        Utc.with_ymd_and_hms(2026, 7, 7, 8, 0, 0).unwrap()
+    );
+    let durable = reduce(
+        &provisional,
+        &SharedHistoryAction::Backfilled {
+            story: StoryId::new(700),
+            records: vec![record(700, "dev", 12, "ready")],
+        },
+    )
+    .expect(
+        "the durable GH timestamp differs from the local write-time clock, so the grain changes",
+    );
+    assert_eq!(
+        durable.records().len(),
+        1,
+        "the provisional record is replaced, not accumulated beside the durable one — no clock-skew double count"
+    );
+    assert_eq!(
+        durable.records()[0].ts,
+        Utc.with_ymd_and_hms(2026, 7, 7, 12, 0, 0).unwrap(),
+        "the surviving record carries the durable GH timestamp"
+    );
+}
+
+#[test]
+fn re_backfilling_identical_records_leaves_the_grain_and_pointer_untouched() {
+    use crate::store::{AppAction, AppState, app_reduce};
+    let backfill = SharedHistoryAction::Backfilled {
+        story: StoryId::new(700),
+        records: vec![record(700, "owner", 9, "ready")],
+    };
+    let once = reduce(&SharedHistory::default(), &backfill)
+        .expect("the first backfill populates the empty grain");
+    assert!(
+        reduce(&once, &backfill).is_none(),
+        "an identical re-backfill is a no-op — same durable input, same state"
+    );
+    let state = AppState::default().with_shared_history(once);
+    let next = app_reduce(&state, &AppAction::SharedHistory(backfill));
+    assert!(
+        std::sync::Arc::ptr_eq(&state.shared_history, &next.shared_history),
+        "a no-op backfill keeps the Arc so the persister's pointer guard stays quiet"
+    );
 }
 
 fn seeded_story(id: u64) -> Story {

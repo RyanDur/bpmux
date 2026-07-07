@@ -84,6 +84,15 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
+        AppAction::SharedHistory(action) => {
+            match crate::product_management::history::reduce(&state.shared_history, action) {
+                Some(shared_history) => AppState {
+                    shared_history: Arc::new(shared_history),
+                    ..state.clone()
+                },
+                None => state.clone(),
+            }
+        }
     }
 }
 
@@ -107,6 +116,7 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Epic(_) => "Epic",
         AppAction::Story(_) => "Story",
         AppAction::Board(_) => "Board",
+        AppAction::SharedHistory(_) => "SharedHistory",
     };
     crate::diag::log_diag(&format!("store: dispatch {label}"));
 }

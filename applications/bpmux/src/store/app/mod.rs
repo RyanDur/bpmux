@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::epic::{EpicAction, EpicState};
-use crate::product_management::history::SharedHistory;
+use crate::product_management::history::{SharedHistory, SharedHistoryAction};
 use crate::product_management::iteration::{IterationAction, IterationState};
 use crate::product_management::outcome::{OutcomeAction, OutcomeState};
 use crate::product_management::story::slice::{Stories, StoryAction};
@@ -75,6 +75,7 @@ pub enum AppAction {
     Epic(EpicAction),
     Story(StoryAction),
     Board(BoardAction),
+    SharedHistory(SharedHistoryAction),
 }
 
 impl From<RosterAction> for AppAction {
@@ -128,5 +129,11 @@ impl From<StoryAction> for AppAction {
 impl From<BoardAction> for AppAction {
     fn from(action: BoardAction) -> Self {
         Self::Board(action)
+    }
+}
+
+impl From<SharedHistoryAction> for AppAction {
+    fn from(action: SharedHistoryAction) -> Self {
+        Self::SharedHistory(action)
     }
 }

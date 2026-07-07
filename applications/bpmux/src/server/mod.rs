@@ -94,7 +94,10 @@ pub async fn run_server(
     if let Some(refresh) = orchestrator.as_ref() {
         refresh.bind_select(store.selector());
         refresh.bind_story_dispatch(store.story_dispatcher());
-        startup_tasks::spawn_background_ingest(refresh.clone());
+        startup_tasks::spawn_background_ingest(
+            refresh.clone(),
+            crate::store::Dispatch::new(action_tx.clone()),
+        );
     }
     store.spawn_action_drainer(action_rx);
     wire_store_listeners(&store, &session, &ci_state_store);

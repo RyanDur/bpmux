@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{StoryId, Verdict};
+use crate::product_management::story::{CastVerdict, StoryId, Verdict};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerdictRecord {
@@ -11,6 +11,25 @@ pub struct VerdictRecord {
     pub verdict: Verdict,
     pub ts: DateTime<Utc>,
     pub actor: String,
+}
+
+impl VerdictRecord {
+    pub fn from_cast(story: StoryId, cast: &CastVerdict) -> Self {
+        Self {
+            story,
+            verdict: cast.verdict.clone(),
+            ts: cast.ts,
+            actor: cast.actor.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum SharedHistoryAction {
+    Backfilled {
+        story: StoryId,
+        records: Vec<VerdictRecord>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -48,4 +67,28 @@ pub fn react_to_story(state: &SharedHistory, action: &StoryAction) -> Option<Sha
     let mut records = state.records.clone();
     records.extend(appended);
     Some(SharedHistory { records })
+}
+
+pub fn reduce(state: &SharedHistory, action: &SharedHistoryAction) -> Option<SharedHistory> {
+    match action {
+        SharedHistoryAction::Backfilled { story, records } => backfill(state, *story, records),
+    }
+}
+
+fn backfill(
+    state: &SharedHistory,
+    story: StoryId,
+    records: &[VerdictRecord],
+) -> Option<SharedHistory> {
+    let mut next: Vec<VerdictRecord> = state
+        .records
+        .iter()
+        .filter(|r| r.story != story)
+        .cloned()
+        .collect();
+    next.extend(records.iter().cloned());
+    if next == state.records {
+        return None;
+    }
+    Some(SharedHistory { records: next })
 }
