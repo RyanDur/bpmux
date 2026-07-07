@@ -13,10 +13,12 @@ use crate::store::roster::{RosterAction, RosterState};
 use crate::store::sync::SyncAction;
 
 mod board_placement;
+mod history;
 mod listeners;
 mod owner_park;
 mod reduce;
 pub use board_placement::{BoardPlacementPersister, BoardPlacementReconciler};
+pub use history::{LocalHistoryPersister, SharedHistoryPersister};
 pub use listeners::*;
 pub use owner_park::OwnerParkListener;
 pub use reduce::app_reduce;
@@ -24,6 +26,8 @@ pub(super) use reduce::validate_and_log;
 
 #[cfg(test)]
 mod board_placement_tests;
+#[cfg(test)]
+mod history_tests;
 #[cfg(test)]
 mod owner_park_tests;
 
@@ -47,6 +51,16 @@ impl AppState {
             board: Arc::new(board),
             ..Default::default()
         }
+    }
+
+    pub fn with_shared_history(mut self, shared_history: SharedHistory) -> Self {
+        self.shared_history = Arc::new(shared_history);
+        self
+    }
+
+    pub fn with_local_history(mut self, local_history: PlacementHistory) -> Self {
+        self.local_history = Arc::new(local_history);
+        self
     }
 }
 

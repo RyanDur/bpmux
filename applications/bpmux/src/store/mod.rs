@@ -81,7 +81,11 @@ impl Store {
         let reactions_listeners: app::ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
         let ci_listeners: app::CiListeners = Arc::new(Mutex::new(Vec::new()));
         let app_store = kernel::Store::new(
-            app::AppState::with_board(crate::board::persistence::load(&session.dir)),
+            app::AppState::with_board(crate::board::persistence::load(&session.dir))
+                .with_shared_history(crate::product_management::history_persistence::load(
+                    &session.dir,
+                ))
+                .with_local_history(crate::board::history_persistence::load(&session.dir)),
             Box::new(app::app_reduce),
         );
         app_store.add_listener(Arc::new(app::RosterBroadcast::new(
@@ -149,6 +153,14 @@ impl Store {
             .add_listener(Arc::new(app::BoardPlacementReconciler));
         self.app_store
             .add_listener(Arc::new(app::BoardPlacementPersister::new(
+                self.session.clone(),
+            )));
+        self.app_store
+            .add_listener(Arc::new(app::SharedHistoryPersister::new(
+                self.session.clone(),
+            )));
+        self.app_store
+            .add_listener(Arc::new(app::LocalHistoryPersister::new(
                 self.session.clone(),
             )));
         let github_drain = Arc::new(sync::GithubDrain::new(refresh, self.parent_ct.clone()));

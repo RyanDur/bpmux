@@ -1,11 +1,12 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{StoryId, Work};
 use crate::workflow::StageId;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlacementRecord {
     pub story: StoryId,
     pub placement: Option<StageId>,
@@ -14,7 +15,7 @@ pub struct PlacementRecord {
     pub actor: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct PlacementHistory {
     records: Vec<PlacementRecord>,
 }

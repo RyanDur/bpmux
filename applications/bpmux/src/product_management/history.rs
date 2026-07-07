@@ -1,10 +1,11 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{StoryId, Verdict};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerdictRecord {
     pub story: StoryId,
     pub verdict: Verdict,
@@ -12,7 +13,7 @@ pub struct VerdictRecord {
     pub actor: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct SharedHistory {
     records: Vec<VerdictRecord>,
 }
