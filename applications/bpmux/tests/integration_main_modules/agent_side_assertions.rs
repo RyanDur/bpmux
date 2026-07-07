@@ -31,12 +31,19 @@ const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(30);
 /// "only octocrab as test-double" directive.
 #[test]
 fn view_board_response_exposes_story_fields_for_agent_assertions() {
+    use bpmux::integrations::github::relationships::{IterationRelationships, Relationships};
+    use bpmux::product_management::story::StoryId;
     use harness::mock_gh::issue_json;
     use httpmock::{Method, MockServer};
     use serde_json::Value;
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
+    let iteration_body = IterationRelationships {
+        outcome: None,
+        stories: vec![StoryId::new(100)],
+    }
+    .write_into_body("## Iteration Vela\n");
     server.mock(|when, then| {
         when.method(Method::GET).path("/repos/acme/bpmux/issues");
         then.status(200)
@@ -45,6 +52,12 @@ fn view_board_response_exposes_story_fields_for_agent_assertions() {
                 Value::Array(vec![
                     issue_json(100, "Ready one", &["ready"], None),
                     issue_json(101, "Delivered one", &["delivered"], None),
+                    issue_json(
+                        900,
+                        "Iteration Vela",
+                        &["iteration", "current-iteration"],
+                        Some(&iteration_body),
+                    ),
                 ])
                 .to_string(),
             );

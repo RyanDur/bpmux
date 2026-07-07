@@ -83,9 +83,8 @@ fn story_state_github_label_canonical_form_per_variant() {
 }
 
 #[test]
-fn story_state_github_label_round_trips_via_state_from_labels() {
+fn story_state_github_labels_round_trip_except_ready_which_is_membership_derived() {
     for state in [
-        BoardState::Ready,
         BoardState::InProgress,
         BoardState::Acceptance,
         BoardState::Accepted,
@@ -96,6 +95,14 @@ fn story_state_github_label_round_trips_via_state_from_labels() {
             crate::integrations::github::mapper::state_from_labels(&[label.to_string()], false);
         assert_eq!(parsed, state, "state_from_labels round-trip for {state:?}");
     }
+    assert_eq!(
+        crate::integrations::github::mapper::state_from_labels(
+            &[BoardState::Ready.github_label().to_string()],
+            false
+        ),
+        BoardState::Icebox,
+        "the ready label is outbound-only — scheduling decodes from iteration membership, so the label alone falls through to the Icebox fallback"
+    );
 }
 
 #[test]

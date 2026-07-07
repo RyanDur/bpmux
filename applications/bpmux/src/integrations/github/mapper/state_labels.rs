@@ -72,9 +72,6 @@ pub(super) fn resolve_state_and_placement(
     if has(stage_github_label(Stage::Dev)) {
         return (BoardState::InProgress, None);
     }
-    if has(BoardState::Ready.github_label()) {
-        return (BoardState::Ready, None);
-    }
     (BoardState::Icebox, None)
 }
 

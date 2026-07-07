@@ -143,15 +143,19 @@ fn state_from_labels_delivered_without_accept_labels() {
 }
 
 #[test]
-fn state_from_labels_in_progress_has_priority_over_ready() {
+fn state_from_labels_in_progress_resolves_alongside_a_stale_ready_label() {
     let labels = vec!["ready".to_string(), "in progress".to_string()];
     assert_eq!(state_from_labels(&labels, false), BoardState::InProgress);
 }
 
 #[test]
-fn state_from_labels_plain_ready() {
+fn state_from_labels_ready_label_is_not_a_scheduling_input_open_story_decodes_icebox() {
     let labels = vec!["ready".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Ready);
+    assert_eq!(
+        state_from_labels(&labels, false),
+        BoardState::Icebox,
+        "the ready label stops resolving scheduling — a ready-labeled open story decodes to the stored fallback; current-iteration membership is the scheduling truth"
+    );
 }
 
 #[test]
@@ -162,14 +166,18 @@ fn state_from_labels_icebox_is_the_default() {
 
 #[test]
 fn state_from_labels_is_case_insensitive() {
-    let labels = vec!["READY".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Ready);
+    let labels = vec!["DELIVERED".to_string()];
+    assert_eq!(state_from_labels(&labels, false), BoardState::Acceptance);
 }
 
 #[test]
-fn state_to_label_roundtrips_ready() {
+fn state_to_label_ready_is_outbound_only_the_decoder_ignores_it() {
     let labels = vec![state_to_label(BoardState::Ready).to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Ready);
+    assert_eq!(
+        state_from_labels(&labels, false),
+        BoardState::Icebox,
+        "the outbound ready label is a human-readable mirror, never a decode input — scheduling decodes from iteration membership"
+    );
 }
 
 #[test]
@@ -226,12 +234,12 @@ fn decode_story_metadata_reads_string_label_shape() {
         "number": 1,
         "title": "t",
         "state": "open",
-        "labels": ["ready"],
+        "labels": ["retired"],
         "created_at": "2026-04-20T00:00:00Z",
         "user": {"login": "pm"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert_eq!(story.state, BoardState::Ready);
+    assert_eq!(story.state, BoardState::Retired);
 }
 
 #[test]
