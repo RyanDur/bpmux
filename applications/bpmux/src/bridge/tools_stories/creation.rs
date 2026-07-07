@@ -79,7 +79,7 @@ pub(crate) async fn handle_create_story(
                     body: Some(epic_body),
                     filed_at: chrono::Utc::now(),
                     filed_by: crate::routing::short_name(agent_name).to_string(),
-                    state: crate::product_management::story::BoardState::NotStarted,
+                    state: crate::product_management::story::Work::NotStarted,
                     is_closed: false,
                 },
             ]),
@@ -165,7 +165,7 @@ async fn create_and_broadcast_story_events(
             id: StoryId::new(id),
             title: title.to_string(),
             body: composed_body,
-            initial_state: crate::product_management::story::BoardState::NotStarted,
+            initial_state: crate::product_management::story::Work::NotStarted,
             story_type,
         },
     )

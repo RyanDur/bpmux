@@ -7,7 +7,7 @@ mod canonical_via_gh_1300 {
     use crate::integrations::github::mapper::decode_iteration_from_story;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
-    use crate::product_management::story::{BoardState, Story, StoryId};
+    use crate::product_management::story::{Story, StoryId, Work};
     use crate::store::{AppAction, Dispatch};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -35,11 +35,7 @@ mod canonical_via_gh_1300 {
         found.expect("the closed iteration is dispatched onto the slice")
     }
 
-    fn seed_member(
-        id: u64,
-        state: BoardState,
-        iteration: Option<(&str, u32)>,
-    ) -> (Story, Vec<String>) {
+    fn seed_member(id: u64, state: Work, iteration: Option<(&str, u32)>) -> (Story, Vec<String>) {
         let s = Story::new_minimal(
             StoryId::new(id),
             format!("[Feature] member-{id}"),
@@ -61,7 +57,7 @@ mod canonical_via_gh_1300 {
         let s = Story::new_minimal(
             StoryId::new(id),
             format!("Iteration {name}"),
-            BoardState::NotStarted,
+            Work::NotStarted,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
@@ -77,7 +73,7 @@ mod canonical_via_gh_1300 {
         let mut s = Story::new_minimal(
             StoryId::new(id),
             format!("Iteration {name}"),
-            BoardState::NotStarted,
+            Work::NotStarted,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
@@ -118,7 +114,7 @@ mod canonical_via_gh_1300 {
         let canonical_member = Story::new_minimal(
             StoryId::new(200),
             "[Feature] canonical-member".to_string(),
-            BoardState::NotStarted,
+            Work::NotStarted,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
@@ -144,7 +140,7 @@ mod canonical_via_gh_1300 {
         let member = refresh.story(200).expect("member 200 exists");
         assert_eq!(
             member.state,
-            BoardState::NotStarted,
+            Work::NotStarted,
             "#1556: close promotes NOTHING — the member stays in its state, not moved to ready"
         );
     }
@@ -179,7 +175,7 @@ mod canonical_via_gh_1300 {
     async fn ready_queue_empty_guard_blocks_close_when_a_current_iteration_member_is_ready() {
         let (refresh, _adapter) = build_refresh(vec![
             seed_current_iteration_issue_with_members(1400, "Pegasus", &[900]),
-            seed_member(900, BoardState::NotStarted, None),
+            seed_member(900, Work::NotStarted, None),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
@@ -196,7 +192,7 @@ mod canonical_via_gh_1300 {
     async fn ready_queue_empty_guard_excludes_a_not_started_non_member() {
         let (refresh, _adapter) = build_refresh(vec![
             seed_current_iteration_issue_with_members(1400, "Pegasus", &[]),
-            seed_member(900, BoardState::NotStarted, None),
+            seed_member(900, Work::NotStarted, None),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
@@ -210,7 +206,7 @@ mod canonical_via_gh_1300 {
     async fn ready_queue_empty_guard_passes_when_no_ready_stories() {
         let (refresh, _adapter) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, BoardState::NotStarted, Some(("Pegasus", 100))),
+            seed_member(200, Work::NotStarted, Some(("Pegasus", 100))),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
@@ -224,7 +220,7 @@ mod canonical_via_gh_1300 {
     async fn closed_iteration_issue_remains_queryable_for_history_preservation() {
         let (refresh, _adapter) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, BoardState::NotStarted, Some(("Pegasus", 100))),
+            seed_member(200, Work::NotStarted, Some(("Pegasus", 100))),
         ])
         .await;
         let (dispatch, mut rx) = dispatch_channel();
@@ -256,7 +252,7 @@ mod canonical_via_gh_1300 {
     async fn close_fires_storyclosed_without_member_promotion_mutations_1556() {
         let (refresh, adapter) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, BoardState::NotStarted, Some(("Pegasus", 100))),
+            seed_member(200, Work::NotStarted, Some(("Pegasus", 100))),
         ])
         .await;
         let (dispatch, mut rx) = dispatch_channel();

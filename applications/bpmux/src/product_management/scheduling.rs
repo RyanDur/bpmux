@@ -1,6 +1,6 @@
 use super::iteration::Iteration;
 use super::iteration::label::current_iteration_id;
-use super::story::{BoardState, Story, StoryId};
+use super::story::{Story, StoryId, Work};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ProjectedState {
@@ -51,16 +51,16 @@ pub fn in_any_iteration(id: StoryId, iterations: &[Iteration]) -> bool {
 
 pub fn projected_state(story: &Story, iterations: &[Iteration]) -> ProjectedState {
     match &story.state {
-        BoardState::NotStarted => {
+        Work::NotStarted => {
             if in_current_iteration(story.id, iterations) {
                 ProjectedState::Ready
             } else {
                 ProjectedState::Icebox
             }
         }
-        BoardState::InProgress => ProjectedState::InProgress,
-        BoardState::Acceptance => ProjectedState::Acceptance,
-        BoardState::Accepted => ProjectedState::Accepted,
-        BoardState::Retired => ProjectedState::Retired,
+        Work::InProgress => ProjectedState::InProgress,
+        Work::Acceptance => ProjectedState::Acceptance,
+        Work::Accepted => ProjectedState::Accepted,
+        Work::Retired => ProjectedState::Retired,
     }
 }

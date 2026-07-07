@@ -2,7 +2,7 @@
 
 use super::labels::{LabelMutationPayload, post_story_labels};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::session::Session;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use axum::Json;
@@ -15,7 +15,7 @@ fn membered_member(id: u64) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         "reorder fixture".to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         chrono::Utc::now(),
         "tester".to_string(),
     )

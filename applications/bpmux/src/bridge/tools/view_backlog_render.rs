@@ -5,13 +5,13 @@ use std::sync::Arc;
 use super::view_backlog::*;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::BoardState;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
+use crate::product_management::story::Work;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 
-fn story(num: u64, title: &str, state: BoardState) -> Story {
+fn story(num: u64, title: &str, state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(num),
         title.to_string(),
@@ -56,7 +56,7 @@ async fn backlog_summary_via_dispatch(
 #[tokio::test]
 async fn a_not_started_non_member_reports_in_icebox_not_ready() {
     let summary = backlog_summary_via_dispatch(
-        vec![story(300, "unscheduled work", BoardState::NotStarted)],
+        vec![story(300, "unscheduled work", Work::NotStarted)],
         current_iteration_of(&[]),
     )
     .await;
@@ -77,7 +77,7 @@ async fn a_not_started_non_member_reports_in_icebox_not_ready() {
 #[tokio::test]
 async fn a_not_started_current_iteration_member_reports_in_ready() {
     let summary = backlog_summary_via_dispatch(
-        vec![story(301, "scheduled member", BoardState::NotStarted)],
+        vec![story(301, "scheduled member", Work::NotStarted)],
         current_iteration_of(&[301]),
     )
     .await;
@@ -107,13 +107,13 @@ fn empty_stories_returns_all_zero_counts() {
 
 #[test]
 fn accepted_state_counted_as_accepted() {
-    let stories = vec![story(100, "done", BoardState::Accepted)];
+    let stories = vec![story(100, "done", Work::Accepted)];
     assert_eq!(build_backlog_summary(&stories, &[])["accepted_count"], 1);
 }
 
 #[test]
 fn ready_state_populates_samples() {
-    let stories = vec![story(101, "ready story", BoardState::NotStarted)];
+    let stories = vec![story(101, "ready story", Work::NotStarted)];
     let summary = build_backlog_summary(&stories, &current_iteration_of(&[101]));
     assert_eq!(summary["ready_count"], 1);
     assert_eq!(summary["ready_samples"][0], "#101 ready story");
@@ -122,8 +122,8 @@ fn ready_state_populates_samples() {
 #[test]
 fn in_progress_state_counted_correctly() {
     let stories = vec![
-        story(102, "a", BoardState::InProgress),
-        story(103, "b", BoardState::InProgress),
+        story(102, "a", Work::InProgress),
+        story(103, "b", Work::InProgress),
     ];
     assert_eq!(build_backlog_summary(&stories, &[])["in_progress_count"], 2);
 }
@@ -131,8 +131,8 @@ fn in_progress_state_counted_correctly() {
 #[test]
 fn in_work_middle_stages_count_as_in_progress_acceptance_is_the_rail_only() {
     let stories = vec![
-        story(104, "d", BoardState::Acceptance),
-        story(105, "dc", BoardState::InProgress),
+        story(104, "d", Work::Acceptance),
+        story(105, "dc", Work::InProgress),
     ];
     let summary = build_backlog_summary(&stories, &[]);
     assert_eq!(summary["acceptance_count"], 1);
@@ -141,13 +141,13 @@ fn in_work_middle_stages_count_as_in_progress_acceptance_is_the_rail_only() {
 
 #[test]
 fn icebox_state_counted_as_icebox() {
-    let stories = vec![story(107, "icy", BoardState::NotStarted)];
+    let stories = vec![story(107, "icy", Work::NotStarted)];
     assert_eq!(build_backlog_summary(&stories, &[])["icebox_count"], 1);
 }
 
 #[test]
 fn retired_story_lands_in_retired_count() {
-    let s = story(109, "retired", BoardState::Retired);
+    let s = story(109, "retired", Work::Retired);
     let summary = build_backlog_summary(&[s], &[]);
     assert_eq!(summary["retired_count"], 1);
     assert_eq!(summary["ready_count"], 0);
@@ -157,7 +157,7 @@ fn retired_story_lands_in_retired_count() {
 #[test]
 fn samples_cap_at_sample_limit() {
     let stories: Vec<Story> = (0..8)
-        .map(|i| story(200 + i, &format!("ready {i}"), BoardState::NotStarted))
+        .map(|i| story(200 + i, &format!("ready {i}"), Work::NotStarted))
         .collect();
     let members: Vec<u64> = (0..8).map(|i| 200 + i).collect();
     let summary = build_backlog_summary(&stories, &current_iteration_of(&members));

@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, StoryId};
+use crate::product_management::story::{StoryId, Work};
 use crate::sync::RefreshDriver;
 
 mod authorization;
@@ -77,7 +77,7 @@ pub(in crate::bridge) async fn handle_move_story(
     }
 
     if let Some(label) = target.as_label() {
-        let target_state = target.workflow_state().unwrap_or(BoardState::Retired);
+        let target_state = target.workflow_state().unwrap_or(Work::Retired);
         let already_labeled = prior
             .as_ref()
             .map(|s| s.state() == target_state)
@@ -107,7 +107,7 @@ pub(in crate::bridge) async fn handle_move_story(
                 ),
             })
             .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-            if matches!(state, BoardState::Accepted) && !was_closed {
+            if matches!(state, Work::Accepted) && !was_closed {
                 r.mutate_sync(StoryEvent::StoryClosed {
                     meta: meta.clone(),
                     id: story_id,
@@ -120,7 +120,7 @@ pub(in crate::bridge) async fn handle_move_story(
             r.mutate_sync(StoryEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: story_id,
-                new_state: BoardState::Retired,
+                new_state: Work::Retired,
                 placement: None,
             })
             .map_err(|e| format!("#{id} retire-state enqueue failed: {e}"))?;

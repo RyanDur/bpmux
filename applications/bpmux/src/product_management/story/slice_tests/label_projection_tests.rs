@@ -1,12 +1,12 @@
 use super::{apply, created, meta, minimal, seed, seeded, story_at};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::{LabelDerivedFields, StoryEvent};
-use crate::product_management::story::{Acceptor, BoardState, StoryId, StoryKind, Tag};
+use crate::product_management::story::{Acceptor, StoryId, StoryKind, Tag, Work};
 
 #[test]
 fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
     let store = seeded();
-    created(&store, 1, "t", BoardState::Acceptance);
+    created(&store, 1, "t", Work::Acceptance);
     apply(
         &store,
         StoryEvent::AcceptorAssigned {
@@ -26,7 +26,7 @@ fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
 #[test]
 fn tag_added_unknown_label_is_dropped() {
     let store = seeded();
-    created(&store, 1, "t", BoardState::NotStarted);
+    created(&store, 1, "t", Work::NotStarted);
     apply(
         &store,
         StoryEvent::TagAdded {
@@ -44,7 +44,7 @@ fn tag_added_unknown_label_is_dropped() {
 #[test]
 fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     let store = seeded();
-    created(&store, 1, "t", BoardState::NotStarted);
+    created(&store, 1, "t", Work::NotStarted);
     apply(
         &store,
         StoryEvent::TagSet {
@@ -86,7 +86,7 @@ fn story_created_event_carries_story_type() {
             id: StoryId::new(1),
             title: "t".to_string(),
             body: "b".to_string(),
-            initial_state: BoardState::NotStarted,
+            initial_state: Work::NotStarted,
             story_type: StoryKind::Bug,
         },
     );
@@ -100,7 +100,7 @@ fn story_created_event_carries_story_type() {
 #[test]
 fn labels_refreshed_assigns_the_ready_order_field_from_adapter_decoded_fields() {
     let store = seeded();
-    created(&store, 18, "orderable", BoardState::NotStarted);
+    created(&store, 18, "orderable", Work::NotStarted);
     assert_eq!(
         story_at(&store, 18).unwrap().ready_order(),
         None,
@@ -128,10 +128,7 @@ fn labels_refreshed_assigns_the_ready_order_field_from_adapter_decoded_fields() 
 #[test]
 fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transitioned() {
     let store = seeded();
-    seed(
-        &store,
-        vec![minimal(77, "membered", BoardState::InProgress)],
-    );
+    seed(&store, vec![minimal(77, "membered", Work::InProgress)]);
     apply(
         &store,
         StoryEvent::LabelsRefreshed {
@@ -156,7 +153,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     assert_eq!(s.acceptor(), Some(Acceptor::Dev));
     assert_eq!(
         s.state,
-        BoardState::InProgress,
+        Work::InProgress,
         "LabelsRefreshed is a pure typed assign; workflow state flows via StateTransitioned, not the label echo"
     );
 }

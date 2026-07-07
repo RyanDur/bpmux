@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::bind_seeded_refresh;
 use crate::sync::RefreshDriver;
 use crate::sync::{
@@ -22,7 +22,7 @@ fn meta() -> EventMeta {
     }
 }
 
-fn seed_story(id: u64, state: BoardState) -> Story {
+fn seed_story(id: u64, state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("title-{id}"),
@@ -35,7 +35,7 @@ fn seed_story(id: u64, state: BoardState) -> Story {
 #[tokio::test]
 async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(500, BoardState::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(500, Work::NotStarted)]);
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("outbox.json");
     let orch = Arc::new(SyncOrchestrator::with_outbox_path(adapter, path.clone()).unwrap());
@@ -46,7 +46,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     orch.mutate(StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(500),
-        new_state: BoardState::InProgress,
+        new_state: Work::InProgress,
         placement: None,
     })
     .unwrap();
@@ -60,13 +60,13 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
         .expect("pre_state captured at queue-time");
     assert_eq!(
         pre.state,
-        BoardState::NotStarted,
+        Work::NotStarted,
         "pre_state must reflect the pre-mutation state, not post"
     );
     assert!(matches!(
         entry.event,
         StoryEvent::StateTransitioned {
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             ..
         }
     ));
@@ -125,12 +125,12 @@ async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
 async fn outbox_round_trips_new_shape_through_disk() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("new-outbox.json");
-    let pre = seed_story(7, BoardState::Acceptance);
+    let pre = seed_story(7, Work::Acceptance);
     let queued = QueuedEvent::new(
         StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(7),
-            new_state: BoardState::Accepted,
+            new_state: Work::Accepted,
             placement: None,
         },
         Some(pre.clone()),
@@ -143,17 +143,17 @@ async fn outbox_round_trips_new_shape_through_disk() {
     let entry = entries.front().unwrap();
     let restored_pre = entry.pre_state.as_ref().unwrap();
     assert_eq!(restored_pre.id, pre.id);
-    assert_eq!(restored_pre.state, BoardState::Acceptance);
+    assert_eq!(restored_pre.state, Work::Acceptance);
 }
 
 #[test]
 fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
-    let pre = seed_story(1, BoardState::NotStarted);
-    let cur = seed_story(1, BoardState::InProgress);
+    let pre = seed_story(1, Work::NotStarted);
+    let cur = seed_story(1, Work::InProgress);
     let event = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: BoardState::InProgress,
+        new_state: Work::InProgress,
         placement: None,
     };
     assert_eq!(classify_conflict(Some(&pre), &event, Some(&cur)), None);
@@ -170,7 +170,7 @@ fn conflict_kind_serde_round_trip() {
 #[tokio::test]
 async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(800, BoardState::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(800, Work::NotStarted)]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -178,7 +178,7 @@ async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     orch.mutate_sync(StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(800),
-        new_state: BoardState::InProgress,
+        new_state: Work::InProgress,
         placement: None,
     })
     .unwrap();

@@ -264,7 +264,7 @@ async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
 #[tokio::test]
 async fn label_story_rejects_invalid_operation_in_migrated_path() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Story, StoryId};
+    use crate::product_management::story::{Story, StoryId, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -274,7 +274,7 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
     let seeded = Story::new_minimal(
         StoryId::new(42),
         "t".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );

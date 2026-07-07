@@ -2,7 +2,7 @@
 
 use super::super::tools_stories::*;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
@@ -13,7 +13,7 @@ async fn build_orchestrator() -> Arc<dyn RefreshDriver> {
     let story = Story::new_minimal(
         StoryId::new(200),
         "t".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

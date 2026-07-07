@@ -9,7 +9,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::store::{AppAction, SeededStore, bind_seeded_refresh};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -28,21 +28,21 @@ mod slice_7_2_mutation_id_dispatch {
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(101, BoardState::NotStarted),
-            seed_story(102, BoardState::NotStarted),
+            seed_story(101, Work::NotStarted),
+            seed_story(102, Work::NotStarted),
         ])));
 
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(101),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(102),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
@@ -64,7 +64,7 @@ mod slice_7_2_mutation_id_dispatch {
     #[tokio::test]
     async fn mutate_without_action_tx_does_not_panic() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seed_story(201, BoardState::NotStarted)]);
+        adapter.seed_stories(vec![seed_story(201, Work::NotStarted)]);
         let orch = Arc::new(SyncOrchestrator::new(adapter));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
@@ -72,7 +72,7 @@ mod slice_7_2_mutation_id_dispatch {
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(201),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
@@ -88,12 +88,12 @@ mod slice_7_2_mutation_id_dispatch {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             301,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(301),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
@@ -130,12 +130,12 @@ mod slice_7_3_drain_one_by_id {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             401,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(401),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
@@ -160,12 +160,12 @@ mod slice_7_3_drain_one_by_id {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             601,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(601),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
@@ -198,23 +198,20 @@ mod slice_7_3_drain_one_by_id {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             701,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(701),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
-        assert_eq!(
-            orch.story(701).map(|s| s.state),
-            Some(BoardState::InProgress)
-        );
+        assert_eq!(orch.story(701).map(|s| s.state), Some(Work::InProgress));
 
-        let server_view = seed_story(701, BoardState::Accepted);
+        let server_view = seed_story(701, Work::Accepted);
         orch.apply_server_rollback(server_view);
-        assert_eq!(orch.story(701).map(|s| s.state), Some(BoardState::Accepted));
+        assert_eq!(orch.story(701).map(|s| s.state), Some(Work::Accepted));
     }
 }
 
@@ -231,12 +228,12 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             801,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(801),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
@@ -261,20 +258,20 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(901, BoardState::NotStarted),
-            seed_story(902, BoardState::NotStarted),
+            seed_story(901, Work::NotStarted),
+            seed_story(902, Work::NotStarted),
         ])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(901),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(902),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
@@ -303,12 +300,12 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             1001,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1001),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();

@@ -2,7 +2,7 @@ use super::acceptance_test_path::validate_acceptance_test_path_at_pickup;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, StoryId, Verdict};
+use crate::product_management::story::{StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_start_story(
@@ -84,7 +84,7 @@ pub(crate) async fn handle_start_story(
         events.push(StoryEvent::StateTransitioned {
             meta,
             id: StoryId::new(id),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         });
         r.mutate_batch_sync(events)

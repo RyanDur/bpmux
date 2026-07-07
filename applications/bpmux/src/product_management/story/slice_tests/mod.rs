@@ -11,7 +11,7 @@ use chrono::{TimeZone, Utc};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Story, StoryId, StoryKey};
+use crate::product_management::story::{Story, StoryId, StoryKey, Work};
 use crate::store::{AppAction, SeededStore};
 
 fn seeded() -> SeededStore {
@@ -43,7 +43,7 @@ fn story_at(store: &SeededStore, id: u64) -> Option<Story> {
     })
 }
 
-fn minimal(id: u64, title: &str, state: BoardState) -> Story {
+fn minimal(id: u64, title: &str, state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
@@ -53,7 +53,7 @@ fn minimal(id: u64, title: &str, state: BoardState) -> Story {
     )
 }
 
-fn created(store: &SeededStore, id: u64, title: &str, state: BoardState) {
+fn created(store: &SeededStore, id: u64, title: &str, state: Work) {
     apply(
         store,
         StoryEvent::StoryCreated {

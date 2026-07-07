@@ -5,7 +5,7 @@ use crate::bridge::tools_stories::handle_reprioritize_outcome;
 use crate::integrations::github::mapper::decode_outcome_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
-use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};
+use crate::product_management::story::{Horizon, Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -33,7 +33,7 @@ fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> (Story,
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -49,7 +49,7 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

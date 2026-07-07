@@ -5,13 +5,13 @@ use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::github::relationships::{IterationRelationships, Relationships};
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 
 fn iteration_story(body: Option<String>) -> Story {
     let mut story = Story::new_minimal(
         StoryId::new(710),
         "Iteration Crux".to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         chrono::Utc::now(),
         "pm".to_string(),
     );

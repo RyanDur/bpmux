@@ -1,4 +1,4 @@
-use crate::product_management::story::{BoardState, Stage};
+use crate::product_management::story::{Stage, Work};
 use crate::workflow::StageId;
 
 pub fn stage_github_label(stage: Stage) -> &'static str {
@@ -13,8 +13,8 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
         crate::product_management::scheduling::ProjectedState::Ready.github_label(),
         stage_github_label(Stage::Dev),
         stage_github_label(Stage::DeskCheck),
-        BoardState::Acceptance.github_label(),
-        BoardState::Accepted.github_label(),
+        Work::Acceptance.github_label(),
+        Work::Accepted.github_label(),
         "ready for accept",
         "needs fixes",
         "rejected",
@@ -31,7 +31,7 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     }
 }
 
-pub fn state_from_labels(labels: &[String], is_closed: bool) -> BoardState {
+pub fn state_from_labels(labels: &[String], is_closed: bool) -> Work {
     resolve_state_and_placement(labels, is_closed).0
 }
 
@@ -42,48 +42,48 @@ pub fn placement_from_labels(labels: &[String], is_closed: bool) -> Option<Stage
 pub(super) fn resolve_state_and_placement(
     labels: &[String],
     is_closed: bool,
-) -> (BoardState, Option<StageId>) {
+) -> (Work, Option<StageId>) {
     let has = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
     warn_on_inconsistent_state_labels(labels);
-    if has(BoardState::Accepted.github_label()) {
-        return (BoardState::Accepted, None);
+    if has(Work::Accepted.github_label()) {
+        return (Work::Accepted, None);
     }
-    if has(BoardState::Retired.github_label()) {
-        return (BoardState::Retired, None);
+    if has(Work::Retired.github_label()) {
+        return (Work::Retired, None);
     }
     if is_closed {
-        return (BoardState::Accepted, None);
+        return (Work::Accepted, None);
     }
     if has("rejected") {
-        return (BoardState::NotStarted, None);
+        return (Work::NotStarted, None);
     }
     if has("needs fixes") {
-        return (BoardState::InProgress, None);
+        return (Work::InProgress, None);
     }
     if has("ready for accept") {
-        return (BoardState::Acceptance, None);
+        return (Work::Acceptance, None);
     }
-    if has(BoardState::Acceptance.github_label()) {
-        return (BoardState::Acceptance, None);
+    if has(Work::Acceptance.github_label()) {
+        return (Work::Acceptance, None);
     }
     if has(Stage::DeskCheck.id().as_str()) {
-        return (BoardState::InProgress, Some(Stage::DeskCheck.id()));
+        return (Work::InProgress, Some(Stage::DeskCheck.id()));
     }
     if has(stage_github_label(Stage::Dev)) {
-        return (BoardState::InProgress, None);
+        return (Work::InProgress, None);
     }
-    (BoardState::NotStarted, None)
+    (Work::NotStarted, None)
 }
 
 pub fn outbound_state_label(
-    state: &BoardState,
+    state: &Work,
     member_of_current_iteration: bool,
 ) -> Option<&'static str> {
     match state {
-        BoardState::NotStarted if member_of_current_iteration => {
+        Work::NotStarted if member_of_current_iteration => {
             Some(crate::product_management::scheduling::ProjectedState::Ready.github_label())
         }
-        BoardState::NotStarted => None,
+        Work::NotStarted => None,
         other => Some(other.github_label()),
     }
 }

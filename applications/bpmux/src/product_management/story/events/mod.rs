@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::{
-    Acceptor, BoardState, CastVerdict, FreeComment, Story, StoryId, StoryKind, Tag, Verdict,
+    Acceptor, CastVerdict, FreeComment, Story, StoryId, StoryKind, Tag, Verdict, Work,
 };
 use crate::workflow::StageId;
 
@@ -21,13 +21,13 @@ pub enum StoryEvent {
         id: StoryId,
         title: String,
         body: String,
-        initial_state: BoardState,
+        initial_state: Work,
         story_type: StoryKind,
     },
     StateTransitioned {
         meta: EventMeta,
         id: StoryId,
-        new_state: BoardState,
+        new_state: Work,
         #[serde(default)]
         placement: Option<StageId>,
     },

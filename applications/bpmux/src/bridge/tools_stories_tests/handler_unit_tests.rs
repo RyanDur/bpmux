@@ -130,7 +130,7 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
 async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::{RefreshDriver, SyncOrchestrator};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
@@ -139,7 +139,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(777),
         "[Bug] bypass-target".to_string(),
-        BoardState::Acceptance,
+        Work::Acceptance,
         Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )]);

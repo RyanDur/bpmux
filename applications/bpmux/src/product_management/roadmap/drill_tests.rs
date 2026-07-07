@@ -8,7 +8,7 @@ use crate::integrations::github::relationships::{
 };
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
 
@@ -16,7 +16,7 @@ fn iteration(id: u64, outcome_id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Crux-{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc::now(),
         "pm".to_string(),
     );
@@ -34,7 +34,7 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Outcome #{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc::now(),
         "pm".to_string(),
     );
@@ -146,7 +146,7 @@ fn the_first_partially_done_gap_holder_reads_next_and_others_read_gap() {
 #[test]
 fn a_closed_iteration_reads_done_excluded_from_convene_with_no_checks() {
     let (mut done, done_labels) = iteration(20, 11);
-    done.state = BoardState::Accepted;
+    done.state = Work::Accepted;
     let outcome = outcome_with(11, vec![20, 21]);
     let stories = vec![(done, done_labels), iteration(21, 11)];
     let drill = derive_outcome_drill_in(&outcome, &decode_iterations(&stories), &bundled_default());

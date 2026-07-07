@@ -2,7 +2,7 @@
 
 use super::view_velocity::*;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
+use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
@@ -24,7 +24,7 @@ fn make_story(id: u64, story_type: StoryKind) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
-        BoardState::InProgress,
+        Work::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );

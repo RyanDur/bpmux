@@ -7,7 +7,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
+use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
@@ -27,7 +27,7 @@ fn story_struct_has_no_iteration_id_field_in_board_json_projection() {
     let story = Story::new_minimal(
         StoryId::new(100),
         "carrier-test".to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -84,7 +84,7 @@ fn create_story_event_does_not_seed_iteration_membership() {
             id: StoryId::new(200),
             title: "freshly-created".to_string(),
             body: "no membership at filing-time".to_string(),
-            initial_state: BoardState::NotStarted,
+            initial_state: Work::NotStarted,
             story_type: StoryKind::Feature,
         },
     )));

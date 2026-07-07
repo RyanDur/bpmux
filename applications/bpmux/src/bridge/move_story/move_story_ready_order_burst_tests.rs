@@ -4,7 +4,7 @@ use crate::bridge::dispatch::{dispatch_list_ready, dispatch_move_story};
 use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationAction};
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch, SeededStore};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
@@ -23,7 +23,7 @@ fn ready_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -34,7 +34,7 @@ fn current_iteration_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

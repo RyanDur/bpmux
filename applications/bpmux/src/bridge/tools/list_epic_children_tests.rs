@@ -8,7 +8,7 @@ use crate::integrations::github::mapper::{
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::Epic;
 use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
+use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 use serde_json::json;
@@ -32,16 +32,11 @@ fn epic(number: u64) -> (Story, Vec<String>) {
     decoded(number, &format!("Epic #{number}"), &["epic", "icebox"])
 }
 
-fn child(
-    number: u64,
-    parent: u64,
-    story_type: StoryKind,
-    state: BoardState,
-) -> (Story, Vec<String>) {
+fn child(number: u64, parent: u64, story_type: StoryKind, state: Work) -> (Story, Vec<String>) {
     let parent_label = format!("parent-epic-#{parent}");
     let type_label = GhLabelCodec.encode_story_type(story_type);
     let mut labels = vec![parent_label.as_str(), type_label.as_str()];
-    if state != BoardState::NotStarted {
+    if state != Work::NotStarted {
         labels.push(state.github_label());
     }
     decoded(number, &format!("child #{number}"), &labels)
@@ -115,7 +110,7 @@ async fn returns_single_child_with_parent_epic_match() {
     let store = store_with_current_members(
         vec![
             epic(100),
-            child(101, 100, StoryKind::Feature, BoardState::NotStarted),
+            child(101, 100, StoryKind::Feature, Work::NotStarted),
         ],
         &[101],
     )
@@ -134,9 +129,9 @@ async fn returns_single_child_with_parent_epic_match() {
 async fn returns_multiple_children_sorted_by_number() {
     let store = store_with(vec![
         epic(100),
-        child(105, 100, StoryKind::Feature, BoardState::NotStarted),
-        child(102, 100, StoryKind::Bug, BoardState::NotStarted),
-        child(108, 100, StoryKind::Chore, BoardState::Accepted),
+        child(105, 100, StoryKind::Feature, Work::NotStarted),
+        child(102, 100, StoryKind::Bug, Work::NotStarted),
+        child(108, 100, StoryKind::Chore, Work::Accepted),
     ])
     .await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
@@ -153,8 +148,8 @@ async fn excludes_stories_with_different_parent() {
     let store = store_with(vec![
         epic(100),
         epic(200),
-        child(101, 100, StoryKind::Feature, BoardState::NotStarted),
-        child(201, 200, StoryKind::Feature, BoardState::NotStarted),
+        child(101, 100, StoryKind::Feature, Work::NotStarted),
+        child(201, 200, StoryKind::Feature, Work::NotStarted),
     ])
     .await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
@@ -168,7 +163,7 @@ async fn excludes_stories_with_different_parent() {
 async fn excludes_stories_without_parent_epic() {
     let store = store_with(vec![
         epic(100),
-        child(101, 100, StoryKind::Feature, BoardState::NotStarted),
+        child(101, 100, StoryKind::Feature, Work::NotStarted),
         child_without_parent(202),
     ])
     .await;
@@ -208,12 +203,7 @@ async fn rejects_missing_epic_number_arg() {
 async fn handles_large_epic_with_ten_children() {
     let mut stories = vec![epic(100)];
     for n in 1..=10 {
-        stories.push(child(
-            100 + n,
-            100,
-            StoryKind::Feature,
-            BoardState::NotStarted,
-        ));
+        stories.push(child(100 + n, 100, StoryKind::Feature, Work::NotStarted));
     }
     let store = store_with(stories).await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
@@ -223,7 +213,7 @@ async fn handles_large_epic_with_ten_children() {
 
 #[tokio::test]
 async fn derives_is_closed_from_workflow_conclusion() {
-    let (accepted, accepted_labels) = child(101, 100, StoryKind::Feature, BoardState::Accepted);
+    let (accepted, accepted_labels) = child(101, 100, StoryKind::Feature, Work::Accepted);
     let store = store_with(vec![epic(100), (accepted, accepted_labels)]).await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();

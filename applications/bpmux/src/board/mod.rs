@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::workflow::StageId;
 
 pub mod persistence;
@@ -94,7 +94,7 @@ pub(crate) fn placement_edge(state: &BoardPlacements, action: &StoryAction) -> O
 
 pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {
     match &story.state {
-        BoardState::InProgress => Some(
+        Work::InProgress => Some(
             placement_of(board, story.id)
                 .and_then(|stage_id| Stage::from_id(&stage_id))
                 .unwrap_or(Stage::Dev),
@@ -105,7 +105,7 @@ pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {
 
 pub fn held_stage(story: &Story, board: &BoardPlacements) -> Option<StageId> {
     match &story.state {
-        BoardState::InProgress => Some(placement_of(board, story.id).unwrap_or_else(|| {
+        Work::InProgress => Some(placement_of(board, story.id).unwrap_or_else(|| {
             crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow())
                 .first()
                 .cloned()
@@ -134,14 +134,12 @@ pub fn placements_for_ingest(
     stories
         .iter()
         .filter_map(|story| match story.state {
-            BoardState::InProgress => {
-                desk_check
-                    .get(&story.id)
-                    .map(|stage| BoardAction::StoryPlaced {
-                        story: story.id,
-                        stage: (*stage).clone(),
-                    })
-            }
+            Work::InProgress => desk_check
+                .get(&story.id)
+                .map(|stage| BoardAction::StoryPlaced {
+                    story: story.id,
+                    stage: (*stage).clone(),
+                }),
             _ => None,
         })
         .collect()

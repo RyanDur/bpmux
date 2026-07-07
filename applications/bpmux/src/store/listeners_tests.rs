@@ -117,11 +117,11 @@ async fn reactions_listener_emits_typed_state_delta() {
 }
 
 fn owner_parked_story(id: u64) -> crate::product_management::story::Story {
-    use crate::product_management::story::{BoardState, StoryId};
+    use crate::product_management::story::{StoryId, Work};
     let mut story = crate::product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("story {id}"),
-        BoardState::Acceptance,
+        Work::Acceptance,
         chrono::Utc::now(),
         "dev".to_string(),
     );
@@ -130,11 +130,11 @@ fn owner_parked_story(id: u64) -> crate::product_management::story::Story {
 }
 
 fn ready_story(id: u64) -> crate::product_management::story::Story {
-    use crate::product_management::story::{BoardState, StoryId};
+    use crate::product_management::story::{StoryId, Work};
     crate::product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("ready {id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         chrono::Utc::now(),
         "pm".to_string(),
     )
@@ -166,7 +166,7 @@ fn current_iteration(
 fn state_transitioned(
     id: u64,
     actor: &str,
-    new_state: crate::product_management::story::BoardState,
+    new_state: crate::product_management::story::Work,
 ) -> crate::product_management::story::events::StoryEvent {
     crate::product_management::story::events::StoryEvent::StateTransitioned {
         meta: crate::product_management::story::events::EventMeta {
@@ -199,7 +199,7 @@ async fn drain_roster_presence(
 
 #[tokio::test]
 async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
-    use crate::product_management::story::BoardState;
+    use crate::product_management::story::Work;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
@@ -219,7 +219,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
     store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
         900,
         "dev",
-        BoardState::Acceptance,
+        Work::Acceptance,
     ))));
 
     let members = drain_roster_presence(&mut rx).await;
@@ -236,7 +236,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
 
 #[tokio::test]
 async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
-    use crate::product_management::story::BoardState;
+    use crate::product_management::story::Work;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
@@ -262,7 +262,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
         900,
         "dev",
-        BoardState::Acceptance,
+        Work::Acceptance,
     ))));
     let blocked = drain_roster_presence(&mut rx).await;
     assert_eq!(
@@ -282,7 +282,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
         901,
         "pm",
-        BoardState::NotStarted,
+        Work::NotStarted,
     ))));
 
     let members = drain_roster_presence(&mut rx).await;

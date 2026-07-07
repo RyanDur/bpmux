@@ -6,7 +6,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
+use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
@@ -33,7 +33,7 @@ fn created(id: u64, title: &str) -> StoryEvent {
         id: StoryId::new(id),
         title: title.to_string(),
         body: "b".to_string(),
-        initial_state: BoardState::NotStarted,
+        initial_state: Work::NotStarted,
         story_type: StoryKind::Feature,
     }
 }
@@ -42,7 +42,7 @@ fn minimal_story(id: u64, title: &str) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 7, 3, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -57,7 +57,7 @@ fn an_orchestrator_write_is_synchronously_visible_through_its_own_reads() {
          (synchronous dispatch — read-your-write holds)",
     );
     assert_eq!(read_back.title, "written");
-    assert_eq!(read_back.state, BoardState::NotStarted);
+    assert_eq!(read_back.state, Work::NotStarted);
 }
 
 #[test]

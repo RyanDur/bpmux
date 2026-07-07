@@ -9,7 +9,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Stage, Story, StoryId, StoryKind};
+use crate::product_management::story::{Stage, Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -18,8 +18,8 @@ use crate::sync::SyncOrchestrator;
 async fn ingest_once_populates_store_from_adapter() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![
-        seed_story(1, BoardState::NotStarted),
-        seed_story(2, BoardState::Acceptance),
+        seed_story(1, Work::NotStarted),
+        seed_story(2, Work::Acceptance),
     ]);
     let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
@@ -57,7 +57,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
             id: StoryId::new(100),
             title: "test".to_string(),
             body: "b".to_string(),
-            initial_state: BoardState::NotStarted,
+            initial_state: Work::NotStarted,
             story_type: StoryKind::Feature,
         })
         .unwrap();
@@ -79,13 +79,13 @@ async fn drain_once_pushes_pending_events_to_adapter() {
     handle.bind_refresh(&orch_dyn);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
         1,
-        BoardState::NotStarted,
+        Work::NotStarted,
     )])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: BoardState::Acceptance,
+            new_state: Work::Acceptance,
             placement: None,
         })
         .unwrap();
@@ -105,13 +105,13 @@ async fn drain_once_requeues_event_on_adapter_failure() {
     handle.bind_refresh(&orch_dyn);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
         1,
-        BoardState::NotStarted,
+        Work::NotStarted,
     )])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: BoardState::Acceptance,
+            new_state: Work::Acceptance,
             placement: None,
         })
         .unwrap();
@@ -140,14 +140,14 @@ async fn drain_once_handles_multiple_events_in_order() {
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-        seed_story(1, BoardState::NotStarted),
-        seed_story(2, BoardState::NotStarted),
+        seed_story(1, Work::NotStarted),
+        seed_story(2, Work::NotStarted),
     ])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: BoardState::Acceptance,
+            new_state: Work::Acceptance,
             placement: None,
         })
         .unwrap();
@@ -155,7 +155,7 @@ async fn drain_once_handles_multiple_events_in_order() {
         .mutate(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(2),
-            new_state: BoardState::InProgress,
+            new_state: Work::InProgress,
             placement: None,
         })
         .unwrap();
@@ -171,7 +171,7 @@ async fn drain_once_handles_multiple_events_in_order() {
 #[tokio::test]
 async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let seeded = seed_story(1687, BoardState::NotStarted);
+    let seeded = seed_story(1687, Work::NotStarted);
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(1687, vec!["iteration-Pegasus.125".to_string()]);
     let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));

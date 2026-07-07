@@ -18,7 +18,7 @@ use tokio_util::sync::CancellationToken;
 
 use bpmux::auth as auth_token;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
-use bpmux::product_management::story::{BoardState, Story, StoryId};
+use bpmux::product_management::story::{Story, StoryId, Work};
 use bpmux::session::Session;
 use bpmux::sync::{RefreshDriver, SyncOrchestrator};
 use bpmux::transport::auth::{AuthState, gate};
@@ -29,7 +29,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
         id: StoryId::new(id),
         title: "fixture story".to_string(),
         body: Some("## What\n\noriginal body\n".to_string()),
-        state: BoardState::NotStarted,
+        state: Work::NotStarted,
         verdicts: None,
         free_comments: None,
         filed_by: "test".to_string(),

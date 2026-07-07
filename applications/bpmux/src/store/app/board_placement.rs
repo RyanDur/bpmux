@@ -3,12 +3,12 @@ use std::sync::Arc;
 
 use crate::board::{BoardAction, BoardPlacements, placed_story_ids};
 use crate::product_management::story::slice::Stories;
-use crate::product_management::story::{BoardState, StoryId};
+use crate::product_management::story::{StoryId, Work};
 
 pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Vec<BoardAction> {
     let in_middle: HashSet<StoryId> = stories
         .values()
-        .filter(|story| matches!(story.state, BoardState::InProgress))
+        .filter(|story| matches!(story.state, Work::InProgress))
         .map(|story| story.id)
         .collect();
     placed_story_ids(board)

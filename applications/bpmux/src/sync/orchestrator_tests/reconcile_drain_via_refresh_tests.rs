@@ -9,7 +9,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::bind_seeded_refresh;
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -34,7 +34,7 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(1, BoardState::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(1, Work::NotStarted)]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -43,7 +43,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
         .mutate_sync(StoryEvent::StateTransitioned {
             meta: meta(),
             id: StoryId::new(1),
-            new_state: BoardState::Acceptance,
+            new_state: Work::Acceptance,
             placement: None,
         })
         .unwrap();
@@ -55,7 +55,7 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
 #[tokio::test]
 async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_label() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let delivered = seed_story(450, BoardState::Acceptance);
+    let delivered = seed_story(450, Work::Acceptance);
     adapter.seed_stories(vec![delivered]);
     adapter.seed_labels(
         450,
@@ -82,7 +82,7 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
 #[tokio::test]
 async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(451, BoardState::Acceptance)]);
+    adapter.seed_stories(vec![seed_story(451, Work::Acceptance)]);
     adapter.seed_labels(451, vec!["delivered".to_string(), "feature".to_string()]);
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
@@ -96,7 +96,7 @@ async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
 #[tokio::test]
 async fn reconcile_keeps_the_ready_label_for_a_current_iteration_member() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(452, BoardState::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(452, Work::NotStarted)]);
     adapter.seed_labels(452, vec!["ready".to_string(), "feature".to_string()]);
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
@@ -113,7 +113,7 @@ async fn reconcile_keeps_the_ready_label_for_a_current_iteration_member() {
 #[tokio::test]
 async fn reconcile_marks_the_ready_label_stale_for_a_not_started_non_member() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(453, BoardState::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(453, Work::NotStarted)]);
     adapter.seed_labels(453, vec!["ready".to_string(), "feature".to_string()]);
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();

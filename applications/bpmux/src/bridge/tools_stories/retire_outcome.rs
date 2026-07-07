@@ -33,7 +33,7 @@ pub(crate) async fn handle_retire_outcome(
     r.mutate_sync(StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(outcome_id),
-        new_state: crate::product_management::story::BoardState::Retired,
+        new_state: crate::product_management::story::Work::Retired,
         placement: None,
     })
     .map_err(|e| format!("#{outcome_id} retire state-transition failed: {e}"))?;

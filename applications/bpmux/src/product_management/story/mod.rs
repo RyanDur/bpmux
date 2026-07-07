@@ -10,7 +10,7 @@ pub mod stage;
 pub mod story_type;
 pub mod verdict;
 
-pub use enums::{Acceptor, BoardState, Horizon, Tag};
+pub use enums::{Acceptor, Horizon, Tag, Work};
 pub use gate_class::{gate_class_from_acceptor, gate_class_from_acceptor_and_story_type};
 pub use key::{StoryId, StoryKey};
 pub use rework::most_recent_needs_work;
@@ -64,7 +64,7 @@ pub struct IterationSlot {
 pub struct Story {
     pub id: StoryId,
     pub title: String,
-    pub state: BoardState,
+    pub state: Work,
     pub filed_at: DateTime<Utc>,
     pub filed_by: String,
     pub body: Option<String>,
@@ -90,7 +90,7 @@ impl Story {
     pub fn new_minimal(
         id: StoryId,
         title: String,
-        state: BoardState,
+        state: Work,
         filed_at: DateTime<Utc>,
         filed_by: String,
     ) -> Self {
@@ -122,12 +122,12 @@ impl Story {
         &self.title
     }
 
-    pub fn state(&self) -> BoardState {
+    pub fn state(&self) -> Work {
         self.state.clone()
     }
 
     pub fn is_concluded(&self) -> bool {
-        matches!(self.state, BoardState::Accepted | BoardState::Retired)
+        matches!(self.state, Work::Accepted | Work::Retired)
     }
 
     pub fn story_type(&self) -> StoryKind {

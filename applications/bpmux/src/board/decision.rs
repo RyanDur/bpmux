@@ -1,9 +1,9 @@
-use crate::product_management::story::{BoardState, Verdict};
+use crate::product_management::story::{Verdict, Work};
 use crate::workflow::{StageId, WorkflowConfig};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Decision {
-    pub coarse: BoardState,
+    pub coarse: Work,
     pub placement: Option<StageId>,
 }
 
@@ -52,9 +52,9 @@ pub fn advance(verdict: &Verdict, workflow: &WorkflowConfig) -> Option<Decision>
     };
     let middle = crate::workflow::board_middle_stage_ids(workflow);
     let coarse = if middle.iter().any(|stage| stage.as_str() == target_id) {
-        BoardState::InProgress
+        Work::InProgress
     } else {
-        BoardState::parse(&target_id)?
+        Work::parse(&target_id)?
     };
     Some(Decision {
         coarse,

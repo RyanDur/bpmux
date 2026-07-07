@@ -10,13 +10,13 @@ mod reopen_on_state_transition_tests {
     use super::*;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+    use crate::product_management::story::{Stage, Story, StoryId, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seeded_chore(id: u64, state: BoardState) -> (Story, Vec<String>) {
+    fn seeded_chore(id: u64, state: Work) -> (Story, Vec<String>) {
         let s = Story::new_minimal(
             StoryId::new(id),
             "t".into(),
@@ -44,7 +44,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn start_story_reopens_when_prior_is_concluded() {
-        let seeded = seeded_chore(7110, BoardState::Accepted);
+        let seeded = seeded_chore(7110, Work::Accepted);
         let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7110));
@@ -64,7 +64,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn start_story_does_not_reopen_when_prior_is_active() {
-        let (story, labels) = seeded_chore(7111, BoardState::NotStarted);
+        let (story, labels) = seeded_chore(7111, Work::NotStarted);
         let (orch, adapter) = build_orchestrator((story, labels)).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7111));
@@ -85,7 +85,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn deliver_story_reopens_when_prior_is_concluded() {
-        let seeded = seeded_chore(7120, BoardState::Accepted);
+        let seeded = seeded_chore(7120, Work::Accepted);
         let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7120));
@@ -107,7 +107,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn pass_desk_check_reopens_when_prior_is_concluded() {
-        let seeded = seeded_chore(7130, BoardState::Accepted);
+        let seeded = seeded_chore(7130, Work::Accepted);
         let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7130));
@@ -130,7 +130,7 @@ mod reopen_on_state_transition_tests {
         let seeded_story = Story::new_minimal(
             StoryId::new(7200),
             "t".into(),
-            BoardState::NotStarted,
+            Work::NotStarted,
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );
@@ -145,7 +145,7 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = orch.story(7200).unwrap();
-        assert_eq!(story.state, BoardState::InProgress);
+        assert_eq!(story.state, Work::InProgress);
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
@@ -157,7 +157,7 @@ mod reopen_on_state_transition_tests {
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
-        assert_eq!(story.state, BoardState::InProgress);
+        assert_eq!(story.state, Work::InProgress);
         assert_eq!(orch.story_fine_stage(&story), Some(Stage::DeskCheck));
 
         let mut args = serde_json::Map::new();
@@ -170,7 +170,7 @@ mod reopen_on_state_transition_tests {
         assert!(result.is_ok(), "fail_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
-        assert_eq!(story.state, BoardState::InProgress);
+        assert_eq!(story.state, Work::InProgress);
         let rework_placement = adapter.pushed_events().iter().rev().find_map(|e| match e {
             StoryEvent::StateTransitioned { id, placement, .. } if *id == StoryId::new(7200) => {
                 Some(placement.clone())
@@ -196,7 +196,7 @@ mod reopen_on_state_transition_tests {
         );
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
-        assert_eq!(story.state, BoardState::InProgress);
+        assert_eq!(story.state, Work::InProgress);
         assert_eq!(orch.story_fine_stage(&story), Some(Stage::DeskCheck));
 
         let mut args = serde_json::Map::new();
@@ -208,7 +208,7 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = orch.story(7200).unwrap();
-        assert_eq!(story.state, BoardState::Acceptance);
+        assert_eq!(story.state, Work::Acceptance);
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
@@ -221,7 +221,7 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = orch.story(7200).unwrap();
-        assert_eq!(story.state, BoardState::NotStarted);
+        assert_eq!(story.state, Work::NotStarted);
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
@@ -242,7 +242,7 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = orch.story(7200).unwrap();
-        assert_eq!(story.state, BoardState::InProgress);
+        assert_eq!(story.state, Work::InProgress);
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
@@ -276,7 +276,7 @@ mod reopen_on_state_transition_tests {
         let story = orch.story(7200).unwrap();
         assert_eq!(
             story.state,
-            BoardState::Accepted,
+            Work::Accepted,
             "accepted story is concluded — the close rides the state"
         );
     }

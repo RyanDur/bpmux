@@ -11,7 +11,7 @@ use crate::integrations::github::mapper::{
     warn_on_inconsistent_state_labels,
 };
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{BoardState, StoryId, StoryKind, Tag, Verdict};
+use crate::product_management::story::{StoryId, StoryKind, Tag, Verdict, Work};
 use crate::sync::{SyncError, classify_close_error};
 
 #[test]
@@ -57,8 +57,8 @@ fn is_position_label_covers_ready_order_and_iteration_position() {
 #[test]
 fn state_from_labels_accepted_wins_regardless_of_other_labels() {
     let labels = vec!["ready".to_string(), "accepted".to_string()];
-    assert_eq!(state_from_labels(&labels, true), BoardState::Accepted);
-    assert_eq!(state_from_labels(&labels, false), BoardState::Accepted);
+    assert_eq!(state_from_labels(&labels, true), Work::Accepted);
+    assert_eq!(state_from_labels(&labels, false), Work::Accepted);
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn warn_on_inconsistent_state_labels_does_not_panic() {
 #[test]
 fn state_from_labels_closed_issue_is_accepted_even_without_label() {
     let labels = vec![];
-    assert_eq!(state_from_labels(&labels, true), BoardState::Accepted);
+    assert_eq!(state_from_labels(&labels, true), Work::Accepted);
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn state_from_labels_closed_issue_with_stale_workflow_label_is_accepted() {
         let labels = vec![stale.to_string()];
         assert_eq!(
             state_from_labels(&labels, true),
-            BoardState::Accepted,
+            Work::Accepted,
             "closed issue with stale '{stale}' label should be Accepted"
         );
     }
@@ -103,49 +103,49 @@ fn state_from_labels_closed_issue_with_stale_workflow_label_is_accepted() {
 #[test]
 fn state_from_labels_retired_label_overrides_closed_fallback() {
     let labels = vec!["retired".to_string()];
-    assert_eq!(state_from_labels(&labels, true), BoardState::Retired);
+    assert_eq!(state_from_labels(&labels, true), Work::Retired);
 }
 
 #[test]
 fn state_from_labels_retired_label_loses_to_accepted() {
     let labels = vec!["accepted".to_string(), "retired".to_string()];
-    assert_eq!(state_from_labels(&labels, true), BoardState::Accepted);
+    assert_eq!(state_from_labels(&labels, true), Work::Accepted);
 }
 
 #[test]
 fn state_from_labels_retired_label_open_issue_returns_retired() {
     let labels = vec!["retired".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Retired);
+    assert_eq!(state_from_labels(&labels, false), Work::Retired);
 }
 
 #[test]
 fn state_from_labels_rejected_label_decodes_to_not_started_rework() {
     let labels = vec!["delivered".to_string(), "rejected".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::NotStarted);
+    assert_eq!(state_from_labels(&labels, false), Work::NotStarted);
 }
 
 #[test]
 fn state_from_labels_needs_fixes_label_projects_to_in_progress() {
     let labels = vec!["delivered".to_string(), "needs fixes".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::InProgress);
+    assert_eq!(state_from_labels(&labels, false), Work::InProgress);
 }
 
 #[test]
 fn state_from_labels_ready_for_accept_label_projects_to_delivered() {
     let labels = vec!["delivered".to_string(), "ready for accept".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Acceptance);
+    assert_eq!(state_from_labels(&labels, false), Work::Acceptance);
 }
 
 #[test]
 fn state_from_labels_delivered_without_accept_labels() {
     let labels = vec!["delivered".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Acceptance);
+    assert_eq!(state_from_labels(&labels, false), Work::Acceptance);
 }
 
 #[test]
 fn state_from_labels_in_progress_resolves_alongside_a_stale_ready_label() {
     let labels = vec!["ready".to_string(), "in progress".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::InProgress);
+    assert_eq!(state_from_labels(&labels, false), Work::InProgress);
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn state_from_labels_ready_label_is_not_a_scheduling_input_open_story_decodes_no
     let labels = vec!["ready".to_string()];
     assert_eq!(
         state_from_labels(&labels, false),
-        BoardState::NotStarted,
+        Work::NotStarted,
         "the ready label stops resolving scheduling — a ready-labeled open story decodes to the stored fallback; current-iteration membership is the scheduling truth"
     );
 }
@@ -161,30 +161,30 @@ fn state_from_labels_ready_label_is_not_a_scheduling_input_open_story_decodes_no
 #[test]
 fn state_from_labels_not_started_is_the_open_default() {
     let labels = vec!["Feature".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::NotStarted);
+    assert_eq!(state_from_labels(&labels, false), Work::NotStarted);
 }
 
 #[test]
 fn state_from_labels_is_case_insensitive() {
     let labels = vec!["DELIVERED".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Acceptance);
+    assert_eq!(state_from_labels(&labels, false), Work::Acceptance);
 }
 
 #[test]
 fn the_derived_ready_label_is_outbound_only_the_decoder_ignores_it() {
-    let ready_label = outbound_state_label(&BoardState::NotStarted, true)
+    let ready_label = outbound_state_label(&Work::NotStarted, true)
         .expect("a not-started current-iteration member derives the ready mirror label");
     assert_eq!(
         state_from_labels(&[ready_label.to_string()], false),
-        BoardState::NotStarted,
+        Work::NotStarted,
         "the outbound ready label is a human-readable mirror, never a decode input — scheduling decodes from iteration membership"
     );
 }
 
 #[test]
 fn the_in_progress_github_label_round_trips_with_its_space_through_decode() {
-    let labels = vec![BoardState::InProgress.github_label().to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::InProgress);
+    let labels = vec![Work::InProgress.github_label().to_string()];
+    assert_eq!(state_from_labels(&labels, false), Work::InProgress);
 }
 
 #[test]
@@ -200,7 +200,7 @@ fn decode_story_metadata_reads_object_label_shape() {
     let story = decode_story_metadata(&json).expect("story");
     assert_eq!(story.id, StoryId::new(451));
     assert_eq!(story.title, "Internal board abstraction");
-    assert_eq!(story.state, BoardState::InProgress);
+    assert_eq!(story.state, Work::InProgress);
     assert_eq!(story.filed_by, "owner");
     assert!(
         story.body.is_none(),
@@ -240,7 +240,7 @@ fn decode_story_metadata_reads_string_label_shape() {
         "user": {"login": "pm"},
     });
     let story = decode_story_metadata(&json).unwrap();
-    assert_eq!(story.state, BoardState::Retired);
+    assert_eq!(story.state, Work::Retired);
 }
 
 #[test]
@@ -269,12 +269,12 @@ fn decode_story_metadata_forces_terminal_state_from_gh_state() {
     });
     assert_eq!(
         decode_story_metadata(&open).unwrap().state,
-        BoardState::NotStarted,
+        Work::NotStarted,
         "an open issue with no state labels decodes to a non-terminal state"
     );
     assert_eq!(
         decode_story_metadata(&closed).unwrap().state,
-        BoardState::Accepted,
+        Work::Accepted,
         "a closed issue forces the terminal Accepted state at decode"
     );
 }
@@ -293,7 +293,7 @@ fn decode_story_metadata_closed_without_retired_collapses_to_accepted() {
     let story = decode_story_metadata(&json).unwrap();
     assert_eq!(
         story.state,
-        BoardState::Accepted,
+        Work::Accepted,
         "closed without retired tag is Accepted regardless of stale workflow labels (#1296)"
     );
 }
@@ -311,7 +311,7 @@ fn decode_story_metadata_falls_back_to_state_field_when_gh_state_absent() {
     let story = decode_story_metadata(&json).unwrap();
     assert_eq!(
         story.state,
-        BoardState::Accepted,
+        Work::Accepted,
         "decode must fall back to the state field for envelopes without gh_state (raw octocrab JSON shape): closed forces Accepted"
     );
 }
@@ -330,7 +330,7 @@ fn decode_story_metadata_gh_state_open_does_not_force_closed() {
     let story = decode_story_metadata(&json).unwrap();
     assert_eq!(
         story.state,
-        BoardState::Acceptance,
+        Work::Acceptance,
         "state_from_labels with is_closed=false should decode delivered label as Delivered"
     );
 }

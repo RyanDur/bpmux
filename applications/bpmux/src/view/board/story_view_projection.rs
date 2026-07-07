@@ -2,10 +2,10 @@
 
 use super::*;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use chrono::{TimeZone, Utc};
 
-fn story(id: u64, title: &str, state: BoardState) -> Story {
+fn story(id: u64, title: &str, state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
@@ -17,7 +17,7 @@ fn story(id: u64, title: &str, state: BoardState) -> Story {
 
 #[test]
 fn project_mirrors_core_identity_fields() {
-    let s = story(42, "[Feature] do the thing", BoardState::NotStarted);
+    let s = story(42, "[Feature] do the thing", Work::NotStarted);
     let view = StoryView::project(&GhLabelCodec, &s, "ready");
     assert_eq!(view.id, 42);
     assert_eq!(view.title, "[Feature] do the thing");
@@ -27,7 +27,7 @@ fn project_mirrors_core_identity_fields() {
 
 #[test]
 fn project_derives_gh_state_closed_from_workflow_conclusion() {
-    let s = story(7, "done", BoardState::Accepted);
+    let s = story(7, "done", Work::Accepted);
     let view = StoryView::project(&GhLabelCodec, &s, s.state.as_str());
     assert_eq!(
         view.gh_state, "closed",
@@ -37,7 +37,7 @@ fn project_derives_gh_state_closed_from_workflow_conclusion() {
 
 #[test]
 fn project_encodes_badge_labels_from_typed_fields() {
-    let mut s = story(11, "badged", BoardState::Acceptance);
+    let mut s = story(11, "badged", Work::Acceptance);
     s.tags = vec![crate::product_management::story::Tag::DeskCheckFail];
     let view = StoryView::project(&GhLabelCodec, &s, s.state.as_str());
     assert!(
@@ -49,7 +49,7 @@ fn project_encodes_badge_labels_from_typed_fields() {
 
 #[test]
 fn project_leads_the_wire_labels_with_the_derived_type_label() {
-    let s = story(20, "[Bug] broken thing", BoardState::NotStarted);
+    let s = story(20, "[Bug] broken thing", Work::NotStarted);
     let view = StoryView::project(&GhLabelCodec, &s, s.state.as_str());
     assert_eq!(
         view.labels.first().map(String::as_str),
@@ -60,7 +60,7 @@ fn project_leads_the_wire_labels_with_the_derived_type_label() {
 
 #[test]
 fn story_view_serializes_to_the_renderer_wire_shape() {
-    let s = story(5, "wire", BoardState::NotStarted);
+    let s = story(5, "wire", Work::NotStarted);
     let view = StoryView::project(&GhLabelCodec, &s, "ready");
     let json = serde_json::to_value(&view).expect("StoryView serializes");
     assert_eq!(json["id"], 5);

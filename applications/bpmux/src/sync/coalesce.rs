@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use crate::integrations::github::mapper::stage_github_label;
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{BoardState, Stage, Story};
+use crate::product_management::story::{Stage, Story, Work};
 
 use super::{MutationId, QueuedEvent};
 
@@ -107,8 +107,8 @@ pub(super) fn stale_state_labels_for(
         ProjectedState::Ready.github_label(),
         stage_github_label(Stage::Dev),
         stage_github_label(Stage::DeskCheck),
-        BoardState::Acceptance.github_label(),
-        BoardState::Accepted.github_label(),
+        Work::Acceptance.github_label(),
+        Work::Accepted.github_label(),
     ];
     let legacy_state_labels = crate::integrations::github::gh_label_codec::LEGACY_STATE_LABELS;
     raw_labels

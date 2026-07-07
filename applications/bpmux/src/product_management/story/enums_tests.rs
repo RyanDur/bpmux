@@ -1,63 +1,54 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::enums::BoardState;
+use super::enums::Work;
 use super::stage::Stage;
 
 #[test]
 fn story_state_parse_round_trips_via_as_str() {
     for state in [
-        BoardState::NotStarted,
-        BoardState::InProgress,
-        BoardState::Acceptance,
-        BoardState::Accepted,
-        BoardState::Retired,
+        Work::NotStarted,
+        Work::InProgress,
+        Work::Acceptance,
+        Work::Accepted,
+        Work::Retired,
     ] {
         let s = state.as_str();
-        assert_eq!(BoardState::parse(s), Some(state), "parse({s:?}) round-trip");
+        assert_eq!(Work::parse(s), Some(state), "parse({s:?}) round-trip");
     }
 }
 
 #[test]
 fn story_state_parse_accepts_the_legacy_icebox_and_ready_strings_as_not_started() {
-    assert_eq!(BoardState::parse("icebox"), Some(BoardState::NotStarted));
-    assert_eq!(BoardState::parse("ready"), Some(BoardState::NotStarted));
-    assert_eq!(
-        BoardState::parse("not-started"),
-        Some(BoardState::NotStarted)
-    );
+    assert_eq!(Work::parse("icebox"), Some(Work::NotStarted));
+    assert_eq!(Work::parse("ready"), Some(Work::NotStarted));
+    assert_eq!(Work::parse("not-started"), Some(Work::NotStarted));
 }
 
 #[test]
 fn story_state_parse_accepts_underscore_variants() {
-    assert_eq!(
-        BoardState::parse("in_progress"),
-        Some(BoardState::InProgress)
-    );
-    assert_eq!(
-        BoardState::parse("desk_check"),
-        Some(BoardState::InProgress)
-    );
+    assert_eq!(Work::parse("in_progress"), Some(Work::InProgress));
+    assert_eq!(Work::parse("desk_check"), Some(Work::InProgress));
 }
 
 #[test]
 fn story_state_parse_returns_none_for_unknown() {
-    assert_eq!(BoardState::parse("not-a-state"), None);
-    assert_eq!(BoardState::parse(""), None);
-    assert_eq!(BoardState::parse("Ready"), None);
+    assert_eq!(Work::parse("not-a-state"), None);
+    assert_eq!(Work::parse(""), None);
+    assert_eq!(Work::parse("Ready"), None);
 }
 
 #[test]
 fn story_state_serde_round_trips_via_canonical_string() {
     for state in [
-        BoardState::NotStarted,
-        BoardState::InProgress,
-        BoardState::Acceptance,
-        BoardState::Accepted,
-        BoardState::Retired,
+        Work::NotStarted,
+        Work::InProgress,
+        Work::Acceptance,
+        Work::Accepted,
+        Work::Retired,
     ] {
         let json = serde_json::to_string(&state).unwrap();
         assert_eq!(json, format!("\"{}\"", state.as_str()));
-        let back: BoardState = serde_json::from_str(&json).unwrap();
+        let back: Work = serde_json::from_str(&json).unwrap();
         assert_eq!(back, state, "serde round-trip for {state:?}");
     }
 }
@@ -65,10 +56,10 @@ fn story_state_serde_round_trips_via_canonical_string() {
 #[test]
 fn story_state_deserializes_persisted_legacy_icebox_and_ready_rows() {
     for legacy in ["\"icebox\"", "\"ready\""] {
-        let back: BoardState = serde_json::from_str(legacy).unwrap();
+        let back: Work = serde_json::from_str(legacy).unwrap();
         assert_eq!(
             back,
-            BoardState::NotStarted,
+            Work::NotStarted,
             "persisted StoryCreated/StateTransitioned rows carrying {legacy} must keep deserializing after the collapse"
         );
     }
@@ -77,42 +68,39 @@ fn story_state_deserializes_persisted_legacy_icebox_and_ready_rows() {
 #[test]
 fn story_state_serde_emits_canonical_kebab_not_variant_name() {
     assert_eq!(
-        serde_json::to_string(&BoardState::InProgress).unwrap(),
+        serde_json::to_string(&Work::InProgress).unwrap(),
         "\"in-progress\""
     );
-    assert!(serde_json::from_str::<BoardState>("\"InProgress\"").is_err());
+    assert!(serde_json::from_str::<Work>("\"InProgress\"").is_err());
 }
 
 #[test]
 fn story_state_acceptance_wire_vocab_parses_and_keeps_legacy_delivered_alias() {
-    assert_eq!(BoardState::Acceptance.as_str(), "acceptance");
-    assert_eq!(
-        BoardState::parse("acceptance"),
-        Some(BoardState::Acceptance)
-    );
-    assert_eq!(BoardState::parse("delivered"), Some(BoardState::Acceptance));
+    assert_eq!(Work::Acceptance.as_str(), "acceptance");
+    assert_eq!(Work::parse("acceptance"), Some(Work::Acceptance));
+    assert_eq!(Work::parse("delivered"), Some(Work::Acceptance));
 }
 
 #[test]
 fn story_state_github_label_canonical_form_per_variant() {
     assert_eq!(
-        BoardState::NotStarted.github_label(),
+        Work::NotStarted.github_label(),
         "",
         "not-started has NO static GitHub label — the outbound mirror derives ready-vs-absence from membership"
     );
-    assert_eq!(BoardState::InProgress.github_label(), "in progress");
-    assert_eq!(BoardState::Acceptance.github_label(), "delivered");
-    assert_eq!(BoardState::Accepted.github_label(), "accepted");
-    assert_eq!(BoardState::Retired.github_label(), "retired");
+    assert_eq!(Work::InProgress.github_label(), "in progress");
+    assert_eq!(Work::Acceptance.github_label(), "delivered");
+    assert_eq!(Work::Accepted.github_label(), "accepted");
+    assert_eq!(Work::Retired.github_label(), "retired");
 }
 
 #[test]
 fn story_state_github_labels_round_trip_except_not_started_which_is_membership_derived() {
     for state in [
-        BoardState::InProgress,
-        BoardState::Acceptance,
-        BoardState::Accepted,
-        BoardState::Retired,
+        Work::InProgress,
+        Work::Acceptance,
+        Work::Accepted,
+        Work::Retired,
     ] {
         let label = state.github_label();
         let parsed =
@@ -121,7 +109,7 @@ fn story_state_github_labels_round_trip_except_not_started_which_is_membership_d
     }
     assert_eq!(
         crate::integrations::github::mapper::state_from_labels(&["ready".to_string()], false),
-        BoardState::NotStarted,
+        Work::NotStarted,
         "the ready label is outbound-only — scheduling decodes from iteration membership, so the label alone falls through to the not-started fallback"
     );
 }
@@ -129,16 +117,16 @@ fn story_state_github_labels_round_trip_except_not_started_which_is_membership_d
 #[test]
 fn story_state_github_label_diverges_from_as_str_for_in_progress_and_acceptance() {
     assert_ne!(
-        BoardState::InProgress.github_label(),
-        BoardState::InProgress.as_str(),
+        Work::InProgress.github_label(),
+        Work::InProgress.as_str(),
         "InProgress(Dev): github_label uses spaces, as_str uses kebab"
     );
     assert_ne!(
-        BoardState::Acceptance.github_label(),
-        BoardState::Acceptance.as_str(),
+        Work::Acceptance.github_label(),
+        Work::Acceptance.as_str(),
         "Acceptance: the domain wire says `acceptance`, the GitHub edge keeps the historical `delivered` label"
     );
-    for state in [BoardState::Accepted, BoardState::Retired] {
+    for state in [Work::Accepted, Work::Retired] {
         assert_eq!(
             state.github_label(),
             state.as_str(),

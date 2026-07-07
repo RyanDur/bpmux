@@ -11,7 +11,7 @@ mod verdict_substrate_integration_1407 {
     use crate::bridge::tools_stories::handle_accept_story;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::evidence::{evidence_for_story, load};
-    use crate::product_management::story::{BoardState, Story, StoryId};
+    use crate::product_management::story::{Story, StoryId, Work};
     use crate::session::Session;
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -40,7 +40,7 @@ mod verdict_substrate_integration_1407 {
         let mut story = Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            BoardState::Acceptance,
+            Work::Acceptance,
             Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
             "dev".to_string(),
         );

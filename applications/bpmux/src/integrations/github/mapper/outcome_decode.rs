@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use super::story_decode::extract_label_names;
 use crate::integrations::github::relationships::{OutcomeRelationships, Relationships};
 use crate::product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
-use crate::product_management::story::{BoardState, Story};
+use crate::product_management::story::{Story, Work};
 
 pub fn is_outcome_issue(v: &serde_json::Value) -> bool {
     extract_label_names(v)
@@ -48,7 +48,7 @@ pub fn decode_outcome(v: &serde_json::Value) -> Option<Outcome> {
 }
 
 pub fn decode_outcome_from_story(story: &Story, labels: &[String]) -> Outcome {
-    let retired = story.state() == BoardState::Retired;
+    let retired = story.state() == Work::Retired;
     assemble_outcome(
         OutcomeId::new(story.id.value()),
         story.title().to_string(),

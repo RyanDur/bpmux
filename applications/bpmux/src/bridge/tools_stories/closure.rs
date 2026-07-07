@@ -32,8 +32,8 @@ pub(crate) async fn handle_close_story(
         .and_then(|v| v.as_str())
         .unwrap_or("retire");
     let terminal_state = match disposition {
-        "retire" | "wontfix" => crate::product_management::story::BoardState::Retired,
-        "accept" => crate::product_management::story::BoardState::Accepted,
+        "retire" | "wontfix" => crate::product_management::story::Work::Retired,
+        "accept" => crate::product_management::story::Work::Accepted,
         other => {
             return Err(format!(
                 "unknown disposition '{other}' — expected one of: retire, wontfix, accept"
@@ -60,7 +60,7 @@ pub(crate) async fn handle_close_story(
         };
         if matches!(
             terminal_state,
-            crate::product_management::story::BoardState::Retired
+            crate::product_management::story::Work::Retired
         ) {
             r.mutate_sync(
                 crate::product_management::story::events::StoryEvent::TagAdded {

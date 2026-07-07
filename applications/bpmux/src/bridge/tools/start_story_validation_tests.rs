@@ -4,7 +4,7 @@
 mod gate_retire_1348 {
     use crate::bridge::tools_stories::{handle_deliver_story, handle_start_story};
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Story, StoryId, StoryKind};
+    use crate::product_management::story::{Story, StoryId, StoryKind, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -13,7 +13,7 @@ mod gate_retire_1348 {
     async fn seeded_orchestrator(
         id: u64,
         title: &str,
-        state: BoardState,
+        state: Work,
         story_type: StoryKind,
         body: &str,
     ) -> Arc<dyn RefreshDriver> {
@@ -55,7 +55,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9101,
             "[Feature] gherkin-only body",
-            BoardState::NotStarted,
+            Work::NotStarted,
             StoryKind::Feature,
             body,
         )
@@ -81,7 +81,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9102,
             "[Feature] gherkin-only deliver",
-            BoardState::InProgress,
+            Work::InProgress,
             StoryKind::Feature,
             body,
         )
@@ -109,7 +109,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9103,
             "[Bug] gherkin-only body",
-            BoardState::NotStarted,
+            Work::NotStarted,
             StoryKind::Bug,
             body,
         )
@@ -131,7 +131,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9104,
             "[Feature] backward-compat ATP path",
-            BoardState::NotStarted,
+            Work::NotStarted,
             StoryKind::Feature,
             &body,
         )
@@ -157,7 +157,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9105,
             "[Feature] backward-compat ATP deliver",
-            BoardState::InProgress,
+            Work::InProgress,
             StoryKind::Feature,
             &body,
         )

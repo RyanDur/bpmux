@@ -4,7 +4,7 @@ use super::{
     BoardAction, BoardPlacements, fine_stage, placement_of, placements_for_ingest, reduce,
     state_label,
 };
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
 
@@ -12,7 +12,7 @@ fn in_progress_story(id: u64) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("story {id}"),
-        BoardState::InProgress,
+        Work::InProgress,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -111,7 +111,7 @@ fn fine_stage_defaults_to_dev_when_unplaced() {
 #[test]
 fn fine_stage_is_none_outside_the_middle() {
     let mut story = in_progress_story(1);
-    story.state = BoardState::NotStarted;
+    story.state = Work::NotStarted;
     assert_eq!(fine_stage(&story, &board_with_desk_check(1)), None);
 }
 
@@ -171,9 +171,9 @@ fn ingest_leaves_a_middle_story_absent_from_the_signal_alone() {
 #[test]
 fn ingest_ignores_stories_outside_the_middle() {
     let mut ready = in_progress_story(1);
-    ready.state = BoardState::NotStarted;
+    ready.state = Work::NotStarted;
     let mut accepted = in_progress_story(2);
-    accepted.state = BoardState::Accepted;
+    accepted.state = Work::Accepted;
     let desk_check = [
         (StoryId::new(1), Stage::DeskCheck.id()),
         (StoryId::new(2), Stage::DeskCheck.id()),

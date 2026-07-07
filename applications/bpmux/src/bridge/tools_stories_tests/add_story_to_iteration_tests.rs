@@ -5,7 +5,7 @@ use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::github::relationships::{IterationRelationships, Relationships};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
@@ -57,7 +57,7 @@ fn iteration_seed(id: u64, name: &str) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -68,7 +68,7 @@ fn member_seed(id: u64, title: &str) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         title.into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

@@ -149,13 +149,11 @@ pub async fn post_seed_stories(
     };
     for s in &body.stories {
         let initial_state = match s.initial_state.as_str() {
-            "icebox" | "ready" => crate::product_management::story::BoardState::NotStarted,
-            "in-progress" | "desk-check" => {
-                crate::product_management::story::BoardState::InProgress
-            }
-            "delivered" | "acceptance" => crate::product_management::story::BoardState::Acceptance,
-            "accepted" => crate::product_management::story::BoardState::Accepted,
-            _ => crate::product_management::story::BoardState::NotStarted,
+            "icebox" | "ready" => crate::product_management::story::Work::NotStarted,
+            "in-progress" | "desk-check" => crate::product_management::story::Work::InProgress,
+            "delivered" | "acceptance" => crate::product_management::story::Work::Acceptance,
+            "accepted" => crate::product_management::story::Work::Accepted,
+            _ => crate::product_management::story::Work::NotStarted,
         };
         let is_iteration_seed = s.story_type.as_str() == "iteration";
         let is_epic_seed = s.story_type.as_str() == "epic";

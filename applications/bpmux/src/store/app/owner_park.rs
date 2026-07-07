@@ -1,6 +1,6 @@
 use crate::product_management::iteration::Iteration;
 use crate::product_management::scheduling::{ProjectedState, projected_state};
-use crate::product_management::story::{Acceptor, BoardState, Story};
+use crate::product_management::story::{Acceptor, Story, Work};
 use crate::store::{Presence, RosterMember};
 
 fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
@@ -12,7 +12,7 @@ fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
 fn any_owner_parked_delivery(stories: &[Story]) -> bool {
     stories
         .iter()
-        .any(|s| s.state == BoardState::Acceptance && s.acceptor() == Some(Acceptor::Owner))
+        .any(|s| s.state == Work::Acceptance && s.acceptor() == Some(Acceptor::Owner))
 }
 
 pub fn owner_park_presence(
@@ -57,7 +57,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
             |event: &crate::product_management::story::events::StoryEvent| match event {
                 crate::product_management::story::events::StoryEvent::StateTransitioned {
                     meta,
-                    new_state: BoardState::Acceptance,
+                    new_state: Work::Acceptance,
                     ..
                 } => Some(crate::routing::short_name(&meta.actor).to_string()),
                 _ => None,

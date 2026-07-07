@@ -2,11 +2,11 @@
 
 use bpmux::integrations::github::mapper::state_from_labels;
 use bpmux::product_management::iteration::{Iteration, IterationId};
-use bpmux::product_management::story::{BoardState, Stage, Story, StoryId};
+use bpmux::product_management::story::{Stage, Story, StoryId, Work};
 use bpmux::view::board::arrangement::{Column, column_of};
 use chrono::Utc;
 
-fn story_in(state: BoardState) -> Story {
+fn story_in(state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(1),
         "sample".to_string(),
@@ -42,7 +42,7 @@ fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_not_started_rework()
     ];
     assert_eq!(
         state_from_labels(&stacked, false),
-        BoardState::NotStarted,
+        Work::NotStarted,
         "the rejected rework-signal wins the stacked-label priority and lands not-started; the projection supplies scheduling from membership"
     );
 }
@@ -50,13 +50,13 @@ fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_not_started_rework()
 #[test]
 fn stacked_accepted_rejected_decodes_accepted() {
     let stacked = vec!["accepted".to_string(), "rejected".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::Accepted);
+    assert_eq!(state_from_labels(&stacked, false), Work::Accepted);
 }
 
 #[test]
 fn stacked_needs_fixes_in_progress_decodes_in_progress() {
     let stacked = vec!["in progress".to_string(), "needs fixes".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::InProgress);
+    assert_eq!(state_from_labels(&stacked, false), Work::InProgress);
 }
 
 #[test]
@@ -64,7 +64,7 @@ fn stacked_ready_in_progress_decodes_in_progress() {
     let stacked = vec!["ready".to_string(), "in progress".to_string()];
     assert_eq!(
         state_from_labels(&stacked, false),
-        BoardState::InProgress,
+        Work::InProgress,
         "a stale outbound ready mirror-label never outranks a real work-state label"
     );
 }
@@ -72,14 +72,14 @@ fn stacked_ready_in_progress_decodes_in_progress() {
 #[test]
 fn stacked_delivered_ready_for_accept_decodes_to_acceptance() {
     let stacked = vec!["delivered".to_string(), "ready for accept".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::Acceptance);
+    assert_eq!(state_from_labels(&stacked, false), Work::Acceptance);
 }
 
 #[test]
 fn a_not_started_member_of_the_current_iteration_buckets_to_the_ready_column() {
     assert_eq!(
         column_of(
-            &story_in(BoardState::NotStarted),
+            &story_in(Work::NotStarted),
             None,
             &current_iteration_of(&[1])
         ),
@@ -90,7 +90,7 @@ fn a_not_started_member_of_the_current_iteration_buckets_to_the_ready_column() {
 #[test]
 fn in_progress_state_buckets_to_in_progress_column() {
     assert_eq!(
-        column_of(&story_in(BoardState::InProgress), None, &[]),
+        column_of(&story_in(Work::InProgress), None, &[]),
         Column::Middle(Stage::Dev.id())
     );
 }
@@ -98,7 +98,7 @@ fn in_progress_state_buckets_to_in_progress_column() {
 #[test]
 fn retired_state_buckets_to_retired_column() {
     assert_eq!(
-        column_of(&story_in(BoardState::Retired), None, &[]),
+        column_of(&story_in(Work::Retired), None, &[]),
         Column::Retired,
         "concluded work lands in the RETIRED column so the ACCEPTED success-narrative stays clean"
     );
@@ -106,16 +106,16 @@ fn retired_state_buckets_to_retired_column() {
 
 #[test]
 fn empty_labels_open_decodes_not_started() {
-    assert_eq!(state_from_labels(&[], false), BoardState::NotStarted);
+    assert_eq!(state_from_labels(&[], false), Work::NotStarted);
 }
 
 #[test]
 fn empty_labels_closed_decodes_accepted() {
-    assert_eq!(state_from_labels(&[], true), BoardState::Accepted);
+    assert_eq!(state_from_labels(&[], true), Work::Accepted);
 }
 
 #[test]
 fn case_insensitive_label_matching() {
     let stacked = vec!["REJECTED".to_string(), "Ready For Accept".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::NotStarted);
+    assert_eq!(state_from_labels(&stacked, false), Work::NotStarted);
 }

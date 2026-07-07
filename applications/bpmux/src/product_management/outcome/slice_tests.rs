@@ -2,14 +2,14 @@
 
 use super::{Outcome, OutcomeAction, OutcomeState, all, reduce};
 use crate::integrations::github::mapper::decode_outcome_from_story;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use chrono::{TimeZone, Utc};
 
 fn outcome(id: u64, title: &str) -> Outcome {
     let story = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

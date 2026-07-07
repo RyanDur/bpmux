@@ -68,7 +68,7 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
     );
     assert_eq!(
         *state,
-        crate::product_management::story::BoardState::InProgress,
+        crate::product_management::story::Work::InProgress,
         "state must decode from labels"
     );
     assert_eq!(

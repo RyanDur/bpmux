@@ -35,7 +35,7 @@ async fn handler_errors_when_story_not_in_board() {
 async fn handler_reads_gates_from_canonical_store() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::slice::StoryAction;
-    use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
+    use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -46,7 +46,7 @@ async fn handler_reads_gates_from_canonical_store() {
     let mut story = Story::new_minimal(
         StoryId::new(418),
         "title".into(),
-        BoardState::Acceptance,
+        Work::Acceptance,
         filed_at,
         "pm".into(),
     );
@@ -84,7 +84,7 @@ async fn handler_reads_gates_from_canonical_store() {
 async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::slice::StoryAction;
-    use crate::product_management::story::{BoardState, Story, StoryId};
+    use crate::product_management::story::{Story, StoryId, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -95,7 +95,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing()
     let story = Story::new_minimal(
         StoryId::new(419),
         "title".into(),
-        BoardState::Acceptance,
+        Work::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -120,13 +120,13 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing()
 #[test]
 fn build_timeline_from_board_sorts_chronologically() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
+    use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
         StoryId::new(500),
         "title".into(),
-        BoardState::Acceptance,
+        Work::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -158,13 +158,13 @@ fn build_timeline_from_board_sorts_chronologically() {
 #[test]
 fn build_timeline_from_board_renders_full_rework_cycle() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
+    use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use chrono::{TimeZone, Utc};
 
     let story = Story::new_minimal(
         StoryId::new(501),
         "title".into(),
-        BoardState::InProgress,
+        Work::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -216,7 +216,7 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
 #[tokio::test]
 async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, CastVerdict, Story, StoryId, Verdict};
+    use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -227,7 +227,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     let story = Story::new_minimal(
         StoryId::new(1524),
         "title".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
         "pm".into(),
     );

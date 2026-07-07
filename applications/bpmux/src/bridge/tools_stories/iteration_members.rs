@@ -3,7 +3,7 @@ use super::helpers::{
 };
 use crate::integrations::github::relationships::{IterationRelationships, Relationships};
 use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
@@ -119,7 +119,7 @@ pub(crate) async fn handle_remove_iteration_member(
     rewrite_members(r, dispatch, &iteration, stories).await?;
 
     let state_flag = match story.state {
-        BoardState::NotStarted => String::new(),
+        Work::NotStarted => String::new(),
         other => format!(" (was: {})", other.as_str()),
     };
     Ok(format!(

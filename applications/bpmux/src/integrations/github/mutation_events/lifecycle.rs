@@ -3,7 +3,7 @@ use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::{decode_story_metadata, outbound_state_label};
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{BoardState, StoryId};
+use crate::product_management::story::{StoryId, Work};
 use crate::sync::SyncError;
 
 async fn strip_state_labels(
@@ -27,7 +27,7 @@ async fn strip_state_labels(
 pub(in crate::integrations::github) async fn push_state_transitioned(
     inner: &OctocrabStoryTracker,
     number: u64,
-    new_state: BoardState,
+    new_state: Work,
     member_of_current_iteration: bool,
 ) -> Result<Option<StoryEvent>, SyncError> {
     let Some(keep) = outbound_state_label(&new_state, member_of_current_iteration) else {
@@ -54,7 +54,7 @@ pub(in crate::integrations::github) async fn push_story_closed(
             .await
             .map_err(SyncError::Other)?;
     }
-    strip_state_labels(inner, number, BoardState::Accepted.github_label()).await?;
+    strip_state_labels(inner, number, Work::Accepted.github_label()).await?;
     match inner.close_story(number).await {
         Ok(value) => Ok(
             decode_story_metadata(&value).map(|story| StoryEvent::StoryRefreshed {

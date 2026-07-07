@@ -6,12 +6,12 @@ fn target_state_parses_canonical_spellings() {
     assert_eq!(TargetState::parse("icebox").unwrap(), TargetState::Icebox);
     assert_eq!(
         TargetState::parse("In-Progress").unwrap(),
-        TargetState::Workflow(BoardState::InProgress)
+        TargetState::Workflow(Work::InProgress)
     );
     assert_eq!(TargetState::parse("retired").unwrap(), TargetState::Retired);
     assert_eq!(
         TargetState::parse("Accepted").unwrap(),
-        TargetState::Workflow(BoardState::Accepted)
+        TargetState::Workflow(Work::Accepted)
     );
 }
 
@@ -31,7 +31,7 @@ fn target_state_parse_unknown_lists_valid_options() {
 fn target_state_parses_a_configured_middle_stage_id_into_the_middle() {
     assert_eq!(
         TargetState::parse("desk-check").unwrap(),
-        TargetState::Workflow(BoardState::InProgress),
+        TargetState::Workflow(Work::InProgress),
         "a configured middle stage id targets the middle; move_story derives the placement from the target string"
     );
 }
@@ -45,8 +45,8 @@ fn target_state_rejects_noncanonical_spellings() {
 #[test]
 fn closes_issue_is_true_only_for_terminal_states() {
     assert!(TargetState::Retired.closes_issue());
-    assert!(TargetState::Workflow(BoardState::Accepted).closes_issue());
-    assert!(!TargetState::Workflow(BoardState::Acceptance).closes_issue());
+    assert!(TargetState::Workflow(Work::Accepted).closes_issue());
+    assert!(!TargetState::Workflow(Work::Acceptance).closes_issue());
     assert!(!TargetState::Ready.closes_issue());
     assert!(!TargetState::Icebox.closes_issue());
 }

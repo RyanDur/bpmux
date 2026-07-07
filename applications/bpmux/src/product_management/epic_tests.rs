@@ -3,10 +3,10 @@
 use crate::product_management::epic::{derive_epic_counts, derive_epic_state};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::scheduling::ProjectedState;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use chrono::{TimeZone, Utc};
 
-fn epic_child(id: u64, state: BoardState) -> Story {
+fn epic_child(id: u64, state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("child-{id}"),
@@ -36,7 +36,7 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 #[test]
 fn derive_epic_state_returns_icebox_for_empty_children_1450() {
     assert_eq!(
-        derive_epic_state(BoardState::NotStarted, &[], &[]),
+        derive_epic_state(Work::NotStarted, &[], &[]),
         ProjectedState::Icebox,
         "empty children must derive Icebox regardless of explicit state"
     );
@@ -45,12 +45,12 @@ fn derive_epic_state_returns_icebox_for_empty_children_1450() {
 #[test]
 fn derive_epic_state_returns_icebox_when_all_children_icebox_1450() {
     let kids = [
-        epic_child(1, BoardState::NotStarted),
-        epic_child(2, BoardState::NotStarted),
+        epic_child(1, Work::NotStarted),
+        epic_child(2, Work::NotStarted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::NotStarted, &refs, &[]),
+        derive_epic_state(Work::NotStarted, &refs, &[]),
         ProjectedState::Icebox,
         "all-Icebox children derive Icebox"
     );
@@ -59,12 +59,12 @@ fn derive_epic_state_returns_icebox_when_all_children_icebox_1450() {
 #[test]
 fn derive_epic_state_returns_ready_for_one_ready_no_active_1450() {
     let kids = [
-        epic_child(1, BoardState::NotStarted),
-        epic_child(2, BoardState::NotStarted),
+        epic_child(1, Work::NotStarted),
+        epic_child(2, Work::NotStarted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::NotStarted, &refs, &current_iteration_of(&[1])),
+        derive_epic_state(Work::NotStarted, &refs, &current_iteration_of(&[1])),
         ProjectedState::Ready,
         "1+ Ready child + no active children derives Ready"
     );
@@ -72,18 +72,14 @@ fn derive_epic_state_returns_ready_for_one_ready_no_active_1450() {
 
 #[test]
 fn derive_epic_state_returns_in_progress_for_active_child_1450() {
-    for active_state in [
-        BoardState::InProgress,
-        BoardState::InProgress,
-        BoardState::Acceptance,
-    ] {
+    for active_state in [Work::InProgress, Work::InProgress, Work::Acceptance] {
         let kids = [
-            epic_child(1, BoardState::NotStarted),
+            epic_child(1, Work::NotStarted),
             epic_child(2, active_state.clone()),
         ];
         let refs: Vec<&Story> = kids.iter().collect();
         assert_eq!(
-            derive_epic_state(BoardState::NotStarted, &refs, &current_iteration_of(&[1])),
+            derive_epic_state(Work::NotStarted, &refs, &current_iteration_of(&[1])),
             ProjectedState::InProgress,
             "active-state {active_state:?} child derives InProgress at Epic-axis"
         );
@@ -92,13 +88,10 @@ fn derive_epic_state_returns_in_progress_for_active_child_1450() {
 
 #[test]
 fn derive_epic_state_returns_accepted_when_all_non_retired_accepted_1450() {
-    let kids = [
-        epic_child(1, BoardState::Accepted),
-        epic_child(2, BoardState::Accepted),
-    ];
+    let kids = [epic_child(1, Work::Accepted), epic_child(2, Work::Accepted)];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::NotStarted, &refs, &[]),
+        derive_epic_state(Work::NotStarted, &refs, &[]),
         ProjectedState::Accepted,
         "all-Accepted children derive Accepted"
     );
@@ -106,13 +99,10 @@ fn derive_epic_state_returns_accepted_when_all_non_retired_accepted_1450() {
 
 #[test]
 fn derive_epic_state_returns_retired_when_all_retired_1450() {
-    let kids = [
-        epic_child(1, BoardState::Retired),
-        epic_child(2, BoardState::Retired),
-    ];
+    let kids = [epic_child(1, Work::Retired), epic_child(2, Work::Retired)];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::Accepted, &refs, &[]),
+        derive_epic_state(Work::Accepted, &refs, &[]),
         ProjectedState::Retired,
         "all-Retired children derive Retired (overrides explicit Accepted)"
     );
@@ -121,13 +111,13 @@ fn derive_epic_state_returns_retired_when_all_retired_1450() {
 #[test]
 fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted_1450() {
     let kids = [
-        epic_child(1, BoardState::Accepted),
-        epic_child(2, BoardState::Retired),
-        epic_child(3, BoardState::Accepted),
+        epic_child(1, Work::Accepted),
+        epic_child(2, Work::Retired),
+        epic_child(3, Work::Accepted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::NotStarted, &refs, &[]),
+        derive_epic_state(Work::NotStarted, &refs, &[]),
         ProjectedState::Accepted,
         "mixed Accepted + Retired (no active) derives Accepted — retired don't block accept"
     );
@@ -135,15 +125,15 @@ fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted_1450(
 
 #[test]
 fn derive_epic_state_ignores_explicit_state_when_children_present_1450() {
-    let kids = [epic_child(1, BoardState::InProgress)];
+    let kids = [epic_child(1, Work::InProgress)];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::Accepted, &refs, &[]),
+        derive_epic_state(Work::Accepted, &refs, &[]),
         ProjectedState::InProgress,
         "post-1450: explicit_state is ignored — substrate IS source-of-truth (META-CANON #1)"
     );
     assert_eq!(
-        derive_epic_state(BoardState::Retired, &refs, &[]),
+        derive_epic_state(Work::Retired, &refs, &[]),
         ProjectedState::InProgress,
         "Retired explicit_state also ignored when active children present"
     );
@@ -152,13 +142,13 @@ fn derive_epic_state_ignores_explicit_state_when_children_present_1450() {
 #[test]
 fn derive_epic_state_active_dominates_terminal_at_in_progress_axis_1450() {
     let kids = [
-        epic_child(1, BoardState::Accepted),
-        epic_child(2, BoardState::Retired),
-        epic_child(3, BoardState::InProgress),
+        epic_child(1, Work::Accepted),
+        epic_child(2, Work::Retired),
+        epic_child(3, Work::InProgress),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::Accepted, &refs, &[]),
+        derive_epic_state(Work::Accepted, &refs, &[]),
         ProjectedState::InProgress,
         "1+ active child dominates Accepted/Retired siblings"
     );
@@ -167,12 +157,12 @@ fn derive_epic_state_active_dominates_terminal_at_in_progress_axis_1450() {
 #[test]
 fn derive_epic_state_not_started_non_member_child_derives_icebox() {
     let kids = [
-        epic_child(1, BoardState::NotStarted),
-        epic_child(2, BoardState::Accepted),
+        epic_child(1, Work::NotStarted),
+        epic_child(2, Work::Accepted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::NotStarted, &refs, &current_iteration_of(&[])),
+        derive_epic_state(Work::NotStarted, &refs, &current_iteration_of(&[])),
         ProjectedState::Icebox,
         "a not-started child outside the current iteration projects Icebox, so the epic's only non-terminal child cannot make it Ready"
     );
@@ -181,13 +171,13 @@ fn derive_epic_state_not_started_non_member_child_derives_icebox() {
 #[test]
 fn derive_epic_state_ready_with_terminal_children_derives_ready_1450() {
     let kids = [
-        epic_child(1, BoardState::NotStarted),
-        epic_child(2, BoardState::Accepted),
-        epic_child(3, BoardState::Retired),
+        epic_child(1, Work::NotStarted),
+        epic_child(2, Work::Accepted),
+        epic_child(3, Work::Retired),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::NotStarted, &refs, &current_iteration_of(&[1])),
+        derive_epic_state(Work::NotStarted, &refs, &current_iteration_of(&[1])),
         ProjectedState::Ready,
         "Ready + terminal-only siblings (no active) derives Ready — terminal don't block Ready"
     );
@@ -197,14 +187,14 @@ fn derive_epic_state_ready_with_terminal_children_derives_ready_1450() {
 fn derive_epic_state_1189_paradox_regression_1450() {
     let mut kids: Vec<Story> = Vec::new();
     for n in 1..=30 {
-        kids.push(epic_child(n, BoardState::Accepted));
+        kids.push(epic_child(n, Work::Accepted));
     }
     for n in 31..=36 {
-        kids.push(epic_child(n, BoardState::Retired));
+        kids.push(epic_child(n, Work::Retired));
     }
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(BoardState::NotStarted, &refs, &[]),
+        derive_epic_state(Work::NotStarted, &refs, &[]),
         ProjectedState::Accepted,
         "#1189 paradox: Epic with 30 Accepted + 6 Retired children derives Accepted, NOT Icebox (owner-canon 2026-05-19 01:47 UTC)"
     );
@@ -213,11 +203,11 @@ fn derive_epic_state_1189_paradox_regression_1450() {
 #[test]
 fn derive_epic_state_does_not_return_non_epic_states_1450() {
     let kids = [
-        epic_child(1, BoardState::InProgress),
-        epic_child(2, BoardState::Acceptance),
+        epic_child(1, Work::InProgress),
+        epic_child(2, Work::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
-    let derived = derive_epic_state(BoardState::NotStarted, &refs, &[]);
+    let derived = derive_epic_state(Work::NotStarted, &refs, &[]);
     assert!(
         matches!(
             derived,
@@ -250,11 +240,11 @@ fn derive_epic_counts_empty_children_returns_zero_axes_1451() {
 #[test]
 fn derive_epic_counts_single_axis_per_state_1451() {
     let kids = [
-        epic_child(1, BoardState::Accepted),
-        epic_child(2, BoardState::Accepted),
-        epic_child(3, BoardState::Retired),
-        epic_child(4, BoardState::NotStarted),
-        epic_child(5, BoardState::NotStarted),
+        epic_child(1, Work::Accepted),
+        epic_child(2, Work::Accepted),
+        epic_child(3, Work::Retired),
+        epic_child(4, Work::NotStarted),
+        epic_child(5, Work::NotStarted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &current_iteration_of(&[4]));
@@ -268,10 +258,10 @@ fn derive_epic_counts_single_axis_per_state_1451() {
 #[test]
 fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
     let kids = [
-        epic_child(1, BoardState::NotStarted),
-        epic_child(2, BoardState::InProgress),
-        epic_child(3, BoardState::InProgress),
-        epic_child(4, BoardState::Acceptance),
+        epic_child(1, Work::NotStarted),
+        epic_child(2, Work::InProgress),
+        epic_child(3, Work::InProgress),
+        epic_child(4, Work::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &current_iteration_of(&[1]));
@@ -287,12 +277,12 @@ fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
 #[test]
 fn derive_epic_counts_progress_denominator_excludes_only_retired_1451() {
     let kids = [
-        epic_child(1, BoardState::Accepted),
-        epic_child(2, BoardState::Accepted),
-        epic_child(3, BoardState::Accepted),
-        epic_child(4, BoardState::Retired),
-        epic_child(5, BoardState::Retired),
-        epic_child(6, BoardState::NotStarted),
+        epic_child(1, Work::Accepted),
+        epic_child(2, Work::Accepted),
+        epic_child(3, Work::Accepted),
+        epic_child(4, Work::Retired),
+        epic_child(5, Work::Retired),
+        epic_child(6, Work::NotStarted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &current_iteration_of(&[6]));
@@ -311,15 +301,15 @@ fn derive_epic_counts_progress_denominator_excludes_only_retired_1451() {
 #[test]
 fn derive_epic_counts_progress_denominator_includes_icebox_1451_canon_refinement() {
     let kids = [
-        epic_child(1, BoardState::NotStarted),
-        epic_child(2, BoardState::NotStarted),
-        epic_child(3, BoardState::NotStarted),
-        epic_child(4, BoardState::NotStarted),
-        epic_child(5, BoardState::NotStarted),
-        epic_child(6, BoardState::NotStarted),
-        epic_child(7, BoardState::NotStarted),
-        epic_child(8, BoardState::NotStarted),
-        epic_child(9, BoardState::NotStarted),
+        epic_child(1, Work::NotStarted),
+        epic_child(2, Work::NotStarted),
+        epic_child(3, Work::NotStarted),
+        epic_child(4, Work::NotStarted),
+        epic_child(5, Work::NotStarted),
+        epic_child(6, Work::NotStarted),
+        epic_child(7, Work::NotStarted),
+        epic_child(8, Work::NotStarted),
+        epic_child(9, Work::NotStarted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &current_iteration_of(&[1]));
@@ -337,12 +327,12 @@ fn derive_epic_counts_progress_denominator_includes_icebox_1451_canon_refinement
 #[test]
 fn derive_epic_counts_progress_denominator_mixed_excludes_retired_only_1451_canon() {
     let kids = [
-        epic_child(1, BoardState::Accepted),
-        epic_child(2, BoardState::Accepted),
-        epic_child(3, BoardState::InProgress),
-        epic_child(4, BoardState::NotStarted),
-        epic_child(5, BoardState::NotStarted),
-        epic_child(6, BoardState::Retired),
+        epic_child(1, Work::Accepted),
+        epic_child(2, Work::Accepted),
+        epic_child(3, Work::InProgress),
+        epic_child(4, Work::NotStarted),
+        epic_child(5, Work::NotStarted),
+        epic_child(6, Work::Retired),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &[]);
@@ -361,13 +351,13 @@ fn derive_epic_counts_progress_denominator_mixed_excludes_retired_only_1451_cano
 fn derive_epic_counts_1189_paradox_regression_1451() {
     let mut kids: Vec<Story> = Vec::new();
     for n in 1..=25 {
-        kids.push(epic_child(n, BoardState::Accepted));
+        kids.push(epic_child(n, Work::Accepted));
     }
     for n in 26..=30 {
-        kids.push(epic_child(n, BoardState::Retired));
+        kids.push(epic_child(n, Work::Retired));
     }
     for n in 31..=36 {
-        kids.push(epic_child(n, BoardState::InProgress));
+        kids.push(epic_child(n, Work::InProgress));
     }
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &[]);
@@ -387,10 +377,7 @@ fn derive_epic_counts_1189_paradox_regression_1451() {
 
 #[test]
 fn derive_epic_counts_all_retired_zero_accepted_1451() {
-    let kids = [
-        epic_child(1, BoardState::Retired),
-        epic_child(2, BoardState::Retired),
-    ];
+    let kids = [epic_child(1, Work::Retired), epic_child(2, Work::Retired)];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &[]);
     assert_eq!(
@@ -410,9 +397,9 @@ fn derive_epic_counts_all_retired_zero_accepted_1451() {
 #[test]
 fn derive_epic_counts_icebox_separate_from_active_1451() {
     let kids = [
-        epic_child(1, BoardState::NotStarted),
-        epic_child(2, BoardState::NotStarted),
-        epic_child(3, BoardState::NotStarted),
+        epic_child(1, Work::NotStarted),
+        epic_child(2, Work::NotStarted),
+        epic_child(3, Work::NotStarted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &current_iteration_of(&[3]));
@@ -426,11 +413,11 @@ fn derive_epic_counts_icebox_separate_from_active_1451() {
 #[test]
 fn derive_epic_counts_total_equals_sum_of_axes_1451() {
     let kids = [
-        epic_child(1, BoardState::Accepted),
-        epic_child(2, BoardState::Retired),
-        epic_child(3, BoardState::NotStarted),
-        epic_child(4, BoardState::InProgress),
-        epic_child(5, BoardState::NotStarted),
+        epic_child(1, Work::Accepted),
+        epic_child(2, Work::Retired),
+        epic_child(3, Work::NotStarted),
+        epic_child(4, Work::InProgress),
+        epic_child(5, Work::NotStarted),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &current_iteration_of(&[3]));

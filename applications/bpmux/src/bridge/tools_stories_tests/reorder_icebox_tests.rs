@@ -8,7 +8,7 @@ use crate::transport::protocol::ClientMessage;
 mod reorder_story_icebox_label_substrate_tests_1301 {
     use crate::bridge::tools_stories::reorder_icebox_story_via_labels;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Story, StoryId};
+    use crate::product_management::story::{Story, StoryId, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -18,7 +18,7 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
         let s = Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            BoardState::NotStarted,
+            Work::NotStarted,
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );

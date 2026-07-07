@@ -9,7 +9,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -87,7 +87,7 @@ mod codec_injection_substrate {
         Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            BoardState::InProgress,
+            Work::InProgress,
             Utc.with_ymd_and_hms(2026, 5, 17, 0, 0, 0).unwrap(),
             "pm".to_string(),
         )

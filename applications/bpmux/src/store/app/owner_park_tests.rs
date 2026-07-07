@@ -2,11 +2,11 @@
 
 use super::owner_park::owner_park_presence;
 use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::{Acceptor, BoardState, Story, StoryId};
+use crate::product_management::story::{Acceptor, Story, StoryId, Work};
 use crate::store::{Presence, RosterMember, RosterRole};
 use chrono::{TimeZone, Utc};
 
-fn story(id: u64, state: BoardState) -> Story {
+fn story(id: u64, state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("story {id}"),
@@ -17,7 +17,7 @@ fn story(id: u64, state: BoardState) -> Story {
 }
 
 fn owner_parked_delivery(id: u64) -> Story {
-    let mut s = story(id, BoardState::Acceptance);
+    let mut s = story(id, Work::Acceptance);
     s.acceptor = Some(Acceptor::Owner);
     s
 }
@@ -51,10 +51,7 @@ fn dev_member(presence: Presence) -> RosterMember {
 
 #[test]
 fn with_no_current_iteration_a_not_started_story_does_not_block_the_owner_park() {
-    let stories = vec![
-        owner_parked_delivery(100),
-        story(200, BoardState::NotStarted),
-    ];
+    let stories = vec![owner_parked_delivery(100), story(200, Work::NotStarted)];
     let changes = owner_park_presence(&stories, &[], &[dev_member(Presence::Online)], Some("dev"));
     assert_eq!(
         changes,
@@ -65,10 +62,7 @@ fn with_no_current_iteration_a_not_started_story_does_not_block_the_owner_park()
 
 #[test]
 fn a_projected_ready_member_keeps_the_ready_queue_non_empty_and_lifts_the_park() {
-    let stories = vec![
-        owner_parked_delivery(100),
-        story(200, BoardState::NotStarted),
-    ];
+    let stories = vec![owner_parked_delivery(100), story(200, Work::NotStarted)];
     let changes = owner_park_presence(
         &stories,
         &current_iteration_of(&[200]),

@@ -8,7 +8,7 @@ use crate::integrations::github::relationships::{
 };
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::workflow::bundled_default::bundled_default;
 use crate::workflow::config::WorkflowConfig;
 use chrono::Utc;
@@ -32,7 +32,7 @@ fn iteration(id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "Iteration Vela".to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc::now(),
         "pm".to_string(),
     );
@@ -263,7 +263,7 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Outcome #{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc::now(),
         "pm".to_string(),
     );

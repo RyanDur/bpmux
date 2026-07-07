@@ -8,11 +8,11 @@ pub(super) fn gh_state_label(state: &octocrab::models::IssueState) -> &'static s
 
 pub(super) fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> serde_json::Value {
     use crate::product_management::scheduling::ProjectedState;
-    use crate::product_management::story::BoardState;
+    use crate::product_management::story::Work;
     let labels: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
     let is_closed = matches!(issue.state, octocrab::models::IssueState::Closed);
     let state = match crate::integrations::github::mapper::state_from_labels(&labels, is_closed) {
-        BoardState::NotStarted => ProjectedState::Icebox.as_str(),
+        Work::NotStarted => ProjectedState::Icebox.as_str(),
         other => other.as_str(),
     };
     let gh_state = gh_state_label(&issue.state);

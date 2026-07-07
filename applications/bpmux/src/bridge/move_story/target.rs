@@ -1,7 +1,7 @@
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::product_management::story::{BoardState, Stage};
+use crate::product_management::story::{Stage, Work};
 
 const TARGET_STATE_RETIRED: &str = "retired";
 const TARGET_STATE_ICEBOX: &str = "icebox";
@@ -11,7 +11,7 @@ const TARGET_STATE_READY: &str = "ready";
 pub(super) enum TargetState {
     Icebox,
     Ready,
-    Workflow(BoardState),
+    Workflow(Work),
     Retired,
 }
 
@@ -27,14 +27,14 @@ impl TargetState {
         if normalized == TARGET_STATE_RETIRED {
             return Ok(Self::Retired);
         }
-        if let Some(state) = BoardState::parse(&normalized)
-            && state != BoardState::NotStarted
+        if let Some(state) = Work::parse(&normalized)
+            && state != Work::NotStarted
         {
             return Ok(Self::Workflow(state));
         }
         let middle = crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow());
         if middle.iter().any(|stage| stage.as_str() == normalized) {
-            return Ok(Self::Workflow(BoardState::InProgress));
+            return Ok(Self::Workflow(Work::InProgress));
         }
         let stages: Vec<&str> = middle.iter().map(|stage| stage.as_str()).collect();
         Err(format!(
@@ -43,9 +43,9 @@ impl TargetState {
         ))
     }
 
-    pub(super) fn workflow_state(&self) -> Option<BoardState> {
+    pub(super) fn workflow_state(&self) -> Option<Work> {
         match self {
-            Self::Icebox | Self::Ready => Some(BoardState::NotStarted),
+            Self::Icebox | Self::Ready => Some(Work::NotStarted),
             Self::Workflow(state) => Some(state.clone()),
             Self::Retired => None,
         }
@@ -58,12 +58,12 @@ impl TargetState {
                 Some(crate::product_management::scheduling::ProjectedState::Ready.github_label())
             }
             Self::Workflow(state) => Some(state.github_label()),
-            Self::Retired => Some(BoardState::Retired.github_label()),
+            Self::Retired => Some(Work::Retired.github_label()),
         }
     }
 
     pub(super) fn closes_issue(&self) -> bool {
-        matches!(self, Self::Retired | Self::Workflow(BoardState::Accepted))
+        matches!(self, Self::Retired | Self::Workflow(Work::Accepted))
     }
 
     pub(super) fn as_display(&self) -> &'static str {
@@ -71,7 +71,7 @@ impl TargetState {
             Self::Icebox => TARGET_STATE_ICEBOX,
             Self::Ready => TARGET_STATE_READY,
             Self::Workflow(state) => state.as_str(),
-            Self::Retired => BoardState::Retired.as_str(),
+            Self::Retired => Work::Retired.as_str(),
         }
     }
 }
@@ -117,14 +117,14 @@ pub(super) fn current_state_display(
     match story {
         Some(s) if s.is_concluded() => "retired-or-accepted",
         Some(s) => match &s.state {
-            BoardState::NotStarted => projected_state(s, iterations).as_str(),
-            BoardState::InProgress => match fine {
+            Work::NotStarted => projected_state(s, iterations).as_str(),
+            Work::InProgress => match fine {
                 Some(Stage::DeskCheck) => "desk-check",
                 _ => "in-progress",
             },
-            BoardState::Acceptance => "acceptance",
-            BoardState::Accepted => "accepted",
-            BoardState::Retired => "retired",
+            Work::Acceptance => "acceptance",
+            Work::Accepted => "accepted",
+            Work::Retired => "retired",
         },
         None => "unknown",
     }

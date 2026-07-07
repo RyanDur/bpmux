@@ -6,7 +6,7 @@ use crate::integrations::github::mapper::{decode_iteration_from_story, decode_ou
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
-use crate::product_management::story::{BoardState, Horizon, Story, StoryId, StoryKind};
+use crate::product_management::story::{Horizon, Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -34,7 +34,7 @@ fn seed_iteration(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -53,7 +53,7 @@ fn typed_seed(id: u64, story_type: StoryKind, label: &str) -> (Story, Vec<String
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("#{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -69,7 +69,7 @@ fn seed_outcome(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("#{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

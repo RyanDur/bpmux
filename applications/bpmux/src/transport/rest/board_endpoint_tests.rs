@@ -8,7 +8,7 @@ use crate::integrations::github::relationships::{
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
@@ -39,7 +39,7 @@ fn iteration(id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "Iteration Vela".to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -59,7 +59,7 @@ fn member(id: u64, iteration_id: u64, position: u32) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("member #{id}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -87,7 +87,7 @@ fn outcome(id: u64, iterations: Vec<u64>) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "An outcome".to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -132,7 +132,7 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(9100),
         "[Bug] optimistic board visibility".to_string(),
-        BoardState::Acceptance,
+        Work::Acceptance,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     )]);

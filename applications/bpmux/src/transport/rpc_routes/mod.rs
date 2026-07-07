@@ -71,8 +71,8 @@ pub async fn post_rpc_tool(
                 match raw.to_ascii_lowercase().as_str() {
                     "icebox" => Some(ProjectedState::Icebox.as_str()),
                     "ready" => Some(ProjectedState::Ready.as_str()),
-                    other => crate::product_management::story::BoardState::parse(other)
-                        .filter(|s| *s != crate::product_management::story::BoardState::NotStarted)
+                    other => crate::product_management::story::Work::parse(other)
+                        .filter(|s| *s != crate::product_management::story::Work::NotStarted)
                         .map(|s| s.as_str()),
                 }
             })

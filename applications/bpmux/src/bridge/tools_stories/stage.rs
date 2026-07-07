@@ -1,7 +1,7 @@
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, Story, StoryId, Verdict};
+use crate::product_management::story::{Story, StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
 use crate::workflow::StageId;
 
@@ -95,7 +95,7 @@ async fn judged_stage_of<'r>(
         .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("stage verbs require refresh (RefreshDriver)")?;
     let story = ensure_story_in_canonical_store(r, id).await?;
-    if !matches!(story.state, BoardState::InProgress) {
+    if !matches!(story.state, Work::InProgress) {
         return Err(format!(
             "#{id} is not in the board's middle (state={}); stage judgments apply only between pickup and acceptance",
             story.state.as_str()
@@ -128,7 +128,7 @@ fn cast_and_transition(
     agent_name: &str,
     verdict: Verdict,
     payload: Option<String>,
-    new_state: BoardState,
+    new_state: Work,
     placement: Option<StageId>,
 ) -> Result<(), String> {
     let meta = EventMeta {

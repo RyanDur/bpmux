@@ -9,7 +9,7 @@ use crate::integrations::github::relationships::{
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
@@ -19,7 +19,7 @@ fn iteration_seed(id: u64, title: &str) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -30,7 +30,7 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

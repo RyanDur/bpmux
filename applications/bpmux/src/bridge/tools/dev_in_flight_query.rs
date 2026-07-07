@@ -2,14 +2,14 @@
 
 use super::dev_in_flight::*;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::BoardState;
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
+use crate::product_management::story::Work;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 
-fn seed(state: BoardState, number: u64) -> Story {
+fn seed(state: Work, number: u64) -> Story {
     Story::new_minimal(
         StoryId::new(number),
         format!("title-{number}"),
@@ -31,9 +31,9 @@ async fn driver(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 #[tokio::test]
 async fn returns_false_when_no_story_in_flight() {
     let refresh = driver(vec![
-        seed(BoardState::NotStarted, 1),
-        seed(BoardState::Acceptance, 2),
-        seed(BoardState::Accepted, 3),
+        seed(Work::NotStarted, 1),
+        seed(Work::Acceptance, 2),
+        seed(Work::Accepted, 3),
     ])
     .await;
     let result = handle_dev_in_flight(&refresh).await.unwrap();
@@ -43,9 +43,9 @@ async fn returns_false_when_no_story_in_flight() {
 #[tokio::test]
 async fn returns_true_when_a_story_is_in_progress() {
     let refresh = driver(vec![
-        seed(BoardState::NotStarted, 1),
-        seed(BoardState::InProgress, 2),
-        seed(BoardState::Acceptance, 3),
+        seed(Work::NotStarted, 1),
+        seed(Work::InProgress, 2),
+        seed(Work::Acceptance, 3),
     ])
     .await;
     let result = handle_dev_in_flight(&refresh).await.unwrap();
@@ -54,7 +54,7 @@ async fn returns_true_when_a_story_is_in_progress() {
 
 #[tokio::test]
 async fn response_contains_no_story_identifiers() {
-    let refresh = driver(vec![seed(BoardState::InProgress, 1)]).await;
+    let refresh = driver(vec![seed(Work::InProgress, 1)]).await;
     let result = handle_dev_in_flight(&refresh).await.unwrap();
     assert!(!result.contains("\"id\""));
     assert!(!result.contains("title"));

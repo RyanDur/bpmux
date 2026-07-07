@@ -5,11 +5,11 @@ use crate::board::{BoardAction, BoardPlacements, placement_edge, reduce};
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::{Stories, StoryAction};
-use crate::product_management::story::{BoardState, Stage, Story, StoryId};
+use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
 
-fn story(id: u64, state: BoardState) -> Story {
+fn story(id: u64, state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("story {id}"),
@@ -46,7 +46,7 @@ fn transition(id: u64, placement: Option<StageId>) -> StoryAction {
             peer_id: PeerId::local(),
         },
         id: StoryId::new(id),
-        new_state: BoardState::InProgress,
+        new_state: Work::InProgress,
         placement,
     })
 }
@@ -159,7 +159,7 @@ fn a_non_transition_story_action_yields_no_edge() {
 #[test]
 fn a_placement_whose_story_left_the_middle_is_unplaced() {
     let changes = unplace_departed(
-        &stories(vec![story(1, BoardState::Acceptance)]),
+        &stories(vec![story(1, Work::Acceptance)]),
         &board(&[(1, "desk-check")]),
     );
     assert_eq!(
@@ -184,7 +184,7 @@ fn a_placement_whose_story_is_gone_is_unplaced() {
 #[test]
 fn a_story_still_in_the_middle_is_left_placed_by_the_safety_net() {
     let changes = unplace_departed(
-        &stories(vec![story(1, BoardState::InProgress)]),
+        &stories(vec![story(1, Work::InProgress)]),
         &board(&[(1, "desk-check")]),
     );
     assert!(
@@ -196,7 +196,7 @@ fn a_story_still_in_the_middle_is_left_placed_by_the_safety_net() {
 #[test]
 fn the_safety_net_is_coarse_only_a_placed_dev_story_is_not_its_concern() {
     let changes = unplace_departed(
-        &stories(vec![story(1, BoardState::InProgress)]),
+        &stories(vec![story(1, Work::InProgress)]),
         &board(&[(1, "in-progress")]),
     );
     assert!(

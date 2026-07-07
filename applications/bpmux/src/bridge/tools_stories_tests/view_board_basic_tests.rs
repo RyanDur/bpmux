@@ -15,7 +15,7 @@ async fn view_board_requires_refresh_after_5l_fallback_retirement() {
 #[tokio::test]
 async fn view_board_auto_reingests_when_store_is_empty() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -26,7 +26,7 @@ async fn view_board_auto_reingests_when_store_is_empty() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(505),
         "post-restart-recovery".into(),
-        BoardState::Accepted,
+        Work::Accepted,
         ts,
         "dev".into(),
     )]);
@@ -108,7 +108,7 @@ async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log()
 async fn view_board_buckets_stories_by_story_state() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::iteration::{Iteration, IterationId};
-    use crate::product_management::story::{BoardState, Stage, Story};
+    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -120,35 +120,35 @@ async fn view_board_buckets_stories_by_story_state() {
         Story::new_minimal(
             StoryId::new(101),
             "icebox-story".into(),
-            BoardState::NotStarted,
+            Work::NotStarted,
             ts,
             "pm".into(),
         ),
         Story::new_minimal(
             StoryId::new(102),
             "ready-story".into(),
-            BoardState::NotStarted,
+            Work::NotStarted,
             ts,
             "pm".into(),
         ),
         Story::new_minimal(
             StoryId::new(103),
             "in-progress-story".into(),
-            BoardState::InProgress,
+            Work::InProgress,
             ts,
             "dev".into(),
         ),
         Story::new_minimal(
             StoryId::new(104),
             "delivered-story".into(),
-            BoardState::Acceptance,
+            Work::Acceptance,
             ts,
             "dev".into(),
         ),
         Story::new_minimal(
             StoryId::new(108),
             "accepted-story".into(),
-            BoardState::Accepted,
+            Work::Accepted,
             ts,
             "owner".into(),
         ),
@@ -197,7 +197,7 @@ async fn view_board_buckets_stories_by_story_state() {
 #[tokio::test]
 async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Stage, Story};
+    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -208,14 +208,14 @@ async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() 
     let retired_story = Story::new_minimal(
         StoryId::new(201),
         "abandoned-mid-flight".into(),
-        BoardState::Retired,
+        Work::Retired,
         ts,
         "pm".into(),
     );
     let accepted_story = Story::new_minimal(
         StoryId::new(202),
         "accepted-closed".into(),
-        BoardState::Accepted,
+        Work::Accepted,
         ts,
         "pm".into(),
     );
@@ -254,7 +254,7 @@ async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() 
 async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -264,7 +264,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let seeded = Story::new_minimal(
         StoryId::new(301),
         "won't fix story".into(),
-        BoardState::Acceptance,
+        Work::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -287,7 +287,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let story = orchestrator.story(301).expect("story exists");
     assert_eq!(
         story.state,
-        BoardState::Retired,
+        Work::Retired,
         "#1570: disposition=retire transitions state to Retired"
     );
 
@@ -330,7 +330,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
             e,
             StoryEvent::StateTransitioned { id, new_state, .. }
                 if *id == StoryId::new(301)
-                    && *new_state == crate::product_management::story::BoardState::Retired
+                    && *new_state == crate::product_management::story::Work::Retired
         )),
         "StateTransitioned → Retired must fire for retire-class reason"
     );
@@ -340,7 +340,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
 async fn close_story_accept_disposition_transitions_state_to_accepted() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -350,7 +350,7 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
     let seeded = Story::new_minimal(
         StoryId::new(302),
         "accept via close".into(),
-        BoardState::Acceptance,
+        Work::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -376,7 +376,7 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
     let story = orchestrator.story(302).expect("story exists");
     assert_eq!(
         story.state,
-        BoardState::Accepted,
+        Work::Accepted,
         "disposition=accept concludes the story in the workflow — closing IS transitioning to a terminal state, never a bare GH-side close"
     );
 
@@ -385,7 +385,7 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
         pushed.iter().any(|e| matches!(
             e,
             StoryEvent::StateTransitioned { id, new_state, .. }
-                if *id == StoryId::new(302) && *new_state == BoardState::Accepted
+                if *id == StoryId::new(302) && *new_state == Work::Accepted
         )),
         "StateTransitioned → Accepted must fire for accept-class close: {pushed:?}"
     );

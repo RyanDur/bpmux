@@ -4,7 +4,7 @@
 
 use crate::bridge::tools_stories::handle_edit_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -21,7 +21,7 @@ fn seed_story(id: u64, title: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

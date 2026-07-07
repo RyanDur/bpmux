@@ -6,7 +6,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
-use crate::product_management::story::{BoardState, FreeComment, Story, StoryId};
+use crate::product_management::story::{FreeComment, Story, StoryId, Work};
 use crate::sync::{SourceAdapter, SyncError};
 
 fn meta() -> EventMeta {
@@ -21,7 +21,7 @@ fn seed_story(id: u64, title: &str) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -92,7 +92,7 @@ async fn push_event_records_the_event() {
     let event = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(10),
-        new_state: BoardState::Acceptance,
+        new_state: Work::Acceptance,
         placement: None,
     };
     adapter
@@ -111,7 +111,7 @@ async fn push_event_errs_when_configured_to_fail() {
     let event = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(10),
-        new_state: BoardState::Acceptance,
+        new_state: Work::Acceptance,
         placement: None,
     };
     let result = adapter
@@ -130,13 +130,13 @@ async fn multiple_pushed_events_preserve_order() {
     let e1 = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(1),
-        new_state: BoardState::InProgress,
+        new_state: Work::InProgress,
         placement: None,
     };
     let e2 = StoryEvent::StateTransitioned {
         meta: meta(),
         id: StoryId::new(2),
-        new_state: BoardState::Acceptance,
+        new_state: Work::Acceptance,
         placement: None,
     };
     adapter
@@ -192,7 +192,7 @@ async fn push_event_accepts_story_created_variant() {
         id: StoryId::new(99),
         title: "t".to_string(),
         body: "b".to_string(),
-        initial_state: BoardState::NotStarted,
+        initial_state: Work::NotStarted,
         story_type: crate::product_management::story::StoryKind::Feature,
     };
     adapter

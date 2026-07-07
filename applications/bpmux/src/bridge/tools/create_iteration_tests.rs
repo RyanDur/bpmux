@@ -7,7 +7,7 @@ use crate::bridge::tools_stories::handle_create_iteration;
 use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationAction};
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -35,7 +35,7 @@ fn seed_iteration_story(id: u64, name: &str, is_closed: bool) -> (Story, Vec<Str
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

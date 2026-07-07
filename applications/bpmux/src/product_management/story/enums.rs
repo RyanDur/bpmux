@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum BoardState {
+pub enum Work {
     NotStarted,
     InProgress,
     Acceptance,
@@ -9,50 +9,47 @@ pub enum BoardState {
     Retired,
 }
 
-impl Serialize for BoardState {
+impl Serialize for Work {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de> Deserialize<'de> for BoardState {
+impl<'de> Deserialize<'de> for Work {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = String::deserialize(deserializer)?;
-        BoardState::parse(&raw)
-            .ok_or_else(|| de::Error::custom(format!("unknown story state: {raw}")))
+        Work::parse(&raw).ok_or_else(|| de::Error::custom(format!("unknown story state: {raw}")))
     }
 }
 
-impl BoardState {
+impl Work {
     pub fn as_str(&self) -> &'static str {
         match self {
-            BoardState::NotStarted => "not-started",
-            BoardState::InProgress => "in-progress",
-            BoardState::Acceptance => "acceptance",
-            BoardState::Accepted => "accepted",
-            BoardState::Retired => "retired",
+            Work::NotStarted => "not-started",
+            Work::InProgress => "in-progress",
+            Work::Acceptance => "acceptance",
+            Work::Accepted => "accepted",
+            Work::Retired => "retired",
         }
     }
 
     pub fn github_label(&self) -> &'static str {
         match self {
-            BoardState::NotStarted => "",
-            BoardState::InProgress => "in progress",
-            BoardState::Acceptance => "delivered",
-            BoardState::Accepted => "accepted",
-            BoardState::Retired => "retired",
+            Work::NotStarted => "",
+            Work::InProgress => "in progress",
+            Work::Acceptance => "delivered",
+            Work::Accepted => "accepted",
+            Work::Retired => "retired",
         }
     }
 
     pub fn parse(s: &str) -> Option<Self> {
         match s {
-            "not-started" | "icebox" | "ready" => Some(BoardState::NotStarted),
-            "in-progress" | "in_progress" | "desk-check" | "desk_check" => {
-                Some(BoardState::InProgress)
-            }
-            "acceptance" | "delivered" => Some(BoardState::Acceptance),
-            "accepted" => Some(BoardState::Accepted),
-            "retired" => Some(BoardState::Retired),
+            "not-started" | "icebox" | "ready" => Some(Work::NotStarted),
+            "in-progress" | "in_progress" | "desk-check" | "desk_check" => Some(Work::InProgress),
+            "acceptance" | "delivered" => Some(Work::Acceptance),
+            "accepted" => Some(Work::Accepted),
+            "retired" => Some(Work::Retired),
             _ => None,
         }
     }

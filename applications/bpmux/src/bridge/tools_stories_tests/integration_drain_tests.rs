@@ -8,7 +8,7 @@ use crate::transport::protocol::ClientMessage;
 #[tokio::test]
 async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -18,7 +18,7 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     let seeded = Story::new_minimal(
         StoryId::new(882),
         "[Feature] missing-test-file".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -44,7 +44,7 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
 #[tokio::test]
 async fn start_story_passes_chore_without_acceptance_test_path() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -54,7 +54,7 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     let seeded = Story::new_minimal(
         StoryId::new(883),
         "[Chore] no test required".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -75,7 +75,7 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
 #[tokio::test]
 async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdicts_lag_the_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, CastVerdict, Story, Verdict};
+    use crate::product_management::story::{CastVerdict, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -85,7 +85,7 @@ async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdict
     let mut seeded = Story::new_minimal(
         StoryId::new(884),
         "[Chore] rework-lead survives undrained mirror".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -129,7 +129,7 @@ async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdict
 #[tokio::test]
 async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdicts() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, CastVerdict, Story, Verdict};
+    use crate::product_management::story::{CastVerdict, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -139,7 +139,7 @@ async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdic
     let seeded = Story::new_minimal(
         StoryId::new(885),
         "[Chore] rework-lead read-through survives".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -177,7 +177,7 @@ async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdic
 async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -187,7 +187,7 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
     let seeded = Story::new_minimal(
         StoryId::new(4690),
         "[Bug] cascade-drain-on-reject".into(),
-        BoardState::Accepted,
+        Work::Accepted,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
@@ -234,7 +234,7 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
 async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Stage, Story};
+    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -244,7 +244,7 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
     let seeded = Story::new_minimal(
         StoryId::new(4691),
         "[Bug] cascade-drain-on-fail-desk-check".into(),
-        BoardState::InProgress,
+        Work::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "owner".into(),
     );
@@ -273,7 +273,7 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            StoryEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == BoardState::InProgress
+            StoryEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == Work::InProgress
         )),
         "the async drain propagates StateTransitioned(InProgress) to the adapter: {pushed:?}"
     );
@@ -283,7 +283,7 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
 async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -293,7 +293,7 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     let seeded = Story::new_minimal(
         StoryId::new(469),
         "[Bug] rework-after-accept".into(),
-        BoardState::Accepted,
+        Work::Accepted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "owner".into(),
     );
@@ -327,14 +327,14 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     );
 
     let story = orch.story(469).unwrap();
-    assert_eq!(story.state, BoardState::NotStarted);
+    assert_eq!(story.state, Work::NotStarted);
 }
 
 #[tokio::test]
 async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -344,7 +344,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     let seeded = Story::new_minimal(
         StoryId::new(470),
         "[Bug] reject-from-delivered".into(),
-        BoardState::Acceptance,
+        Work::Acceptance,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "owner".into(),
     );
@@ -397,7 +397,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::label_codec::LabelCodec;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -407,7 +407,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
     let seeded = Story::new_minimal(
         StoryId::new(471),
         "[Bug] unschedule-label-mirror".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -420,7 +420,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
     orch.mutate_sync(StoryEvent::StateTransitioned {
         meta: crate::sync::cache_fill_meta(),
         id: StoryId::new(471),
-        new_state: BoardState::NotStarted,
+        new_state: Work::NotStarted,
         placement: None,
     })
     .unwrap();
@@ -451,7 +451,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
 async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_label() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{BoardState, Story};
+    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -461,7 +461,7 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
     let seeded = Story::new_minimal(
         StoryId::new(472),
         "[Feature] schedule-label-mirror".into(),
-        BoardState::NotStarted,
+        Work::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -474,7 +474,7 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
     orch.mutate_sync(StoryEvent::StateTransitioned {
         meta: crate::sync::cache_fill_meta(),
         id: StoryId::new(472),
-        new_state: BoardState::NotStarted,
+        new_state: Work::NotStarted,
         placement: None,
     })
     .unwrap();
@@ -490,7 +490,7 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
 #[tokio::test]
 async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{BoardState, Stage, Story};
+    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -500,7 +500,7 @@ async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_asy
     let seeded = Story::new_minimal(
         StoryId::new(450),
         "[Chore] label-leak repro".into(),
-        BoardState::InProgress,
+        Work::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );

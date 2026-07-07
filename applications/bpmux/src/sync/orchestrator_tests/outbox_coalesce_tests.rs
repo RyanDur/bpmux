@@ -9,7 +9,7 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -35,7 +35,7 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn rapid_drag_sequence_coalesces_to_first_remove_plus_last_add_per_class() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let mut seed = seed_story(7011, BoardState::NotStarted);
+        let mut seed = seed_story(7011, Work::NotStarted);
         seed.iteration_slot = Some(crate::product_management::story::IterationSlot {
             name: "Pegasus".to_string(),
             position: 300,
@@ -103,7 +103,7 @@ mod outbox_coalesce_1339_step_2e {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7012,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
 
         orch.mutate(StoryEvent::TagAdded {
@@ -144,8 +144,8 @@ mod outbox_coalesce_1339_step_2e {
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(7013, BoardState::NotStarted),
-            seed_story(7014, BoardState::NotStarted),
+            seed_story(7013, Work::NotStarted),
+            seed_story(7014, Work::NotStarted),
         ])));
 
         orch.mutate(StoryEvent::TagAdded {
@@ -194,7 +194,7 @@ mod outbox_coalesce_1339_step_2e {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7015,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
 
         orch.mutate(StoryEvent::TagAdded {
@@ -233,7 +233,7 @@ mod outbox_coalesce_1339_step_2e {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7016,
-            BoardState::NotStarted,
+            Work::NotStarted,
         )])));
 
         orch.mutate(StoryEvent::TagAdded {

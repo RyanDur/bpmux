@@ -1,9 +1,7 @@
 use super::{Stories, story_mut};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::EventMeta;
-use crate::product_management::story::{
-    Acceptor, BoardState, Story, StoryId, StoryKey, StoryKind, Tag,
-};
+use crate::product_management::story::{Acceptor, Story, StoryId, StoryKey, StoryKind, Tag, Work};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn apply_story_created(
@@ -12,7 +10,7 @@ pub(super) fn apply_story_created(
     meta: &EventMeta,
     title: &str,
     body: &str,
-    initial_state: BoardState,
+    initial_state: Work,
     story_type: StoryKind,
 ) {
     let story = Story {
@@ -35,7 +33,7 @@ pub(super) fn apply_story_created(
     w.insert(StoryKey::Saved(id), story);
 }
 
-pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: BoardState) {
+pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: Work) {
     if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.state = new_state;
     }

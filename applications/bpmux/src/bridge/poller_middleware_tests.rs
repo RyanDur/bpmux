@@ -8,11 +8,11 @@ use crate::bridge::tools::handle_get_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{BoardState, Story, StoryId};
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
-fn seed_minimal(id: u64, state: BoardState) -> Story {
+fn seed_minimal(id: u64, state: Work) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("[Feature] target-{id}"),
@@ -48,7 +48,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8001,
-        BoardState::NotStarted,
+        Work::NotStarted,
     )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8001));
@@ -73,7 +73,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
 #[tokio::test]
 async fn get_story_serves_cached_body_from_canonical_store() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut story = seed_minimal(8002, BoardState::NotStarted);
+    let mut story = seed_minimal(8002, Work::NotStarted);
     story.body = Some("# real body\n\ncached body content from prior hydrate".to_string());
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let seed = SeededStore::new(vec![], vec![], vec![]);
@@ -103,7 +103,7 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8003,
-        BoardState::InProgress,
+        Work::InProgress,
     )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8003));
@@ -117,15 +117,15 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
 #[tokio::test]
 async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
     use crate::bridge::select_stories_to_hydrate;
-    let mut active = seed_minimal(100, BoardState::NotStarted);
+    let mut active = seed_minimal(100, Work::NotStarted);
     active.body = None;
-    let mut hydrated = seed_minimal(101, BoardState::InProgress);
+    let mut hydrated = seed_minimal(101, Work::InProgress);
     hydrated.body = Some("already-cached".to_string());
-    let mut accepted = seed_minimal(102, BoardState::Accepted);
+    let mut accepted = seed_minimal(102, Work::Accepted);
     accepted.body = None;
-    let mut icebox = seed_minimal(103, BoardState::NotStarted);
+    let mut icebox = seed_minimal(103, Work::NotStarted);
     icebox.body = None;
-    let mut delivered = seed_minimal(104, BoardState::Acceptance);
+    let mut delivered = seed_minimal(104, Work::Acceptance);
     delivered.body = None;
     let stories = vec![active, hydrated, accepted, icebox, delivered];
     let picks = select_stories_to_hydrate(&stories, 10, &current_iteration_of(&[100]));
@@ -147,7 +147,7 @@ async fn select_stories_to_hydrate_caps_at_limit() {
     use crate::bridge::select_stories_to_hydrate;
     let stories: Vec<Story> = (0..10)
         .map(|i| {
-            let mut s = seed_minimal(200 + i, BoardState::NotStarted);
+            let mut s = seed_minimal(200 + i, Work::NotStarted);
             s.body = None;
             s
         })
@@ -160,7 +160,7 @@ async fn select_stories_to_hydrate_caps_at_limit() {
 #[tokio::test]
 async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
     use crate::bridge::select_stories_to_hydrate;
-    let mut s = seed_minimal(300, BoardState::NotStarted);
+    let mut s = seed_minimal(300, Work::NotStarted);
     s.body = Some("already".to_string());
     let picks = select_stories_to_hydrate(&[s], 5, &current_iteration_of(&[300]));
     assert!(picks.is_empty(), "no missing-body stories = empty picks");
@@ -175,7 +175,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     seed.bind_refresh(&orch);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         9000,
-        BoardState::NotStarted,
+        Work::NotStarted,
     )])));
     seed.dispatch(AppAction::Story(StoryAction::Event(
         StoryEvent::BodyFetched {
@@ -198,7 +198,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
-    let mut seed = seed_minimal(9100, BoardState::NotStarted);
+    let mut seed = seed_minimal(9100, Work::NotStarted);
     seed.body = Some("v1".to_string());
     seed.body_etag = Some("W/\"etag-v1\"".to_string());
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed.clone()])));
@@ -231,7 +231,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
-    let seed = seed_minimal(9200, BoardState::InProgress);
+    let seed = seed_minimal(9200, Work::InProgress);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
     let labels = vec!["in progress".to_string(), "ready-order.300".to_string()];
     handle.dispatch(AppAction::Story(StoryAction::Event(
@@ -258,7 +258,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
 async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     use crate::sync::ConditionalBody;
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_minimal(9001, BoardState::NotStarted)]);
+    adapter.seed_stories(vec![seed_minimal(9001, Work::NotStarted)]);
     adapter.seed_body(9001, "real body".into());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
@@ -274,14 +274,14 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
 #[tokio::test]
 async fn select_stories_to_revalidate_picks_already_hydrated_active_stories() {
     use crate::bridge::select_stories_to_revalidate;
-    let mut active_with_body = seed_minimal(700, BoardState::NotStarted);
+    let mut active_with_body = seed_minimal(700, Work::NotStarted);
     active_with_body.body = Some("body".to_string());
     active_with_body.body_etag = Some("etag-700".to_string());
-    let mut active_no_body = seed_minimal(701, BoardState::InProgress);
+    let mut active_no_body = seed_minimal(701, Work::InProgress);
     active_no_body.body = None;
-    let mut accepted_with_body = seed_minimal(702, BoardState::Accepted);
+    let mut accepted_with_body = seed_minimal(702, Work::Accepted);
     accepted_with_body.body = Some("body".to_string());
-    let mut icebox_with_body = seed_minimal(703, BoardState::NotStarted);
+    let mut icebox_with_body = seed_minimal(703, Work::NotStarted);
     icebox_with_body.body = Some("body".to_string());
     let stories = vec![
         active_with_body,
@@ -315,7 +315,7 @@ async fn select_stories_to_revalidate_caps_at_limit() {
     use crate::bridge::select_stories_to_revalidate;
     let stories: Vec<Story> = (0..10)
         .map(|i| {
-            let mut s = seed_minimal(800 + i, BoardState::NotStarted);
+            let mut s = seed_minimal(800 + i, Work::NotStarted);
             s.body = Some("body".to_string());
             s
         })
@@ -333,7 +333,7 @@ async fn get_story_returns_hydrated_flag_in_response() {
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8004,
-        BoardState::NotStarted,
+        Work::NotStarted,
     )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8004));
