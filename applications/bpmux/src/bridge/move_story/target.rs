@@ -81,7 +81,7 @@ pub(super) fn current_state_display(
     fine: Option<Stage>,
 ) -> &'static str {
     match story {
-        Some(s) if s.is_closed => "retired-or-accepted",
+        Some(s) if s.is_concluded() => "retired-or-accepted",
         Some(s) => match &s.state {
             BoardState::Icebox => "icebox",
             BoardState::Ready => "ready",

@@ -91,8 +91,7 @@ pub(in crate::bridge) async fn handle_get_story(
     let fine = r.story_fine_stage(&story);
     let needs_gates = matches!(&story.state, BoardState::Ready)
         || fine == Some(Stage::Dev)
-        || story.is_closed
-        || matches!(&story.state, BoardState::Accepted);
+        || story.is_concluded();
     if needs_gates && story.verdicts.is_none() {
         match r.fetch_verdicts(id).await {
             Ok(_) => {

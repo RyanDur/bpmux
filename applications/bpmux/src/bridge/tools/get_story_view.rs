@@ -27,7 +27,7 @@ pub(super) async fn render_iteration_detail(
             .iter()
             .filter_map(|n| {
                 r.story(n.value())
-                    .filter(|s| !s.is_closed)
+                    .filter(|s| !s.is_concluded())
                     .map(|s| (n.value(), s.title.clone()))
             })
             .collect();

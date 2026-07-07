@@ -126,6 +126,10 @@ impl Story {
         self.state.clone()
     }
 
+    pub fn is_concluded(&self) -> bool {
+        matches!(self.state, BoardState::Accepted | BoardState::Retired)
+    }
+
     pub fn story_type(&self) -> StoryKind {
         self.story_type
     }

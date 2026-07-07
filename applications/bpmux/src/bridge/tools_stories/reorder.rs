@@ -35,7 +35,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
     let other_positions: Vec<u32> = refresh
         .all_stories()
         .iter()
-        .filter(|s| s.id != target_id && !s.is_closed)
+        .filter(|s| s.id != target_id && !s.is_concluded())
         .filter_map(|s| {
             s.iteration_slot()
                 .filter(|slot| slot.name == name)

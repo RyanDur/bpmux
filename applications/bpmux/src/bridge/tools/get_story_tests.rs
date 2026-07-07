@@ -610,7 +610,7 @@ async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
         vec![1309, 1265],
     );
     let (mut closed_member, closed_member_labels) = make_member(1309, "Already shipped", 1397, 100);
-    closed_member.is_closed = true;
+    closed_member.state = BoardState::Accepted;
     let closed_member = (closed_member, closed_member_labels);
     let open_member = make_member(1265, "Still open", 1397, 200);
     let (_store, orch) =
