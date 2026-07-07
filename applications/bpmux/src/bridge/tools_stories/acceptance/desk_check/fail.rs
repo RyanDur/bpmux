@@ -39,10 +39,7 @@ pub(crate) async fn handle_fail_desk_check(
         crate::workflow::check_target_state_valid(transition, current_state)
             .map_err(|e| e.as_json_string())?;
     }
-    let was_accepted = prior
-        .as_ref()
-        .map(|s| s.is_closed || s.state == crate::product_management::story::BoardState::Accepted)
-        .unwrap_or(false);
+    let was_accepted = prior.as_ref().map(|s| s.is_concluded()).unwrap_or(false);
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())

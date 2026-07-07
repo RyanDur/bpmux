@@ -79,8 +79,7 @@ pub(crate) async fn reject_via_canonical_store(
         workflow,
     )
     .ok_or_else(|| format!("#{id} reject has no target from '{}'", transition.from))?;
-    let was_accepted =
-        prior.is_closed || prior.state == crate::product_management::story::BoardState::Accepted;
+    let was_accepted = prior.is_concluded();
     let meta = crate::product_management::story::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),

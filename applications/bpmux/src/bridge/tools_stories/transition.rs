@@ -35,7 +35,7 @@ pub(crate) async fn handle_start_story(
             .as_deref()
             .and_then(super::super::tools::rework_context::latest_reject)
             .and_then(super::super::tools::rework_context::reject_lead);
-        (prior.is_closed, Some(prior.state), lead)
+        (prior.is_concluded(), Some(prior.state), lead)
     } else {
         (false, None, None)
     };

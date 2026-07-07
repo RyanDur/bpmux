@@ -58,7 +58,7 @@ pub(crate) async fn handle_deliver_story(
         let was_closed = refreshed
             .as_ref()
             .and_then(|s| s.as_ref())
-            .map(|s| s.is_closed)
+            .map(|s| s.is_concluded())
             .unwrap_or(false);
         let meta = EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),

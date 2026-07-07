@@ -16,15 +16,14 @@ mod reopen_on_state_transition_tests {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seeded_closed_chore(id: u64, state: BoardState) -> (Story, Vec<String>) {
-        let mut s = Story::new_minimal(
+    fn seeded_chore(id: u64, state: BoardState) -> (Story, Vec<String>) {
+        let s = Story::new_minimal(
             StoryId::new(id),
             "t".into(),
             state,
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );
-        s.is_closed = true;
         (s, vec!["chore".to_string()])
     }
 
@@ -44,8 +43,8 @@ mod reopen_on_state_transition_tests {
     }
 
     #[tokio::test]
-    async fn start_story_reopens_when_prior_is_closed_true() {
-        let seeded = seeded_closed_chore(7110, BoardState::Ready);
+    async fn start_story_reopens_when_prior_is_concluded() {
+        let seeded = seeded_chore(7110, BoardState::Accepted);
         let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7110));
@@ -59,14 +58,13 @@ mod reopen_on_state_transition_tests {
             pushed.iter().any(
                 |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7110))
             ),
-            "start_story on closed-state must emit StoryReopened: {pushed:?}"
+            "start_story on a concluded story must emit StoryReopened: {pushed:?}"
         );
     }
 
     #[tokio::test]
-    async fn start_story_does_not_reopen_when_prior_is_closed_false() {
-        let (mut story, labels) = seeded_closed_chore(7111, BoardState::Ready);
-        story.is_closed = false;
+    async fn start_story_does_not_reopen_when_prior_is_active() {
+        let (story, labels) = seeded_chore(7111, BoardState::Ready);
         let (orch, adapter) = build_orchestrator((story, labels)).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7111));
@@ -86,8 +84,8 @@ mod reopen_on_state_transition_tests {
     }
 
     #[tokio::test]
-    async fn deliver_story_reopens_when_prior_is_closed_true() {
-        let seeded = seeded_closed_chore(7120, BoardState::InProgress);
+    async fn deliver_story_reopens_when_prior_is_concluded() {
+        let seeded = seeded_chore(7120, BoardState::Accepted);
         let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7120));
@@ -103,13 +101,13 @@ mod reopen_on_state_transition_tests {
             pushed.iter().any(
                 |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7120))
             ),
-            "deliver_story on closed-state must emit StoryReopened: {pushed:?}"
+            "deliver_story on a concluded story must emit StoryReopened: {pushed:?}"
         );
     }
 
     #[tokio::test]
-    async fn pass_desk_check_reopens_when_prior_is_closed_true() {
-        let seeded = seeded_closed_chore(7130, BoardState::InProgress);
+    async fn pass_desk_check_reopens_when_prior_is_concluded() {
+        let seeded = seeded_chore(7130, BoardState::Accepted);
         let (orch, adapter) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7130));
@@ -123,7 +121,7 @@ mod reopen_on_state_transition_tests {
             pushed.iter().any(
                 |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7130))
             ),
-            "pass_desk_check on closed-state must emit StoryReopened: {pushed:?}"
+            "pass_desk_check on a concluded story must emit StoryReopened: {pushed:?}"
         );
     }
 

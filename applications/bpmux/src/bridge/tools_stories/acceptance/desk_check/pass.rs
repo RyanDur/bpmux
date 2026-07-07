@@ -75,7 +75,7 @@ pub(crate) async fn handle_pass_desk_check(
         if let Some(body) = prior.body.as_deref() {
             crate::bridge::atp_substantive_gate::verify_atp_substantive(body)?;
         }
-        prior.is_closed
+        prior.is_concluded()
     } else {
         false
     };
