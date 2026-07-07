@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardData } from './useBoardData'
 import type { BoardIterationData } from './selectIterations'
-import { type Story } from './types'
+import { GROUP_ORDER, type BoardColumn, type Story } from './types'
 const story = (overrides: Partial<Story>): Story => ({
   id: 0,
   title: 'story',
@@ -79,5 +79,43 @@ describe('epics are sourced from the wire param, not derived from the story stre
     const { result } = renderHook(() => useBoardData([], [], [], [active, retired]))
     expect(result.current.epicTitleById.get(8000)).toBe('Active epic')
     expect(result.current.epicTitleById.get(8001)).toBe('Retired epic')
+  })
+})
+
+describe('CM-2 useBoardData — groupOrder + bucketing follow the wire columns', () => {
+  const threeStageColumns: BoardColumn[] = [
+    { id: 'icebox', label: 'Icebox' },
+    { id: 'ready', label: 'Ready' },
+    { id: 'build', label: 'Build' },
+    { id: 'review', label: 'Review' },
+    { id: 'harden', label: 'Harden' },
+    { id: 'acceptance', label: 'Acceptance' },
+    { id: 'accepted', label: 'Accepted' },
+    { id: 'retired', label: 'Retired' }
+  ]
+
+  test('with no wire columns, groupOrder falls back to the legacy GROUP_ORDER', () => {
+    const { result } = renderHook(() => useBoardData([], []))
+    expect(result.current.groupOrder).toBe(GROUP_ORDER)
+  })
+
+  test('with wire columns, groupOrder is the configured display order', () => {
+    const { result } = renderHook(() => useBoardData([], [], [], [], threeStageColumns))
+    expect(result.current.groupOrder.map((g) => g.state)).toEqual([
+      'ready',
+      'build',
+      'review',
+      'harden',
+      'acceptance',
+      'accepted',
+      'retired',
+      'icebox'
+    ])
+  })
+
+  test('a story in a configured middle stage buckets into that stage column', () => {
+    const member = story({ id: 9300, state: 'review', labels: ['feature'] })
+    const { result } = renderHook(() => useBoardData([member], [], [], [], threeStageColumns))
+    expect(result.current.grouped.get('review')?.map((s) => s.id)).toEqual([9300])
   })
 })

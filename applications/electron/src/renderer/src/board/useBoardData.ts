@@ -2,10 +2,13 @@ import { useMemo } from 'react'
 import { buildMembershipIndex } from './iterationMembers'
 import type { BoardIterationData } from './selectIterations'
 import {
-  GROUP_ORDER,
-  groupStories,
+  groupOrderOrFallback,
+  groupStoriesIn,
   isActiveEpic,
+  middleColumnIds,
   storyTypeFromLabels,
+  type BoardColumn,
+  type GroupSpec,
   type Story,
   type ColumnState
 } from './types'
@@ -17,6 +20,7 @@ export interface UseBoardDataResult {
   iterationContainerStories: Story[]
   flatBoardStories: Story[]
   grouped: Map<ColumnState, Story[]>
+  groupOrder: GroupSpec[]
   navOrder: number[]
 }
 
@@ -24,9 +28,12 @@ export const useBoardData = (
   data: Story[] | null,
   iterations: BoardIterationData[],
   readyOrder?: number[],
-  wireEpics: Story[] = []
+  wireEpics: Story[] = [],
+  columns: BoardColumn[] = []
 ): UseBoardDataResult => {
   const stories = useMemo(() => data ?? [], [data])
+  const groupOrder = useMemo(() => groupOrderOrFallback(columns), [columns])
+  const middleIds = useMemo(() => middleColumnIds(groupOrder), [groupOrder])
   const membershipIndex = useMemo(() => buildMembershipIndex(iterations), [iterations])
   const epics = useMemo(() => wireEpics.filter(isActiveEpic), [wireEpics])
   const epicTitleById = useMemo(() => {
@@ -54,7 +61,7 @@ export const useBoardData = (
     [stories]
   )
   const grouped = useMemo(() => {
-    const byColumn = groupStories(flatBoardStories)
+    const byColumn = groupStoriesIn(middleIds, flatBoardStories)
     const ready = byColumn.get('ready')
     if (ready) {
       const order = readyOrder ?? []
@@ -70,15 +77,15 @@ export const useBoardData = (
       })
     }
     return byColumn
-  }, [flatBoardStories, readyOrder])
+  }, [middleIds, flatBoardStories, readyOrder])
   const navOrder = useMemo(() => {
     const out: number[] = []
-    for (const group of GROUP_ORDER) {
+    for (const group of groupOrder) {
       const list = grouped.get(group.state) ?? []
       for (const s of list) out.push(s.id)
     }
     return out
-  }, [grouped])
+  }, [groupOrder, grouped])
   return {
     stories,
     epics,
@@ -86,6 +93,7 @@ export const useBoardData = (
     iterationContainerStories,
     flatBoardStories,
     grouped,
+    groupOrder,
     navOrder
   }
 }

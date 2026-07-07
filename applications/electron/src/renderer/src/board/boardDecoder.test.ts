@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { story } from './boardDecoder'
+import { column, story } from './boardDecoder'
 
 const validStory = {
   id: 2,
@@ -78,11 +78,25 @@ describe('story decoder', () => {
     expect(story.validate(bad).type).toBe('error')
   })
 
-  test('rejects an unknown state literal (the union is enforced)', () => {
+  test('decodes a configured middle stage id (state is an open string, not a closed union)', () => {
+    const result = story.validate({
+      id: 1,
+      title: 't',
+      state: 'review',
+      labels: [],
+      assignees: [],
+      created_at: 'x',
+      body: ''
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') expect(result.data.state).toBe('review')
+  })
+
+  test('rejects a non-string state (state must still be a string)', () => {
     const bad = {
       id: 1,
       title: 't',
-      state: 'bogus',
+      state: 7,
       labels: [],
       assignees: [],
       created_at: 'x',
@@ -94,5 +108,20 @@ describe('story decoder', () => {
   test('rejects a non-object payload', () => {
     expect(story.validate(null).type).toBe('error')
     expect(story.validate('nope').type).toBe('error')
+  })
+})
+
+describe('column decoder', () => {
+  test('decodes a wire column (id + label)', () => {
+    const result = column.validate({ id: 'review', label: 'Review' })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') {
+      expect(result.data.id).toBe('review')
+      expect(result.data.label).toBe('Review')
+    }
+  })
+
+  test('rejects a column missing its label', () => {
+    expect(column.validate({ id: 'review' }).type).toBe('error')
   })
 })

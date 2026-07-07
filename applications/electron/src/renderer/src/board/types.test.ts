@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest'
-import { columnFor, type StoryState } from './types'
+import {
+  columnFor,
+  columnForIn,
+  groupOrderFrom,
+  groupOrderOrFallback,
+  GROUP_ORDER,
+  type BoardColumn,
+  type StoryState
+} from './types'
 
 describe('#514 columnFor — closed-state-aware bucketing', () => {
   describe('open issues route to active-pipeline columns (no regression vs pre-#514)', () => {
@@ -66,5 +74,101 @@ describe('#514 columnFor — closed-state-aware bucketing', () => {
       expect(columnFor('icebox', true, 'epic')).toBe('retired')
       expect(columnFor('icebox', true)).toBe('retired')
     })
+  })
+})
+
+describe('CM-2 columnForIn — bucketing against the live middle stage list', () => {
+  const middle = ['build', 'review', 'harden']
+  const bucket = columnForIn(middle)
+
+  test('a state matching a configured middle stage buckets to itself', () => {
+    expect(bucket('review')).toBe('review')
+  })
+
+  test('a truly unknown state buckets to the FIRST middle column (visible beats vanished)', () => {
+    expect(bucket('mystery-stage')).toBe('build')
+  })
+
+  test('legacy needs-fixes buckets to the FIRST middle column', () => {
+    expect(bucket('needs-fixes')).toBe('build')
+  })
+
+  test('legacy rejected buckets to ready', () => {
+    expect(bucket('rejected')).toBe('ready')
+  })
+
+  test('legacy ready-for-accept buckets to acceptance', () => {
+    expect(bucket('ready-for-accept')).toBe('acceptance')
+  })
+
+  test('fixed poles bucket to themselves', () => {
+    expect(bucket('ready')).toBe('ready')
+    expect(bucket('acceptance')).toBe('acceptance')
+    expect(bucket('accepted')).toBe('accepted')
+    expect(bucket('icebox')).toBe('icebox')
+  })
+
+  test('closed iteration marker stays in icebox regardless of its middle stage', () => {
+    expect(bucket('review', true, 'iteration')).toBe('icebox')
+  })
+
+  test('closed non-accepted middle-stage story projects to retired', () => {
+    expect(bucket('review', true, 'feature')).toBe('retired')
+  })
+
+  test('compat columnFor mirrors the two-stage default middle', () => {
+    expect(columnFor('needs-fixes')).toBe('in-progress')
+    expect(columnFor('mystery-stage')).toBe('in-progress')
+  })
+})
+
+describe('CM-2 groupOrderFrom — wire columns map to display order', () => {
+  const columns: BoardColumn[] = [
+    { id: 'icebox', label: 'Icebox' },
+    { id: 'ready', label: 'Ready' },
+    { id: 'build', label: 'Build' },
+    { id: 'review', label: 'Review' },
+    { id: 'harden', label: 'Harden' },
+    { id: 'acceptance', label: 'Acceptance' },
+    { id: 'accepted', label: 'Accepted' },
+    { id: 'retired', label: 'Retired' }
+  ]
+
+  test('orders ready, middle (config order), acceptance, accepted, retired, then icebox LAST', () => {
+    expect(groupOrderFrom(columns).map((g) => g.state)).toEqual([
+      'ready',
+      'build',
+      'review',
+      'harden',
+      'acceptance',
+      'accepted',
+      'retired',
+      'icebox'
+    ])
+  })
+
+  test('collapses accepted and retired; leaves ready/middle/acceptance/icebox open', () => {
+    const collapsedByState = new Map(groupOrderFrom(columns).map((g) => [g.state, g.collapsed]))
+    expect(collapsedByState.get('accepted')).toBe(true)
+    expect(collapsedByState.get('retired')).toBe(true)
+    expect(collapsedByState.get('review')).toBe(false)
+    expect(collapsedByState.get('ready')).toBe(false)
+    expect(collapsedByState.get('icebox')).toBe(false)
+  })
+
+  test('carries the wire labels through to the group spec', () => {
+    expect(groupOrderFrom(columns).find((g) => g.state === 'review')?.label).toBe('Review')
+  })
+})
+
+describe('CM-2 groupOrderOrFallback — absent wire columns keep the legacy board', () => {
+  test('no wire columns falls back to the legacy GROUP_ORDER', () => {
+    expect(groupOrderOrFallback([])).toBe(GROUP_ORDER)
+  })
+
+  test('present wire columns are used in place of the fallback', () => {
+    expect(groupOrderOrFallback([{ id: 'ready', label: 'Ready' }]).map((g) => g.state)).toEqual([
+      'ready'
+    ])
   })
 })

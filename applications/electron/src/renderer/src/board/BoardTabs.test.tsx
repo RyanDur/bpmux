@@ -5,7 +5,19 @@ import { iterationLabel } from './labelSchema'
 import { boardTabs } from './BoardTabs.page'
 import { buildProps, epicStory, featureStory } from './BoardTabs.fixtures'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
+import { groupOrderFrom, type BoardColumn } from './types'
 import { resetSessionForTest } from '../transport/session/store'
+
+const threeStageColumns: BoardColumn[] = [
+  { id: 'icebox', label: 'Icebox' },
+  { id: 'ready', label: 'Ready' },
+  { id: 'build', label: 'Build' },
+  { id: 'review', label: 'Review' },
+  { id: 'harden', label: 'Harden' },
+  { id: 'acceptance', label: 'Acceptance' },
+  { id: 'accepted', label: 'Accepted' },
+  { id: 'retired', label: 'Retired' }
+]
 afterEach(() => {
   cleanup()
   resetSessionForTest()
@@ -152,6 +164,42 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.panelHasStory('now', 9101)).toBe(true)
     await boardTabs.selectTab('done')
     expect(boardTabs.panelHasStory('done', 9101)).toBe(false)
+  })
+
+  test('CM-2: Now renders the configured middle columns (build/review/harden) as headers in config order', () => {
+    seedIterations([
+      boardIteration({ id: 1600, title: 'Iteration Lyra', is_current: true, stories: [] })
+    ])
+    render(<BoardTabs {...buildProps([], groupOrderFrom(threeStageColumns))} />)
+    expect(boardTabs.groupLabelsInOrder('now')).toEqual([
+      'Ready',
+      'Build',
+      'Review',
+      'Harden',
+      'Acceptance'
+    ])
+  })
+
+  test('CM-2: a member in a configured middle stage buckets into that stage column', () => {
+    seedIterations([
+      boardIteration({ id: 1601, title: 'Iteration Vega', is_current: true, stories: [9200] })
+    ])
+    const member = featureStory({ id: 9200, state: 'review' })
+    render(<BoardTabs {...buildProps([member], groupOrderFrom(threeStageColumns))} />)
+    expect(boardTabs.groupHasStory('now', 'Review', 9200)).toBe(true)
+  })
+
+  test('CM-2: with no wire columns, Now falls back to the legacy middle (In Progress, Desk Check)', () => {
+    seedIterations([
+      boardIteration({ id: 1602, title: 'Iteration Orion', is_current: true, stories: [] })
+    ])
+    render(<BoardTabs {...buildProps([])} />)
+    expect(boardTabs.groupLabelsInOrder('now')).toEqual([
+      'Ready',
+      'In Progress',
+      'Desk Check',
+      'Acceptance'
+    ])
   })
 
   test('Scenario regression: legacy iteration-{Name}.{N} label still derives current-iter Epic', () => {

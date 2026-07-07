@@ -17,18 +17,11 @@ const iterationReadiness = D.object({
   }
 })
 
-const storyState = D.literalUnion(
-  'icebox',
-  'ready',
-  'in-progress',
-  'desk-check',
-  'acceptance',
-  'ready-for-accept',
-  'needs-fixes',
-  'rejected',
-  'accepted',
-  'retired'
-)
+const storyState = D.string
+
+export const column = D.object({
+  required: { id: D.string, label: D.string }
+})
 
 const acceptor = D.literalUnion('team', 'owner', 'dev')
 

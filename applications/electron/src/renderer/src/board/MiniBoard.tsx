@@ -1,4 +1,5 @@
-import { GROUP_ORDER, groupStories, type Story } from './types'
+import { useBoardColumns } from '../transport/session'
+import { groupOrderOrFallback, groupStoriesIn, middleColumnIds, type Story } from './types'
 
 interface Props {
   epicId: number
@@ -6,10 +7,11 @@ interface Props {
 }
 
 const MiniBoard = ({ epicId, stories }: Props): React.JSX.Element => {
-  const grouped = groupStories(stories)
+  const groupOrder = groupOrderOrFallback(useBoardColumns())
+  const grouped = groupStoriesIn(middleColumnIds(groupOrder), stories)
   return (
     <section className="board-epic-miniboard" data-test={`board-epic-${epicId}-miniboard`}>
-      {GROUP_ORDER.map((group) => {
+      {groupOrder.map((group) => {
         const colStories = grouped.get(group.state) ?? []
         const colTest = `board-epic-${epicId}-miniboard-column-${group.state}`
         const childrenWord = colStories.length === 1 ? 'child' : 'children'

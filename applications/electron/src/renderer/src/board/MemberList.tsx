@@ -4,23 +4,32 @@ import { SortableList } from './SortableList'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyNavigateLabel } from './storyNavigateLabel'
-import { GROUP_ORDER, columnFor, storyTypeFromLabels, type Story } from './types'
+import {
+  columnForIn,
+  groupOrderOrFallback,
+  middleColumnIds,
+  storyTypeFromLabels,
+  ICEBOX_COLUMN,
+  type GroupSpec,
+  type Story
+} from './types'
 import { type DragPayload } from './iterationMembers'
 import { ITERATION_MEMBER_DRAG } from './sortableDragConfigs'
 import { useDispatch } from '../transport/useDispatch'
+import { useBoardColumns } from '../transport/session'
 import { addStoryToIterationRequested } from '../transport/session/actions'
 import type { BoardIterationData } from './selectIterations'
 import type { IterationMember } from './useIterationMembers'
 
-const activeStateLabel = (story: Story): string | null => {
-  if (story.state === 'icebox') return null
-  const column = columnFor(
+const activeStateLabel = (story: Story, groupOrder: GroupSpec[]): string | null => {
+  if (story.state === ICEBOX_COLUMN) return null
+  const column = columnForIn(middleColumnIds(groupOrder))(
     story.state,
     story.gh_state === 'closed',
     storyTypeFromLabels(story.labels)
   )
-  if (column === 'icebox') return null
-  return GROUP_ORDER.find((group) => group.state === column)?.label ?? null
+  if (column === ICEBOX_COLUMN) return null
+  return groupOrder.find((group) => group.state === column)?.label ?? null
 }
 
 interface Props {
@@ -39,6 +48,7 @@ const MemberList = ({
   onReorderAnnounce
 }: Props): React.JSX.Element => {
   const dispatch = useDispatch()
+  const groupOrder = groupOrderOrFallback(useBoardColumns())
   return (
     <SortableList<DragPayload, IterationMember>
       items={members}
@@ -106,9 +116,9 @@ const MemberList = ({
           <small className="board-story-number">#{story.id}</small>
           <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
           <StoryBadge story={story} />
-          {activeStateLabel(story) !== null && (
+          {activeStateLabel(story, groupOrder) !== null && (
             <small className="board-iteration-member-state" data-state={story.state}>
-              {activeStateLabel(story)}
+              {activeStateLabel(story, groupOrder)}
             </small>
           )}
           <b className="board-story-title" data-test="story-title">

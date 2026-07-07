@@ -1,5 +1,12 @@
 import type BoardTabs from './BoardTabs'
-import { groupStories, type Story, type ColumnState } from './types'
+import {
+  GROUP_ORDER,
+  groupStoriesIn,
+  middleColumnIds,
+  type GroupSpec,
+  type Story,
+  type ColumnState
+} from './types'
 import { selectIterations } from './selectIterations'
 import { getSessionSnapshot } from '../transport/session/store'
 
@@ -39,17 +46,21 @@ export const featureStory = (overrides: Partial<Story>): Story => ({
   ...overrides
 })
 
-export const buildProps = (stories: Story[]): Parameters<typeof BoardTabs>[0] => {
+export const buildProps = (
+  stories: Story[],
+  groupOrder: GroupSpec[] = GROUP_ORDER
+): Parameters<typeof BoardTabs>[0] => {
   const epics = stories.filter((s) => s.labels.includes('epic'))
   const epicTitleById = new Map(epics.map((e) => [e.id, e.title]))
   const iterationContainerStories = stories.filter(
     (s) => s.labels.includes('iteration') || s.state === 'icebox'
   )
   const flat = stories.filter((s) => !s.labels.includes('epic') && s.state !== 'icebox')
-  const grouped = groupStories(flat)
+  const grouped = groupStoriesIn(middleColumnIds(groupOrder), flat)
   return {
     stories,
     iterations: selectIterations(getSessionSnapshot()),
+    groupOrder,
     epics,
     epicTitleById,
     iterationContainerStories,

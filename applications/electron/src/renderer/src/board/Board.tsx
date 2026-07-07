@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import { RENDERER_IDENTITY } from '../transport/session'
+import { RENDERER_IDENTITY, useBoardColumns } from '../transport/session'
 import { useDispatch } from '../transport/useDispatch'
 import SyncStatusGlyph from '../sync/SyncStatusGlyph'
 import DrillIn from './DrillIn'
@@ -69,8 +69,16 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
       ? pendingReady.order
       : (currentIterationStories ?? [])
   const wireEpics = useEpics()
-  const { stories, epics, epicTitleById, iterationContainerStories, grouped, navOrder } =
-    useBoardData(data, iterations, readyOrder, wireEpics)
+  const columns = useBoardColumns()
+  const {
+    stories,
+    epics,
+    epicTitleById,
+    iterationContainerStories,
+    grouped,
+    groupOrder,
+    navOrder
+  } = useBoardData(data, iterations, readyOrder, wireEpics, columns)
 
   const currentIterationName =
     currentIteration !== null ? iterationNameFromTitle(currentIteration.title) : null
@@ -178,6 +186,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
               <BoardTabs
                 stories={stories}
                 iterations={iterations}
+                groupOrder={groupOrder}
                 epics={epics}
                 epicTitleById={epicTitleById}
                 iterationContainerStories={iterationContainerStories}

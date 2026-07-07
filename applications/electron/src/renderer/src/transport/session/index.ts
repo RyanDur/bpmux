@@ -28,6 +28,7 @@ export {
   useCiSnapshot,
   useSyncStatus,
   useStories,
+  useBoardColumns,
   useBoardInvalidateTick,
   useComments,
   useTimelineEvents

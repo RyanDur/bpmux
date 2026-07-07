@@ -1,45 +1,10 @@
-export type StoryState =
-  | 'icebox'
-  | 'ready'
-  | 'in-progress'
-  | 'desk-check'
-  | 'acceptance'
-  | 'ready-for-accept'
-  | 'needs-fixes'
-  | 'rejected'
-  | 'accepted'
-  | 'retired'
+export type StoryState = string
 
-export type ColumnState =
-  | 'icebox'
-  | 'ready'
-  | 'in-progress'
-  | 'desk-check'
-  | 'acceptance'
-  | 'accepted'
-  | 'retired'
+export type ColumnState = string
 
-export const columnFor = (
-  state: StoryState,
-  isClosed: boolean = false,
-  storyType: StoryType = 'unknown'
-): ColumnState => {
-  if (isClosed && storyType === 'iteration') {
-    return 'icebox'
-  }
-  if (isClosed && state !== 'accepted') {
-    return 'retired'
-  }
-  switch (state) {
-    case 'ready-for-accept':
-      return 'acceptance'
-    case 'needs-fixes':
-      return 'in-progress'
-    case 'rejected':
-      return 'ready'
-    default:
-      return state
-  }
+export interface BoardColumn {
+  id: string
+  label: string
 }
 
 export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'iteration' | 'outcome' | 'unknown'
@@ -47,6 +12,61 @@ export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'iteration' | 'ou
 export type Acceptor = 'team' | 'owner' | 'dev'
 
 export type Horizon = 'now' | 'next' | 'later'
+
+export const ICEBOX_COLUMN: ColumnState = 'icebox'
+export const READY_COLUMN: ColumnState = 'ready'
+export const ACCEPTANCE_COLUMN: ColumnState = 'acceptance'
+export const ACCEPTED_COLUMN: ColumnState = 'accepted'
+export const RETIRED_COLUMN: ColumnState = 'retired'
+
+const FIXED_COLUMN_IDS = new Set<string>([
+  ICEBOX_COLUMN,
+  READY_COLUMN,
+  ACCEPTANCE_COLUMN,
+  ACCEPTED_COLUMN,
+  RETIRED_COLUMN
+])
+
+const COLLAPSED_COLUMN_IDS = new Set<string>([ACCEPTED_COLUMN, RETIRED_COLUMN])
+
+const DEFAULT_MIDDLE_IDS: readonly string[] = ['in-progress', 'desk-check']
+
+export const storyTypeFromLabels = (labels: string[]): StoryType => {
+  const normalized = labels.map((l) => l.toLowerCase())
+  if (normalized.includes('outcome')) return 'outcome'
+  if (normalized.includes('iteration')) return 'iteration'
+  if (normalized.includes('epic')) return 'epic'
+  if (normalized.includes('feature')) return 'feature'
+  if (normalized.includes('bug')) return 'bug'
+  if (normalized.includes('chore')) return 'chore'
+  return 'unknown'
+}
+
+export const columnForIn =
+  (middleIds: readonly string[]) =>
+  (state: StoryState, isClosed: boolean = false, storyType: StoryType = 'unknown'): ColumnState => {
+    if (isClosed && storyType === 'iteration') {
+      return ICEBOX_COLUMN
+    }
+    if (isClosed && state !== ACCEPTED_COLUMN) {
+      return RETIRED_COLUMN
+    }
+    const firstMiddle = middleIds[0] ?? DEFAULT_MIDDLE_IDS[0]
+    switch (state) {
+      case 'ready-for-accept':
+        return ACCEPTANCE_COLUMN
+      case 'rejected':
+        return READY_COLUMN
+      case 'needs-fixes':
+        return firstMiddle
+    }
+    if (middleIds.includes(state) || FIXED_COLUMN_IDS.has(state)) {
+      return state
+    }
+    return firstMiddle
+  }
+
+export const columnFor = columnForIn(DEFAULT_MIDDLE_IDS)
 
 export interface IterationMembership {
   iteration_id: number
@@ -107,35 +127,43 @@ export const GROUP_ORDER: GroupSpec[] = [
   { state: 'icebox', label: 'Icebox', collapsed: false }
 ]
 
-export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
-  icebox: ['icebox'],
-  ready: ['ready', 'rejected'],
-  'in-progress': ['in-progress', 'needs-fixes'],
-  'desk-check': ['desk-check'],
-  acceptance: ['acceptance', 'ready-for-accept'],
-  accepted: ['accepted'],
-  retired: []
+export const middleColumnIds = (order: GroupSpec[]): string[] =>
+  order.filter((group) => !FIXED_COLUMN_IDS.has(group.state)).map((group) => group.state)
+
+export const groupOrderFrom = (columns: readonly BoardColumn[]): GroupSpec[] => {
+  const toSpec = (column: BoardColumn): GroupSpec => ({
+    state: column.id,
+    label: column.label,
+    collapsed: COLLAPSED_COLUMN_IDS.has(column.id)
+  })
+  const find = (id: string): BoardColumn | undefined => columns.find((c) => c.id === id)
+  const middle = columns.filter((c) => !FIXED_COLUMN_IDS.has(c.id))
+  const ordered: BoardColumn[] = []
+  const ready = find(READY_COLUMN)
+  if (ready) ordered.push(ready)
+  ordered.push(...middle)
+  const acceptance = find(ACCEPTANCE_COLUMN)
+  if (acceptance) ordered.push(acceptance)
+  const accepted = find(ACCEPTED_COLUMN)
+  if (accepted) ordered.push(accepted)
+  const retired = find(RETIRED_COLUMN)
+  if (retired) ordered.push(retired)
+  const icebox = find(ICEBOX_COLUMN)
+  if (icebox) ordered.push(icebox)
+  return ordered.map(toSpec)
 }
 
-export const storyTypeFromLabels = (labels: string[]): StoryType => {
-  const normalized = labels.map((l) => l.toLowerCase())
-  if (normalized.includes('outcome')) return 'outcome'
-  if (normalized.includes('iteration')) return 'iteration'
-  if (normalized.includes('epic')) return 'epic'
-  if (normalized.includes('feature')) return 'feature'
-  if (normalized.includes('bug')) return 'bug'
-  if (normalized.includes('chore')) return 'chore'
-  return 'unknown'
-}
+export const groupOrderOrFallback = (columns: readonly BoardColumn[]): GroupSpec[] =>
+  columns.length > 0 ? groupOrderFrom(columns) : GROUP_ORDER
 
 export const isActiveEpic = (story: Story): boolean => {
   if (storyTypeFromLabels(story.labels) !== 'epic') return false
-  return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
+  return columnFor(story.state, story.gh_state === 'closed') !== RETIRED_COLUMN
 }
 
 export const isActiveIteration = (story: Story): boolean => {
   if (storyTypeFromLabels(story.labels) !== 'iteration') return false
-  return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
+  return columnFor(story.state, story.gh_state === 'closed') !== RETIRED_COLUMN
 }
 
 export const isClosedIterationMarker = (story: Story): boolean => {
@@ -162,12 +190,24 @@ export const deriveEpicState = (_epicExplicitState: StoryState, children: Story[
   return 'icebox'
 }
 
-export const groupStories = (stories: Story[]): Map<ColumnState, Story[]> => {
+export const groupStoriesIn = (
+  middleIds: readonly string[],
+  stories: Story[]
+): Map<ColumnState, Story[]> => {
+  const bucketOf = columnForIn(middleIds)
   const out = new Map<ColumnState, Story[]>()
-  for (const group of GROUP_ORDER) out.set(group.state, [])
+  const seedIds = [
+    READY_COLUMN,
+    ...middleIds,
+    ACCEPTANCE_COLUMN,
+    ACCEPTED_COLUMN,
+    RETIRED_COLUMN,
+    ICEBOX_COLUMN
+  ]
+  for (const id of seedIds) out.set(id, [])
   for (const story of stories) {
     const list = out.get(
-      columnFor(story.state, story.gh_state === 'closed', storyTypeFromLabels(story.labels))
+      bucketOf(story.state, story.gh_state === 'closed', storyTypeFromLabels(story.labels))
     )
     if (list) list.push(story)
   }

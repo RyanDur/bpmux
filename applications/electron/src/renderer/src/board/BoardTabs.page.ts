@@ -22,6 +22,15 @@ export const boardTabs = {
       .length > 0,
   panelHasGroup: (name: TabName, groupLabel: string): boolean =>
     within(visiblePanel(name)).queryAllByText(groupLabel).length > 0,
+  groupLabelsInOrder: (name: TabName): string[] =>
+    within(visiblePanel(name))
+      .getAllByRole('group')
+      .map((group) => group.getAttribute('aria-label') ?? ''),
+  groupHasStory: (name: TabName, groupLabel: string, storyId: number): boolean =>
+    within(within(visiblePanel(name)).getByRole('group', { name: groupLabel })).queryAllByRole(
+      'button',
+      { name: new RegExp(`#${storyId}\\b`) }
+    ).length > 0,
   panelHasIteration: (name: TabName, iterationTitle: string): boolean =>
     within(visiblePanel(name)).queryByText(iterationTitle) !== null,
   nowHasRoadmap: (): boolean =>

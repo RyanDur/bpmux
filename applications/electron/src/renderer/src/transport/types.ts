@@ -1,7 +1,7 @@
 import type { MessageType } from './messageType'
 import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
-import type { Story } from '../board/types'
+import type { BoardColumn, Story } from '../board/types'
 export interface ServerWelcome {
   type: 'welcome'
   session_id: string
@@ -82,7 +82,7 @@ export type StateDeltaPayload =
       blockers: { id: number; title: string; state: string }[]
     }
   | { domain: 'board_invalidated'; reason: string }
-  | { domain: 'stories'; stories: Story[] }
+  | { domain: 'stories'; stories: Story[]; columns?: BoardColumn[] }
   | { domain: 'epics'; epics: Story[] }
   | { domain: 'outcomes'; outcomes: RoadmapOutcomeData[] }
   | { domain: 'iterations'; iterations: BoardIterationData[] }

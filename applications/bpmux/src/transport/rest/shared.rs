@@ -43,7 +43,10 @@ pub(crate) fn stories_message(stories: serde_json::Value) -> crate::message::Mes
         text: String::new(),
         ts: chrono::Utc::now(),
         message_type: crate::message::MessageType::StateDelta,
-        state_delta: Some(crate::message::StateDeltaPayload::Stories { stories }),
+        state_delta: Some(crate::message::StateDeltaPayload::Stories {
+            stories,
+            columns: Some(serde_json::Value::Array(super::board::board_columns_json())),
+        }),
         ..crate::message::Message::default()
     }
 }

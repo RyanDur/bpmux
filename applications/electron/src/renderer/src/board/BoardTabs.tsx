@@ -9,7 +9,14 @@ import { RENDERER_IDENTITY } from '../transport/session'
 import { epicIdsInIteration } from './currentIteration'
 import { deriveNowView } from './deriveNowView'
 import type { BoardIterationData } from './selectIterations'
-import { GROUP_ORDER, type Story, type ColumnState, type GroupSpec } from './types'
+import {
+  ACCEPTED_COLUMN,
+  ICEBOX_COLUMN,
+  RETIRED_COLUMN,
+  type Story,
+  type ColumnState,
+  type GroupSpec
+} from './types'
 import './BoardTabs.css'
 
 export type BoardTabId = 'now' | 'plan' | 'done'
@@ -17,20 +24,21 @@ export type BoardTabId = 'now' | 'plan' | 'done'
 const BOARD_TAB_STORAGE_PREFIX = 'bpmux-board-active-tab'
 const VALID_TAB_IDS: ReadonlyArray<BoardTabId> = ['now', 'plan', 'done'] as const
 
-const DONE_STATES: ReadonlyArray<ColumnState> = ['accepted', 'retired']
+const DONE_COLUMNS = new Set<ColumnState>([ACCEPTED_COLUMN, RETIRED_COLUMN])
 
-const NOW_STATES: ReadonlyArray<ColumnState> = ['ready', 'in-progress', 'desk-check', 'acceptance']
+const nowGroups = (groupOrder: GroupSpec[]): GroupSpec[] =>
+  groupOrder.filter((g) => g.state !== ICEBOX_COLUMN && !DONE_COLUMNS.has(g.state))
 
-const groupsFor = (states: ReadonlyArray<ColumnState>): GroupSpec[] =>
-  states
-    .map((s) => GROUP_ORDER.find((g) => g.state === s))
-    .filter((g): g is GroupSpec => g !== undefined)
+const doneGroups = (groupOrder: GroupSpec[]): GroupSpec[] =>
+  groupOrder.filter((g) => DONE_COLUMNS.has(g.state))
 
-const iceboxGroup = (): GroupSpec | undefined => GROUP_ORDER.find((g) => g.state === 'icebox')
+const iceboxGroup = (groupOrder: GroupSpec[]): GroupSpec | undefined =>
+  groupOrder.find((g) => g.state === ICEBOX_COLUMN)
 
 interface BoardTabsProps {
   stories: Story[]
   iterations: BoardIterationData[]
+  groupOrder: GroupSpec[]
   epics: Story[]
   epicTitleById: Map<number, string>
   iterationContainerStories: Story[]
@@ -49,6 +57,7 @@ interface BoardTabsProps {
 const BoardTabs = ({
   stories,
   iterations,
+  groupOrder,
   epics,
   epicTitleById,
   iterationContainerStories,
@@ -119,7 +128,7 @@ const BoardTabs = ({
       onOpenTimeline={onOpenTimeline}
       onSelect={onSelect}
       onReorder={onReorder}
-      collapsed={collapsed[group.state]}
+      collapsed={collapsed[group.state] ?? group.collapsed}
       onToggleCollapse={() => onToggleCollapse(group.state)}
     >
       {children}
@@ -137,7 +146,7 @@ const BoardTabs = ({
     return (
       <section className="board-tabpanel-content" data-test="board-tabpanel-now-content">
         <Epic epics={currentIterationEpics} stories={stories} onOpen={onOpen} />
-        {groupsFor(NOW_STATES).map((group) =>
+        {nowGroups(groupOrder).map((group) =>
           renderGroup(
             group,
             undefined,
@@ -149,7 +158,7 @@ const BoardTabs = ({
   }
 
   const renderPlan = (): React.JSX.Element => {
-    const icebox = iceboxGroup()
+    const icebox = iceboxGroup(groupOrder)
     return (
       <section className="board-tabpanel-content" data-test="board-tabpanel-plan-content">
         <Epic epics={epics} stories={stories} onOpen={onOpen} />
@@ -168,7 +177,7 @@ const BoardTabs = ({
 
   const renderDone = (): React.JSX.Element => (
     <section className="board-tabpanel-content" data-test="board-tabpanel-done-content">
-      {groupsFor(DONE_STATES).map((group) => renderGroup(group))}
+      {doneGroups(groupOrder).map((group) => renderGroup(group))}
     </section>
   )
 

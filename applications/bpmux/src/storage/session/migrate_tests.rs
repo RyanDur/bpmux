@@ -45,6 +45,7 @@ fn delta(payload: StateDeltaPayload) -> Message {
 fn stories_delta() -> Message {
     delta(StateDeltaPayload::Stories {
         stories: serde_json::json!([]),
+        columns: None,
     })
 }
 

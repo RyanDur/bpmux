@@ -2,7 +2,7 @@ import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from '../state-
 import { asMessageType } from '../messageType'
 import { SessionActionType, type SessionAction, type HistoryMessage } from './actions'
 import type { ChatMessage, CommentWire, ConnectionStatus, TimelineEventWire } from '../types'
-import type { Story } from '../../board/types'
+import type { BoardColumn, Story } from '../../board/types'
 import type { RoadmapCard, RoadmapOutcomeData } from '../../board/selectRoadmap'
 import type { BoardIterationData } from '../../board/selectIterations'
 import type { MirrorState } from '../state-delta'
@@ -13,6 +13,7 @@ export interface SessionSnapshot {
   sessionId: string | null
   mirror: MirrorState
   stories: Story[]
+  columns: BoardColumn[]
   epics: Story[]
   boardInvalidateTick: number
   reconnectTick: number
@@ -32,6 +33,7 @@ export const emptySnapshot = (url: string | undefined): SessionSnapshot => ({
   sessionId: null,
   mirror: emptyMirrorState(),
   stories: [],
+  columns: [],
   epics: [],
   boardInvalidateTick: 0,
   reconnectTick: 0,
@@ -107,6 +109,9 @@ export const sessionReducer = (state: SessionSnapshot, action: SessionAction): S
       }
       if (action.delta.domain === 'stories') {
         next.stories = action.delta.stories
+        if (action.delta.columns !== undefined) {
+          next.columns = action.delta.columns
+        }
       }
       if (action.delta.domain === 'epics') {
         next.epics = action.delta.epics
