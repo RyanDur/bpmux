@@ -67,6 +67,8 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "deliver_story",
     "pass_desk_check",
     "fail_desk_check",
+    "pass_stage",
+    "fail_stage",
     "accept_story",
     "reject_story",
     "close_story",

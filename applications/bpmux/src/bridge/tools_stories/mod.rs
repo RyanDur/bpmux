@@ -30,6 +30,7 @@ mod retire_outcome;
 mod signals;
 #[cfg(test)]
 mod signals_tests;
+mod stage;
 mod transition;
 mod view;
 
@@ -77,5 +78,6 @@ pub(crate) use signals::{
     build_pass_desk_check_signals, build_reject_signal, build_start_signal,
     build_verdict_reprompt_signal, classify_for_pass_desk_check,
 };
+pub(crate) use stage::{handle_fail_stage, handle_pass_stage};
 pub(crate) use transition::handle_start_story;
 pub(crate) use view::handle_view_board;

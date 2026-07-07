@@ -20,8 +20,8 @@ pub(crate) use story::{
     dispatch_label_story, dispatch_move_story, dispatch_reorder_story, dispatch_submit_verdict,
 };
 pub(crate) use transition::{
-    dispatch_accept_story, dispatch_deliver_story, dispatch_fail_desk_check,
-    dispatch_pass_desk_check, dispatch_reject_story, dispatch_start_story,
+    dispatch_accept_story, dispatch_deliver_story, dispatch_fail_desk_check, dispatch_fail_stage,
+    dispatch_pass_desk_check, dispatch_pass_stage, dispatch_reject_story, dispatch_start_story,
 };
 pub(crate) use view::{
     dispatch_dev_in_flight, dispatch_get_story, dispatch_list_epic_children, dispatch_list_ready,

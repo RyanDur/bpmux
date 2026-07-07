@@ -37,6 +37,23 @@ pub(crate) fn run_fail(id: u64, reason: &str) -> anyhow::Result<()> {
     super::write::dispatch_write("fail_desk_check", args)
 }
 
+pub(crate) fn run_pass_stage(id: u64, observation: &str) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("id".to_string(), serde_json::json!(id));
+    args.insert(
+        "verified_observation".to_string(),
+        serde_json::json!(observation),
+    );
+    super::write::dispatch_write("pass_stage", args)
+}
+
+pub(crate) fn run_fail_stage(id: u64, reason: &str) -> anyhow::Result<()> {
+    let mut args = serde_json::Map::new();
+    args.insert("id".to_string(), serde_json::json!(id));
+    args.insert("reason".to_string(), serde_json::json!(reason));
+    super::write::dispatch_write("fail_stage", args)
+}
+
 pub(crate) fn run_reject(id: u64, reason: &Option<String>) -> anyhow::Result<()> {
     let mut args = serde_json::Map::new();
     args.insert("id".to_string(), serde_json::json!(id));

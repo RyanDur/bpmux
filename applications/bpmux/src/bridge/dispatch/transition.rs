@@ -126,6 +126,46 @@ pub(crate) async fn dispatch_pass_desk_check(
     Ok(result)
 }
 
+pub(crate) async fn dispatch_pass_stage(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    session: &Arc<crate::session::Session>,
+) -> Result<String, String> {
+    let result = tools_stories::handle_pass_stage(&args, agent_name, refresh).await?;
+    broadcast_client_msg_via_session(
+        session,
+        agent_name,
+        crate::transport::protocol::ClientMessage::Send {
+            text: result.clone(),
+            to: None,
+            addressee: None,
+            message_type: Some("system".into()),
+        },
+    );
+    Ok(result)
+}
+
+pub(crate) async fn dispatch_fail_stage(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    session: &Arc<crate::session::Session>,
+) -> Result<String, String> {
+    let result = tools_stories::handle_fail_stage(&args, agent_name, refresh).await?;
+    broadcast_client_msg_via_session(
+        session,
+        agent_name,
+        crate::transport::protocol::ClientMessage::Send {
+            text: result.clone(),
+            to: None,
+            addressee: None,
+            message_type: Some("system".into()),
+        },
+    );
+    Ok(result)
+}
+
 pub(crate) async fn dispatch_reject_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

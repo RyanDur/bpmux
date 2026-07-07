@@ -25,6 +25,8 @@ pub(super) async fn dispatch(
         "fail_desk_check" => {
             bridge::dispatch_fail_desk_check(args, agent, refresh_ref, session).await
         }
+        "pass_stage" => bridge::dispatch_pass_stage(args, agent, refresh_ref, session).await,
+        "fail_stage" => bridge::dispatch_fail_stage(args, agent, refresh_ref, session).await,
         "accept_story" => bridge::dispatch_accept_story(args, agent, refresh_ref, session).await,
         "reject_story" => bridge::dispatch_reject_story(args, agent, refresh_ref, session).await,
         "close_story" => bridge::dispatch_close_story(args, agent, refresh_ref).await,

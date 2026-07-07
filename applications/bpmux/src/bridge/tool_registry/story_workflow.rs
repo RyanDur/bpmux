@@ -51,5 +51,11 @@ pub(super) fn story_workflow_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::pass_desk_check_tool(
             "Mark a delivered story as passed desk-check. Applies the 'ready for accept' label and signals the owner that acceptance is ready. DESIGNER ONLY.",
         ),
+        crate::mcp::tools::pass_stage_tool(
+            "Pass the judgment of a story's CURRENT middle stage — the config-generic progression verb. The workflow config decides the next stage (or the crossing into acceptance) and who may judge: the stage's configured judges (role or agent id), anyone when the stage configures none, owner always. Requires verified_observation: what you verified at this stage in the running app.",
+        ),
+        crate::mcp::tools::fail_stage_tool(
+            "Fail the judgment of a story's CURRENT middle stage — the config-generic send-back verb. The workflow config decides where the story lands: the stage's fail_to if configured, else one stage back (a first-stage failure reworks in place). Judge rules match pass_stage. Requires a concrete cited reason (min 16 chars) which travels as the story's rework context.",
+        ),
     ]
 }

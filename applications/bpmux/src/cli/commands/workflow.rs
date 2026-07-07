@@ -2,7 +2,8 @@ use clap::Subcommand;
 
 use crate::cli::write::run_signal;
 use crate::cli::write_story::{
-    run_accept, run_deliver, run_fail, run_pass, run_reject, run_start, run_verdict,
+    run_accept, run_deliver, run_fail, run_fail_stage, run_pass, run_pass_stage, run_reject,
+    run_start, run_verdict,
 };
 
 #[derive(Subcommand)]
@@ -62,6 +63,26 @@ pub(crate) enum WorkflowCommands {
         reason: Option<String>,
     },
     #[command(
+        name = "pass-stage",
+        about = "Pass the judgment of a story's CURRENT middle stage off Claude's MCP — the config-generic progression verb; fires the same gated /api/rpc/pass_stage path the bridge uses. The workflow config decides the next stage and who may judge (stage judges; anyone when unset; owner always)."
+    )]
+    PassStage {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "What you verified at this stage in the running app")]
+        observation: String,
+    },
+    #[command(
+        name = "fail-stage",
+        about = "Fail the judgment of a story's CURRENT middle stage off Claude's MCP — the config-generic send-back verb; fires the same gated /api/rpc/fail_stage path the bridge uses. The config decides where the story lands (fail_to, else one stage back; a first-stage failure reworks in place)."
+    )]
+    FailStage {
+        #[arg(help = "Story number")]
+        number: u64,
+        #[arg(long, help = "What failed, cited concretely (min 16 chars)")]
+        reason: String,
+    },
+    #[command(
         about = "Cast a substrate-grounded verdict on a story off Claude's MCP — fires the same gated /api/rpc/submit_verdict handler the bridge uses (dev/designer-only guard; the owner is not an evidence role and is refused, identical to MCP)."
     )]
     Verdict {
@@ -112,6 +133,11 @@ pub(crate) fn dispatch_workflow(command: &WorkflowCommands) -> anyhow::Result<()
             observation,
         } => run_deliver(*number, observation),
         WorkflowCommands::Fail { number, reason } => run_fail(*number, reason),
+        WorkflowCommands::PassStage {
+            number,
+            observation,
+        } => run_pass_stage(*number, observation),
+        WorkflowCommands::FailStage { number, reason } => run_fail_stage(*number, reason),
         WorkflowCommands::Reject { number, reason } => run_reject(*number, reason),
         WorkflowCommands::Signal { state } => run_signal(state),
         WorkflowCommands::Verdict {

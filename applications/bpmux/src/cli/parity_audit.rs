@@ -31,6 +31,8 @@ const IN_SCOPE: &[(&str, &[&str])] = &[
     ("deliver_story", &["deliver"]),
     ("pass_desk_check", &["pass"]),
     ("fail_desk_check", &["fail"]),
+    ("pass_stage", &["pass-stage"]),
+    ("fail_stage", &["fail-stage"]),
     ("accept_story", &["accept"]),
     ("reject_story", &["reject"]),
     ("close_story", &["close"]),

@@ -21,8 +21,20 @@ fn target_state_parses_canonical_spellings() {
 fn target_state_parse_unknown_lists_valid_options() {
     let err = TargetState::parse("bogus").unwrap_err();
     assert!(
-        err.contains("retired") && err.contains("ready") && err.contains("delivered"),
-        "error must enumerate valid options for the agent: got {err}"
+        err.contains("retired")
+            && err.contains("ready")
+            && err.contains("desk-check")
+            && err.contains("acceptance"),
+        "error must enumerate the CONFIGURED targets for the agent — the middle stages come from workflow.toml: got {err}"
+    );
+}
+
+#[test]
+fn target_state_parses_a_configured_middle_stage_id_into_the_middle() {
+    assert_eq!(
+        TargetState::parse("desk-check").unwrap(),
+        TargetState::Workflow(BoardState::InProgress),
+        "a configured middle stage id targets the middle; move_story derives the placement from the target string"
     );
 }
 

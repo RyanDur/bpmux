@@ -17,11 +17,18 @@ impl TargetState {
         if normalized == TARGET_STATE_RETIRED {
             return Ok(Self::Retired);
         }
-        BoardState::parse(&normalized).map(Self::Workflow).ok_or_else(|| {
-            format!(
-                "unknown target_state '{s}'. Valid: icebox, ready, in-progress, desk-check, delivered, accepted, retired"
-            )
-        })
+        if let Some(state) = BoardState::parse(&normalized) {
+            return Ok(Self::Workflow(state));
+        }
+        let middle = crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow());
+        if middle.iter().any(|stage| stage.as_str() == normalized) {
+            return Ok(Self::Workflow(BoardState::InProgress));
+        }
+        let stages: Vec<&str> = middle.iter().map(|stage| stage.as_str()).collect();
+        Err(format!(
+            "unknown target_state '{s}'. Valid: icebox, ready, {}, acceptance, accepted, retired",
+            stages.join(", ")
+        ))
     }
 
     pub(super) fn as_label(&self) -> Option<&'static str> {
