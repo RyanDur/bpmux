@@ -48,3 +48,31 @@ fn an_unresolvable_author_is_kept_never_dropped() {
         "the kept message round-trips its original author verbatim"
     );
 }
+
+const FIX_QUEUED_VERDICT_ROW: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}},"pre_state":null,"last_classification":null}"#;
+
+#[test]
+fn an_outbox_row_round_trips_byte_identically_through_the_real_store() {
+    use crate::sync::OutboxRepo;
+    let dir = tempfile::TempDir::new().unwrap();
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let raw = rusqlite::Connection::open(dir.path().join("session.db")).unwrap();
+    raw.execute(
+        "INSERT INTO outbox (event) VALUES (?1)",
+        [FIX_QUEUED_VERDICT_ROW],
+    )
+    .unwrap();
+
+    let loaded = storage.load_outbox().unwrap();
+    assert_eq!(loaded.len(), 1);
+    let entries: Vec<crate::sync::QueuedEvent> = loaded.into_iter().collect();
+    storage.save_outbox(&entries).unwrap();
+
+    let stored: String = raw
+        .query_row("SELECT event FROM outbox", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(
+        stored, FIX_QUEUED_VERDICT_ROW,
+        "the SQLite outbox row survives load + save byte-identically — SQLite has no legacy fallback, so this byte-freeze is its only protection"
+    );
+}

@@ -181,3 +181,5 @@ mod builder;
 mod conflict_classifier_tests;
 #[cfg(test)]
 mod orchestrator_tests;
+#[cfg(test)]
+mod outbox_format_tests;
